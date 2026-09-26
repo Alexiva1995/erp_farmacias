@@ -1,13 +1,11 @@
 <script setup>
-import BarcodeSearchModal from "@/components/dialogs/BarcodeSearchModal.vue";
-import ProductEditDialog from "@/components/dialogs/ProductEditDialog.vue";
-import ProductFilters from "@/components/ProductFilters.vue";
-import ProductTable from "@/components/ProductTable.vue";
 import InvoicePhotoPreviewDialog from "@/components/InvoicePhotoPreviewDialog.vue";
 import InvoiceFinancialSummary from "./components/InvoiceFinancialSummary.vue";
 import InvoiceAuditModal from "./components/InvoiceAuditModal.vue";
 import InvoicePdfSidePanel from "./components/InvoicePdfSidePanel.vue";
 import InvoiceMobileCards from "./components/InvoiceMobileCards.vue";
+import InvoiceDesktopTable from "./components/InvoiceDesktopTable.vue";
+import InvoiceProductCatalogSearch from "./components/InvoiceProductCatalogSearch.vue";
 import InvoiceHeaderBar from "./components/InvoiceHeaderBar.vue";
 import InvoiceActionFooter from "./components/InvoiceActionFooter.vue";
 import { useDisplay } from "vuetify";
@@ -87,13 +85,9 @@ const laboratories = ref([]);
 const origins = ref([]);
 const categories = ref([]);
 const isLoadingFilters = ref(false);
-const isEditDialogVisible = ref(false);
-const isBarcodeModalVisible = ref(false);
 const isProductSearchVisible = ref(false);
-const searchingBarcode = ref(false);
-const currentProduct = ref({});
-const productFormErrors = ref({});
-const barcodeModalRef = ref(null);
+const catalogSearchRef = ref(null);
+
 const isScannerMode = ref(false);
 const barcodeInput = ref("");
 const scannerLoading = ref(false);
@@ -155,7 +149,6 @@ const getRowProps = (data) => {
     item.product &&
     (item.product.is_deleted == 1 || item.product.is_deleted === true)
   ) {
-    // Force background color via style for dark mode compatibility
     return {
       class: "new-product-row",
       style:
@@ -325,19 +318,13 @@ const isTaxAmountMismatch = computed(() => {
   const invoiceTaxAmount = parseFloat(invoice.value.tax_amount) || 0;
   if (invoiceTaxAmount === 0) return false;
 
-  // Calcular la tolerancia de ±0.5 USD en la moneda de la factura
   const isUsd = invoice.value.currency === "USD";
   const rate = parseFloat(invoice.value.exchange_rate) || 1;
   const hasValidRate = rate && rate > 0;
 
-  // Tolerancia de 0.5 USD convertida a la moneda de la factura
   const toleranceInCurrency = isUsd ? 0.5 : hasValidRate ? 0.5 * rate : 0.5;
+  const difference = Math.abs(editableDetailsTaxAmount.value - invoiceTaxAmount);
 
-  const difference = Math.abs(
-    editableDetailsTaxAmount.value - invoiceTaxAmount,
-  );
-
-  // Permitir diferencia de hasta 0.5 USD (convertido a la moneda de la factura)
   return difference > toleranceInCurrency;
 });
 
@@ -383,50 +370,6 @@ const getCostComparisonClass = (item) => {
   }
 
   return "";
-};
-
-const getCostTooltipText = (item) => {
-  if (
-    !isApprovalMode.value ||
-    !item.product ||
-    typeof item.product.unit_cost === "undefined"
-  ) {
-    return "";
-  }
-
-  const systemCostUSD = Number(item.product.unit_cost);
-
-  if (systemCostUSD === 0 || systemCostUSD === null || isNaN(systemCostUSD)) {
-    return "Producto Nuevo - Sin costo registrado en el sistema";
-  }
-
-  const invoiceCostInLocalCurrency = Number(item.unit_cost);
-  const rate = parseFloat(invoice.value.exchange_rate) || 1;
-  const isUsd = invoice.value.currency === "USD";
-  const hasValidRate = rate && rate > 0;
-
-  let invoiceCostUSD;
-  if (isUsd) {
-    invoiceCostUSD = invoiceCostInLocalCurrency;
-  } else if (hasValidRate) {
-    invoiceCostUSD = invoiceCostInLocalCurrency / rate;
-  } else {
-    return `Costo en Sistema: ${formatCurrency(
-      systemCostUSD,
-      "USD",
-    )} (No se puede comparar - tasa inválida)`;
-  }
-
-  let text = `Costo en Sistema: ${formatCurrency(
-    systemCostUSD,
-    "USD",
-  )} | Factura: ${formatCurrency(invoiceCostUSD, "USD")}`;
-
-  if (item.auto_order_unit_cost_usd != null) {
-    text += ` | AO: ${formatCurrency(item.auto_order_unit_cost_usd, "USD")}`;
-  }
-
-  return text;
 };
 
 /**
@@ -577,7 +520,7 @@ PRODUCTOS CON PRECIO MAYOR AL COSTO EN SISTEMA:
       icon: "success",
       title: "Productos más caros copiados al portapapeles.",
     });
-  }).catch(err => {
+  }).catch(() => {
     toast.fire({
       icon: "error",
       title: "No se pudo copiar el texto.",
@@ -680,12 +623,6 @@ const fetchInvoiceDetails = async (id) => {
 
 const handleSaveProgress = async () => {
   loading.value = true;
-
-  console.log("Saving progress...", {
-    isEditMode: isEditMode.value,
-    detailsCount: invoiceDetails.value.length,
-    timestamp: new Date().toISOString(),
-  });
 
   const payload = {
     invoice: {
@@ -840,7 +777,7 @@ const toggleEditMode = (enable) => {
 
 const addProductToInvoice = (product) => {
   const existingDetail = invoiceDetails.value.find(
-    (detail) => detail.product.id === product.id,
+    (detail) => detail.product?.id === product.id,
   );
 
   if (existingDetail) {
@@ -891,26 +828,26 @@ const toggleTax = (detailToToggle) => {
 };
 
 const handleAddProduct = () => {
-  isBarcodeModalVisible.value = true;
+  catalogSearchRef.value?.openBarcodeModal();
 };
 
 const handleSearchBarcode = async (barcode) => {
-  searchingBarcode.value = true;
+  catalogSearchRef.value?.setSearchingBarcode(true);
   try {
     const response = await axios.get(`/products/search-by-barcode`, {
       params: { barcode },
     });
 
     if (response.data.data) {
-      barcodeModalRef.value?.handleProductFound(response.data.data);
+      catalogSearchRef.value?.handleProductFound(response.data.data);
     } else {
-      barcodeModalRef.value?.handleProductNotFound();
+      catalogSearchRef.value?.handleProductNotFound();
     }
   } catch (error) {
     console.error("Error al buscar producto por código de barras:", error);
-    barcodeModalRef.value?.handleProductNotFound();
+    catalogSearchRef.value?.handleProductNotFound();
   } finally {
-    searchingBarcode.value = false;
+    catalogSearchRef.value?.setSearchingBarcode(false);
   }
 };
 
@@ -930,33 +867,20 @@ const handleShowProductSearch = () => {
   fetchProducts();
 };
 
-const handleAddNewProduct = async () => {
-  if (
-    laboratories.value.length === 0 ||
-    origins.value.length === 0 ||
-    categories.value.length === 0
-  ) {
-    await fetchProductSelectOptions();
-  }
-  currentProduct.value = {};
-  productFormErrors.value = {};
-  isEditDialogVisible.value = true;
-};
-
-const handleSaveProduct = async (productFormData) => {
+const handleSaveProduct = async (productFormData, { onSuccess, onError }) => {
   const url = "/products";
   try {
     await axios.post(url, productFormData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     toast.success("Producto creado con éxito");
-    isEditDialogVisible.value = false;
+    if (onSuccess) onSuccess();
     if (isProductSearchVisible.value) {
       await fetchProducts();
     }
   } catch (error) {
     if (error.response && error.response.status === 422) {
-      productFormErrors.value = error.response.data.errors;
+      if (onError) onError(error.response.data.errors);
       toast.error("Por favor, corrige los errores en el formulario.");
     } else {
       console.error("Error al guardar el producto:", error);
@@ -974,12 +898,10 @@ const removeProductFromInvoice = (detailId) => {
 const startEditingDetail = async (detail) => {
   editedDetailData.value = { ...detail };
   
-  // Guardamos el costo total inicial en restaurantes para edición
   if (isRestaurant.value) {
     const qty = Number(editedDetailData.value.quantity) || 0;
     const unitCost = Number(editedDetailData.value.unit_cost) || 0;
     
-    // Si tiene IVA activo, el costo total ingresado por el usuario incluye IVA (es decir, unitCost * 1.16 * qty)
     if (editedDetailData.value.tax_enabled) {
       editedDetailData.value.total_cost_input = Number((unitCost * 1.16 * qty).toFixed(2));
     } else {
@@ -992,7 +914,6 @@ const startEditingDetail = async (detail) => {
   });
 
   if (isRestaurant.value && isFruit.value) {
-    // Si no tiene lote, consultar el número de lote correlativo automático
     if (!editedDetailData.value.lot_number?.trim()) {
       try {
         const prodId = editedDetailData.value.product?.id;
@@ -1007,7 +928,6 @@ const startEditingDetail = async (detail) => {
       }
     }
 
-    // Fecha de vencimiento: 15 días después de la compra/emisión (created_invoice_date)
     if (!editedDetailData.value.expiration_date && invoice.value?.created_invoice_date) {
       try {
         const purchaseDate = new Date(invoice.value.created_invoice_date + 'T00:00:00');
@@ -1022,7 +942,6 @@ const startEditingDetail = async (detail) => {
     }
   }
 
-  // Si no tiene fecha y no es fruta (o falló el cálculo anterior), predefinir el día 1 del mes actual
   if (!editedDetailData.value.expiration_date) {
     const now = new Date();
     const year = now.getFullYear();
@@ -1070,7 +989,6 @@ const saveEditingDetail = () => {
     return;
   }
 
-  // Sincronizar costos al guardar
   const qty = Number(editedDetailData.value.quantity) || 1;
   if (editedDetailData.value.total_cost_input !== null && editedDetailData.value.total_cost_input !== undefined && editedDetailData.value.total_cost_input !== '') {
     recalculateUnitFromTotal();
@@ -1087,8 +1005,6 @@ const saveEditingDetail = () => {
     return;
   }
 
-  // Lote y fecha de vencimiento son opcionales SOLO para administradores.
-  // Para usuarios normales, se obliga a ingresarlos.
   if (!authStore.isAdmin) {
     if (!editedDetailData.value.lot_number?.trim()) {
       const itemType = editedDetailData.value.is_return ? "devolución" : "producto";
@@ -1101,7 +1017,6 @@ const saveEditingDetail = () => {
       return;
     }
   } else {
-    // Si es administrador y los dejó vacíos, se guardan como null
     if (!editedDetailData.value.lot_number?.trim()) {
       editedDetailData.value.lot_number = null;
     }
@@ -1138,14 +1053,12 @@ const saveEditingDetail = () => {
       } actualizado correctamente`,
     );
 
-    // Buscar el siguiente producto que necesite datos (Lote o Vencimiento vacío)
     const nextIncompleteDetail = invoiceDetails.value.find(
       (d, index) =>
         index > detailIndex && (!d.lot_number?.trim() || !d.expiration_date),
     );
 
     if (nextIncompleteDetail) {
-      // Pequeño retraso para que el usuario vea el feedback del guardado antes de saltar al siguiente
       setTimeout(() => {
         startEditingDetail(nextIncompleteDetail);
       }, 300);
@@ -1251,7 +1164,6 @@ const getCurrencySymbol = () => {
 const isNearExpiration = (item) => {
   if (!item.expiration_date) return false;
   
-  // Omitir validación de expiración / devolución automática si es fruta en restaurante
   const isFruit = !!item.product?.laboratory?.name?.toLowerCase().includes("fruta");
   if (isRestaurant.value && isFruit) {
     return false;
@@ -1269,7 +1181,6 @@ const isNearExpiration = (item) => {
 const checkAndMarkAsReturn = (item, forceCheck = false) => {
   if (!item.expiration_date) return false;
 
-  // Si es restaurante y el producto es fruta, no marcar como devolución automáticamente
   const isFruit = !!item.product?.laboratory?.name?.toLowerCase().includes("fruta");
   if (isRestaurant.value && isFruit) {
     return false;
@@ -1312,7 +1223,7 @@ const invoiceHasIva = computed(() => {
   const taxAmount = parseFloat(invoice.value.tax_amount) || 0;
 
   return taxableBase > 0 || taxAmount > 0;
-});
+};
 
 const moveItemUp = (item) => {
   if (!isEditableMode.value || !isEditMode.value) return;
@@ -1324,7 +1235,6 @@ const moveItemUp = (item) => {
     invoiceDetails.value[index] = invoiceDetails.value[index - 1];
     invoiceDetails.value[index - 1] = temp;
 
-    // Actualizar display_order
     invoiceDetails.value.forEach((detail, idx) => {
       detail.display_order = idx;
     });
@@ -1341,7 +1251,6 @@ const moveItemDown = (item) => {
     invoiceDetails.value[index] = invoiceDetails.value[index + 1];
     invoiceDetails.value[index + 1] = temp;
 
-    // Actualizar display_order
     invoiceDetails.value.forEach((detail, idx) => {
       detail.display_order = idx;
     });
@@ -1375,7 +1284,6 @@ const handleDrop = (item) => {
 
     invoiceDetails.value.splice(dropIndex, 0, removed);
 
-    // Actualizar display_order
     invoiceDetails.value.forEach((detail, idx) => {
       detail.display_order = idx;
     });
@@ -1413,12 +1321,10 @@ const handleBarcodeScan = async () => {
     if (response.data.status === "success" || response.data.status === "warning") {
       const newDetail = response.data.data;
 
-      // Asegurar que estamos en modo edición si encontramos algo
       if (!isEditMode.value) {
         toggleEditMode(true);
       }
 
-      // Verificar si ya existe en la lista para evitar duplicados accidentales
       const existingIndex = invoiceDetails.value.findIndex(
         (d) => d.product_id === newDetail.product_id,
       );
@@ -1429,7 +1335,6 @@ const handleBarcodeScan = async () => {
           title: "El producto ya está en la lista.",
         });
       } else {
-        // Agregar al inicio de la lista
         invoiceDetails.value.unshift({
           ...newDetail,
           id: `new_${Date.now()}`,
@@ -1548,13 +1453,10 @@ const handleFinalizeInvoice = async () => {
     return;
   }
   if (isEditMode.value) {
-    console.log("Finalize called in Edit Mode. Saving progress first.");
     const saveSuccessful = await handleSaveProgress();
     if (!saveSuccessful) {
       return;
     }
-  } else {
-    console.log("Finalize called in Read Mode. Skipping save.");
   }
   loading.value = true;
 
@@ -1678,687 +1580,304 @@ const detailsHeaders = computed(() => {
           class="invoice-main-col pa-0 pe-lg-2"
         >
           <VCard class="invoice-detail-card mb-6">
-        <VForm @submit.prevent>
-          <InvoiceHeaderBar
-            :invoice="invoice"
-            :is-pdf-side-panel-open="isPdfSidePanelOpen"
-            :is-invoice-due-soon="isInvoiceDueSoon"
-            :is-edit-mode="isEditMode"
-            :is-approval-mode="isApprovalMode"
-            :is-location-mode="isLocationMode"
-            :is-editable-mode="isEditableMode"
-            :format-date="formatDate"
-            @back-to-list="emit('back-to-list')"
-            @show-audit="showAuditModal = true"
-            @view-pdf="viewInvoicePhoto"
-            @toggle-edit="toggleEditMode"
-          />
-          <VDivider />
+            <VForm @submit.prevent>
+              <InvoiceHeaderBar
+                :invoice="invoice"
+                :is-pdf-side-panel-open="isPdfSidePanelOpen"
+                :is-invoice-due-soon="isInvoiceDueSoon"
+                :is-edit-mode="isEditMode"
+                :is-approval-mode="isApprovalMode"
+                :is-location-mode="isLocationMode"
+                :is-editable-mode="isEditableMode"
+                :format-date="formatDate"
+                @back-to-list="emit('back-to-list')"
+                @show-audit="showAuditModal = true"
+                @view-pdf="viewInvoicePhoto"
+                @toggle-edit="toggleEditMode"
+              />
+              <VDivider />
 
-          <VCardText class="products-section pt-6">
-            <div class="d-flex flex-column flex-sm-row align-sm-center ga-2 mb-4">
-              <div class="d-flex align-center">
-                <span class="text-h6 font-weight-bold">Productos</span>
-                <VChip color="primary" variant="tonal" size="small" class="ms-2 rounded-lg">
-                  {{ invoiceDetails.length }}
-                </VChip>
-              </div>
-              <VSpacer v-if="!mobile" />
-              <div class="d-flex align-center ga-1 ga-sm-4 justify-space-between w-100 w-sm-auto mt-2 mt-sm-0">
-                <div class="text-right d-flex align-center">
-                  <VTooltip
-                    v-if="
-                      (isTotalMismatch || isTaxAmountMismatch) && isEditMode
-                    "
-                    text="Hay discrepancias en los totales que deben corregirse antes de finalizar."
-                  >
-                    <template #activator="{ props }">
-                      <VIcon
-                        v-bind="props"
-                        icon="tabler-alert-circle"
-                        color="warning"
-                        class="me-2"
-                      />
-                    </template>
-                  </VTooltip>
-                  <span class="text-xs text-medium-emphasis me-1 uppercase font-weight-black"
-                    >Total</span
-                  >
-                  <VChip
-                    :color="
-                      (isTotalMismatch || isTaxAmountMismatch) && isEditMode
-                        ? 'warning'
-                        : 'error'
-                    "
-                    label
-                    size="small"
-                    class="rounded-lg px-2"
-                    variant="flat"
-                  >
-                    <span class="text-xs font-weight-black">{{ formatCurrency(editableDetailsTotal, invoice.currency) }}</span>
-                  </VChip>
-                </div>
-                <!-- Botones de Carga y Escaneo (Visibles en modo editable) -->
-                <template v-if="isEditableMode">
-                  <VBtn
-                    v-if="invoice.auto_order_id && invoiceDetails.length === 0"
-                    color="warning"
-                    variant="tonal"
-                    size="small"
-                    class="rounded-lg px-3 font-weight-bold"
-                    :loading="loadingDetails"
-                    @click="loadAutoOrderDetails"
-                  >
-                    <VIcon icon="tabler-refresh" class="me-1" size="16" />
-                    <span>Cargar Auto-Orden</span>
-                  </VBtn>
-
-                  <VBtn
-                    :color="isScannerMode ? 'info' : 'secondary'"
-                    :variant="isScannerMode ? 'flat' : 'tonal'"
-                    size="small"
-                    class="rounded-lg px-3 font-weight-bold"
-                    @click="toggleScannerMode"
-                  >
-                    <VIcon :icon="isScannerMode ? 'tabler-barcode' : 'tabler-barcode-off'" class="me-1" size="16" />
-                    <span>{{ isScannerMode ? "Modo Escáner" : "Escanear" }}</span>
-                  </VBtn>
-                </template>
-
-                <template v-if="isApprovalMode">
-                  <VBtn
-                    color="warning"
-                    variant="tonal"
-                    size="small"
-                    class="rounded-lg px-3 font-weight-bold"
-                    @click="copyMoreExpensiveProducts"
-                  >
-                    <VIcon icon="tabler-copy" class="me-1" size="16" />
-                    <span>Copiar más caros</span>
-                  </VBtn>
-                </template>
-
-                <VBtn
-                  v-if="isEditableMode && isEditMode && isRestaurant"
-                  color="info"
-                  variant="tonal"
-                  size="small"
-                  class="rounded-lg px-3 font-weight-bold"
-                  @click="handleShowProductSearch"
-                >
-                  <VIcon icon="tabler-search" class="me-1" size="16" />
-                  <span>Catálogo</span>
-                </VBtn>
-
-                <VBtn
-                  v-if="isEditableMode && isEditMode"
-                  color="primary"
-                  variant="flat"
-                  size="small"
-                  class="rounded-lg px-3 font-weight-bold"
-                  @click="handleAddProduct"
-                >
-                  <VIcon icon="tabler-plus" class="me-1" size="16" />
-                  <span>Agregar Producto</span>
-                </VBtn>
-              </div>
-            </div>
-
-            <!-- Área de Escaneo Rápido -->
-            <VExpandTransition>
-              <div v-if="isScannerMode" class="mb-4 pa-4 bg-primary-lighten-5 rounded border-dashed d-flex align-center">
-                <VIcon icon="tabler-scan" color="primary" size="24" class="me-3" />
-                <div class="flex-grow-1">
-                  <VTextField
-                    ref="scannerInputRef"
-                    v-model="barcodeInput"
-                    placeholder="Escanee el código de barras del producto físico..."
-                    prepend-inner-icon="tabler-barcode"
-                    variant="solo"
-                    density="comfortable"
-                    hide-details
-                    :loading="scannerLoading"
-                    autofocus
-                    @keyup.enter="handleBarcodeScan"
-                  >
-                    <template #append-inner>
-                      <VChip v-if="scannerLoading" size="x-small" color="primary">Buscando...</VChip>
-                      <kbd v-else class="text-caption px-2 bg-grey-lighten-3 rounded">ENTER</kbd>
-                    </template>
-                  </VTextField>
-                </div>
-                <VBtn icon="tabler-x" variant="text" size="small" class="ms-2" @click="isScannerMode = false" />
-              </div>
-            </VExpandTransition>
-
-            <VDataTable
-              v-if="!mobile"
-              :headers="detailsHeaders"
-              :items="processedInvoiceDetails"
-              :loading="loadingDetails"
-              :hide-default-footer="true"
-              :items-per-page="-1"
-              class="invoice-products-table"
-              :row-props="getRowProps"
-            >
-              <template #item.product_name_with_tax="{ item }">
-                <div
-                  class="d-flex align-center py-1"
-                  :class="{
-                    'near-expiration-row': isNearExpiration(item),
-                    'draggable-row': isEditableMode && isEditMode,
-                    'drag-over': draggedOverItem?.id === item.id,
-                  }"
-                  @dragover="handleDragOver($event, item)"
-                  @drop="handleDrop(item)"
-                >
-                  <!-- Icono de arrastrar a la izquierda del nombre -->
-                  <VTooltip v-if="isEditableMode && isEditMode" text="Arrastrar para reordenar" location="top">
-                    <template #activator="{ props: tipProps }">
-                      <IconBtn
-                        v-bind="tipProps"
-                        class="drag-handle me-1.5 flex-shrink-0"
-                        :class="{
-                          'drag-over': draggedOverItem?.id === item.id,
-                        }"
-                        draggable="true"
-                        size="small"
-                        @dragstart="handleDragStart(item)"
-                        @dragover.prevent="handleDragOver($event, item)"
-                        @drop="handleDrop(item)"
-                        @dragend="handleDragEnd"
+              <VCardText class="products-section pt-6">
+                <div class="d-flex flex-column flex-sm-row align-sm-center ga-2 mb-4">
+                  <div class="d-flex align-center">
+                    <span class="text-h6 font-weight-bold">Productos</span>
+                    <VChip color="primary" variant="tonal" size="small" class="ms-2 rounded-lg">
+                      {{ invoiceDetails.length }}
+                    </VChip>
+                  </div>
+                  <VSpacer v-if="!mobile" />
+                  <div class="d-flex align-center ga-1 ga-sm-4 justify-space-between w-100 w-sm-auto mt-2 mt-sm-0">
+                    <div class="text-right d-flex align-center">
+                      <VTooltip
+                        v-if="
+                          (isTotalMismatch || isTaxAmountMismatch) && isEditMode
+                        "
+                        text="Hay discrepancias en los totales que deben corregirse antes de finalizar."
                       >
-                        <VIcon icon="tabler-grip-vertical" size="18" class="text-medium-emphasis" />
-                      </IconBtn>
-                    </template>
-                  </VTooltip>
-
-                  <div class="d-flex flex-column align-start">
-                    <div class="d-flex align-center">
-                      <span :class="{ 'returned-item': isItemReturned(item) }" class="font-weight-medium text-high-emphasis">
-                        {{ item.product_name_with_tax }}
-                      </span>
-                      <VTooltip v-if="isNearExpiration(item)" location="top">
-                        <template #activator="{ props }">
+                        <template #activator="{ props: tipProps }">
                           <VIcon
-                            v-bind="props"
-                            icon="tabler-alert-triangle"
+                            v-bind="tipProps"
+                            icon="tabler-alert-circle"
                             color="warning"
-                            size="16"
-                            class="ms-2"
+                            class="me-2"
                           />
                         </template>
-                        <span
-                          >Producto próximo a vencer (menos de 6 meses). Considere
-                          marcarlo como devolución.</span
-                        >
                       </VTooltip>
+                      <span class="text-xs text-medium-emphasis me-1 uppercase font-weight-black"
+                        >Total</span
+                      >
+                      <VChip
+                        :color="
+                          (isTotalMismatch || isTaxAmountMismatch) && isEditMode
+                            ? 'warning'
+                            : 'error'
+                        "
+                        label
+                        size="small"
+                        class="rounded-lg px-2"
+                        variant="flat"
+                      >
+                        <span class="text-xs font-weight-black">{{ formatCurrency(editableDetailsTotal, invoice.currency) }}</span>
+                      </VChip>
                     </div>
-                    <span class="text-caption text-medium-emphasis">
-                      {{ item.product?.laboratory?.name || 'Sin Laboratorio' }}
-                    </span>
-                  </div>
-                </div>
-              </template>
+                    <!-- Botones de Carga y Escaneo (Visibles en modo editable) -->
+                    <template v-if="isEditableMode">
+                      <VBtn
+                        v-if="invoice.auto_order_id && invoiceDetails.length === 0"
+                        color="warning"
+                        variant="tonal"
+                        size="small"
+                        class="rounded-lg px-3 font-weight-bold"
+                        :loading="loadingDetails"
+                        @click="loadAutoOrderDetails"
+                      >
+                        <VIcon icon="tabler-refresh" class="me-1" size="16" />
+                        <span>Cargar Auto-Orden</span>
+                      </VBtn>
 
-              <template #item.lot_and_expiration="{ item }">
-                <div class="d-flex flex-column align-center" :class="{ 'near-expiration-row': isNearExpiration(item) }">
-                  <VTextField
-                    v-if="isEditableMode && item.id === editingDetailId"
-                    v-model="editedDetailData.lot_number"
-                    density="compact"
-                    hide-details
-                    variant="outlined"
-                    class="editable-cell mb-1"
-                    :placeholder="item.is_return ? 'Lote (Dev)' : 'Ingrese Lote'"
-                  />
-                  <span v-else :class="{ 'returned-item': isItemReturned(item) }" class="font-weight-medium">
-                    {{ item.lot_number || "Sin Lote" }}
-                  </span>
+                      <VBtn
+                        :color="isScannerMode ? 'info' : 'secondary'"
+                        :variant="isScannerMode ? 'flat' : 'tonal'"
+                        size="small"
+                        class="rounded-lg px-3 font-weight-bold"
+                        @click="toggleScannerMode"
+                      >
+                        <VIcon :icon="isScannerMode ? 'tabler-barcode' : 'tabler-barcode-off'" class="me-1" size="16" />
+                        <span>{{ isScannerMode ? "Modo Escáner" : "Escanear" }}</span>
+                      </VBtn>
+                    </template>
 
-                  <VTextField
-                    v-if="isEditableMode && item.id === editingDetailId"
-                    v-model="editedDetailData.expiration_date"
-                    type="date"
-                    density="compact"
-                    hide-details
-                    variant="outlined"
-                    class="editable-cell mt-1"
-                    :placeholder="item.is_return ? 'Venc. (Dev)' : 'F. Venc'"
-                  />
-                  <span
-                    v-else
-                    class="text-caption"
-                    :class="{
-                      'returned-item': isItemReturned(item),
-                      'text-warning font-weight-bold': isNearExpiration(item) && !isItemReturned(item),
-                      'text-disabled': !isNearExpiration(item)
-                    }"
-                  >
-                    <VIcon v-if="isNearExpiration(item) && !isItemReturned(item)" icon="tabler-alert-triangle-filled" size="14" class="me-1" />
-                    {{ item.expiration_date || "Sin Vencimiento" }}
-                  </span>
-                </div>
-              </template>
-              <template #item.location="{ item, index }">
-                <VAutocomplete
-                  v-if="isLocationMode && !isItemReturned(item)"
-                  :model-value="item.location"
-                  :items="locations"
-                  item-title="name"
-                  item-value="name"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  class="editable-cell"
-                  placeholder="Ej: A-01-B"
-                  :return-object="false"
-                  auto-select-first
-                  @update:model-value="updateLocation(item.id, $event)"
-                />
-                <VChip
-                  v-else-if="isItemReturned(item)"
-                  size="x-small"
-                  color="warning"
-                  variant="tonal"
-                  class="font-weight-bold"
-                >
-                  N/A (Devolución)
-                </VChip>
-                <span
-                  v-else
-                  :class="{ 'returned-item': isItemReturned(item) }"
-                  >{{ item.location || "-" }}</span
-                >
-              </template>
-              <template #item.quantity="{ item }">
-                <VTextField
-                  v-if="isEditableMode && item.id === editingDetailId"
-                  v-model.number="editedDetailData.quantity"
-                  type="number"
-                  step="1"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  class="editable-cell"
-                  min="0"
-                />
-                <span
-                  v-else
-                  :class="{ 'returned-item': isItemReturned(item) }"
-                  class="font-weight-medium"
-                >
-                  {{ Math.round(Number(item.quantity) || 0) }}
-                </span>
-              </template>
+                    <template v-if="isApprovalMode">
+                      <VBtn
+                        color="warning"
+                        variant="tonal"
+                        size="small"
+                        class="rounded-lg px-3 font-weight-bold"
+                        @click="copyMoreExpensiveProducts"
+                      >
+                        <VIcon icon="tabler-copy" class="me-1" size="16" />
+                        <span>Copiar más caros</span>
+                      </VBtn>
+                    </template>
 
-              <template #item.unit_cost="{ item }">
-                <div v-if="isEditableMode && item.id === editingDetailId" class="d-flex flex-column gap-1 my-1" style="min-width: 140px;">
-                  <VTextField
-                    v-model.number="editedDetailData.unit_cost"
-                    @input="recalculateTotalFromUnit"
-                    type="number"
-                    step="0.01"
-                    density="compact"
-                    hide-details
-                    variant="outlined"
-                    placeholder="Unitario"
-                    label="Unitario"
-                    :prefix="getCurrencySymbol()"
-                  />
-                  <VTextField
-                    v-model.number="editedDetailData.total_cost_input"
-                    @input="recalculateUnitFromTotal"
-                    type="number"
-                    step="0.01"
-                    density="compact"
-                    hide-details
-                    variant="outlined"
-                    placeholder="Total"
-                    label="Total"
-                    :prefix="getCurrencySymbol()"
-                  />
-                </div>
-                <div
-                  v-else
-                  class="cost-cell d-flex flex-column align-end"
-                  :class="[
-                    getCostComparisonClass(item),
-                    { 'returned-item': isItemReturned(item) },
-                  ]"
-                >
-                  <!-- Línea 1: Costo en moneda de factura (ej. Bs) con indicador vs Auto-Orden -->
-                  <div class="d-flex align-center justify-end gap-1">
-                    <span class="font-weight-bold text-high-emphasis">{{
-                      formatCurrency(item.unit_cost, invoice.currency)
-                    }}</span>
-                    <VTooltip
-                      v-if="getPriceVsAutoOrderIndicator(item)"
-                      :text="getPriceVsAutoOrderIndicator(item).tooltip"
-                      location="top"
-                    >
-                      <template #activator="{ props: tipProps }">
-                        <VChip
-                          v-bind="tipProps"
-                          size="x-small"
-                          :color="getPriceVsAutoOrderIndicator(item).color"
-                          variant="tonal"
-                          class="px-1 font-weight-bold"
-                          style="height: 18px; font-size: 10px;"
-                        >
-                          <VIcon :icon="getPriceVsAutoOrderIndicator(item).icon" size="12" class="me-0.5" />
-                          {{ getPriceVsAutoOrderIndicator(item).badgeText }}
-                        </VChip>
-                      </template>
-                    </VTooltip>
-                  </div>
-
-                  <!-- Línea 2: Costo en USD en texto negro con indicador vs Costo Actual en Sistema -->
-                  <div
-                    v-if="invoice.currency !== 'USD' && item.unit_cost_usd != null"
-                    class="d-flex align-center justify-end gap-1 mt-0.5"
-                  >
-                    <span
-                      class="font-weight-bold text-high-emphasis"
-                      style="font-size: 11px; color: inherit;"
-                    >
-                      ${{ Number(item.unit_cost_usd).toFixed(2) }}
-                    </span>
-                    <VTooltip
-                      v-if="getPriceVsSystemCostIndicator(item)"
-                      :text="getPriceVsSystemCostIndicator(item).tooltip"
-                      location="top"
-                    >
-                      <template #activator="{ props: tipProps }">
-                        <VChip
-                          v-bind="tipProps"
-                          size="x-small"
-                          :color="getPriceVsSystemCostIndicator(item).color"
-                          variant="tonal"
-                          class="px-1 font-weight-bold"
-                          style="height: 18px; font-size: 10px;"
-                        >
-                          <VIcon :icon="getPriceVsSystemCostIndicator(item).icon" size="12" class="me-0.5" />
-                          {{ getPriceVsSystemCostIndicator(item).badgeText }}
-                        </VChip>
-                      </template>
-                    </VTooltip>
-                  </div>
-                </div>
-              </template>
-
-              <template #item.tax_amount="{ item }">
-                <div
-                  class="d-flex flex-column align-end"
-                  :class="{ 'returned-item': isItemReturned(item) }"
-                >
-                  <span
-                    :class="{ 'font-weight-bold text-high-emphasis': item.tax_amount > 0 }"
-                    >{{
-                      formatCurrency(item.tax_amount, invoice.currency)
-                    }}</span
-                  >
-                </div>
-              </template>
-
-              <template #item.total_cost="{ item }">
-                <div
-                  class="d-flex flex-column align-end"
-                  :class="{ 'returned-item': isItemReturned(item) }"
-                >
-                  <span class="font-weight-bold text-high-emphasis">{{
-                    formatCurrency(item.total_cost, invoice.currency)
-                  }}</span>
-                </div>
-              </template>
-
-              <template #item.actions="{ item }">
-                <div v-if="isEditableMode && isEditMode">
-                  <div v-if="item.id === editingDetailId" class="d-flex align-center ga-1 justify-center">
                     <VBtn
-                      color="success"
-                      size="small"
-                      variant="flat"
-                      icon="tabler-check"
-                      title="Guardar renglón"
-                      @click="saveEditingDetail"
-                    />
-                    <VBtn
-                      color="error"
-                      size="small"
+                      v-if="isEditableMode && isEditMode && isRestaurant"
+                      color="info"
                       variant="tonal"
-                      icon="tabler-x"
-                      title="Cancelar edición"
-                      @click="cancelEditingDetail"
-                    />
-                  </div>
-                  <div v-else class="d-flex align-center ga-1 justify-center">
-                    <!-- Flechas de mover arriba/abajo comentadas temporalmente
-                    <div class="d-flex flex-column ga-0">
-                      <IconBtn
-                        :disabled="
-                          invoiceDetails.findIndex(
-                            (d) => d.id === item.id,
-                          ) === 0
-                        "
-                        size="x-small"
-                        title="Mover arriba"
-                        @click="moveItemUp(item)"
-                      >
-                        <VIcon icon="tabler-arrow-up" size="15" />
-                      </IconBtn>
-                      <IconBtn
-                        :disabled="
-                          invoiceDetails.findIndex(
-                            (d) => d.id === item.id,
-                          ) ===
-                          invoiceDetails.length - 1
-                        "
-                        size="x-small"
-                        title="Mover abajo"
-                        @click="moveItemDown(item)"
-                      >
-                        <VIcon icon="tabler-arrow-down" size="15" />
-                      </IconBtn>
-                    </div>
-                    -->
-                    <VTooltip text="Marcar para Devolución">
-                      <template #activator="{ props }">
-                        <IconBtn v-bind="props" size="small" @click="toggleReturnItem(item)">
-                          <VIcon
-                            :color="
-                              isItemReturned(item) ? 'warning' : 'default'
-                            "
-                            icon="tabler-arrow-back-up"
-                            size="18"
-                          />
-                        </IconBtn>
-                      </template>
-                    </VTooltip>
-                    <VTooltip
-                      :text="
-                        !invoiceHasIva
-                          ? 'Factura sin IVA'
-                          : item.tax_enabled
-                            ? 'Quitar IVA'
-                            : 'Agregar IVA'
-                      "
+                      size="small"
+                      class="rounded-lg px-3 font-weight-bold"
+                      @click="handleShowProductSearch"
                     >
-                      <template #activator="{ props }">
-                        <IconBtn
-                          v-bind="props"
-                          :disabled="!invoiceHasIva"
-                          :class="{ 'disabled-button': !invoiceHasIva }"
-                          size="small"
-                          @click="toggleTax(item)"
-                        >
-                          <VIcon
-                            :color="
-                              !invoiceHasIva
-                                ? 'disabled'
-                                : item.tax_enabled
-                                  ? 'success'
-                                  : 'default'
-                            "
-                            icon="tabler-receipt-tax"
-                            size="18"
-                          />
-                        </IconBtn>
-                      </template>
-                    </VTooltip>
-                    <IconBtn size="small" title="Editar renglón" @click="startEditingDetail(item)">
-                      <VIcon icon="tabler-edit" size="18" />
-                    </IconBtn>
-                    <IconBtn size="small" color="error" title="Eliminar renglón" @click="removeProductFromInvoice(item.id)">
-                      <VIcon icon="tabler-trash" size="18" />
-                    </IconBtn>
+                      <VIcon icon="tabler-search" class="me-1" size="16" />
+                      <span>Catálogo</span>
+                    </VBtn>
+
+                    <VBtn
+                      v-if="isEditableMode && isEditMode"
+                      color="primary"
+                      variant="flat"
+                      size="small"
+                      class="rounded-lg px-3 font-weight-bold"
+                      @click="handleAddProduct"
+                    >
+                      <VIcon icon="tabler-plus" class="me-1" size="16" />
+                      <span>Agregar Producto</span>
+                    </VBtn>
                   </div>
                 </div>
-              </template>
-              <template #bottom />
-            </VDataTable>
 
-            <!-- Vista Móvil: Tarjetas Desacopladas -->
-            <InvoiceMobileCards
-              v-else
-              :processed-invoice-details="processedInvoiceDetails"
-              :loading-details="loadingDetails"
-              :is-editable-mode="isEditableMode"
-              :is-edit-mode="isEditMode"
-              :editing-detail-id="editingDetailId"
-              :edited-detail-data="editedDetailData"
-              :invoice="invoice"
-              :locations="locations"
-              :is-location-mode="isLocationMode"
-              :invoice-has-iva="invoiceHasIva"
-              :is-near-expiration="isNearExpiration"
-              :is-item-returned="isItemReturned"
-              :format-currency="formatCurrency"
-              :get-price-vs-auto-order-indicator="getPriceVsAutoOrderIndicator"
-              :get-price-vs-system-cost-indicator="getPriceVsSystemCostIndicator"
-              @recalculate-total-from-unit="recalculateTotalFromUnit"
-              @recalculate-unit-from-total="recalculateUnitFromTotal"
-              @update-location="updateLocation"
-              @save-editing-detail="saveEditingDetail"
-              @cancel-editing-detail="cancelEditingDetail"
-              @move-item-up="moveItemUp"
-              @move-item-down="moveItemDown"
-              @toggle-return-item="toggleReturnItem"
-              @toggle-tax="toggleTax"
-              @start-editing-detail="startEditingDetail"
-              @remove-product-from-invoice="removeProductFromInvoice"
-            />
-          </VCardText>
-          <VDivider />
+                <!-- Área de Escaneo Rápido -->
+                <VExpandTransition>
+                  <div v-if="isScannerMode" class="mb-4 pa-4 bg-primary-lighten-5 rounded border-dashed d-flex align-center">
+                    <VIcon icon="tabler-scan" color="primary" size="24" class="me-3" />
+                    <div class="flex-grow-1">
+                      <VTextField
+                        ref="scannerInputRef"
+                        v-model="barcodeInput"
+                        placeholder="Escanee el código de barras del producto físico..."
+                        prepend-inner-icon="tabler-barcode"
+                        variant="solo"
+                        density="comfortable"
+                        hide-details
+                        :loading="scannerLoading"
+                        autofocus
+                        @keyup.enter="handleBarcodeScan"
+                      >
+                        <template #append-inner>
+                          <VChip v-if="scannerLoading" size="x-small" color="primary">Buscando...</VChip>
+                          <kbd v-else class="text-caption px-2 bg-grey-lighten-3 rounded">ENTER</kbd>
+                        </template>
+                      </VTextField>
+                    </div>
+                    <VBtn icon="tabler-x" variant="text" size="small" class="ms-2" @click="isScannerMode = false" />
+                  </div>
+                </VExpandTransition>
 
-          <!-- Resumen Financiero Desacoplado -->
-          <InvoiceFinancialSummary
-            :invoice="invoice"
-            :is-approval-mode="isApprovalMode"
-            :is-editable-mode="isEditableMode"
-            :is-edit-mode="isEditMode"
-            :selected-supplier-discount-id="selectedSupplierDiscountId"
-            :selected-payment-rule-id="selectedPaymentRuleId"
-            :formatted-supplier-discounts="formattedSupplierDiscounts"
-            :formatted-payment-rules="formattedPaymentRules"
-            :total-with-discount="totalWithDiscount"
-            :editable-details-tax-amount="editableDetailsTaxAmount"
-            :is-tax-amount-mismatch="isTaxAmountMismatch"
-            :format-currency="formatCurrency"
-            :format-number="formatNumber"
-            @update:selected-supplier-discount-id="selectedSupplierDiscountId = $event"
-            @update:selected-payment-rule-id="selectedPaymentRuleId = $event"
-          />
+                <!-- Vista de Tabla Desktop Desacoplada -->
+                <InvoiceDesktopTable
+                  v-if="!mobile"
+                  :processed-invoice-details="processedInvoiceDetails"
+                  :loading-details="loadingDetails"
+                  :details-headers="detailsHeaders"
+                  :is-editable-mode="isEditableMode"
+                  :is-edit-mode="isEditMode"
+                  :is-location-mode="isLocationMode"
+                  :editing-detail-id="editingDetailId"
+                  :edited-detail-data="editedDetailData"
+                  :invoice="invoice"
+                  :locations="locations"
+                  :invoice-has-iva="invoiceHasIva"
+                  :dragged-over-item-id="draggedOverItem?.id"
+                  :get-row-props="getRowProps"
+                  :is-near-expiration="isNearExpiration"
+                  :is-item-returned="isItemReturned"
+                  :get-cost-comparison-class="getCostComparisonClass"
+                  :get-price-vs-auto-order-indicator="getPriceVsAutoOrderIndicator"
+                  :get-price-vs-system-cost-indicator="getPriceVsSystemCostIndicator"
+                  :format-currency="formatCurrency"
+                  :get-currency-symbol="getCurrencySymbol"
+                  @drag-start="handleDragStart"
+                  @drag-over="handleDragOver"
+                  @drop="handleDrop"
+                  @drag-end="handleDragEnd"
+                  @update-location="updateLocation"
+                  @recalculate-total-from-unit="recalculateTotalFromUnit"
+                  @recalculate-unit-from-total="recalculateUnitFromTotal"
+                  @save-editing-detail="saveEditingDetail"
+                  @cancel-editing-detail="cancelEditingDetail"
+                  @toggle-return-item="toggleReturnItem"
+                  @toggle-tax="toggleTax"
+                  @start-editing-detail="startEditingDetail"
+                  @remove-product-from-invoice="removeProductFromInvoice"
+                />
 
-          <InvoiceActionFooter
-            :is-location-mode="isLocationMode"
-            :is-approval-mode="isApprovalMode"
-            :is-editable-mode="isEditableMode"
-            :is-edit-mode="isEditMode"
-            :is-saving="props.isSaving"
-            :loading="loading"
-            @save-locations="handleSaveLocations"
-            @reject="handleReject"
-            @confirm-approval="handleConfirmApproval"
-            @cancel-edit="toggleEditMode(false)"
-            @save-progress="handleSaveProgress"
-            @finalize="handleFinalizeInvoice"
-            @back-to-list="emit('back-to-list')"
-          />
-        </VForm>
-      </VCard>
-    </VCol>
+                <!-- Vista Móvil: Tarjetas Desacopladas -->
+                <InvoiceMobileCards
+                  v-else
+                  :processed-invoice-details="processedInvoiceDetails"
+                  :loading-details="loadingDetails"
+                  :is-editable-mode="isEditableMode"
+                  :is-edit-mode="isEditMode"
+                  :editing-detail-id="editingDetailId"
+                  :edited-detail-data="editedDetailData"
+                  :invoice="invoice"
+                  :locations="locations"
+                  :is-location-mode="isLocationMode"
+                  :invoice-has-iva="invoiceHasIva"
+                  :is-near-expiration="isNearExpiration"
+                  :is-item-returned="isItemReturned"
+                  :format-currency="formatCurrency"
+                  :get-price-vs-auto-order-indicator="getPriceVsAutoOrderIndicator"
+                  :get-price-vs-system-cost-indicator="getPriceVsSystemCostIndicator"
+                  @recalculate-total-from-unit="recalculateTotalFromUnit"
+                  @recalculate-unit-from-total="recalculateUnitFromTotal"
+                  @update-location="updateLocation"
+                  @save-editing-detail="saveEditingDetail"
+                  @cancel-editing-detail="cancelEditingDetail"
+                  @move-item-up="moveItemUp"
+                  @move-item-down="moveItemDown"
+                  @toggle-return-item="toggleReturnItem"
+                  @toggle-tax="toggleTax"
+                  @start-editing-detail="startEditingDetail"
+                  @remove-product-from-invoice="removeProductFromInvoice"
+                />
+              </VCardText>
+              <VDivider />
 
-    <!-- Panel Lateral de Documento PDF Desacoplado -->
-    <VCol
-      v-if="isPdfSidePanelOpen && invoice.invoice_photo"
-      cols="12"
-      lg="4"
-      xl="3"
-      class="pdf-side-panel-col pa-0 ps-lg-2"
-    >
-      <InvoicePdfSidePanel
-        :preview-image-url="previewImageUrl"
-        @open-modal="openPdfInModal"
-        @close="isPdfSidePanelOpen = false"
-      />
-    </VCol>
-  </VRow>
+              <!-- Resumen Financiero Desacoplado -->
+              <InvoiceFinancialSummary
+                :invoice="invoice"
+                :is-approval-mode="isApprovalMode"
+                :is-editable-mode="isEditableMode"
+                :is-edit-mode="isEditMode"
+                :selected-supplier-discount-id="selectedSupplierDiscountId"
+                :selected-payment-rule-id="selectedPaymentRuleId"
+                :formatted-supplier-discounts="formattedSupplierDiscounts"
+                :formatted-payment-rules="formattedPaymentRules"
+                :total-with-discount="totalWithDiscount"
+                :editable-details-tax-amount="editableDetailsTaxAmount"
+                :is-tax-amount-mismatch="isTaxAmountMismatch"
+                :format-currency="formatCurrency"
+                :format-number="formatNumber"
+                @update:selected-supplier-discount-id="selectedSupplierDiscountId = $event"
+                @update:selected-payment-rule-id="selectedPaymentRuleId = $event"
+              />
 
-      <template v-if="isEditableMode">
-        <div
-          v-if="isEditMode && isProductSearchVisible"
-          class="product-search-section mt-6"
+              <InvoiceActionFooter
+                :is-location-mode="isLocationMode"
+                :is-approval-mode="isApprovalMode"
+                :is-editable-mode="isEditableMode"
+                :is-edit-mode="isEditMode"
+                :is-saving="props.isSaving"
+                :loading="loading"
+                @save-locations="handleSaveLocations"
+                @reject="handleReject"
+                @confirm-approval="handleConfirmApproval"
+                @cancel-edit="toggleEditMode(false)"
+                @save-progress="handleSaveProgress"
+                @finalize="handleFinalizeInvoice"
+                @back-to-list="emit('back-to-list')"
+              />
+            </VForm>
+          </VCard>
+        </VCol>
+
+        <!-- Panel Lateral de Documento PDF Desacoplado -->
+        <VCol
+          v-if="isPdfSidePanelOpen && invoice.invoice_photo"
+          cols="12"
+          lg="4"
+          xl="3"
+          class="pdf-side-panel-col pa-0 ps-lg-2"
         >
-          <div class="d-flex align-center justify-space-between mb-4">
-            <h4 class="text-h4">Buscar Productos en Catálogo</h4>
-            <VBtn
-              variant="text"
-              color="error"
-              @click="isProductSearchVisible = false"
-            >
-              <VIcon icon="tabler-x" class="me-2" />Cerrar Búsqueda
-            </VBtn>
-          </div>
-          <ProductFilters
-            v-model:search-query="productSearchQuery"
-            :laboratories="laboratories"
-            :origins="origins"
-            :loading="isLoadingFilters"
-            mode="minimal"
-            @clear="productSearchQuery = ''"
-            @add-product="handleAddNewProduct"
+          <InvoicePdfSidePanel
+            :preview-image-url="previewImageUrl"
+            @open-modal="openPdfInModal"
+            @close="isPdfSidePanelOpen = false"
           />
-          <ProductTable
-            :products="products"
-            :loading="loadingProducts"
-            :total-product="totalProducts"
-            :items-per-page="productItemsPerPage"
-            :page="productPage"
-            mode="add-to-invoice"
-            @update:options="updateProductTableOptions"
-            @add-product-to-invoice="addProductToInvoice"
-          />
-        </div>
-        <BarcodeSearchModal
-          ref="barcodeModalRef"
-          v-model="isBarcodeModalVisible"
-          :loading="searchingBarcode"
-          @search-barcode="handleSearchBarcode"
-          @show-product-search="handleShowProductSearch"
-          @add-new-product="handleAddNewProduct"
-          @add-product-to-invoice="addProductToInvoice"
-        />
-        <ProductEditDialog
-          v-model="isEditDialogVisible"
-          :product="currentProduct"
+        </VCol>
+      </VRow>
+
+      <!-- Modal y Búsqueda de Catálogo Desacoplado -->
+      <template v-if="isEditableMode">
+        <InvoiceProductCatalogSearch
+          ref="catalogSearchRef"
+          v-model:is-product-search-visible="isProductSearchVisible"
+          v-model:search-query="productSearchQuery"
+          :products="products"
+          :total-products="totalProducts"
+          :loading-products="loadingProducts"
           :laboratories="laboratories"
           :origins="origins"
           :categories="categories"
-          :errors="productFormErrors"
-          @save="handleSaveProduct"
-          @clear-errors="productFormErrors = {}"
+          :is-loading-filters="isLoadingFilters"
+          :product-page="productPage"
+          :product-items-per-page="productItemsPerPage"
+          @update-table-options="updateProductTableOptions"
+          @add-product-to-invoice="addProductToInvoice"
+          @save-product="handleSaveProduct"
           @laboratory-created="fetchProductSelectOptions"
+          @search-barcode="handleSearchBarcode"
         />
       </template>
 
@@ -2628,7 +2147,6 @@ const detailsHeaders = computed(() => {
   border-top: 1px solid rgba(var(--v-border-color), 0.1) !important;
 }
 
-/* Para asegurar que el kbd se vea bien en móvil */
 kbd.text-caption {
   font-size: 0.7rem !important;
   padding: 2px 6px !important;
