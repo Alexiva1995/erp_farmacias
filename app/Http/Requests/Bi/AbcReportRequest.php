@@ -33,7 +33,7 @@ class AbcReportRequest extends FormRequest
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'laboratory_id' => ['nullable'],
             'laboratory_group_id' => ['nullable'],
-            'final_classification' => ['nullable', 'string', 'size:3', 'regex:/^[ABC][ABC][XYZ]$/i'],
+            'final_classification' => ['nullable', 'string', 'min:1', 'max:3', 'regex:/^(?:[ABC]|[ABC][XYZ]|[ABC]{2}[XYZ])$/i'],
             'page' => ['nullable', 'integer', 'min:1'],
             'itemsPerPage' => ['nullable', 'integer', 'min:-1'],
             'sortBy' => ['nullable', 'string'],

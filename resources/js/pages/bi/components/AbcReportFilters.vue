@@ -80,6 +80,21 @@ const dateRangeOptions = [
 ];
 
 const classificationOptions = [
+  // Cuadrantes Estratégicos 3x3
+  { title: 'Cuadrante AX (Alta Venta / Estable)', value: 'AX' },
+  { title: 'Cuadrante AY (Alta Venta / Variable)', value: 'AY' },
+  { title: 'Cuadrante AZ (Alta Venta / Errática)', value: 'AZ' },
+  { title: 'Cuadrante BX (Venta Media / Estable)', value: 'BX' },
+  { title: 'Cuadrante BY (Venta Media / Variable)', value: 'BY' },
+  { title: 'Cuadrante BZ (Venta Media / Errática)', value: 'BZ' },
+  { title: 'Cuadrante CX (Baja Venta / Estable)', value: 'CX' },
+  { title: 'Cuadrante CY (Baja Venta / Variable)', value: 'CY' },
+  { title: 'Cuadrante CZ (Baja Venta / Errática)', value: 'CZ' },
+  // Zonas Pareto (1D)
+  { title: 'Clase A (80% Ventas)', value: 'A' },
+  { title: 'Clase B (15% Ventas)', value: 'B' },
+  { title: 'Clase C (5% Ventas)', value: 'C' },
+  // Perfiles 3D Específicos
   'AAX', 'AAY', 'AAZ', 'ABX', 'ABY', 'ABZ', 'ACX', 'ACY', 'ACZ',
   'BAX', 'BAY', 'BAZ', 'BBX', 'BBY', 'BBZ', 'BCX', 'BCY', 'BCZ',
   'CAX', 'CAY', 'CAZ', 'CBX', 'CBY', 'CBZ', 'CCX', 'CCY', 'CCZ',

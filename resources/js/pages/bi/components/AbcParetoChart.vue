@@ -27,6 +27,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  selectedClass: {
+    type: String,
+    default: null,
+  },
 });
 
 const emit = defineEmits(['filter-class']);
@@ -65,6 +69,20 @@ const chartOptions = computed(() => {
       sparkline: { enabled: false },
       parentHeightOffset: 0,
       background: 'transparent',
+      events: {
+        dataPointSelection: (event, chartContext, config) => {
+          const point = props.paretoCurve[config.dataPointIndex];
+          if (point && point.class) {
+            emit('filter-class', point.class);
+          }
+        },
+        markerClick: (event, chartContext, { dataPointIndex }) => {
+          const point = props.paretoCurve[dataPointIndex];
+          if (point && point.class) {
+            emit('filter-class', point.class);
+          }
+        },
+      },
     },
     colors: ['#0D9488'],
     fill: {
@@ -224,30 +242,36 @@ const chartOptions = computed(() => {
           <VChip
             size="small"
             color="success"
-            variant="tonal"
-            class="font-weight-medium cursor-pointer"
+            :variant="selectedClass === 'A' ? 'flat' : 'tonal'"
+            class="font-weight-medium cursor-pointer transition-all"
+            :class="{ 'elevation-2': selectedClass === 'A' }"
             @click="emit('filter-class', 'A')"
           >
+            <VIcon v-if="selectedClass === 'A'" icon="tabler-check" size="14" class="me-1" />
             <span class="font-weight-bold me-1">Zona A (80%)</span>
             <span class="text-caption">0 - {{ paretoInflection?.point_80?.sku_pct || 0 }}% prods</span>
           </VChip>
           <VChip
             size="small"
             color="warning"
-            variant="tonal"
-            class="font-weight-medium cursor-pointer"
+            :variant="selectedClass === 'B' ? 'flat' : 'tonal'"
+            class="font-weight-medium cursor-pointer transition-all"
+            :class="{ 'elevation-2': selectedClass === 'B' }"
             @click="emit('filter-class', 'B')"
           >
+            <VIcon v-if="selectedClass === 'B'" icon="tabler-check" size="14" class="me-1" />
             <span class="font-weight-bold me-1">Zona B (15%)</span>
             <span class="text-caption">{{ paretoInflection?.point_80?.sku_pct || 0 }}% - {{ paretoInflection?.point_95?.sku_pct || 0 }}%</span>
           </VChip>
           <VChip
             size="small"
             color="secondary"
-            variant="tonal"
-            class="font-weight-medium cursor-pointer"
+            :variant="selectedClass === 'C' ? 'flat' : 'tonal'"
+            class="font-weight-medium cursor-pointer transition-all"
+            :class="{ 'elevation-2': selectedClass === 'C' }"
             @click="emit('filter-class', 'C')"
           >
+            <VIcon v-if="selectedClass === 'C'" icon="tabler-check" size="14" class="me-1" />
             <span class="font-weight-bold me-1">Zona C (5%)</span>
             <span class="text-caption">Resto ({{ 100 - (paretoInflection?.point_95?.sku_pct || 0) }}%)</span>
           </VChip>

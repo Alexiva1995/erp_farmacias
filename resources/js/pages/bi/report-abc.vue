@@ -32,7 +32,7 @@ const search = ref('');
 const isAdvancedFiltersVisible = ref(false);
 
 // Vistas y Herramientas Analíticas
-const showParetoChart = ref(true);
+const showParetoChart = ref(false);
 const showDecisionMatrix = ref(false);
 const selectedQuadrant = ref(null);
 const paretoCurve = ref([]);
@@ -162,7 +162,13 @@ const handleClearQuadrant = () => {
 };
 
 const handleFilterClass = (classLetter) => {
-  selectedFinalClassification.value = classLetter;
+  if (selectedFinalClassification.value === classLetter) {
+    selectedFinalClassification.value = null;
+    selectedQuadrant.value = null;
+  } else {
+    selectedFinalClassification.value = classLetter;
+    selectedQuadrant.value = null;
+  }
 };
 
 // Catálogos y Estadísticas
@@ -201,23 +207,23 @@ const getDateRange = (rangeType) => {
 const isSimplifiedView = ref(false);
 
 const fullHeaders = [
-  { title: 'PRODUCTO / LABORATORIO', key: 'name', sortable: true },
-  { title: 'Desempeño Comercial', key: 'sold_units', align: 'end', sortable: true },
-  { title: '% Acum. (Pareto)', key: 'accumulated_sales_pct', align: 'end', sortable: true, width: '135px' },
-  { title: 'Rentabilidad Bruta', key: 'margin_percentage', align: 'end', sortable: true },
-  { title: 'GMROI (Retorno)', key: 'gmroi', align: 'center', sortable: true },
-  { title: 'Cobertura', key: 'current_stock', align: 'end', sortable: true },
-  { title: 'Costo Unit.', key: 'last_cost', align: 'end', sortable: true },
-  { title: 'Perfil ABC-XYZ', key: 'final_classification', align: 'center', sortable: true },
-  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '130px' },
+  { title: 'PRODUCTO / LAB', key: 'name', sortable: true, minWidth: '200px' },
+  { title: 'VENTAS', key: 'sold_units', align: 'end', sortable: true, width: '115px' },
+  { title: '% PARETO', key: 'accumulated_sales_pct', align: 'end', sortable: true, width: '95px' },
+  { title: 'MARGEN', key: 'margin_percentage', align: 'end', sortable: true, width: '95px' },
+  { title: 'GMROI', key: 'gmroi', align: 'center', sortable: true, width: '80px' },
+  { title: 'STOCK / COB.', key: 'current_stock', align: 'end', sortable: true, width: '105px' },
+  { title: 'COSTO', key: 'last_cost', align: 'end', sortable: true, width: '85px' },
+  { title: 'ABC-XYZ', key: 'final_classification', align: 'center', sortable: true, width: '85px' },
+  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '105px' },
 ];
 
 const simplifiedHeaders = computed(() => [
-  { title: 'PRODUCTO / LABORATORIO', key: 'name', sortable: true },
-  { title: selectedAnalysisType.value === 'expiring_risk' ? 'STOCK EN RIESGO' : 'STOCK ACTUAL', key: 'current_stock', align: 'end', sortable: true, width: '150px' },
-  { title: 'VENTAS EN PERIODO', key: 'sold_units', align: 'end', sortable: true, width: '180px' },
-  { title: selectedAnalysisType.value === 'expiring_risk' ? 'CAPITAL POR EXPIRAR ($)' : 'TOTAL CAPITAL PARADO ($)', key: 'inventory_value', align: 'end', sortable: true, width: '200px' },
-  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '130px' },
+  { title: 'PRODUCTO / LAB', key: 'name', sortable: true, minWidth: '220px' },
+  { title: selectedAnalysisType.value === 'expiring_risk' ? 'STOCK EN RIESGO' : 'STOCK', key: 'current_stock', align: 'end', sortable: true, width: '120px' },
+  { title: 'VENTAS', key: 'sold_units', align: 'end', sortable: true, width: '120px' },
+  { title: selectedAnalysisType.value === 'expiring_risk' ? 'CAPITAL RIESGO ($)' : 'CAPITAL PARADO ($)', key: 'inventory_value', align: 'end', sortable: true, width: '150px' },
+  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '105px' },
 ]);
 
 const activeHeaders = computed(() => {
@@ -398,6 +404,16 @@ watch(search, () => {
   }, 350);
 });
 
+watch(selectedFinalClassification, (newVal) => {
+  if (!newVal || newVal.length !== 2) {
+    if (selectedQuadrant.value && selectedQuadrant.value !== newVal) {
+      selectedQuadrant.value = null;
+    }
+  } else if (newVal && newVal.length === 2) {
+    selectedQuadrant.value = newVal;
+  }
+});
+
 watch([selectedDateRange, selectedLaboratories, selectedLaboratoryGroups, selectedFinalClassification, selectedAnalysisType, minGmroi, stockFilter], () => {
   page.value = 1;
 });
@@ -417,6 +433,7 @@ const handleClearFilters = () => {
   selectedLaboratories.value = [];
   selectedLaboratoryGroups.value = [];
   selectedFinalClassification.value = null;
+  selectedQuadrant.value = null;
   selectedAnalysisType.value = 'all';
   minGmroi.value = null;
   stockFilter.value = 'all';
@@ -615,7 +632,7 @@ const handleFilterCritical = () => {
         </VBtn>
       </div>
 
-      <div v-if="selectedQuadrant" class="d-flex align-center gap-1.5">
+      <div v-if="selectedFinalClassification" class="d-flex align-center gap-1.5">
         <span class="text-caption text-medium-emphasis">Filtro activo:</span>
         <VChip
           color="primary"
@@ -625,7 +642,7 @@ const handleFilterCritical = () => {
           class="font-weight-bold"
           @click:close="handleClearQuadrant"
         >
-          Cuadrante {{ selectedQuadrant }}
+          {{ selectedFinalClassification.length === 1 ? `Zona Pareto ${selectedFinalClassification}` : (selectedFinalClassification.length === 2 ? `Cuadrante ${selectedFinalClassification}` : `Clasificación ${selectedFinalClassification}`) }}
         </VChip>
       </div>
     </div>
@@ -638,6 +655,7 @@ const handleFilterCritical = () => {
           :pareto-inflection="paretoInflection"
           :total-products="summaryStats.total_products"
           :total-sales="summaryStats.total_volume"
+          :selected-class="selectedFinalClassification"
           :loading="loading"
           @filter-class="handleFilterClass"
         />
@@ -1054,18 +1072,19 @@ const handleFilterCritical = () => {
 .premium-table :deep(th) {
   background-color: rgb(var(--v-theme-surface)) !important;
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
-  font-size: 0.72rem !important;
+  font-size: 0.70rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
+  letter-spacing: 0.3px !important;
   border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
-  padding-block: 10px !important;
-  padding-inline: 14px !important;
+  padding-block: 8px !important;
+  padding-inline: 8px !important;
+  white-space: nowrap !important;
 }
 
 .premium-table :deep(td) {
-  padding-block: 10px !important;
-  padding-inline: 14px !important;
+  padding-block: 8px !important;
+  padding-inline: 8px !important;
   border-bottom: 1px solid rgba(var(--v-border-color), 0.06) !important;
 }
 
