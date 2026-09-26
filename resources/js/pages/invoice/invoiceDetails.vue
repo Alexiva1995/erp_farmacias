@@ -1816,7 +1816,7 @@ const detailsHeaders = computed(() => {
             >
               <template #item.product_name_with_tax="{ item }">
                 <div
-                  class="d-flex flex-column align-start py-1"
+                  class="d-flex align-center py-1"
                   :class="{
                     'near-expiration-row': isNearExpiration(item),
                     'draggable-row': isEditableMode && isEditMode,
@@ -1825,29 +1825,52 @@ const detailsHeaders = computed(() => {
                   @dragover="handleDragOver($event, item)"
                   @drop="handleDrop(item)"
                 >
-                  <div class="d-flex align-center">
-                    <span :class="{ 'returned-item': isItemReturned(item) }" class="font-weight-medium text-high-emphasis">
-                      {{ item.product_name_with_tax }}
-                    </span>
-                    <VTooltip v-if="isNearExpiration(item)" location="top">
-                      <template #activator="{ props }">
-                        <VIcon
-                          v-bind="props"
-                          icon="tabler-alert-triangle"
-                          color="warning"
-                          size="16"
-                          class="ms-2"
-                        />
-                      </template>
-                      <span
-                        >Producto próximo a vencer (menos de 6 meses). Considere
-                        marcarlo como devolución.</span
+                  <!-- Icono de arrastrar a la izquierda del nombre -->
+                  <VTooltip v-if="isEditableMode && isEditMode" text="Arrastrar para reordenar" location="top">
+                    <template #activator="{ props: tipProps }">
+                      <IconBtn
+                        v-bind="tipProps"
+                        class="drag-handle me-1.5 flex-shrink-0"
+                        :class="{
+                          'drag-over': draggedOverItem?.id === item.id,
+                        }"
+                        draggable="true"
+                        size="small"
+                        @dragstart="handleDragStart(item)"
+                        @dragover.prevent="handleDragOver($event, item)"
+                        @drop="handleDrop(item)"
+                        @dragend="handleDragEnd"
                       >
-                    </VTooltip>
+                        <VIcon icon="tabler-grip-vertical" size="18" class="text-medium-emphasis" />
+                      </IconBtn>
+                    </template>
+                  </VTooltip>
+
+                  <div class="d-flex flex-column align-start">
+                    <div class="d-flex align-center">
+                      <span :class="{ 'returned-item': isItemReturned(item) }" class="font-weight-medium text-high-emphasis">
+                        {{ item.product_name_with_tax }}
+                      </span>
+                      <VTooltip v-if="isNearExpiration(item)" location="top">
+                        <template #activator="{ props }">
+                          <VIcon
+                            v-bind="props"
+                            icon="tabler-alert-triangle"
+                            color="warning"
+                            size="16"
+                            class="ms-2"
+                          />
+                        </template>
+                        <span
+                          >Producto próximo a vencer (menos de 6 meses). Considere
+                          marcarlo como devolución.</span
+                        >
+                      </VTooltip>
+                    </div>
+                    <span class="text-caption text-medium-emphasis">
+                      {{ item.product?.laboratory?.name || 'Sin Laboratorio' }}
+                    </span>
                   </div>
-                  <span class="text-caption text-medium-emphasis">
-                    {{ item.product?.laboratory?.name || 'Sin Laboratorio' }}
-                  </span>
                 </div>
               </template>
 
@@ -2047,6 +2070,7 @@ const detailsHeaders = computed(() => {
                     />
                   </div>
                   <div v-else class="d-flex align-center ga-1 justify-center">
+                    <!-- Flechas de mover arriba/abajo comentadas temporalmente
                     <div class="d-flex flex-column ga-0">
                       <IconBtn
                         :disabled="
@@ -2074,25 +2098,7 @@ const detailsHeaders = computed(() => {
                         <VIcon icon="tabler-arrow-down" size="15" />
                       </IconBtn>
                     </div>
-                    <VTooltip text="Arrastrar para reordenar">
-                      <template #activator="{ props }">
-                        <IconBtn
-                          v-bind="props"
-                          class="drag-handle"
-                          :class="{
-                            'drag-over': draggedOverItem?.id === item.id,
-                          }"
-                          draggable="true"
-                          size="small"
-                          @dragstart="handleDragStart(item)"
-                          @dragover.prevent="handleDragOver($event, item)"
-                          @drop="handleDrop(item)"
-                          @dragend="handleDragEnd"
-                        >
-                          <VIcon icon="tabler-grip-vertical" size="18" />
-                        </IconBtn>
-                      </template>
-                    </VTooltip>
+                    -->
                     <VTooltip text="Marcar para Devolución">
                       <template #activator="{ props }">
                         <IconBtn v-bind="props" size="small" @click="toggleReturnItem(item)">

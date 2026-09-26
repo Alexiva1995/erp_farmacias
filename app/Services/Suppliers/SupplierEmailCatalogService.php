@@ -258,6 +258,7 @@ class SupplierEmailCatalogService
                     $status = SupplierConnectionStatus::create([
                         'supplier_id' => $supplier->id,
                         'user_id' => $userId,
+                        'method' => 'email',
                         'status' => 'processing',
                         'message' => 'Procesando ' . count($fileItems) . ' archivo(s) de catálogo recibidos por correo...',
                     ]);

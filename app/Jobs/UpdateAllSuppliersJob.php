@@ -54,6 +54,7 @@ class UpdateAllSuppliersJob implements ShouldQueue
             $status = SupplierConnectionStatus::create([
                 "supplier_id" => $supplier->id,
                 "user_id" => $this->userId,
+                "method" => "cron_job",
                 "status" => "processing",
                 "message" => "Iniciando actualización masiva..."
             ]);

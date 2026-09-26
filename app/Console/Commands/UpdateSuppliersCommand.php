@@ -86,6 +86,7 @@ class UpdateSuppliersCommand extends Command
             $status = SupplierConnectionStatus::create([
                 'supplier_id' => $supplier->id,
                 'user_id' => $userId,
+                'method' => 'cli',
                 'status' => 'processing',
                 'message' => 'Iniciando actualización desde terminal...',
             ]);

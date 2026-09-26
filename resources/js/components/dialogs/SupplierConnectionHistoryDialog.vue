@@ -98,6 +98,26 @@ const getStatusBadge = (status) => {
   }
 };
 
+const getMethodBadge = (method) => {
+  switch (String(method || '').toLowerCase()) {
+    case 'ftp':
+    case 'api':
+      return { label: 'FTP / API', color: 'primary', icon: 'tabler-api' };
+    case 'bot_scraper':
+    case 'dronena_bot':
+    case 'drosymca_bot':
+      return { label: 'Bot Scraper', color: 'info', icon: 'tabler-robot' };
+    case 'cli':
+      return { label: 'Terminal CLI', color: 'secondary', icon: 'tabler-terminal-2' };
+    case 'email':
+      return { label: 'Correo', color: 'warning', icon: 'tabler-mail' };
+    case 'cron_job':
+      return { label: 'Cron Job', color: 'purple', icon: 'tabler-clock' };
+    default:
+      return { label: method ? String(method).toUpperCase() : 'API', color: 'primary', icon: 'tabler-plug' };
+  }
+};
+
 const closeDialog = () => {
   isVisible.value = false;
 };
@@ -139,6 +159,20 @@ const closeDialog = () => {
           <span class="text-caption font-weight-bold text-high-emphasis">
             Conexión: #{{ selectedStatus.id }} ({{ selectedStatus.created_at_formatted }})
           </span>
+          <span class="text-disabled font-weight-light">|</span>
+          <div class="d-flex align-center gap-1">
+            <span class="text-caption text-medium-emphasis">Método:</span>
+            <VChip
+              :color="getMethodBadge(selectedStatus.method).color"
+              size="x-small"
+              variant="tonal"
+              class="font-weight-black text-uppercase px-2"
+              style="font-size: 10px; height: 20px;"
+            >
+              <VIcon start size="12">{{ getMethodBadge(selectedStatus.method).icon }}</VIcon>
+              {{ getMethodBadge(selectedStatus.method).label }}
+            </VChip>
+          </div>
           <span class="text-disabled font-weight-light">|</span>
           <div class="d-flex align-center gap-1">
             <span class="text-caption text-medium-emphasis">Estado:</span>
@@ -229,8 +263,19 @@ const closeDialog = () => {
                       ({{ item.count_invoice }})
                     </span>
                   </div>
-                  <div class="text-caption text-medium-emphasis ps-3" style="font-size: 10px;">
-                    #{{ item.id }} · {{ item.count_product }} productos catálogo
+                  <div class="d-flex align-center justify-space-between ps-3" style="font-size: 10px;">
+                    <span class="text-caption text-medium-emphasis" style="font-size: 10px;">
+                      #{{ item.id }} · {{ item.count_product }} productos
+                    </span>
+                    <VChip
+                      size="x-small"
+                      variant="tonal"
+                      :color="getMethodBadge(item.method).color"
+                      class="font-weight-black px-1"
+                      style="height: 16px; font-size: 9px;"
+                    >
+                      {{ getMethodBadge(item.method).label }}
+                    </VChip>
                   </div>
                 </div>
               </div>

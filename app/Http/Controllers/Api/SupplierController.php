@@ -135,6 +135,7 @@ class SupplierController extends Controller
         $status = \App\Models\SupplierConnectionStatus::create([
             "supplier_id" => $supplier->id,
             "user_id" => $userId,
+            "method" => $supplier->connection?->type ?? 'api',
             "status" => "processing",
         ]);
 

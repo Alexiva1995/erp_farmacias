@@ -88,6 +88,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             $status = SupplierConnectionStatus::create([
                 "supplier_id" => $this->supplier->id,
                 "user_id" => $validUserId,
+                "method" => $this->supplier->connections->first()?->type ?? 'api',
                 "status" => "processing",
             ]);
         }

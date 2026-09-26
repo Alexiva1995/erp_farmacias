@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class SupplierConnectionStatus extends Model
 {
     protected $fillable = [
-        'supplier_id', 'user_id', 'status', 'message', 'count_product', 'count_invoice', 'details',
+        'supplier_id', 'user_id', 'method', 'status', 'message', 'count_product', 'count_invoice', 'details',
     ];
 
     protected $casts = [

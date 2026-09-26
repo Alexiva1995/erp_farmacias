@@ -70,6 +70,7 @@ class SupplierConnectionStatusResource extends JsonResource
             'supplier_id' => $this->supplier_id,
             'user_id' => $this->user_id,
             'user_name' => $this->user?->username ?? 'Sistema',
+            'method' => $this->method ?? 'api',
             'status' => $this->status,
             'message' => $this->message,
             'count_product' => (int) ($this->count_product ?? 0),
