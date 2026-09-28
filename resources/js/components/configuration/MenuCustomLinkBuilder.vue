@@ -21,8 +21,8 @@ const handleSubmit = () => {
   if (!isFormValid.value || props.disabled) return
 
   emit('add-custom-link', {
-    label: customLabel.value.trim().toUpperCase(),
-    url: customUrl.value.trim() || '#'
+    label: customLabel.value,
+    url: customUrl.value
   })
 
   customLabel.value = ''
@@ -31,55 +31,55 @@ const handleSubmit = () => {
 </script>
 
 <template>
-  <div class="border pa-6 rounded bg-white elevation-1">
-    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider mb-3 d-flex align-center gap-2">
-      <VIcon icon="tabler-link" size="18" color="primary" />
-      Enlace Personalizado
-    </h3>
-    <p class="text-caption text-muted mb-4">
-      Crea enlaces personalizados o externos para añadir a tu navegación.
-    </p>
+  <VCard variant="outlined" class="bg-surface">
+    <VCardItem class="pb-2">
+      <template #prepend>
+        <VIcon icon="tabler-link" size="20" color="primary" class="mr-2" />
+      </template>
+      <VCardTitle class="text-subtitle-1 font-weight-bold">
+        Enlace Personalizado
+      </VCardTitle>
+      <VCardSubtitle class="text-caption text-medium-emphasis">
+        Crea accesos directos o URLs externas en la navegación.
+      </VCardSubtitle>
+    </VCardItem>
 
-    <VForm @submit.prevent="handleSubmit" class="d-flex flex-column gap-3">
-      <VTextField
-        v-model="customLabel"
-        label="Etiqueta del enlace *"
-        placeholder="Ej: OFERTAS, NOSOTROS"
-        variant="outlined"
-        density="compact"
-        hide-details="auto"
-        :disabled="disabled"
-        prepend-inner-icon="tabler-letter-t"
-      />
+    <VCardText class="pt-2">
+      <VForm @submit.prevent="handleSubmit" class="d-flex flex-column ga-3">
+        <VTextField
+          v-model="customLabel"
+          label="Texto del enlace *"
+          placeholder="Ej: OFERTAS, BLOG, SUCURSALES"
+          variant="outlined"
+          density="comfortable"
+          hide-details="auto"
+          :disabled="disabled"
+          prepend-inner-icon="tabler-letter-t"
+        />
 
-      <VTextField
-        v-model="customUrl"
-        label="URL / Enlace"
-        placeholder="Ej: #ofertas, /contacto"
-        variant="outlined"
-        density="compact"
-        hide-details="auto"
-        :disabled="disabled"
-        prepend-inner-icon="tabler-world"
-      />
+        <VTextField
+          v-model="customUrl"
+          label="URL / Destino"
+          placeholder="Ej: /promociones o #ofertas"
+          variant="outlined"
+          density="comfortable"
+          hide-details="auto"
+          :disabled="disabled"
+          prepend-inner-icon="tabler-world"
+        />
 
-      <VBtn
-        type="submit"
-        variant="elevated"
-        color="primary"
-        class="mt-2 text-uppercase tracking-wider font-weight-bold"
-        block
-        :disabled="!isFormValid || disabled"
-        prepend-icon="tabler-plus"
-      >
-        Añadir al Menú
-      </VBtn>
-    </VForm>
-  </div>
+        <VBtn
+          type="submit"
+          variant="flat"
+          color="primary"
+          block
+          class="mt-2 font-weight-bold"
+          :disabled="!isFormValid || disabled"
+          prepend-icon="tabler-plus"
+        >
+          Añadir al Menú
+        </VBtn>
+      </VForm>
+    </VCardText>
+  </VCard>
 </template>
-
-<style scoped>
-.gap-3 {
-  gap: 12px;
-}
-</style>

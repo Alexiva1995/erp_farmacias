@@ -33,69 +33,79 @@ const handleAdd = (cat) => {
 </script>
 
 <template>
-  <div class="border pa-6 rounded bg-white elevation-1">
-    <h3 class="text-subtitle-2 font-weight-bold text-uppercase tracking-wider mb-3 d-flex align-center gap-2">
-      <VIcon icon="tabler-tags" size="18" color="primary" />
-      Categorías
-    </h3>
-    <p class="text-caption text-muted mb-4">
-      Selecciona categorías de productos para añadirlas a la estructura de navegación.
-    </p>
+  <VCard variant="outlined" class="bg-surface">
+    <VCardItem class="pb-2">
+      <template #prepend>
+        <VIcon icon="tabler-tags" size="20" color="primary" class="mr-2" />
+      </template>
+      <VCardTitle class="text-subtitle-1 font-weight-bold">
+        Categorías
+      </VCardTitle>
+      <VCardSubtitle class="text-caption text-medium-emphasis">
+        Añade categorías de productos al menú principal.
+      </VCardSubtitle>
+    </VCardItem>
 
-    <!-- Campo de Búsqueda -->
-    <VTextField
-      v-model="searchQuery"
-      placeholder="Buscar categoría..."
-      variant="outlined"
-      density="compact"
-      hide-details
-      clearable
-      prepend-inner-icon="tabler-search"
-      class="mb-3"
-      :disabled="disabled || loading"
-    />
+    <VCardText class="pt-2">
+      <!-- Buscador de Categorías con Estándar Corporativo -->
+      <VTextField
+        v-model="searchQuery"
+        placeholder="Buscar categoría..."
+        variant="outlined"
+        density="comfortable"
+        hide-details="auto"
+        clearable
+        prepend-inner-icon="tabler-search"
+        class="mb-4"
+        :disabled="disabled || loading"
+      />
 
-    <!-- Estado de Carga -->
-    <div v-if="loading" class="d-flex flex-column gap-2 py-2">
-      <VSkeletonLoader type="list-item" v-for="n in 3" :key="n" class="border rounded" />
-    </div>
-
-    <!-- Lista de Categorías -->
-    <div v-else class="d-flex flex-column gap-2 max-h-60 overflow-y-auto pr-1">
-      <div
-        v-for="cat in filteredCategories"
-        :key="cat.id"
-        class="d-flex align-center justify-space-between border pa-2.5 rounded hover-bg-light cursor-pointer transition-all"
-        :class="{ 'opacity-50 pointer-events-none': disabled }"
-        @click="handleAdd(cat)"
-      >
-        <span class="text-body-2 font-weight-medium text-truncate">{{ cat.name }}</span>
-        <VBtn
-          icon="tabler-plus"
-          size="x-small"
-          variant="tonal"
-          color="primary"
-          title="Añadir al menú"
-          :disabled="disabled"
-        />
+      <!-- Loader Skeleton -->
+      <div v-if="loading" class="d-flex flex-column ga-2 py-2">
+        <VSkeletonLoader type="list-item" v-for="n in 3" :key="n" />
       </div>
 
-      <!-- Estado Vacío -->
-      <div v-if="!filteredCategories.length" class="text-caption text-center text-muted py-6 border rounded bg-grey-lighten-5">
-        {{ searchQuery ? 'No se encontraron categorías.' : 'No hay categorías disponibles.' }}
+      <!-- Lista de Categorías -->
+      <div v-else class="d-flex flex-column ga-2 categories-scroll-container pr-1">
+        <div
+          v-for="cat in filteredCategories"
+          :key="cat.id"
+          class="d-flex align-center justify-space-between pa-3 rounded border cursor-pointer category-item-hover transition-swing"
+          :class="{ 'opacity-50 pointer-events-none': disabled }"
+          @click="handleAdd(cat)"
+        >
+          <span class="text-body-2 font-weight-medium text-truncate pr-2">{{ cat.name }}</span>
+          <VBtn
+            icon="tabler-plus"
+            size="x-small"
+            variant="tonal"
+            color="primary"
+            :disabled="disabled"
+            aria-label="Añadir categoría al menú"
+          />
+        </div>
+
+        <!-- Estado Vacío -->
+        <div v-if="!filteredCategories.length" class="text-caption text-center text-medium-emphasis py-6 border rounded border-dashed">
+          {{ searchQuery ? 'No se encontraron categorías coincidentes.' : 'No hay categorías disponibles.' }}
+        </div>
       </div>
-    </div>
-  </div>
+    </VCardText>
+  </VCard>
 </template>
 
 <style scoped>
-.hover-bg-light:hover {
-  background-color: rgba(var(--v-theme-primary), 0.04);
-}
-.max-h-60 {
+.categories-scroll-container {
   max-height: 280px;
+  overflow-y: auto;
 }
-.gap-2 {
-  gap: 8px;
+
+.category-item-hover:hover {
+  background-color: rgba(var(--v-theme-primary), 0.05);
+  border-color: rgba(var(--v-theme-primary), 0.25) !important;
+}
+
+.border-dashed {
+  border-style: dashed !important;
 }
 </style>
