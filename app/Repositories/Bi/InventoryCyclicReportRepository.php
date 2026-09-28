@@ -321,7 +321,74 @@ class InventoryCyclicReportRepository
                 continue;
             }
 
+            $targetQty = abs((float)$cand['discrepancy_a']);
+
+            $suspiciousOrders = DB::table('order_details')
+                ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                ->leftJoin('users', 'orders.seller_id', '=', 'users.id')
+                ->leftJoin('clients', 'orders.client_id', '=', 'clients.id')
+                ->leftJoin('products', 'order_details.product_id', '=', 'products.id')
+                ->where('orders.status', 'Completed')
+                ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+                ->whereIn('order_details.product_id', [$cand['id_a'], $cand['id_b']])
+                ->select([
+                    'orders.id as order_id',
+                    'orders.created_at as sale_date',
+                    'orders.seller_id',
+                    DB::raw("COALESCE(users.username, users.email, CONCAT('Cajero #', orders.seller_id)) as seller_name"),
+                    DB::raw("COALESCE(clients.name, 'Cliente Mostrador') as client_name"),
+                    'order_details.product_id',
+                    'products.name as product_name',
+                    'order_details.quantity',
+                    'order_details.price'
+                ])
+                ->orderBy('orders.created_at', 'desc')
+                ->limit(8)
+                ->get();
+
+            $salesCount = $suspiciousOrders->count();
+            $salesList = [];
+            $topSeller = null;
+            $maxProbability = 0;
+
+            foreach ($suspiciousOrders as $order) {
+                $orderQty = (float)$order->quantity;
+                $prob = 50;
+                if ($orderQty === $targetQty) {
+                    $prob += 35;
+                } elseif ($targetQty > 0 && fmod($targetQty, $orderQty) === 0.0) {
+                    $prob += 20;
+                }
+                if ($salesCount === 1) {
+                    $prob = 95;
+                }
+                $prob = min(98, $prob);
+
+                if ($prob > $maxProbability) {
+                    $maxProbability = $prob;
+                    $topSeller = [
+                        'name' => $order->seller_name,
+                        'order_id' => $order->order_id,
+                        'probability' => $prob,
+                        'date' => substr((string)$order->sale_date, 0, 16),
+                    ];
+                }
+
+                $salesList[] = [
+                    'order_id' => $order->order_id,
+                    'sale_date' => substr((string)$order->sale_date, 0, 16),
+                    'seller_name' => $order->seller_name,
+                    'client_name' => $order->client_name,
+                    'product_name' => $order->product_name,
+                    'quantity' => (float)$order->quantity,
+                    'price' => (float)$order->price,
+                    'probability' => $prob,
+                ];
+            }
+
             $substitutions[] = [
+                'id_a' => $cand['id_a'],
+                'id_b' => $cand['id_b'],
                 'category' => $cand['category'],
                 'product_a' => $cand['product_a'],
                 'active_ingredient_a' => $cand['active_ingredient_a'] ?? '',
@@ -331,6 +398,8 @@ class InventoryCyclicReportRepository
                 'discrepancy_b' => $cand['discrepancy_b'],
                 'confidence' => $cand['confidence'],
                 'match_reason' => $cand['match_reason'],
+                'top_suspect' => $topSeller,
+                'suspicious_sales' => $salesList,
             ];
 
             $processedA[] = $cand['id_a'];

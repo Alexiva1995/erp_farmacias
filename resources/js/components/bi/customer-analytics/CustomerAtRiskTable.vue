@@ -15,7 +15,7 @@ const props = defineProps({
 
 const search = ref('');
 const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(7);
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value || 0);

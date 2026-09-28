@@ -50,6 +50,8 @@ class InventoryCyclicReportResource extends JsonResource
             ],
             'substitutions' => array_map(function ($sub) {
                 return [
+                    'id_a' => (int)($sub['id_a'] ?? 0),
+                    'id_b' => (int)($sub['id_b'] ?? 0),
                     'category' => (string)($sub['category'] ?? ''),
                     'product_a' => (string)($sub['product_a'] ?? ''),
                     'active_ingredient_a' => (string)($sub['active_ingredient_a'] ?? ''),
@@ -59,6 +61,8 @@ class InventoryCyclicReportResource extends JsonResource
                     'discrepancy_b' => (int)($sub['discrepancy_b'] ?? 0),
                     'confidence' => (string)($sub['confidence'] ?? ''),
                     'match_reason' => (string)($sub['match_reason'] ?? ''),
+                    'top_suspect' => $sub['top_suspect'] ?? null,
+                    'suspicious_sales' => $sub['suspicious_sales'] ?? [],
                 ];
             }, $this->resource['substitutions'] ?? []),
         ];
