@@ -416,7 +416,7 @@ const onSignatureChange = (e) => {
                 </VBtn>
 
                 <VBtn
-                  v-if="can('manage', 'all') || can('manage', 'GeneralSetting')"
+                  v-if="can('manage', 'all') || can('manage', 'GeneralSetting') || can('manage', 'admin')"
                   type="submit"
                   color="primary"
                   size="large"

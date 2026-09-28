@@ -33,7 +33,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <VRow v-if="can('manage', 'GeneralSetting')">
+  <VRow v-if="can('manage', 'GeneralSetting') || can('manage', 'admin') || can('manage', 'all')">
     <VCol cols="12">
       <!-- Encabezado de Sección -->
       <div class="d-flex flex-column flex-sm-row align-sm-center justify-space-between mb-6 ga-2">

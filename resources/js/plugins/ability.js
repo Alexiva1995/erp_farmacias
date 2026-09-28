@@ -8,7 +8,9 @@ export const buildAbilityForRules = (user) => {
   console.log(user);
   if (user && user.role_id) {
     if (user.role_id === 1) {
+      can('manage', 'all');
       can('manage', 'admin'); 
+      can('manage', 'GeneralSetting');
       can('manage', 'supervisor-or-admin');
       can('manage', 'cyclic-menu');
       can('manage', 'cyclic-history');
