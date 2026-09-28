@@ -360,7 +360,9 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
             ->when($productId, function ($q) use ($productId) {
                 $q->where(function ($sub) use ($productId) {
                     $sub->where('od1.product_id', $productId)
-                        ->orWhere('od1.dish_id', $productId);
+                        ->orWhere('od1.dish_id', $productId)
+                        ->orWhere('od2.product_id', $productId)
+                        ->orWhere('od2.dish_id', $productId);
                 });
             })
             ->when($search, function ($q) use ($search) {
@@ -372,9 +374,9 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
                 });
             })
             ->groupBy('product_id_a', 'product_a', 'ingredient_a', 'lab_a', 'product_id_b', 'product_b', 'ingredient_b', 'lab_b')
-            ->havingRaw('COUNT(*) >= 1') // Si es producto específico o general, mostrar asociaciones ordenadas
+            ->havingRaw('COUNT(*) >= 1')
             ->orderByDesc('frequency')
-            ->paginate(7, ['*'], 'page', $page);
+            ->paginate(9, ['*'], 'page', $page);
 
         // Transformar colección para inyectar soporte y confianza estadística
         $paginated->getCollection()->transform(function ($item) use ($totalOrders) {

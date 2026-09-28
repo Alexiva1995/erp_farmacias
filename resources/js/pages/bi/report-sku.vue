@@ -182,20 +182,19 @@ const handleExport = async () => {
   }
 };
 
-// Columnas optimizadas sin scroll horizontal
+// Columnas optimizadas sin scroll horizontal (ESTADO removido para maximizar espacio)
 const headers = [
-  { title: 'PRODUCTO / MOLÉCULA', key: 'product_name', sortable: true, minWidth: '180px' },
-  { title: 'STOCK', key: 'current_stock', sortable: true, width: '65px', align: 'end' },
-  { title: 'VEND.', key: 'total_sold', sortable: true, width: '65px', align: 'end' },
-  { title: 'COSTO', key: 'current_cost', sortable: false, width: '75px', align: 'end' },
-  { title: 'P. LISTA', key: 'list_price', sortable: false, width: '75px', align: 'end' },
-  { title: 'M. BRUTO', key: 'gross_margin_percent', sortable: true, width: '85px', align: 'end' },
-  { title: 'DESC.', key: 'discount_avg_percent', sortable: false, width: '75px', align: 'end' },
-  { title: 'M. NETO', key: 'net_margin_percent', sortable: false, width: '85px', align: 'end' },
-  { title: 'MERMAS', key: 'loss_value', sortable: false, width: '75px', align: 'end' },
+  { title: 'PRODUCTO / MOLÉCULA', key: 'product_name', sortable: true },
+  { title: 'STOCK', key: 'current_stock', sortable: true, width: '60px', align: 'end' },
+  { title: 'VEND.', key: 'total_sold', sortable: true, width: '60px', align: 'end' },
+  { title: 'COSTO', key: 'current_cost', sortable: false, width: '70px', align: 'end' },
+  { title: 'P. LISTA', key: 'list_price', sortable: false, width: '70px', align: 'end' },
+  { title: 'M. BRUTO', key: 'gross_margin_percent', sortable: true, width: '80px', align: 'end' },
+  { title: 'DESC.', key: 'discount_avg_percent', sortable: false, width: '70px', align: 'end' },
+  { title: 'M. NETO', key: 'net_margin_percent', sortable: false, width: '80px', align: 'end' },
+  { title: 'MERMAS', key: 'loss_value', sortable: false, width: '70px', align: 'end' },
   { title: 'M. REAL', key: 'real_margin_percent', sortable: true, width: '90px', align: 'end' },
-  { title: 'ESTADO', key: 'semaphore', sortable: false, width: '95px', align: 'center' },
-  { title: '', key: 'actions', sortable: false, width: '40px', align: 'center' }
+  { title: '', key: 'actions', sortable: false, width: '38px', align: 'center' }
 ];
 
 const updateTableOptions = (options) => {
@@ -458,38 +457,22 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
             </div>
           </template>
 
-          <!-- M. REAL (Con colores semánticos verde / amarillo / rojo) -->
+          <!-- M. REAL (Verde si es positivo / >= 0, Rojo si es negativo / < 0) -->
           <template #item.real_margin_percent="{ item }">
             <div class="d-flex flex-column py-1">
               <span
                 class="text-body-2 font-weight-black"
-                :class="{
-                  'text-success': Number(item.real_margin_percent) > 25,
-                  'text-warning': Number(item.real_margin_percent) >= 10 && Number(item.real_margin_percent) <= 25,
-                  'text-error': Number(item.real_margin_percent) < 10
-                }"
+                :class="Number(item.real_margin_percent) >= 0 ? 'text-success' : 'text-error'"
               >
                 {{ formatPercent(item.real_margin_percent) }}
               </span>
               <span
                 class="text-caption font-weight-medium"
-                :class="Number(item.real_margin_value) >= 0 ? 'text-medium-emphasis' : 'text-error'"
+                :class="Number(item.real_margin_value) >= 0 ? 'text-success' : 'text-error'"
               >
                 {{ formatMoney(item.real_margin_value) }}
               </span>
             </div>
-          </template>
-
-          <!-- ESTADO (Color semántico vivo) -->
-          <template #item.semaphore="{ item }">
-            <VChip
-              :color="getSemaphoreColor(item.semaphore)"
-              size="small"
-              variant="tonal"
-              class="font-weight-bold text-caption text-uppercase"
-            >
-              {{ getSemaphoreLabel(item.semaphore) }}
-            </VChip>
           </template>
 
           <!-- ACCIONES / TRAZABILIDAD -->

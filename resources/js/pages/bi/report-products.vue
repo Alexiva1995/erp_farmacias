@@ -168,7 +168,11 @@ const fetchCrossSelling = async (page = 1) => {
   loadingCrossSelling.value = true;
   try {
     const params = {
-      ...baseParams.value,
+      start_date: startDate.value,
+      end_date: endDate.value,
+      laboratory_id: selectedLaboratory.value,
+      group_id: selectedGroup.value,
+      search: selectedCrossSellingProductId.value ? undefined : (search.value || undefined),
       page,
       product_id: selectedCrossSellingProductId.value || undefined,
     };

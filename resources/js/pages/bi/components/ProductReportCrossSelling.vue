@@ -18,7 +18,7 @@ const searchItems = ref([]);
 const searchLoading = ref(false);
 const selectedSearchModel = ref(null);
 
-const hasMore = () => props.crossSelling.length >= 7;
+const hasMore = () => props.crossSelling.length >= 9;
 
 const getConfidenceColor = (conf) => {
   if (conf >= 60) return 'success';
@@ -143,7 +143,7 @@ const onSearchSelected = (item) => {
     <VCardText class="pa-0 flex-grow-1 overflow-hidden">
       <!-- Skeleton -->
       <div v-if="loading" class="skeleton-pulse pa-4">
-        <div v-for="i in 7" :key="i" class="d-flex align-center justify-space-between mb-3 pb-2 border-b">
+        <div v-for="i in 9" :key="i" class="d-flex align-center justify-space-between mb-3 pb-2 border-b">
           <div class="d-flex gap-2 align-center flex-grow-1 min-width-0">
             <div style="flex: 1;">
               <div class="skeleton-line w-75 mb-1" />
