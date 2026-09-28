@@ -19,87 +19,108 @@ const getSemaphoreLabel = (status) => {
 };
 
 const formatPercent = (val) => Number(val || 0).toFixed(2) + '%';
-const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
+const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 </script>
 
 <template>
-  <div class="d-md-none">
-    <VProgressLinear v-if="loading" indeterminate color="primary" />
-    <div v-if="skus.length === 0 && !loading" class="text-center pa-8 text-medium-emphasis">
-      <VIcon icon="tabler-database-off" size="48" class="mb-3 opacity-40" />
-      <p>Sin resultados para los filtros aplicados</p>
+  <div class="d-md-none pa-3">
+    <!-- Estado de Carga Móvil con Skeleton -->
+    <div v-if="loading" class="d-flex flex-column gap-3">
+      <VSkeletonLoader v-for="n in 3" :key="n" type="card" class="rounded-lg" />
     </div>
-    <div v-for="item in skus" :key="item.product_id || item.id" class="px-2 py-1">
-      <VCard variant="flat" class="product-mobile-card border mb-2">
-        <div class="pa-3">
-          <div class="d-flex align-start justify-space-between gap-2">
+
+    <!-- Estado Vacío -->
+    <div v-else-if="skus.length === 0" class="text-center pa-8 text-medium-emphasis">
+      <VIcon icon="tabler-database-off" size="48" class="mb-3 opacity-40" />
+      <p class="text-body-1 font-weight-medium">Sin resultados para los filtros aplicados</p>
+    </div>
+
+    <!-- Listado de Tarjetas -->
+    <div v-else>
+      <VCard
+        v-for="item in skus"
+        :key="item.product_id || item.id"
+        border
+        class="product-mobile-card rounded-lg mb-3 shadow-sm bg-surface overflow-hidden"
+      >
+        <div class="pa-4">
+          <div class="d-flex align-start justify-space-between gap-2 mb-2">
             <div class="flex-grow-1 min-width-0">
               <div class="d-flex align-center gap-1 mb-1">
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
-                  <span class="text-primary text-xs">#{{ item.product_id || item.id }}</span>
-                  <span class="mx-1 text-disabled">|</span>
+                <span class="text-caption font-weight-bold text-primary">#{{ item.product_id || item.id }}</span>
+                <span class="text-disabled">|</span>
+                <span class="text-body-2 font-weight-bold text-high-emphasis text-uppercase text-truncate">
                   {{ item.product_name }}
-                </h3>
-              </div>
-              <div class="d-flex align-center flex-wrap gap-x-2 text-super-xs">
-                <span class="text-medium-emphasis font-weight-medium text-truncate" style="max-inline-size: 150px;">
-                  {{ item.laboratory_name || 'S/L' }}
                 </span>
+              </div>
+              <div class="d-flex align-center flex-wrap gap-x-2 text-caption text-medium-emphasis">
+                <span>{{ item.active_ingredient || 'Sin molécula' }}</span>
+                <span class="text-disabled">•</span>
+                <span class="text-primary font-weight-medium">{{ item.laboratory_name || 'S/L' }}</span>
               </div>
             </div>
             <VChip
               :color="getSemaphoreColor(item.semaphore)"
-              class="text-uppercase font-weight-black flex-shrink-0"
+              class="text-uppercase font-weight-bold flex-shrink-0"
               variant="tonal"
-              size="x-small"
+              size="small"
             >
-              <span class="status-dot me-1" :class="`bg-${getSemaphoreColor(item.semaphore)}`"></span>
               {{ getSemaphoreLabel(item.semaphore) }}
             </VChip>
           </div>
 
-          <VDivider class="my-3 border-opacity-10" />
+          <VDivider class="my-3 opacity-10" />
 
-          <div class="metrics-grid rounded border-dashed-thin bg-var-theme-background">
-            <VRow dense class="ma-0">
-              <VCol cols="6" class="pa-2 border-r border-b border-opacity-10">
-                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">Costo Unit.</div>
-                <div class="text-sm font-weight-bold">{{ formatMoney(item.current_cost) }}</div>
+          <!-- Rejilla Financiera -->
+          <div class="rounded-lg border pa-2 bg-var-theme-background">
+            <VRow dense>
+              <VCol cols="6" class="pa-2">
+                <div class="text-caption text-disabled text-uppercase font-weight-bold">Costo Unit.</div>
+                <div class="text-body-2 font-weight-bold">{{ formatMoney(item.current_cost) }}</div>
               </VCol>
-              <VCol cols="6" class="pa-2 border-b border-opacity-10">
-                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1">Precio Lista / Venta</div>
-                <div class="text-sm font-weight-bold">{{ formatMoney(item.list_price) }}</div>
+              <VCol cols="6" class="pa-2">
+                <div class="text-caption text-disabled text-uppercase font-weight-bold">Precio Lista</div>
+                <div class="text-body-2 font-weight-bold">{{ formatMoney(item.list_price) }}</div>
               </VCol>
-              <VCol cols="6" class="pa-2 border-r border-b border-opacity-10">
-                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1 text-info">Margen Bruto</div>
-                <div class="text-sm font-weight-black text-info">{{ formatPercent(item.gross_margin_percent) }}</div>
-                <div class="text-super-xs text-medium-emphasis">{{ formatMoney(item.gross_margin_value) }}</div>
-                <div class="text-super-xs text-error mt-1" v-if="item.discount_avg_percent > 0">
-                  Desc: -{{ formatPercent(item.discount_avg_percent) }}
+              <VCol cols="6" class="pa-2">
+                <div class="text-caption text-info text-uppercase font-weight-bold">Margen Bruto</div>
+                <div class="text-body-2 font-weight-bold text-info">{{ formatPercent(item.gross_margin_percent) }}</div>
+                <div class="text-caption text-medium-emphasis">{{ formatMoney(item.gross_margin_value) }}</div>
+              </VCol>
+              <VCol cols="6" class="pa-2">
+                <div class="text-caption text-primary text-uppercase font-weight-bold">Margen Neto</div>
+                <div class="text-body-2 font-weight-bold text-primary">{{ formatPercent(item.net_margin_percent) }}</div>
+                <div class="text-caption text-medium-emphasis">{{ formatMoney(item.net_margin_value) }}</div>
+              </VCol>
+              <VCol cols="6" class="pa-2">
+                <div class="text-caption text-error text-uppercase font-weight-bold">Descuentos</div>
+                <div class="text-body-2 font-weight-bold text-error">
+                  {{ item.discount_avg_percent > 0 ? '-' + formatPercent(item.discount_avg_percent) : '0.00%' }}
                 </div>
               </VCol>
-              <VCol cols="6" class="pa-2 border-b border-opacity-10">
-                <div class="text-super-xs text-disabled text-uppercase font-weight-black mb-1 text-primary">Margen Neto</div>
-                <div class="text-sm font-weight-black text-primary">{{ formatPercent(item.net_margin_percent) }}</div>
-                <div class="text-super-xs text-medium-emphasis">{{ formatMoney(item.net_margin_value) }}</div>
-                <div class="text-super-xs mt-1" :class="item.loss_value > 0 ? 'text-error font-weight-bold' : 'text-disabled'">
-                  Mermas: -{{ formatMoney(item.loss_value) }}
+              <VCol cols="6" class="pa-2">
+                <div class="text-caption text-error text-uppercase font-weight-bold">Mermas / Venc.</div>
+                <div class="text-body-2 font-weight-bold" :class="item.loss_value > 0 ? 'text-error' : 'text-medium-emphasis'">
+                  -{{ formatMoney(item.loss_value) }}
                 </div>
               </VCol>
-              <VCol cols="12" class="pa-2 d-flex justify-space-between align-center">
-                <div>
-                  <div class="text-super-xs text-disabled text-uppercase font-weight-black">M. Real Efectivo</div>
-                  <div class="text-super-xs text-medium-emphasis">{{ formatMoney(item.real_margin_value) }} Total</div>
-                </div>
-                <div class="text-h6 font-weight-black" :class="`text-${getSemaphoreColor(item.semaphore)}`">
-                  {{ formatPercent(item.real_margin_percent) }}
+              <VCol cols="12">
+                <VDivider class="my-1 opacity-20" />
+                <div class="d-flex justify-space-between align-center pt-1">
+                  <div>
+                    <div class="text-caption text-disabled text-uppercase font-weight-bold">Margen Real Efectivo</div>
+                    <div class="text-caption text-medium-emphasis">{{ formatMoney(item.real_margin_value) }} Ganancia Real</div>
+                  </div>
+                  <div class="text-h6 font-weight-black" :class="`text-${getSemaphoreColor(item.semaphore)}`">
+                    {{ formatPercent(item.real_margin_percent) }}
+                  </div>
                 </div>
               </VCol>
             </VRow>
           </div>
         </div>
 
-        <div class="d-flex border-t border-opacity-10">
+        <div class="d-flex border-t">
           <VBtn 
             :href="'/inventory/traceability?q=' + (item.product_id || item.id)" 
             target="_blank"
@@ -107,38 +128,36 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
             color="primary" 
             variant="text" 
             class="rounded-0 text-caption font-weight-bold" 
-            height="40"
+            height="42"
           >
             <VIcon icon="tabler-history" size="18" class="me-2" />
-            Ver Trazabilidad
+            Ver Trazabilidad de Inventario
           </VBtn>
         </div>
       </VCard>
-    </div>
 
-    <!-- Paginación móvil -->
-    <div class="d-flex justify-center align-center pa-3 gap-3">
-      <VBtn icon variant="text" size="32" :disabled="page <= 1" @click="emit('update:page', page - 1)">
-        <VIcon icon="tabler-chevron-left" size="18" />
-      </VBtn>
-      <span class="text-caption text-medium-emphasis">Pág. {{ page }}</span>
-      <VBtn icon variant="text" size="32" :disabled="skus.length < itemsPerPage" @click="emit('update:page', page + 1)">
-        <VIcon icon="tabler-chevron-right" size="18" />
-      </VBtn>
+      <!-- Paginación Móvil -->
+      <div class="d-flex justify-center align-center py-3 gap-3">
+        <VBtn
+          icon
+          variant="tonal"
+          size="36"
+          :disabled="page <= 1"
+          @click="emit('update:page', page - 1)"
+        >
+          <VIcon icon="tabler-chevron-left" size="20" />
+        </VBtn>
+        <span class="text-caption font-weight-bold text-medium-emphasis">Página {{ page }}</span>
+        <VBtn
+          icon
+          variant="tonal"
+          size="36"
+          :disabled="skus.length < itemsPerPage"
+          @click="emit('update:page', page + 1)"
+        >
+          <VIcon icon="tabler-chevron-right" size="20" />
+        </VBtn>
+      </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.text-super-xs {
-  font-size: 0.62rem !important;
-  line-height: 1.1;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  display: inline-block;
-}
-</style>

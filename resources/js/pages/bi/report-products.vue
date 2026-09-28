@@ -1,23 +1,25 @@
 <script setup>
-// Vista principal de Reporte de Productos BI — 100/100
+// Vista principal de Reporte de Productos BI
 // Orquestador: solo estado global, fetch de datos y composición de sub-componentes.
-import AppFilterBase from '@/components/AppFilterBase.vue';
-import ProductReportKpiCards     from './components/ProductReportKpiCards.vue';
-import ProductReportRankings     from './components/ProductReportRankings.vue';
-import ProductReportAbc          from './components/ProductReportAbc.vue';
-import ProductReportCrossSelling from './components/ProductReportCrossSelling.vue';
-import ProductReportAnalytic     from './components/ProductReportAnalytic.vue';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import axios from '@/plugins/axios';
 import { toast } from '@/plugins/sweetalert';
-import VueApexCharts from 'vue3-apexcharts';
+import AppFilterBase from '@/components/AppFilterBase.vue';
+import ProductReportKpiCards from './components/ProductReportKpiCards.vue';
+import ProductReportRankings from './components/ProductReportRankings.vue';
+import ProductReportAbc from './components/ProductReportAbc.vue';
+import ProductReportCrossSelling from './components/ProductReportCrossSelling.vue';
+import ProductReportTrendChart from './components/ProductReportTrendChart.vue';
+import ProductReportLabChart from './components/ProductReportLabChart.vue';
+import ProductReportAnalytic from './components/ProductReportAnalytic.vue';
+import { generateBiProductExecutivePdf } from '@/utils/pdfBiProductReportGenerator';
 
 // ─────────────────────────────────────────────
 // Estado de la UI
 // ─────────────────────────────────────────────
-const loading         = ref(false);
-const errorMessage    = ref('');   // Error global visible al usuario
+const loading      = ref(false);
+const errorMessage = ref('');
 
 const defaultDashboardData = {
   quadrant1: { top_volume: [], top_revenue: [], lab_ranking: [], pareto: { percent: 0 } },
@@ -28,6 +30,7 @@ const defaultDashboardData = {
 const dashboardData = ref(JSON.parse(JSON.stringify(defaultDashboardData)));
 const trendData     = ref([]);
 const loadingTrends = ref(false);
+const selectedSkuId = ref(null);
 
 // ─────────────────────────────────────────────
 // Filtros
@@ -61,7 +64,7 @@ const loadingCrossSelling = ref(false);
 const selectedTrendGroup  = ref(null);
 
 // ─────────────────────────────────────────────
-// Parámetros comunes — computed (DRY + reactivo)
+// Parámetros comunes — computed
 // ─────────────────────────────────────────────
 const baseParams = computed(() => ({
   start_date:    startDate.value,
@@ -75,7 +78,7 @@ const baseParams = computed(() => ({
 // Normalización segura de arrays
 // ─────────────────────────────────────────────
 const toSafeArray = (data) =>
-  Array.isArray(data) ? data : (data ? Object.values(data) : []);
+  (Array.isArray(data) ? data : (data ? Object.values(data) : []));
 
 const safeTopVolume    = computed(() => toSafeArray(dashboardData.value?.quadrant1?.top_volume?.data  ?? dashboardData.value?.quadrant1?.top_volume));
 const safeTopRevenue   = computed(() => toSafeArray(dashboardData.value?.quadrant1?.top_revenue?.data ?? dashboardData.value?.quadrant1?.top_revenue));
@@ -96,7 +99,9 @@ const fetchCatalogs = async () => {
     ]);
     laboratories.value = Array.isArray(labRes.data)       ? labRes.data      : [];
     groups.value       = Array.isArray(grpRes.data?.data) ? grpRes.data.data : [];
-  } catch { /* catálogos son opcionales, fallo silencioso */ }
+  } catch {
+    // Catálogos auxiliares opcionales
+  }
 };
 
 const fetchDashboard = async () => {
@@ -108,7 +113,7 @@ const fetchDashboard = async () => {
       dashboardData.value = data;
     }
   } catch (err) {
-    errorMessage.value = 'Error al cargar el dashboard. Verifica tu conexión.';
+    errorMessage.value = 'Error al cargar el dashboard. Verifica tu conexión con el servidor.';
     toast.error('Error al cargar el dashboard de productos.');
   } finally {
     loading.value = false;
@@ -172,8 +177,24 @@ const fetchCrossSelling = async (page = 1) => {
   }
 };
 
+// Exportación ejecutiva a PDF
 const handleExport = () => {
-  toast.error('La exportación ejecutiva aún está en desarrollo.');
+  try {
+    generateBiProductExecutivePdf(dashboardData.value, baseParams.value);
+    toast.success('Reporte ejecutivo generado correctamente.');
+  } catch (err) {
+    toast.error('Ocurrió un error al generar el reporte en PDF.');
+  }
+};
+
+// Drill-down: Selección de SKU desde los rankings
+const handleInspectProduct = (productId) => {
+  if (!productId) return;
+  selectedSkuId.value = productId;
+  const targetElement = document.getElementById('analytic-sku-card');
+  if (targetElement) {
+    targetElement.scrollIntoView({ behavior: 'smooth' });
+  }
 };
 
 const resetFilters = () => {
@@ -185,7 +206,7 @@ const resetFilters = () => {
 };
 
 // ─────────────────────────────────────────────
-// Debounce en búsqueda (400ms) — patrón estándar del proyecto
+// Debounce en búsqueda
 // ─────────────────────────────────────────────
 const debouncedFetchAll = useDebounceFn(() => {
   crossSellingPage.value = 1;
@@ -199,10 +220,8 @@ const debouncedFetchAll = useDebounceFn(() => {
 // ─────────────────────────────────────────────
 // Watchers
 // ─────────────────────────────────────────────
-// Búsqueda con debounce
 watch(search, debouncedFetchAll);
 
-// Filtros estructurales (fechas, lab, grupo) — sin debounce, son selectores discretos
 watch([startDate, endDate, selectedLaboratory, selectedGroup], () => {
   crossSellingPage.value = 1;
   volumePage.value       = 1;
@@ -212,7 +231,6 @@ watch([startDate, endDate, selectedLaboratory, selectedGroup], () => {
   fetchCrossSelling(1);
 });
 
-// Solo tendencias al cambiar grupo de tendencias
 watch(selectedTrendGroup, fetchTrends);
 
 // ─────────────────────────────────────────────
@@ -224,409 +242,163 @@ onMounted(() => {
   fetchTrends();
   fetchCrossSelling(1);
 });
-
-onUnmounted(() => {
-  // useDebounceFn de @vueuse/core se limpia automáticamente al desmontar.
-  // Aquí se pueden cancelar peticiones con AbortController si se implementa.
-});
-
-// ─────────────────────────────────────────────
-// Métricas de Brecha Compras vs Ventas
-// ─────────────────────────────────────────────
-const totalTrendSold = computed(() =>
-  safeTrendData.value.reduce((sum, d) => sum + Number(d?.sold ?? 0), 0)
-);
-const totalTrendPurchased = computed(() =>
-  safeTrendData.value.reduce((sum, d) => sum + Number(d?.purchased ?? 0), 0)
-);
-const trendGap = computed(() =>
-  totalTrendPurchased.value - totalTrendSold.value
-);
-
-// ─────────────────────────────────────────────
-// Gráfico de Laboratorios con Etiquetas Directas
-// ─────────────────────────────────────────────
-const labChartOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false } },
-  plotOptions: {
-    bar: {
-      horizontal: true,
-      borderRadius: 4,
-      barHeight: '60%',
-      dataLabels: { position: 'top' },
-    },
-  },
-  dataLabels: {
-    enabled: true,
-    formatter: (val) => `$${Number(val ?? 0).toLocaleString()}`,
-    offsetX: 12,
-    style: {
-      fontSize: '11px',
-      fontWeight: 'bold',
-      colors: ['#4F46E5'],
-    },
-  },
-  xaxis: {
-    categories: safeLabData.value.map(l => l?.name ?? 'Desconocido'),
-    labels: {
-      formatter: (val) => `$${Number(val ?? 0).toLocaleString()}`,
-      style: { fontSize: '11px' },
-    },
-  },
-  yaxis: {
-    labels: {
-      style: { fontSize: '12px', fontWeight: 600 },
-      maxWidth: 180,
-    },
-  },
-  colors: ['#4F46E5'],
-  grid: { strokeDashArray: 4 },
-  tooltip: {
-    y: { formatter: (val) => `$${Number(val ?? 0).toLocaleString()}` },
-    theme: 'dark',
-  },
-}));
-
-const labChartSeries = computed(() => [{
-  name: 'Margen Total',
-  data: safeLabData.value.map(l => Number(l?.total_margin ?? 0)),
-}]);
-
-// ─────────────────────────────────────────────
-// Gráfico de Tendencias Semanales
-// ─────────────────────────────────────────────
-const trendChartOptions = computed(() => ({
-  chart: { type: 'line', toolbar: { show: false }, zoom: { enabled: false } },
-  dataLabels: { enabled: false },
-  stroke: { width: [3, 3], curve: 'smooth' },
-  markers: { size: 4, strokeWidth: 0, hover: { size: 6 } },
-  colors: ['#4F46E5', '#F59E0B'],
-  legend: { position: 'top', horizontalAlign: 'right', offsetY: -10, fontSize: '12px' },
-  labels: safeTrendData.value.map(d => {
-    if (!d?.week) return '';
-    const parts = d.week.split('-');
-    return parts.length > 1 ? `S${parts[1]}` : d.week;
-  }),
-  xaxis: {
-    title: { text: 'Semana del Año' },
-    axisBorder: { show: false },
-    axisTicks:  { show: false },
-    labels: { hideOverlappingLabels: true, rotate: -45, rotateAlways: false, style: { fontSize: '11px' } },
-  },
-  yaxis: {
-    title: { text: 'Cantidad de Unidades' },
-    labels: { formatter: (val) => Math.trunc(val).toLocaleString(), style: { fontSize: '11px' } },
-  },
-  grid: { strokeDashArray: 4 },
-  tooltip: { theme: 'dark' },
-}));
-
-const trendChartSeries = computed(() => ([
-  { name: 'Ventas (Und)',  type: 'line', data: safeTrendData.value.map(d => d.sold) },
-  { name: 'Compras (Und)', type: 'line', data: safeTrendData.value.map(d => d.purchased) },
-]));
 </script>
 
 <template>
-  <VContainer fluid class="report-products-container pa-0">
-    <div class="bi-report-grid">
+  <VContainer fluid class="pa-0">
+    <!-- Banner de error global -->
+    <VAlert
+      v-if="errorMessage && !loading"
+      type="error"
+      variant="tonal"
+      closable
+      class="mb-4"
+      @click:close="errorMessage = ''"
+    >
+      {{ errorMessage }}
+    </VAlert>
 
-      <!-- Banner de error global (solo si hay error y no está cargando) -->
-      <VAlert
-        v-if="errorMessage && !loading"
-        type="error"
-        variant="tonal"
-        closable
-        class="mb-4"
-        @click:close="errorMessage = ''"
-      >
-        {{ errorMessage }}
-      </VAlert>
+    <!-- Barra de Filtros y Acciones -->
+    <AppFilterBase
+      v-model:search="search"
+      placeholder="Buscar producto por nombre o principio activo..."
+      :has-advanced-filters="hasActiveAdvancedFilters"
+      :loading="loading"
+      show-export
+      class="mb-4"
+      @clear="resetFilters"
+    >
+      <template #actions-extra>
+        <VBtn
+          icon
+          variant="tonal"
+          color="secondary"
+          size="38"
+          class="rounded-pill"
+          :loading="loading"
+          @click="fetchDashboard"
+        >
+          <VIcon icon="tabler-refresh" />
+          <VTooltip activator="parent" location="top">Sincronizar Datos</VTooltip>
+        </VBtn>
+        <VBtn
+          icon
+          color="primary"
+          variant="flat"
+          size="38"
+          class="rounded-pill"
+          :disabled="loading"
+          @click="handleExport"
+        >
+          <VIcon icon="tabler-file-export" />
+          <VTooltip activator="parent" location="top">Generar Reporte Ejecutivo PDF</VTooltip>
+        </VBtn>
+      </template>
 
-      <!-- ─── Filtros ─── -->
-      <AppFilterBase
-        v-model:search="search"
-        placeholder="Buscar producto por nombre..."
-        :has-advanced-filters="hasActiveAdvancedFilters"
-        :loading="loading"
-        show-export
-        class="mb-4"
-        @clear="resetFilters"
-      >
-        <template #actions-extra>
-          <VBtn
-            icon
-            variant="tonal"
-            color="secondary"
-            size="38"
-            class="rounded-pill"
-            :loading="loading"
-            @click="fetchDashboard"
-          >
-            <VIcon icon="tabler-refresh" />
-            <VTooltip activator="parent" location="top">Sincronizar</VTooltip>
-          </VBtn>
-          <VBtn
-            icon
-            color="primary"
-            variant="flat"
-            size="38"
-            class="rounded-pill"
-            @click="handleExport"
-          >
-            <VIcon icon="tabler-file-export" />
-            <VTooltip activator="parent" location="top">Reporte Ejecutivo</VTooltip>
-          </VBtn>
-        </template>
-
-        <template #advanced-filters>
-          <VCol cols="12" md="3">
-            <AppTextField v-model="startDate" type="date" label="Desde" density="compact" hide-details />
-          </VCol>
-          <VCol cols="12" md="3">
-            <AppTextField v-model="endDate" type="date" label="Hasta" density="compact" hide-details />
-          </VCol>
-          <VCol cols="12" md="3">
-            <AppAutocomplete
-              v-model="selectedLaboratory"
-              :items="laboratories"
-              item-title="name"
-              item-value="id"
-              placeholder="Laboratorios"
-              label="Laboratorio"
-              clearable
-              density="compact"
-              hide-details
-              prepend-inner-icon="tabler-flask"
-            />
-          </VCol>
-          <VCol cols="12" md="3">
-            <AppAutocomplete
-              v-model="selectedGroup"
-              :items="groups"
-              item-title="name"
-              item-value="id"
-              placeholder="Grupos"
-              label="Grupo"
-              clearable
-              density="compact"
-              hide-details
-              prepend-inner-icon="tabler-tags"
-            />
-          </VCol>
-        </template>
-      </AppFilterBase>
-
-      <!-- ─── KPIs ─── -->
-      <ProductReportKpiCards
-        :quadrant4="dashboardData.quadrant4"
-        :pareto-percent="paretoPercent"
-        :loading="loading"
-      />
-
-      <!-- ─── Rankings TOP Volumen / TOP Ingresos ─── -->
-      <ProductReportRankings
-        :top-volume="safeTopVolume"
-        :volume-page="volumePage"
-        :loading-volume="loadingVolume"
-        :top-revenue="safeTopRevenue"
-        :revenue-page="revenuePage"
-        :loading-revenue="loadingRevenue"
-        class="mb-2"
-        @page-volume="fetchRankings('total_sold', $event)"
-        @page-revenue="fetchRankings('total_revenue', $event)"
-      />
-
-      <VRow class="match-height">
-
-        <!-- ─── Análisis ABC ─── -->
-        <VCol cols="12" md="4">
-          <ProductReportAbc :abc-data="safeAbcData" :loading="loading" />
+      <template #advanced-filters>
+        <VCol cols="12" md="3">
+          <AppTextField v-model="startDate" type="date" label="Desde" density="compact" hide-details />
         </VCol>
-
-        <!-- ─── Cross-Selling ─── -->
-        <VCol cols="12" md="8">
-          <ProductReportCrossSelling
-            :cross-selling="safeCrossSelling"
-            :page="crossSellingPage"
-            :loading="loadingCrossSelling"
-            @page-change="fetchCrossSelling($event)"
+        <VCol cols="12" md="3">
+          <AppTextField v-model="endDate" type="date" label="Hasta" density="compact" hide-details />
+        </VCol>
+        <VCol cols="12" md="3">
+          <AppAutocomplete
+            v-model="selectedLaboratory"
+            :items="laboratories"
+            item-title="name"
+            item-value="id"
+            placeholder="Laboratorios"
+            label="Laboratorio"
+            clearable
+            density="compact"
+            hide-details
+            prepend-inner-icon="tabler-flask"
           />
         </VCol>
-
-        <!-- ─── Tendencias Semanales ─── -->
-        <VCol cols="12">
-          <VCard border class="rounded-lg overflow-hidden shadow-sm">
-            <VCardTitle class="pa-4 border-b d-flex align-center justify-space-between flex-wrap gap-3 bg-surface">
-              <div class="d-flex align-center gap-2">
-                <VAvatar size="32" color="primary" variant="tonal" class="rounded">
-                  <VIcon icon="tabler-chart-line" size="18" />
-                </VAvatar>
-                <div>
-                  <div class="text-subtitle-1 font-weight-bold text-high-emphasis">Tendencias: Ventas vs Compras</div>
-                  <div class="text-super-xs text-medium-emphasis">Balance comparativo de unidades transaccionadas por semana</div>
-                </div>
-              </div>
-
-              <!-- Resumen de brecha de unidades -->
-              <div class="d-flex align-center gap-3 flex-wrap">
-                <div v-if="safeTrendData.length" class="d-flex align-center gap-2 px-3 py-1 bg-surface border rounded-lg">
-                  <div class="text-super-xs">
-                    Ventas: <strong class="text-primary">{{ totalTrendSold.toLocaleString() }}</strong> | Compras: <strong class="text-warning">{{ totalTrendPurchased.toLocaleString() }}</strong>
-                  </div>
-                  <VChip
-                    size="x-small"
-                    :color="trendGap >= 0 ? 'warning' : 'info'"
-                    variant="tonal"
-                    label
-                    class="font-weight-black"
-                  >
-                    {{ trendGap >= 0 ? `+${trendGap.toLocaleString()} Excedente` : `${trendGap.toLocaleString()} Brecha` }}
-                  </VChip>
-                </div>
-
-                <div style="width: 260px; max-width: 100%;">
-                  <AppAutocomplete
-                    v-model="selectedTrendGroup"
-                    :items="groups"
-                    item-title="name"
-                    item-value="id"
-                    placeholder="Filtrar por Grupo"
-                    clearable
-                    density="compact"
-                    hide-details
-                  />
-                </div>
-              </div>
-            </VCardTitle>
-            <VCardText class="pa-4">
-              <!-- Skeleton mientras carga -->
-              <div v-if="loadingTrends" class="skeleton-chart-pulse" style="height: 280px;" />
-
-              <!-- Gráfico con datos -->
-              <VueApexCharts
-                v-else-if="safeTrendData.length"
-                height="280"
-                :options="trendChartOptions"
-                :series="trendChartSeries"
-              />
-
-              <!-- Estado vacío -->
-              <div v-else class="text-center pa-10 text-medium-emphasis">
-                <VIcon icon="tabler-chart-line" size="40" class="mb-2 opacity-30" />
-                <div class="text-sm font-weight-bold">Sin datos de tendencia</div>
-                <div class="text-xs text-disabled">No hay movimiento registrado en el período seleccionado.</div>
-              </div>
-            </VCardText>
-          </VCard>
+        <VCol cols="12" md="3">
+          <AppAutocomplete
+            v-model="selectedGroup"
+            :items="groups"
+            item-title="name"
+            item-value="id"
+            placeholder="Grupos"
+            label="Grupo Terapéutico"
+            clearable
+            density="compact"
+            hide-details
+            prepend-inner-icon="tabler-tags"
+          />
         </VCol>
+      </template>
+    </AppFilterBase>
 
-        <!-- ─── Ranking Laboratorios ─── -->
-        <VCol cols="12">
-          <VCard border class="rounded-lg overflow-hidden shadow-sm">
-            <VCardTitle class="pa-4 border-b d-flex align-center justify-space-between bg-surface">
-              <div class="d-flex align-center gap-2">
-                <VAvatar size="32" color="primary" variant="tonal" class="rounded">
-                  <VIcon icon="tabler-flask" size="18" />
-                </VAvatar>
-                <div>
-                  <div class="text-subtitle-1 font-weight-bold text-high-emphasis">Rentabilidad por Laboratorio / Fabricante</div>
-                  <div class="text-super-xs text-medium-emphasis">Top 10 marcas líderes por margen bruto total aportado</div>
-                </div>
-              </div>
-              <VChip size="x-small" color="primary" variant="flat" label class="font-weight-bold">
-                Margen USD
-              </VChip>
-            </VCardTitle>
-            <VCardText class="pa-4">
-              <!-- Skeleton -->
-              <div v-if="loading" class="skeleton-chart-pulse" style="height: 280px;" />
+    <!-- Fila 1: KPIs de Abastecimiento y Rendimiento -->
+    <ProductReportKpiCards
+      :quadrant4="dashboardData.quadrant4"
+      :pareto-percent="paretoPercent"
+      :loading="loading"
+    />
 
-              <!-- Gráfico -->
-              <VueApexCharts
-                v-else-if="safeLabData.length"
-                height="300"
-                :options="labChartOptions"
-                :series="labChartSeries"
-              />
+    <!-- Fila 2: Rankings TOP Volumen y TOP Ingresos con Drill-Down a SKU -->
+    <ProductReportRankings
+      :top-volume="safeTopVolume"
+      :volume-page="volumePage"
+      :loading-volume="loadingVolume"
+      :top-revenue="safeTopRevenue"
+      :revenue-page="revenuePage"
+      :loading-revenue="loadingRevenue"
+      class="mb-4"
+      @page-volume="fetchRankings('total_sold', $event)"
+      @page-revenue="fetchRankings('total_revenue', $event)"
+      @inspect-product="handleInspectProduct"
+    />
 
-              <!-- Estado vacío -->
-              <div v-else class="text-center pa-10 text-medium-emphasis">
-                <VIcon icon="tabler-flask-off" size="40" class="mb-2 opacity-30" />
-                <div class="text-sm font-weight-bold">Sin datos de laboratorio</div>
-                <div class="text-xs text-disabled">No se registraron ventas por laboratorio en este período.</div>
-              </div>
-            </VCardText>
-          </VCard>
-        </VCol>
+    <!-- Fila 3: Matriz ABC y Venta Cruzada (Market Basket) -->
+    <VRow class="match-height mb-4">
+      <VCol cols="12" md="4">
+        <ProductReportAbc :abc-data="safeAbcData" :loading="loading" />
+      </VCol>
+      <VCol cols="12" md="8">
+        <ProductReportCrossSelling
+          :cross-selling="safeCrossSelling"
+          :page="crossSellingPage"
+          :loading="loadingCrossSelling"
+          @page-change="fetchCrossSelling($event)"
+        />
+      </VCol>
+    </VRow>
 
-        <!-- ─── Analítica Individual de Producto ─── -->
-        <VCol cols="12">
-          <ProductReportAnalytic :groups="groups" />
-        </VCol>
+    <!-- Fila 4: Tendencias Semanales Compras vs Ventas -->
+    <VRow class="mb-4">
+      <VCol cols="12">
+        <ProductReportTrendChart
+          :trend-data="safeTrendData"
+          :loading="loadingTrends"
+          :groups="groups"
+          v-model:selected-group="selectedTrendGroup"
+        />
+      </VCol>
+    </VRow>
 
-      </VRow>
-    </div>
+    <!-- Fila 5: Rentabilidad por Laboratorio / Fabricante -->
+    <VRow class="mb-4">
+      <VCol cols="12">
+        <ProductReportLabChart
+          :lab-data="safeLabData"
+          :loading="loading"
+        />
+      </VCol>
+    </VRow>
+
+    <!-- Fila 6: Analítica Individual Profunda por SKU -->
+    <VRow>
+      <VCol cols="12">
+        <ProductReportAnalytic
+          v-model="selectedSkuId"
+          :groups="groups"
+        />
+      </VCol>
+    </VRow>
   </VContainer>
 </template>
-
-<style scoped>
-/* Aislamiento: ajustes solo dentro de .bi-report-grid */
-.bi-report-grid :deep(.v-row) { margin: -6px !important; }
-.bi-report-grid :deep(.v-col) { padding: 6px !important; }
-.bi-report-grid :deep(.v-row + .v-row) { margin-top: 6px !important; }
-
-/* Colores utilitarios locales */
-.bg-light-primary { background-color: rgba(115, 103, 240, 0.15); }
-.bg-light-success { background-color: rgba(40, 199, 111, 0.15);  }
-.bg-light-error   { background-color: rgba(234, 84, 85, 0.15);   }
-
-/* Tipografía compacta */
-.text-super-xs { font-size: 0.65rem !important; line-height: 1; }
-.text-xs       { font-size: 0.75rem !important; }
-
-/* Skeleton para gráficos */
-.skeleton-chart-pulse {
-  width: 100%;
-  border-radius: 8px;
-  background: linear-gradient(
-    90deg,
-    rgba(var(--v-theme-on-surface), 0.06) 25%,
-    rgba(var(--v-theme-on-surface), 0.12) 50%,
-    rgba(var(--v-theme-on-surface), 0.06) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-/* ApexCharts tooltip override (dark) */
-:deep(.apexcharts-tooltip) {
-  background: #2f2b3d !important;
-  color: #fff !important;
-  border: 1px solid rgba(0,0,0,0.1) !important;
-  box-shadow: 0 4px 18px 0 rgba(15,10,30,0.1) !important;
-}
-:deep(.apexcharts-tooltip-title) {
-  background: rgba(0,0,0,0.2) !important;
-  color: #fff !important;
-  border-bottom: 1px solid rgba(0,0,0,0.1) !important;
-  font-weight: bold !important;
-}
-:deep(.apexcharts-tooltip-series-group),
-:deep(.apexcharts-tooltip-text-y-value),
-:deep(.apexcharts-tooltip-text-y-label) {
-  color: #fff !important;
-  font-weight: 600 !important;
-}
-
-/* Ajuste de padding en tablas y listas */
-:deep(.v-table .v-table__wrapper > table > thead > tr > th),
-:deep(.v-table .v-table__wrapper > table > tbody > tr > td) {
-  padding-inline: 6px !important;
-}
-</style>

@@ -19,6 +19,7 @@ class SupplierReturnsRequest extends FormRequest
             'search'         => 'nullable|string|max:100',
             'laboratory_id'  => 'nullable|integer|exists:laboratories,id',
             'supplier_id'    => 'nullable|integer|exists:suppliers,id',
+            'days'           => 'nullable|integer|min:15|max:365',
         ];
     }
 }

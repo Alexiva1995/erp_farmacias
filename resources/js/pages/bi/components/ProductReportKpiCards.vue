@@ -34,7 +34,7 @@ const reorderDemand = computed(() => Number(props.quadrant4.estimated_30d_demand
           <div>
             <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase">Ruptura de Stock</div>
             <div class="text-h4 font-weight-bold text-error mt-1">{{ quadrant4.out_of_stock ?? 0 }}</div>
-            <div class="text-super-xs text-medium-emphasis mt-1">SKUs agotados activos</div>
+            <div class="text-caption text-medium-emphasis mt-1">SKUs agotados activos</div>
           </div>
           <VAvatar color="error" variant="tonal" rounded="lg" size="44">
             <VIcon icon="tabler-package-off" size="24" />
@@ -53,7 +53,7 @@ const reorderDemand = computed(() => Number(props.quadrant4.estimated_30d_demand
           <div>
             <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase">Suministro Crítico (&lt;7d)</div>
             <div class="text-h4 font-weight-bold text-warning mt-1">{{ quadrant4.critical_stock ?? 0 }}</div>
-            <div class="text-super-xs text-medium-emphasis mt-1">
+            <div class="text-caption text-medium-emphasis mt-1">
               Reorden est. 30d: <strong class="text-high-emphasis">{{ reorderDemand }} unds</strong>
             </div>
           </div>
@@ -74,7 +74,7 @@ const reorderDemand = computed(() => Number(props.quadrant4.estimated_30d_demand
           <div>
             <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase">Concentración Pareto</div>
             <div class="text-h4 font-weight-bold text-primary mt-1">{{ paretoPercent }}%</div>
-            <div class="text-super-xs text-medium-emphasis mt-1">SKUs concentran 80% del margen</div>
+            <div class="text-caption text-medium-emphasis mt-1">SKUs concentran 80% del margen</div>
           </div>
           <VAvatar color="primary" variant="tonal" rounded="lg" size="44">
             <VIcon icon="tabler-chart-pie" size="24" />
@@ -93,7 +93,7 @@ const reorderDemand = computed(() => Number(props.quadrant4.estimated_30d_demand
           <div>
             <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase">Cobertura Promedio</div>
             <div class="text-h4 font-weight-bold text-info mt-1">{{ avgDays }} <span class="text-subtitle-2 font-weight-medium">días</span></div>
-            <div class="text-super-xs text-medium-emphasis mt-1">Rotación global estimada</div>
+            <div class="text-caption text-medium-emphasis mt-1">Rotación global estimada</div>
           </div>
           <VAvatar color="info" variant="tonal" rounded="lg" size="44">
             <VIcon icon="tabler-calendar-time" size="24" />
@@ -105,10 +105,6 @@ const reorderDemand = computed(() => Number(props.quadrant4.estimated_30d_demand
 </template>
 
 <style scoped>
-.text-super-xs {
-  font-size: 0.7rem !important;
-  line-height: 1.2;
-}
 .kpi-card {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }

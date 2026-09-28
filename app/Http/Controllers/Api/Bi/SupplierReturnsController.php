@@ -23,9 +23,12 @@ class SupplierReturnsController extends Controller
      */
     public function index(SupplierReturnsRequest $request): JsonResponse
     {
+        $validated = $request->validated();
+        $days = isset($validated['days']) ? (int) $validated['days'] : 90;
+
         $data = $this->service->getReport(
-            $request->validated(),
-            days: 90
+            $validated,
+            days: $days
         );
 
         return (new SupplierReturnsReportResource($data))

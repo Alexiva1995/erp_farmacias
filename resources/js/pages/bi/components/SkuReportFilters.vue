@@ -98,51 +98,50 @@ const handleExport = () => {
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
+  <VCard class="mb-5 rounded-lg border shadow-sm overflow-hidden bg-surface">
     <VCardText class="pa-4">
-      <!-- Barra de Búsqueda Principal -->
-      <VRow align="center" no-gutters class="gap-2">
-        <VCol cols="12" md="4" lg="4">
+      <!-- Barra de Filtros Principal -->
+      <VRow align="center" dense>
+        <VCol cols="12" md="5" lg="4">
           <AppTextField
             v-model="search"
-            placeholder="Buscar por SKU o Nombre..."
+            placeholder="Buscar por SKU, Nombre o Principio Activo..."
             prepend-inner-icon="tabler-search"
             clearable
-            density="compact"
-            hide-details
-            class="premium-input-compact"
+            density="comfortable"
+            variant="outlined"
+            hide-details="auto"
             @update:model-value="notifyUpdate"
           />
         </VCol>
 
-        <VCol cols="12" md="3" lg="3">
+        <VCol cols="12" sm="6" md="4" lg="3">
           <AppSelect
             v-model="semaphoreFilter"
             :items="[
               { title: '✅ Rentable (>25%)', value: 'verde' },
               { title: '⚠️ Medio (10-25%)', value: 'amarillo' },
-              { title: '🚨 Peligro (<10%)', value: 'rojo' },
+              { title: '🚨 Peligro (0-10%)', value: 'rojo' },
               { title: '🏴 Pérdidas (<0%)', value: 'negro' }
             ]"
             placeholder="Estado de Rentabilidad"
-            density="compact"
-            hide-details
+            density="comfortable"
+            variant="outlined"
+            hide-details="auto"
             clearable
-            class="premium-select-compact"
             prepend-inner-icon="tabler-traffic-lights"
             @update:model-value="notifyUpdate"
           />
         </VCol>
 
-        <VSpacer />
+        <VSpacer class="d-none d-lg-block" />
 
-        <div class="d-flex align-center gap-1">
+        <VCol cols="12" sm="6" md="3" lg="auto" class="d-flex align-center justify-end gap-2 flex-wrap">
           <VBtn
-            icon
             variant="tonal"
             :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-            size="38"
-            class="rounded-circle shadow-sm"
+            density="comfortable"
+            class="rounded-lg font-weight-bold"
             @click="toggleAdvancedFilters"
           >
             <VBadge
@@ -152,80 +151,75 @@ const handleExport = () => {
               offset-x="2"
               offset-y="-2"
             >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" class="me-1" size="18" />
             </VBadge>
-            <VIcon v-else :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
-            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
+            <VIcon v-else :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" class="me-1" size="18" />
+            <span>Filtros</span>
           </VBtn>
 
           <VBtn
-            icon
             variant="flat"
             color="primary"
-            size="38"
-            class="rounded-circle shadow-sm"
+            density="comfortable"
+            class="rounded-lg font-weight-bold"
             :loading="loading"
             @click="handleFetch"
           >
-            <VIcon icon="tabler-player-play" size="20" />
-            <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
+            <VIcon icon="tabler-refresh" class="me-1" size="18" />
+            <span>Consultar</span>
           </VBtn>
 
-          <VDivider vertical class="mx-1 my-2 border-opacity-10" />
-
           <VBtn
-            icon
             variant="text"
             color="secondary"
-            size="38"
-            class="rounded-circle shadow-sm"
+            density="comfortable"
+            class="rounded-lg"
             :disabled="loading"
             @click="handleClear"
           >
-            <VIcon icon="tabler-eraser" size="20" />
+            <VIcon icon="tabler-eraser" size="18" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
 
           <VBtn
-            icon
             variant="tonal"
             color="success"
-            size="38"
-            class="rounded-circle shadow-sm"
+            density="comfortable"
+            class="rounded-lg font-weight-bold"
             :loading="exporting"
             :disabled="loading || exporting"
             @click="handleExport"
           >
-            <VIcon icon="tabler-download" size="20" />
-            <VTooltip activator="parent" location="top">Exportar (Excel/CSV)</VTooltip>
+            <VIcon icon="tabler-download" class="me-1" size="18" />
+            <span>Excel</span>
           </VBtn>
-        </div>
+        </VCol>
       </VRow>
 
       <!-- Panel Avanzado -->
       <VExpandTransition>
         <div v-show="isAdvancedFiltersVisible">
-          <VDivider class="my-3 border-opacity-10" />
-          <VRow>
-            <VCol cols="12" sm="6" md="4">
+          <VDivider class="my-4 opacity-20" />
+          <VRow dense>
+            <VCol cols="12" sm="6" md="3">
               <AppDateTimePicker
                 v-model="startDate"
                 placeholder="Fecha Inicio"
-                density="compact"
-                hide-details
-                class="premium-input-compact"
+                density="comfortable"
+                variant="outlined"
+                hide-details="auto"
                 prepend-inner-icon="tabler-calendar"
                 @update:model-value="notifyUpdate"
               />
             </VCol>
 
-            <VCol cols="12" sm="6" md="4">
+            <VCol cols="12" sm="6" md="3">
               <AppDateTimePicker
                 v-model="endDate"
                 placeholder="Fecha Fin"
-                density="compact"
-                hide-details
-                class="premium-input-compact"
+                density="comfortable"
+                variant="outlined"
+                hide-details="auto"
                 prepend-inner-icon="tabler-calendar-check"
                 @update:model-value="notifyUpdate"
               />
@@ -237,12 +231,11 @@ const handleExport = () => {
                 :items="laboratories"
                 item-title="name"
                 item-value="id"
-                placeholder="Laboratorio / Proveedor"
+                placeholder="Laboratorio / Fabricante"
                 clearable
                 variant="outlined"
-                density="compact"
-                hide-details
-                class="premium-select-compact"
+                density="comfortable"
+                hide-details="auto"
                 prepend-inner-icon="tabler-flask"
                 @update:model-value="notifyUpdate"
               />
@@ -251,12 +244,12 @@ const handleExport = () => {
             <VCol cols="12" sm="6" md="3">
               <AppSelect
                 v-model="statusFilter"
-                :items="[{ title: 'Activos', value: 1 }, { title: 'Inactivos', value: 0 }, { title: 'Todos', value: null }]"
-                placeholder="Estado"
-                density="compact"
-                hide-details
+                :items="[{ title: 'Solo Activos', value: 1 }, { title: 'Inactivos', value: 0 }, { title: 'Todos', value: null }]"
+                placeholder="Estado Producto"
+                density="comfortable"
+                variant="outlined"
+                hide-details="auto"
                 clearable
-                class="premium-select-compact"
                 prepend-inner-icon="tabler-power"
                 @update:model-value="notifyUpdate"
               />

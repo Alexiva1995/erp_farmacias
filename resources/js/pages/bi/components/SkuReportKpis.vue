@@ -6,9 +6,11 @@ const props = defineProps({
     type: Object,
     default: () => ({
       global_margin_real: 0,
+      global_margin_net: 0,
       total_discounts: 0,
       total_loss: 0,
-      critical_skus: 0
+      critical_skus: 0,
+      gmroi: 0
     })
   },
   loading: Boolean,
@@ -21,7 +23,7 @@ const props = defineProps({
 const emit = defineEmits(['filter-click']);
 
 const formatPercent = (val) => Number(val || 0).toFixed(2) + '%';
-const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
+const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const kpis = computed(() => [
   {
@@ -35,7 +37,7 @@ const kpis = computed(() => [
   },
   {
     key: 'discounts',
-    title: 'Impacto Desc.',
+    title: 'Impacto Descuentos',
     value: formatMoney(props.summaryStats.total_discounts),
     color: 'warning',
     icon: 'tabler-tag',
@@ -57,7 +59,7 @@ const kpis = computed(() => [
     value: props.summaryStats.critical_skus || 0,
     color: props.summaryStats.critical_skus > 0 ? 'error' : 'success',
     icon: 'tabler-alert-triangle',
-    desc: 'SKUs en Pérdida',
+    desc: 'SKUs en Peligro/Pérdida',
     hint: 'Filtrar críticos'
   }
 ]);
@@ -68,13 +70,13 @@ const handleCardClick = (key) => {
 </script>
 
 <template>
-  <VRow class="ma-0 mx-n1 mb-5 mt-2" dense>
-    <VCol v-for="(kpi, index) in kpis" :key="index" cols="6" md="3" class="pa-1">
+  <VRow class="mb-5 mt-1" dense>
+    <VCol v-for="(kpi, index) in kpis" :key="index" cols="12" sm="6" md="3">
       <VCard
-        class="stats-card rounded-lg border overflow-hidden h-full position-relative cursor-pointer transition-all"
+        class="stats-card rounded-lg border overflow-hidden h-100 position-relative cursor-pointer transition-all bg-surface"
         :class="[
           activeFilterKey === kpi.key ? 'active-kpi-card shadow-md' : 'shadow-sm',
-          loading ? 'pointer-events-none opacity-80' : ''
+          loading ? 'pointer-events-none' : ''
         ]"
         tabindex="0"
         role="button"
@@ -86,18 +88,17 @@ const handleCardClick = (key) => {
           :style="{ background: `linear-gradient(45deg, rgba(var(--v-theme-${kpi.color}), ${activeFilterKey === kpi.key ? 0.2 : 0.08}), transparent)` }"
         ></div>
 
-        <VCardText class="pa-5 relative-content">
-          <div v-if="loading" class="d-flex flex-column gap-2 py-2">
-            <div class="d-flex justify-space-between align-center">
-              <div class="w-25 bg-secondary-light animate-pulse rounded" style="height: 32px;"></div>
-              <div class="w-50 bg-secondary-light animate-pulse rounded" style="height: 24px;"></div>
-            </div>
-            <div class="w-100 bg-secondary-light animate-pulse rounded mt-3" style="height: 10px;"></div>
-          </div>
+        <VCardText class="pa-4 relative-content">
+          <VSkeletonLoader
+            v-if="loading"
+            type="article"
+            height="90"
+            class="bg-transparent"
+          />
           <div v-else>
             <div class="d-flex align-center justify-space-between mb-3">
-              <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="elevation-1">
-                <VIcon :icon="kpi.icon" size="26" />
+              <VAvatar :color="kpi.color" variant="tonal" size="44" rounded="lg" class="elevation-1">
+                <VIcon :icon="kpi.icon" size="24" />
               </VAvatar>
               <div class="text-right">
                 <div class="d-flex align-center justify-end gap-1 mb-1">
@@ -110,7 +111,7 @@ const handleCardClick = (key) => {
                   >
                     Activo
                   </VChip>
-                  <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important; line-height: 1.2;">
+                  <span class="text-overline font-weight-bold text-disabled">
                     {{ kpi.title }}
                   </span>
                 </div>
@@ -118,20 +119,20 @@ const handleCardClick = (key) => {
               </div>
             </div>
             <VDivider class="mb-3 opacity-20" />
-          </div>
-
-          <div class="d-flex align-center justify-space-between">
-            <span class="text-caption font-weight-medium text-medium-emphasis">{{ kpi.desc }}</span>
-            <div class="d-flex align-center gap-1">
-              <span class="text-super-xs font-weight-bold text-primary opacity-80 d-none d-sm-inline">
-                {{ activeFilterKey === kpi.key ? 'Quitar filtro' : kpi.hint }}
-              </span>
-              <VIcon
-                :icon="activeFilterKey === kpi.key ? 'tabler-x' : 'tabler-filter'"
-                size="14"
-                :color="kpi.color"
-                class="opacity-75"
-              />
+            
+            <div class="d-flex align-center justify-space-between">
+              <span class="text-caption font-weight-medium text-medium-emphasis">{{ kpi.desc }}</span>
+              <div class="d-flex align-center gap-1">
+                <span class="text-caption font-weight-bold text-primary d-none d-sm-inline">
+                  {{ activeFilterKey === kpi.key ? 'Quitar filtro' : kpi.hint }}
+                </span>
+                <VIcon
+                  :icon="activeFilterKey === kpi.key ? 'tabler-x' : 'tabler-filter'"
+                  size="14"
+                  :color="kpi.color"
+                  class="opacity-75"
+                />
+              </div>
             </div>
           </div>
         </VCardText>
@@ -154,7 +155,7 @@ const handleCardClick = (key) => {
 }
 
 .stats-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   border-color: rgba(var(--v-theme-primary), 0.35) !important;
 }
 
@@ -169,23 +170,5 @@ const handleCardClick = (key) => {
 
 .transition-all {
   transition: all 0.2s ease-in-out;
-}
-
-.text-super-xs {
-  font-size: 0.65rem !important;
-  line-height: 1;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .5; }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.bg-secondary-light {
-  background-color: rgba(var(--v-theme-secondary), 0.15);
 }
 </style>

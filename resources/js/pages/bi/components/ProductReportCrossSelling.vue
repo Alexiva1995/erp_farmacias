@@ -1,9 +1,9 @@
 <script setup>
 // Componente: Venta Cruzada (Cross-selling) con Nivel de Confianza y Soporte Estadístico
 const props = defineProps({
-  crossSelling: { type: Array,   default: () => [] },
-  page:         { type: Number,  default: 1        },
-  loading:      { type: Boolean, default: false    },
+  crossSelling: { type: Array, default: () => [] },
+  page: { type: Number, default: 1 },
+  loading: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['page-change']);
@@ -26,7 +26,7 @@ const getConfidenceColor = (conf) => {
         </VAvatar>
         <div>
           <div class="text-subtitle-1 font-weight-bold text-high-emphasis">Venta Cruzada (Market Basket)</div>
-          <div class="text-super-xs text-medium-emphasis">Asociación de productos frecuentes y confianza de compra conjunta</div>
+          <div class="text-caption text-medium-emphasis">Asociación de productos frecuentes y confianza de compra conjunta</div>
         </div>
       </div>
       <VChip color="primary" size="x-small" variant="flat" label class="font-weight-bold">
@@ -58,8 +58,8 @@ const getConfidenceColor = (conf) => {
       <!-- Estado vacío -->
       <div v-else-if="!crossSelling.length" class="text-center pa-10 text-medium-emphasis">
         <VIcon icon="tabler-arrows-left-right" size="36" class="mb-2 opacity-30" />
-        <div class="text-sm font-weight-bold">No se han detectado asociaciones frecuentes</div>
-        <div class="text-xs text-disabled">No hay coincidencias de productos vendidos juntos en este período.</div>
+        <div class="text-subtitle-2 font-weight-bold">No se han detectado asociaciones frecuentes</div>
+        <div class="text-caption text-disabled">No hay coincidencias de productos vendidos juntos en este período.</div>
       </div>
 
       <!-- Tabla -->
@@ -76,16 +76,16 @@ const getConfidenceColor = (conf) => {
               <div class="d-flex align-center gap-2">
                 <!-- Producto A -->
                 <div class="d-flex flex-column min-width-0" style="flex: 1;">
-                  <span class="text-xs font-weight-bold text-uppercase text-truncate mb-1" :title="pair.product_a">
+                  <span class="text-body-2 font-weight-bold text-uppercase text-truncate mb-1" :title="pair.product_a">
                     {{ pair.product_a }}
                   </span>
-                  <div class="d-flex align-center gap-1 text-super-xs">
-                    <span class="text-medium-emphasis font-weight-bold">ID: {{ pair.product_id_a }}</span>
-                    <span class="text-disabled">·</span>
-                    <span class="text-medium-emphasis text-truncate" style="max-width: 100px;">
+                  <div class="d-flex align-center gap-1 text-caption text-medium-emphasis">
+                    <span class="font-weight-bold">ID: {{ pair.product_id_a }}</span>
+                    <span>·</span>
+                    <span class="text-truncate" style="max-width: 100px;">
                       {{ pair.ingredient_a || 'S/PA' }}
                     </span>
-                    <span class="text-disabled">·</span>
+                    <span>·</span>
                     <span class="text-primary font-weight-medium text-uppercase text-truncate" style="max-width: 80px;">
                       {{ pair.lab_a || 'S/L' }}
                     </span>
@@ -98,16 +98,16 @@ const getConfidenceColor = (conf) => {
 
                 <!-- Producto B -->
                 <div class="d-flex flex-column min-width-0" style="flex: 1;">
-                  <span class="text-xs font-weight-bold text-uppercase text-truncate mb-1" :title="pair.product_b">
+                  <span class="text-body-2 font-weight-bold text-uppercase text-truncate mb-1" :title="pair.product_b">
                     {{ pair.product_b }}
                   </span>
-                  <div class="d-flex align-center gap-1 text-super-xs">
-                    <span class="text-medium-emphasis font-weight-bold">ID: {{ pair.product_id_b }}</span>
-                    <span class="text-disabled">·</span>
-                    <span class="text-medium-emphasis text-truncate" style="max-width: 100px;">
+                  <div class="d-flex align-center gap-1 text-caption text-medium-emphasis">
+                    <span class="font-weight-bold">ID: {{ pair.product_id_b }}</span>
+                    <span>·</span>
+                    <span class="text-truncate" style="max-width: 100px;">
                       {{ pair.ingredient_b || 'S/PA' }}
                     </span>
-                    <span class="text-disabled">·</span>
+                    <span>·</span>
                     <span class="text-primary font-weight-medium text-uppercase text-truncate" style="max-width: 80px;">
                       {{ pair.lab_b || 'S/L' }}
                     </span>
@@ -121,15 +121,15 @@ const getConfidenceColor = (conf) => {
                 <div class="d-flex align-center gap-2">
                   <VChip
                     :color="getConfidenceColor(pair.confidence_percent ?? 40)"
-                    class="font-weight-black text-super-xs"
+                    class="font-weight-black"
                     size="x-small"
                     variant="tonal"
                     label
                   >
                     {{ pair.confidence_percent ?? 40 }}% Confianza
                   </VChip>
-                  <span class="text-xs font-weight-black text-high-emphasis">
-                    {{ pair.frequency }} <span class="text-super-xs font-weight-normal text-medium-emphasis">veces</span>
+                  <span class="text-caption font-weight-black text-high-emphasis">
+                    {{ pair.frequency }} <span class="font-weight-normal text-medium-emphasis">veces</span>
                   </span>
                 </div>
                 <div class="w-100 mt-1 d-flex align-center justify-end" style="max-width: 120px;">
@@ -148,7 +148,7 @@ const getConfidenceColor = (conf) => {
 
       <VDivider />
       <div class="pa-2 px-4 d-flex align-center justify-space-between bg-surface">
-        <span class="text-xs text-medium-emphasis">Página {{ page }}</span>
+        <span class="text-caption text-medium-emphasis">Página {{ page }}</span>
         <div class="d-flex gap-1">
           <VBtn
             icon="tabler-chevron-left"
@@ -171,17 +171,12 @@ const getConfidenceColor = (conf) => {
 </template>
 
 <style scoped>
-.text-super-xs {
-  font-size: 0.7rem !important;
-  line-height: 1.2;
-}
-
 .skeleton-pulse { animation: pulse 1.5s infinite ease-in-out; }
 @keyframes pulse {
-  0%   { opacity: 0.6; }
-  50%  { opacity: 1;   }
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
   100% { opacity: 0.6; }
 }
 .skeleton-avatar { width: 32px; height: 32px; border-radius: 50%; background-color: rgba(var(--v-theme-on-surface), 0.1); }
-.skeleton-line   { height: 12px; background-color: rgba(var(--v-theme-on-surface), 0.1); border-radius: 4px; }
+.skeleton-line { height: 12px; background-color: rgba(var(--v-theme-on-surface), 0.1); border-radius: 4px; }
 </style>

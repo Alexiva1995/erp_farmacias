@@ -6,6 +6,7 @@ const defaultFilters = () => ({
   search: '',
   laboratory_id: null,
   supplier_id: null,
+  days: 90,
 })
 
 const defaultData = () => ({
@@ -35,7 +36,7 @@ export const useSupplierReturnsStore = defineStore('SupplierReturnsStore', () =>
   // ── Derived state ────────────────────────────────────────────────────────────
   const hasGroups = computed(() => data.groups.length > 0)
   const hasActiveFilters = computed(() =>
-    !!(filters.laboratory_id || filters.supplier_id || filters.search)
+    Boolean(filters.laboratory_id || filters.supplier_id || filters.search || filters.days !== 90)
   )
 
   // ── Acciones ─────────────────────────────────────────────────────────────────

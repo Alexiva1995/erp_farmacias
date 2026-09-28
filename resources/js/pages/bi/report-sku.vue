@@ -4,6 +4,7 @@ import { onMounted, ref, watch } from "vue";
 import { toast } from "@/plugins/sweetalert";
 import SkuReportFilters from "./components/SkuReportFilters.vue";
 import SkuReportKpis from "./components/SkuReportKpis.vue";
+import SkuReportCharts from "./components/SkuReportCharts.vue";
 import SkuReportMobileView from "./components/SkuReportMobileView.vue";
 
 const skus = ref([]);
@@ -12,9 +13,10 @@ const exporting = ref(false);
 const totalItems = ref(0);
 
 const page = ref(1);
-const itemsPerPage = ref(10);
+const itemsPerPage = ref(15);
 const sortBy = ref();
 const orderBy = ref();
+const expanded = ref([]);
 
 const getFirstDayOfCurrentMonth = () => {
   const now = new Date();
@@ -39,9 +41,17 @@ const laboratories = ref([]);
 
 const summaryStats = ref({
   global_margin_real: 0,
+  global_margin_net: 0,
   total_discounts: 0,
   total_loss: 0,
-  critical_skus: 0
+  critical_skus: 0,
+  gmroi: 0
+});
+
+const chartsData = ref({
+  waterfall: [],
+  semaphore_distribution: { green: 0, yellow: 0, red: 0, black: 0 },
+  summary: {}
 });
 
 const fetchFilters = async () => {
@@ -75,6 +85,9 @@ const fetchReport = async () => {
     if (data.summary) {
       summaryStats.value = data.summary;
     }
+    if (data.charts) {
+      chartsData.value = data.charts;
+    }
   } catch (error) {
     console.error("Error obteniendo reporte SKU:", error);
     toast.error("Hubo un error cargando el reporte SKU.");
@@ -105,7 +118,6 @@ const handleClearFilters = () => {
 
 const handleKpiFilter = (key) => {
   if (activeFilterKey.value === key) {
-    // Alternar para deseleccionar
     activeFilterKey.value = null;
     filters.value.semaphore = null;
     filters.value.has_loss = null;
@@ -172,23 +184,25 @@ const handleExport = async () => {
 };
 
 const headers = [
-  { title: 'ID', key: 'id', sortable: true, width: '60px' },
-  { title: 'PRODUCTO', key: 'product_name', sortable: true, minWidth: '200px' },
-  { title: 'VEND.', key: 'total_sold', sortable: true, width: '70px' },
+  { title: '', key: 'data-table-expand', width: '40px' },
+  { title: 'ID/SKU', key: 'id', sortable: true, width: '90px' },
+  { title: 'PRODUCTO / MOLÉCULA', key: 'product_name', sortable: true, minWidth: '220px' },
+  { title: 'STOCK', key: 'current_stock', sortable: true, width: '80px' },
+  { title: 'VEND.', key: 'total_sold', sortable: true, width: '80px' },
   { title: 'COSTO', key: 'current_cost', sortable: false, width: '90px' },
   { title: 'P. LISTA', key: 'list_price', sortable: false, width: '90px' },
-  { title: 'M. BRUTO', key: 'gross_margin_percent', sortable: true, width: '95px' },
-  { title: 'DESC.', key: 'discount_avg_percent', sortable: false, width: '85px' },
-  { title: 'M. NETO', key: 'net_margin_percent', sortable: false, width: '95px' },
-  { title: 'MERMAS', key: 'loss_value', sortable: false, width: '95px' },
-  { title: 'M. REAL', key: 'real_margin_percent', sortable: true, width: '95px' },
+  { title: 'M. BRUTO', key: 'gross_margin_percent', sortable: true, width: '100px' },
+  { title: 'DESC.', key: 'discount_avg_percent', sortable: false, width: '90px' },
+  { title: 'M. NETO', key: 'net_margin_percent', sortable: false, width: '100px' },
+  { title: 'MERMAS', key: 'loss_value', sortable: false, width: '100px' },
+  { title: 'M. REAL', key: 'real_margin_percent', sortable: true, width: '105px' },
   { title: 'ESTADO', key: 'semaphore', sortable: false, width: '120px' }
 ];
 
 const updateTableOptions = (options) => {
   page.value = options.page;
   itemsPerPage.value = options.itemsPerPage;
-  if(options.sortBy && options.sortBy.length > 0) {
+  if (options.sortBy && options.sortBy.length > 0) {
     sortBy.value = options.sortBy[0].key;
     orderBy.value = options.sortBy[0].order;
   } else {
@@ -235,7 +249,7 @@ const getSemaphoreLabel = (status) => {
 };
 
 const formatPercent = (val) => Number(val || 0).toFixed(2) + '%';
-const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
+const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 </script>
 
 <template>
@@ -259,13 +273,23 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
       @filter-click="handleKpiFilter"
     />
 
-    <!-- Card Principal -->
+    <!-- Visualización y Storytelling BI (ApexCharts) -->
+    <SkuReportCharts
+      :charts-data="chartsData"
+      :loading="loading"
+    />
+
+    <!-- Card Principal con Tabla Cascada -->
     <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
-      <VCardText class="d-flex justify-space-between align-center py-3">
-        <h2 class="text-h6 font-weight-bold d-flex align-center">
-          <VIcon icon="tabler-list-details" class="me-2 text-primary" size="22" />
-          Desglose Financiero (Waterfall)
-        </h2>
+      <VCardText class="d-flex justify-space-between align-center py-3 border-b">
+        <div class="d-flex align-center gap-2">
+          <VAvatar color="primary" variant="tonal" size="32" rounded="sm">
+            <VIcon icon="tabler-list-details" size="18" />
+          </VAvatar>
+          <h2 class="text-subtitle-1 font-weight-bold">
+            Desglose Financiero por SKU (Waterfall)
+          </h2>
+        </div>
         <div v-if="activeFilterKey" class="d-flex align-center gap-2">
           <VChip
             size="small"
@@ -274,142 +298,211 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
             closable
             @click:close="handleClearFilters"
           >
-            Filtro rápido activo: <strong>{{ activeFilterKey }}</strong>
+            Filtro rápido: <strong>{{ activeFilterKey }}</strong>
           </VChip>
         </div>
       </VCardText>
-      <VDivider class="border-opacity-10" />
 
       <!-- Vista Desktop -->
       <div class="d-none d-md-block">
         <VDataTableServer
           v-model:items-per-page="itemsPerPage"
           v-model:page="page"
+          v-model:expanded="expanded"
           :headers="headers"
           :items="skus"
           :items-length="totalItems"
           :loading="loading"
-          class="premium-table density-compact"
+          item-value="product_id"
+          show-expand
+          class="border-0"
+          density="comfortable"
           @update:options="updateTableOptions"
         >
+          <!-- Loading State con Skeleton -->
+          <template #loading>
+            <VSkeletonLoader type="table-row@5" />
+          </template>
+
+          <!-- Columna ID -->
           <template #item.id="{ item }">
             <a
               :href="'/inventory/traceability?q=' + (item.id || item.product_id)"
               target="_blank"
-              class="text-decoration-none font-weight-black text-primary"
+              class="text-decoration-none font-weight-bold text-primary"
             >
-              {{ item.id || item.product_id }}
+              {{ item.barcode || item.product_id }}
             </a>
           </template>
 
+          <!-- Columna Producto y Molécula -->
           <template #item.product_name="{ item }">
             <div class="d-flex flex-column py-2">
-              <span class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate" :title="item.product_name">
-                {{ item.product_name.toUpperCase() }}
+              <span class="text-body-2 font-weight-bold text-high-emphasis text-uppercase text-truncate" :title="item.product_name">
+                {{ item.product_name }}
               </span>
-              <div class="d-flex align-center gap-1 text-super-xs">
-                <span class="text-disabled truncate" style="max-inline-size: 200px;">
-                  {{ item.active_ingredient || item.active_ingredient_inventory || 'SIN INGREDIENTE' }}
+              <div class="d-flex align-center gap-1 text-caption text-medium-emphasis">
+                <span class="text-truncate" style="max-inline-size: 200px;">
+                  {{ item.active_ingredient || 'Sin Molécula' }}
                 </span>
-                <span class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
+                <span class="text-disabled">•</span>
+                <span class="text-primary font-weight-medium text-truncate" style="max-inline-size: 150px;">
                   {{ item.laboratory_name || 'S/L' }}
                 </span>
               </div>
             </div>
           </template>
           
-          <template #item.current_cost="{ item }">
-            <span class="font-weight-medium">{{ formatMoney(item.current_cost) }}</span>
-          </template>
-          
-          <template #item.list_price="{ item }">
-            <span class="font-weight-medium">{{ formatMoney(item.list_price) }}</span>
+          <!-- Columna Stock Actual -->
+          <template #item.current_stock="{ item }">
+            <VChip
+              size="small"
+              :color="item.current_stock > 10 ? 'default' : item.current_stock > 0 ? 'warning' : 'error'"
+              variant="tonal"
+              class="font-weight-bold"
+            >
+              {{ Number(item.current_stock).toFixed(0) }}
+            </VChip>
           </template>
 
-          <!-- Jerarquía Visual M. BRUTO -->
+          <!-- Columna Vendidos -->
+          <template #item.total_sold="{ item }">
+            <span class="font-weight-medium text-body-2">{{ item.total_sold }}</span>
+          </template>
+
+          <!-- Columna Costo -->
+          <template #item.current_cost="{ item }">
+            <span class="font-weight-medium text-body-2">{{ formatMoney(item.current_cost) }}</span>
+          </template>
+          
+          <!-- Columna Precio Lista -->
+          <template #item.list_price="{ item }">
+            <span class="font-weight-medium text-body-2">{{ formatMoney(item.list_price) }}</span>
+          </template>
+
+          <!-- M. BRUTO -->
           <template #item.gross_margin_percent="{ item }">
             <div class="d-flex flex-column py-1">
-              <span class="text-sm font-weight-black text-info leading-tight">
+              <span class="text-body-2 font-weight-bold text-info">
                 {{ formatPercent(item.gross_margin_percent) }}
               </span>
-              <span class="text-super-xs text-medium-emphasis mt-0-5">
+              <span class="text-caption text-medium-emphasis">
                 {{ formatMoney(item.gross_margin_value) }}
               </span>
             </div>
           </template>
 
-          <!-- Jerarquía Visual DESCUENTOS -->
+          <!-- DESCUENTOS -->
           <template #item.discount_avg_percent="{ item }">
             <div class="d-flex flex-column py-1">
-              <span v-if="item.discount_avg_percent > 0" class="text-sm font-weight-bold text-error leading-tight">
+              <span v-if="item.discount_avg_percent > 0" class="text-body-2 font-weight-bold text-error">
                 -{{ formatPercent(item.discount_avg_percent) }}
               </span>
-              <span v-else class="text-super-xs text-disabled">0.00%</span>
-              <span v-if="item.total_discount_amount > 0" class="text-super-xs text-medium-emphasis mt-0-5">
+              <span v-else class="text-caption text-disabled">0.00%</span>
+              <span v-if="item.total_discount_amount > 0" class="text-caption text-medium-emphasis">
                 -{{ formatMoney(item.total_discount_amount) }}
               </span>
             </div>
           </template>
 
-          <!-- Jerarquía Visual M. NETO -->
+          <!-- M. NETO -->
           <template #item.net_margin_percent="{ item }">
             <div class="d-flex flex-column py-1">
-              <span class="text-sm font-weight-black text-primary leading-tight">
+              <span class="text-body-2 font-weight-bold text-primary">
                 {{ formatPercent(item.net_margin_percent) }}
               </span>
-              <span class="text-super-xs text-medium-emphasis mt-0-5">
+              <span class="text-caption text-medium-emphasis">
                 {{ formatMoney(item.net_margin_value) }}
               </span>
             </div>
           </template>
           
-          <!-- Jerarquía Visual MERMAS -->
+          <!-- MERMAS -->
           <template #item.loss_value="{ item }">
             <div class="d-flex align-center py-1">
               <VChip
                 v-if="Number(item.loss_value) > 0"
-                size="x-small"
+                size="small"
                 color="error"
                 variant="tonal"
-                class="font-weight-bold px-1-5"
+                class="font-weight-bold"
               >
-                <VIcon icon="tabler-trending-down" size="12" class="me-1" />
-                -${{ Number(item.loss_value).toFixed(2) }}
+                <VIcon icon="tabler-trending-down" size="14" class="me-1" />
+                -{{ formatMoney(item.loss_value) }}
               </VChip>
               <span v-else class="text-caption text-disabled">$0.00</span>
             </div>
           </template>
 
-          <!-- Jerarquía Visual M. REAL -->
+          <!-- M. REAL -->
           <template #item.real_margin_percent="{ item }">
             <div class="d-flex flex-column py-1">
-              <span class="text-sm font-weight-black leading-tight" :class="`text-${getSemaphoreColor(item.semaphore)}`">
+              <span class="text-body-2 font-weight-black" :class="`text-${getSemaphoreColor(item.semaphore)}`">
                 {{ formatPercent(item.real_margin_percent) }}
               </span>
-              <span class="text-super-xs text-medium-emphasis mt-0-5">
-                {{ formatMoney(item.real_margin_value) }} Total
+              <span class="text-caption text-medium-emphasis">
+                {{ formatMoney(item.real_margin_value) }}
               </span>
             </div>
           </template>
 
-          <!-- Columna ESTADO con Pills y Dot Indicator -->
+          <!-- ESTADO -->
           <template #item.semaphore="{ item }">
             <VChip
               :color="getSemaphoreColor(item.semaphore)"
               size="small"
               variant="tonal"
-              class="font-weight-bold text-caption text-uppercase px-2"
+              class="font-weight-bold text-caption text-uppercase"
             >
-              <span class="status-dot me-1-5" :class="`bg-${getSemaphoreColor(item.semaphore)}`"></span>
               {{ getSemaphoreLabel(item.semaphore) }}
             </VChip>
           </template>
+
+          <!-- Expansión de Fila para Detalle Enriquecido -->
+          <template #expanded-row="{ columns, item }">
+            <tr>
+              <td :colspan="columns.length" class="pa-4 bg-var-theme-background">
+                <div class="d-flex align-center justify-space-between flex-wrap gap-4">
+                  <div class="d-flex align-center gap-4">
+                    <div>
+                      <span class="text-caption text-disabled text-uppercase font-weight-bold d-block">Ingresos Totales</span>
+                      <span class="text-body-2 font-weight-bold">{{ formatMoney(item.total_revenue) }}</span>
+                    </div>
+                    <VDivider vertical class="mx-2" />
+                    <div>
+                      <span class="text-caption text-disabled text-uppercase font-weight-bold d-block">Stock Actual</span>
+                      <span class="text-body-2 font-weight-bold">{{ item.current_stock }} unidades</span>
+                    </div>
+                    <VDivider vertical class="mx-2" />
+                    <div>
+                      <span class="text-caption text-disabled text-uppercase font-weight-bold d-block">Laboratorio</span>
+                      <span class="text-body-2 font-weight-bold">{{ item.laboratory_name || 'Sin Asignar' }}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <VBtn
+                      :href="'/inventory/traceability?q=' + (item.product_id || item.id)"
+                      target="_blank"
+                      size="small"
+                      variant="tonal"
+                      color="primary"
+                      class="font-weight-bold"
+                    >
+                      <VIcon icon="tabler-history" size="16" class="me-1" />
+                      Ver Trazabilidad y Lotes
+                    </VBtn>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </template>
           
+          <!-- Empty State -->
           <template #no-data>
             <div class="text-center pa-8 text-medium-emphasis">
               <VIcon icon="tabler-database-off" size="48" class="mb-3 opacity-40" />
-              <p>Sin resultados para los filtros aplicados</p>
+              <p class="text-body-1 font-weight-medium">Sin resultados para los filtros aplicados</p>
             </div>
           </template>
         </VDataTableServer>
@@ -426,50 +519,3 @@ const formatMoney = (val) => '$' + Number(val || 0).toFixed(2);
     </VCard>
   </div>
 </template>
-
-<style scoped>
-.premium-table :deep(th) {
-  background-color: rgb(var(--v-theme-surface)) !important;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.08) !important;
-  padding: 0 8px !important;
-}
-
-.premium-table :deep(td) {
-  padding: 0 8px !important;
-  font-size: 0.75rem !important;
-  height: 48px !important;
-}
-
-.text-super-xs {
-  font-size: 0.62rem !important;
-  line-height: 1.1;
-}
-
-.mt-0-5 {
-  margin-top: 2px !important;
-}
-
-.px-1-5 {
-  padding-left: 6px !important;
-  padding-right: 6px !important;
-}
-
-.me-1-5 {
-  margin-inline-end: 6px !important;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.gap-1 { gap: 4px !important; }
-.gap-2 { gap: 8px !important; }
-</style>

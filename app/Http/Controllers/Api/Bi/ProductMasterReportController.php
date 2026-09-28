@@ -7,9 +7,9 @@ namespace App\Http\Controllers\Api\Bi;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Bi\ProductReportDashboardRequest;
 use App\Http\Requests\Bi\ProductReportRankingsRequest;
+use App\Http\Resources\Bi\ProductReportDashboardResource;
 use App\Services\Bi\ProductMasterReportService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class ProductMasterReportController extends Controller
 {
@@ -21,13 +21,12 @@ class ProductMasterReportController extends Controller
     {
         $data = $this->service->getDashboardData($request->validated());
 
-        return response()->json($data);
+        return (new ProductReportDashboardResource($data))->response();
     }
 
     public function getTrends(ProductReportDashboardRequest $request): JsonResponse
     {
         $filters = $request->validated();
-        // Acepta también product_id y group_id para filtro de tendencias
         $filters['product_id'] = $request->query('product_id');
         $filters['group_id']   = $request->query('group_id');
 
