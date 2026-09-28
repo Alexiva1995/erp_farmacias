@@ -87,14 +87,17 @@ const exportExcel = () => {
   }
 
   const rows = [
-    ['Categoría', 'Producto Faltante', 'Cant. Faltante', 'Producto Sobrante', 'Cant. Sobrante', 'Nivel Confianza'],
+    ['Categoría', 'Producto Faltante', 'Principio Activo A', 'Cant. Faltante', 'Producto Sobrante', 'Principio Activo B', 'Cant. Sobrante', 'Nivel Confianza', 'Criterios Detectados'],
     ...dashboardData.value.substitutions.map(sub => [
       `"${sub.category || ''}"`,
       `"${sub.product_a || ''}"`,
+      `"${sub.active_ingredient_a || ''}"`,
       sub.discrepancy_a ?? 0,
       `"${sub.product_b || ''}"`,
+      `"${sub.active_ingredient_b || ''}"`,
       sub.discrepancy_b ?? 0,
       `"${sub.confidence || ''}"`,
+      `"${sub.match_reason || ''}"`,
     ]),
   ]
 

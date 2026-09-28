@@ -46,12 +46,15 @@ class InventoryCyclicReportResource extends JsonResource
             ],
             'substitutions' => array_map(function ($sub) {
                 return [
-                    'category' => (string)$sub['category'],
-                    'product_a' => (string)$sub['product_a'],
-                    'discrepancy_a' => (int)$sub['discrepancy_a'],
-                    'product_b' => (string)$sub['product_b'],
-                    'discrepancy_b' => (int)$sub['discrepancy_b'],
-                    'confidence' => (string)$sub['confidence'],
+                    'category' => (string)($sub['category'] ?? ''),
+                    'product_a' => (string)($sub['product_a'] ?? ''),
+                    'active_ingredient_a' => (string)($sub['active_ingredient_a'] ?? ''),
+                    'discrepancy_a' => (int)($sub['discrepancy_a'] ?? 0),
+                    'product_b' => (string)($sub['product_b'] ?? ''),
+                    'active_ingredient_b' => (string)($sub['active_ingredient_b'] ?? ''),
+                    'discrepancy_b' => (int)($sub['discrepancy_b'] ?? 0),
+                    'confidence' => (string)($sub['confidence'] ?? ''),
+                    'match_reason' => (string)($sub['match_reason'] ?? ''),
                 ];
             }, $this->resource['substitutions'] ?? []),
         ];

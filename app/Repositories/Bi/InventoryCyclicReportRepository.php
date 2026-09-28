@@ -156,7 +156,7 @@ class InventoryCyclicReportRepository
     }
 
     /**
-     * Algoritmo de detección de cruce de códigos (sustituciones)
+     * Algoritmo inteligente de detección de cruce de códigos (sustituciones)
      */
     public function getCodeCrossing(array $filters): array
     {
@@ -178,37 +178,152 @@ class InventoryCyclicReportRepository
         $counts = $query->select(
                 'products.id',
                 'products.name',
+                'products.active_ingredient',
+                'products.barcode',
+                'products.laboratory_id',
                 'products.category_id',
                 'categories.name as category_name',
-                'product_counts.discrepancy'
+                'product_counts.discrepancy',
+                'product_counts.cycle_id',
+                'product_counts.created_at'
             )
             ->get();
 
-        $substitutions = [];
-        $processed = [];
+        $candidates = [];
 
+        // Evaluar compatibilidad de pares (faltante vs sobrante)
         foreach ($counts as $a) {
-            if (in_array($a->id, $processed)) continue;
+            if ($a->discrepancy >= 0) {
+                continue; // Producto A es el faltante
+            }
 
             foreach ($counts as $b) {
-                if ($a->id === $b->id) continue;
-                if (in_array($b->id, $processed)) continue;
+                if ($b->discrepancy <= 0 || $a->id === $b->id) {
+                    continue; // Producto B es el sobrante
+                }
 
-                // Si están en la misma categoría y tienen discrepancias inversas
-                if ($a->category_id === $b->category_id && abs($a->discrepancy) === abs($b->discrepancy) && ($a->discrepancy * $b->discrepancy) < 0) {
-                    $substitutions[] = [
+                // 1. Simetría de cantidades
+                $isSymmetric = abs((float)$a->discrepancy) === abs((float)$b->discrepancy);
+                if (!$isSymmetric) {
+                    continue;
+                }
+
+                $score = 0;
+                $reasons = [];
+
+                // 2. Coincidencia de Principio Activo
+                $ingA = mb_strtolower(trim((string)$a->active_ingredient));
+                $ingB = mb_strtolower(trim((string)$b->active_ingredient));
+
+                if (!empty($ingA) && !empty($ingB)) {
+                    if ($ingA === $ingB) {
+                        $score += 50;
+                        $reasons[] = 'Mismo Principio Activo';
+                    } elseif (str_contains($ingA, $ingB) || str_contains($ingB, $ingA)) {
+                        $score += 40;
+                        $reasons[] = 'Principio Activo Equivalente';
+                    }
+                }
+
+                // 3. Similitud de Nombre del Producto
+                similar_text(mb_strtolower((string)$a->name), mb_strtolower((string)$b->name), $simName);
+                if ($simName >= 75) {
+                    $score += 35;
+                    $reasons[] = 'Nombre Muy Similar (' . round($simName) . '%)';
+                } elseif ($simName >= 50) {
+                    $score += 20;
+                    $reasons[] = 'Nombre Parcial (' . round($simName) . '%)';
+                }
+
+                // 4. Mismo Ciclo / Sesión de Conteo
+                if (!empty($a->cycle_id) && !empty($b->cycle_id) && $a->cycle_id === $b->cycle_id) {
+                    $score += 25;
+                    $reasons[] = 'Mismo Ciclo de Conteo';
+                }
+
+                // 5. Misma Fecha de Auditoría
+                $dateA = substr((string)$a->created_at, 0, 10);
+                $dateB = substr((string)$b->created_at, 0, 10);
+                if ($dateA === $dateB) {
+                    $score += 15;
+                    $reasons[] = 'Misma Fecha de Conteo';
+                }
+
+                // 6. Código de Barras Cercano / Adyacente
+                $barA = trim((string)$a->barcode);
+                $barB = trim((string)$b->barcode);
+                if (!empty($barA) && !empty($barB) && strlen($barA) >= 6 && strlen($barB) >= 6) {
+                    if (levenshtein($barA, $barB) <= 2) {
+                        $score += 25;
+                        $reasons[] = 'Código de Barras Casi Idéntico';
+                    } elseif (substr($barA, 0, 6) === substr($barB, 0, 6)) {
+                        $score += 15;
+                        $reasons[] = 'Mismo Prefijo de Barra';
+                    }
+                }
+
+                // 7. Misma Categoría o Laboratorio
+                if ($a->category_id === $b->category_id) {
+                    $score += 10;
+                }
+                if (!empty($a->laboratory_id) && $a->laboratory_id === $b->laboratory_id) {
+                    $score += 10;
+                    $reasons[] = 'Mismo Laboratorio';
+                }
+
+                // Umbral mínimo de confianza para evitar falsos positivos
+                if ($score >= 40) {
+                    $confidence = 'Media (Simetría en Ciclo)';
+                    if ($score >= 75) {
+                        $confidence = 'Muy Alta (' . ($reasons[0] ?? 'Molécula/Ciclo') . ')';
+                    } elseif ($score >= 55) {
+                        $confidence = 'Alta (' . ($reasons[0] ?? 'Similitud') . ')';
+                    }
+
+                    $candidates[] = [
+                        'id_a' => $a->id,
+                        'id_b' => $b->id,
+                        'score' => $score,
                         'category' => $a->category_name,
                         'product_a' => $a->name,
+                        'active_ingredient_a' => $a->active_ingredient,
                         'discrepancy_a' => $a->discrepancy,
                         'product_b' => $b->name,
+                        'active_ingredient_b' => $b->active_ingredient,
                         'discrepancy_b' => $b->discrepancy,
-                        'confidence' => 'Alta (Simétrica)'
+                        'confidence' => $confidence,
+                        'match_reason' => implode(' + ', $reasons),
                     ];
-                    $processed[] = $a->id;
-                    $processed[] = $b->id;
-                    break;
                 }
             }
+        }
+
+        // Ordenar candidatos por mayor score para asignar las mejores coincidencias primero
+        usort($candidates, fn($x, $y) => $y['score'] <=> $x['score']);
+
+        $substitutions = [];
+        $processedA = [];
+        $processedB = [];
+
+        foreach ($candidates as $cand) {
+            if (in_array($cand['id_a'], $processedA, true) || in_array($cand['id_b'], $processedB, true)) {
+                continue;
+            }
+
+            $substitutions[] = [
+                'category' => $cand['category'],
+                'product_a' => $cand['product_a'],
+                'active_ingredient_a' => $cand['active_ingredient_a'] ?? '',
+                'discrepancy_a' => $cand['discrepancy_a'],
+                'product_b' => $cand['product_b'],
+                'active_ingredient_b' => $cand['active_ingredient_b'] ?? '',
+                'discrepancy_b' => $cand['discrepancy_b'],
+                'confidence' => $cand['confidence'],
+                'match_reason' => $cand['match_reason'],
+            ];
+
+            $processedA[] = $cand['id_a'];
+            $processedB[] = $cand['id_b'];
         }
 
         return $substitutions;

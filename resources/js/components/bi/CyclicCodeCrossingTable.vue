@@ -25,7 +25,7 @@ const headers = [
   { title: '', key: 'action', align: 'center', sortable: false, width: '40px' },
   { title: 'PRODUCTO B (SOBRANTE)', key: 'product_b', sortable: true, minWidth: '180px' },
   { title: 'CANT.', key: 'discrepancy_b', align: 'center', sortable: true, width: '80px' },
-  { title: 'CONFIANZA', key: 'confidence', align: 'center', sortable: true, width: '130px' },
+  { title: 'CONFIANZA / MOTIVO', key: 'confidence', align: 'center', sortable: true, width: '180px' },
   { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '80px' },
 ]
 
@@ -35,7 +35,10 @@ const filteredSubstitutions = computed(() => {
   return props.substitutions.filter(item => 
     (item.category && item.category.toLowerCase().includes(q)) ||
     (item.product_a && item.product_a.toLowerCase().includes(q)) ||
-    (item.product_b && item.product_b.toLowerCase().includes(q))
+    (item.product_b && item.product_b.toLowerCase().includes(q)) ||
+    (item.active_ingredient_a && item.active_ingredient_a.toLowerCase().includes(q)) ||
+    (item.active_ingredient_b && item.active_ingredient_b.toLowerCase().includes(q)) ||
+    (item.match_reason && item.match_reason.toLowerCase().includes(q))
   )
 })
 
@@ -57,7 +60,7 @@ const handleOpenDetail = item => {
                 <VIcon icon="tabler-arrows-left-right" color="primary" class="me-2" size="22" />
                 Cuadrante de Cruce de Códigos (Posibles Sustituciones)
               </VCardTitle>
-              <VCardSubtitle>Detección automática de errores de despacho vs pérdidas reales</VCardSubtitle>
+              <VCardSubtitle>Detección inteligente basada en principio activo, similitud de SKU y ciclos de conteo</VCardSubtitle>
             </div>
 
             <div style="min-width: 260px;">
@@ -65,7 +68,7 @@ const handleOpenDetail = item => {
                 v-model="search"
                 density="comfortable"
                 variant="outlined"
-                placeholder="Buscar cruce o producto..."
+                placeholder="Buscar cruce, producto o molécula..."
                 prepend-inner-icon="tabler-search"
                 hide-details="auto"
                 clearable
@@ -92,9 +95,14 @@ const handleOpenDetail = item => {
 
           <!-- Producto A -->
           <template #item.product_a="{ item }">
-            <span class="text-error font-weight-medium text-body-2 text-truncate d-inline-block" style="max-width: 240px;" :title="item.product_a">
-              {{ item.product_a }}
-            </span>
+            <div>
+              <span class="text-error font-weight-medium text-body-2 text-truncate d-inline-block" style="max-width: 240px;" :title="item.product_a">
+                {{ item.product_a }}
+              </span>
+              <span v-if="item.active_ingredient_a" class="d-block text-caption text-medium-emphasis text-truncate" style="max-width: 240px;" :title="item.active_ingredient_a">
+                <VIcon icon="tabler-flask" size="12" class="me-1" />{{ item.active_ingredient_a }}
+              </span>
+            </div>
           </template>
 
           <!-- Cantidad A -->
@@ -111,9 +119,14 @@ const handleOpenDetail = item => {
 
           <!-- Producto B -->
           <template #item.product_b="{ item }">
-            <span class="text-success font-weight-medium text-body-2 text-truncate d-inline-block" style="max-width: 240px;" :title="item.product_b">
-              {{ item.product_b }}
-            </span>
+            <div>
+              <span class="text-success font-weight-medium text-body-2 text-truncate d-inline-block" style="max-width: 240px;" :title="item.product_b">
+                {{ item.product_b }}
+              </span>
+              <span v-if="item.active_ingredient_b" class="d-block text-caption text-medium-emphasis text-truncate" style="max-width: 240px;" :title="item.active_ingredient_b">
+                <VIcon icon="tabler-flask" size="12" class="me-1" />{{ item.active_ingredient_b }}
+              </span>
+            </div>
           </template>
 
           <!-- Cantidad B -->
@@ -125,14 +138,19 @@ const handleOpenDetail = item => {
 
           <!-- Nivel de Confianza -->
           <template #item.confidence="{ item }">
-            <VChip
-              size="small"
-              :color="item.confidence?.includes('Alta') ? 'primary' : 'secondary'"
-              label
-              class="font-weight-black"
-            >
-              {{ item.confidence }}
-            </VChip>
+            <div>
+              <VChip
+                size="small"
+                :color="item.confidence?.includes('Alta') ? 'primary' : 'secondary'"
+                label
+                class="font-weight-black mb-1"
+              >
+                {{ item.confidence }}
+              </VChip>
+              <span v-if="item.match_reason" class="d-block text-caption text-disabled text-truncate" style="max-width: 170px;" :title="item.match_reason">
+                {{ item.match_reason }}
+              </span>
+            </div>
           </template>
 
           <!-- Acciones de Drill-Down -->
@@ -154,7 +172,7 @@ const handleOpenDetail = item => {
             <div class="d-flex flex-column align-center justify-center py-8">
               <VIcon icon="tabler-check-circle" size="40" color="success" class="mb-2 opacity-50" />
               <span class="text-body-2 text-medium-emphasis">
-                No se detectaron cruces de códigos directos en este periodo.
+                No se detectaron cruces de códigos confiables en este periodo.
               </span>
             </div>
           </template>
@@ -180,9 +198,12 @@ const handleOpenDetail = item => {
 
           <VRow dense>
             <VCol cols="12" sm="6">
-              <VCard variant="outlined" color="error" class="pa-3 rounded-lg">
+              <VCard variant="outlined" color="error" class="pa-3 rounded-lg h-100">
                 <span class="text-caption font-weight-bold text-error d-block mb-1">PRODUCTO EN FALTANTE</span>
-                <h5 class="text-body-2 font-weight-bold mb-2">{{ selectedRow.product_a }}</h5>
+                <h5 class="text-body-2 font-weight-bold mb-1">{{ selectedRow.product_a }}</h5>
+                <p v-if="selectedRow.active_ingredient_a" class="text-caption text-medium-emphasis mb-2">
+                  <strong>P. Activo:</strong> {{ selectedRow.active_ingredient_a }}
+                </p>
                 <VChip size="small" color="error" variant="flat">
                   Discrepancia: {{ selectedRow.discrepancy_a }}
                 </VChip>
@@ -190,9 +211,12 @@ const handleOpenDetail = item => {
             </VCol>
 
             <VCol cols="12" sm="6">
-              <VCard variant="outlined" color="success" class="pa-3 rounded-lg">
+              <VCard variant="outlined" color="success" class="pa-3 rounded-lg h-100">
                 <span class="text-caption font-weight-bold text-success d-block mb-1">PRODUCTO EN SOBRANTE</span>
-                <h5 class="text-body-2 font-weight-bold mb-2">{{ selectedRow.product_b }}</h5>
+                <h5 class="text-body-2 font-weight-bold mb-1">{{ selectedRow.product_b }}</h5>
+                <p v-if="selectedRow.active_ingredient_b" class="text-caption text-medium-emphasis mb-2">
+                  <strong>P. Activo:</strong> {{ selectedRow.active_ingredient_b }}
+                </p>
                 <VChip size="small" color="success" variant="flat">
                   Discrepancia: {{ selectedRow.discrepancy_b }}
                 </VChip>
@@ -200,8 +224,13 @@ const handleOpenDetail = item => {
             </VCol>
           </VRow>
 
+          <div v-if="selectedRow.match_reason" class="mt-4">
+            <span class="text-caption text-medium-emphasis font-weight-bold d-block">CRITERIOS DE COINCIDENCIA DETECTADOS:</span>
+            <span class="text-caption text-primary font-weight-medium">{{ selectedRow.match_reason }}</span>
+          </div>
+
           <VAlert type="info" variant="tonal" class="mt-4 text-caption" icon="tabler-info-circle">
-            Diagnóstico BI: La simetría en cantidades ({{ Math.abs(selectedRow.discrepancy_a) }} unid.) sugiere una entrega equivocada de SKU durante el despacho o venta en mostrador sin impacto neto negativo.
+            Diagnóstico BI: La simetría en cantidades ({{ Math.abs(selectedRow.discrepancy_a) }} unid.) combinada con los criterios químicos/operativos sugiere una entrega o registro equivocado de SKU en mostrador sin impacto financiero negativo real.
           </VAlert>
         </VCardText>
         <VDivider />
