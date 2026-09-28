@@ -1278,4 +1278,37 @@ class InventoryCycleActionService
             }
         });
     }
+
+    public function updateExemption($model, int $exemptQuantity, ?string $reason = null): array
+    {
+        return DB::transaction(function () use ($model, $exemptQuantity, $reason) {
+            try {
+                $maxExempt = abs((int) $model->discrepancy);
+                if ($exemptQuantity > $maxExempt) {
+                    $exemptQuantity = $maxExempt;
+                }
+                if ($exemptQuantity < 0) {
+                    $exemptQuantity = 0;
+                }
+
+                $model->exempt_quantity = $exemptQuantity;
+                $model->exemption_reason = $reason;
+                $model->exempted_by_id = Auth::id();
+                $model->save();
+
+                return [
+                    'success' => true,
+                    'message' => 'Exoneración actualizada correctamente.',
+                    'data' => $model
+                ];
+            } catch (\Exception $e) {
+                Log::error('Error en updateExemption', [
+                    'model_id' => $model->id,
+                    'exempt_quantity' => $exemptQuantity,
+                    'error' => $e->getMessage()
+                ]);
+                throw $e;
+            }
+        });
+    }
 }

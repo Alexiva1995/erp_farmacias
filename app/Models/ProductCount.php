@@ -21,12 +21,16 @@ class ProductCount extends Model
         'points_earned',
         'error_penalty_type',
         'penalty_points',
+        'exempt_quantity',
+        'exemption_reason',
+        'exempted_by_id',
     ];
 
     protected $casts = [
         'counted_quantity' => 'float',
         'system_quantity' => 'float',
         'discrepancy' => 'float',
+        'exempt_quantity' => 'integer',
         'quota_tier' => 'integer',
         'points_earned' => 'float',
         'penalty_points' => 'integer',

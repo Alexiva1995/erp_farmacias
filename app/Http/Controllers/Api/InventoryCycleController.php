@@ -23,6 +23,7 @@ use App\Http\Requests\InventoryCycle\StoreInvoiceCountRequest;
 use App\Http\Requests\InventoryCycle\StoreSaleCountRequest;
 use App\Http\Requests\InventoryCycle\ProcessCountActionRequest;
 use App\Http\Requests\InventoryCycle\UpdateDiscrepancyRequest;
+use App\Http\Requests\InventoryCycle\UpdateCountExemptionRequest;
 use App\Http\Requests\InventoryCycle\GetDailyQuotasMatrixRequest;
 use Exception;
 use Illuminate\Http\Request;
@@ -720,8 +721,8 @@ class InventoryCycleController extends Controller
         
         $totalsRaw = $totalsQuery
             ->select(DB::raw("
-                SUM(CASE WHEN (products.sale_price * discrepancies.discrepancy) > 0 THEN (products.sale_price * discrepancies.discrepancy) ELSE 0 END) as surplus,
-                SUM(CASE WHEN (products.sale_price * discrepancies.discrepancy) < 0 THEN ABS(products.sale_price * discrepancies.discrepancy) ELSE 0 END) as shortage
+                SUM(CASE WHEN discrepancies.discrepancy > 0 THEN products.sale_price * GREATEST(0, discrepancies.discrepancy - discrepancies.exempt_quantity) ELSE 0 END) as surplus,
+                SUM(CASE WHEN discrepancies.discrepancy < 0 THEN products.sale_price * GREATEST(0, ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) ELSE 0 END) as shortage
             "))
             ->first();
 
@@ -1024,7 +1025,7 @@ class InventoryCycleController extends Controller
         });
     }
 
-    public function updateDiscrepancy(Request $request, $sourceType, $id)
+    public function updateDiscrepancy(UpdateDiscrepancyRequest $request, $sourceType, $id)
     {
         // Solo administradores pueden editar discrepancias en el cierre
         if ((int) Auth::user()->role_id !== 1) {
@@ -1034,24 +1035,16 @@ class InventoryCycleController extends Controller
             ], 403);
         }
 
-        $request->validate([
-            'discrepancy' => 'required|numeric'
-        ]);
-
         try {
-            $modelClass = null;
-            switch ($sourceType) {
-                case 'product_count':
-                    $modelClass = \App\Models\ProductCount::class;
-                    break;
-                case 'invoice_count':
-                    $modelClass = \App\Models\InvoiceCount::class;
-                    break;
-                case 'sale_count':
-                    $modelClass = \App\Models\SaleCount::class;
-                    break;
-                default:
-                    return response()->json(['success' => false, 'message' => 'Tipo de fuente no válido.'], 400);
+            $modelClass = match ($sourceType) {
+                'product_count' => \App\Models\ProductCount::class,
+                'invoice_count' => \App\Models\InvoiceCount::class,
+                'sale_count'    => \App\Models\SaleCount::class,
+                default         => null,
+            };
+
+            if (!$modelClass) {
+                return response()->json(['success' => false, 'message' => 'Tipo de fuente no válido.'], 400);
             }
 
             $record = $modelClass::findOrFail($id);
@@ -1065,6 +1058,54 @@ class InventoryCycleController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error en updateDiscrepancy Controller', [
+                'sourceType' => $sourceType,
+                'id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateExemption(UpdateCountExemptionRequest $request, $sourceType, $id)
+    {
+        // Solo administradores pueden exonerar discrepancias en el cierre
+        if ((int) Auth::user()->role_id !== 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tiene permisos para realizar esta acción.'
+            ], 403);
+        }
+
+        try {
+            $modelClass = match ($sourceType) {
+                'product_count' => \App\Models\ProductCount::class,
+                'invoice_count' => \App\Models\InvoiceCount::class,
+                'sale_count'    => \App\Models\SaleCount::class,
+                default         => null,
+            };
+
+            if (!$modelClass) {
+                return response()->json(['success' => false, 'message' => 'Tipo de fuente no válido.'], 400);
+            }
+
+            $record = $modelClass::findOrFail($id);
+            $result = $this->inventoryCycleActionService->updateExemption(
+                $record,
+                (int) $request->input('exempt_quantity', 0),
+                $request->input('exemption_reason')
+            );
+
+            if ($result['success']) {
+                return response()->json($result);
+            } else {
+                return response()->json($result, 400);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error en updateExemption Controller', [
                 'sourceType' => $sourceType,
                 'id' => $id,
                 'error' => $e->getMessage()

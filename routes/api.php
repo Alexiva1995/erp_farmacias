@@ -358,6 +358,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::post('{count}/action', [InventoryCycleController::class, 'processCountAction']);
             Route::delete('{sourceType}/{id}', [InventoryCycleController::class, 'deleteCount']);
             Route::patch('{sourceType}/{id}/discrepancy', [InventoryCycleController::class, 'updateDiscrepancy']);
+            Route::patch('{sourceType}/{id}/exemption', [InventoryCycleController::class, 'updateExemption']);
         });
         Route::prefix("statistics")->group(function () {
             Route::get("/", [InventoryCycleController::class, "getCountStatistics"])->name("inventory.statistics");

@@ -125,18 +125,6 @@ onMounted(() => {
 
 <template>
   <VContainer fluid class="pa-0">
-    <!-- Encabezado de la Vista -->
-    <div class="d-flex flex-wrap align-center justify-space-between gap-4 mb-6">
-      <div>
-        <h3 class="text-h4 font-weight-bold mb-1">
-          BI - Inventario Cíclico
-        </h3>
-        <p class="text-body-2 text-medium-emphasis mb-0">
-          Control de precisión de inventario (ERI físico y valorizado), desviaciones y detección de cruces de productos.
-        </p>
-      </div>
-    </div>
-
     <!-- Barra de Filtros Estandarizada -->
     <CyclicFilterBar
       :filters="filters"

@@ -4,7 +4,7 @@ import AppEmptyState from "@/components/AppEmptyState.vue";
 import { useAbility } from "@casl/vue";
 import { formatDateSimple, formatPrice } from "@/utils/formatters";
 import { useBrandingStore } from "@/stores/useBrandingStore";
-import { ref, computed } from "vue";
+import { ref, reactive, computed } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 
@@ -31,13 +31,13 @@ const headers = computed(() => {
       sortable: true,
       align: "center",
       width: "80px",
-      cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
-      headerClass: 'd-none d-sm-table-cell',
+      cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+      headerClass: "d-none d-sm-table-cell",
     },
     { title: "Producto", key: "product.name", sortable: true, minWidth: "260px" },
     { title: "Fecha Arreglo", key: "processed_date", sortable: true, align: "center", width: "150px" },
-    { title: "Cantidad", key: "discrepancy", align: "center", sortable: true, width: "110px" },
-    { title: "Costo", key: "product.unit_cost", align: "end", sortable: true, width: "110px" },
+    { title: "Cantidad", key: "discrepancy", align: "center", sortable: true, width: "130px" },
+    { title: "Costo", key: "product.unit_cost", align: "end", sortable: true, width: "100px" },
     { title: "Usuario", key: "user.name", sortable: true, width: "140px" },
   ];
 
@@ -47,8 +47,8 @@ const headers = computed(() => {
   }
 
   list.push(
-    { title: "Monto", key: "amount", align: "end", sortable: true, width: "120px" },
-    { title: "Acciones", key: "actions", sortable: false, align: "center", width: "130px" }
+    { title: "Monto", key: "amount", align: "end", sortable: true, width: "130px" },
+    { title: "Acciones", key: "actions", sortable: false, align: "center", width: "150px" }
   );
   return list;
 });
@@ -56,6 +56,31 @@ const headers = computed(() => {
 const editingId = ref(null);
 const editingValue = ref(0);
 const isSaving = ref(false);
+
+// Estado de Exoneración
+const isExemptDialogOpen = ref(false);
+const selectedItemForExemption = ref(null);
+const isSavingExemption = ref(false);
+const exemptForm = reactive({
+  quantity: 0,
+  reason: "",
+});
+
+const getChargeableDiscrepancy = (item) => {
+  const disc = Number(item?.discrepancy || 0);
+  const exempt = Number(item?.exemptQuantity || 0);
+  if (disc > 0) {
+    return Math.max(0, disc - exempt);
+  } else if (disc < 0) {
+    return -Math.max(0, Math.abs(disc) - exempt);
+  }
+  return 0;
+};
+
+const getItemAmount = (item) => {
+  const chargeable = getChargeableDiscrepancy(item);
+  return (Number(item?.product?.sale_price) || 0) * chargeable;
+};
 
 const startEdit = (item) => {
   editingId.value = item.id;
@@ -91,6 +116,52 @@ const saveEdit = async (item) => {
   }
 };
 
+const openExemptDialog = (item) => {
+  selectedItemForExemption.value = item;
+  exemptForm.quantity = Number(item.exemptQuantity || 0);
+  exemptForm.reason = item.exemptionReason || "";
+  isExemptDialogOpen.value = true;
+};
+
+const closeExemptDialog = () => {
+  isExemptDialogOpen.value = false;
+  selectedItemForExemption.value = null;
+  exemptForm.quantity = 0;
+  exemptForm.reason = "";
+};
+
+const saveExemption = async () => {
+  if (!selectedItemForExemption.value || isSavingExemption.value) return;
+
+  const maxExempt = Math.abs(Number(selectedItemForExemption.value.discrepancy || 0));
+  if (exemptForm.quantity < 0 || exemptForm.quantity > maxExempt) {
+    toast.warning(`La cantidad exonerada debe estar entre 0 y ${maxExempt}.`);
+    return;
+  }
+
+  isSavingExemption.value = true;
+  try {
+    const item = selectedItemForExemption.value;
+    const response = await axios.patch(`/inventory/count/${item.sourceType}/${item.id}/exemption`, {
+      exempt_quantity: Number(exemptForm.quantity || 0),
+      exemption_reason: exemptForm.reason || null,
+    });
+
+    if (response.data.success) {
+      toast.success("Exoneración actualizada correctamente.");
+      closeExemptDialog();
+      emit("refresh");
+    } else {
+      toast.error(response.data.message || "Error al actualizar la exoneración.");
+    }
+  } catch (error) {
+    console.error("Error al guardar exoneración:", error);
+    toast.error(error.response?.data?.message || "Error al guardar los cambios.");
+  } finally {
+    isSavingExemption.value = false;
+  }
+};
+
 const handleDelete = (item) => {
   emit("delete", item);
 };
@@ -98,7 +169,7 @@ const handleDelete = (item) => {
 
 <template>
   <VCard class="rounded-lg border shadow-sm overflow-hidden">
-    <!-- Cabecera Estándar (igual a Productos / Inventario) -->
+    <!-- Cabecera Estándar -->
     <VCardTitle class="d-flex align-center pa-4">
       <span class="text-h6 font-weight-bold">Diferencias de Inventario para Cierre</span>
       <VSpacer />
@@ -184,7 +255,7 @@ const handleDelete = (item) => {
               @keyup.esc="cancelEdit"
             />
           </div>
-          <div v-else class="text-center">
+          <div v-else class="d-flex flex-column align-center justify-center gap-1">
             <VChip
               :color="item.discrepancy > 0 ? 'success' : 'error'"
               label
@@ -193,6 +264,19 @@ const handleDelete = (item) => {
               class="font-weight-black"
             >
               {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
+            </VChip>
+            <VChip
+              v-if="item.exemptQuantity > 0"
+              size="x-small"
+              color="info"
+              variant="flat"
+              class="text-super-xs font-weight-bold"
+            >
+              <VIcon start icon="tabler-shield-check" size="12" />
+              {{ item.exemptQuantity }} Exon.
+              <VTooltip v-if="item.exemptionReason" activator="parent" location="top">
+                Motivo: {{ item.exemptionReason }}
+              </VTooltip>
             </VChip>
           </div>
         </template>
@@ -216,16 +300,21 @@ const handleDelete = (item) => {
         </template>
 
         <template #item.amount="{ item }">
-          <span
-            :class="(editingId === item.id ? editingValue : item.discrepancy) > 0 ? 'text-success' : 'text-error'"
-            class="text-sm font-weight-black"
-          >
-            {{ formatPrice(item.product.sale_price * (editingId === item.id ? editingValue : item.discrepancy)) }}
-          </span>
+          <div class="d-flex flex-column align-end">
+            <span
+              :class="getChargeableDiscrepancy(item) > 0 ? 'text-success' : (getChargeableDiscrepancy(item) < 0 ? 'text-error' : 'text-disabled')"
+              class="text-sm font-weight-black"
+            >
+              {{ formatPrice(getItemAmount(item)) }}
+            </span>
+            <span v-if="item.exemptQuantity > 0 && Math.abs(item.discrepancy) === item.exemptQuantity" class="text-super-xs text-info font-weight-bold">
+              100% Exonerado
+            </span>
+          </div>
         </template>
 
         <template #item.actions="{ item }">
-          <div class="d-flex align-center justify-center gap-1 px-2">
+          <div class="d-flex align-center justify-center gap-1 px-1">
             <template v-if="editingId === item.id">
               <IconBtn color="success" size="small" :loading="isSaving" @click="saveEdit(item)">
                 <VIcon icon="tabler-check" size="18" />
@@ -249,7 +338,23 @@ const handleDelete = (item) => {
                 </template>
               </VTooltip>
 
-              <VTooltip v-if="can('manage', 'admin')" text="Editar cantidad" location="top">
+              <!-- Botón Exonerar unidades -->
+              <VTooltip v-if="can('manage', 'admin')" text="Exonerar unidades de cobro" location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <IconBtn
+                    v-bind="tooltipProps"
+                    :color="item.exemptQuantity > 0 ? 'info' : 'primary'"
+                    size="small"
+                    variant="tonal"
+                    @click="openExemptDialog(item)"
+                  >
+                    <VIcon icon="tabler-shield-check" size="18" />
+                  </IconBtn>
+                </template>
+              </VTooltip>
+
+              <!-- Botón Editar cantidad -->
+              <VTooltip v-if="can('manage', 'admin')" text="Editar cantidad física" location="top">
                 <template #activator="{ props: tooltipProps }">
                   <IconBtn
                     v-bind="tooltipProps"
@@ -262,6 +367,7 @@ const handleDelete = (item) => {
                 </template>
               </VTooltip>
 
+              <!-- Botón Eliminar registro -->
               <VTooltip v-if="!item.hasTraceability" text="Eliminar registro" location="top">
                 <template #activator="{ props: tooltipProps }">
                   <IconBtn
@@ -323,6 +429,15 @@ const handleDelete = (item) => {
                     />
                   </template>
                 </VTooltip>
+                <VChip
+                  v-if="item.exemptQuantity > 0"
+                  size="x-small"
+                  color="info"
+                  variant="flat"
+                  class="text-super-xs font-weight-bold"
+                >
+                  {{ item.exemptQuantity }} Exon.
+                </VChip>
               </div>
               <span class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight text-truncate mb-1">
                 {{ item.product.name }}
@@ -351,6 +466,16 @@ const handleDelete = (item) => {
                 </IconBtn>
               </template>
               <template v-else>
+                <IconBtn
+                  v-if="can('manage', 'admin')"
+                  variant="tonal"
+                  :color="item.exemptQuantity > 0 ? 'info' : 'primary'"
+                  size="small"
+                  @click="openExemptDialog(item)"
+                >
+                  <VIcon icon="tabler-shield-check" size="18" />
+                  <VTooltip activator="parent">Exonerar unidades</VTooltip>
+                </IconBtn>
                 <IconBtn
                   v-if="can('manage', 'admin')"
                   variant="tonal"
@@ -409,9 +534,9 @@ const handleDelete = (item) => {
               <span class="text-super-xs text-disabled text-uppercase font-weight-black">Monto Total</span>
               <span 
                 class="text-sm font-weight-black"
-                :class="(editingId === item.id ? editingValue : item.discrepancy) > 0 ? 'text-success' : 'text-error'"
+                :class="getChargeableDiscrepancy(item) > 0 ? 'text-success' : (getChargeableDiscrepancy(item) < 0 ? 'text-error' : 'text-disabled')"
               >
-                {{ formatPrice(item.product.sale_price * (editingId === item.id ? editingValue : item.discrepancy)) }}
+                {{ formatPrice(getItemAmount(item)) }}
               </span>
             </div>
           </div>
@@ -452,6 +577,118 @@ const handleDelete = (item) => {
       </div>
     </div>
   </VCard>
+
+  <!-- Modal Diálogo de Exoneración de Unidades -->
+  <VDialog
+    v-model="isExemptDialogOpen"
+    max-width="500"
+    persistent
+  >
+    <VCard v-if="selectedItemForExemption" class="rounded-lg shadow-lg">
+      <VCardTitle class="d-flex align-center justify-space-between pa-4 bg-var-theme-background">
+        <div class="d-flex align-center gap-2">
+          <VAvatar color="primary" variant="tonal" size="36" class="rounded">
+            <VIcon icon="tabler-shield-check" size="20" />
+          </VAvatar>
+          <span class="text-h6 font-weight-bold">Exonerar Unidades</span>
+        </div>
+        <IconBtn size="small" @click="closeExemptDialog">
+          <VIcon icon="tabler-x" size="20" />
+        </IconBtn>
+      </VCardTitle>
+
+      <VDivider />
+
+      <VCardText class="pa-4">
+        <!-- Información del Producto -->
+        <div class="mb-4 pa-3 rounded-lg border bg-surface">
+          <div class="text-xs text-disabled text-uppercase font-weight-bold mb-1">Producto</div>
+          <div class="text-sm font-weight-black text-high-emphasis text-uppercase mb-1">
+            {{ selectedItemForExemption.product.name }}
+          </div>
+          <div class="d-flex align-center justify-space-between text-xs mt-2 pt-2 border-t">
+            <span>Discrepancia física: 
+              <strong :class="selectedItemForExemption.discrepancy > 0 ? 'text-success' : 'text-error'">
+                {{ selectedItemForExemption.discrepancy > 0 ? `+${selectedItemForExemption.discrepancy}` : selectedItemForExemption.discrepancy }} unidades
+              </strong>
+            </span>
+            <span>Precio venta: <strong>{{ formatPrice(selectedItemForExemption.product.sale_price) }}</strong></span>
+          </div>
+        </div>
+
+        <!-- Formulario de Unidades y Motivo -->
+        <VRow dense>
+          <VCol cols="12">
+            <AppTextField
+              v-model.number="exemptForm.quantity"
+              type="number"
+              label="Unidades a exonerar"
+              placeholder="0"
+              min="0"
+              :max="Math.abs(selectedItemForExemption.discrepancy)"
+              density="compact"
+              hint="Indica cuántas unidades no se cobrarán ni descontarán en dinero."
+              persistent-hint
+              autofocus
+            />
+          </VCol>
+
+          <VCol cols="12" class="mt-3">
+            <AppTextField
+              v-model="exemptForm.reason"
+              label="Motivo / Observación (Opcional)"
+              placeholder="Ej: Merma autorizada, rotura en transporte..."
+              density="compact"
+            />
+          </VCol>
+        </VRow>
+
+        <!-- Resumen del Impacto Financiero -->
+        <div class="mt-4 pa-3 rounded-lg border bg-var-theme-background">
+          <div class="text-xs font-weight-black text-uppercase text-disabled mb-2">Resumen de Impacto</div>
+          <div class="d-flex align-center justify-space-between text-xs mb-1">
+            <span>Unidades a descontar/cobrar en dinero:</span>
+            <strong class="text-high-emphasis">
+              {{ Math.max(0, Math.abs(selectedItemForExemption.discrepancy) - (exemptForm.quantity || 0)) }} un.
+            </strong>
+          </div>
+          <div class="d-flex align-center justify-space-between text-xs mb-1">
+            <span>Monto a cobrar/descontar resultante:</span>
+            <strong :class="Math.max(0, Math.abs(selectedItemForExemption.discrepancy) - (exemptForm.quantity || 0)) > 0 ? 'text-error' : 'text-success'">
+              {{ formatPrice((selectedItemForExemption.product.sale_price || 0) * (selectedItemForExemption.discrepancy > 0 ? Math.max(0, selectedItemForExemption.discrepancy - (exemptForm.quantity || 0)) : -Math.max(0, Math.abs(selectedItemForExemption.discrepancy) - (exemptForm.quantity || 0)))) }}
+            </strong>
+          </div>
+          <div class="d-flex align-center justify-space-between text-xs">
+            <span>Stock físico ajustado en inventario:</span>
+            <strong class="text-primary">
+              {{ selectedItemForExemption.discrepancy > 0 ? `+${selectedItemForExemption.discrepancy}` : selectedItemForExemption.discrepancy }} un. (Sin alterar)
+            </strong>
+          </div>
+        </div>
+      </VCardText>
+
+      <VDivider />
+
+      <VCardActions class="pa-4 d-flex justify-end gap-2">
+        <VBtn
+          variant="outlined"
+          color="secondary"
+          :disabled="isSavingExemption"
+          @click="closeExemptDialog"
+        >
+          Cancelar
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="elevated"
+          :loading="isSavingExemption"
+          @click="saveExemption"
+        >
+          Guardar Exoneración
+        </VBtn>
+      </VCardActions>
+    </VCard>
+  </VDialog>
 </template>
 
 <style scoped>
@@ -471,6 +708,7 @@ const handleDelete = (item) => {
 
 .mt-0-5 {
   margin-top: 2px !important;
+  padding-top: 2px !important;
 }
 
 .bg-var-theme-background {

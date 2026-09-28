@@ -76,6 +76,8 @@ const fetchData = async () => {
       },
       sourceType: item.source_type,
       hasTraceability: Number(item.has_traceability) === 1,
+      exemptQuantity: Number(item.exempt_quantity || 0),
+      exemptionReason: item.exemption_reason || null,
     }));
     totalCounts.value = response.data.total || 0;
     

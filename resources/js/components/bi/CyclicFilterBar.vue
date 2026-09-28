@@ -165,27 +165,35 @@ const selectedCategoryName = computed(() => {
         <VSpacer />
 
         <!-- Acciones de Filtrado y Exportación -->
-        <VCol cols="12" sm="6" md="auto" class="d-flex align-center gap-2 justify-end flex-wrap">
+        <VCol cols="12" sm="6" md="auto" class="d-flex align-center gap-1 justify-end flex-wrap">
           <VBtn
-            variant="flat"
+            icon
+            variant="tonal"
             color="primary"
-            prepend-icon="tabler-filter"
+            size="38"
+            rounded="circle"
             :loading="loading"
             :disabled="loading"
             @click="emit('apply')"
           >
-            Filtrar
+            <VIcon icon="tabler-player-play" size="20" />
+            <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
           </VBtn>
 
           <VBtn
-            variant="outlined"
+            icon
+            variant="tonal"
             color="secondary"
-            prepend-icon="tabler-eraser"
+            size="38"
+            rounded="circle"
             :disabled="loading"
             @click="emit('clear')"
           >
-            Limpiar
+            <VIcon icon="tabler-eraser" size="20" />
+            <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
+
+          <VDivider vertical class="mx-1 my-2 border-opacity-10" />
 
           <VBtn
             icon
@@ -196,7 +204,7 @@ const selectedCategoryName = computed(() => {
             :disabled="loading"
             @click="emit('export-pdf')"
           >
-            <VIcon icon="tabler-file-type-pdf" />
+            <VIcon icon="tabler-file-type-pdf" size="20" />
             <VTooltip activator="parent" location="top">Exportar Reporte PDF</VTooltip>
           </VBtn>
 
@@ -209,7 +217,7 @@ const selectedCategoryName = computed(() => {
             :disabled="loading"
             @click="emit('export-excel')"
           >
-            <VIcon icon="tabler-file-spreadsheet" />
+            <VIcon icon="tabler-file-spreadsheet" size="20" />
             <VTooltip activator="parent" location="top">Exportar Cruces (CSV)</VTooltip>
           </VBtn>
         </VCol>
