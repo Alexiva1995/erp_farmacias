@@ -4,6 +4,10 @@ const props = defineProps({
     type: Array,
     required: true
   },
+  canEdit: {
+    type: Boolean,
+    default: true
+  },
   isSaving: {
     type: Boolean,
     default: false
@@ -13,35 +17,41 @@ const props = defineProps({
 const emit = defineEmits(['toggle'])
 
 const availableOfferOptions = [
-  { key: 'general', title: 'Oferta General (% Descuento)', icon: 'tabler-percentage' },
-  { key: 'individual', title: 'Oferta Individual (por Producto)', icon: 'tabler-package' },
-  { key: 'category', title: 'Oferta por Categoría', icon: 'tabler-category' },
-  { key: 'pack', title: 'Oferta Combos / Packs', icon: 'tabler-packages' },
-  { key: 'company', title: 'Oferta por Convenio', icon: 'tabler-building' },
-  { key: 'doctor', title: 'Oferta por Médico', icon: 'tabler-stethoscope' },
-  { key: 'prescription', title: 'Oferta por Receta / Récipe', icon: 'tabler-file-text' },
-  { key: 'expiration', title: 'Oferta por Caducidad', icon: 'tabler-calendar-time' },
+  { key: 'general', title: 'Oferta General (% Descuento)', icon: 'tabler-percentage', description: 'Descuento porcentual aplicable al total o base de la venta.' },
+  { key: 'individual', title: 'Oferta Individual (por Producto)', icon: 'tabler-package', description: 'Precios especiales asignados por código o ítem específico.' },
+  { key: 'category', title: 'Oferta por Categoría', icon: 'tabler-category', description: 'Promociones directas por línea o familia de artículos.' },
+  { key: 'pack', title: 'Oferta Combos / Packs', icon: 'tabler-packages', description: 'Empaquetado de productos con tarifa promocional fija.' },
+  { key: 'company', title: 'Oferta por Convenio', icon: 'tabler-building', description: 'Descuentos acordados con aseguradoras y empresas corporativas.' },
+  { key: 'doctor', title: 'Oferta por Médico', icon: 'tabler-stethoscope', description: 'Bonificaciones e incentivos según especialista prescriptor.' },
+  { key: 'prescription', title: 'Oferta por Receta / Récipe', icon: 'tabler-file-text', description: 'Condiciones especiales ligadas a prescripción médica física o digital.' },
+  { key: 'expiration', title: 'Oferta por Caducidad', icon: 'tabler-calendar-time', description: 'Liquidación de lotes con fecha próxima de vencimiento.' },
 ]
 
 const handleToggle = (key) => {
-  if (props.isSaving) return
+  if (!props.canEdit || props.isSaving) return
   emit('toggle', key)
 }
 </script>
 
 <template>
   <VCard class="mb-6 rounded-lg border shadow-sm">
-    <VCardItem class="py-5">
-      <!-- Encabezado Principal Estandarizado -->
-      <VCardTitle class="text-h5 font-weight-black text-uppercase d-flex align-center gap-2 mb-2">
-        <VIcon icon="tabler-tags" color="primary" size="28" />
-        Tipos de Ofertas y Promociones Habilitadas
-      </VCardTitle>
-      <p class="text-caption text-medium-emphasis mb-6">
-        Selecciona las promociones que estarán activas en el Punto de Venta (TPV) y el catálogo.
-      </p>
+    <VCardItem class="px-6 py-5">
+      <!-- Encabezado Estandarizado -->
+      <div class="d-flex align-center gap-3 mb-2">
+        <VAvatar color="primary" variant="tonal" size="36" class="rounded-lg">
+          <VIcon icon="tabler-tags" size="22" />
+        </VAvatar>
+        <div>
+          <VCardTitle class="text-h6 font-weight-bold mb-0">
+            Tipos de Ofertas y Promociones Habilitadas
+          </VCardTitle>
+          <VCardSubtitle class="text-body-2 text-medium-emphasis">
+            Selecciona qué esquemas de descuentos y promociones estarán disponibles en el TPV y caja rápida.
+          </VCardSubtitle>
+        </div>
+      </div>
 
-      <VDivider class="mb-6" />
+      <VDivider class="my-4" />
 
       <VRow>
         <VCol
@@ -53,44 +63,46 @@ const handleToggle = (key) => {
         >
           <VCard
             variant="outlined"
-            class="rounded-lg cursor-pointer transition-all h-100 offer-option-card"
+            class="rounded-lg transition-all h-100 pa-4 d-flex flex-column justify-space-between cursor-pointer"
             :class="[
               enabledOfferTypes.includes(offer.key)
-                ? 'is-active border-primary'
-                : 'border-color-light opacity-70',
-              { 'is-disabled pointer-events-none opacity-50': isSaving }
+                ? 'border-primary bg-var-theme-background'
+                : 'opacity-75',
+              { 'pointer-events-none opacity-50': !canEdit || isSaving }
             ]"
             @click="handleToggle(offer.key)"
           >
-            <VCardItem class="py-3 px-4">
-              <div class="d-flex align-center justify-space-between w-100">
-                <div class="d-flex align-center me-2">
-                  <VAvatar
-                    :color="enabledOfferTypes.includes(offer.key) ? 'primary' : 'secondary'"
-                    variant="tonal"
-                    size="32"
-                    class="me-2 rounded-lg"
-                  >
-                    <VIcon :icon="offer.icon" size="18" />
-                  </VAvatar>
-                  <span
-                    class="font-weight-black text-body-2 leading-tight"
-                    :class="enabledOfferTypes.includes(offer.key) ? 'text-high-emphasis' : 'text-disabled'"
-                  >
-                    {{ offer.title }}
-                  </span>
-                </div>
+            <div>
+              <div class="d-flex align-center justify-space-between mb-3">
+                <VAvatar
+                  :color="enabledOfferTypes.includes(offer.key) ? 'primary' : 'secondary'"
+                  variant="tonal"
+                  size="36"
+                  class="rounded-lg"
+                >
+                  <VIcon :icon="offer.icon" size="20" />
+                </VAvatar>
                 <VSwitch
                   :model-value="enabledOfferTypes.includes(offer.key)"
-                  density="compact"
-                  hide-details
+                  density="comfortable"
+                  hide-details="auto"
                   color="primary"
-                  :disabled="isSaving"
+                  :disabled="!canEdit || isSaving"
                   @click.stop
-                  @update:model-value="handleToggle(offer.key)"
+                  @update:model-value="() => handleToggle(offer.key)"
                 />
               </div>
-            </VCardItem>
+
+              <h4
+                class="text-subtitle-2 font-weight-bold mb-1"
+                :class="enabledOfferTypes.includes(offer.key) ? 'text-high-emphasis' : 'text-medium-emphasis'"
+              >
+                {{ offer.title }}
+              </h4>
+              <p class="text-caption text-medium-emphasis mb-0">
+                {{ offer.description }}
+              </p>
+            </div>
           </VCard>
         </VCol>
       </VRow>
@@ -98,22 +110,3 @@ const handleToggle = (key) => {
   </VCard>
 </template>
 
-<style scoped>
-.offer-option-card {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  border-width: 1.5px !important;
-}
-
-.offer-option-card:hover:not(.is-disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px -4px rgba(var(--v-theme-primary), 0.15) !important;
-}
-
-.offer-option-card.is-active {
-  background-color: rgba(var(--v-theme-primary), 0.03) !important;
-}
-
-.border-color-light {
-  border-color: rgba(var(--v-border-color), var(--v-border-opacity)) !important;
-}
-</style>

@@ -1,8 +1,14 @@
 <script setup>
+import { confirmDialog } from '@/plugins/sweetalert'
+
 const props = defineProps({
   paymentMethods: {
     type: Object,
     required: true
+  },
+  canEdit: {
+    type: Boolean,
+    default: true
   },
   isSaving: {
     type: Boolean,
@@ -10,26 +16,59 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['change'])
+const emit = defineEmits(['update:paymentMethods'])
 
-const handleChange = () => {
-  emit('change')
+const handleCurrencyToggle = async (currency, currentValue) => {
+  if (!props.canEdit || props.isSaving) return
+
+  // Si se está desactivando una moneda activa
+  if (currentValue) {
+    const isConfirmed = await confirmDialog({
+      title: `¿Desactivar cobros en ${currency}?`,
+      text: `Los cajeros no podrán seleccionar métodos de pago en ${currency} durante la venta en TPV.`,
+      icon: 'warning',
+      confirmButtonText: 'Sí, desactivar',
+      cancelButtonText: 'Cancelar'
+    })
+
+    if (!isConfirmed) return
+  }
+
+  props.paymentMethods[currency].enabled = !currentValue
+  emit('update:paymentMethods', props.paymentMethods)
+}
+
+const handleMethodToggle = (currency, methodIndex) => {
+  if (!props.canEdit || props.isSaving) return
+  const method = props.paymentMethods[currency].methods[methodIndex]
+  method.enabled = !method.enabled
+  emit('update:paymentMethods', props.paymentMethods)
+}
+
+const toggleDescription = (method) => {
+  method.showDescription = !method.showDescription
 }
 </script>
 
 <template>
   <VCard class="mb-6 rounded-lg border shadow-sm">
-    <VCardItem class="py-5">
-      <!-- Encabezado Principal Estandarizado -->
-      <VCardTitle class="text-h5 font-weight-black text-uppercase d-flex align-center gap-2 mb-2">
-        <VIcon icon="tabler-currency-dollar" color="primary" size="28" />
-        Monedas y Métodos de Pago Habilitados
-      </VCardTitle>
-      <p class="text-caption text-medium-emphasis mb-6">
-        Define qué métodos de pago estarán activos en el Punto de Venta según la moneda de cobro.
-      </p>
+    <VCardItem class="px-6 py-5">
+      <!-- Encabezado Estandarizado -->
+      <div class="d-flex align-center gap-3 mb-2">
+        <VAvatar color="primary" variant="tonal" size="36" class="rounded-lg">
+          <VIcon icon="tabler-currency-dollar" size="22" />
+        </VAvatar>
+        <div>
+          <VCardTitle class="text-h6 font-weight-bold mb-0">
+            Monedas y Métodos de Pago Habilitados
+          </VCardTitle>
+          <VCardSubtitle class="text-body-2 text-medium-emphasis">
+            Define los canales de recepción activos en el Punto de Venta según la divisa seleccionada en caja.
+          </VCardSubtitle>
+        </div>
+      </div>
 
-      <VDivider class="mb-6" />
+      <VDivider class="my-4" />
 
       <VRow>
         <VCol
@@ -40,88 +79,105 @@ const handleChange = () => {
         >
           <VCard
             variant="outlined"
-            class="rounded-lg transition-all"
-            :class="{ 'border-primary border-opacity-60': currencyData.enabled }"
-            :style="{ opacity: currencyData.enabled ? 1 : 0.6 }"
+            class="rounded-lg h-100 d-flex flex-column"
+            :class="currencyData.enabled ? 'border-primary' : 'opacity-75'"
           >
-            <VCardItem class="bg-var-theme-background py-3">
+            <!-- Cabecera de la moneda -->
+            <VCardItem class="bg-var-theme-background py-3 px-4">
               <div class="d-flex align-center justify-space-between w-100">
-                <VCardTitle class="text-subtitle-1 font-weight-black d-flex align-center">
-                  <VIcon icon="tabler-coin" class="me-2 text-primary" size="20" />
-                  Cobros en {{ currency }}
-                </VCardTitle>
+                <div class="d-flex align-center gap-2">
+                  <VAvatar
+                    :color="currencyData.enabled ? 'primary' : 'secondary'"
+                    variant="tonal"
+                    size="32"
+                    class="rounded-lg"
+                  >
+                    <VIcon icon="tabler-coin" size="18" />
+                  </VAvatar>
+                  <div>
+                    <span class="text-subtitle-2 font-weight-bold d-block">Cobros en {{ currency }}</span>
+                    <VChip
+                      :color="currencyData.enabled ? 'primary' : 'secondary'"
+                      size="x-small"
+                      variant="tonal"
+                      class="font-weight-bold"
+                    >
+                      {{ currencyData.enabled ? 'Activa' : 'Inactiva' }}
+                    </VChip>
+                  </div>
+                </div>
+
                 <VSwitch
-                  v-model="currencyData.enabled"
-                  density="compact"
-                  hide-details
+                  :model-value="currencyData.enabled"
+                  density="comfortable"
+                  hide-details="auto"
                   color="primary"
-                  :disabled="isSaving"
-                  @update:model-value="handleChange"
+                  :disabled="!canEdit || isSaving"
+                  @update:model-value="() => handleCurrencyToggle(currency, currencyData.enabled)"
                 />
               </div>
             </VCardItem>
+
             <VDivider />
-            <VCardText class="py-3">
-              <div v-if="!currencyData.enabled" class="text-caption text-disabled py-6 text-center">
-                Moneda Desactivada
+
+            <!-- Métodos asociados -->
+            <VCardText class="py-3 px-4 flex-grow-1">
+              <div v-if="!currencyData.enabled" class="text-caption text-medium-emphasis py-6 text-center">
+                <VIcon icon="tabler-ban" size="24" class="d-block mx-auto mb-1 text-disabled" />
+                Moneda desactivada para cobros en TPV
               </div>
-              <div v-else-if="!currencyData.methods || currencyData.methods.length === 0" class="text-caption text-disabled py-4 text-center">
+
+              <div v-else-if="!currencyData.methods || currencyData.methods.length === 0" class="text-caption text-medium-emphasis py-4 text-center">
                 Sin métodos de pago configurados
               </div>
-              <div v-else>
+
+              <div v-else class="d-flex flex-column gap-3">
                 <div
                   v-for="(method, index) in currencyData.methods"
                   :key="index"
-                  class="py-2 border-bottom-dashed"
+                  class="pa-3 rounded-lg border bg-surface"
                 >
-                  <div class="d-flex align-center justify-space-between mb-1">
-                    <div class="d-flex align-center">
-                      <span class="font-weight-bold text-body-2 me-1">{{ method.label }}</span>
+                  <div class="d-flex align-center justify-space-between">
+                    <div class="d-flex align-center gap-2">
+                      <span class="font-weight-medium text-body-2">{{ method.label }}</span>
                       <VBtn
                         icon="tabler-pencil"
                         variant="text"
                         size="x-small"
                         color="primary"
-                        title="Editar instrucciones de pago"
-                        :disabled="!currencyData.enabled || !method.enabled || isSaving"
-                        @click="method.showDescription = !method.showDescription"
+                        title="Instrucciones de pago para cajeros"
+                        :disabled="!canEdit || isSaving"
+                        @click="toggleDescription(method)"
                       />
                     </div>
                     <VSwitch
-                      v-model="method.enabled"
-                      density="compact"
-                      hide-details
-                      color="success"
-                      :disabled="!currencyData.enabled || isSaving"
-                      @update:model-value="handleChange"
+                      :model-value="method.enabled"
+                      density="comfortable"
+                      hide-details="auto"
+                      color="primary"
+                      :disabled="!canEdit || isSaving"
+                      @update:model-value="() => handleMethodToggle(currency, index)"
                     />
                   </div>
-                  <div v-if="method.showDescription" class="mt-2">
-                    <div class="d-flex align-center gap-2">
+
+                  <!-- Campo de instrucciones -->
+                  <VExpandTransition>
+                    <div v-if="method.showDescription" class="mt-2 pt-2 border-t">
+                      <label class="text-caption text-medium-emphasis d-block mb-1">
+                        Instrucciones en pantalla para {{ method.label }}:
+                      </label>
                       <VTextarea
                         v-model="method.description"
-                        :placeholder="`Instrucciones para pago con ${method.label}...`"
-                        density="compact"
+                        :placeholder="`Datos bancarios, pasos o requerimientos para ${method.label}...`"
                         variant="outlined"
+                        density="comfortable"
                         rows="2"
                         auto-grow
-                        hide-details
-                        :disabled="!currencyData.enabled || !method.enabled || isSaving"
-                        class="text-caption flex-grow-1"
-                        style="font-size: 11px;"
-                      />
-                      <VBtn
-                        icon="tabler-device-floppy"
-                        color="success"
-                        size="small"
-                        variant="flat"
-                        class="rounded-lg flex-shrink-0"
-                        title="Guardar instrucciones de pago"
-                        :disabled="!currencyData.enabled || !method.enabled || isSaving"
-                        @click="handleChange"
+                        hide-details="auto"
+                        :disabled="!canEdit || isSaving"
                       />
                     </div>
-                  </div>
+                  </VExpandTransition>
                 </div>
               </div>
             </VCardText>
@@ -132,8 +188,3 @@ const handleChange = () => {
   </VCard>
 </template>
 
-<style scoped>
-.border-bottom-dashed:not(:last-child) {
-  border-block-end: 1px dashed rgba(var(--v-border-color), 0.12);
-}
-</style>
