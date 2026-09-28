@@ -52,7 +52,7 @@ const monetaryChartOptions = computed(() => ({
     bar: {
       borderRadius: 4,
       horizontal: true,
-      barHeight: '70%',
+      barHeight: '65%',
       distributed: true,
     },
   },
@@ -60,7 +60,7 @@ const monetaryChartOptions = computed(() => ({
   dataLabels: {
     enabled: true,
     style: { fontSize: '11px', fontWeight: 700, colors: ['#fff'] },
-    formatter: (val) => val,
+    formatter: (val) => `${val} tks`,
   },
   xaxis: {
     categories: props.segmentation.monetary?.labels?.map((l) => `$ ${l}`) || [],
@@ -74,14 +74,20 @@ const monetaryChartOptions = computed(() => ({
     strokeDashArray: 4,
   },
   legend: { show: false },
-  tooltip: { theme: 'dark' },
+  tooltip: {
+    theme: 'dark',
+    y: {
+      formatter: (val) => `${val} tickets`,
+    },
+  },
 }));
 </script>
 
 <template>
   <VRow dense class="mb-6">
+    <!-- Segmentación por Unidades en Canasta -->
     <VCol cols="12" md="7">
-      <VCard variant="outlined" class="rounded-lg shadow-sm h-100">
+      <VCard variant="outlined" class="rounded-lg h-100">
         <VCardItem class="py-3 border-b">
           <template #prepend>
             <VAvatar color="primary" variant="tonal" size="32" class="me-2 rounded">
@@ -89,7 +95,7 @@ const monetaryChartOptions = computed(() => ({
             </VAvatar>
           </template>
           <VCardTitle class="text-subtitle-2 font-weight-bold text-uppercase">
-            Segmentación por Volumen (Unidades)
+            Profundidad de Canasta (Unidades por Venta)
           </VCardTitle>
         </VCardItem>
         <VRow no-gutters class="pa-4 align-center">
@@ -117,8 +123,9 @@ const monetaryChartOptions = computed(() => ({
       </VCard>
     </VCol>
 
+    <!-- Tipología por Valor Monetario -->
     <VCol cols="12" md="5">
-      <VCard variant="outlined" class="rounded-lg shadow-sm h-100">
+      <VCard variant="outlined" class="rounded-lg h-100">
         <VCardItem class="py-3 border-b">
           <template #prepend>
             <VAvatar color="success" variant="tonal" size="32" class="me-2 rounded">
@@ -126,7 +133,7 @@ const monetaryChartOptions = computed(() => ({
             </VAvatar>
           </template>
           <VCardTitle class="text-subtitle-2 font-weight-bold text-uppercase">
-            Tipología por Valor del Ticket
+            Estratificación por Monto de Ticket ($)
           </VCardTitle>
         </VCardItem>
         <VCardText class="pa-4">
@@ -138,9 +145,9 @@ const monetaryChartOptions = computed(() => ({
                 <VIcon icon="tabler-trending-up" size="16" color="white" />
               </VAvatar>
               <div>
-                <div class="text-caption font-weight-bold text-uppercase">Oportunidad de Venta Cruzada</div>
+                <div class="text-caption font-weight-bold text-uppercase">Potencial de Venta Cruzada en Caja</div>
                 <div class="text-caption text-medium-emphasis">
-                  Un incremento al 40% en esta métrica generaría un ingreso adicional estimado de {{ formatCurrency((kpis.total_revenue || 0) * 0.15) }}.
+                  Impulsar artículos complementarios para elevar el ticket promedio podría representar hasta {{ formatCurrency((kpis.total_revenue || 0) * 0.12) }} de incremento en el periodo.
                 </div>
               </div>
             </div>

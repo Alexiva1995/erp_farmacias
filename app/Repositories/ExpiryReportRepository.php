@@ -53,7 +53,7 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
             ->where('products.is_deleted', false)
             ->groupBy('month')
             ->orderBy('month', 'desc')
-            ->limit(6);
+            ->limit(12);
 
         // Filtro directo sobre el JOIN — sin subconsulta correlacionada
         if (!empty($filters['laboratory_id'])) {

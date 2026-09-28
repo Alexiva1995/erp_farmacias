@@ -1,12 +1,15 @@
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import axios from '@/plugins/axios';
 import { toast } from '@/plugins/sweetalert';
+import dayjs from 'dayjs';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export function useLaboratoryReport() {
   const loading = ref(false);
   const groupByCorporate = ref(false);
-  const startDate = ref('2026-04-01');
-  const endDate = ref(new Date().toISOString().split('T')[0]);
+  const startDate = ref(dayjs().startOf('month').format('YYYY-MM-DD'));
+  const endDate = ref(dayjs().format('YYYY-MM-DD'));
 
   // Catálogo de laboratorios
   const laboratories = ref([]);
@@ -21,6 +24,29 @@ export function useLaboratoryReport() {
     trends: [],
     stock_on_hand: [],
     profitability: []
+  });
+
+  // Métricas ejecutivas resumidas (Scorecards)
+  const summaryKpis = computed(() => {
+    const revenueList = dashboardData.rankings.by_revenue?.data || [];
+    const unitsList = dashboardData.rankings.by_units?.data || [];
+    const stockList = dashboardData.stock_on_hand || [];
+    const profitList = dashboardData.profitability || [];
+
+    const totalRevenue = revenueList.reduce((acc, curr) => acc + (parseFloat(curr.total_revenue) || 0), 0);
+    const totalUnits = unitsList.reduce((acc, curr) => acc + (parseFloat(curr.total_units) || 0), 0);
+    const totalStockValue = stockList.reduce((acc, curr) => acc + (parseFloat(curr.inventory_value) || 0), 0);
+    
+    const avgMargin = profitList.length 
+      ? profitList.reduce((acc, curr) => acc + (parseFloat(curr.margin_percent) || 0), 0) / profitList.length 
+      : 0;
+
+    return {
+      totalRevenue,
+      totalUnits,
+      totalStockValue,
+      avgMargin
+    };
   });
 
   // Paginación y estados de rankings
@@ -186,6 +212,97 @@ export function useLaboratoryReport() {
     benchmarkingData.shared_groups = [];
   };
 
+  // Exportación a PDF (Resumen Ejecutivo)
+  const exportExecutivePdf = (formatCurrencyFn) => {
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const format = formatCurrencyFn || ((v) => `$${Number(v || 0).toFixed(2)}`);
+
+      // Encabezado
+      doc.setFillColor(226, 0, 116);
+      doc.rect(0, 0, 210, 20, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('REPORTE EJECUTIVO DE INTELIGENCIA DE LABORATORIOS', 14, 13);
+
+      doc.setTextColor(50, 50, 50);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Período: ${startDate.value} al ${endDate.value} | Agrupación: ${groupByCorporate.value ? 'Corporativa' : 'Individual'}`, 14, 28);
+      doc.text(`Generado: ${dayjs().format('DD/MM/YYYY HH:mm')}`, 14, 33);
+
+      // Tabla de Top Venta Bruta
+      const revenueRows = (dashboardData.rankings.by_revenue?.data || []).map((item, idx) => [
+        idx + 1,
+        item.name || 'N/A',
+        format(item.total_revenue || 0)
+      ]);
+
+      autoTable(doc, {
+        startY: 38,
+        head: [['#', 'Laboratorio (Top Facturación)', 'Venta Bruta (USD)']],
+        body: revenueRows.length ? revenueRows : [['-', 'Sin datos', '-']],
+        theme: 'striped',
+        headStyles: { fillColor: [226, 0, 116], textColor: [255, 255, 255] },
+        styles: { fontSize: 8 }
+      });
+
+      // Tabla de Top Unidades
+      const unitsRows = (dashboardData.rankings.by_units?.data || []).map((item, idx) => [
+        idx + 1,
+        item.name || 'N/A',
+        Math.round(item.total_units || 0).toLocaleString()
+      ]);
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 10,
+        head: [['#', 'Laboratorio (Top Volumen)', 'Unidades Vendidas']],
+        body: unitsRows.length ? unitsRows : [['-', 'Sin datos', '-']],
+        theme: 'striped',
+        headStyles: { fillColor: [40, 199, 111], textColor: [255, 255, 255] },
+        styles: { fontSize: 8 }
+      });
+
+      doc.save(`reporte-laboratorios-${startDate.value}_${endDate.value}.pdf`);
+      toast.success('Reporte PDF descargado exitosamente');
+    } catch (err) {
+      console.error('Error al exportar PDF:', err);
+      toast.error('Error al generar PDF');
+    }
+  };
+
+  // Exportación a CSV
+  const exportExecutiveCsv = () => {
+    try {
+      const revenueList = dashboardData.rankings.by_revenue?.data || [];
+      if (!revenueList.length) {
+        toast.info('No hay datos para exportar');
+        return;
+      }
+
+      let csv = 'Posición,Laboratorio,Venta Bruta USD,Unidades Vendidas\n';
+      revenueList.forEach((item, index) => {
+        const unitsMatch = (dashboardData.rankings.by_units?.data || []).find(u => u.name === item.name);
+        const units = unitsMatch ? unitsMatch.total_units : 0;
+        csv += `${index + 1},"${item.name.replace(/"/g, '""')}",${item.total_revenue || 0},${units}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `reporte-laboratorios-${startDate.value}_${endDate.value}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Reporte CSV descargado exitosamente');
+    } catch (err) {
+      console.error('Error al exportar CSV:', err);
+      toast.error('Error al exportar CSV');
+    }
+  };
+
   return {
     loading,
     groupByCorporate,
@@ -193,6 +310,7 @@ export function useLaboratoryReport() {
     endDate,
     laboratories,
     dashboardData,
+    summaryKpis,
     pageUnits,
     pageRevenue,
     pageStock,
@@ -211,6 +329,8 @@ export function useLaboratoryReport() {
     fetchRankings,
     fetchBenchmarking,
     fetchDeepDive,
-    resetComparisons
+    resetComparisons,
+    exportExecutivePdf,
+    exportExecutiveCsv
   };
 }

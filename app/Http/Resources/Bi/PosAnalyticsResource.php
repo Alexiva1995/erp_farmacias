@@ -27,8 +27,16 @@ class PosAnalyticsResource extends JsonResource
                 'total_revenue' => (float) ($this->resource['kpis']['total_revenue'] ?? 0.0),
                 'cross_selling_count' => (int) ($this->resource['kpis']['cross_selling_count'] ?? 0),
                 'cross_selling_rate' => (float) ($this->resource['kpis']['cross_selling_rate'] ?? 0.0),
+                'total_units' => (float) ($this->resource['kpis']['total_units'] ?? 0.0),
+                'units_per_transaction' => (float) ($this->resource['kpis']['units_per_transaction'] ?? 0.0),
+                'discount_total' => (float) ($this->resource['kpis']['discount_total'] ?? 0.0),
+                'operational_days' => (int) ($this->resource['kpis']['operational_days'] ?? 0),
             ],
             'charts' => [
+                'daily_trend' => $this->resource['charts']['daily_trend'] ?? [
+                    'series' => [],
+                    'categories' => [],
+                ],
                 'daily_focus' => $this->resource['charts']['daily_focus'] ?? [
                     'series' => [],
                     'categories' => [],
@@ -46,6 +54,9 @@ class PosAnalyticsResource extends JsonResource
                     'labels' => $this->resource['segmentation']['monetary']['labels'] ?? [],
                     'series' => $this->resource['segmentation']['monetary']['series'] ?? [],
                 ],
+            ],
+            'filter_options' => $this->resource['filter_options'] ?? [
+                'sellers' => [],
             ],
         ];
     }

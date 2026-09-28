@@ -17,15 +17,32 @@ class PosAnalyticsReportService
         $kpis = $this->repository->getKpis($filters);
         $temporal = $this->repository->getTemporalAnalysis($filters);
         $segmentation = $this->repository->getSegmentation($filters);
+        $filterOptions = $this->repository->getFilterOptions();
 
-        $dailySeries = [
+        // Serie de tendencia diaria continua (Timeline por fecha)
+        $dailyTrend = [
+            'series' => [
+                [
+                    'name' => 'Facturación (USD)',
+                    'data' => collect($temporal['daily_trend'])->pluck('total_revenue')->map(fn($v) => round((float)$v, 2))->toArray(),
+                ],
+                [
+                    'name' => 'Transacciones',
+                    'data' => collect($temporal['daily_trend'])->pluck('total_orders')->map(fn($v) => (int)$v)->toArray(),
+                ]
+            ],
+            'categories' => collect($temporal['daily_trend'])->pluck('sale_date')->toArray(),
+        ];
+
+        // Serie de rendimiento por día de la semana
+        $dailyFocus = [
             'series' => [
                 [
                     'name' => 'Ventas Totales',
-                    'data' => collect($temporal['daily_focus'])->pluck('total_revenue')->map(fn($v) => round((float)$v, 2))->toArray()
+                    'data' => collect($temporal['daily_focus'])->pluck('total_revenue')->map(fn($v) => round((float)$v, 2))->toArray(),
                 ]
             ],
-            'categories' => collect($temporal['daily_focus'])->pluck('day_name')->toArray()
+            'categories' => collect($temporal['daily_focus'])->pluck('day_name')->toArray(),
         ];
 
         // Calcular porcentajes y montos por franja horaria
@@ -34,21 +51,20 @@ class PosAnalyticsReportService
             'series' => [
                 [
                     'name' => 'Distribución',
-                    'data' => collect($temporal['hourly_slots'])->map(function($slot) use ($totalHourlyCount, $temporal) {
+                    'data' => collect($temporal['hourly_slots'])->map(function ($slot) use ($totalHourlyCount, $temporal) {
                         $h = (int)$slot->hour;
+                        $topSeller = $temporal['top_sellers'][$h] ?? $temporal['top_sellers']["$h"] ?? null;
+
                         return [
                             'x' => str_pad((string)$h, 2, '0', STR_PAD_LEFT) . ':00',
                             'y' => $totalHourlyCount > 0 ? round(((int)$slot->count / $totalHourlyCount) * 100, 1) : 0,
                             'revenue' => round((float)$slot->revenue, 2),
-                            'top_seller' => isset($temporal['top_sellers'][$h]) ? [
-                                'seller_name' => collect(explode(' ', $temporal['top_sellers'][$h]->seller_name))->take(2)->implode(' '),
-                                'revenue' => round((float)$temporal['top_sellers'][$h]->revenue, 2)
-                            ] : (isset($temporal['top_sellers']["$h"]) ? [
-                                'seller_name' => collect(explode(' ', $temporal['top_sellers']["$h"]->seller_name))->take(2)->implode(' '),
-                                'revenue' => round((float)$temporal['top_sellers']["$h"]->revenue, 2)
-                            ] : null)
+                            'top_seller' => $topSeller ? [
+                                'seller_name' => collect(explode(' ', $topSeller->seller_name))->take(2)->implode(' '),
+                                'revenue' => round((float)$topSeller->revenue, 2),
+                            ] : null,
                         ];
-                    })->toArray()
+                    })->toArray(),
                 ]
             ]
         ];
@@ -56,19 +72,21 @@ class PosAnalyticsReportService
         return [
             'kpis' => $kpis,
             'charts' => [
-                'daily_focus' => $dailySeries,
+                'daily_trend' => $dailyTrend,
+                'daily_focus' => $dailyFocus,
                 'hourly_distribution' => $hourlySeries,
             ],
             'segmentation' => [
                 'units' => [
                     'labels' => array_keys($segmentation['units']),
-                    'series' => array_values($segmentation['units'])
+                    'series' => array_values($segmentation['units']),
                 ],
                 'monetary' => [
                     'labels' => array_keys($segmentation['monetary']),
-                    'series' => array_values($segmentation['monetary'])
-                ]
-            ]
+                    'series' => array_values($segmentation['monetary']),
+                ],
+            ],
+            'filter_options' => $filterOptions,
         ];
     }
 }

@@ -519,7 +519,7 @@ const handleExportPDF = () => {
           <VCardItem>
             <VCardTitle class="d-flex align-center">
               <VIcon icon="tabler-history" class="me-2 text-error" />
-              Historial de Mermas (6m)
+              Historial de Mermas (12m)
             </VCardTitle>
           </VCardItem>
           <VDivider class="opacity-10" />

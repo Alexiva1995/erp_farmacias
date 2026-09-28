@@ -144,15 +144,15 @@ const filteredOverstock = computed(() => {
 })
 
 const headers = [
-  { title: '', key: 'data-table-expand', width: 40 },
-  { title: 'PRODUCTO / SKU', key: 'name', align: 'start', sortable: true },
-  { title: 'ESTADO', key: 'status', align: 'center', sortable: true },
-  { title: 'COBERTURA (DIO)', key: 'dio', align: 'end', sortable: true },
-  { title: 'STOCK', key: 'stock_actual', align: 'end', sortable: true },
-  { title: 'VTA. PROM (POND.)', key: 'venta_mensual_promedio', align: 'end', sortable: true },
-  { title: 'EXCEDENTE (U)', key: 'excedente_proyectado', align: 'end', sortable: true },
-  { title: 'COSTO RIESGO', key: 'costo_excedente', align: 'end', sortable: true },
-  { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false },
+  { title: '', key: 'data-table-expand', width: '35px' },
+  { title: 'PRODUCTO / SKU', key: 'name', align: 'start', sortable: true, minWidth: '180px' },
+  { title: 'ESTADO', key: 'status', align: 'center', sortable: true, width: '95px' },
+  { title: 'COBERTURA', key: 'dio', align: 'end', sortable: true, width: '85px' },
+  { title: 'STOCK', key: 'stock_actual', align: 'end', sortable: true, width: '70px' },
+  { title: 'VTA. PROM.', key: 'venta_mensual_promedio', align: 'end', sortable: true, width: '85px' },
+  { title: 'EXCEDENTE', key: 'excedente_proyectado', align: 'end', sortable: true, width: '85px' },
+  { title: 'COSTO RIESGO', key: 'costo_excedente', align: 'end', sortable: true, width: '95px' },
+  { title: '', key: 'actions', align: 'center', sortable: false, width: '45px' },
 ]
 
 const statusMap = {

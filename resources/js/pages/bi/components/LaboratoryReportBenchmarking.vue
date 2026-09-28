@@ -1,7 +1,7 @@
 <script setup>
 import { useCurrencyConverter } from '@/components/useCurrencyConverter';
 
-const props = defineProps({
+defineProps({
   labA: {
     type: [Number, String, null],
     default: null
@@ -97,7 +97,7 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
         <!-- Detalle Lab A -->
         <VCol cols="12" md="6" class="border-e">
           <div class="px-2">
-            <div class="d-flex align-center gap-4 mb-6">
+            <div class="d-flex align-center ga-4 mb-6">
               <VAvatar color="primary" variant="tonal" size="52">
                 <VIcon icon="tabler-flask" size="28" />
               </VAvatar>
@@ -109,7 +109,7 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
               </div>
             </div>
             
-            <div class="d-flex flex-column gap-3">
+            <div class="d-flex flex-column ga-3">
               <VCard variant="tonal" color="primary" class="pa-3 rounded-lg d-flex justify-space-between align-center">
                 <span class="text-caption font-weight-bold">PARTICIPACIÓN (VS B)</span>
                 <span class="text-h5 font-weight-black">{{ benchmarkingData.lab_a.share_relative }}%</span>
@@ -131,7 +131,7 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
         <!-- Detalle Lab B -->
         <VCol cols="12" md="6">
           <div class="px-2">
-            <div class="d-flex align-center gap-4 mb-6 justify-end">
+            <div class="d-flex align-center ga-4 mb-6 justify-end">
               <div class="text-right overflow-hidden">
                 <div class="text-subtitle-1 font-weight-black text-success text-uppercase text-truncate">
                   {{ laboratories.find(l => l.id === labB)?.name }}
@@ -143,7 +143,7 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
               </VAvatar>
             </div>
             
-            <div class="d-flex flex-column gap-3">
+            <div class="d-flex flex-column ga-3">
               <VCard variant="tonal" color="success" class="pa-3 rounded-lg d-flex justify-space-between align-center">
                 <span class="text-caption font-weight-bold text-right">PARTICIPACIÓN (VS A)</span>
                 <span class="text-h5 font-weight-black">{{ benchmarkingData.lab_b.share_relative }}%</span>
@@ -179,14 +179,14 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                 <!-- Barra Bicolor de Distribución -->
                 <div class="d-flex w-100 rounded-pill overflow-hidden border bar-container">
                   <div 
-                    class="d-flex align-center justify-center text-white font-weight-bold bar-item" 
-                    :style="{ width: group.share_a + '%', backgroundColor: '#E20074' }"
+                    class="d-flex align-center justify-center text-white font-weight-bold bar-item bg-primary" 
+                    :style="{ width: group.share_a + '%' }"
                   >
                     <span v-if="group.share_a > 12">{{ group.share_a }}%</span>
                   </div>
                   <div 
-                    class="d-flex align-center justify-center text-white font-weight-bold bar-item" 
-                    :style="{ width: group.share_b + '%', backgroundColor: '#28C76F' }"
+                    class="d-flex align-center justify-center text-white font-weight-bold bar-item bg-success" 
+                    :style="{ width: group.share_b + '%' }"
                   >
                     <span v-if="group.share_b > 12">{{ group.share_b }}%</span>
                   </div>
@@ -205,13 +205,13 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                 </div>
 
                 <!-- Listado de Productos Competidores -->
-                <div class="d-flex flex-column flex-sm-row justify-space-between mt-4 gap-2">
+                <div class="d-flex flex-column flex-sm-row justify-space-between mt-4 ga-2">
                   <!-- Lab A Products -->
                   <div class="flex-grow-1 flex-shrink-1 overflow-hidden min-w-120">
                      <div 
                        v-for="p in group.products_a" 
                        :key="p.id" 
-                       class="text-caption font-weight-medium text-uppercase text-truncate mb-1 d-flex justify-space-between gap-1 text-primary"
+                       class="text-caption font-weight-medium text-uppercase text-truncate mb-1 d-flex justify-space-between ga-1 text-primary"
                      >
                         <span class="text-truncate flex-grow-1">{{ p.name }}</span>
                         <span class="font-weight-black opacity-80 ms-1">{{ p.units }}U</span>
@@ -222,7 +222,7 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                      <div 
                        v-for="p in group.products_b" 
                        :key="p.id" 
-                       class="text-caption font-weight-medium text-uppercase text-truncate text-success mb-1 d-flex justify-space-between gap-1"
+                       class="text-caption font-weight-medium text-uppercase text-truncate text-success mb-1 d-flex justify-space-between ga-1"
                      >
                         <span class="font-weight-black opacity-80 me-1">{{ p.units }}U</span>
                         <span class="text-truncate flex-grow-1">{{ p.name }}</span>
@@ -259,9 +259,4 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
 .min-w-120 {
   min-width: 120px;
 }
-
-.gap-1 { gap: 4px; }
-.gap-2 { gap: 8px; }
-.gap-3 { gap: 12px; }
-.gap-4 { gap: 16px; }
 </style>

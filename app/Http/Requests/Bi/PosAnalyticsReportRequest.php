@@ -22,6 +22,7 @@ class PosAnalyticsReportRequest extends FormRequest
         return [
             'start_date' => ['nullable', 'date', 'date_format:Y-m-d'],
             'end_date' => ['nullable', 'date', 'date_format:Y-m-d', 'after_or_equal:start_date'],
+            'seller_id' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }
 }

@@ -15,13 +15,13 @@ const props = defineProps({
 const search = ref('')
 
 const headers = [
-  { title: 'CATEGORÍA', key: 'category', sortable: true },
-  { title: 'PRODUCTO A (FALTANTE)', key: 'product_a', sortable: true },
-  { title: 'CANT. FALTANTE', key: 'discrepancy_a', align: 'center', sortable: true },
-  { title: '', key: 'action', align: 'center', sortable: false, width: '48px' },
-  { title: 'PRODUCTO B (SOBRANTE)', key: 'product_b', sortable: true },
-  { title: 'CANT. SOBRANTE', key: 'discrepancy_b', align: 'center', sortable: true },
-  { title: 'CONFIANZA', key: 'confidence', align: 'end', sortable: true },
+  { title: 'CATEGORÍA', key: 'category', sortable: true, width: '120px' },
+  { title: 'PRODUCTO A (FALTANTE)', key: 'product_a', sortable: true, minWidth: '160px' },
+  { title: 'CANT.', key: 'discrepancy_a', align: 'center', sortable: true, width: '70px' },
+  { title: '', key: 'action', align: 'center', sortable: false, width: '36px' },
+  { title: 'PRODUCTO B (SOBRANTE)', key: 'product_b', sortable: true, minWidth: '160px' },
+  { title: 'CANT.', key: 'discrepancy_b', align: 'center', sortable: true, width: '70px' },
+  { title: 'CONFIANZA', key: 'confidence', align: 'end', sortable: true, width: '120px' },
 ]
 
 const filteredSubstitutions = computed(() => {
@@ -71,16 +71,19 @@ const filteredSubstitutions = computed(() => {
           :loading="loading"
           items-per-page="10"
           density="comfortable"
-          class="text-no-wrap"
         >
           <!-- Categoría -->
           <template #item.category="{ item }">
-            <span class="text-primary font-weight-bold">{{ item.category }}</span>
+            <span class="text-primary font-weight-bold text-caption text-truncate d-inline-block" style="max-width: 110px;">
+              {{ item.category }}
+            </span>
           </template>
 
           <!-- Producto A -->
           <template #item.product_a="{ item }">
-            <span class="text-error font-weight-medium">{{ item.product_a }}</span>
+            <span class="text-error font-weight-medium text-body-2 text-truncate d-inline-block" style="max-width: 220px;" :title="item.product_a">
+              {{ item.product_a }}
+            </span>
           </template>
 
           <!-- Cantidad A -->
@@ -92,12 +95,14 @@ const filteredSubstitutions = computed(() => {
 
           <!-- Separador / Icono de intercambio -->
           <template #item.action>
-            <VIcon icon="tabler-arrows-exchange-2" color="warning" size="20" />
+            <VIcon icon="tabler-arrows-exchange-2" color="warning" size="18" />
           </template>
 
           <!-- Producto B -->
           <template #item.product_b="{ item }">
-            <span class="text-success font-weight-medium">{{ item.product_b }}</span>
+            <span class="text-success font-weight-medium text-body-2 text-truncate d-inline-block" style="max-width: 220px;" :title="item.product_b">
+              {{ item.product_b }}
+            </span>
           </template>
 
           <!-- Cantidad B -->

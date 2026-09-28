@@ -9,55 +9,67 @@ use Carbon\Carbon;
 
 class PosAnalyticsReportRepository
 {
-    public function getKpis(array $filters)
+    public function getKpis(array $filters): array
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+        $sellerId = !empty($filters['seller_id']) ? (int)$filters['seller_id'] : null;
 
-        $orderStats = DB::table('orders')
+        $ordersQuery = DB::table('orders')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->when($sellerId, fn($q) => $q->where('seller_id', $sellerId));
+
+        $orderStats = (clone $ordersQuery)
             ->select(
                 DB::raw("COUNT(CASE WHEN status = 'Completed' THEN 1 END) as completed_sales"),
                 DB::raw("COUNT(CASE WHEN status IN ('Cancelled', 'Abandoned') THEN 1 END) as abandoned_sales"),
-                DB::raw("SUM(CASE WHEN status = 'Completed' THEN total_amount_usd ELSE 0 END) as total_revenue")
+                DB::raw("SUM(CASE WHEN status = 'Completed' THEN total_amount_usd ELSE 0 END) as total_revenue"),
+                DB::raw("COUNT(DISTINCT CASE WHEN status = 'Completed' THEN DATE(created_at) END) as operational_days")
             )
             ->first();
 
         $completedSales = (int)($orderStats->completed_sales ?? 0);
         $abandonedSales = (int)($orderStats->abandoned_sales ?? 0);
         $totalRevenue = (float)($orderStats->total_revenue ?? 0.0);
+        $operationalDays = (int)($orderStats->operational_days ?? 0);
         
-        $quotationsCount = DB::table('quotations')
+        $quotationsQuery = DB::table('quotations')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->count();
+            ->when($sellerId, fn($q) => $q->where('user_id', $sellerId));
+
+        $quotationsCount = $quotationsQuery->count();
 
         // Ticket Promedio
         $avgTicket = $completedSales > 0 ? $totalRevenue / $completedSales : 0.0;
 
-        // Promedio Venta Diario
+        // Promedio Venta Diario basado en días operativos reales (con fallback a días del rango)
         $diffDays = Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) + 1;
-        $avgDailySales = $totalRevenue / $diffDays;
+        $divisorDays = $operationalDays > 0 ? $operationalDays : $diffDays;
+        $avgDailySales = $totalRevenue / ($divisorDays ?: 1);
 
         // Tasa Conversión (Coincidencia por cliente y total en periodo)
         $convertedQuotations = DB::table('quotations')
             ->whereBetween('quotations.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->whereExists(function ($query) use ($startDate, $endDate) {
+            ->when($sellerId, fn($q) => $q->where('quotations.user_id', $sellerId))
+            ->whereExists(function ($query) use ($startDate, $endDate, $sellerId) {
                 $query->select(DB::raw(1))
                     ->from('orders')
                     ->whereColumn('orders.client_id', 'quotations.client_id')
                     ->whereColumn('orders.total_amount_usd', 'quotations.total')
                     ->where('orders.status', 'Completed')
-                    ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+                    ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+                    ->when($sellerId, fn($q) => $q->where('orders.seller_id', $sellerId));
             })
             ->count();
         
         $conversionRate = $quotationsCount > 0 ? ($convertedQuotations / $quotationsCount) * 100 : 0;
 
-        // Venta Cruzada (Conteo directo en base de datos sin traer dataset a memoria)
+        // Venta Cruzada (Órdenes completadas con más de 1 artículo)
         $crossSellingQuery = DB::table('orders')
             ->join('order_details', 'orders.id', '=', 'order_details.order_id')
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->when($sellerId, fn($q) => $q->where('orders.seller_id', $sellerId))
             ->select('orders.id')
             ->groupBy('orders.id')
             ->havingRaw('SUM(order_details.quantity) > 1');
@@ -68,6 +80,22 @@ class PosAnalyticsReportRepository
 
         $crossSellingRate = $completedSales > 0 ? ($crossSellingCount / $completedSales) * 100 : 0;
 
+        // Unidades totales y descuentos otorgados
+        $detailStats = DB::table('orders')
+            ->join('order_details', 'orders.id', '=', 'order_details.order_id')
+            ->where('orders.status', 'Completed')
+            ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->when($sellerId, fn($q) => $q->where('orders.seller_id', $sellerId))
+            ->select(
+                DB::raw('COALESCE(SUM(order_details.quantity), 0) as total_units'),
+                DB::raw('COALESCE(SUM(CASE WHEN order_details.discount_percentage > 0 THEN ((order_details.price_before_discount - order_details.price) * order_details.quantity) ELSE 0 END), 0) as discount_total')
+            )
+            ->first();
+
+        $totalUnits = (float)($detailStats->total_units ?? 0);
+        $unitsPerTransaction = $completedSales > 0 ? round($totalUnits / $completedSales, 2) : 0.0;
+        $discountTotal = (float)($detailStats->discount_total ?? 0.0);
+
         return [
             'completed_sales' => $completedSales,
             'abandoned_sales' => $abandonedSales,
@@ -77,19 +105,39 @@ class PosAnalyticsReportRepository
             'avg_daily_sales' => round((float)$avgDailySales, 2),
             'total_revenue' => round((float)$totalRevenue, 2),
             'cross_selling_count' => (int)$crossSellingCount,
-            'cross_selling_rate' => round((float)$crossSellingRate, 2)
+            'cross_selling_rate' => round((float)$crossSellingRate, 2),
+            'total_units' => round($totalUnits, 0),
+            'units_per_transaction' => $unitsPerTransaction,
+            'discount_total' => round($discountTotal, 2),
+            'operational_days' => $operationalDays,
         ];
     }
 
-    public function getTemporalAnalysis(array $filters)
+    public function getTemporalAnalysis(array $filters): array
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+        $sellerId = !empty($filters['seller_id']) ? (int)$filters['seller_id'] : null;
 
-        // Rendimiento diario (Suma total por día de la semana)
+        // 1. Tendencia diaria continua (Timeline por fecha)
+        $dailyTrend = DB::table('orders')
+            ->where('status', 'Completed')
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->when($sellerId, fn($q) => $q->where('seller_id', $sellerId))
+            ->select(
+                DB::raw('DATE(created_at) as sale_date'),
+                DB::raw('COUNT(*) as total_orders'),
+                DB::raw('SUM(total_amount_usd) as total_revenue')
+            )
+            ->groupBy('sale_date')
+            ->orderBy('sale_date')
+            ->get();
+
+        // 2. Rendimiento diario agregado (Suma total por día de la semana)
         $dailyFocus = DB::table('orders')
             ->where('status', 'Completed')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->when($sellerId, fn($q) => $q->where('seller_id', $sellerId))
             ->select(
                 DB::raw('DAYNAME(created_at) as day_name'),
                 DB::raw('DAYOFWEEK(created_at) as day_index'),
@@ -99,10 +147,11 @@ class PosAnalyticsReportRepository
             ->orderBy('day_index')
             ->get();
 
-        // franjas horarias
+        // 3. Franjas horarias
         $hourlySlots = DB::table('orders')
             ->where('status', 'Completed')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->when($sellerId, fn($q) => $q->where('seller_id', $sellerId))
             ->select(
                 DB::raw('HOUR(created_at) as hour'),
                 DB::raw('COUNT(*) as count'),
@@ -112,14 +161,15 @@ class PosAnalyticsReportRepository
             ->orderBy('hour')
             ->get();
 
-        // Top Vendedores por Hora
+        // 4. Top Vendedores por Hora
         $topSellersByHour = DB::table('orders')
             ->leftJoin('users', 'users.id', '=', 'orders.seller_id')
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->when($sellerId, fn($q) => $q->where('orders.seller_id', $sellerId))
             ->select(
                 DB::raw('HOUR(orders.created_at) as hr'),
-                DB::raw('COALESCE(users.username, "S/V") as seller_name'),
+                DB::raw('COALESCE(users.username, users.name, "S/V") as seller_name'),
                 DB::raw('SUM(orders.total_amount_usd) as revenue')
             )
             ->groupBy('hr', 'seller_name')
@@ -131,22 +181,25 @@ class PosAnalyticsReportRepository
             ->toArray();
 
         return [
+            'daily_trend' => $dailyTrend,
             'daily_focus' => $dailyFocus,
             'hourly_slots' => $hourlySlots,
-            'top_sellers' => $topSellersByHour
+            'top_sellers' => $topSellersByHour,
         ];
     }
 
-    public function getSegmentation(array $filters)
+    public function getSegmentation(array $filters): array
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+        $sellerId = !empty($filters['seller_id']) ? (int)$filters['seller_id'] : null;
 
-        // 1. Unidades por ticket (Agregados y agrupados directamente en la consulta)
+        // 1. Unidades por ticket
         $unitsQuery = DB::table('orders')
             ->join('order_details', 'orders.id', '=', 'order_details.order_id')
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->when($sellerId, fn($q) => $q->where('orders.seller_id', $sellerId))
             ->select('orders.id', DB::raw('SUM(order_details.quantity) as total_qty'))
             ->groupBy('orders.id');
 
@@ -167,10 +220,11 @@ class PosAnalyticsReportRepository
             '> 6 Productos' => (int)($unitStats->qty_above_6 ?? 0),
         ];
 
-        // 2. Valor monetario ($) (Calculado directamente con condicionales CASE)
+        // 2. Valor monetario ($)
         $valueStats = DB::table('orders')
             ->where('status', 'Completed')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->when($sellerId, fn($q) => $q->where('seller_id', $sellerId))
             ->select(
                 DB::raw("COUNT(CASE WHEN total_amount_usd <= 2 THEN 1 END) as val_0_2"),
                 DB::raw("COUNT(CASE WHEN total_amount_usd > 2 AND total_amount_usd <= 5 THEN 1 END) as val_2_5"),
@@ -190,7 +244,25 @@ class PosAnalyticsReportRepository
 
         return [
             'units' => $unitRanges,
-            'monetary' => $valueRanges
+            'monetary' => $valueRanges,
+        ];
+    }
+
+    public function getFilterOptions(): array
+    {
+        $sellers = DB::table('users')
+            ->select('id', DB::raw('COALESCE(username, name, email) as name'))
+            ->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('orders')
+                    ->whereColumn('orders.seller_id', 'users.id');
+            })
+            ->orderBy('name')
+            ->get()
+            ->toArray();
+
+        return [
+            'sellers' => $sellers,
         ];
     }
 }

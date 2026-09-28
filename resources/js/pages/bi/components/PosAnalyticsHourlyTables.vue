@@ -11,25 +11,25 @@ const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currenc
 
 const trafficHourlyData = computed(() => {
   const data = props.hourlyDistribution?.series?.[0]?.data || [];
-  return [...data].sort((a, b) => b.y - a.y);
+  return [...data].sort((a, b) => (b.y || 0) - (a.y || 0));
 });
 
 const revenueHourlyData = computed(() => {
   const data = props.hourlyDistribution?.series?.[0]?.data || [];
-  return [...data].sort((a, b) => b.revenue - a.revenue);
+  return [...data].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
 });
 
 const sellersHourlyData = computed(() => {
   const data = props.hourlyDistribution?.series?.[0]?.data || [];
-  return [...data].sort((a, b) => parseInt(a.x) - parseInt(b.x));
+  return [...data].sort((a, b) => parseInt(a.x, 10) - parseInt(b.x, 10));
 });
 </script>
 
 <template>
   <VRow dense>
-    <!-- Tabla 1: Tráfico -->
+    <!-- Tabla 1: Tráfico y Frecuencia -->
     <VCol cols="12" md="4">
-      <VCard variant="outlined" class="rounded-lg shadow-sm overflow-hidden h-100">
+      <VCard variant="outlined" class="rounded-lg overflow-hidden h-100">
         <VCardItem class="py-3 border-b">
           <template #prepend>
             <VAvatar color="primary" variant="tonal" size="32" class="me-2 rounded">
@@ -44,7 +44,7 @@ const sellersHourlyData = computed(() => {
           <thead>
             <tr>
               <th class="text-uppercase text-caption font-weight-bold">Hora</th>
-              <th class="text-uppercase text-caption font-weight-bold text-center">Tks</th>
+              <th class="text-uppercase text-caption font-weight-bold text-center">Tickets</th>
               <th class="text-uppercase text-caption font-weight-bold text-center">% Part.</th>
             </tr>
           </thead>
@@ -56,6 +56,9 @@ const sellersHourlyData = computed(() => {
                 <VChip size="x-small" label color="primary" variant="tonal" class="font-weight-bold">{{ slot.y }}%</VChip>
               </td>
             </tr>
+            <tr v-if="trafficHourlyData.length === 0">
+              <td colspan="3" class="text-center text-caption text-disabled py-4">Sin registros disponibles</td>
+            </tr>
           </tbody>
         </VTable>
       </VCard>
@@ -63,7 +66,7 @@ const sellersHourlyData = computed(() => {
 
     <!-- Tabla 2: Facturación -->
     <VCol cols="12" md="4">
-      <VCard variant="outlined" class="rounded-lg shadow-sm overflow-hidden h-100">
+      <VCard variant="outlined" class="rounded-lg overflow-hidden h-100">
         <VCardItem class="py-3 border-b">
           <template #prepend>
             <VAvatar color="success" variant="tonal" size="32" class="me-2 rounded">
@@ -78,8 +81,8 @@ const sellersHourlyData = computed(() => {
           <thead>
             <tr>
               <th class="text-uppercase text-caption font-weight-bold">Hora</th>
-              <th class="text-uppercase text-caption font-weight-bold text-right">Monto</th>
-              <th class="text-uppercase text-caption font-weight-bold text-center">% Part.</th>
+              <th class="text-uppercase text-caption font-weight-bold text-right">Monto USD</th>
+              <th class="text-uppercase text-caption font-weight-bold text-center">% Fact.</th>
             </tr>
           </thead>
           <tbody>
@@ -92,14 +95,17 @@ const sellersHourlyData = computed(() => {
                 </VChip>
               </td>
             </tr>
+            <tr v-if="revenueHourlyData.length === 0">
+              <td colspan="3" class="text-center text-caption text-disabled py-4">Sin registros disponibles</td>
+            </tr>
           </tbody>
         </VTable>
       </VCard>
     </VCol>
 
-    <!-- Tabla 3: Vendedores por Hora -->
+    <!-- Tabla 3: Vendedor Estrella por Franja Horaria -->
     <VCol cols="12" md="4">
-      <VCard variant="outlined" class="rounded-lg shadow-sm overflow-hidden h-100">
+      <VCard variant="outlined" class="rounded-lg overflow-hidden h-100">
         <VCardItem class="py-3 border-b">
           <template #prepend>
             <VAvatar color="info" variant="tonal" size="32" class="me-2 rounded">
@@ -107,14 +113,14 @@ const sellersHourlyData = computed(() => {
             </VAvatar>
           </template>
           <VCardTitle class="text-subtitle-2 font-weight-bold text-uppercase">
-            Vendedor Estrella por Hora
+            Vendedor Destacado por Hora
           </VCardTitle>
         </VCardItem>
         <VTable density="compact" class="text-no-wrap">
           <thead>
             <tr>
               <th class="text-uppercase text-caption font-weight-bold">Hora</th>
-              <th class="text-uppercase text-caption font-weight-bold">Vendedor</th>
+              <th class="text-uppercase text-caption font-weight-bold">Colaborador</th>
               <th class="text-uppercase text-caption font-weight-bold text-right">Venta USD</th>
             </tr>
           </thead>
@@ -125,12 +131,15 @@ const sellersHourlyData = computed(() => {
                 <div class="d-flex align-center" v-if="slot.top_seller">
                   <span class="text-caption font-weight-medium text-truncate">{{ slot.top_seller.seller_name }}</span>
                 </div>
-                <span v-else class="text-disabled text-caption">Sin ventas</span>
+                <span v-else class="text-disabled text-caption">Sin actividad</span>
               </td>
               <td class="text-right font-weight-bold text-info" v-if="slot.top_seller">
                 {{ formatCurrency(slot.top_seller.revenue) }}
               </td>
               <td v-else class="text-right text-disabled text-caption">-</td>
+            </tr>
+            <tr v-if="sellersHourlyData.length === 0">
+              <td colspan="3" class="text-center text-caption text-disabled py-4">Sin registros disponibles</td>
             </tr>
           </tbody>
         </VTable>
