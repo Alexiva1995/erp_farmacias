@@ -6,6 +6,8 @@ export const useBrandingStore = defineStore('branding', () => {
   const settings = ref({
     app_name: 'Tova - Cerebro Operativo',
     app_rif: '',
+    address: '',
+    fiscal_printer_serial: '',
     app_logo: '',
     app_favicon: '',
     primary_color: '#E20074',

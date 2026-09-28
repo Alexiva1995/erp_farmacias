@@ -62,6 +62,7 @@ class GeneralSettingResource extends JsonResource
             'all_foreign_sales_spe' => (bool) $this->all_foreign_sales_spe,
             'app_name' => $this->app_name ?? 'Tova - Cerebro Operativo',
             'app_rif' => $this->app_rif,
+            'address' => $this->address,
             'fiscal_printer_serial' => $this->fiscal_printer_serial,
             'app_logo' => $this->app_logo,
             'app_favicon' => $this->app_favicon,
