@@ -21,26 +21,13 @@ const fiscalModeOptions = [
     label: 'Modo Demo (Pruebas)',
     value: 'demo',
     icon: 'tabler-device-desktop-analytics',
-    description: 'Operaciones de simulación sin emisión de documentos fiscales reales.',
+    description: 'Operaciones de simulación. Factura obligatoriamente ítems con IVA y aplica muestreo aleatorio en divisas.',
   },
   {
     label: 'Modo Activo (Producción)',
     value: 'activa',
     icon: 'tabler-receipt',
-    description: 'Emisión de comprobantes y facturas con valor fiscal vinculados a impresora.',
-  },
-]
-
-const specialTaxpayerOptions = [
-  {
-    label: 'Desactivado (No Sujeto)',
-    value: 'desactivada',
-    description: 'No aplica retenciones de Sujeto Pasivo Especial.',
-  },
-  {
-    label: 'Activo (Contribuyente Especial)',
-    value: 'activa',
-    description: 'Aplica retenciones SENIAT correspondientes a contribuyentes especiales.',
+    description: 'Emisión total de documentos fiscales ante el SENIAT con recargo del 3% universal en divisas.',
   },
 ]
 
@@ -67,10 +54,10 @@ onMounted(() => {
           <div>
             <VCardTitle class="text-h5 font-weight-bold d-flex align-center gap-2">
               <VIcon icon="tabler-settings" color="primary" size="28" />
-              Configuración General y Parámetros del Sistema
+              Configuración Fiscal y Parámetros del Sistema
             </VCardTitle>
             <VCardSubtitle class="text-body-2 text-medium-emphasis mt-1">
-              Ajustes operativos de facturación, régimen tributario y seguridad de caja.
+              Ajustes de facturación fiscal, régimen de contribuyente especial (IGTF 3%) y seguridad de caja.
             </VCardSubtitle>
           </div>
 
@@ -98,7 +85,7 @@ onMounted(() => {
       <!-- Estado de Carga / Skeleton -->
       <VCardText v-if="isLoading" class="py-8">
         <VRow>
-          <VCol v-for="n in 4" :key="n" cols="12" md="6">
+          <VCol v-for="n in 3" :key="n" cols="12" md="6">
             <VSkeletonLoader type="article, actions" class="border rounded" />
           </VCol>
         </VRow>
@@ -124,7 +111,7 @@ onMounted(() => {
         </VBtn>
       </VCardText>
 
-      <!-- Formulario Principal -->
+      <!-- Formulario Principal Simplificado -->
       <VCardText v-else class="py-6">
         <VRow>
           <!-- Configuración Fiscal -->
@@ -136,10 +123,10 @@ onMounted(() => {
                 </VAvatar>
                 <div>
                   <div class="text-subtitle-1 font-weight-bold text-high-emphasis">
-                    Configuración Fiscal
+                    Régimen Fiscal
                   </div>
                   <div class="text-caption text-medium-emphasis">
-                    Modo de procesamiento para la impresora y facturación legal.
+                    Modo de procesamiento y enlace con la impresora fiscal SENIAT.
                   </div>
                 </div>
               </div>
@@ -168,73 +155,50 @@ onMounted(() => {
             </VCard>
           </VCol>
 
-          <!-- Sujeto Pasivo Especial (S.P.E.) -->
-          <VCol cols="12" md="6">
-            <VCard variant="outlined" class="h-100 pa-4 rounded-lg">
-              <div class="d-flex align-start gap-3 mb-4">
-                <VAvatar color="secondary" variant="tonal" rounded size="40">
-                  <VIcon icon="tabler-building-bank" size="24" />
-                </VAvatar>
-                <div>
-                  <div class="text-subtitle-1 font-weight-bold text-high-emphasis">
-                    Sujeto Pasivo Especial (S.P.E.)
-                  </div>
-                  <div class="text-caption text-medium-emphasis">
-                    Retenciones aplicables a contribuyentes especiales SENIAT.
-                  </div>
-                </div>
-              </div>
-
-              <VRadioGroup
-                v-model="form.special_taxpayer_status"
-                :disabled="isSaving"
-                density="comfortable"
-                hide-details="auto"
-              >
-                <VRadio
-                  v-for="item in specialTaxpayerOptions"
-                  :key="item.value"
-                  :value="item.value"
-                  color="primary"
-                  class="mb-3"
-                >
-                  <template #label>
-                    <div>
-                      <div class="font-weight-medium text-body-2">{{ item.label }}</div>
-                      <div class="text-caption text-medium-emphasis">{{ item.description }}</div>
-                    </div>
-                  </template>
-                </VRadio>
-              </VRadioGroup>
-            </VCard>
-          </VCol>
-
-          <!-- Recargo SPE Global -->
+          <!-- Contribuyente Especial (CE) - IGTF 3% Divisas -->
           <VCol cols="12" md="6">
             <VCard variant="outlined" class="h-100 pa-4 rounded-lg">
               <div class="d-flex align-start gap-3 mb-3">
-                <VAvatar color="info" variant="tonal" rounded size="40">
-                  <VIcon icon="tabler-currency-dollar" size="24" />
+                <VAvatar color="secondary" variant="tonal" rounded size="40">
+                  <VIcon icon="tabler-building-bank" size="24" />
                 </VAvatar>
-                <div>
-                  <div class="text-subtitle-1 font-weight-bold text-high-emphasis">
-                    Recargo SPE Global
+                <div class="flex-grow-1">
+                  <div class="d-flex align-center gap-1">
+                    <span class="text-subtitle-1 font-weight-bold text-high-emphasis">
+                      Contribuyente Especial (CE)
+                    </span>
+                    <VTooltip
+                      text="Aplica el recargo del 3% (IGTF) en transacciones pagadas en divisas (USD / COP). En producción se aplica universalmente; en modo demo factura productos gravados y muestrea 1 de cada 5 ventas en divisas."
+                      location="top"
+                    >
+                      <template #activator="{ props: tooltipProps }">
+                        <VIcon
+                          v-bind="tooltipProps"
+                          icon="tabler-help-circle"
+                          size="18"
+                          class="text-medium-emphasis cursor-pointer"
+                        />
+                      </template>
+                    </VTooltip>
                   </div>
                   <div class="text-caption text-medium-emphasis">
-                    Aplica recargos tributarios a transacciones en moneda extranjera.
+                    Régimen de Sujeto Pasivo Especial y recargo del 3% (IGTF) en divisas.
                   </div>
                 </div>
               </div>
 
               <VSwitch
-                v-model="form.all_foreign_sales_spe"
-                label="Aplicar recargo SPE a TODAS las ventas en divisas (USD/COP)"
+                v-model="form.enable_ce"
+                label="Habilitar Régimen de Contribuyente Especial (CE / IGTF 3%)"
                 color="primary"
                 density="comfortable"
                 hide-details="auto"
                 :disabled="isSaving"
-                class="mt-2"
+                class="mt-4"
               />
+              <p class="text-caption text-medium-emphasis mt-2 mb-0">
+                Al activar esta opción, en modo Producción los precios en el TPV reflejan el recargo del 3% en USD/COP y se cobra en todas las ventas en divisas. En Demo se aplica a ítems gravados y en 1 de cada 5 facturas en moneda extranjera.
+              </p>
             </VCard>
           </VCol>
 
@@ -250,7 +214,7 @@ onMounted(() => {
                     Modalidad de Cierre de Caja
                   </div>
                   <div class="text-caption text-medium-emphasis">
-                    Control interno de saldos teóricos en el cierre diario.
+                    Control de saldos teóricos durante el arqueo y cierre diario.
                   </div>
                 </div>
               </div>
@@ -262,48 +226,7 @@ onMounted(() => {
                 density="comfortable"
                 hide-details="auto"
                 :disabled="isSaving"
-                class="mt-2"
-              />
-            </VCard>
-          </VCol>
-
-          <!-- Cuentas y Crédito Especial (CE) -->
-          <VCol cols="12" md="6">
-            <VCard variant="outlined" class="h-100 pa-4 rounded-lg">
-              <div class="d-flex align-start gap-3 mb-3">
-                <VAvatar color="success" variant="tonal" rounded size="40">
-                  <VIcon icon="tabler-shield-check" size="24" />
-                </VAvatar>
-                <div class="flex-grow-1">
-                  <div class="d-flex align-center gap-1">
-                    <span class="text-subtitle-1 font-weight-bold text-high-emphasis">
-                      Cuentas y Crédito Especial (CE)
-                    </span>
-                    <VTooltip text="Habilita líneas de crédito y consumos especiales en caja para clientes autorizados." location="top">
-                      <template #activator="{ props: tooltipProps }">
-                        <VIcon
-                          v-bind="tooltipProps"
-                          icon="tabler-help-circle"
-                          size="18"
-                          class="text-medium-emphasis cursor-pointer"
-                        />
-                      </template>
-                    </VTooltip>
-                  </div>
-                  <div class="text-caption text-medium-emphasis">
-                    Módulo de gestión de cuentas corrientes y créditos en punto de venta.
-                  </div>
-                </div>
-              </div>
-
-              <VSwitch
-                v-model="form.enable_ce"
-                label="Habilitar gestión de Crédito Especial (CE)"
-                color="primary"
-                density="comfortable"
-                hide-details="auto"
-                :disabled="isSaving"
-                class="mt-2"
+                class="mt-4"
               />
             </VCard>
           </VCol>

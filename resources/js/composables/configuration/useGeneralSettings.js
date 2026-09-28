@@ -6,9 +6,7 @@ import { toast, Swal } from '@/plugins/sweetalert'
 export const useGeneralSettings = () => {
   const defaultSettings = {
     fiscal_mode: 'demo',
-    special_taxpayer_status: 'desactivada',
     enable_ce: false,
-    all_foreign_sales_spe: false,
     blind_cash_closure: false,
     tpv_mode: 'complete',
   }
@@ -38,9 +36,7 @@ export const useGeneralSettings = () => {
 
       const parsedData = {
         fiscal_mode: settings.fiscal_mode ?? 'demo',
-        special_taxpayer_status: settings.special_taxpayer_status ?? 'desactivada',
-        enable_ce: Boolean(settings.enable_ce),
-        all_foreign_sales_spe: Boolean(settings.all_foreign_sales_spe),
+        enable_ce: Boolean(settings.enable_ce || settings.special_taxpayer_status === 'activa'),
         blind_cash_closure: Boolean(settings.blind_cash_closure),
         tpv_mode: settings.tpv_mode ?? 'complete',
       }
@@ -88,9 +84,9 @@ export const useGeneralSettings = () => {
     try {
       await axios.post('/general-settings', {
         fiscal_mode: form.value.fiscal_mode,
-        special_taxpayer_status: form.value.special_taxpayer_status,
         enable_ce: form.value.enable_ce,
-        all_foreign_sales_spe: form.value.all_foreign_sales_spe,
+        special_taxpayer_status: form.value.enable_ce ? 'activa' : 'desactivada',
+        all_foreign_sales_spe: form.value.enable_ce,
         blind_cash_closure: form.value.blind_cash_closure,
         tpv_mode: form.value.tpv_mode,
       })

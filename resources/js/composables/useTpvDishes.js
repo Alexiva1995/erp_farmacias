@@ -28,8 +28,8 @@ export function useTpvDishes() {
       const data = response.data
       const settings = data.data || data
       enableDishes.value = settings.enable_dishes !== undefined ? !!settings.enable_dishes : true
-      isSpecialTaxpayer.value = settings.special_taxpayer_status === 'activa'
-      allForeignSalesSpe.value = !!settings.all_foreign_sales_spe
+      isSpecialTaxpayer.value = Boolean(settings.enable_ce || settings.special_taxpayer_status === 'activa')
+      allForeignSalesSpe.value = Boolean(settings.enable_ce || settings.all_foreign_sales_spe)
       isRestaurant.value = settings.tpv_style === 'restaurant'
       isSportsRental.value = settings.tpv_style === 'sports_rental'
       if (isRestaurant.value && enableDishes.value && activeTab) {

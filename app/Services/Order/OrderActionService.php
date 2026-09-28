@@ -1207,24 +1207,36 @@ class OrderActionService
                 return ($d->unit_price_usd ?? 0) * ($d->quantity ?? 0);
             });
 
-            // Determinar si aplica Recargo Sujeto Pasivo Especial (SPE)
+            // Determinar si aplica Recargo Sujeto Pasivo Especial (CE / IGTF 3%)
             $currency = strtoupper($orderId->currency);
             $isForeignCurrency = in_array($currency, ['USD', 'COP']);
+            $isCeEnabled = $generalSettings && (bool) ($generalSettings->enable_ce ?? false);
             
             $hasIvaItems = $orderId->details->contains(function ($detail) {
                 return optional($detail->product)->iva == 1;
             });
 
             $applySpe = false;
-            if ($isForeignCurrency) {
-                if ($hasIvaItems || mt_rand(1, 10) === 1) {
+
+            if ($isFiscalActive) {
+                // Modo Activo / Producción: Toda venta en divisas con CE activo aplica el 3%
+                if ($isForeignCurrency && $isCeEnabled) {
                     $applySpe = true;
+                }
+            } else {
+                // Modo Demo:
+                // - Productos con IVA en divisas aplican 3%
+                // - Muestreo selectivo de 1 de cada 5 ventas en divisas aplica 3%
+                if ($isForeignCurrency && $isCeEnabled) {
+                    if ($hasIvaItems || mt_rand(1, 5) === 1) {
+                        $applySpe = true;
+                    }
                 }
             }
 
             if ($applySpe) {
-                $orderId->spe_surcharge_rate = 1.00;
-                $orderId->spe_surcharge_amount = $orderId->total_amount * 0.01;
+                $orderId->spe_surcharge_rate = 3.00;
+                $orderId->spe_surcharge_amount = round($orderId->total_amount * 0.03, 2);
             } else {
                 $orderId->spe_surcharge_rate = 0.00;
                 $orderId->spe_surcharge_amount = 0.00;
@@ -1279,12 +1291,14 @@ class OrderActionService
                 $ivaEjecuted = true;
             }*/
 
-            // Determinar si se genera la factura fiscal
-            // 1. Moneda es Bolívares (BS)
-            // 2. Tiene productos con IVA
-            // 3. El vendedor marcó "generar factura" explícitamente en el request
-            // 4. Se aplicó SPE (ya sea por tener IVA en divisas, o por selección aleatoria 1 de cada 10)
-            $shouldInvoice = ($currency === 'BS') || $hasIvaItems || $request->generate_invoice || $applySpe;
+            // Determinar si se genera la factura fiscal:
+            // - Modo Activo: Emisión total del 100% de las ventas
+            // - Modo Demo:
+            //   1. Moneda es Bolívares (BS)
+            //   2. Tiene productos con IVA gravado
+            //   3. El vendedor marcó "generar factura" explícitamente en el request
+            //   4. Se aplicó CE/SPE (por tener IVA en divisas, o por muestreo selectivo 1 de cada 5)
+            $shouldInvoice = $isFiscalActive || ($currency === 'BS') || $hasIvaItems || $request->generate_invoice || $applySpe;
 
             if ($shouldInvoice) {
                 $this->invoicing($orderId, $request->spe);
