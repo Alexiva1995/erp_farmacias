@@ -51,7 +51,7 @@ const trendChartOptions = computed(() => {
         style: { colors: '#616161', fontWeight: 600 }
       }
     },
-    colors: ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#00cfe8'],
+    colors: ['#E20074', '#28C76F', '#FF4C51', '#FF9F43', '#00BAD1', '#7A0099'],
     legend: { position: 'top', horizontalAlign: 'right', fontWeight: 600 },
     tooltip: {
       theme: 'dark',
@@ -76,7 +76,7 @@ const trendSeries = computed(() => {
 const marketShareChartOptions = computed(() => ({
   chart: { type: 'donut' },
   labels: props.rankingsByRevenue.map(l => l.name),
-  colors: ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#00cfe8', '#00bbd4', '#607d8b', '#9c27b0', '#3f51b5', '#e91e63'],
+  colors: ['#E20074', '#28C76F', '#00BAD1', '#FF9F43', '#7A0099', '#FF4C51', '#607D8B', '#9C27B0', '#3F51B5', '#009688'],
   legend: { position: 'bottom' },
   dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%` },
   plotOptions: { 
@@ -101,7 +101,7 @@ const profitabilityChartOptions = computed(() => ({
   chart: { type: 'line', toolbar: { show: false }, stacked: false },
   stroke: { width: [0, 4], curve: 'smooth' },
   plotOptions: { bar: { columnWidth: '50%', borderRadius: 4 } },
-  colors: ['#7367f0', '#28c76f'],
+  colors: ['#E20074', '#28C76F'],
   dataLabels: { 
     enabled: true, 
     enabledOnSeries: [0, 1],
@@ -112,13 +112,13 @@ const profitabilityChartOptions = computed(() => ({
   xaxis: { categories: props.profitability.map(l => l.name) },
   yaxis: [
     {
-      title: { text: 'Venta Bruta', style: { color: '#7367f0' } },
-      labels: { formatter: (val) => formatCurrency(val), style: { colors: '#7367f0' } }
+      title: { text: 'Venta Bruta', style: { color: '#E20074' } },
+      labels: { formatter: (val) => formatCurrency(val), style: { colors: '#E20074' } }
     },
     {
       opposite: true,
-      title: { text: 'Margen %', style: { color: '#28c76f' } },
-      labels: { formatter: (val) => `${val.toFixed(0)}%`, style: { colors: '#28c76f' } }
+      title: { text: 'Margen %', style: { color: '#28C76F' } },
+      labels: { formatter: (val) => `${val.toFixed(0)}%`, style: { colors: '#28C76F' } }
     }
   ],
   tooltip: {
@@ -147,7 +147,7 @@ const profitabilitySeries = computed(() => [
 const stockTreemapOptions = computed(() => ({
   legend: { show: false },
   chart: { height: 350, type: 'treemap', toolbar: { show: false } },
-  colors: ['#7367f0'],
+  colors: ['#E20074', '#7A0099', '#00BAD1', '#28C76F', '#FF9F43'],
   plotOptions: {
     treemap: {
       enableShades: true,

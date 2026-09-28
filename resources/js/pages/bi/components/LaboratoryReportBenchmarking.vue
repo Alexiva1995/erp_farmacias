@@ -168,13 +168,13 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                 <div class="d-flex w-100 rounded-pill overflow-hidden bg-white border bar-container">
                   <div 
                     class="d-flex align-center justify-center text-white font-weight-black bar-item" 
-                    :style="{ width: group.share_a + '%', backgroundColor: 'rgb(5, 77, 149)' }"
+                    :style="{ width: group.share_a + '%', backgroundColor: '#E20074' }"
                   >
                     <span v-if="group.share_a > 10">{{ group.share_a }}%</span>
                   </div>
                   <div 
                     class="d-flex align-center justify-center text-white font-weight-black bar-item" 
-                    :style="{ width: group.share_b + '%', backgroundColor: '#28c76f' }"
+                    :style="{ width: group.share_b + '%', backgroundColor: '#28C76F' }"
                   >
                     <span v-if="group.share_b > 10">{{ group.share_b }}%</span>
                   </div>
@@ -199,7 +199,7 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
                      <div 
                        v-for="p in group.products_a" 
                        :key="p.id" 
-                       class="text-caption font-weight-bold text-uppercase text-truncate mb-1 d-flex justify-space-between gap-1 text-primary-dark"
+                       class="text-caption font-weight-bold text-uppercase text-truncate mb-1 d-flex justify-space-between gap-1 text-primary"
                      >
                         <span class="text-truncate flex-grow-1">{{ p.name }}</span>
                         <span class="font-weight-black opacity-80 me-1">{{ p.units }}U</span>
@@ -235,11 +235,10 @@ const formatPercent = (val) => `${parseFloat(val || 0).toFixed(1)}%`;
 </template>
 
 <style scoped>
-.bg-light-primary { background-color: rgba(115, 103, 240, 0.12); }
-.bg-light-success { background-color: rgba(40, 199, 111, 0.12); }
-.bg-light-secondary { background-color: rgba(108, 117, 125, 0.08); }
+.bg-light-primary { background-color: rgba(226, 0, 116, 0.10); }
+.bg-light-success { background-color: rgba(40, 199, 111, 0.10); }
+.bg-light-secondary { background-color: rgba(122, 0, 153, 0.06); }
 
-.text-primary-dark { color: rgb(5, 77, 149); }
 .bar-container { height: 14px; }
 .bar-item { font-size: 8px; }
 .min-w-120 { min-width: 120px; }

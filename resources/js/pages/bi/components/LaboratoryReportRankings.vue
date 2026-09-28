@@ -148,9 +148,13 @@ const { formatCurrency } = useCurrencyConverter();
                 </template>
               </VListItem>
             </VList>
-            <div v-else class="pa-10 text-center text-medium-emphasis text-caption">
-              Sin datos registrados
-            </div>
+            <VEmptyState
+              v-else
+              icon="tabler-database-off"
+              title="Sin registros"
+              text="No se encontraron datos para la métrica seleccionada"
+              class="py-6"
+            />
           </template>
 
           <div class="pa-2 d-flex justify-space-between align-center bg-light-success border-t">
@@ -211,9 +215,13 @@ const { formatCurrency } = useCurrencyConverter();
                 </template>
               </VListItem>
             </VList>
-            <div v-else class="pa-10 text-center text-medium-emphasis text-caption">
-              Sin datos registrados
-            </div>
+            <VEmptyState
+              v-else
+              icon="tabler-database-off"
+              title="Sin registros"
+              text="No se encontraron datos para la métrica seleccionada"
+              class="py-6"
+            />
           </template>
 
           <div class="pa-2 d-flex justify-space-between align-center bg-light-warning border-t">
@@ -242,9 +250,9 @@ const { formatCurrency } = useCurrencyConverter();
 </template>
 
 <style scoped>
-.bg-light-primary { background-color: rgba(115, 103, 240, 0.12); }
-.bg-light-success { background-color: rgba(40, 199, 111, 0.12); }
-.bg-light-warning { background-color: rgba(255, 159, 67, 0.12); }
+.bg-light-primary { background-color: rgba(226, 0, 116, 0.10); }
+.bg-light-success { background-color: rgba(40, 199, 111, 0.10); }
+.bg-light-warning { background-color: rgba(255, 159, 67, 0.10); }
 
 .hover-bg:hover {
   background-color: rgba(var(--v-theme-primary), 0.04);
