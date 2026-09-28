@@ -1049,6 +1049,7 @@ const handleFilterCritical = () => {
         :get-gmroi-color="getGmroiColor"
         @open-offer="handleOpenIndividualOffer"
         @open-assign="handleOpenAssignEmployees"
+        @suggest-ia-order="handleSuggestIaOrder"
       />
     </VCard>
 

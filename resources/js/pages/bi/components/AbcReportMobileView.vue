@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue';
 import { formatCurrency } from '@/utils/currencyFormatter';
 
 const props = defineProps({
@@ -13,7 +14,15 @@ const props = defineProps({
   getGmroiColor: { type: Function, required: true },
 });
 
-const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
+const emit = defineEmits(['update:page', 'openOffer', 'openAssign', 'suggestIaOrder']);
+
+const selectedItemForDetail = ref(null);
+const isDetailDialogVisible = ref(false);
+
+const handleOpenClassificationDetail = (item) => {
+  selectedItemForDetail.value = item;
+  isDetailDialogVisible.value = true;
+};
 </script>
 
 <template>
@@ -24,14 +33,14 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
       <p class="text-body-2 font-weight-medium mb-0">Sin resultados para los filtros aplicados</p>
     </div>
     <div v-for="item in items" :key="item.id" class="px-2 py-1">
-      <VCard variant="flat" class="product-mobile-card border mb-2">
+      <VCard variant="flat" class="product-mobile-card border mb-2 shadow-xs">
         <div class="pa-3">
           <!-- Cabecera -->
           <div class="d-flex align-start justify-space-between gap-2">
             <div class="flex-grow-1 min-width-0">
               <div class="d-flex align-center gap-1 mb-1">
-                <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight">
-                  <span class="text-primary text-xs">#{{ item.id }}</span>
+                <h3 class="text-sm font-weight-bold text-high-emphasis text-uppercase leading-tight">
+                  <span class="text-primary font-weight-bold">#{{ item.id }}</span>
                   <span class="mx-1 text-disabled">|</span>
                   {{ item.name }}
                 </h3>
@@ -68,32 +77,39 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
               </div>
 
               <div class="d-flex align-center flex-wrap gap-x-2 text-caption">
-                <span class="text-medium-emphasis font-weight-medium text-uppercase truncate" style="max-inline-size: 200px;">
+                <span class="text-medium-emphasis font-weight-medium text-uppercase text-truncate" style="max-width: 200px;">
                   {{ item.laboratory_name || 'Sin laboratorio' }}
                 </span>
               </div>
             </div>
-            <span
+            
+            <!-- Badge Interactivo Táctil -->
+            <button
               v-if="!isSimplifiedView"
-              class="abc-badge-pill flex-shrink-0"
+              type="button"
+              class="abc-badge-pill flex-shrink-0 cursor-pointer border-0"
               :style="getAbcBadgeStyle(item.final_classification)"
+              @click="handleOpenClassificationDetail(item)"
             >
               {{ item.final_classification }}
-            </span>
+              <VIcon icon="tabler-info-circle" size="11" class="ms-1 opacity-70" />
+            </button>
           </div>
 
           <VDivider class="my-3 border-opacity-10" />
 
-          <!-- Grilla Simplificada de Capital Parado -->
+          <!-- Grilla Simplificada de Capital Parado / Riesgo FEFO -->
           <div v-if="isSimplifiedView" class="metrics-grid rounded border bg-var-theme-background">
             <VRow dense class="ma-0">
               <VCol cols="6" class="pa-2 border-r border-b border-opacity-10">
-                <div class="text-caption text-disabled text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">Stock Actual</div>
-                <div class="text-sm font-weight-bold text-high-emphasis">{{ item.current_stock }} unds</div>
+                <div class="text-caption text-medium-emphasis text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">Stock Actual</div>
+                <div class="text-sm font-weight-bold text-high-emphasis">
+                  {{ selectedAnalysisType === 'expiring_risk' && item.risk_expiring_units > 0 && item.risk_expiring_units < item.current_stock ? `${item.risk_expiring_units} de ${item.current_stock} unds` : `${item.current_stock} unds` }}
+                </div>
                 <div class="text-caption text-medium-emphasis">Costo: {{ formatCurrency(item.last_cost) }}</div>
               </VCol>
               <VCol cols="6" class="pa-2 border-b border-opacity-10">
-                <div class="text-caption text-disabled text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">Ventas en Periodo</div>
+                <div class="text-caption text-medium-emphasis text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">Ventas en Periodo</div>
                 <div class="text-sm font-weight-bold text-high-emphasis">
                   {{ item.sold_units }} unds
                 </div>
@@ -101,11 +117,15 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
               </VCol>
               <VCol cols="12" class="pa-2.5 d-flex justify-space-between align-center" style="background: rgba(var(--v-theme-surface-variant), 0.3);">
                 <div>
-                  <span class="text-caption text-high-emphasis font-weight-bold text-uppercase d-block leading-tight">Total Inmovilizado</span>
-                  <span class="text-caption text-medium-emphasis">Dinero en stock</span>
+                  <span class="text-caption text-high-emphasis font-weight-bold text-uppercase d-block leading-tight">
+                    {{ selectedAnalysisType === 'expiring_risk' ? 'Capital en Riesgo FEFO' : 'Total Inmovilizado' }}
+                  </span>
+                  <span class="text-caption text-medium-emphasis">
+                    {{ selectedAnalysisType === 'expiring_risk' ? 'Lotes próximos a vencer' : 'Dinero en stock parado' }}
+                  </span>
                 </div>
                 <div class="text-subtitle-1 font-weight-bold text-high-emphasis leading-none">
-                  {{ formatCurrency(item.inventory_value) }}
+                  {{ formatCurrency(selectedAnalysisType === 'expiring_risk' && item.risk_expiring_capital > 0 ? item.risk_expiring_capital : item.inventory_value) }}
                 </div>
               </VCol>
             </VRow>
@@ -115,14 +135,14 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
           <div v-else class="metrics-grid rounded border bg-var-theme-background">
             <VRow dense class="ma-0">
               <VCol cols="6" class="pa-2 border-r border-b border-opacity-10">
-                <div class="text-caption text-disabled text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">
+                <div class="text-caption text-medium-emphasis text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">
                   Ventas {{ item.contribution_sales_pct ? `(${item.contribution_sales_pct.toFixed(1)}%)` : '' }}
                 </div>
                 <div class="text-sm font-weight-bold text-high-emphasis">{{ formatCurrency(item.total_sales) }}</div>
                 <div class="text-caption text-medium-emphasis">{{ item.sold_units }} uds</div>
               </VCol>
               <VCol cols="6" class="pa-2 border-b border-opacity-10">
-                <div class="text-caption text-disabled text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">
+                <div class="text-caption text-medium-emphasis text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">
                   Margen {{ item.contribution_margin_pct ? `(${item.contribution_margin_pct.toFixed(1)}%)` : '' }}
                 </div>
                 <div class="text-sm font-weight-bold" :class="(item.margin_percentage ?? 0) >= 0 ? 'text-success' : 'text-error'">
@@ -133,14 +153,14 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
                 </div>
               </VCol>
               <VCol cols="6" class="pa-2 border-r border-opacity-10">
-                <div class="text-caption text-disabled text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">ROI Anual</div>
+                <div class="text-caption text-medium-emphasis text-uppercase font-weight-medium mb-0.5" style="font-size: 0.65rem !important;">ROI Anual (GMROI)</div>
                 <div class="text-sm font-weight-bold" :class="getGmroiColor(item.gmroi)">
                   {{ item.gmroi >= 9999 ? 'MAX' : Math.round(item.gmroi) + '%' }}
                 </div>
               </VCol>
               <VCol cols="6" class="pa-2">
                 <div class="d-flex justify-space-between align-center mb-0.5">
-                  <span class="text-caption text-disabled text-uppercase font-weight-medium" style="font-size: 0.65rem !important;">Cobertura</span>
+                  <span class="text-caption text-medium-emphasis text-uppercase font-weight-medium" style="font-size: 0.65rem !important;">Cobertura</span>
                 </div>
                 <div class="text-sm font-weight-bold" :class="item.inventory_days < 10 || item.current_stock === 0 ? 'text-error' : 'text-high-emphasis'">
                   {{ item.current_stock === 0 ? 'Sin stock' : (item.inventory_days === 9999 ? 'Sin rotación' : Math.round(item.inventory_days) + ' días') }}
@@ -176,15 +196,25 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
             Asignar
           </VBtn>
           <VBtn 
+            color="primary" 
+            variant="text" 
+            class="rounded-0 text-caption font-weight-bold flex-grow-1 border-r border-opacity-10" 
+            height="40"
+            @click="emit('suggestIaOrder', item)"
+          >
+            <VIcon icon="tabler-sparkles" size="16" class="me-1" />
+            Pedido IA
+          </VBtn>
+          <VBtn 
             :href="'/inventory/traceability?q=' + item.id" 
             target="_blank"
-            color="primary" 
+            color="secondary" 
             variant="text" 
             class="rounded-0 text-caption font-weight-bold flex-grow-1" 
             height="40"
           >
             <VIcon icon="tabler-history" size="16" class="me-1" />
-            Trazabilidad
+            Kardex
           </VBtn>
         </div>
       </VCard>
@@ -192,14 +222,60 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
 
     <!-- Paginación móvil -->
     <div class="d-flex justify-center align-center pa-3 gap-3">
-      <VBtn icon variant="text" size="32" :disabled="page <= 1" @click="emit('update:page', page - 1)">
+      <VBtn icon variant="tonal" size="32" :disabled="page <= 1" @click="emit('update:page', page - 1)">
         <VIcon icon="tabler-chevron-left" size="18" />
       </VBtn>
-      <span class="text-caption text-medium-emphasis">Pág. {{ page }}</span>
-      <VBtn icon variant="text" size="32" :disabled="items.length < itemsPerPage" @click="emit('update:page', page + 1)">
+      <span class="text-caption font-weight-bold text-high-emphasis">Pág. {{ page }}</span>
+      <VBtn icon variant="tonal" size="32" :disabled="items.length < itemsPerPage" @click="emit('update:page', page + 1)">
         <VIcon icon="tabler-chevron-right" size="18" />
       </VBtn>
     </div>
+
+    <!-- Modal Táctil de Desglose de Clasificación ABC-XYZ -->
+    <VDialog v-model="isDetailDialogVisible" max-width="400">
+      <VCard v-if="selectedItemForDetail" class="rounded-lg">
+        <VCardItem class="pb-2">
+          <template #prepend>
+            <VAvatar color="primary" variant="tonal" rounded="lg">
+              <VIcon icon="tabler-chart-pie" />
+            </VAvatar>
+          </template>
+          <VCardTitle class="text-subtitle-1 font-weight-bold">
+            Clasificación {{ selectedItemForDetail.final_classification }}
+          </VCardTitle>
+          <VCardSubtitle class="text-caption">
+            #{{ selectedItemForDetail.id }} - {{ selectedItemForDetail.name }}
+          </VCardSubtitle>
+        </VCardItem>
+        <VDivider class="border-opacity-10" />
+        <VCardText class="pa-4 d-flex flex-column gap-3">
+          <div class="d-flex align-center justify-space-between p-2 rounded bg-surface-variant">
+            <span class="text-body-2 font-weight-medium">Aporte en Ventas (A/B/C):</span>
+            <VChip size="small" :color="selectedItemForDetail.class_sales === 'A' ? 'success' : (selectedItemForDetail.class_sales === 'B' ? 'warning' : 'secondary')" variant="flat" class="font-weight-bold">
+              {{ selectedItemForDetail.class_sales }} ({{ selectedItemForDetail.class_sales === 'A' ? 'Alto 80%' : (selectedItemForDetail.class_sales === 'B' ? 'Medio 15%' : 'Bajo 5%') }})
+            </VChip>
+          </div>
+          <div class="d-flex align-center justify-space-between p-2 rounded bg-surface-variant">
+            <span class="text-body-2 font-weight-medium">Margen Contribución (A/B/C):</span>
+            <VChip size="small" :color="selectedItemForDetail.class_margin === 'A' ? 'success' : (selectedItemForDetail.class_margin === 'B' ? 'warning' : 'secondary')" variant="flat" class="font-weight-bold">
+              {{ selectedItemForDetail.class_margin }} ({{ selectedItemForDetail.class_margin === 'A' ? 'Alto 80%' : (selectedItemForDetail.class_margin === 'B' ? 'Medio 15%' : 'Bajo 5%') }})
+            </VChip>
+          </div>
+          <div class="d-flex align-center justify-space-between p-2 rounded bg-surface-variant">
+            <span class="text-body-2 font-weight-medium">Rotación y Demanda (X/Y/Z):</span>
+            <VChip size="small" :color="selectedItemForDetail.class_rotation === 'X' ? 'info' : (selectedItemForDetail.class_rotation === 'Y' ? 'warning' : 'error')" variant="flat" class="font-weight-bold">
+              {{ selectedItemForDetail.class_rotation }} ({{ selectedItemForDetail.class_rotation === 'X' ? 'Estable' : (selectedItemForDetail.class_rotation === 'Y' ? 'Variable' : 'Errática') }})
+            </VChip>
+          </div>
+        </VCardText>
+        <VCardActions class="pa-3">
+          <VSpacer />
+          <VBtn color="primary" variant="flat" size="small" @click="isDetailDialogVisible = false">
+            Entendido
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </div>
 </template>
 
@@ -214,31 +290,19 @@ const emit = defineEmits(['update:page', 'openOffer', 'openAssign']);
   background-color: rgba(var(--v-border-color), 0.05);
 }
 
-.border-dashed-thin {
-  border: 1px dashed rgba(var(--v-border-color), 0.3) !important;
-}
-
-.text-super-xs {
-  font-size: 0.65rem !important;
-  line-height: 1.2;
-}
-
 .abc-badge-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 9999px;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.5px;
   line-height: 1.2;
 }
 
-.bg-error-lighten-5 {
-  background-color: rgba(var(--v-theme-error), 0.08) !important;
-}
-
 .gap-1 { gap: 4px !important; }
 .gap-2 { gap: 8px !important; }
+.gap-3 { gap: 12px !important; }
 </style>

@@ -4,19 +4,35 @@ import { ref, computed, watch } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
 import axios from '@/plugins/axios';
 import { formatPrice, formatDateSimple } from '@/utils/formatters';
+import { useBiThemeColors } from '@/composables/useBiThemeColors';
 
 const props = defineProps({
   groups: { type: Array, default: () => [] },
+  modelValue: { type: [Number, String, null], default: null },
 });
+
+const emit = defineEmits(['update:modelValue']);
+
+const { colors } = useBiThemeColors();
 
 // --- Estado local ---
 const productSearchItems   = ref([]);
 const productSearchLoading = ref(false);
-const selectedProduct      = ref(null);
+const selectedProduct      = ref(props.modelValue);
 const productStatsData     = ref(null);
 const loadingStats         = ref(false);
 
-// --- Búsqueda de productos con debounce implícito por min-length ---
+// Sincronización con prop externa
+watch(() => props.modelValue, (newVal) => {
+  if (newVal !== selectedProduct.value) {
+    selectedProduct.value = newVal;
+    if (newVal) {
+      loadProductStats(newVal);
+    }
+  }
+});
+
+// --- Búsqueda de productos ---
 const searchProducts = async (query) => {
   if (!query || query.length < 1) return;
   productSearchLoading.value = true;
@@ -49,47 +65,71 @@ const loadProductStats = async (productId) => {
   }
 };
 
-watch(selectedProduct, (id) => loadProductStats(id));
+watch(selectedProduct, (id) => {
+  emit('update:modelValue', id);
+  loadProductStats(id);
+});
 
-// --- Opciones de gráficos ---
+// --- Opciones de gráficos dinámicas con tema ---
 const individualChartOptions = computed(() => ({
-  chart: { type: 'area', toolbar: { show: false }, zoom: { enabled: false } },
+  chart: {
+    type: 'area',
+    toolbar: { show: false },
+    zoom: { enabled: false },
+    fontFamily: 'inherit',
+    background: 'transparent',
+  },
   dataLabels: { enabled: false },
   stroke: { curve: 'smooth', width: 2 },
   xaxis: {
     categories: productStatsData.value?.trend_chart?.labels ?? [],
-    labels: { style: { fontSize: '11px' } },
+    labels: { style: { fontSize: '11px', colors: colors.value.onSurface } },
+    axisBorder: { show: false },
+    axisTicks: { show: false },
   },
-  yaxis: { labels: { style: { fontSize: '11px' } } },
-  grid: { strokeDashArray: 4 },
-  colors: ['#4F46E5', '#10B981', '#F59E0B'],
-  tooltip: { theme: 'dark' },
+  yaxis: {
+    labels: { style: { fontSize: '11px', colors: colors.value.onSurface } },
+  },
+  grid: { strokeDashArray: 4, borderColor: 'rgba(var(--v-theme-on-surface), 0.12)' },
+  colors: [colors.value.primary, colors.value.success, colors.value.warning],
+  tooltip: { theme: colors.value.isDark ? 'dark' : 'light' },
 }));
 
 const marketShareOptions = computed(() => ({
-  chart: { type: 'radialBar' },
+  chart: {
+    type: 'radialBar',
+    fontFamily: 'inherit',
+    background: 'transparent',
+  },
   plotOptions: {
     radialBar: {
       startAngle: -135,
       endAngle: 135,
       hollow: { size: '68%' },
       dataLabels: {
-        name: { fontSize: '12px', color: 'rgba(var(--v-theme-on-surface), 0.6)', offsetY: -8 },
-        value: { offsetY: 6, fontSize: '20px', fontWeight: 800, formatter: val => `${val}%` },
+        name: { fontSize: '12px', color: colors.value.onSurface, offsetY: -8 },
+        value: { offsetY: 6, fontSize: '20px', fontWeight: 800, color: colors.value.onSurface, formatter: val => `${val}%` },
       },
     },
   },
   stroke: { dashArray: 4 },
   labels: ['Preferencia'],
-  colors: ['#4F46E5'],
+  colors: [colors.value.primary],
 }));
 
 const individualSeries  = computed(() => productStatsData.value?.trend_chart?.series ?? []);
 const marketShareSeries = computed(() => [productStatsData.value?.market_share ?? 0]);
+
+defineExpose({
+  selectProduct: (id) => {
+    selectedProduct.value = id;
+    loadProductStats(id);
+  },
+});
 </script>
 
 <template>
-  <VCard border class="rounded-lg overflow-hidden shadow-sm analytic-card">
+  <VCard border class="rounded-lg overflow-hidden shadow-sm analytic-card" id="analytic-sku-card">
     <!-- Hero Bar interactivo con buscador corporativo -->
     <div class="pa-4 pa-sm-5 bg-surface border-b d-flex align-center flex-wrap gap-4">
       <div class="d-flex align-center gap-3">
@@ -98,7 +138,7 @@ const marketShareSeries = computed(() => [productStatsData.value?.market_share ?
         </VAvatar>
         <div>
           <div class="text-subtitle-1 font-weight-bold text-high-emphasis">Analítica Individual por SKU</div>
-          <div class="text-super-xs text-medium-emphasis">Explora dominancia competitiva, rotación y trazabilidad de cualquier ítem</div>
+          <div class="text-caption text-medium-emphasis">Explora dominancia competitiva, rotación y trazabilidad de cualquier ítem</div>
         </div>
       </div>
       <VSpacer />
@@ -125,7 +165,7 @@ const marketShareSeries = computed(() => [productStatsData.value?.market_share ?
                 <VChip size="x-small" color="primary" label class="me-2 font-weight-bold">ID: {{ item.raw.id }}</VChip>
               </template>
               <template #subtitle>
-                <span class="text-super-xs text-medium-emphasis">{{ item.raw.active_ingredient || 'Sin principio activo' }}</span>
+                <span class="text-caption text-medium-emphasis">{{ item.raw.active_ingredient || 'Sin principio activo' }}</span>
               </template>
             </VListItem>
           </template>
@@ -152,7 +192,7 @@ const marketShareSeries = computed(() => [productStatsData.value?.market_share ?
         <!-- Market Share -->
         <VCol cols="12" md="4">
           <VCard variant="outlined" class="pa-4 rounded-lg d-flex flex-column align-center justify-center h-100 bg-surface">
-            <div class="text-xs font-weight-bold text-medium-emphasis text-uppercase mb-2">Dominancia del SKU</div>
+            <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase mb-2">Dominancia del SKU</div>
             <VueApexCharts type="radialBar" height="220" :options="marketShareOptions" :series="marketShareSeries" />
             <div class="text-center mt-1">
               <div class="text-h4 font-weight-black text-primary">{{ productStatsData.market_share }}%</div>
@@ -165,15 +205,15 @@ const marketShareSeries = computed(() => [productStatsData.value?.market_share ?
         <VCol cols="12" md="8">
           <VCard variant="outlined" class="pa-4 rounded-lg h-100 bg-surface">
             <div class="d-flex align-center justify-space-between mb-3">
-              <span class="text-xs font-weight-bold text-high-emphasis text-uppercase">Tendencia Histórica de Ventas</span>
+              <span class="text-caption font-weight-bold text-high-emphasis text-uppercase">Tendencia Histórica de Ventas</span>
               <div class="d-flex gap-4">
                 <div class="text-right">
-                  <div class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold">Ventas Totales</div>
-                  <div class="text-subtitle-1 font-weight-black text-primary">{{ productStatsData.total_units_sold }} <span class="text-super-xs font-weight-normal text-medium-emphasis">Unds</span></div>
+                  <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Ventas Totales</div>
+                  <div class="text-subtitle-1 font-weight-black text-primary">{{ productStatsData.total_units_sold }} <span class="text-caption font-weight-normal text-medium-emphasis">Unds</span></div>
                 </div>
                 <div class="text-right">
-                  <div class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold">Promedio Mensual</div>
-                  <div class="text-subtitle-1 font-weight-black text-success">{{ productStatsData.monthly_average }} <span class="text-super-xs font-weight-normal text-medium-emphasis">/ mes</span></div>
+                  <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Promedio Mensual</div>
+                  <div class="text-subtitle-1 font-weight-black text-success">{{ productStatsData.monthly_average }} <span class="text-caption font-weight-normal text-medium-emphasis">/ mes</span></div>
                 </div>
               </div>
             </div>
@@ -192,15 +232,15 @@ const marketShareSeries = computed(() => [productStatsData.value?.market_share ?
             </div>
             <div v-if="productStatsData.last_sale" class="d-flex align-center justify-space-between flex-grow-1 flex-sm-grow-0 gap-6">
               <div class="d-flex flex-column align-start align-sm-end">
-                <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Fecha</span>
+                <span class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Fecha</span>
                 <span class="text-subtitle-2 font-weight-bold">{{ formatDateSimple(productStatsData.last_sale.date) }}</span>
               </div>
               <div class="d-flex flex-column align-center align-sm-end">
-                <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Precio Unitario</span>
+                <span class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Precio Unitario</span>
                 <span class="text-subtitle-2 font-weight-bold text-success">{{ formatPrice(productStatsData.last_sale.price) }}</span>
               </div>
               <div class="d-flex flex-column align-end">
-                <span class="text-super-xs text-medium-emphasis uppercase font-weight-bold">Cantidad</span>
+                <span class="text-caption text-medium-emphasis text-uppercase font-weight-bold">Cantidad</span>
                 <span class="text-subtitle-2 font-weight-bold">{{ productStatsData.last_sale.quantity }} Unds</span>
               </div>
             </div>
@@ -215,15 +255,8 @@ const marketShareSeries = computed(() => [productStatsData.value?.market_share ?
       <VIcon icon="tabler-scan" size="48" class="mb-3 text-primary opacity-60" />
       <div class="text-subtitle-1 font-weight-bold text-high-emphasis">Búsqueda Rápida de SKU Específico</div>
       <p class="text-caption text-medium-emphasis" style="max-width: 480px; margin: 0 auto;">
-        Usa el buscador superior para inspeccionar cualquier producto del catálogo: obtendrás de inmediato su índice de dominancia en categoría, curva de ventas e historial de última salida.
+        Usa el buscador superior o haz clic en el ícono de lupa en cualquiera de los rankings TOP para inspeccionar un producto: obtendrás de inmediato su índice de dominancia en categoría, curva de ventas e historial de última salida.
       </p>
     </VCardText>
   </VCard>
 </template>
-
-<style scoped>
-.text-super-xs {
-  font-size: 0.7rem !important;
-  line-height: 1.2;
-}
-</style>

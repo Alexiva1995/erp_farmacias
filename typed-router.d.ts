@@ -49,6 +49,7 @@ declare module 'vue-router/auto-routes' {
     'bi-components-product-report-cross-selling': RouteRecordInfo<'bi-components-product-report-cross-selling', '/bi/components/ProductReportCrossSelling', Record<never, never>, Record<never, never>>,
     'bi-components-product-report-kpi-cards': RouteRecordInfo<'bi-components-product-report-kpi-cards', '/bi/components/ProductReportKpiCards', Record<never, never>, Record<never, never>>,
     'bi-components-product-report-rankings': RouteRecordInfo<'bi-components-product-report-rankings', '/bi/components/ProductReportRankings', Record<never, never>, Record<never, never>>,
+    'bi-components-product-report-trend-chart': RouteRecordInfo<'bi-components-product-report-trend-chart', '/bi/components/ProductReportTrendChart', Record<never, never>, Record<never, never>>,
     'bi-components-sku-report-filters': RouteRecordInfo<'bi-components-sku-report-filters', '/bi/components/SkuReportFilters', Record<never, never>, Record<never, never>>,
     'bi-components-sku-report-kpis': RouteRecordInfo<'bi-components-sku-report-kpis', '/bi/components/SkuReportKpis', Record<never, never>, Record<never, never>>,
     'bi-components-sku-report-mobile-view': RouteRecordInfo<'bi-components-sku-report-mobile-view', '/bi/components/SkuReportMobileView', Record<never, never>, Record<never, never>>,

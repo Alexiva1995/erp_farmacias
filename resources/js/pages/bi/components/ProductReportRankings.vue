@@ -1,6 +1,6 @@
 <script setup>
-// Componente: Ranking TOP Productos (Volumen, Venta Bruta y Rentabilidad) — Rediseño Corporativo
-import { computed, ref } from 'vue';
+// Componente: Ranking TOP Productos (Volumen, Venta Bruta y Rentabilidad) — Con Drill-down a SKU
+import { computed } from 'vue';
 import { useCurrencyConverter } from '@/components/useCurrencyConverter';
 
 const { formatCurrency } = useCurrencyConverter();
@@ -16,14 +16,14 @@ const props = defineProps({
   loadingRevenue: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['page-volume', 'page-revenue']);
+const emit = defineEmits(['page-volume', 'page-revenue', 'inspect-product']);
 
 // Posición absoluta según página
 const volOffset = computed(() => (props.volumePage - 1) * 10);
 const revOffset = computed(() => (props.revenuePage - 1) * 10);
 
 // ¿Hay más páginas?
-const hasMoreVolume  = computed(() => props.topVolume.length >= 10);
+const hasMoreVolume = computed(() => props.topVolume.length >= 10);
 const hasMoreRevenue = computed(() => props.topRevenue.length >= 10);
 
 // Cálculo seguro de % de margen bruto
@@ -43,7 +43,7 @@ const getBadgeColor = (rank) => {
 </script>
 
 <template>
-  <VRow>
+  <VRow class="match-height">
     <!-- TOP por Volumen -->
     <VCol cols="12" md="6">
       <VCard border class="rounded-lg h-100 overflow-hidden shadow-sm ranking-card">
@@ -54,7 +54,7 @@ const getBadgeColor = (rank) => {
             </VAvatar>
             <div>
               <div class="text-subtitle-1 font-weight-bold text-high-emphasis">TOP Productos por Demanda</div>
-              <div class="text-super-xs text-medium-emphasis">Ranking clasificado por volumen de unidades vendidas</div>
+              <div class="text-caption text-medium-emphasis">Ranking clasificado por volumen de unidades vendidas</div>
             </div>
           </div>
           <VChip size="x-small" color="primary" variant="flat" label class="font-weight-bold">
@@ -66,14 +66,14 @@ const getBadgeColor = (rank) => {
           <!-- Cargador -->
           <div v-if="loadingVolume" class="pa-8 text-center">
             <VProgressCircular indeterminate color="primary" size="32" width="2" class="mb-2" />
-            <div class="text-xs text-primary font-weight-bold">Cargando productos...</div>
+            <div class="text-caption text-primary font-weight-bold">Cargando productos...</div>
           </div>
 
           <!-- Estado Vacío -->
           <div v-else-if="!topVolume.length" class="text-center pa-8 text-medium-emphasis">
             <VIcon icon="tabler-package-off" size="36" class="mb-2 opacity-30" />
-            <div class="text-sm font-weight-bold">Sin registros de volumen</div>
-            <div class="text-xs text-disabled">No hay ventas registradas en este período.</div>
+            <div class="text-subtitle-2 font-weight-bold">Sin registros de volumen</div>
+            <div class="text-caption text-disabled">No hay ventas registradas en este período.</div>
           </div>
 
           <!-- Lista -->
@@ -96,21 +96,34 @@ const getBadgeColor = (rank) => {
                 </template>
 
                 <div class="d-flex flex-column min-width-0">
-                  <span
-                    class="text-sm font-weight-bold text-high-emphasis text-uppercase text-truncate"
-                    style="max-width: 230px;"
-                    :title="item?.name"
-                  >
-                    {{ item?.name || 'Desconocido' }}
-                  </span>
-                  <div class="d-flex align-center gap-1 text-super-xs">
-                    <span class="text-medium-emphasis font-weight-bold">ID: {{ item?.id }}</span>
-                    <span class="text-disabled">·</span>
-                    <span class="text-medium-emphasis text-truncate" style="max-width: 130px;">
+                  <div class="d-flex align-center gap-1">
+                    <span
+                      class="text-body-2 font-weight-bold text-high-emphasis text-uppercase text-truncate"
+                      style="max-width: 220px;"
+                      :title="item?.name"
+                    >
+                      {{ item?.name || 'Desconocido' }}
+                    </span>
+                    <VBtn
+                      icon="tabler-zoom-scan"
+                      variant="text"
+                      size="x-small"
+                      color="primary"
+                      density="compact"
+                      @click="emit('inspect-product', item?.id)"
+                    >
+                      <VIcon icon="tabler-zoom-scan" size="14" />
+                      <VTooltip activator="parent" location="top">Inspeccionar SKU</VTooltip>
+                    </VBtn>
+                  </div>
+                  <div class="d-flex align-center gap-1 text-caption text-medium-emphasis">
+                    <span class="font-weight-bold">ID: {{ item?.id }}</span>
+                    <span>·</span>
+                    <span class="text-truncate" style="max-width: 120px;">
                       {{ item?.active_ingredient || 'Sin principio activo' }}
                     </span>
-                    <span class="text-disabled">·</span>
-                    <span class="text-primary font-weight-medium text-uppercase text-truncate" style="max-width: 110px;">
+                    <span>·</span>
+                    <span class="text-primary font-weight-medium text-uppercase text-truncate" style="max-width: 100px;">
                       {{ item?.laboratory_name || 'S/L' }}
                     </span>
                   </div>
@@ -121,7 +134,7 @@ const getBadgeColor = (rank) => {
                     <div class="text-subtitle-2 font-weight-black text-high-emphasis">
                       {{ Math.trunc(item?.total_sold ?? 0).toLocaleString() }} <span class="text-caption font-weight-normal text-medium-emphasis">Unds</span>
                     </div>
-                    <div class="text-super-xs text-medium-emphasis">
+                    <div class="text-caption text-medium-emphasis">
                       Venta: {{ formatCurrency(item?.total_revenue ?? 0) }}
                     </div>
                   </div>
@@ -132,7 +145,7 @@ const getBadgeColor = (rank) => {
 
           <VDivider />
           <div class="pa-2 px-4 d-flex align-center justify-space-between bg-surface">
-            <span class="text-xs text-medium-emphasis">Página {{ volumePage }}</span>
+            <span class="text-caption text-medium-emphasis">Página {{ volumePage }}</span>
             <div class="d-flex gap-1">
               <VBtn
                 icon="tabler-chevron-left"
@@ -164,7 +177,7 @@ const getBadgeColor = (rank) => {
             </VAvatar>
             <div>
               <div class="text-subtitle-1 font-weight-bold text-high-emphasis">TOP Facturación y Margen</div>
-              <div class="text-super-xs text-medium-emphasis">Ranking por recaudación con contexto de rentabilidad bruta</div>
+              <div class="text-caption text-medium-emphasis">Ranking por recaudación con contexto de rentabilidad bruta</div>
             </div>
           </div>
           <VChip size="x-small" color="success" variant="flat" label class="font-weight-bold">
@@ -176,14 +189,14 @@ const getBadgeColor = (rank) => {
           <!-- Cargador -->
           <div v-if="loadingRevenue" class="pa-8 text-center">
             <VProgressCircular indeterminate color="success" size="32" width="2" class="mb-2" />
-            <div class="text-xs text-success font-weight-bold">Cargando productos...</div>
+            <div class="text-caption text-success font-weight-bold">Cargando productos...</div>
           </div>
 
           <!-- Estado Vacío -->
           <div v-else-if="!topRevenue.length" class="text-center pa-8 text-medium-emphasis">
             <VIcon icon="tabler-package-off" size="36" class="mb-2 opacity-30" />
-            <div class="text-sm font-weight-bold">Sin registros financieros</div>
-            <div class="text-xs text-disabled">No hay ventas registradas en este período.</div>
+            <div class="text-subtitle-2 font-weight-bold">Sin registros financieros</div>
+            <div class="text-caption text-disabled">No hay ventas registradas en este período.</div>
           </div>
 
           <!-- Lista -->
@@ -206,21 +219,34 @@ const getBadgeColor = (rank) => {
                 </template>
 
                 <div class="d-flex flex-column min-width-0">
-                  <span
-                    class="text-sm font-weight-bold text-high-emphasis text-uppercase text-truncate"
-                    style="max-width: 220px;"
-                    :title="item?.name"
-                  >
-                    {{ item?.name || 'Desconocido' }}
-                  </span>
-                  <div class="d-flex align-center gap-1 text-super-xs">
-                    <span class="text-medium-emphasis font-weight-bold">ID: {{ item?.id }}</span>
-                    <span class="text-disabled">·</span>
-                    <span class="text-medium-emphasis text-truncate" style="max-width: 120px;">
+                  <div class="d-flex align-center gap-1">
+                    <span
+                      class="text-body-2 font-weight-bold text-high-emphasis text-uppercase text-truncate"
+                      style="max-width: 210px;"
+                      :title="item?.name"
+                    >
+                      {{ item?.name || 'Desconocido' }}
+                    </span>
+                    <VBtn
+                      icon="tabler-zoom-scan"
+                      variant="text"
+                      size="x-small"
+                      color="primary"
+                      density="compact"
+                      @click="emit('inspect-product', item?.id)"
+                    >
+                      <VIcon icon="tabler-zoom-scan" size="14" />
+                      <VTooltip activator="parent" location="top">Inspeccionar SKU</VTooltip>
+                    </VBtn>
+                  </div>
+                  <div class="d-flex align-center gap-1 text-caption text-medium-emphasis">
+                    <span class="font-weight-bold">ID: {{ item?.id }}</span>
+                    <span>·</span>
+                    <span class="text-truncate" style="max-width: 110px;">
                       {{ item?.active_ingredient || 'Sin principio activo' }}
                     </span>
-                    <span class="text-disabled">·</span>
-                    <span class="text-primary font-weight-medium text-uppercase text-truncate" style="max-width: 110px;">
+                    <span>·</span>
+                    <span class="text-primary font-weight-medium text-uppercase text-truncate" style="max-width: 100px;">
                       {{ item?.laboratory_name || 'S/L' }}
                     </span>
                   </div>
@@ -234,7 +260,7 @@ const getBadgeColor = (rank) => {
                         :color="getMarginPercent(item?.total_revenue, item?.total_margin) >= 25 ? 'success' : 'warning'"
                         variant="tonal"
                         label
-                        class="font-weight-black text-super-xs"
+                        class="font-weight-black"
                       >
                         {{ getMarginPercent(item?.total_revenue, item?.total_margin) }}% Mgn
                       </VChip>
@@ -242,7 +268,7 @@ const getBadgeColor = (rank) => {
                         {{ formatCurrency(item?.total_revenue ?? 0) }}
                       </div>
                     </div>
-                    <div class="text-super-xs text-medium-emphasis mt-1">
+                    <div class="text-caption text-medium-emphasis mt-1">
                       Margen: <strong class="text-success">{{ formatCurrency(item?.total_margin ?? 0) }}</strong> ({{ Math.trunc(item?.total_sold ?? 0).toLocaleString() }} unds)
                     </div>
                   </div>
@@ -253,7 +279,7 @@ const getBadgeColor = (rank) => {
 
           <VDivider />
           <div class="pa-2 px-4 d-flex align-center justify-space-between bg-surface">
-            <span class="text-xs text-medium-emphasis">Página {{ revenuePage }}</span>
+            <span class="text-caption text-medium-emphasis">Página {{ revenuePage }}</span>
             <div class="d-flex gap-1">
               <VBtn
                 icon="tabler-chevron-left"
@@ -278,11 +304,7 @@ const getBadgeColor = (rank) => {
 </template>
 
 <style scoped>
-.text-super-xs {
-  font-size: 0.7rem !important;
-  line-height: 1.2;
-}
 .ranking-item:hover {
-  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
 }
 </style>

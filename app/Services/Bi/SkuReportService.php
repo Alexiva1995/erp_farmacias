@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Bi;
 
 use App\Contracts\Repositories\SkuReportRepositoryInterface;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\DB;
 
 class SkuReportService
 {
-    protected $skuReportRepository;
+    protected SkuReportRepositoryInterface $skuReportRepository;
 
     public function __construct(SkuReportRepositoryInterface $skuReportRepository)
     {
@@ -18,27 +19,26 @@ class SkuReportService
     }
 
     /**
-     * Genera el reporte de Margen Real calculando las capas en SQL.
+     * Genera el reporte de Margen Real calculando las capas en SQL de forma optimizada.
      */
-    public function generateReport(array $filters, $perPage = 15)
+    public function generateReport(array $filters, int $perPage = 15): LengthAwarePaginator
     {
         $baseQuery = $this->skuReportRepository->getBaseQuery($filters);
 
         $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : now()->startOfMonth()->format('Y-m-d 00:00:00');
 
-
-
-
-
         $expiredQuery = DB::table('expired_logs')
             ->select('product_id', DB::raw('SUM(total_lost_value) as total_expired_cost'))
             ->where('created_at', '>=', $startDate);
+
         if (!empty($filters['end_date'])) {
             $expiredQuery->where('created_at', '<=', $filters['end_date'] . ' 23:59:59');
         }
         $expiredQuery->groupBy('product_id');
 
-        $wrappedQuery = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
+        // Construcción limpia del query envolvente usando fromSub y leftJoinSub
+        $wrappedQuery = DB::query()
+            ->fromSub($baseQuery, 'sub')
             ->select([
                 'sub.*',
                 DB::raw('COALESCE(expired.total_expired_cost, 0) as loss_value'),
@@ -48,29 +48,6 @@ class SkuReportService
                 DB::raw('CASE WHEN sub.total_revenue > 0 THEN ((sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) / sub.total_revenue) * 100 ELSE 0 END as real_margin_percent'),
             ])
             ->leftJoinSub($expiredQuery, 'expired', 'sub.product_id', '=', 'expired.product_id');
-
-        // Extraer los bindings originales de cada query
-        $baseBindings = $baseQuery->getBindings();
-        $expiredBindings = $expiredQuery->getBindings();
-
-        // Limpiar todas las claves de bindings para evitar que Laravel arrastre duplicados en 'where' o 'union'
-        $ref = new \ReflectionClass($wrappedQuery);
-        $prop = $ref->getProperty('bindings');
-        $prop->setAccessible(true);
-        
-        $rawBindings = [
-            'select' => [],
-            'from' => [],
-            'join' => array_merge($baseBindings, $expiredBindings),
-            'where' => [],
-            'groupBy' => [],
-            'having' => [],
-            'order' => [],
-            'union' => [],
-            'unionOrder' => [],
-        ];
-        
-        $prop->setValue($wrappedQuery, $rawBindings);
 
         if (!empty($filters['semaphore'])) {
             $wrappedQuery->where(function ($q) use ($filters) {
@@ -99,25 +76,24 @@ class SkuReportService
         }
 
         if (!empty($filters['sortBy']) && !empty($filters['orderBy'])) {
-            $allowedSorts = ['total_sold', 'product_name', 'real_margin_percent', 'gross_margin_percent', 'net_margin_percent'];
-            if (in_array($filters['sortBy'], $allowedSorts)) {
+            $allowedSorts = ['total_sold', 'product_name', 'real_margin_percent', 'gross_margin_percent', 'net_margin_percent', 'current_stock'];
+            if (in_array($filters['sortBy'], $allowedSorts, true)) {
                 $wrappedQuery->orderBy($filters['sortBy'], $filters['orderBy']);
             }
         } else {
             $wrappedQuery->orderBy('total_revenue', 'desc');
         }
 
-        // Obtener el conteo total envolviendo el SQL para evitar que Laravel genere count(*) incorrecto
-        $totalCountResult = DB::select("select count(*) as cnt from (" . $wrappedQuery->toSql() . ") as tmp", $wrappedQuery->getBindings());
-        $total = $totalCountResult[0]->cnt ?? 0;
+        // Obtener el conteo total con subquery directo seguro
+        $total = $wrappedQuery->count();
 
-        // Paginación manual para evitar que Laravel intente compilar count(*) directamente
-        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage() ?: 1;
+        // Paginación
+        $page = Paginator::resolveCurrentPage() ?: 1;
         $offset = ($page - 1) * $perPage;
-        $paginatedSql = $wrappedQuery->toSql() . " LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
-        $itemsData = DB::select($paginatedSql, $wrappedQuery->getBindings());
 
-        $items = collect($itemsData)->map(function ($item) {
+        $itemsData = (clone $wrappedQuery)->offset($offset)->limit($perPage)->get();
+
+        $items = $itemsData->map(function ($item) {
             $realMarginPercent = (float) $item->real_margin_percent;
             $totalRevenue = (float) $item->total_revenue;
 
@@ -148,42 +124,40 @@ class SkuReportService
             return $item;
         });
 
-        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+        return new LengthAwarePaginator(
             $items,
             $total,
             $perPage,
             $page,
-            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
+            ['path' => Paginator::resolveCurrentPath()]
         );
-
-        return $paginated;
     }
 
     /**
-     * Calcula los resúmenes financieros globales de toda la consulta (sin paginar) de manera optimizada.
+     * Calcula los resúmenes financieros globales y métricas BI extendidas.
      */
     public function getGlobalSummary(array $filters): array
     {
         $baseQuery = $this->skuReportRepository->getBaseQuery($filters);
         
-        $totals = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
-            ->mergeBindings($baseQuery->getQuery())
+        $totals = DB::query()
+            ->fromSub($baseQuery, 'sub')
             ->select([
                 DB::raw('SUM(total_revenue) as total_revenue'),
                 DB::raw('SUM(total_historical_cost) as total_historical_cost'),
                 DB::raw('SUM(total_discount_amount) as total_discounts'),
+                DB::raw('SUM(total_sold * list_price) as total_gross_sales'),
+                DB::raw('SUM(current_stock * current_cost) as total_inventory_valuation'),
             ])
             ->first();
 
         $totalRevenue = $totals ? (float) $totals->total_revenue : 0.0;
         $totalHistoricalCost = $totals ? (float) $totals->total_historical_cost : 0.0;
         $totalDiscountAmount = $totals ? (float) $totals->total_discounts : 0.0;
+        $totalGrossSales = $totals ? (float) $totals->total_gross_sales : 0.0;
+        $totalInventoryValuation = $totals ? (float) $totals->total_inventory_valuation : 0.0;
 
         $startDate = !empty($filters['start_date']) ? $filters['start_date'] . ' 00:00:00' : now()->startOfMonth()->format('Y-m-d 00:00:00');
-
-
-
-
 
         $totalLossesQuery = DB::table('expired_logs')
             ->where('created_at', '>=', $startDate);
@@ -198,19 +172,93 @@ class SkuReportService
         $realMarginTotal = $netMarginTotal - $totalLosses;
         $globalMarginReal = $totalRevenue > 0 ? ($realMarginTotal / $totalRevenue) * 100 : 0;
 
-        // Conteo optimizado directamente desde el listado paginado base de datos
-        $criticalSkus = DB::table(DB::raw("({$baseQuery->toSql()}) as sub"))
-            ->mergeBindings($baseQuery->getQuery())
-            ->whereRaw('(total_revenue - total_historical_cost) < 0 OR total_revenue <= 0')
-            ->count();
+        // Distribución de SKUs por semáforo
+        $wrappedForSemaphores = DB::query()
+            ->fromSub($baseQuery, 'sub')
+            ->select([
+                'sub.product_id',
+                'sub.total_revenue',
+                DB::raw('(sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) as real_margin_value'),
+                DB::raw('CASE WHEN sub.total_revenue > 0 THEN ((sub.total_revenue - sub.total_historical_cost - COALESCE(expired.total_expired_cost, 0)) / sub.total_revenue) * 100 ELSE 0 END as real_margin_percent')
+            ])
+            ->leftJoinSub(
+                DB::table('expired_logs')
+                    ->select('product_id', DB::raw('SUM(total_lost_value) as total_expired_cost'))
+                    ->where('created_at', '>=', $startDate)
+                    ->when(!empty($filters['end_date']), fn($q) => $q->where('created_at', '<=', $filters['end_date'] . ' 23:59:59'))
+                    ->groupBy('product_id'),
+                'expired',
+                'sub.product_id',
+                '=',
+                'expired.product_id'
+            );
+
+        $semaphoreRows = $wrappedForSemaphores->get();
+
+        $greenCount = 0;
+        $yellowCount = 0;
+        $redCount = 0;
+        $blackCount = 0;
+
+        foreach ($semaphoreRows as $row) {
+            $margin = (float) $row->real_margin_percent;
+            $rev = (float) $row->total_revenue;
+            if ($rev <= 0 || $margin < 0) {
+                $blackCount++;
+            } elseif ($margin > 25) {
+                $greenCount++;
+            } elseif ($margin >= 10) {
+                $yellowCount++;
+            } else {
+                $redCount++;
+            }
+        }
+
+        $criticalSkus = $redCount + $blackCount;
+        $gmroi = $totalInventoryValuation > 0 ? ($realMarginTotal / $totalInventoryValuation) : 0.0;
 
         return [
             'total_revenue' => $totalRevenue,
+            'total_gross_sales' => $totalGrossSales,
             'total_loss' => $totalLosses,
             'total_discounts' => $totalDiscountAmount,
+            'total_historical_cost' => $totalHistoricalCost,
+            'total_inventory_valuation' => $totalInventoryValuation,
             'critical_skus' => $criticalSkus,
             'global_margin_net' => $globalMarginNet,
-            'global_margin_real' => $globalMarginReal
+            'global_margin_real' => $globalMarginReal,
+            'gmroi' => round($gmroi, 2),
+            'semaphore_counts' => [
+                'green' => $greenCount,
+                'yellow' => $yellowCount,
+                'red' => $redCount,
+                'black' => $blackCount,
+            ]
+        ];
+    }
+
+    /**
+     * Entrega datos optimizados para los gráficos de BI en Frontend.
+     */
+    public function getChartsData(array $filters): array
+    {
+        $summary = $this->getGlobalSummary($filters);
+
+        // Cascada Financiera (Waterfall Data)
+        $grossSales = $summary['total_gross_sales'] ?: $summary['total_revenue'];
+        $waterfall = [
+            ['name' => 'Venta Bruta (P. Lista)', 'value' => round($grossSales, 2), 'type' => 'base'],
+            ['name' => 'Descuentos Promocionales', 'value' => -round($summary['total_discounts'], 2), 'type' => 'deduction'],
+            ['name' => 'Ingreso Neto Cobrado', 'value' => round($summary['total_revenue'], 2), 'type' => 'subtotal'],
+            ['name' => 'Costo Mercancía (COGS)', 'value' => -round($summary['total_historical_cost'], 2), 'type' => 'deduction'],
+            ['name' => 'Mermas por Vencimiento', 'value' => -round($summary['total_loss'], 2), 'type' => 'deduction'],
+            ['name' => 'Margen Real Efectivo', 'value' => round($summary['total_revenue'] - $summary['total_historical_cost'] - $summary['total_loss'], 2), 'type' => 'total'],
+        ];
+
+        return [
+            'waterfall' => $waterfall,
+            'semaphore_distribution' => $summary['semaphore_counts'],
+            'summary' => $summary,
         ];
     }
 }

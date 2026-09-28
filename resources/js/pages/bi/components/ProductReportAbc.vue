@@ -2,20 +2,22 @@
 // Componente: Análisis ABC por Inmovilización de Stock & Diagnóstico de Obsolescencia
 import { computed } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
+import { useBiThemeColors } from '@/composables/useBiThemeColors';
 import { useCurrencyConverter } from '@/components/useCurrencyConverter';
 
-const { formatCurrency } = useCurrencyConverter();
-
 const props = defineProps({
-  abcData: { type: Array,   default: () => [] },
-  loading: { type: Boolean, default: false    },
+  abcData: { type: Array, default: () => [] },
+  loading: { type: Boolean, default: false },
 });
 
-// Total de SKUs calculado en computed
+const { colors } = useBiThemeColors();
+const { formatCurrency } = useCurrencyConverter();
+
+// Total de SKUs y Capital calculado en computed
 const totalSkus = computed(() => props.abcData.reduce((sum, a) => sum + (a?.count ?? 0), 0));
 const totalCapital = computed(() => props.abcData.reduce((sum, a) => sum + Number(a?.revenue ?? 0), 0));
 
-const formatPercent = (val) => Number(val ?? 0).toFixed(1) + '%';
+const formatPercent = (val) => `${Number(val ?? 0).toFixed(1)}%`;
 
 const skuPercent = (count) => {
   if (!totalSkus.value) return formatPercent(0);
@@ -29,10 +31,19 @@ const getClassBadgeColor = (type) => {
 };
 
 const chartOptions = computed(() => ({
-  chart: { type: 'donut', toolbar: { show: false } },
+  chart: {
+    type: 'donut',
+    toolbar: { show: false },
+    fontFamily: 'inherit',
+    background: 'transparent',
+  },
   labels: props.abcData.map(a => `Clase ${a?.type ?? '?'}`),
-  colors: ['#28C76F', '#0EA5E9', '#F59E0B'],
-  legend: { position: 'bottom', fontSize: '12px' },
+  colors: [colors.value.success, colors.value.info, colors.value.warning],
+  legend: {
+    position: 'bottom',
+    fontSize: '12px',
+    labels: { colors: colors.value.onSurface },
+  },
   dataLabels: { enabled: true, dropShadow: { enabled: false } },
   plotOptions: {
     pie: {
@@ -43,13 +54,17 @@ const chartOptions = computed(() => ({
           total: {
             show: true,
             label: 'Total SKUs',
+            color: colors.value.onSurface,
             formatter: () => totalSkus.value.toLocaleString(),
           },
         },
       },
     },
   },
-  stroke: { width: 2, colors: ['var(--v-theme-surface)'] },
+  stroke: { width: 2, colors: [colors.value.surface] },
+  tooltip: {
+    theme: colors.value.isDark ? 'dark' : 'light',
+  },
 }));
 
 const chartSeries = computed(() => props.abcData.map(a => Number(a?.count ?? 0)));
@@ -67,7 +82,7 @@ const classC = computed(() => props.abcData.find(a => a?.type === 'C') ?? null);
         </VAvatar>
         <div>
           <div class="text-subtitle-1 font-weight-bold text-high-emphasis">Matriz ABC de Inventario</div>
-          <div class="text-super-xs text-medium-emphasis">Segmentación de capital inmovilizado en stock</div>
+          <div class="text-caption text-medium-emphasis">Segmentación de capital inmovilizado en stock</div>
         </div>
       </div>
       <span class="text-caption font-weight-bold text-primary">
@@ -89,8 +104,8 @@ const classC = computed(() => props.abcData.find(a => a?.type === 'C') ?? null);
       </div>
       <div v-else class="text-center pa-8 text-medium-emphasis">
         <VIcon icon="tabler-chart-donut" size="36" class="mb-2 opacity-30" />
-        <div class="text-sm font-weight-bold">Sin datos ABC</div>
-        <div class="text-xs text-disabled">No hay existencias con valor en este período.</div>
+        <div class="text-subtitle-2 font-weight-bold">Sin datos ABC</div>
+        <div class="text-caption text-disabled">No hay existencias con valor en este período.</div>
       </div>
 
       <!-- Tabla de clases -->
@@ -99,7 +114,7 @@ const classC = computed(() => props.abcData.find(a => a?.type === 'C') ?? null);
           v-for="abc in abcData"
           :key="abc?.type"
           class="d-flex justify-space-between mb-2 border-b pa-2 align-center rounded"
-          :style="abc?.type === 'C' && (abc?.obsolete_value > 0) ? 'background: rgba(245, 158, 11, 0.04);' : ''"
+          :style="abc?.type === 'C' && (abc?.obsolete_value > 0) ? 'background: rgba(var(--v-theme-warning), 0.05);' : ''"
         >
           <div class="d-flex align-center gap-2">
             <VChip
@@ -112,26 +127,26 @@ const classC = computed(() => props.abcData.find(a => a?.type === 'C') ?? null);
               Clase {{ abc?.type }}
             </VChip>
             <div class="d-flex flex-column">
-              <span class="text-xs font-weight-bold">{{ formatCurrency(abc?.revenue ?? 0) }}</span>
-              <span class="text-super-xs text-medium-emphasis">
+              <span class="text-caption font-weight-bold">{{ formatCurrency(abc?.revenue ?? 0) }}</span>
+              <span class="text-caption text-medium-emphasis">
                 {{ abc?.type === 'A' ? '80% del valor total' : abc?.type === 'B' ? '15% del valor total' : '5% del valor total' }}
               </span>
             </div>
           </div>
           <div class="text-right">
-            <div class="text-xs font-weight-black">{{ abc?.count }} SKUs</div>
-            <div class="text-super-xs text-medium-emphasis">{{ skuPercent(abc?.count) }} del catálogo</div>
+            <div class="text-caption font-weight-black">{{ abc?.count }} SKUs</div>
+            <div class="text-caption text-medium-emphasis">{{ skuPercent(abc?.count) }} del catálogo</div>
           </div>
         </div>
 
         <!-- Alerta de capital inmóvil en Clase C -->
         <div
           v-if="classC && classC.obsolete_value > 0"
-          class="pa-2 mt-2 rounded border border-warning bg-warning-light d-flex align-center gap-2"
-          style="background: rgba(245, 158, 11, 0.08);"
+          class="pa-2 mt-2 rounded border border-warning d-flex align-center gap-2"
+          style="background: rgba(var(--v-theme-warning), 0.08);"
         >
           <VIcon icon="tabler-alert-triangle" size="18" color="warning" />
-          <div class="text-super-xs text-warning-dark">
+          <div class="text-caption text-warning font-weight-medium">
             <strong>{{ formatCurrency(classC.obsolete_value) }}</strong> en Clase C tiene &gt;90 días sin rotación ({{ classC.obsolete_count }} SKUs).
           </div>
         </div>
@@ -141,11 +156,6 @@ const classC = computed(() => props.abcData.find(a => a?.type === 'C') ?? null);
 </template>
 
 <style scoped>
-.text-super-xs {
-  font-size: 0.7rem !important;
-  line-height: 1.2;
-}
-
 .skeleton-chart-pulse {
   width: 100%;
   background: linear-gradient(
@@ -157,8 +167,9 @@ const classC = computed(() => props.abcData.find(a => a?.type === 'C') ?? null);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
 @keyframes shimmer {
-  0%   { background-position: 200% 0; }
+  0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 </style>

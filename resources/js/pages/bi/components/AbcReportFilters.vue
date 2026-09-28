@@ -136,7 +136,7 @@ const toggleAdvancedFilters = () => {
         </VCol>
 
         <!-- Período -->
-        <VCol cols="12" sm="6" md="3" lg="3">
+        <VCol cols="12" sm="6" md="4" lg="3">
           <AppSelect
             :model-value="selectedDateRange"
             :items="dateRangeOptions"
@@ -151,7 +151,7 @@ const toggleAdvancedFilters = () => {
         </VCol>
 
         <!-- Modo de Análisis -->
-        <VCol cols="12" sm="12" md="5" lg="4">
+        <VCol cols="12" sm="8" md="4" lg="4">
           <AppSelect
             :model-value="selectedAnalysisType"
             :items="analysisTypeOptions"
@@ -166,7 +166,7 @@ const toggleAdvancedFilters = () => {
         </VCol>
 
         <!-- Botones de acción unificados a la derecha -->
-        <VCol cols="12" lg="2" class="d-flex align-center justify-end gap-1 ms-auto">
+        <VCol cols="12" sm="4" md="12" lg="2" class="d-flex align-center justify-sm-end justify-center gap-1 ms-auto mt-md-2 mt-lg-0">
           <VBtn
             icon
             variant="tonal"

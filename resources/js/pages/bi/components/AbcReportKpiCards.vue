@@ -90,8 +90,8 @@ defineProps({
                 <VIcon :icon="kpi.icon" size="26" />
               </VAvatar>
               <div class="text-right">
-                <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important">{{ kpi.title }}</span>
-                <h4 class="text-h4 font-weight-black mt-1">{{ kpi.value }}</h4>
+                <span class="text-overline font-weight-bold text-medium-emphasis" style="letter-spacing: 1px !important">{{ kpi.title }}</span>
+                <h4 class="text-h4 font-weight-bold mt-1 text-high-emphasis">{{ kpi.value }}</h4>
               </div>
             </div>
             <VDivider class="mb-3 opacity-20" />
@@ -115,8 +115,8 @@ defineProps({
                   <VIcon icon="tabler-chart-pie-2" size="26" />
                 </VAvatar>
                 <div class="text-right">
-                  <span class="text-overline font-weight-bold text-disabled" style="letter-spacing: 1px !important">Distribución Catálogo</span>
-                  <h4 class="text-h4 font-weight-black mt-1">{{ summaryStats.total_products?.toLocaleString() || 0 }}</h4>
+                  <span class="text-overline font-weight-bold text-medium-emphasis" style="letter-spacing: 1px !important">Distribución Catálogo</span>
+                  <h4 class="text-h4 font-weight-bold mt-1 text-high-emphasis">{{ summaryStats.total_products?.toLocaleString() || 0 }}</h4>
                 </div>
               </div>
 
@@ -165,17 +165,17 @@ defineProps({
               <span class="text-caption d-flex align-center gap-1 font-weight-medium text-medium-emphasis">
                 <span style="width:8px;height:8px;background:#10B981;border-radius:50%;display:inline-block"></span>
                 A: <b class="text-high-emphasis">{{ summaryStats.count_a }}</b>
-                <span class="text-disabled text-super-xs">({{ summaryStats.total_products > 0 ? Math.round((summaryStats.count_a / summaryStats.total_products) * 100) : 0 }}%)</span>
+                <span class="text-medium-emphasis text-super-xs">({{ summaryStats.total_products > 0 ? Math.round((summaryStats.count_a / summaryStats.total_products) * 100) : 0 }}%)</span>
               </span>
               <span class="text-caption d-flex align-center gap-1 font-weight-medium text-medium-emphasis">
                 <span style="width:8px;height:8px;background:#F59E0B;border-radius:50%;display:inline-block"></span>
                 B: <b class="text-high-emphasis">{{ summaryStats.count_b }}</b>
-                <span class="text-disabled text-super-xs">({{ summaryStats.total_products > 0 ? Math.round((summaryStats.count_b / summaryStats.total_products) * 100) : 0 }}%)</span>
+                <span class="text-medium-emphasis text-super-xs">({{ summaryStats.total_products > 0 ? Math.round((summaryStats.count_b / summaryStats.total_products) * 100) : 0 }}%)</span>
               </span>
               <span class="text-caption d-flex align-center gap-1 font-weight-medium text-medium-emphasis">
                 <span style="width:8px;height:8px;background:#9CA3AF;border-radius:50%;display:inline-block"></span>
                 C: <b class="text-high-emphasis">{{ summaryStats.count_c }}</b>
-                <span class="text-disabled text-super-xs">({{ summaryStats.total_products > 0 ? Math.round((summaryStats.count_c / summaryStats.total_products) * 100) : 0 }}%)</span>
+                <span class="text-medium-emphasis text-super-xs">({{ summaryStats.total_products > 0 ? Math.round((summaryStats.count_c / summaryStats.total_products) * 100) : 0 }}%)</span>
               </span>
             </div>
           </VCardText>
