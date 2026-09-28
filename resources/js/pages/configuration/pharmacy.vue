@@ -403,30 +403,44 @@ const onSignatureChange = (e) => {
               </VCol>
 
               <!-- Barra de Acciones Inferior -->
-              <VCol cols="12" class="d-flex justify-end align-center gap-3 mt-4">
-                <VBtn
-                  v-if="isDirty"
-                  variant="outlined"
-                  color="secondary"
-                  prepend-icon="tabler-rotate-clockwise"
-                  :disabled="isLoading"
-                  @click="resetForm"
-                >
-                  Descartar Cambios
-                </VBtn>
+              <VCol cols="12" class="mt-4">
+                <VRow>
+                  <VCol
+                    v-if="isDirty"
+                    cols="12"
+                    sm="6"
+                  >
+                    <VBtn
+                      block
+                      size="large"
+                      variant="outlined"
+                      color="secondary"
+                      prepend-icon="tabler-rotate-clockwise"
+                      :disabled="isLoading"
+                      @click="resetForm"
+                    >
+                      Descartar Cambios
+                    </VBtn>
+                  </VCol>
 
-                <VBtn
-                  v-if="can('manage', 'all') || can('manage', 'GeneralSetting') || can('manage', 'admin')"
-                  type="submit"
-                  color="primary"
-                  size="large"
-                  prepend-icon="tabler-device-floppy"
-                  :loading="isLoading"
-                  :disabled="isLoading || !isDirty"
-                  class="px-6"
-                >
-                  Guardar Configuración Institucional
-                </VBtn>
+                  <VCol
+                    v-if="can('manage', 'all') || can('manage', 'GeneralSetting') || can('manage', 'admin')"
+                    cols="12"
+                    :sm="isDirty ? 6 : 12"
+                  >
+                    <VBtn
+                      block
+                      size="large"
+                      type="submit"
+                      color="primary"
+                      prepend-icon="tabler-device-floppy"
+                      :loading="isLoading"
+                      :disabled="isLoading || !isDirty"
+                    >
+                      Guardar Configuración Institucional
+                    </VBtn>
+                  </VCol>
+                </VRow>
               </VCol>
             </VRow>
           </VForm>
