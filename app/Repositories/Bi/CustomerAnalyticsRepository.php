@@ -212,7 +212,7 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
                     ->orHaving(DB::raw('SUM(orders.total_amount_usd)'), '>', 100);
             })
             ->orderByDesc(DB::raw('SUM(orders.total_amount_usd)'))
-            ->limit(10)
+            ->limit(50)
             ->get()
             ->toArray();
     }

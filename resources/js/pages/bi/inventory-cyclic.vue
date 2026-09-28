@@ -132,7 +132,7 @@ onMounted(() => {
           BI - Inventario Cíclico
         </h3>
         <p class="text-body-2 text-medium-emphasis mb-0">
-          Control de precisión de inventario (ERI), desviaciones y detección de cruces de productos.
+          Control de precisión de inventario (ERI físico y valorizado), desviaciones y detección de cruces de productos.
         </p>
       </div>
     </div>

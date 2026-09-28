@@ -183,13 +183,12 @@ const handleOpenDetail = item => {
     <!-- Modal de Detalle (Drill-Down) -->
     <VDialog v-model="isDetailDialogOpen" max-width="600">
       <VCard v-if="selectedRow" class="rounded-lg">
-        <VCardItem class="bg-lightprimary py-3">
-          <VCardTitle class="text-subtitle-1 font-weight-bold d-flex align-center">
+        <VCardItem class="py-3 bg-surface border-b">
+          <VCardTitle class="text-subtitle-1 font-weight-bold d-flex align-center text-primary">
             <VIcon icon="tabler-arrows-exchange" color="primary" class="me-2" />
             Auditoría de Cruce de Inventario
           </VCardTitle>
         </VCardItem>
-        <VDivider />
         <VCardText class="pa-4">
           <div class="mb-4">
             <span class="text-caption text-medium-emphasis d-block font-weight-bold">CATEGORÍA ASOCIADA</span>

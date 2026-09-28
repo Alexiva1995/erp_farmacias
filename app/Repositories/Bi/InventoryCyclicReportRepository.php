@@ -34,18 +34,28 @@ class InventoryCyclicReportRepository
             DB::raw('SUM(CASE WHEN discrepancy < 0 THEN ABS(discrepancy) ELSE 0 END) as total_missing_qty'),
             DB::raw('SUM(CASE WHEN discrepancy > 0 THEN discrepancy ELSE 0 END) as total_surplus_qty'),
             DB::raw('SUM(CASE WHEN discrepancy < 0 THEN ABS(discrepancy) * products.unit_cost ELSE 0 END) as total_missing_value'),
-            DB::raw('SUM(CASE WHEN discrepancy > 0 THEN discrepancy * products.unit_cost ELSE 0 END) as total_surplus_value')
+            DB::raw('SUM(CASE WHEN discrepancy > 0 THEN discrepancy * products.unit_cost ELSE 0 END) as total_surplus_value'),
+            DB::raw('SUM(GREATEST(COALESCE(product_counts.counted_quantity, product_counts.system_quantity, 1), 1) * products.unit_cost) as total_inventory_cost')
         )->first();
 
         $eri = $totalCounted > 0 ? ($noDifferenceCount / $totalCounted) * 100 : 100;
         $errorRate = $totalCounted > 0 ? (($totalCounted - $noDifferenceCount) / $totalCounted) * 100 : 0;
-        $netLoss = ($stats->total_missing_value ?? 0) - ($stats->total_surplus_value ?? 0);
+        $missingValue = (float)($stats->total_missing_value ?? 0);
+        $surplusValue = (float)($stats->total_surplus_value ?? 0);
+        $netLoss = $missingValue - $surplusValue;
+
+        $totalAuditValue = (float)($stats->total_inventory_cost ?? 0);
+        $totalDiscrepancyValue = $missingValue + $surplusValue;
+        $financialEri = $totalAuditValue > 0
+            ? max(0, min(100, (1 - ($totalDiscrepancyValue / $totalAuditValue)) * 100))
+            : ($totalDiscrepancyValue > 0 ? 0 : 100);
 
         return [
             'eri' => round($eri, 2),
+            'financial_eri' => round($financialEri, 2),
             'net_loss' => round($netLoss, 2),
-            'missing_loss_value' => round((float)($stats->total_missing_value ?? 0), 2),
-            'surplus_gain_value' => round((float)($stats->total_surplus_value ?? 0), 2),
+            'missing_loss_value' => round($missingValue, 2),
+            'surplus_gain_value' => round($surplusValue, 2),
             'error_rate' => round($errorRate, 2),
             'total_missing_units' => (int)($stats->total_missing_qty ?? 0),
             'total_surplus_units' => (int)($stats->total_surplus_qty ?? 0),
@@ -100,7 +110,7 @@ class InventoryCyclicReportRepository
             ->select(
                 'products.name',
                 'product_counts.discrepancy',
-                DB::raw('ABS(product_counts.discrepancy) * products.unit_cost as impact_value')
+                DB::raw('ROUND(ABS(product_counts.discrepancy) * products.unit_cost, 2) as impact_value')
             );
 
         if (!empty($categoryId)) {
@@ -147,6 +157,7 @@ class InventoryCyclicReportRepository
         return $query->select(
                 'categories.name',
                 DB::raw('SUM(ABS(product_counts.discrepancy)) as total_deviation'),
+                DB::raw('ROUND(SUM(ABS(product_counts.discrepancy) * products.unit_cost), 2) as financial_impact'),
                 DB::raw('COUNT(*) as total_counts')
             )
             ->groupBy('categories.name')

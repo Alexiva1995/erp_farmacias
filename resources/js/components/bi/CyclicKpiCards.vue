@@ -15,12 +15,20 @@ const props = defineProps({
 
 const kpiItems = computed(() => [
   {
-    title: 'ERI (Precisión)',
+    title: 'ERI Físico (SKUs)',
     value: `${props.kpis.eri ?? 100}%`,
     icon: 'tabler-target',
     color: (props.kpis.eri ?? 100) >= 95 ? 'success' : 'warning',
-    desc: 'Precisión de registro físico',
+    desc: 'Exactitud de inventario en unidades',
     subtitle: (props.kpis.eri ?? 100) >= 95 ? 'Meta alcanzada (≥95%)' : 'Por debajo de meta (<95%)',
+  },
+  {
+    title: 'ERI Valorizado ($)',
+    value: `${props.kpis.financial_eri ?? 100}%`,
+    icon: 'tabler-cash-banknote',
+    color: (props.kpis.financial_eri ?? 100) >= 95 ? 'success' : 'warning',
+    desc: 'Exactitud ponderada por costo',
+    subtitle: (props.kpis.financial_eri ?? 100) >= 95 ? 'Precisión financiera óptima' : 'Riesgo financiero en stock',
   },
   {
     title: 'Pérdida Neta',

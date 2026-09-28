@@ -17,6 +17,7 @@ class InventoryCyclicReportResource extends JsonResource
         return [
             'kpis' => [
                 'eri' => (float)($this->resource['kpis']['eri'] ?? 100),
+                'financial_eri' => (float)($this->resource['kpis']['financial_eri'] ?? 100),
                 'net_loss' => (float)($this->resource['kpis']['net_loss'] ?? 0),
                 'missing_loss_value' => (float)($this->resource['kpis']['missing_loss_value'] ?? 0),
                 'surplus_gain_value' => (float)($this->resource['kpis']['surplus_gain_value'] ?? 0),
@@ -33,14 +34,17 @@ class InventoryCyclicReportResource extends JsonResource
             'deviations' => [
                 'top_missing' => [
                     'series' => $this->resource['deviations']['top_missing']['series'] ?? [],
+                    'impact_values' => $this->resource['deviations']['top_missing']['impact_values'] ?? [],
                     'categories' => $this->resource['deviations']['top_missing']['categories'] ?? [],
                 ],
                 'top_surplus' => [
                     'series' => $this->resource['deviations']['top_surplus']['series'] ?? [],
+                    'impact_values' => $this->resource['deviations']['top_surplus']['impact_values'] ?? [],
                     'categories' => $this->resource['deviations']['top_surplus']['categories'] ?? [],
                 ],
                 'categories' => [
                     'series' => $this->resource['deviations']['categories']['series'] ?? [],
+                    'financial_series' => $this->resource['deviations']['categories']['financial_series'] ?? [],
                     'labels' => $this->resource['deviations']['categories']['labels'] ?? [],
                 ],
             ],

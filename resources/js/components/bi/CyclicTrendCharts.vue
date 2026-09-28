@@ -128,7 +128,15 @@ const topMissingOptions = computed(() => ({
     labels: { style: { colors: labelColor.value, fontSize: '11px' } },
   },
   grid: { borderColor: gridBorderColor.value },
-  tooltip: { theme: isDark.value ? 'dark' : 'light' },
+  tooltip: {
+    theme: isDark.value ? 'dark' : 'light',
+    custom: ({ series, seriesIndex, dataPointIndex }) => {
+      const units = series[seriesIndex]?.[dataPointIndex] ?? 0
+      const prod = props.dashboardData?.deviations?.top_missing?.categories?.[dataPointIndex] || ''
+      const impact = props.dashboardData?.deviations?.top_missing?.impact_values?.[dataPointIndex] ?? 0
+      return `<div style="padding: 8px; font-size: 12px; line-height: 1.4;"><strong>${prod}</strong><br/><span style="color:#FF4C51;">Faltante: ${units} unid.</span><br/><span>Pérdida est.: ${formatCurrency(impact)}</span></div>`
+    },
+  },
 }))
 
 // 4. Top Sobrantes
@@ -164,7 +172,15 @@ const topSurplusOptions = computed(() => ({
     labels: { style: { colors: labelColor.value, fontSize: '11px' } },
   },
   grid: { borderColor: gridBorderColor.value },
-  tooltip: { theme: isDark.value ? 'dark' : 'light' },
+  tooltip: {
+    theme: isDark.value ? 'dark' : 'light',
+    custom: ({ series, seriesIndex, dataPointIndex }) => {
+      const units = series[seriesIndex]?.[dataPointIndex] ?? 0
+      const prod = props.dashboardData?.deviations?.top_surplus?.categories?.[dataPointIndex] || ''
+      const impact = props.dashboardData?.deviations?.top_surplus?.impact_values?.[dataPointIndex] ?? 0
+      return `<div style="padding: 8px; font-size: 12px; line-height: 1.4;"><strong>${prod}</strong><br/><span style="color:#28C76F;">Sobrante: ${units} unid.</span><br/><span>Valor est.: ${formatCurrency(impact)}</span></div>`
+    },
+  },
 }))
 
 // 5. Desviación por Categoría
@@ -197,7 +213,16 @@ const categoryOptions = computed(() => ({
     formatter: val => `${val.toFixed(1)}%`,
   },
   stroke: { show: false },
-  tooltip: { theme: isDark.value ? 'dark' : 'light' },
+  tooltip: {
+    theme: isDark.value ? 'dark' : 'light',
+    custom: ({ series, seriesIndex }) => {
+      const label = props.dashboardData?.deviations?.categories?.labels?.[seriesIndex] || ''
+      const units = series[seriesIndex] ?? 0
+      const impact = props.dashboardData?.deviations?.categories?.financial_series?.[seriesIndex]
+      const impactStr = impact !== undefined ? `<br/><span>Impacto $ est.: ${formatCurrency(impact)}</span>` : ''
+      return `<div style="padding: 8px; font-size: 12px; line-height: 1.4;"><strong>${label}</strong><br/><span>Desviación: ${units} unid.</span>${impactStr}</div>`
+    },
+  },
 }))
 
 const hasMissingData = computed(() => (props.dashboardData?.deviations?.top_missing?.categories?.length || 0) > 0)

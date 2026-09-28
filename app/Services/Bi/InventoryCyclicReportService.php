@@ -46,15 +46,18 @@ class InventoryCyclicReportService
             'trends' => $trendChart,
             'deviations' => [
                 'top_missing' => [
-                    'series' => [['name' => 'Unidades', 'data' => collect($deviations['missing'])->pluck('discrepancy')->map(fn($v) => abs($v))->toArray()]],
+                    'series' => [['name' => 'Unidades', 'data' => collect($deviations['missing'])->pluck('discrepancy')->map(fn($v) => abs((float)$v))->toArray()]],
+                    'impact_values' => collect($deviations['missing'])->pluck('impact_value')->map(fn($v) => (float)$v)->toArray(),
                     'categories' => collect($deviations['missing'])->pluck('name')->toArray()
                 ],
                 'top_surplus' => [
-                    'series' => [['name' => 'Unidades', 'data' => collect($deviations['surplus'])->pluck('discrepancy')->toArray()]],
+                    'series' => [['name' => 'Unidades', 'data' => collect($deviations['surplus'])->pluck('discrepancy')->map(fn($v) => (float)$v)->toArray()]],
+                    'impact_values' => collect($deviations['surplus'])->pluck('impact_value')->map(fn($v) => (float)$v)->toArray(),
                     'categories' => collect($deviations['surplus'])->pluck('name')->toArray()
                 ],
                 'categories' => [
                     'series' => collect($categoryDeviations)->pluck('total_deviation')->map(fn($v) => (float)$v)->toArray(),
+                    'financial_series' => collect($categoryDeviations)->pluck('financial_impact')->map(fn($v) => (float)$v)->toArray(),
                     'labels' => collect($categoryDeviations)->pluck('name')->toArray()
                 ]
             ],
