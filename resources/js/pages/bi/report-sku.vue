@@ -16,7 +16,6 @@ const page = ref(1);
 const itemsPerPage = ref(15);
 const sortBy = ref();
 const orderBy = ref();
-const expanded = ref([]);
 
 const getFirstDayOfCurrentMonth = () => {
   const now = new Date();
@@ -184,19 +183,19 @@ const handleExport = async () => {
 };
 
 const headers = [
-  { title: '', key: 'data-table-expand', width: '40px' },
-  { title: 'ID/SKU', key: 'id', sortable: true, width: '90px' },
+  { title: 'ID', key: 'id', sortable: true, width: '75px' },
   { title: 'PRODUCTO / MOLÉCULA', key: 'product_name', sortable: true, minWidth: '220px' },
-  { title: 'STOCK', key: 'current_stock', sortable: true, width: '80px' },
-  { title: 'VEND.', key: 'total_sold', sortable: true, width: '80px' },
-  { title: 'COSTO', key: 'current_cost', sortable: false, width: '90px' },
-  { title: 'P. LISTA', key: 'list_price', sortable: false, width: '90px' },
-  { title: 'M. BRUTO', key: 'gross_margin_percent', sortable: true, width: '100px' },
-  { title: 'DESC.', key: 'discount_avg_percent', sortable: false, width: '90px' },
-  { title: 'M. NETO', key: 'net_margin_percent', sortable: false, width: '100px' },
-  { title: 'MERMAS', key: 'loss_value', sortable: false, width: '100px' },
-  { title: 'M. REAL', key: 'real_margin_percent', sortable: true, width: '105px' },
-  { title: 'ESTADO', key: 'semaphore', sortable: false, width: '120px' }
+  { title: 'STOCK', key: 'current_stock', sortable: true, width: '75px', align: 'end' },
+  { title: 'VEND.', key: 'total_sold', sortable: true, width: '75px', align: 'end' },
+  { title: 'COSTO', key: 'current_cost', sortable: false, width: '85px', align: 'end' },
+  { title: 'P. LISTA', key: 'list_price', sortable: false, width: '85px', align: 'end' },
+  { title: 'M. BRUTO', key: 'gross_margin_percent', sortable: true, width: '95px', align: 'end' },
+  { title: 'DESC.', key: 'discount_avg_percent', sortable: false, width: '85px', align: 'end' },
+  { title: 'M. NETO', key: 'net_margin_percent', sortable: false, width: '95px', align: 'end' },
+  { title: 'MERMAS', key: 'loss_value', sortable: false, width: '95px', align: 'end' },
+  { title: 'M. REAL', key: 'real_margin_percent', sortable: true, width: '100px', align: 'end' },
+  { title: 'ESTADO', key: 'semaphore', sortable: false, width: '110px', align: 'center' },
+  { title: '', key: 'actions', sortable: false, width: '50px', align: 'center' }
 ];
 
 const updateTableOptions = (options) => {
@@ -308,13 +307,11 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
         <VDataTableServer
           v-model:items-per-page="itemsPerPage"
           v-model:page="page"
-          v-model:expanded="expanded"
           :headers="headers"
           :items="skus"
           :items-length="totalItems"
           :loading="loading"
           item-value="product_id"
-          show-expand
           class="border-0"
           density="comfortable"
           @update:options="updateTableOptions"
@@ -327,11 +324,11 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
           <!-- Columna ID -->
           <template #item.id="{ item }">
             <a
-              :href="'/inventory/traceability?q=' + (item.id || item.product_id)"
+              :href="'/inventory/traceability?q=' + (item.product_id || item.id)"
               target="_blank"
               class="text-decoration-none font-weight-bold text-primary"
             >
-              {{ item.barcode || item.product_id }}
+              {{ item.product_id || item.id }}
             </a>
           </template>
 
@@ -458,44 +455,19 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
             </VChip>
           </template>
 
-          <!-- Expansión de Fila para Detalle Enriquecido -->
-          <template #expanded-row="{ columns, item }">
-            <tr>
-              <td :colspan="columns.length" class="pa-4 bg-var-theme-background">
-                <div class="d-flex align-center justify-space-between flex-wrap gap-4">
-                  <div class="d-flex align-center gap-4">
-                    <div>
-                      <span class="text-caption text-disabled text-uppercase font-weight-bold d-block">Ingresos Totales</span>
-                      <span class="text-body-2 font-weight-bold">{{ formatMoney(item.total_revenue) }}</span>
-                    </div>
-                    <VDivider vertical class="mx-2" />
-                    <div>
-                      <span class="text-caption text-disabled text-uppercase font-weight-bold d-block">Stock Actual</span>
-                      <span class="text-body-2 font-weight-bold">{{ item.current_stock }} unidades</span>
-                    </div>
-                    <VDivider vertical class="mx-2" />
-                    <div>
-                      <span class="text-caption text-disabled text-uppercase font-weight-bold d-block">Laboratorio</span>
-                      <span class="text-body-2 font-weight-bold">{{ item.laboratory_name || 'Sin Asignar' }}</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <VBtn
-                      :href="'/inventory/traceability?q=' + (item.product_id || item.id)"
-                      target="_blank"
-                      size="small"
-                      variant="tonal"
-                      color="primary"
-                      class="font-weight-bold"
-                    >
-                      <VIcon icon="tabler-history" size="16" class="me-1" />
-                      Ver Trazabilidad y Lotes
-                    </VBtn>
-                  </div>
-                </div>
-              </td>
-            </tr>
+          <!-- ACCIONES / TRAZABILIDAD -->
+          <template #item.actions="{ item }">
+            <VBtn
+              :href="'/inventory/traceability?q=' + (item.product_id || item.id)"
+              target="_blank"
+              icon
+              variant="text"
+              size="small"
+              color="primary"
+            >
+              <VIcon icon="tabler-history" size="18" />
+              <VTooltip activator="parent" location="top">Ver Trazabilidad y Lotes</VTooltip>
+            </VBtn>
           </template>
           
           <!-- Empty State -->

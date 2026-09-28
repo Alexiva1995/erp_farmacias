@@ -178,10 +178,10 @@ defineExpose({
       <VProgressLinear indeterminate color="primary" class="mb-6 rounded" />
       <VRow>
         <VCol cols="12" md="4">
-          <VSkeleton type="card" height="260" />
+          <VSkeletonLoader type="card" height="260" />
         </VCol>
         <VCol cols="12" md="8">
-          <VSkeleton type="card" height="260" />
+          <VSkeletonLoader type="card" height="260" />
         </VCol>
       </VRow>
     </VCardText>

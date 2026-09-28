@@ -95,10 +95,11 @@ const fetchCatalogs = async () => {
   try {
     const [labRes, grpRes] = await Promise.all([
       axios.get('/laboratories').catch(() => ({ data: [] })),
-      axios.get('/groups/consult-all').catch(() => ({ data: { data: [] } })),
+      axios.get('/groups/consult-all').catch(() => axios.get('/groups')).catch(() => ({ data: { data: [] } })),
     ]);
-    laboratories.value = Array.isArray(labRes.data)       ? labRes.data      : [];
-    groups.value       = Array.isArray(grpRes.data?.data) ? grpRes.data.data : [];
+    laboratories.value = Array.isArray(labRes.data) ? labRes.data : (Array.isArray(labRes.data?.data) ? labRes.data.data : []);
+    const grpData = grpRes.data;
+    groups.value = Array.isArray(grpData) ? grpData : (Array.isArray(grpData?.data) ? grpData.data : []);
   } catch {
     // Catálogos auxiliares opcionales
   }
@@ -109,8 +110,9 @@ const fetchDashboard = async () => {
   errorMessage.value = '';
   try {
     const { data } = await axios.get('/bi/products/dashboard', { params: baseParams.value });
-    if (data?.quadrant1 && data?.quadrant2 && data?.quadrant4) {
-      dashboardData.value = data;
+    const payload = (data?.data && (data.data.quadrant1 || data.data.quadrant4)) ? data.data : data;
+    if (payload?.quadrant1 || payload?.quadrant4) {
+      dashboardData.value = payload;
     }
   } catch (err) {
     errorMessage.value = 'Error al cargar el dashboard. Verifica tu conexión con el servidor.';
