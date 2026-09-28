@@ -477,7 +477,7 @@ const handleExportPDF = () => {
     </VRow>
 
     <!-- ─── Gráfico: Top 10 Riesgo Financiero ───────────────────────── -->
-    <VRow>
+    <VRow class="mb-6">
       <VCol cols="12">
         <VCard class="rounded-lg border shadow-sm">
           <VCardItem>
@@ -497,9 +497,11 @@ const handleExportPDF = () => {
           </VCardText>
         </VCard>
       </VCol>
+    </VRow>
 
-      <!-- ─── Tabla Sobrestock (componente desacoplado) ─────────────── -->
-      <VCol cols="12" md="8">
+    <!-- ─── Tabla Sobrestock (componente desacoplado) ─────────────── -->
+    <VRow class="mb-6">
+      <VCol cols="12">
         <ExpiryOverstockTable
           ref="overstockTableRef"
           :items="dashboardData.overstock"
@@ -508,10 +510,12 @@ const handleExportPDF = () => {
           @notify="e => showMessage(e.message, e.color)"
         />
       </VCol>
+    </VRow>
 
-      <!-- ─── Historial de Mermas ───────────────────────────────────── -->
-      <VCol cols="12" md="4">
-        <VCard class="rounded-lg border shadow-sm h-100 d-flex flex-column">
+    <!-- ─── Historial de Mermas ───────────────────────────────────── -->
+    <VRow class="mb-6">
+      <VCol cols="12">
+        <VCard class="rounded-lg border shadow-sm">
           <VCardItem>
             <VCardTitle class="d-flex align-center">
               <VIcon icon="tabler-history" class="me-2 text-error" />
@@ -519,11 +523,11 @@ const handleExportPDF = () => {
             </VCardTitle>
           </VCardItem>
           <VDivider class="opacity-10" />
-          <VCardText class="position-relative flex-grow-1 d-flex flex-column justify-center pa-2" style="min-height: 480px;">
+          <VCardText class="position-relative pa-4" style="min-height: 380px;">
             <ExpiryChartOverlay :loading="loading" />
             <VueApexCharts
               :key="`history-${metricType}`"
-              height="450"
+              height="350"
               :options="lossHistoryChartConfig.options"
               :series="lossHistoryChartConfig.series"
             />

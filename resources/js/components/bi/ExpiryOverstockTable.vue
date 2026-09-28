@@ -636,7 +636,7 @@ defineExpose({ aggregatedOverstock, filteredOverstock })
 
 <style scoped>
 .product-name {
-  max-inline-size: 280px;
+  max-inline-size: 450px;
 }
 
 .text-super-xs {
