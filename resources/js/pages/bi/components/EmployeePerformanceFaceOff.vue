@@ -20,14 +20,18 @@ const formatCurrency = (value) => new Intl.NumberFormat('en-US', { style: 'curre
 const formatNumber = (value) => new Intl.NumberFormat('en-US').format(value || 0);
 
 const radarChartOptions = computed(() => ({
-  chart: { toolbar: { show: false }, dropShadow: { enabled: true, blur: 1, left: 1, top: 1 } },
+  chart: { 
+    toolbar: { show: false },
+    background: 'transparent',
+    dropShadow: { enabled: true, blur: 2, left: 1, top: 1, opacity: 0.15 } 
+  },
   colors: ['#E20074', '#7A0099'],
   stroke: { width: 2 },
-  fill: { opacity: 0.1 },
-  markers: { size: 0 },
+  fill: { opacity: 0.15 },
+  markers: { size: 3 },
   xaxis: {
     categories: ['Ventas', 'Unidades', 'Tareas', 'Inventario', 'Estratégicos'],
-    labels: { style: { colors: '#a3a3a3', fontSize: '10px' } }
+    labels: { style: { colors: '#888', fontSize: '11px' } }
   }
 }));
 
@@ -75,7 +79,7 @@ const comparisonKeys = [
   { k: 'strategic_units', l: 'Ventas Estratégicas' },
   { k: 'tasks_completed', l: 'Tareas Completadas' },
   { k: 'inventory_counted', l: 'Inventario Contado' },
-  { k: 'invoices_processed', l: 'Facturas Cargadas' }
+  { k: 'invoices_processed', l: 'Facturas Procesadas' }
 ];
 </script>
 
@@ -83,14 +87,14 @@ const comparisonKeys = [
   <div class="px-1">
     <VRow class="mb-6" dense>
       <VCol cols="12" md="6">
-        <VCard class="rounded-lg border shadow-sm h-100">
-          <VCardItem class="py-3 border-b bg-light-primary">
-            <VCardTitle class="text-subtitle-2 font-weight-black uppercase">Configuración Cara a Cara</VCardTitle>
+        <VCard class="rounded-lg border h-100">
+          <VCardItem class="py-3 border-b">
+            <VCardTitle class="text-subtitle-2 font-weight-bold text-uppercase">Configuración Cara a Cara</VCardTitle>
           </VCardItem>
           <VCardText class="pa-6">
             <VRow>
-              <VCol cols="6">
-                <AppSelect 
+              <VCol cols="12" sm="6">
+                <VSelect 
                   :model-value="employeeA" 
                   @update:model-value="val => emit('update:employeeA', val)"
                   :items="employees" 
@@ -98,10 +102,13 @@ const comparisonKeys = [
                   item-value="id" 
                   label="Vendedor A" 
                   placeholder="Seleccionar..."
+                  variant="outlined"
+                  density="comfortable"
+                  hide-details="auto"
                 />
               </VCol>
-              <VCol cols="6">
-                <AppSelect 
+              <VCol cols="12" sm="6">
+                <VSelect 
                   :model-value="employeeB" 
                   @update:model-value="val => emit('update:employeeB', val)"
                   :items="employees" 
@@ -109,6 +116,9 @@ const comparisonKeys = [
                   item-value="id" 
                   label="Vendedor B" 
                   placeholder="Seleccionar..."
+                  variant="outlined"
+                  density="comfortable"
+                  hide-details="auto"
                 />
               </VCol>
             </VRow>
@@ -116,7 +126,7 @@ const comparisonKeys = [
               block
               color="primary"
               prepend-icon="tabler-swords"
-              class="mt-4 font-weight-black"
+              class="mt-4 font-weight-bold"
               :loading="compareLoading"
               :disabled="!employeeA || !employeeB"
               @click="emit('compare')"
@@ -128,34 +138,42 @@ const comparisonKeys = [
       </VCol>
       
       <VCol cols="12" md="6">
-        <VCard class="rounded-lg border shadow-sm h-100" v-if="comparisonData || compareLoading">
+        <VCard class="rounded-lg border h-100" v-if="comparisonData || compareLoading">
           <VCardItem class="py-3 border-b">
-            <VCardTitle class="text-subtitle-2 font-weight-black uppercase">Radar de Rendimiento</VCardTitle>
+            <VCardTitle class="text-subtitle-2 font-weight-bold text-uppercase">Radar de Rendimiento</VCardTitle>
           </VCardItem>
-          <VCardText class="pa-4 d-flex justify-center align-center min-h-[300px]">
+          <VCardText class="pa-4 d-flex justify-center align-center" style="min-height: 280px;">
             <VProgressCircular v-if="compareLoading" indeterminate color="primary" />
-            <VueApexCharts v-else height="300" width="100%" type="radar" :options="radarChartOptions" :series="radarChartSeries" />
+            <VueApexCharts v-else height="280" width="100%" type="radar" :options="radarChartOptions" :series="radarChartSeries" />
           </VCardText>
         </VCard>
       </VCol>
     </VRow>
 
-    <VCard v-if="comparisonData && !compareLoading" class="rounded-lg border shadow-sm overflow-hidden mb-6">
-      <VTable class="comparison-table">
+    <VCard v-if="comparisonData && !compareLoading" class="rounded-lg border mb-6">
+      <VTable class="comparison-table" density="comfortable">
         <thead>
-          <tr class="bg-light">
-            <th class="text-center font-weight-black">{{ comparisonData.employee_a.name }}</th>
-            <th class="text-center bg-white text-disabled">MÉTRICA</th>
-            <th class="text-center font-weight-black">{{ comparisonData.employee_b.name }}</th>
+          <tr>
+            <th class="text-center font-weight-bold text-subtitle-2 text-primary" style="width: 38%;">
+              {{ comparisonData.employee_a.name }} {{ comparisonData.employee_a.last_name || '' }}
+            </th>
+            <th class="text-center text-overline text-medium-emphasis font-weight-bold" style="width: 24%;">
+              MÉTRICA
+            </th>
+            <th class="text-center font-weight-bold text-subtitle-2 text-secondary" style="width: 38%;">
+              {{ comparisonData.employee_b.name }} {{ comparisonData.employee_b.last_name || '' }}
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="key in comparisonKeys" :key="key.k">
-            <td class="text-center font-weight-black" :class="comparisonData.employee_a[key.k] > comparisonData.employee_b[key.k] ? 'text-success' : ''">
+            <td class="text-center font-weight-bold" :class="comparisonData.employee_a[key.k] > comparisonData.employee_b[key.k] ? 'text-success' : ''">
               {{ key.k === 'sales' ? formatCurrency(comparisonData.employee_a[key.k]) : formatNumber(comparisonData.employee_a[key.k]) }}
             </td>
-            <td class="text-center text-[10px] font-weight-bold uppercase opacity-60 bg-light-surface">{{ key.l }}</td>
-            <td class="text-center font-weight-black" :class="comparisonData.employee_b[key.k] > comparisonData.employee_a[key.k] ? 'text-success' : ''">
+            <td class="text-center text-caption font-weight-bold text-medium-emphasis text-uppercase">
+              {{ key.l }}
+            </td>
+            <td class="text-center font-weight-bold" :class="comparisonData.employee_b[key.k] > comparisonData.employee_a[key.k] ? 'text-success' : ''">
               {{ key.k === 'sales' ? formatCurrency(comparisonData.employee_b[key.k]) : formatNumber(comparisonData.employee_b[key.k]) }}
             </td>
           </tr>
@@ -164,11 +182,3 @@ const comparisonKeys = [
     </VCard>
   </div>
 </template>
-
-<style scoped>
-.bg-light-primary { background-color: #fff0f6; }
-.bg-light-surface { background-color: #fafafa; }
-.font-weight-black { font-weight: 900 !important; }
-.uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
-.comparison-table td { padding: 12px !important; border-bottom: 1px solid #f1f5f9 !important; }
-</style>

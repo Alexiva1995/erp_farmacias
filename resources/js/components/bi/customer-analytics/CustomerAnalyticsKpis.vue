@@ -20,7 +20,7 @@ const cards = computed(() => {
   if (!props.kpis) return [];
   return [
     {
-      title: 'Tasa de Retención (CRR)',
+      title: 'Tasa Retención (CRR)',
       value: `${(props.kpis.crr || 0).toFixed(1)}%`,
       icon: 'tabler-user-check',
       color: 'primary',
@@ -34,7 +34,7 @@ const cards = computed(() => {
       desc: 'Clientes recurrentes',
     },
     {
-      title: 'Tasa de Abandono (Churn)',
+      title: 'Tasa de Abandono',
       value: `${(props.kpis.churn_rate || 0).toFixed(1)}%`,
       icon: 'tabler-user-minus',
       color: 'error',
@@ -45,7 +45,21 @@ const cards = computed(() => {
       value: formatCurrency(props.kpis.avg_ltv),
       icon: 'tabler-coin',
       color: 'warning',
-      desc: 'Valor de vida promedio del cliente',
+      desc: 'Valor ciclo de vida',
+    },
+    {
+      title: 'Ticket Promedio (AOV)',
+      value: formatCurrency(props.kpis.aov),
+      icon: 'tabler-receipt-2',
+      color: 'info',
+      desc: 'Gasto medio por orden',
+    },
+    {
+      title: 'Ingreso del Periodo',
+      value: formatCurrency(props.kpis.total_revenue),
+      icon: 'tabler-cash',
+      color: 'secondary',
+      desc: `${props.kpis.total_orders || 0} órdenes realizadas`,
     },
   ];
 });
@@ -54,7 +68,7 @@ const cards = computed(() => {
 <template>
   <VRow class="mb-6" dense>
     <template v-if="loading && !kpis">
-      <VCol v-for="i in 4" :key="i" cols="12" sm="6" md="3">
+      <VCol v-for="i in 6" :key="i" cols="12" sm="6" md="4" lg="2">
         <VCard variant="outlined" class="rounded-lg elevation-1 h-100">
           <VCardText class="pa-4">
             <VSkeletonLoader type="list-item-avatar-two-line" />
@@ -64,20 +78,20 @@ const cards = computed(() => {
     </template>
 
     <template v-else-if="kpis">
-      <VCol v-for="(kpi, idx) in cards" :key="idx" cols="12" sm="6" md="3">
+      <VCol v-for="(kpi, idx) in cards" :key="idx" cols="12" sm="6" md="4" lg="2">
         <VCard variant="outlined" class="rounded-lg elevation-1 h-100 kpi-hover-card">
-          <VCardText class="pa-4 d-flex align-center">
-            <VAvatar :color="kpi.color" variant="tonal" size="48" rounded="lg" class="me-4">
-              <VIcon :icon="kpi.icon" size="24" />
+          <VCardText class="pa-3 d-flex align-center">
+            <VAvatar :color="kpi.color" variant="tonal" size="42" rounded="lg" class="me-3 flex-shrink-0">
+              <VIcon :icon="kpi.icon" size="22" />
             </VAvatar>
-            <div>
-              <div class="text-caption text-medium-emphasis font-weight-medium text-truncate">
+            <div class="overflow-hidden">
+              <div class="text-caption text-medium-emphasis font-weight-medium text-truncate" :title="kpi.title">
                 {{ kpi.title }}
               </div>
-              <div class="text-h5 font-weight-black my-1">
+              <div class="text-subtitle-1 font-weight-black my-0 text-truncate">
                 {{ kpi.value }}
               </div>
-              <div class="text-caption text-disabled text-truncate">
+              <div class="text-caption text-disabled text-truncate font-size-11" :title="kpi.desc">
                 {{ kpi.desc }}
               </div>
             </div>
@@ -89,11 +103,14 @@ const cards = computed(() => {
 </template>
 
 <style scoped>
+.font-size-11 {
+  font-size: 0.72rem !important;
+}
 .kpi-hover-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .kpi-hover-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08) !important;
 }
 </style>

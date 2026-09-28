@@ -14,14 +14,15 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
 
-        // 1. Agregado único de Clientes Totales y Ingreso Total en el rango de fechas
+        // 1. Agregado único de Clientes Totales, Ingreso Total y Órdenes Totales en el rango de fechas
         $stats = DB::table('orders')
             ->where('status', 'Completed')
             ->whereBetween('order_date', [$startDate, $endDate])
-            ->selectRaw('COUNT(DISTINCT client_id) as total_customers, SUM(total_amount_usd) as total_revenue')
+            ->selectRaw('COUNT(DISTINCT client_id) as total_customers, COUNT(*) as total_orders, SUM(total_amount_usd) as total_revenue')
             ->first();
 
         $totalCustomers = (int) ($stats->total_customers ?? 0);
+        $totalOrders = (int) ($stats->total_orders ?? 0);
         $totalRevenue = (float) ($stats->total_revenue ?? 0);
 
         // 2. Conteo eficiente en SQL de Clientes con más de una compra (Recompra)
@@ -37,12 +38,16 @@ class CustomerAnalyticsRepository implements CustomerAnalytics
         }
 
         $avgLtv = $totalCustomers > 0 ? $totalRevenue / $totalCustomers : 0;
+        $aov = $totalOrders > 0 ? $totalRevenue / $totalOrders : 0;
 
         return [
             'total_customers' => $totalCustomers,
+            'total_orders' => $totalOrders,
+            'total_revenue' => round($totalRevenue, 2),
             'repurchase_count' => $repurchaseCount,
             'repurchase_rate' => $totalCustomers > 0 ? ($repurchaseCount / $totalCustomers) * 100 : 0,
             'avg_ltv' => round($avgLtv, 2),
+            'aov' => round($aov, 2),
         ];
     }
 

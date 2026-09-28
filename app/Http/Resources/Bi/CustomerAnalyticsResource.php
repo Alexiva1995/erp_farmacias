@@ -21,9 +21,12 @@ class CustomerAnalyticsResource extends JsonResource
         return [
             'kpis' => [
                 'total_customers' => (int) ($this['kpis']['total_customers'] ?? 0),
+                'total_orders' => (int) ($this['kpis']['total_orders'] ?? 0),
+                'total_revenue' => (float) ($this['kpis']['total_revenue'] ?? 0),
                 'repurchase_count' => (int) ($this['kpis']['repurchase_count'] ?? 0),
                 'repurchase_rate' => (float) ($this['kpis']['repurchase_rate'] ?? 0),
                 'avg_ltv' => (float) ($this['kpis']['avg_ltv'] ?? 0),
+                'aov' => (float) ($this['kpis']['aov'] ?? 0),
                 'crr' => (float) ($this['kpis']['crr'] ?? 0),
                 'churn_rate' => (float) ($this['kpis']['churn_rate'] ?? 0),
             ],

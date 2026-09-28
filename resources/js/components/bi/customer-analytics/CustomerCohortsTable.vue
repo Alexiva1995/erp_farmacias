@@ -1,5 +1,5 @@
 <script setup>
-const props = defineProps({
+defineProps({
   cohorts: {
     type: Array,
     default: () => [],
@@ -15,12 +15,12 @@ const formatNumber = (value) => {
 };
 
 const getCohortStyle = (percentage) => {
-  if (!percentage) return {};
-  const opacity = percentage / 100;
+  if (percentage === undefined || percentage === null) return {};
+  const opacity = Math.min(1, Math.max(0.08, percentage / 100));
   return {
     backgroundColor: `rgba(226, 0, 116, ${opacity})`,
-    color: percentage > 50 ? '#ffffff' : 'inherit',
-    fontWeight: '700',
+    color: percentage > 45 ? '#ffffff' : 'inherit',
+    fontWeight: '600',
   };
 };
 </script>
@@ -28,10 +28,29 @@ const getCohortStyle = (percentage) => {
 <template>
   <VCard variant="outlined" class="rounded-lg elevation-1 overflow-hidden">
     <VCardItem class="py-3 border-b">
-      <VCardTitle class="d-flex align-center text-subtitle-2 font-weight-bold text-uppercase">
-        <VIcon icon="tabler-table" class="me-2 text-primary" size="20" />
-        Análisis de Cohortes (Retención Mensual %)
-      </VCardTitle>
+      <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+        <VCardTitle class="d-flex align-center text-subtitle-2 font-weight-bold text-uppercase">
+          <VIcon icon="tabler-table" class="me-2 text-primary" size="20" />
+          Análisis de Cohortes (Retención Mensual %)
+        </VCardTitle>
+
+        <!-- Leyenda térmica -->
+        <div class="d-flex align-center gap-2 text-caption">
+          <span class="text-disabled">Retención:</span>
+          <span class="d-inline-flex align-center gap-1">
+            <span class="rounded" style="width: 12px; height: 12px; background: rgba(226, 0, 116, 0.15);" />
+            <span class="text-disabled">&lt;20%</span>
+          </span>
+          <span class="d-inline-flex align-center gap-1">
+            <span class="rounded" style="width: 12px; height: 12px; background: rgba(226, 0, 116, 0.5);" />
+            <span class="text-disabled">20-50%</span>
+          </span>
+          <span class="d-inline-flex align-center gap-1">
+            <span class="rounded" style="width: 12px; height: 12px; background: rgba(226, 0, 116, 0.95);" />
+            <span class="text-disabled">&gt;50%</span>
+          </span>
+        </div>
+      </div>
     </VCardItem>
 
     <VCardText v-if="loading && cohorts.length === 0" class="pa-4">
@@ -44,7 +63,7 @@ const getCohortStyle = (percentage) => {
           <thead>
             <tr>
               <th class="text-uppercase font-weight-bold">Cohorte (Mes)</th>
-              <th class="text-center text-uppercase font-weight-bold">N° Clientes</th>
+              <th class="text-center text-uppercase font-weight-bold">Clientes Iniciales</th>
               <th v-for="i in 12" :key="i" class="text-center text-uppercase font-weight-bold">
                 Mes {{ i - 1 }}
               </th>
@@ -53,14 +72,14 @@ const getCohortStyle = (percentage) => {
           <tbody>
             <tr v-for="cohort in cohorts" :key="cohort.month">
               <td class="font-weight-bold text-primary">{{ cohort.month }}</td>
-              <td class="text-center font-weight-medium">{{ formatNumber(cohort.initial) }}</td>
+              <td class="text-center font-weight-bold">{{ formatNumber(cohort.initial) }}</td>
               <td
                 v-for="i in 12"
                 :key="i"
                 class="text-center border-sm"
                 :style="getCohortStyle(cohort.data[i - 1]?.percentage)"
               >
-                {{ cohort.data[i - 1] ? cohort.data[i - 1].percentage + '%' : '-' }}
+                {{ cohort.data[i - 1] ? `${cohort.data[i - 1].percentage}%` : '-' }}
               </td>
             </tr>
           </tbody>

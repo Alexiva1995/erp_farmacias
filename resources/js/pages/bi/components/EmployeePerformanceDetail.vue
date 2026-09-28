@@ -11,6 +11,7 @@ const formatCurrency = (value) => new Intl.NumberFormat('en-US', { style: 'curre
 const formatNumber = (value) => new Intl.NumberFormat('en-US').format(value || 0);
 
 const getStatusColor = (val, target) => {
+  if (!target || target <= 0) return 'primary';
   const ratio = (val / target) * 100;
   if (ratio >= 100) return 'success';
   if (ratio >= 80) return 'warning';
@@ -18,60 +19,104 @@ const getStatusColor = (val, target) => {
 };
 
 const historyChartOptions = computed(() => ({
-  chart: { toolbar: { show: false } },
-  stroke: { width: [4, 0], curve: 'smooth' },
-  plotOptions: { bar: { columnWidth: '50%', borderRadius: 4 } },
+  chart: { 
+    toolbar: { show: false },
+    background: 'transparent'
+  },
+  theme: { mode: 'light' },
+  stroke: { width: [3, 0], curve: 'smooth' },
+  plotOptions: { bar: { columnWidth: '45%', borderRadius: 4 } },
   colors: ['#E20074', '#7A0099'],
   labels: props.employeeDetail?.history?.map(h => h.label) || [],
   yaxis: [
-    { title: { text: 'Ventas (USD)' }, labels: { style: { colors: '#E20074' } } },
-    { opposite: true, title: { text: 'Unidades' }, labels: { style: { colors: '#7A0099' } } }
+    { title: { text: 'Ventas (USD)', style: { color: '#E20074', fontSize: '11px' } }, labels: { style: { colors: '#E20074' } } },
+    { opposite: true, title: { text: 'Unidades', style: { color: '#7A0099', fontSize: '11px' } }, labels: { style: { colors: '#7A0099' } } }
   ],
-  tooltip: { shared: true, intersect: false, theme: 'dark' }
+  tooltip: { shared: true, intersect: false },
+  grid: {
+    borderColor: 'rgba(var(--v-border-color), var(--v-border-opacity))'
+  }
 }));
 
 const historyChartSeries = computed(() => [
   { name: 'Ventas USD', type: 'line', data: props.employeeDetail?.history?.map(h => h.sales) || [] },
   { name: 'Unidades', type: 'column', data: props.employeeDetail?.history?.map(h => h.units) || [] }
 ]);
+
+const scorecards = computed(() => {
+  if (!props.employeeDetail?.metrics) return [];
+  const m = props.employeeDetail.metrics;
+  return [
+    { 
+      label: 'Cumplimiento Venta', 
+      val: m.sales || 0, 
+      target: m.sales_target || 5000, 
+      icon: 'tabler-trending-up', 
+      isCurrency: true 
+    },
+    { 
+      label: 'Tareas Realizadas', 
+      val: m.tasks_completed || 0, 
+      target: m.tasks_assigned || 20, 
+      icon: 'tabler-sparkles', 
+      isCurrency: false 
+    },
+    { 
+      label: 'Inventario Auditado', 
+      val: m.inventory_counted || 0, 
+      target: m.inventory_target || 100, 
+      icon: 'tabler-checkbox', 
+      isCurrency: false 
+    }
+  ];
+});
 </script>
 
 <template>
   <div>
-    <div v-if="!employeeDetail && !detailLoading" class="d-flex flex-column justify-center align-center h-100 border rounded-lg border-dashed opacity-40 py-10">
-      <VIcon icon="tabler-click" size="48" class="mb-2" />
-      <p class="font-weight-bold text-center px-4">Selecciona un vendedor para ver su ficha detallada</p>
+    <div v-if="!employeeDetail && !detailLoading" class="d-flex flex-column justify-center align-center h-100 border rounded-lg border-dashed py-12 px-4 text-medium-emphasis">
+      <VIcon icon="tabler-user-search" size="48" class="mb-2 opacity-50" />
+      <h4 class="text-subtitle-1 font-weight-bold text-center">Ficha de Rendimiento Individual</h4>
+      <p class="text-caption text-center mb-0">Selecciona un vendedor del ranking para ver su desglose operativo y evolución histórica</p>
     </div>
 
-    <div v-else-if="detailLoading" class="d-flex flex-column gap-4">
-      <VSkeletonLoader type="card, article" />
+    <div v-else-if="detailLoading" class="d-flex flex-column ga-4">
+      <VSkeletonLoader type="card, article, table" />
     </div>
 
     <div v-else-if="employeeDetail">
-      <!-- Scorecards principales -->
+      <!-- Scorecards principales con metas dinámicas -->
       <VRow class="mb-4" dense>
-        <VCol cols="12" sm="4" v-for="(kpi, idx) in [
-          { label: 'Cumplimiento Venta', val: employeeDetail.metrics.sales, target: 5000, icon: 'tabler-trending-up', unit: '$' },
-          { label: 'Tareas Realizadas', val: employeeDetail.metrics.tasks_completed, target: 20, icon: 'tabler-sparkles', unit: '' },
-          { label: 'Inventario Auditado', val: employeeDetail.metrics.inventory_counted, target: 100, icon: 'tabler-checkbox', unit: '' }
-        ]" :key="idx">
-          <VCard border class="rounded-lg shadow-sm bg-surface">
+        <VCol cols="12" sm="4" v-for="(kpi, idx) in scorecards" :key="idx">
+          <VCard border class="rounded-lg">
             <VCardText class="pa-4">
               <div class="d-flex justify-space-between align-center mb-1">
-                <span class="text-[10px] font-weight-black uppercase text-disabled">{{ kpi.label }}</span>
-                <VIcon :icon="kpi.icon" :color="getStatusColor(kpi.val, kpi.target)" size="14" />
+                <span class="text-overline text-medium-emphasis font-weight-bold">{{ kpi.label }}</span>
+                <VIcon :icon="kpi.icon" :color="getStatusColor(kpi.val, kpi.target)" size="16" />
               </div>
-              <div class="text-h6 font-weight-black">{{ kpi.unit }}{{ formatNumber(kpi.val) }}</div>
-              <VProgressLinear :model-value="(kpi.val / kpi.target) * 100" :color="getStatusColor(kpi.val, kpi.target)" height="4" rounded class="mt-1" />
+              <div class="text-h6 font-weight-bold">
+                {{ kpi.isCurrency ? formatCurrency(kpi.val) : formatNumber(kpi.val) }}
+              </div>
+              <div class="d-flex align-center justify-space-between text-caption text-medium-emphasis mt-1">
+                <span>Meta: {{ kpi.isCurrency ? formatCurrency(kpi.target) : formatNumber(kpi.target) }}</span>
+                <span>{{ kpi.target > 0 ? ((kpi.val / kpi.target) * 100).toFixed(0) : 0 }}%</span>
+              </div>
+              <VProgressLinear 
+                :model-value="kpi.target > 0 ? (kpi.val / kpi.target) * 100 : 0" 
+                :color="getStatusColor(kpi.val, kpi.target)" 
+                height="6" 
+                rounded 
+                class="mt-1" 
+              />
             </VCardText>
           </VCard>
         </VCol>
       </VRow>
 
       <!-- Gráfico de Histórico -->
-      <VCard class="rounded-lg border shadow-sm mb-4">
+      <VCard class="rounded-lg border mb-4">
         <VCardItem class="py-3 border-b">
-          <VCardTitle class="text-subtitle-2 font-weight-black uppercase">Evolución: Ventas vs Unidades</VCardTitle>
+          <VCardTitle class="text-subtitle-2 font-weight-bold text-uppercase">Evolución Histórica: Ventas vs Unidades</VCardTitle>
         </VCardItem>
         <VCardText class="pa-4">
           <VueApexCharts height="280" type="line" :options="historyChartOptions" :series="historyChartSeries" />
@@ -81,45 +126,49 @@ const historyChartSeries = computed(() => [
       <!-- Desglose de Eficiencia y Operaciones -->
       <VRow dense>
         <VCol cols="12" sm="6">
-          <VCard class="rounded-lg border shadow-sm h-100">
-            <VCardItem class="py-2 border-b bg-light"><VCardTitle class="text-super-xs font-weight-black uppercase">Eficiencia Comercial</VCardTitle></VCardItem>
-            <VList density="compact">
+          <VCard class="rounded-lg border h-100">
+            <VCardItem class="py-2 border-b">
+              <VCardTitle class="text-caption font-weight-bold text-uppercase">Eficiencia Comercial</VCardTitle>
+            </VCardItem>
+            <VList density="comfortable">
               <VListItem>
-                <template #prepend><VIcon icon="tabler-currency-dollar" color="success" size="18" /></template>
-                <VListItemTitle class="text-[11px] font-weight-bold">Ticket Promedio</VListItemTitle>
-                <template #append><span class="font-weight-black text-success">{{ formatCurrency(employeeDetail.metrics.avg_ticket) }}</span></template>
+                <template #prepend><VIcon icon="tabler-receipt" color="success" size="20" class="me-2" /></template>
+                <VListItemTitle class="text-body-2 font-weight-medium">Ticket Promedio</VListItemTitle>
+                <template #append><span class="font-weight-bold text-body-2 text-success">{{ formatCurrency(employeeDetail.metrics.avg_ticket) }}</span></template>
               </VListItem>
               <VListItem>
-                <template #prepend><VIcon icon="tabler-arrows-cross" color="info" size="18" /></template>
-                <VListItemTitle class="text-[11px] font-weight-bold">Tasa Conversión</VListItemTitle>
-                <template #append><span class="font-weight-black text-info">{{ (employeeDetail.metrics.conversion_rate || 0).toFixed(1) }}%</span></template>
+                <template #prepend><VIcon icon="tabler-arrows-cross" color="info" size="20" class="me-2" /></template>
+                <VListItemTitle class="text-body-2 font-weight-medium">Tasa de Conversión</VListItemTitle>
+                <template #append><span class="font-weight-bold text-body-2 text-info">{{ (employeeDetail.metrics.conversion_rate || 0).toFixed(1) }}%</span></template>
               </VListItem>
               <VListItem>
-                <template #prepend><VIcon icon="tabler-star" color="warning" size="18" /></template>
-                <VListItemTitle class="text-[11px] font-weight-bold">Venta Estratégica</VListItemTitle>
-                <template #append><span class="font-weight-black text-warning">{{ formatNumber(employeeDetail.metrics.strategic_units) }} unds</span></template>
+                <template #prepend><VIcon icon="tabler-star" color="warning" size="20" class="me-2" /></template>
+                <VListItemTitle class="text-body-2 font-weight-medium">Venta Estratégica</VListItemTitle>
+                <template #append><span class="font-weight-bold text-body-2 text-warning">{{ formatNumber(employeeDetail.metrics.strategic_units) }} unds</span></template>
               </VListItem>
             </VList>
           </VCard>
         </VCol>
         <VCol cols="12" sm="6">
-          <VCard class="rounded-lg border shadow-sm h-100">
-            <VCardItem class="py-2 border-b bg-light"><VCardTitle class="text-super-xs font-weight-black uppercase">Operaciones & Riesgo</VCardTitle></VCardItem>
-            <VList density="compact">
+          <VCard class="rounded-lg border h-100">
+            <VCardItem class="py-2 border-b">
+              <VCardTitle class="text-caption font-weight-bold text-uppercase">Operaciones & Riesgo</VCardTitle>
+            </VCardItem>
+            <VList density="comfortable">
               <VListItem>
-                <template #prepend><VIcon icon="tabler-alert-triangle" color="error" size="18" /></template>
-                <VListItemTitle class="text-[11px] font-weight-bold">Salida Caducidad</VListItemTitle>
-                <template #append><span class="font-weight-black text-error">{{ formatNumber(employeeDetail.metrics.expiring_units) }}</span></template>
+                <template #prepend><VIcon icon="tabler-clock-alert" color="error" size="20" class="me-2" /></template>
+                <VListItemTitle class="text-body-2 font-weight-medium">Salida de Caducidad</VListItemTitle>
+                <template #append><span class="font-weight-bold text-body-2 text-error">{{ formatNumber(employeeDetail.metrics.expiring_units) }} unds</span></template>
               </VListItem>
               <VListItem>
-                <template #prepend><VIcon icon="tabler-package-import" color="primary" size="18" /></template>
-                <VListItemTitle class="text-[11px] font-weight-bold">Facturas Cargadas</VListItemTitle>
-                <template #append><span class="font-weight-black text-primary">{{ formatNumber(employeeDetail.metrics.invoices_processed) }}</span></template>
+                <template #prepend><VIcon icon="tabler-file-invoice" color="primary" size="20" class="me-2" /></template>
+                <VListItemTitle class="text-body-2 font-weight-medium">Facturas Procesadas</VListItemTitle>
+                <template #append><span class="font-weight-bold text-body-2 text-primary">{{ formatNumber(employeeDetail.metrics.invoices_processed) }}</span></template>
               </VListItem>
               <VListItem>
-                <template #prepend><VIcon icon="tabler-search" color="secondary" size="18" /></template>
-                <VListItemTitle class="text-[11px] font-weight-bold">Errores Inventario</VListItemTitle>
-                <template #append><span class="font-weight-black text-error">{{ formatNumber(employeeDetail.metrics.inventory_errors) }}</span></template>
+                <template #prepend><VIcon icon="tabler-alert-triangle" color="error" size="20" class="me-2" /></template>
+                <VListItemTitle class="text-body-2 font-weight-medium">Errores de Inventario</VListItemTitle>
+                <template #append><span class="font-weight-bold text-body-2 text-error">{{ formatNumber(employeeDetail.metrics.inventory_errors) }}</span></template>
               </VListItem>
             </VList>
           </VCard>
@@ -128,10 +177,3 @@ const historyChartSeries = computed(() => [
     </div>
   </div>
 </template>
-
-<style scoped>
-.bg-surface { background-color: #fff !important; }
-.font-weight-black { font-weight: 900 !important; }
-.uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
-.text-super-xs { font-size: 9px; line-height: 1; }
-</style>

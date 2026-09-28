@@ -115,9 +115,9 @@ watch([startDate, endDate], () => {
     </VAlert>
 
     <!-- State Loader Principal -->
-    <div v-if="loading && !dashboardData" class="d-flex flex-column justify-center align-center h-[60vh] gap-3">
-      <VProgressCircular indeterminate color="primary" size="40" />
-      <span class="text-disabled text-xs">Cargando Balanced Scorecard...</span>
+    <div v-if="loading && !dashboardData" class="d-flex flex-column justify-center align-center" style="height: 60vh;">
+      <VProgressCircular indeterminate color="primary" size="48" class="mb-3" />
+      <span class="text-caption text-medium-emphasis">Cargando Balanced Scorecard...</span>
     </div>
 
     <!-- VISTA COMPARATIVA (FACE-OFF) -->
@@ -156,8 +156,3 @@ watch([startDate, endDate], () => {
     </div>
   </VContainer>
 </template>
-
-<style scoped>
-.employee-performance { background-color: transparent; }
-.gap-3 { gap: 12px; }
-</style>
