@@ -8,7 +8,7 @@ const props = defineProps({
 
 const emit = defineEmits(['page-change']);
 
-const hasMore = () => props.crossSelling.length >= 8;
+const hasMore = () => props.crossSelling.length >= 5;
 
 const getConfidenceColor = (conf) => {
   if (conf >= 60) return 'success';
@@ -72,7 +72,7 @@ const getConfidenceColor = (conf) => {
         </thead>
         <tbody>
           <tr v-for="(pair, idx) in crossSelling" :key="idx" class="border-b">
-            <td class="py-3 px-3">
+            <td class="py-2 px-3">
               <div class="d-flex align-center gap-2">
                 <!-- Producto A -->
                 <div class="d-flex flex-column min-width-0" style="flex: 1;">

@@ -353,7 +353,7 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
             ->groupBy('product_id_a', 'product_a', 'ingredient_a', 'lab_a', 'product_id_b', 'product_b', 'ingredient_b', 'lab_b')
             ->havingRaw('COUNT(*) > 1') // Solo pares con frecuencia real (>1 coincidencia)
             ->orderByDesc('frequency')
-            ->paginate(8, ['*'], 'page', $page);
+            ->paginate(5, ['*'], 'page', $page);
 
         // Transformar colección para inyectar soporte y confianza estadística
         $paginated->getCollection()->transform(function ($item) use ($totalOrders) {
