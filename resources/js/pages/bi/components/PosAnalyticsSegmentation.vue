@@ -4,12 +4,16 @@ import VueApexCharts from 'vue3-apexcharts';
 
 const props = defineProps({
   segmentation: { type: Object, default: () => ({}) },
-  kpis: { type: Object, default: () => ({}) }
+  kpis: { type: Object, default: () => ({}) },
 });
 
 const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
 
 const unitsDonutOptions = computed(() => ({
+  chart: {
+    fontFamily: 'inherit',
+    background: 'transparent',
+  },
   labels: props.segmentation.units?.labels || [],
   plotOptions: {
     pie: {
@@ -21,54 +25,70 @@ const unitsDonutOptions = computed(() => ({
             show: true,
             label: 'Tickets',
             fontSize: '12px',
-            fontWeight: 900,
-            formatter: () => props.kpis.completed_sales || 0
-          }
-        }
-      }
-    }
+            fontWeight: 700,
+            formatter: () => props.kpis.completed_sales || 0,
+          },
+        },
+      },
+    },
   },
-  colors: ['#E20074', '#7A0099', '#ff9f43', '#28c76f'],
-  legend: { position: 'bottom', labels: { colors: '#a3a3a3' }, fontSize: '11px', fontWeight: 600 },
-  dataLabels: { enabled: false }
+  colors: ['#E20074', '#7A0099', '#FF9F43', '#28C76F'],
+  legend: {
+    position: 'bottom',
+    fontSize: '11px',
+    fontWeight: 600,
+  },
+  dataLabels: { enabled: false },
 }));
 
 const monetaryChartOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+  chart: {
+    type: 'bar',
+    toolbar: { show: false },
+    fontFamily: 'inherit',
+    background: 'transparent',
+  },
   plotOptions: {
     bar: {
       borderRadius: 4,
       horizontal: true,
       barHeight: '70%',
-      distributed: true
-    }
+      distributed: true,
+    },
   },
-  colors: ['#E20074', '#7A0099', '#28c76f', '#ff9f43', '#ea5455', '#00cfe8', '#161616', '#a8aaad'],
+  colors: ['#E20074', '#7A0099', '#28C76F', '#FF9F43', '#FF4C51', '#00BAD1', '#8C57FF'],
   dataLabels: {
     enabled: true,
-    style: { fontSize: '10px', fontWeight: 900, colors: ['#fff'] },
-    formatter: (val) => val
+    style: { fontSize: '11px', fontWeight: 700, colors: ['#fff'] },
+    formatter: (val) => val,
   },
   xaxis: {
-    categories: props.segmentation.monetary?.labels?.map(l => `$ ${l}`) || [],
-    labels: { style: { fontSize: '10px' } }
+    categories: props.segmentation.monetary?.labels?.map((l) => `$ ${l}`) || [],
+    labels: { style: { fontSize: '11px' } },
   },
   yaxis: {
-    labels: { style: { fontSize: '11px', fontWeight: 700 } }
+    labels: { style: { fontSize: '11px', fontWeight: 600 } },
   },
-  grid: { borderColor: 'rgba(144, 164, 174, 0.05)' },
+  grid: {
+    borderColor: 'rgba(var(--v-border-color), var(--v-border-opacity))',
+    strokeDashArray: 4,
+  },
   legend: { show: false },
-  tooltip: { theme: 'dark' }
+  tooltip: { theme: 'dark' },
 }));
 </script>
 
 <template>
   <VRow dense class="mb-6">
     <VCol cols="12" md="7">
-      <VCard class="rounded-lg border shadow-sm h-100">
+      <VCard variant="outlined" class="rounded-lg shadow-sm h-100">
         <VCardItem class="py-3 border-b">
-          <VCardTitle class="d-flex align-center text-subtitle-2 font-weight-black text-uppercase">
-            <VIcon icon="tabler-package" class="me-2 text-primary" size="20" />
+          <template #prepend>
+            <VAvatar color="primary" variant="tonal" size="32" class="me-2 rounded">
+              <VIcon icon="tabler-package" size="18" />
+            </VAvatar>
+          </template>
+          <VCardTitle class="text-subtitle-2 font-weight-bold text-uppercase">
             Segmentación por Volumen (Unidades)
           </VCardTitle>
         </VCardItem>
@@ -79,16 +99,18 @@ const monetaryChartOptions = computed(() => ({
           <VCol cols="12" sm="5" class="ps-sm-4 pt-4 pt-sm-0">
             <div class="mb-4">
               <div class="d-flex align-center mb-1">
-                <VIcon icon="tabler-arrows-cross" size="14" class="me-1 text-info" />
-                <span class="text-[11px] font-weight-black uppercase">Penetración V. Cruzada</span>
+                <VIcon icon="tabler-arrows-cross" size="16" class="me-1 text-info" />
+                <span class="text-caption font-weight-bold text-uppercase">Penetración V. Cruzada</span>
               </div>
-              <h4 class="text-h6 font-weight-black text-info">{{ kpis.cross_selling_rate || 0 }}%</h4>
+              <h4 class="text-h6 font-weight-bold text-info">{{ kpis.cross_selling_rate || 0 }}%</h4>
               <VProgressLinear :model-value="kpis.cross_selling_rate || 0" color="info" height="6" rounded class="mt-1" />
             </div>
 
             <div v-for="(label, idx) in (segmentation.units?.labels || [])" :key="label" class="d-flex justify-space-between align-center py-1 border-b">
-              <span class="text-[10px] font-weight-bold uppercase opacity-60">{{ label }}</span>
-              <VChip density="comfortable" size="x-small" variant="tonal" color="primary" class="font-weight-black">{{ segmentation.units?.series?.[idx] || 0 }} Tks</VChip>
+              <span class="text-caption text-medium-emphasis font-weight-medium">{{ label }}</span>
+              <VChip density="comfortable" size="x-small" variant="tonal" color="primary" class="font-weight-bold">
+                {{ segmentation.units?.series?.[idx] || 0 }} Tks
+              </VChip>
             </div>
           </VCol>
         </VRow>
@@ -96,35 +118,35 @@ const monetaryChartOptions = computed(() => ({
     </VCol>
 
     <VCol cols="12" md="5">
-      <VCard class="rounded-lg border shadow-sm h-100">
+      <VCard variant="outlined" class="rounded-lg shadow-sm h-100">
         <VCardItem class="py-3 border-b">
-          <VCardTitle class="d-flex align-center text-subtitle-2 font-weight-black text-uppercase">
-            <VIcon icon="tabler-currency-dollar" class="me-2 text-success" size="20" />
+          <template #prepend>
+            <VAvatar color="success" variant="tonal" size="32" class="me-2 rounded">
+              <VIcon icon="tabler-currency-dollar" size="18" />
+            </VAvatar>
+          </template>
+          <VCardTitle class="text-subtitle-2 font-weight-bold text-uppercase">
             Tipología por Valor del Ticket
           </VCardTitle>
         </VCardItem>
         <VCardText class="pa-4">
           <VueApexCharts height="220" :options="monetaryChartOptions" :series="[{ data: segmentation.monetary?.series || [] }]" />
           
-          <div class="mt-4 p-3 bg-light-info rounded-lg border border-info border-opacity-10 d-flex align-top">
-            <VAvatar color="info" variant="tonal" size="32" rounded="lg" class="me-3">
-              <VIcon icon="tabler-trending-up" size="18" />
-            </VAvatar>
-            <div>
-              <div class="text-[11px] font-weight-black text-info uppercase">Oportunidad de Venta Cruzada</div>
-              <div class="text-[10px] text-info font-weight-bold opacity-80">
-                Un incremento al 40% en esta métrica generaría un ingreso adicional estimado de {{ formatCurrency((kpis.total_revenue || 0) * 0.15) }}.
+          <VCard variant="tonal" color="info" class="mt-4 pa-3 rounded-lg">
+            <div class="d-flex align-start">
+              <VAvatar color="info" variant="flat" size="28" rounded class="me-3 mt-1">
+                <VIcon icon="tabler-trending-up" size="16" color="white" />
+              </VAvatar>
+              <div>
+                <div class="text-caption font-weight-bold text-uppercase">Oportunidad de Venta Cruzada</div>
+                <div class="text-caption text-medium-emphasis">
+                  Un incremento al 40% en esta métrica generaría un ingreso adicional estimado de {{ formatCurrency((kpis.total_revenue || 0) * 0.15) }}.
+                </div>
               </div>
             </div>
-          </div>
+          </VCard>
         </VCardText>
       </VCard>
     </VCol>
   </VRow>
 </template>
-
-<style scoped>
-.font-weight-black { font-weight: 900 !important; }
-.uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
-.bg-light-info { background-color: #f0f9ff; }
-</style>
