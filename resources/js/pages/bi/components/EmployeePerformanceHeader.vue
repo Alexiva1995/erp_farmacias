@@ -40,14 +40,14 @@ const emit = defineEmits([
             variant="tonal"
             class="me-2 rounded-lg border"
           >
-            <VBtn :value="false" class="px-3">
+            <VBtn :value="false" class="px-3 text-no-wrap">
               <VIcon icon="tabler-trophy" size="20" class="me-1" />
-              <span class="text-caption d-none d-sm-inline">Ranking</span>
+              <span class="text-caption font-weight-medium d-none d-sm-inline">Ranking</span>
               <VTooltip activator="parent" location="bottom">Ranking de Empleados</VTooltip>
             </VBtn>
-            <VBtn :value="true" class="px-3">
+            <VBtn :value="true" class="px-3 text-no-wrap">
               <VIcon icon="tabler-arrows-cross" size="20" class="me-1" />
-              <span class="text-caption d-none d-sm-inline">Cara a Cara</span>
+              <span class="text-caption font-weight-medium d-none d-sm-inline">Cara a Cara</span>
               <VTooltip activator="parent" location="bottom">Comparativa Cara a Cara</VTooltip>
             </VBtn>
           </VBtnToggle>

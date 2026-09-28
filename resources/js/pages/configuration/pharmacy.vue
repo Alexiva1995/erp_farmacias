@@ -4,38 +4,48 @@ import { usePharmacySettingsForm } from '@/composables/usePharmacySettingsForm'
 import { useAbility } from '@casl/vue'
 
 const { can } = useAbility()
-const fileInputRef = ref(null)
+const logoInputRef = ref(null)
+const faviconInputRef = ref(null)
+const signatureInputRef = ref(null)
 
 const {
   form,
   logoPreview,
+  faviconPreview,
+  signatureStampPreview,
   isLoading,
   isPageLoading,
   isDirty,
   handleLogoSelect,
+  handleFaviconSelect,
+  handleSignatureStampSelect,
   removeLogo,
+  removeFavicon,
+  removeSignatureStamp,
   resetForm,
   saveSettings,
 } = usePharmacySettingsForm()
 
-// Manejo del evento de selección de archivo
-const onFileChange = (e) => {
+const onLogoChange = (e) => {
   const file = e.target.files?.[0]
-  if (file) {
-    handleLogoSelect(file)
-  }
+  if (file) handleLogoSelect(file)
 }
 
-// Disparar input de archivo oculto
-const triggerFileInput = () => {
-  fileInputRef.value?.click()
+const onFaviconChange = (e) => {
+  const file = e.target.files?.[0]
+  if (file) handleFaviconSelect(file)
+}
+
+const onSignatureChange = (e) => {
+  const file = e.target.files?.[0]
+  if (file) handleSignatureStampSelect(file)
 }
 </script>
 
 <template>
   <VRow>
     <VCol cols="12">
-      <!-- Skeleton Loader de Carga Inicial -->
+      <!-- Skeleton Loader -->
       <VCard
         v-if="isPageLoading"
         variant="outlined"
@@ -53,7 +63,7 @@ const triggerFileInput = () => {
         </VRow>
       </VCard>
 
-      <!-- Formulario Principal de Configuración -->
+      <!-- Formulario Principal -->
       <VCard
         v-else
         variant="flat"
@@ -72,10 +82,10 @@ const triggerFileInput = () => {
               </VAvatar>
               <div>
                 <VCardTitle class="text-h5 font-weight-bold">
-                  Datos de Identidad y Membretes
+                  Datos de la Farmacia e Identidad Corporativa
                 </VCardTitle>
                 <VCardSubtitle class="text-caption text-medium-emphasis mt-1">
-                  Configure la razón social, RIF y logotipo oficial para documentos y reportes PDF del ERP.
+                  Razón social, RIF, serial de máquina fiscal, moneda principal, logotipos y membretes oficiales.
                 </VCardSubtitle>
               </div>
             </div>
@@ -97,13 +107,13 @@ const triggerFileInput = () => {
         <VCardText class="px-6 py-5">
           <VForm @submit.prevent="saveSettings">
             <VRow>
-              <!-- Columna Izquierda: Parámetros Institucionales y Logotipo -->
+              <!-- Columna Izquierda: Parámetros Institucionales y Medios -->
               <VCol cols="12" md="7">
-                <!-- Tarjeta: Identificación Fiscal y Legal -->
+                <!-- Tarjeta 1: Información Fiscal y Legal -->
                 <VCard variant="outlined" class="pa-5 rounded-lg mb-5 border">
                   <div class="text-subtitle-1 font-weight-bold mb-4 text-primary d-flex align-center gap-2">
                     <VIcon icon="tabler-certificate" size="20" />
-                    Identificación Fiscal y Legal
+                    Identificación Fiscal y Operativa
                   </div>
 
                   <VRow>
@@ -118,23 +128,10 @@ const triggerFileInput = () => {
                         hide-details="auto"
                         :rules="[v => !!v?.trim() || 'El nombre institucional es obligatorio']"
                         clearable
-                      >
-                        <template #append-inner>
-                          <VTooltip location="top" text="Nombre visible en encabezados de nóminas y reportes.">
-                            <template #activator="{ props }">
-                              <VIcon
-                                v-bind="props"
-                                icon="tabler-help"
-                                size="18"
-                                class="text-medium-emphasis cursor-pointer"
-                              />
-                            </template>
-                          </VTooltip>
-                        </template>
-                      </VTextField>
+                      />
                     </VCol>
 
-                    <VCol cols="12">
+                    <VCol cols="12" sm="6">
                       <VTextField
                         v-model="form.app_rif"
                         label="RIF / Identificación Tributaria"
@@ -144,20 +141,32 @@ const triggerFileInput = () => {
                         density="comfortable"
                         hide-details="auto"
                         clearable
-                      >
-                        <template #append-inner>
-                          <VTooltip location="top" text="Identificador fiscal exigido en documentos oficiales.">
-                            <template #activator="{ props }">
-                              <VIcon
-                                v-bind="props"
-                                icon="tabler-info-circle"
-                                size="18"
-                                class="text-medium-emphasis cursor-pointer"
-                              />
-                            </template>
-                          </VTooltip>
-                        </template>
-                      </VTextField>
+                      />
+                    </VCol>
+
+                    <VCol cols="12" sm="6">
+                      <VTextField
+                        v-model="form.fiscal_printer_serial"
+                        label="Serial Máquina Fiscal"
+                        placeholder="Ej: EOM0000310"
+                        prepend-inner-icon="tabler-printer"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        clearable
+                      />
+                    </VCol>
+
+                    <VCol cols="12" sm="6">
+                      <VSelect
+                        v-model="form.default_currency"
+                        :items="['COP', 'USD', 'BS']"
+                        label="Moneda Base del Sistema"
+                        prepend-inner-icon="tabler-currency-dollar"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                      />
                     </VCol>
 
                     <VCol cols="12">
@@ -176,22 +185,22 @@ const triggerFileInput = () => {
                   </VRow>
                 </VCard>
 
-                <!-- Tarjeta: Logotipo Corporativo -->
-                <VCard variant="outlined" class="pa-5 rounded-lg border">
+                <!-- Tarjeta 2: Logotipo Oficial -->
+                <VCard variant="outlined" class="pa-5 rounded-lg mb-5 border">
                   <div class="text-subtitle-1 font-weight-bold mb-2 text-primary d-flex align-center gap-2">
                     <VIcon icon="tabler-photo" size="20" />
-                    Logotipo Corporativo
+                    Logotipo Oficial (Membretes y Reportes PDF)
                   </div>
                   <div class="text-caption text-medium-emphasis mb-4">
-                    Formatos admitidos: PNG (con transparencia recomendada), JPG, WEBP o SVG. Tamaño máximo: 5 MB.
+                    PNG transparente, JPG, WEBP o SVG. Tamaño máx: 5MB.
                   </div>
 
                   <input
-                    ref="fileInputRef"
+                    ref="logoInputRef"
                     type="file"
                     accept="image/png, image/jpeg, image/webp, image/svg+xml"
                     class="d-none"
-                    @change="onFileChange"
+                    @change="onLogoChange"
                   >
 
                   <div class="d-flex align-center gap-3 flex-wrap">
@@ -199,7 +208,7 @@ const triggerFileInput = () => {
                       variant="tonal"
                       color="primary"
                       prepend-icon="tabler-upload"
-                      @click="triggerFileInput"
+                      @click="logoInputRef?.click()"
                     >
                       {{ logoPreview ? 'Reemplazar Logotipo' : 'Cargar Logotipo' }}
                     </VBtn>
@@ -215,9 +224,89 @@ const triggerFileInput = () => {
                     </VBtn>
                   </div>
                 </VCard>
+
+                <!-- Tarjeta 3: Favicon e Identidad de Pestaña -->
+                <VCard variant="outlined" class="pa-5 rounded-lg mb-5 border">
+                  <div class="text-subtitle-1 font-weight-bold mb-2 text-primary d-flex align-center gap-2">
+                    <VIcon icon="tabler-app-window" size="20" />
+                    Favicon Institucional (Pestaña del Navegador)
+                  </div>
+                  <div class="text-caption text-medium-emphasis mb-4">
+                    Icono que se muestra en la pestaña del navegador (ICO, PNG 32x32).
+                  </div>
+
+                  <input
+                    ref="faviconInputRef"
+                    type="file"
+                    accept="image/png, image/x-icon, image/vnd.microsoft.icon, image/svg+xml"
+                    class="d-none"
+                    @change="onFaviconChange"
+                  >
+
+                  <div class="d-flex align-center gap-3 flex-wrap">
+                    <VBtn
+                      variant="tonal"
+                      color="primary"
+                      prepend-icon="tabler-upload"
+                      @click="faviconInputRef?.click()"
+                    >
+                      {{ faviconPreview ? 'Reemplazar Favicon' : 'Cargar Favicon' }}
+                    </VBtn>
+
+                    <VBtn
+                      v-if="faviconPreview"
+                      variant="outlined"
+                      color="error"
+                      prepend-icon="tabler-trash"
+                      @click="removeFavicon"
+                    >
+                      Quitar Favicon
+                    </VBtn>
+                  </div>
+                </VCard>
+
+                <!-- Tarjeta 4: Firma y Sello Digital -->
+                <VCard variant="outlined" class="pa-5 rounded-lg border">
+                  <div class="text-subtitle-1 font-weight-bold mb-2 text-primary d-flex align-center gap-2">
+                    <VIcon icon="tabler-signature" size="20" />
+                    Firma y Sello Húmedo Digital
+                  </div>
+                  <div class="text-caption text-medium-emphasis mb-4">
+                    Imagen PNG con transparencia que se estampará en comprobantes de retención, nóminas y constancias oficiales.
+                  </div>
+
+                  <input
+                    ref="signatureInputRef"
+                    type="file"
+                    accept="image/png, image/webp"
+                    class="d-none"
+                    @change="onSignatureChange"
+                  >
+
+                  <div class="d-flex align-center gap-3 flex-wrap">
+                    <VBtn
+                      variant="tonal"
+                      color="primary"
+                      prepend-icon="tabler-upload"
+                      @click="signatureInputRef?.click()"
+                    >
+                      {{ signatureStampPreview ? 'Reemplazar Firma y Sello' : 'Cargar Firma y Sello' }}
+                    </VBtn>
+
+                    <VBtn
+                      v-if="signatureStampPreview"
+                      variant="outlined"
+                      color="error"
+                      prepend-icon="tabler-trash"
+                      @click="removeSignatureStamp"
+                    >
+                      Quitar Firma y Sello
+                    </VBtn>
+                  </div>
+                </VCard>
               </VCol>
 
-              <!-- Columna Derecha: Previsualización en Vivo de PDF -->
+              <!-- Columna Derecha: Previsualización en Vivo de PDF y Firma -->
               <VCol cols="12" md="5">
                 <VCard
                   variant="outlined"
@@ -225,10 +314,10 @@ const triggerFileInput = () => {
                 >
                   <div class="text-subtitle-1 font-weight-bold mb-1 text-secondary d-flex align-center gap-2">
                     <VIcon icon="tabler-file-type-pdf" size="20" />
-                    Previsualización de Cabecera PDF
+                    Previsualización de Documento PDF
                   </div>
                   <div class="text-caption text-medium-emphasis mb-4">
-                    Renderizado en tiempo real del membrete institucional para documentos oficiales.
+                    Muestra en tiempo real cómo se verán los encabezados y sellos oficiales.
                   </div>
 
                   <div class="pdf-mock-sheet pa-4 rounded border flex-grow-1 d-flex flex-column justify-space-between shadow-xs">
@@ -262,6 +351,12 @@ const triggerFileInput = () => {
                             RIF: {{ form.app_rif }}
                           </div>
                           <div
+                            v-if="form.fiscal_printer_serial"
+                            class="text-caption text-medium-emphasis"
+                          >
+                            Máquina Fiscal: {{ form.fiscal_printer_serial }}
+                          </div>
+                          <div
                             v-if="form.address"
                             class="text-caption text-disabled text-truncate-2"
                           >
@@ -273,7 +368,7 @@ const triggerFileInput = () => {
                       <!-- Título de Documento Simulado -->
                       <div class="text-center my-3 py-1 bg-grey-100 rounded">
                         <span class="text-overline text-primary font-weight-bold">
-                          REPORTE / COMPROBANTE OFICIAL
+                          COMPROBANTE / REPORTE OFICIAL
                         </span>
                       </div>
 
@@ -285,8 +380,23 @@ const triggerFileInput = () => {
                       </div>
                     </div>
 
-                    <div class="text-center pt-3 border-t-sheet text-disabled text-caption">
-                      Membrete institucional estándar generado por el ERP
+                    <!-- Pie con Sello y Firma Digital -->
+                    <div class="pt-3 border-t-sheet d-flex align-center justify-space-between">
+                      <div class="text-caption text-disabled">
+                        Moneda Base: {{ form.default_currency }}
+                      </div>
+                      <div class="text-center">
+                        <img
+                          v-if="signatureStampPreview"
+                          :src="signatureStampPreview"
+                          alt="Firma y Sello"
+                          style="max-height: 48px; max-width: 100px; object-fit: contain;"
+                        >
+                        <div v-else class="text-caption text-medium-emphasis font-italic">
+                          [Sin firma y sello]
+                        </div>
+                        <div class="text-caption font-weight-medium">Firma Autorizada</div>
+                      </div>
                     </div>
                   </div>
                 </VCard>
@@ -315,7 +425,7 @@ const triggerFileInput = () => {
                   :disabled="isLoading || !isDirty"
                   class="px-6"
                 >
-                  Guardar Configuración
+                  Guardar Configuración Institucional
                 </VBtn>
               </VCol>
             </VRow>
@@ -328,7 +438,7 @@ const triggerFileInput = () => {
 
 <style scoped>
 .pdf-mock-sheet {
-  min-height: 300px;
+  min-height: 340px;
   background-color: #ffffff;
   color: #1e293b;
 }

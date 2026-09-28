@@ -16,7 +16,7 @@ export default [
         to: 'configuration-pharmacy',
       },
       {
-        title: 'Generales',
+        title: 'E-commerce',
         to: 'configuration-branding',
       },
       {
