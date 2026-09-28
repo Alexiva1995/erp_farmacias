@@ -489,7 +489,10 @@ onMounted(async () => {
   if (invoice.value) {
     await fetchInvoiceDetails(props.invoiceId);
   }
-  await fetchLocations();
+  await Promise.all([
+    fetchLocations(),
+    fetchProductSelectOptions(),
+  ]);
 });
 
 watch(isEditMode, (newVal) => {
@@ -784,6 +787,9 @@ const toggleTax = (detailToToggle) => {
 };
 
 const handleAddProduct = () => {
+  if (laboratories.value.length === 0) {
+    fetchProductSelectOptions();
+  }
   catalogSearchRef.value?.openBarcodeModal();
 };
 
@@ -826,10 +832,16 @@ const handleShowProductSearch = () => {
 const handleSaveProduct = async (productFormData, { onSuccess, onError }) => {
   const url = "/products";
   try {
-    await axios.post(url, productFormData, {
+    const response = await axios.post(url, productFormData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     toast.success("Producto creado con éxito");
+
+    const createdProduct = response.data.product ?? response.data.data;
+    if (createdProduct) {
+      addProductToInvoice(createdProduct);
+    }
+
     if (onSuccess) onSuccess();
     if (isProductSearchVisible.value) {
       await fetchProducts();
