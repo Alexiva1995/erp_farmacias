@@ -81,10 +81,10 @@ const emit = defineEmits([
 
           <VBtn
             icon
-            variant="text"
+            variant="tonal"
             color="secondary"
-            size="36"
-            class="rounded-circle"
+            size="38"
+            rounded="circle"
             :disabled="loading"
             @click="emit('refresh')"
           >

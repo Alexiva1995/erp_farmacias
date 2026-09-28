@@ -171,8 +171,8 @@ const toggleAdvancedFilters = () => {
             icon
             variant="tonal"
             :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-            size="36"
-            class="rounded-circle"
+            size="38"
+            rounded="circle"
             :disabled="loading"
             @click="toggleAdvancedFilters"
           >
@@ -183,7 +183,7 @@ const toggleAdvancedFilters = () => {
               offset-x="2"
               offset-y="-2"
             >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="18" />
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" size="20" />
             </VBadge>
             <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
           </VBtn>
@@ -192,28 +192,28 @@ const toggleAdvancedFilters = () => {
 
           <VBtn
             icon
-            variant="flat"
+            variant="tonal"
             color="primary"
-            size="36"
-            class="rounded-circle"
+            size="38"
+            rounded="circle"
             :loading="loading"
             :disabled="loading"
             @click="emit('fetch')"
           >
-            <VIcon icon="tabler-player-play" size="18" />
+            <VIcon icon="tabler-player-play" size="20" />
             <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
           </VBtn>
 
           <VBtn
             icon
-            variant="text"
+            variant="tonal"
             color="secondary"
-            size="36"
-            class="rounded-circle"
+            size="38"
+            rounded="circle"
             :disabled="loading"
             @click="emit('clear')"
           >
-            <VIcon icon="tabler-eraser" size="18" />
+            <VIcon icon="tabler-eraser" size="20" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
 
@@ -227,12 +227,12 @@ const toggleAdvancedFilters = () => {
                 icon
                 variant="tonal"
                 color="success"
-                size="36"
-                class="rounded-circle"
+                size="38"
+                rounded="circle"
                 :loading="exporting"
                 :disabled="loading || exporting"
               >
-                <VIcon icon="tabler-download" size="18" />
+                <VIcon icon="tabler-file-export" size="20" />
                 <VTooltip activator="parent" location="top">Exportar a Excel</VTooltip>
               </VBtn>
             </template>

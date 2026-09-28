@@ -308,10 +308,11 @@ const handleExportPDF = () => {
             <!-- Aplicar Filtros -->
             <VBtn
               icon
-              variant="flat"
+              variant="tonal"
               color="primary"
               size="38"
-              class="rounded-circle shadow-sm"
+              rounded="circle"
+              class="shadow-sm"
               :loading="loading"
               :disabled="loading"
               aria-label="Aplicar filtros"

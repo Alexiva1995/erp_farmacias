@@ -67,9 +67,10 @@ const emit = defineEmits(['update:startDate', 'update:endDate', 'refresh', 'expo
 
             <!-- Botón Exportar PDF -->
             <VBtn
-              variant="outlined"
-              color="secondary"
-              size="40"
+              variant="tonal"
+              color="error"
+              size="38"
+              rounded="circle"
               icon
               :loading="exportingPdf"
               :disabled="loading || exportingPdf"
@@ -81,9 +82,10 @@ const emit = defineEmits(['update:startDate', 'update:endDate', 'refresh', 'expo
 
             <!-- Botón Recargar -->
             <VBtn
-              variant="flat"
+              variant="tonal"
               color="primary"
-              size="40"
+              size="38"
+              rounded="circle"
               icon
               :loading="loading"
               :disabled="loading"

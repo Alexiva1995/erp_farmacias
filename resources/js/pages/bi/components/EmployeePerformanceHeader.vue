@@ -77,7 +77,8 @@ const emit = defineEmits([
             icon
             variant="tonal"
             color="primary"
-            density="comfortable"
+            size="38"
+            rounded="circle"
             :loading="loading"
             @click="emit('refresh')"
           >

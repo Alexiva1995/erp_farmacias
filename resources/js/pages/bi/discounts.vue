@@ -203,7 +203,7 @@ const getDiscountTypeColor = (type) => {
             <div style="width: 180px;">
               <AppTextField v-model="endDate" type="date" label="Hasta" density="compact" hide-details />
             </div>
-            <VBtn icon variant="tonal" color="secondary" size="38" class="rounded-pill" @click="fetchDashboard(); fetchAudit()">
+            <VBtn icon variant="tonal" color="primary" size="38" rounded="circle" @click="fetchDashboard(); fetchAudit()">
               <VIcon icon="tabler-refresh" />
               <VTooltip activator="parent" location="top">Sincronizar</VTooltip>
             </VBtn>

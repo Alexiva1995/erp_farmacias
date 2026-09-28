@@ -300,7 +300,7 @@ onMounted(() => {
           variant="tonal"
           color="secondary"
           size="38"
-          class="rounded-pill"
+          rounded="circle"
           :loading="loading"
           @click="fetchDashboard"
         >
@@ -310,9 +310,9 @@ onMounted(() => {
         <VBtn
           icon
           color="primary"
-          variant="flat"
+          variant="tonal"
           size="38"
-          class="rounded-pill"
+          rounded="circle"
           :disabled="loading"
           @click="handleExport"
         >

@@ -83,22 +83,27 @@ const localSellerId = computed({
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="3" class="d-flex align-center justify-end ga-2">
+        <VCol cols="12" sm="6" md="3" class="d-flex align-center justify-end ga-1 flex-wrap">
           <VBtn
+            icon
+            variant="tonal"
             color="primary"
-            variant="flat"
-            prepend-icon="tabler-refresh"
+            size="38"
+            rounded="circle"
             :loading="loading"
             :disabled="loading"
             @click="emit('fetch')"
           >
-            Filtrar
+            <VIcon icon="tabler-refresh" />
+            <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
           </VBtn>
 
           <VBtn
-            color="secondary"
+            icon
             variant="tonal"
-            icon="tabler-eraser"
+            color="secondary"
+            size="38"
+            rounded="circle"
             :disabled="loading"
             @click="emit('reset')"
           >
@@ -110,18 +115,31 @@ const localSellerId = computed({
             <template #activator="{ props: menuProps }">
               <VBtn
                 v-bind="menuProps"
-                color="primary"
-                variant="outlined"
-                prepend-icon="tabler-download"
+                icon
+                color="success"
+                variant="tonal"
+                size="38"
+                rounded="circle"
                 :loading="exporting"
                 :disabled="loading || exporting"
               >
-                Exportar
+                <VIcon icon="tabler-file-export" />
+                <VTooltip activator="parent" location="top">Exportar Reporte</VTooltip>
               </VBtn>
             </template>
             <VList density="compact">
-              <VListItem prepend-icon="tabler-file-type-pdf" title="Exportar a PDF" @click="emit('export-pdf')" />
-              <VListItem prepend-icon="tabler-file-spreadsheet" title="Exportar a CSV / Excel" @click="emit('export-csv')" />
+              <VListItem @click="emit('export-pdf')">
+                <template #prepend>
+                  <VIcon icon="tabler-file-type-pdf" size="18" color="error" class="me-2" />
+                </template>
+                <VListItemTitle>Exportar PDF</VListItemTitle>
+              </VListItem>
+              <VListItem @click="emit('export-csv')">
+                <template #prepend>
+                  <VIcon icon="tabler-file-spreadsheet" size="18" color="success" class="me-2" />
+                </template>
+                <VListItemTitle>Exportar CSV / Excel</VListItemTitle>
+              </VListItem>
             </VList>
           </VMenu>
         </VCol>

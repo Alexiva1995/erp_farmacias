@@ -136,12 +136,13 @@ const handleExport = () => {
 
         <VSpacer class="d-none d-lg-block" />
 
-        <VCol cols="12" sm="6" md="3" lg="auto" class="d-flex align-center justify-end gap-2 flex-wrap">
+        <VCol cols="12" sm="6" md="3" lg="auto" class="d-flex align-center justify-end gap-1 flex-wrap">
           <VBtn
+            icon
             variant="tonal"
             :color="isAdvancedFiltersVisible ? 'primary' : 'secondary'"
-            density="comfortable"
-            class="rounded-lg font-weight-bold"
+            size="38"
+            rounded="circle"
             @click="toggleAdvancedFilters"
           >
             <VBadge
@@ -151,47 +152,50 @@ const handleExport = () => {
               offset-x="2"
               offset-y="-2"
             >
-              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" class="me-1" size="18" />
+              <VIcon :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
             </VBadge>
-            <VIcon v-else :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" class="me-1" size="18" />
-            <span>Filtros</span>
+            <VIcon v-else :icon="isAdvancedFiltersVisible ? 'tabler-filter-off' : 'tabler-filter'" />
+            <VTooltip activator="parent" location="top">Filtros Avanzados</VTooltip>
           </VBtn>
 
           <VBtn
-            variant="flat"
+            icon
+            variant="tonal"
             color="primary"
-            density="comfortable"
-            class="rounded-lg font-weight-bold"
+            size="38"
+            rounded="circle"
             :loading="loading"
             @click="handleFetch"
           >
-            <VIcon icon="tabler-refresh" class="me-1" size="18" />
-            <span>Consultar</span>
+            <VIcon icon="tabler-refresh" />
+            <VTooltip activator="parent" location="top">Consultar</VTooltip>
           </VBtn>
 
           <VBtn
-            variant="text"
+            icon
+            variant="tonal"
             color="secondary"
-            density="comfortable"
-            class="rounded-lg"
+            size="38"
+            rounded="circle"
             :disabled="loading"
             @click="handleClear"
           >
-            <VIcon icon="tabler-eraser" size="18" />
+            <VIcon icon="tabler-eraser" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
           </VBtn>
 
           <VBtn
+            icon
             variant="tonal"
             color="success"
-            density="comfortable"
-            class="rounded-lg font-weight-bold"
+            size="38"
+            rounded="circle"
             :loading="exporting"
             :disabled="loading || exporting"
             @click="handleExport"
           >
-            <VIcon icon="tabler-download" class="me-1" size="18" />
-            <span>Excel</span>
+            <VIcon icon="tabler-file-export" />
+            <VTooltip activator="parent" location="top">Exportar Excel</VTooltip>
           </VBtn>
         </VCol>
       </VRow>

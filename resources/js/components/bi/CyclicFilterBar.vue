@@ -72,23 +72,28 @@ const emit = defineEmits(['apply', 'clear', 'export-pdf', 'export-excel'])
         <VSpacer />
 
         <!-- Acciones de Filtrado y Exportación -->
-        <VCol cols="12" sm="6" md="auto" class="d-flex align-center gap-2 justify-end flex-wrap">
+        <VCol cols="12" sm="6" md="auto" class="d-flex align-center gap-1 justify-end flex-wrap">
           <VBtn
+            icon
+            variant="tonal"
             color="primary"
-            variant="flat"
+            size="38"
+            rounded="circle"
             :loading="loading"
             :disabled="loading"
-            prepend-icon="tabler-filter"
             @click="emit('apply')"
           >
-            Filtrar
+            <VIcon icon="tabler-filter" />
+            <VTooltip activator="parent" location="top">Aplicar Filtros</VTooltip>
           </VBtn>
 
           <VBtn
+            icon
+            variant="tonal"
             color="secondary"
-            variant="outlined"
+            size="38"
+            rounded="circle"
             :disabled="loading"
-            icon="tabler-eraser"
             @click="emit('clear')"
           >
             <VIcon icon="tabler-eraser" />
@@ -96,20 +101,25 @@ const emit = defineEmits(['apply', 'clear', 'export-pdf', 'export-excel'])
           </VBtn>
 
           <VBtn
-            color="error"
+            icon
             variant="tonal"
+            color="error"
+            size="38"
+            rounded="circle"
             :disabled="loading"
-            prepend-icon="tabler-file-type-pdf"
             @click="emit('export-pdf')"
           >
-            PDF
+            <VIcon icon="tabler-file-type-pdf" />
+            <VTooltip activator="parent" location="top">Exportar PDF</VTooltip>
           </VBtn>
 
           <VBtn
-            color="success"
+            icon
             variant="tonal"
+            color="success"
+            size="38"
+            rounded="circle"
             :disabled="loading"
-            icon="tabler-file-spreadsheet"
             @click="emit('export-excel')"
           >
             <VIcon icon="tabler-file-spreadsheet" />

@@ -146,12 +146,13 @@ const applyPreset = (preset) => {
         </VCol>
 
         <!-- Botones de Acción (Refresco y Exportar) -->
-        <VCol cols="12" sm="2" md="4" lg="1" class="d-flex justify-end align-center ga-2">
+        <VCol cols="12" sm="2" md="4" lg="1" class="d-flex justify-end align-center ga-1 flex-wrap">
           <VBtn
-            icon="tabler-refresh"
+            icon
             variant="tonal"
             color="primary"
-            density="comfortable"
+            size="38"
+            rounded="circle"
             :loading="loading"
             :disabled="loading"
             @click="emit('refresh')"
@@ -164,13 +165,14 @@ const applyPreset = (preset) => {
             <template #activator="{ props: menuProps }">
               <VBtn
                 v-bind="menuProps"
-                icon="tabler-download"
-                variant="outlined"
-                color="secondary"
-                density="comfortable"
+                icon
+                variant="tonal"
+                color="success"
+                size="38"
+                rounded="circle"
                 :disabled="loading"
               >
-                <VIcon icon="tabler-download" />
+                <VIcon icon="tabler-file-export" />
                 <VTooltip activator="parent" location="top">Exportar reporte</VTooltip>
               </VBtn>
             </template>

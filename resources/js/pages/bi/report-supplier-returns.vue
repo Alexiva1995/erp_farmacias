@@ -447,10 +447,10 @@ const resetFilters = () => {
             <div class="d-flex gap-1">
               <VBtn
                 icon
-                variant="flat"
+                variant="tonal"
                 color="primary"
                 size="38"
-                class="rounded-circle"
+                rounded="circle"
                 :loading="loading"
                 :disabled="loading"
                 aria-label="Actualizar"
@@ -462,10 +462,10 @@ const resetFilters = () => {
 
               <VBtn
                 icon
-                variant="text"
+                variant="tonal"
                 color="secondary"
                 size="38"
-                class="rounded-circle"
+                rounded="circle"
                 :disabled="loading || (!hasActiveFilters && selectedUrgency === 'all' && !labSearch)"
                 aria-label="Limpiar filtros"
                 @click="resetFilters"
