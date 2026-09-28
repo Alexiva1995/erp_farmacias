@@ -1,117 +1,30 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import axios from '@/plugins/axios'
-import { toast } from "@/plugins/sweetalert"
-import { useBrandingStore } from "@/stores/useBrandingStore"
+import { onMounted } from 'vue'
+import { useAbility } from '@casl/vue'
+import { useCrmSettings } from '@/composables/configuration/useCrmSettings'
 import CrmModuleCard from '@/components/configuration/CrmModuleCard.vue'
 
-const brandingStore = useBrandingStore()
+const ability = useAbility()
 
-// Vistas activas por defecto
-const enabledCrmViews = ref([
-  'clients',
-  'companies',
-  'doctors',
-  'lottery'
-])
-
-// Estados de carga y guardado
-const isLoading = ref(true)
-const isSaving = ref(false)
-const hasError = ref(false)
-const errorMessage = ref('')
-
-// Catálogo de vistas disponibles del CRM
-const availableCrmViews = [
-  { key: 'clients', title: 'Clientes', description: 'Gestión de ficha de clientes, hábitos de compra y trazabilidad.', icon: 'tabler-users' },
-  { key: 'companies', title: 'Convenios / Empresas', description: 'Gestión de acuerdos corporativos y descuentos institucionales.', icon: 'tabler-building' },
-  { key: 'doctors', title: 'Médicos', description: 'Registro de médicos tratantes, especialidades y comisiones.', icon: 'tabler-stethoscope' },
-  { key: 'lottery', title: 'Sorteo / Lotería', description: 'Campañas de fidelización, emisión de boletos y rifas.', icon: 'tabler-ticket' },
-]
-
-// Propiedades computadas para la interfaz y métricas
-const totalCount = computed(() => availableCrmViews.length)
-
-const activeCount = computed(() => enabledCrmViews.value.length)
-
-const activePercentage = computed(() => {
-  if (totalCount.value === 0) return 0
-  return Math.round((activeCount.value / totalCount.value) * 100)
-})
-
-const allEnabled = computed(() => activeCount.value === totalCount.value)
-
-const noneEnabled = computed(() => activeCount.value === 0)
-
-// Cargar la configuración optimizada solicitando únicamente el campo de CRM
-const fetchSettings = async () => {
-  isLoading.value = true
-  hasError.value = false
-  errorMessage.value = ''
-  
-  try {
-    const response = await axios.get('/general-settings', {
-      params: { only: 'enabled_crm_views' }
-    })
-    
-    const settings = response.data.data
-    if (settings && Array.isArray(settings.enabled_crm_views)) {
-      enabledCrmViews.value = settings.enabled_crm_views
-    }
-  } catch (error) {
-    console.error("Error cargando configuración del CRM:", error)
-    hasError.value = true
-    errorMessage.value = "No se pudo cargar la configuración del CRM. Verifique su conexión e intente de nuevo."
-    toast.error("Error al cargar la configuración")
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Alternar el estado de una vista específica
-const toggleCrmView = async (key) => {
-  if (isSaving.value || isLoading.value) return
-
-  const updatedViews = [...enabledCrmViews.value]
-  const index = updatedViews.indexOf(key)
-  
-  if (index > -1) {
-    updatedViews.splice(index, 1)
-  } else {
-    updatedViews.push(key)
-  }
-  
-  enabledCrmViews.value = updatedViews
-  await updateSettings()
-}
-
-// Acciones masivas: Habilitar o deshabilitar todas las vistas
-const setAllViews = async (enable) => {
-  if (isSaving.value || isLoading.value) return
-  
-  enabledCrmViews.value = enable ? availableCrmViews.map(v => v.key) : []
-  await updateSettings()
-}
-
-// Persistir la configuración en el servidor
-const updateSettings = async () => {
-  isSaving.value = true
-  try {
-    await axios.post('/general-settings', {
-      enabled_crm_views: enabledCrmViews.value
-    })
-    
-    await brandingStore.fetchSettings()
-    toast.success("Configuración de vistas del CRM actualizada exitosamente")
-  } catch (error) {
-    console.error("Error al guardar la configuración:", error)
-    toast.error("Error al actualizar la configuración")
-    // Revertir estado previo mediante recarga ligera
-    await fetchSettings()
-  } finally {
-    isSaving.value = false
-  }
-}
+const {
+  enabledCrmViews,
+  availableCrmViews,
+  isLoading,
+  isSaving,
+  hasError,
+  errorMessage,
+  isDirty,
+  totalCount,
+  activeCount,
+  activePercentage,
+  allEnabled,
+  noneEnabled,
+  fetchSettings,
+  toggleCrmView,
+  setAllViews,
+  resetSettings,
+  saveSettings,
+} = useCrmSettings()
 
 onMounted(() => {
   fetchSettings()
@@ -119,101 +32,98 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
-    <!-- Tarjeta Principal de Configuración del CRM -->
-    <VCard class="mb-6 rounded-lg border shadow-sm">
-      <VCardItem class="py-5">
-        <!-- Encabezado con Jerarquía y Estado de Guardado -->
-        <div class="d-flex flex-column flex-sm-row justify-space-between align-start align-sm-center gap-4 mb-4">
+  <div v-if="ability.can('manage', 'admin') || ability.can('manage', 'all')">
+    <VCard class="mb-6 rounded-lg elevation-1 position-relative">
+      <VProgressLinear
+        v-if="isSaving"
+        indeterminate
+        color="primary"
+        height="4"
+        class="position-absolute top-0 left-0 right-0 z-index-2"
+      />
+
+      <!-- Cabecera Principal -->
+      <VCardItem class="pb-4 pt-6">
+        <div class="d-flex flex-column flex-sm-row justify-space-between align-start align-sm-center gap-4">
           <div>
-            <VCardTitle class="text-h5 font-weight-black text-uppercase d-flex align-center gap-2">
+            <VCardTitle class="text-h5 font-weight-bold d-flex align-center gap-2">
               <VIcon icon="tabler-address-book" color="primary" size="28" />
               Configuración de Vistas del CRM
-              <VProgressCircular
-                v-if="isSaving"
-                indeterminate
-                size="20"
-                width="2"
-                color="primary"
-                class="ms-2"
-              />
             </VCardTitle>
-            <p class="text-caption text-medium-emphasis mb-0 mt-1">
-              Habilita o deshabilita los módulos y vistas del CRM en la barra de navegación lateral. Las vistas desmarcadas se ocultarán inmediatamente para todos los usuarios.
-            </p>
+            <VCardSubtitle class="text-body-2 text-medium-emphasis mt-1">
+              Control de visibilidad y acceso a los módulos de fidelización, clientes y convenios en la navegación general.
+            </VCardSubtitle>
           </div>
 
-          <!-- Métricas y Botones de Acción Masiva -->
-          <div class="d-flex align-center gap-2 flex-wrap" v-if="!isLoading && !hasError">
-            <VChip color="primary" variant="tonal" size="small" class="font-weight-bold">
+          <!-- Métricas y Acciones Rápidas -->
+          <div v-if="!isLoading && !hasError" class="d-flex align-center gap-2 flex-wrap">
+            <VChip color="primary" variant="tonal" size="small" class="font-weight-medium">
               {{ activeCount }} / {{ totalCount }} Módulos Activos ({{ activePercentage }}%)
             </VChip>
             <VBtn
               size="small"
               variant="outlined"
               color="primary"
+              density="comfortable"
               :disabled="allEnabled || isSaving"
               @click="setAllViews(true)"
             >
-              Activar Todas
+              Activar Todos
             </VBtn>
             <VBtn
               size="small"
               variant="outlined"
               color="error"
+              density="comfortable"
               :disabled="noneEnabled || isSaving"
               @click="setAllViews(false)"
             >
-              Desactivar Todas
+              Desactivar Todos
             </VBtn>
           </div>
         </div>
+      </VCardItem>
 
-        <VDivider class="mb-6" />
+      <VDivider />
 
-        <!-- Banner de Error con Reintento -->
-        <VAlert
-          v-if="hasError"
-          type="error"
-          variant="tonal"
-          class="mb-6 rounded-lg"
-          closable
-        >
-          <template #title>
-            Error de Carga
-          </template>
-          {{ errorMessage }}
-          <template #append>
-            <VBtn
-              color="error"
-              variant="text"
-              size="small"
-              @click="fetchSettings"
-            >
-              Reintentar
-            </VBtn>
-          </template>
-        </VAlert>
-
-        <!-- Skeletons durante Carga Inicial -->
-        <VRow v-if="isLoading">
-          <VCol v-for="n in 4" :key="n" cols="12" sm="6" md="3">
-            <VSkeletonLoader
-              type="article, actions"
-              class="rounded-lg border"
-              height="140"
-            />
+      <!-- Estado de Carga / Skeleton -->
+      <VCardText v-if="isLoading" class="py-8">
+        <VRow>
+          <VCol v-for="n in 5" :key="n" cols="12" sm="6" md="4">
+            <VSkeletonLoader type="article, actions" class="border rounded-lg" height="140" />
           </VCol>
         </VRow>
+      </VCardText>
 
-        <!-- Tarjetas de Módulos CRM -->
-        <VRow v-else-if="!hasError">
+      <!-- Estado de Error de Carga -->
+      <VCardText v-else-if="hasError" class="py-12 text-center">
+        <VIcon icon="tabler-alert-circle" color="error" size="56" class="mb-3" />
+        <h3 class="text-h6 font-weight-bold text-error mb-1">
+          No se pudo sincronizar la configuración del CRM
+        </h3>
+        <p class="text-body-2 text-medium-emphasis mb-6">
+          {{ errorMessage }}
+        </p>
+        <VBtn
+          color="primary"
+          variant="outlined"
+          prepend-icon="tabler-reload"
+          density="comfortable"
+          @click="fetchSettings"
+        >
+          Reintentar Carga
+        </VBtn>
+      </VCardText>
+
+      <!-- Rejilla de Módulos CRM -->
+      <VCardText v-else class="py-6">
+        <VRow>
           <VCol
             v-for="view in availableCrmViews"
             :key="view.key"
             cols="12"
             sm="6"
-            md="3"
+            md="4"
           >
             <CrmModuleCard
               :view="view"
@@ -223,7 +133,56 @@ onMounted(() => {
             />
           </VCol>
         </VRow>
-      </VCardItem>
+      </VCardText>
+
+      <VDivider v-if="!isLoading && !hasError" />
+
+      <!-- Barra de Acciones y Persistencia Explícita -->
+      <VCardActions v-if="!isLoading && !hasError" class="pa-4 bg-surface">
+        <div class="d-flex align-center gap-2">
+          <VIcon
+            :icon="isDirty ? 'tabler-alert-circle' : 'tabler-check'"
+            :color="isDirty ? 'warning' : 'success'"
+            size="20"
+          />
+          <span class="text-caption text-medium-emphasis">
+            {{ isDirty ? 'Hay cambios sin guardar' : 'Configuración de vistas sincronizada' }}
+          </span>
+        </div>
+
+        <VSpacer />
+
+        <VBtn
+          variant="outlined"
+          color="secondary"
+          density="comfortable"
+          :disabled="!isDirty || isSaving"
+          @click="resetSettings"
+        >
+          Descartar
+        </VBtn>
+
+        <VBtn
+          color="primary"
+          variant="flat"
+          density="comfortable"
+          prepend-icon="tabler-device-floppy"
+          :loading="isSaving"
+          :disabled="!isDirty || isSaving"
+          @click="saveSettings"
+        >
+          Guardar Cambios
+        </VBtn>
+      </VCardActions>
     </VCard>
   </div>
+
+  <!-- Vista sin Permisos -->
+  <VCard v-else class="text-center pa-12">
+    <VIcon icon="tabler-lock" color="error" size="64" class="mb-4" />
+    <h2 class="text-h5 font-weight-bold mb-2">Acceso Denegado</h2>
+    <p class="text-body-2 text-medium-emphasis">
+      No posee los privilegios requeridos para administrar las vistas y módulos del CRM.
+    </p>
+  </VCard>
 </template>
