@@ -1,23 +1,23 @@
 <script setup>
-import { computed } from 'vue'
-
+// Props para el componente de tarjeta de módulo BI
 const props = defineProps({
   view: {
     type: Object,
-    required: true
+    required: true,
   },
   isActive: {
     type: Boolean,
-    default: false
+    default: false,
   },
   isSaving: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['toggle'])
 
+// Manejo de clic para alternar estado
 const handleToggle = () => {
   if (props.isSaving) return
   emit('toggle', props.view.key)
@@ -27,75 +27,65 @@ const handleToggle = () => {
 <template>
   <VCard
     variant="outlined"
-    class="rounded-lg cursor-pointer bi-module-card h-100 transition-all"
-    :class="[
-      isActive ? 'is-active border-primary' : 'opacity-70 border-color-light',
-      { 'is-disabled pointer-events-none opacity-50': isSaving }
-    ]"
+    :color="isActive ? 'primary' : undefined"
+    class="rounded-lg h-100 d-flex flex-column justify-space-between transition-swing cursor-pointer"
+    :class="{ 'opacity-60 pointer-events-none': isSaving }"
+    hover
     @click="handleToggle"
   >
-    <VCardItem class="py-4 px-4 h-100 d-flex flex-column justify-space-between">
-      <div>
-        <div class="d-flex align-center justify-space-between w-100 mb-3">
-          <div class="d-flex align-center gap-2">
-            <VAvatar
-              :color="isActive ? 'primary' : 'secondary'"
-              variant="tonal"
-              size="38"
-              class="rounded-lg"
-            >
-              <VIcon :icon="view.icon" size="20" />
-            </VAvatar>
-            <div>
-              <h3 class="text-subtitle-2 font-weight-bold mb-0 text-truncate" style="max-width: 130px;" :title="view.title">
-                {{ view.title }}
-              </h3>
-              <VChip
-                :color="isActive ? 'success' : 'grey-darken-1'"
-                size="x-small"
-                variant="flat"
-                class="mt-1 font-weight-bold text-white"
-              >
-                {{ isActive ? 'Visible' : 'Oculto' }}
-              </VChip>
-            </div>
-          </div>
+    <VCardItem class="pb-2">
+      <div class="d-flex align-center justify-space-between gap-2 mb-3">
+        <div class="d-flex align-center gap-3 overflow-hidden">
+          <VAvatar
+            :color="isActive ? 'primary' : 'secondary'"
+            variant="tonal"
+            size="40"
+            rounded
+          >
+            <VIcon :icon="view.icon" size="22" />
+          </VAvatar>
 
-          <VSwitch
-            :model-value="isActive"
-            :disabled="isSaving"
-            density="compact"
-            hide-details
-            color="primary"
-            class="ms-2"
-            @click.stop="handleToggle"
-          />
+          <div class="overflow-hidden">
+            <h4 class="text-subtitle-1 font-weight-bold text-truncate" :title="view.title">
+              {{ view.title }}
+            </h4>
+            <VChip
+              :color="isActive ? 'success' : 'secondary'"
+              size="x-small"
+              variant="tonal"
+              class="font-weight-medium mt-1"
+            >
+              {{ isActive ? 'Habilitado' : 'Deshabilitado' }}
+            </VChip>
+          </div>
         </div>
 
-        <p class="text-caption text-medium-emphasis mb-0 leading-tight">
-          {{ view.description }}
-        </p>
+        <VSwitch
+          :model-value="isActive"
+          :disabled="isSaving"
+          color="primary"
+          density="comfortable"
+          hide-details="auto"
+          @click.stop="handleToggle"
+        />
       </div>
+
+      <p class="text-body-2 text-medium-emphasis mb-0">
+        {{ view.description }}
+      </p>
     </VCardItem>
+
+    <VCardActions class="pt-0 px-4 pb-3 justify-end">
+      <VTooltip text="Alternar visibilidad del módulo en la navegación lateral" location="top">
+        <template #activator="{ props: tooltipProps }">
+          <VIcon
+            v-bind="tooltipProps"
+            icon="tabler-info-circle"
+            size="18"
+            class="text-disabled cursor-pointer"
+          />
+        </template>
+      </VTooltip>
+    </VCardActions>
   </VCard>
 </template>
-
-<style scoped>
-.bi-module-card {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  border-width: 1.5px !important;
-}
-
-.bi-module-card:hover:not(.is-disabled) {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px -4px rgba(var(--v-theme-primary), 0.15) !important;
-}
-
-.bi-module-card.is-active {
-  background-color: rgba(var(--v-theme-primary), 0.03) !important;
-}
-
-.border-color-light {
-  border-color: rgba(var(--v-border-color), var(--v-border-opacity)) !important;
-}
-</style>

@@ -1,58 +1,69 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
-import { toast } from "@/plugins/sweetalert"
-import { useBrandingStore } from "@/stores/useBrandingStore"
+import { toast, confirmDialog } from '@/plugins/sweetalert'
+import { useBrandingStore } from '@/stores/useBrandingStore'
+import { useAbility } from '@casl/vue'
 import FinanceModuleCard from '@/components/configuration/FinanceModuleCard.vue'
 import ProfitabilityFormulaCard from '@/components/configuration/ProfitabilityFormulaCard.vue'
 
+const { can } = useAbility()
 const brandingStore = useBrandingStore()
 
-// Estados reactivos UI/UX
+// Estados reactivos de carga, guardado y errores
 const isLoading = ref(true)
 const isSaving = ref(false)
 const hasError = ref(false)
 const errorMessage = ref('')
+const selectedCategory = ref('all')
 
 const enabledFinanceViews = ref([])
 const profitabilityCalculationType = ref('simple')
 
-// Guardar estados previos para rollback en caso de error
+// Respaldos reactivos para rollback en caso de error
 let previousEnabledViews = []
 let previousCalculationType = 'simple'
 
-// Lista estática de vistas configurables de Finanzas
+// Catálogo de vistas estructuradas por categoría
 const availableFinanceViews = [
-  { key: 'profitability', title: 'Rentabilidad', description: 'Cálculo de márgenes globales y edición de costos/márgenes de ganancia.', icon: 'tabler-chart-pie' },
-  { key: 'exchangerate', title: 'Tasa de cambio', description: 'Actualización diaria de tasas BCV, COP, EUR y Binance.', icon: 'tabler-coin' },
-  { key: 'pending-payments', title: 'Por Pagar', description: 'Control de facturas acumuladas por pagar y pagos parciales.', icon: 'tabler-file-analytics' },
-  { key: 'payment-history', title: 'Historial de Pagos', description: 'Consulta detallada de todos los pagos completados.', icon: 'tabler-receipt' },
-  { key: 'cashout', title: 'Flujo de caja', description: 'Reportes de balance, wallets y ajustes de saldos.', icon: 'tabler-wallet' },
-  { key: 'payslips', title: 'Nómina', description: 'Administración y entrega digital de recibos de nómina.', icon: 'tabler-users-group' },
-  { key: 'cash-closure', title: 'Cierre de caja', description: 'Visualización y control administrativo de cierres de caja.', icon: 'tabler-device-desktop-analytics' },
-  { key: 'cash-closure-user', title: 'Cierre de caja Usuarios', description: 'Gestión de cierres específicos para cajeros del sistema.', icon: 'tabler-lock-square' },
-  { key: 'income-statement', title: 'Estado de Resultados', description: 'Reportes financieros consolidados de ganancias y pérdidas.', icon: 'tabler-presentation' },
-  { key: 'expense-expenses', title: 'Gastos', description: 'Seguimiento de egresos, egresos rápidos y recurrentes.', icon: 'tabler-trending-down' },
-  { key: 'balance-general', title: 'Balance General', description: 'Estado general de situación financiera y activos.', icon: 'tabler-report' },
-  { key: 'furnitures-list', title: 'Mobiliario', description: 'Control de activos fijos, estantería y mobiliario.', icon: 'tabler-armchair' },
-  { key: 'loans-list', title: 'Préstamos', description: 'Registro y seguimiento de préstamos y amortizaciones.', icon: 'tabler-cash-banknote' },
+  { key: 'cashout', title: 'Flujo de Caja', description: 'Reportes de balance, wallets y ajustes de saldos.', icon: 'tabler-wallet', category: 'treasury' },
+  { key: 'cash-closure', title: 'Cierre de Caja', description: 'Control administrativo de cierres de cajas de sucursales.', icon: 'tabler-device-desktop-analytics', category: 'treasury' },
+  { key: 'cash-closure-user', title: 'Cierre de Usuarios', description: 'Gestión y arqueo de turnos para cajeros.', icon: 'tabler-lock-square', category: 'treasury' },
+  { key: 'exchangerate', title: 'Tasa de Cambio', description: 'Monitoreo y ajuste de tasas BCV, COP, EUR y Binance.', icon: 'tabler-coin', category: 'treasury' },
+  { key: 'profitability', title: 'Rentabilidad', description: 'Márgenes de ganancia global y costos operativos.', icon: 'tabler-chart-pie', category: 'operations' },
+  { key: 'pending-payments', title: 'Cuentas por Pagar', description: 'Facturas acumuladas y control de pagos parciales.', icon: 'tabler-file-analytics', category: 'operations' },
+  { key: 'payment-history', title: 'Historial de Pagos', description: 'Consulta y conciliación de pagos efectuados.', icon: 'tabler-receipt', category: 'operations' },
+  { key: 'expense-expenses', title: 'Control de Gastos', description: 'Seguimiento de egresos operativos y recurrentes.', icon: 'tabler-trending-down', category: 'operations' },
+  { key: 'payslips', title: 'Nómina', description: 'Administración y emisión de recibos de personal.', icon: 'tabler-users-group', category: 'operations' },
+  { key: 'income-statement', title: 'Estado de Resultados', description: 'Reporte consolidado de ganancias y pérdidas (P&L).', icon: 'tabler-presentation', category: 'reports' },
+  { key: 'balance-general', title: 'Balance General', description: 'Situación financiera patrimonial y activos.', icon: 'tabler-report', category: 'reports' },
+  { key: 'furnitures-list', title: 'Mobiliario y Activos', description: 'Control de activos fijos e inventario estructural.', icon: 'tabler-armchair', category: 'reports' },
+  { key: 'loans-list', title: 'Préstamos', description: 'Registro y amortización de financiamientos.', icon: 'tabler-cash-banknote', category: 'reports' },
 ]
 
-// Propiedades computadas para métricas y estados globales
+const categories = [
+  { value: 'all', label: 'Todas las Vistas', icon: 'tabler-grid-dots' },
+  { value: 'treasury', label: 'Tesorería y Caja', icon: 'tabler-cash' },
+  { value: 'operations', label: 'Operaciones y Pagos', icon: 'tabler-building-bank' },
+  { value: 'reports', label: 'Reportes y Contabilidad', icon: 'tabler-report-analytics' },
+]
+
+// Filtro de vistas según la categoría seleccionada
+const filteredFinanceViews = computed(() => {
+  if (selectedCategory.value === 'all') return availableFinanceViews
+  return availableFinanceViews.filter(v => v.category === selectedCategory.value)
+})
+
 const totalCount = computed(() => availableFinanceViews.length)
-
 const activeCount = computed(() => enabledFinanceViews.value.length)
-
 const activePercentage = computed(() => {
   if (totalCount.value === 0) return 0
   return Math.round((activeCount.value / totalCount.value) * 100)
 })
-
 const allEnabled = computed(() => activeCount.value === totalCount.value)
-
 const noneEnabled = computed(() => activeCount.value === 0)
 
-// Petición optimizada mediante el filtro 'only'
+// Consulta inicial de parámetros
 const fetchSettings = async () => {
   isLoading.value = true
   hasError.value = false
@@ -74,10 +85,10 @@ const fetchSettings = async () => {
       }
     }
   } catch (error) {
-    console.error("Error cargando configuración de Finanzas:", error)
+    console.error('Error cargando configuración de Finanzas:', error)
     hasError.value = true
-    errorMessage.value = "No se pudo cargar la configuración financiera. Verifique su conexión e intente de nuevo."
-    toast.error("Error al cargar la configuración")
+    errorMessage.value = 'No se pudo cargar la configuración financiera. Verifique su conexión e intente de nuevo.'
+    toast.error('Error al cargar la configuración')
   } finally {
     isLoading.value = false
   }
@@ -85,8 +96,8 @@ const fetchSettings = async () => {
 
 // Alternar vista financiera individual
 const toggleFinanceView = async (key) => {
-  if (isSaving.value || isLoading.value) return
-  
+  if (isSaving.value || isLoading.value || !can('manage', 'settings')) return
+
   previousEnabledViews = [...enabledFinanceViews.value]
   const currentViews = [...enabledFinanceViews.value]
   const index = currentViews.indexOf(key)
@@ -95,24 +106,34 @@ const toggleFinanceView = async (key) => {
   } else {
     currentViews.push(key)
   }
-  
+
   enabledFinanceViews.value = currentViews
   await updateSettings()
 }
 
 // Cambiar la fórmula de cálculo de rentabilidad
 const changeCalculationType = async (type) => {
-  if (isSaving.value || profitabilityCalculationType.value === type) return
-  
+  if (isSaving.value || profitabilityCalculationType.value === type || !can('manage', 'settings')) return
+
   previousCalculationType = profitabilityCalculationType.value
   profitabilityCalculationType.value = type
   await updateSettings()
 }
 
-// Acciones masivas: Activar o Desactivar todas las vistas
+// Acciones masivas con confirmación SweetAlert2 para acciones destructivas
 const setAllViews = async (enable) => {
-  if (isSaving.value || isLoading.value) return
-  
+  if (isSaving.value || isLoading.value || !can('manage', 'settings')) return
+
+  if (!enable) {
+    const confirmed = await confirmDialog({
+      title: '¿Desactivar todas las vistas?',
+      text: 'Los módulos de finanzas se ocultarán de la barra lateral para todos los usuarios.',
+      confirmButtonText: 'Sí, ocultar todas',
+      confirmButtonColor: '#FF4C51'
+    })
+    if (!confirmed) return
+  }
+
   previousEnabledViews = [...enabledFinanceViews.value]
   enabledFinanceViews.value = enable ? availableFinanceViews.map(v => v.key) : []
   await updateSettings()
@@ -126,16 +147,16 @@ const updateSettings = async () => {
       enabled_finance_views: enabledFinanceViews.value,
       profitability_calculation_type: profitabilityCalculationType.value
     })
-    
+
     await brandingStore.fetchSettings()
-    toast.success("Configuración de Finanzas actualizada exitosamente")
-    
+    toast.success('Configuración de Finanzas actualizada exitosamente')
+
     previousEnabledViews = [...enabledFinanceViews.value]
     previousCalculationType = profitabilityCalculationType.value
   } catch (error) {
-    console.error("Error al guardar:", error)
-    toast.error("Error al actualizar la configuración")
-    
+    console.error('Error al guardar:', error)
+    toast.error('Error al actualizar la configuración')
+
     // Rollback al estado anterior en caso de fallo
     enabledFinanceViews.value = [...previousEnabledViews]
     profitabilityCalculationType.value = previousCalculationType
@@ -169,7 +190,7 @@ onMounted(() => {
       class="mb-6 rounded-lg"
       closable
     >
-      <template #title> Error de Carga </template>
+      <template #title>Error de Carga</template>
       {{ errorMessage }}
       <template #append>
         <VBtn color="error" variant="text" size="small" @click="fetchSettings">
@@ -219,7 +240,7 @@ onMounted(() => {
           <VRow>
             <VCol cols="12" md="6">
               <ProfitabilityFormulaCard
-                title="Fórmula Simple (Markup)"
+                title="Fórmula Simple (Markup Directo)"
                 formula="PV = Costo * (1 + Margen / 100)"
                 description="Añade un porcentaje directo sobre el costo base del producto. Ideal para operaciones comerciales sencillas."
                 icon="tabler-percentage"
@@ -284,12 +305,28 @@ onMounted(() => {
             </div>
           </div>
 
+          <!-- Filtros Rápidos por Categoría -->
+          <div class="d-flex gap-2 flex-wrap mb-6">
+            <VChip
+              v-for="cat in categories"
+              :key="cat.value"
+              :color="selectedCategory === cat.value ? 'primary' : 'secondary'"
+              :variant="selectedCategory === cat.value ? 'flat' : 'outlined'"
+              size="small"
+              class="cursor-pointer font-weight-medium"
+              @click="selectedCategory = cat.value"
+            >
+              <VIcon :icon="cat.icon" start size="16" />
+              {{ cat.label }}
+            </VChip>
+          </div>
+
           <VDivider class="mb-6" />
 
-          <!-- Rejilla de Módulos Financieros -->
+          <!-- Rejilla de Módulos Financieros Filtrados -->
           <VRow>
             <VCol
-              v-for="view in availableFinanceViews"
+              v-for="view in filteredFinanceViews"
               :key="view.key"
               cols="12"
               sm="6"
