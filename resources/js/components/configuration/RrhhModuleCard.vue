@@ -1,25 +1,28 @@
 <script setup>
-import { computed } from 'vue'
-
 const props = defineProps({
   view: {
     type: Object,
-    required: true
+    required: true,
   },
   isActive: {
     type: Boolean,
-    default: false
+    default: false,
   },
   isSaving: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['toggle'])
 
+// Emite el cambio de estado si no está en proceso de guardado ni deshabilitado
 const handleToggle = () => {
-  if (props.isSaving) return
+  if (props.isSaving || props.disabled) return
   emit('toggle', props.view.key)
 }
 </script>
@@ -27,87 +30,92 @@ const handleToggle = () => {
 <template>
   <VCard
     variant="outlined"
-    class="rounded-lg cursor-pointer rrhh-module-card h-100 transition-all"
+    :color="isActive ? 'primary' : undefined"
+    class="h-100 rounded-lg cursor-pointer rrhh-card"
     :class="[
-      isActive ? 'is-active border-primary' : 'opacity-70 border-color-light',
-      { 'is-disabled pointer-events-none opacity-50': isSaving }
+      isActive ? 'border-primary bg-primary-tonal' : 'border-opacity-50',
+      { 'pointer-events-none opacity-60': isSaving || disabled }
     ]"
     @click="handleToggle"
   >
-    <!-- Indicador de procesamiento -->
-    <div
-      v-if="isSaving"
-      class="position-absolute top-0 right-0 p-2 d-flex align-center justify-center"
-      style="z-index: 2;"
-    >
-      <VProgressCircular indeterminate size="18" width="2" color="primary" />
-    </div>
-
-    <VCardItem class="py-4 px-4 h-100 d-flex flex-column justify-space-between">
+    <VCardItem class="pa-4 h-100 d-flex flex-column justify-space-between">
       <div>
-        <div class="d-flex align-center justify-space-between w-100 mb-3">
-          <div class="d-flex align-center gap-2">
+        <div class="d-flex align-start justify-space-between gap-2 mb-3">
+          <div class="d-flex align-center gap-3">
             <VAvatar
-              :color="isActive ? 'primary' : 'secondary'"
-              variant="tonal"
-              size="38"
+              :color="isActive ? 'primary' : 'default'"
+              :variant="isActive ? 'flat' : 'tonal'"
+              size="40"
               class="rounded-lg"
             >
-              <VIcon :icon="view.icon" size="20" />
+              <VIcon :icon="view.icon" size="22" />
             </VAvatar>
+
             <div>
-              <h3
-                class="text-subtitle-2 font-weight-bold mb-0"
-                :class="isActive ? 'text-high-emphasis' : 'text-medium-emphasis'"
-              >
+              <div class="text-subtitle-2 font-weight-bold line-clamp-1">
                 {{ view.title }}
-              </h3>
+              </div>
               <VChip
-                :color="isActive ? 'success' : 'grey-darken-1'"
+                :color="isActive ? 'success' : 'secondary'"
                 size="x-small"
-                variant="flat"
-                class="mt-1 font-weight-bold text-white"
+                variant="tonal"
+                class="mt-1 font-weight-medium"
               >
                 {{ isActive ? 'Habilitado' : 'Deshabilitado' }}
               </VChip>
             </div>
           </div>
 
-          <VSwitch
-            :model-value="isActive"
-            :disabled="isSaving"
-            density="compact"
-            hide-details
-            color="primary"
-            class="ms-2"
-            @click.stop="handleToggle"
-          />
+          <div class="d-flex align-center">
+            <VProgressCircular
+              v-if="isSaving"
+              indeterminate
+              size="20"
+              width="2"
+              color="primary"
+            />
+            <VSwitch
+              v-else
+              :model-value="isActive"
+              :disabled="disabled || isSaving"
+              density="comfortable"
+              hide-details="auto"
+              color="primary"
+              @click.stop="handleToggle"
+            />
+          </div>
         </div>
 
-        <p class="text-caption text-medium-emphasis mb-0 leading-tight">
+        <p class="text-caption text-medium-emphasis mb-0">
           {{ view.description }}
         </p>
+      </div>
+
+      <div v-if="view.category" class="pt-3">
+        <VChip
+          size="x-small"
+          variant="outlined"
+          color="default"
+          class="text-caption text-disabled"
+        >
+          {{ view.category }}
+        </VChip>
       </div>
     </VCardItem>
   </VCard>
 </template>
 
 <style scoped>
-.rrhh-module-card {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  border-width: 1.5px !important;
+.bg-primary-tonal {
+  background-color: rgba(var(--v-theme-primary), 0.04);
 }
-
-.rrhh-module-card:hover:not(.is-disabled) {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px -4px rgba(var(--v-theme-primary), 0.15) !important;
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-
-.rrhh-module-card.is-active {
-  background-color: rgba(var(--v-theme-primary), 0.03) !important;
-}
-
-.border-color-light {
-  border-color: rgba(var(--v-border-color), var(--v-border-opacity)) !important;
+.rrhh-card {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 </style>
