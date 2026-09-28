@@ -1,8 +1,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
-import { toast } from "@/plugins/sweetalert"
-import { useBrandingStore } from "@/stores/useBrandingStore"
+import { toast } from '@/plugins/sweetalert'
+import { useBrandingStore } from '@/stores/useBrandingStore'
 import ExpenseSettingCard from '@/components/configuration/ExpenseSettingCard.vue'
 import ExpenseCategoryTable from '@/components/configuration/ExpenseCategoryTable.vue'
 
@@ -19,23 +19,23 @@ const hasError = ref(false)
 const errorMessage = ref('')
 
 // Propiedades computadas para etiquetas e información de estado
-const expenseModeLabel = computed(() => 
-  expenseModeSimple.value ? 'Modo Simple' : 'Modo Real (Desglosado)'
+const expenseModeLabel = computed(() =>
+  expenseModeSimple.value ? 'Modo Simple (Exento)' : 'Modo Real (Base + IVA 16%)'
 )
 
-const expenseModeColor = computed(() => 
+const expenseModeColor = computed(() =>
   expenseModeSimple.value ? 'warning' : 'info'
 )
 
-const autoApproveLabel = computed(() => 
-  expenseAutoApprove.value ? 'Auto-aprobar' : 'Flujo con revisión'
+const autoApproveLabel = computed(() =>
+  expenseAutoApprove.value ? 'Aprobación Automática' : 'Flujo con Auditoría'
 )
 
-const autoApproveColor = computed(() => 
+const autoApproveColor = computed(() =>
   expenseAutoApprove.value ? 'success' : 'secondary'
 )
 
-// Carga optimizada solicitando únicamente las propiedades necesarias
+// Carga inicial de configuraciones del servidor
 const fetchSettings = async () => {
   isLoading.value = true
   hasError.value = false
@@ -43,24 +43,25 @@ const fetchSettings = async () => {
 
   try {
     const response = await axios.get('/general-settings', {
-      params: { only: 'expense_mode,expense_auto_approve' }
+      params: { only: 'expense_mode,expense_auto_approve' },
     })
-    const settings = response.data.data
+
+    const settings = response.data?.data
     if (settings) {
       expenseModeSimple.value = settings.expense_mode === 'simple'
-      expenseAutoApprove.value = !!settings.expense_auto_approve
+      expenseAutoApprove.value = Boolean(settings.expense_auto_approve)
     }
   } catch (error) {
-    console.error("Error cargando configuración de Gastos:", error)
+    console.error('Error cargando configuración de Gastos:', error)
     hasError.value = true
-    errorMessage.value = "No se pudo cargar la configuración de Gastos. Verifique su conexión e intente de nuevo."
-    toast.error("Error al cargar la configuración")
+    errorMessage.value = 'No se pudo cargar la configuración de Gastos. Verifique su conexión e intente nuevamente.'
+    toast.error('Error al sincronizar la configuración')
   } finally {
     isLoading.value = false
   }
 }
 
-// Guarda la actualización en el servidor con rollback optimista
+// Persistencia en el servidor con reversión optimista
 const updateExpenseSetting = async (key, val) => {
   if (isSaving.value) return
 
@@ -78,17 +79,17 @@ const updateExpenseSetting = async (key, val) => {
   try {
     await axios.post('/general-settings', {
       expense_mode: expenseModeSimple.value ? 'simple' : 'real',
-      expense_auto_approve: expenseAutoApprove.value
+      expense_auto_approve: expenseAutoApprove.value,
     })
-    
+
     await brandingStore.fetchSettings()
-    toast.success("Configuración de gastos actualizada exitosamente")
+    toast.success('Configuración actualizada exitosamente')
   } catch (error) {
-    // Rollback en caso de error
+    // Reversión del estado en caso de fallo
     expenseModeSimple.value = previousMode
     expenseAutoApprove.value = previousAuto
-    console.error("Error al guardar configuración de gastos:", error)
-    toast.error("Error al actualizar la configuración")
+    console.error('Error al guardar configuración de gastos:', error)
+    toast.error('Error al persistir la configuración en el servidor')
   } finally {
     isSaving.value = false
   }
@@ -101,9 +102,9 @@ onMounted(() => {
 
 <template>
   <div>
-    <!-- Tarjeta Principal de Configuración de Gastos -->
+    <!-- Tarjeta Principal de Configuración Global -->
     <VCard class="mb-6 rounded-lg border shadow-sm position-relative overflow-hidden">
-      <!-- Indicador de procesamiento -->
+      <!-- Indicador lineal de guardado en segundo plano -->
       <VProgressLinear
         v-if="isSaving"
         indeterminate
@@ -113,18 +114,18 @@ onMounted(() => {
       />
 
       <VCardItem class="py-5">
-        <!-- Encabezado Principal -->
-        <VCardTitle class="text-h5 font-weight-black text-uppercase d-flex align-center gap-2 mb-2">
-          <VIcon icon="tabler-trending-down" color="primary" size="28" />
-          Configuración de Gastos
+        <!-- Encabezado del Módulo -->
+        <VCardTitle class="text-h5 font-weight-bold text-uppercase d-flex align-center gap-2 mb-1">
+          <VIcon icon="tabler-adjustments-alt" color="primary" size="28" />
+          Configuración de Gastos y Egresos
         </VCardTitle>
-        <p class="text-caption text-medium-emphasis mb-6">
-          Personaliza el flujo de registro y el estado inicial de aprobación para el módulo de control de gastos de la farmacia.
+        <p class="text-body-2 text-medium-emphasis mb-6">
+          Define el tratamiento fiscal y el flujo de aprobación operativa para el registro de egresos en la farmacia.
         </p>
 
         <VDivider class="mb-6" />
 
-        <!-- Banner de Error con Reintento -->
+        <!-- Alerta de Error con opción de Reintento -->
         <VAlert
           v-if="hasError"
           type="error"
@@ -133,13 +134,13 @@ onMounted(() => {
           closable
         >
           <template #title>
-            Error de Carga
+            Fallo en la comunicación con el servidor
           </template>
           {{ errorMessage }}
           <template #append>
             <VBtn
               color="error"
-              variant="text"
+              variant="outlined"
               size="small"
               @click="fetchSettings"
             >
@@ -148,23 +149,23 @@ onMounted(() => {
           </template>
         </VAlert>
 
-        <!-- Skeletons durante Carga Inicial -->
+        <!-- Skeletons durante Carga -->
         <VRow v-if="isLoading">
           <VCol cols="12" md="6">
-            <VSkeletonLoader type="article, actions" class="rounded-lg border" height="150" />
+            <VSkeletonLoader type="article, actions" class="rounded-lg border" height="160" />
           </VCol>
           <VCol cols="12" md="6">
-            <VSkeletonLoader type="article, actions" class="rounded-lg border" height="150" />
+            <VSkeletonLoader type="article, actions" class="rounded-lg border" height="160" />
           </VCol>
         </VRow>
 
-        <!-- Opciones de Configuración con Componente Modular -->
+        <!-- Opciones de Configuración -->
         <VRow v-else-if="!hasError">
-          <!-- Modalidad de Gasto -->
+          <!-- Modalidad Fiscal de Gasto -->
           <VCol cols="12" md="6">
             <ExpenseSettingCard
-              title="Modalidad de Gasto"
-              description="Elige 'Modo Simple' para registrar el total directamente como exento, o 'Modo Real' con desglose de base imponible e IVA (16%)."
+              title="Modalidad de Desglose Fiscal"
+              description="Elige 'Modo Simple' para asentar el importe íntegro exento de impuestos, o 'Modo Real' para calcular base imponible e IVA (16%)."
               icon="tabler-receipt-tax"
               :model-value="expenseModeSimple"
               :badge-text="expenseModeLabel"
@@ -175,16 +176,16 @@ onMounted(() => {
             />
           </VCol>
 
-          <!-- Aprobación Directa -->
+          <!-- Flujo de Aprobación Directa -->
           <VCol cols="12" md="6">
             <ExpenseSettingCard
-              title="Aprobación Directa de Gastos"
-              description="Define si los gastos registrados se marcan automáticamente como 'Aprobado' (omitiendo el flujo de revisión) o inician en estado 'Pendiente'."
-              icon="tabler-checkup-list"
+              title="Aprobación Inmediata de Egresos"
+              description="Determina si los gastos registrados se asientan automáticamente como 'Aprobados' o si requieren pasar por la cola de revisión contable."
+              icon="tabler-shield-check"
               :model-value="expenseAutoApprove"
               :badge-text="autoApproveLabel"
               :badge-color="autoApproveColor"
-              label="Auto-aprobar Gastos"
+              label="Aprobar Automáticamente"
               :is-saving="isSaving"
               @update:model-value="(val) => updateExpenseSetting('autoApprove', val)"
             />
@@ -193,7 +194,7 @@ onMounted(() => {
       </VCardItem>
     </VCard>
 
-    <!-- Sección de Gestión de Categorías de Gastos -->
+    <!-- Catálogo Maestro de Categorías -->
     <ExpenseCategoryTable />
   </div>
 </template>

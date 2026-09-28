@@ -4,16 +4,16 @@ import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
 import Swal from 'sweetalert2'
 
-// Estado de listado
+// Estado del listado
 const categories = ref([])
 const isLoading = ref(true)
 const searchQuery = ref('')
 
-// Estado de diálogo para crear / editar
+// Estado del diálogo modal
 const isDialogOpen = ref(false)
 const isSubmitting = ref(false)
 const isEditing = ref(false)
-const categoryFormRef = ref(null)
+const formRef = ref(null)
 
 const form = reactive({
   id: null,
@@ -21,18 +21,25 @@ const form = reactive({
   error: '',
 })
 
-// Columnas de la tabla
+// Reglas de validación para Vuetify Form
+const nameRules = [
+  v => Boolean(v && v.trim()) || 'El nombre de la categoría es obligatorio.',
+  v => (v && v.trim().length >= 3) || 'Debe contener al menos 3 caracteres.',
+  v => (v && v.trim().length <= 100) || 'No debe exceder los 100 caracteres.',
+]
+
+// Definición de cabeceras de la tabla
 const headers = [
   { title: 'ID', key: 'id', width: '80px', align: 'start' },
   { title: 'NOMBRE DE CATEGORÍA', key: 'name', align: 'start' },
-  { title: 'USO EN GASTOS', key: 'total_usage_count', align: 'center', width: '160px' },
-  { title: 'FECHA CREACIÓN', key: 'created_at', align: 'start', width: '180px' },
+  { title: 'GASTOS ASOCIADOS', key: 'total_usage_count', align: 'center', width: '180px' },
+  { title: 'FECHA DE CREACIÓN', key: 'created_at', align: 'start', width: '180px' },
   { title: 'ACCIONES', key: 'actions', sortable: false, align: 'center', width: '120px' },
 ]
 
-// Categorías filtradas por búsqueda en cliente para velocidad instantánea
+// Filtrado reactivo en el cliente
 const filteredCategories = computed(() => {
-  if (!searchQuery.value.trim()) return categories.value
+  if (!searchQuery.value?.trim()) return categories.value
 
   const query = searchQuery.value.toLowerCase().trim()
   return categories.value.filter(cat =>
@@ -40,7 +47,7 @@ const filteredCategories = computed(() => {
   )
 })
 
-// Cargar categorías desde la API
+// Obtener categorías desde la API
 const fetchCategories = async () => {
   isLoading.value = true
   try {
@@ -48,13 +55,13 @@ const fetchCategories = async () => {
     categories.value = response.data?.data || []
   } catch (error) {
     console.error('Error al cargar categorías de gastos:', error)
-    toast.error('No se pudieron cargar las categorías de gastos')
+    toast.error('No se pudieron obtener las categorías de gastos')
   } finally {
     isLoading.value = false
   }
 }
 
-// Abrir diálogo para nueva categoría
+// Apertura de modal para creación
 const openCreateDialog = () => {
   isEditing.value = false
   form.id = null
@@ -63,7 +70,7 @@ const openCreateDialog = () => {
   isDialogOpen.value = true
 }
 
-// Abrir diálogo para editar categoría
+// Apertura de modal para edición
 const openEditDialog = (item) => {
   isEditing.value = true
   form.id = item.id
@@ -72,12 +79,10 @@ const openEditDialog = (item) => {
   isDialogOpen.value = true
 }
 
-// Guardar categoría (crear o editar)
+// Guardar registro (Creación o Actualización)
 const submitForm = async () => {
-  if (!form.name || !form.name.trim()) {
-    form.error = 'El nombre de la categoría es obligatorio.'
-    return
-  }
+  const { valid } = await formRef.value.validate()
+  if (!valid) return
 
   isSubmitting.value = true
   form.error = ''
@@ -105,33 +110,33 @@ const submitForm = async () => {
     } else if (error.response?.data?.message) {
       form.error = error.response.data.message
     } else {
-      form.error = 'Ocurrió un error inesperado al procesar la categoría.'
+      form.error = 'Ocurrió un error al procesar la categoría.'
     }
   } finally {
     isSubmitting.value = false
   }
 }
 
-// Confirmar y eliminar categoría
+// Confirmar y procesar eliminación
 const confirmDelete = async (item) => {
   if (item.total_usage_count > 0) {
     Swal.fire({
       icon: 'warning',
-      title: 'Categoría en uso',
-      text: `La categoría "${item.name}" está asignada a ${item.total_usage_count} gasto(s). No es posible eliminarla por consistencia contable.`,
-      confirmButtonText: 'Entendido',
-      confirmButtonColor: '#7367F0',
+      title: 'Operación restringida',
+      text: `La categoría "${item.name}" posee ${item.total_usage_count} registro(s) contable(s) asociado(s). Por consistencia de auditoría no puede ser eliminada.`,
+      confirmButtonText: 'Aceptar',
+      confirmButtonColor: '#E20074',
     })
     return
   }
 
   const result = await Swal.fire({
-    title: '¿Eliminar categoría?',
-    text: `¿Estás seguro de que deseas eliminar la categoría "${item.name}"?`,
+    title: '¿Confirmar eliminación?',
+    text: `Se eliminará permanentemente la categoría "${item.name}".`,
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonColor: '#EA5455',
-    cancelButtonColor: '#828689',
+    confirmButtonColor: '#FF4C51',
+    cancelButtonColor: '#7A0099',
     confirmButtonText: 'Sí, eliminar',
     cancelButtonText: 'Cancelar',
   })
@@ -143,17 +148,17 @@ const confirmDelete = async (item) => {
       await fetchCategories()
     } catch (error) {
       console.error('Error eliminando categoría:', error)
-      const errorMsg = error.response?.data?.message || 'No se pudo eliminar la categoría'
+      const errorMsg = error.response?.data?.message || 'No se pudo eliminar el registro'
       toast.error(errorMsg)
     }
   }
 }
 
-// Formatear fecha legible
+// Formateo de fecha
 const formatDate = (dateString) => {
   if (!dateString) return '—'
   const date = new Date(dateString)
-  return isNaN(date.getTime())
+  return Number.isNaN(date.getTime())
     ? '—'
     : date.toLocaleDateString('es-ES', {
         day: '2-digit',
@@ -172,15 +177,15 @@ onMounted(() => {
 <template>
   <VCard class="rounded-lg border shadow-sm mt-6">
     <VCardItem class="py-5">
-      <!-- Encabezado de la Sección -->
+      <!-- Encabezado del Catálogo -->
       <div class="d-flex flex-wrap align-center justify-space-between gap-4 mb-4">
         <div>
           <VCardTitle class="text-h6 font-weight-bold d-flex align-center gap-2 mb-1">
             <VIcon icon="tabler-category-2" color="primary" size="24" />
-            Categorías de Gastos
+            Catálogo de Categorías de Gastos
           </VCardTitle>
           <VCardSubtitle class="text-caption text-medium-emphasis px-0">
-            Administra las categorías disponibles para clasificar y organizar los gastos de la empresa.
+            Administración y clasificación de conceptos contables para egresos operativos.
           </VCardSubtitle>
         </div>
 
@@ -194,15 +199,15 @@ onMounted(() => {
         </VBtn>
       </div>
 
-      <!-- Barra de Filtro / Búsqueda -->
+      <!-- Barra de Filtrado y Acciones -->
       <div class="mb-4 d-flex justify-space-between align-center flex-wrap gap-4">
         <VTextField
           v-model="searchQuery"
-          placeholder="Buscar categoría por nombre o ID..."
-          density="compact"
+          placeholder="Buscar por nombre o ID..."
+          density="comfortable"
           variant="outlined"
           prepend-inner-icon="tabler-search"
-          hide-details
+          hide-details="auto"
           clearable
           style="max-width: 320px;"
         />
@@ -219,7 +224,7 @@ onMounted(() => {
         </VBtn>
       </div>
 
-      <!-- Tabla de Categorías -->
+      <!-- Tabla de Datos -->
       <VDataTable
         :headers="headers"
         :items="filteredCategories"
@@ -228,27 +233,27 @@ onMounted(() => {
         hover
         class="border rounded-lg"
       >
-        <!-- Estado de carga -->
+        <!-- Skeleton de Carga -->
         <template #loading>
           <VSkeletonLoader type="table-row@5" />
         </template>
 
-        <!-- Columna ID -->
+        <!-- Columna: ID -->
         <template #item.id="{ item }">
           <span class="font-weight-semibold text-caption text-medium-emphasis">#{{ item.id }}</span>
         </template>
 
-        <!-- Columna Nombre -->
+        <!-- Columna: Nombre -->
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-2 py-1">
-            <VAvatar size="30" color="primary" variant="tonal" class="rounded">
+            <VAvatar size="32" color="primary" variant="tonal" class="rounded">
               <VIcon icon="tabler-tag" size="16" />
             </VAvatar>
             <span class="font-weight-medium text-body-2">{{ item.name }}</span>
           </div>
         </template>
 
-        <!-- Columna Uso -->
+        <!-- Columna: Uso Contable -->
         <template #item.total_usage_count="{ item }">
           <VChip
             :color="item.total_usage_count > 0 ? 'info' : 'secondary'"
@@ -256,38 +261,47 @@ onMounted(() => {
             variant="tonal"
             class="font-weight-medium"
           >
-            {{ item.total_usage_count }} gasto(s)
+            {{ item.total_usage_count }} registro(s)
           </VChip>
         </template>
 
-        <!-- Columna Fecha de Creación -->
+        <!-- Columna: Fecha -->
         <template #item.created_at="{ item }">
           <span class="text-caption text-medium-emphasis">{{ formatDate(item.created_at) }}</span>
         </template>
 
-        <!-- Columna Acciones -->
+        <!-- Columna: Acciones con Tooltips -->
         <template #item.actions="{ item }">
           <div class="d-flex justify-center align-center gap-1">
-            <VBtn
-              icon
-              variant="text"
-              size="x-small"
-              color="info"
-              title="Editar categoría"
-              @click="openEditDialog(item)"
-            >
-              <VIcon icon="tabler-pencil" size="18" />
-            </VBtn>
-            <VBtn
-              icon
-              variant="text"
-              size="x-small"
-              color="error"
-              title="Eliminar categoría"
-              @click="confirmDelete(item)"
-            >
-              <VIcon icon="tabler-trash" size="18" />
-            </VBtn>
+            <VTooltip text="Editar categoría" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  icon
+                  variant="text"
+                  size="x-small"
+                  color="info"
+                  @click="openEditDialog(item)"
+                >
+                  <VIcon icon="tabler-pencil" size="18" />
+                </VBtn>
+              </template>
+            </VTooltip>
+
+            <VTooltip text="Eliminar categoría" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <VBtn
+                  v-bind="tooltipProps"
+                  icon
+                  variant="text"
+                  size="x-small"
+                  color="error"
+                  @click="confirmDelete(item)"
+                >
+                  <VIcon icon="tabler-trash" size="18" />
+                </VBtn>
+              </template>
+            </VTooltip>
           </div>
         </template>
 
@@ -296,7 +310,7 @@ onMounted(() => {
           <div class="text-center py-6">
             <VIcon icon="tabler-folder-off" size="40" color="secondary" class="mb-2" />
             <p class="text-subtitle-2 text-medium-emphasis mb-0">
-              No se encontraron categorías de gastos
+              No se encontraron categorías de gastos registradas
             </p>
           </div>
         </template>
@@ -330,7 +344,7 @@ onMounted(() => {
 
         <VDivider />
 
-        <VForm ref="categoryFormRef" @submit.prevent="submitForm">
+        <VForm ref="formRef" @submit.prevent="submitForm">
           <VCardText class="pt-4 pb-2">
             <VTextField
               v-model="form.name"
@@ -338,11 +352,12 @@ onMounted(() => {
               placeholder="Ej. Servicios Públicos, Mantenimiento..."
               variant="outlined"
               density="comfortable"
-              :error="!!form.error"
+              hide-details="auto"
+              :rules="nameRules"
+              :error="Boolean(form.error)"
               :error-messages="form.error"
               autofocus
               :disabled="isSubmitting"
-              @keydown.enter.prevent="submitForm"
             />
           </VCardText>
 
@@ -360,7 +375,7 @@ onMounted(() => {
               color="primary"
               variant="flat"
               :loading="isSubmitting"
-              :disabled="isSubmitting || !form.name.trim()"
+              :disabled="isSubmitting"
             >
               {{ isEditing ? 'Guardar Cambios' : 'Crear Categoría' }}
             </VBtn>
@@ -370,3 +385,4 @@ onMounted(() => {
     </VDialog>
   </VCard>
 </template>
+
