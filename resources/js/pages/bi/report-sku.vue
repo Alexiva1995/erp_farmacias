@@ -286,6 +286,10 @@ const getSemaphoreLabel = (status) => {
 
 const formatPercent = (val) => Number(val || 0).toFixed(2) + '%';
 const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const getRealMarginPercent = (item) => Number(item?.real_margin_percent ?? item?.raw?.real_margin_percent ?? 0);
+const getRealMarginValue = (item) => Number(item?.real_margin_value ?? item?.raw?.real_margin_value ?? 0);
+const getNetMarginPercent = (item) => Number(item?.net_margin_percent ?? item?.raw?.net_margin_percent ?? 0);
+const getNetMarginValue = (item) => Number(item?.net_margin_value ?? item?.raw?.net_margin_value ?? 0);
 </script>
 
 <template>
@@ -431,12 +435,12 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
             <div class="d-flex flex-column py-1">
               <span
                 class="text-body-2 font-weight-bold"
-                :class="Number(item.net_margin_percent) >= 0 ? 'text-primary' : 'text-error'"
+                :class="getNetMarginPercent(item) >= 0 ? 'text-primary' : 'text-error'"
               >
-                {{ formatPercent(item.net_margin_percent) }}
+                {{ formatPercent(getNetMarginPercent(item)) }}
               </span>
               <span class="text-caption text-medium-emphasis">
-                {{ formatMoney(item.net_margin_value) }}
+                {{ formatMoney(getNetMarginValue(item)) }}
               </span>
             </div>
           </template>
@@ -445,13 +449,13 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
           <template #item.loss_value="{ item }">
             <div class="d-flex align-center justify-end py-1">
               <VChip
-                v-if="Number(item.loss_value) > 0"
+                v-if="Number(item.loss_value || item.raw?.loss_value || 0) > 0"
                 size="x-small"
                 color="error"
                 variant="tonal"
                 class="font-weight-bold"
               >
-                -{{ formatMoney(item.loss_value) }}
+                -{{ formatMoney(item.loss_value || item.raw?.loss_value) }}
               </VChip>
               <span v-else class="text-caption text-disabled">$0.00</span>
             </div>
@@ -462,15 +466,15 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
             <div class="d-flex flex-column py-1">
               <span
                 class="text-body-2 font-weight-black"
-                :class="Number(item.real_margin_percent) >= 0 ? 'text-success' : 'text-error'"
+                :class="getRealMarginPercent(item) >= 0 ? 'text-success' : 'text-error'"
               >
-                {{ formatPercent(item.real_margin_percent) }}
+                {{ formatPercent(getRealMarginPercent(item)) }}
               </span>
               <span
-                class="text-caption font-weight-medium"
-                :class="Number(item.real_margin_value) >= 0 ? 'text-success' : 'text-error'"
+                class="text-caption font-weight-bold"
+                :class="getRealMarginValue(item) >= 0 ? 'text-success' : 'text-error'"
               >
-                {{ formatMoney(item.real_margin_value) }}
+                {{ formatMoney(getRealMarginValue(item)) }}
               </span>
             </div>
           </template>

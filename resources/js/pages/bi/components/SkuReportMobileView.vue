@@ -157,11 +157,7 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
                   </div>
                   <div
                     class="text-h6 font-weight-black"
-                    :class="{
-                      'text-success': Number(item.real_margin_percent) > 25,
-                      'text-warning': Number(item.real_margin_percent) >= 10 && Number(item.real_margin_percent) <= 25,
-                      'text-error': Number(item.real_margin_percent) < 10
-                    }"
+                    :class="Number(item.real_margin_percent) >= 0 ? 'text-success' : 'text-error'"
                   >
                     {{ formatPercent(item.real_margin_percent) }}
                   </div>
