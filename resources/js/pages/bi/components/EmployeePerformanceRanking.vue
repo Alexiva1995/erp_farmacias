@@ -49,7 +49,7 @@ const filteredEmployees = computed(() => {
       <VTable density="comfortable" hover class="ranking-table">
         <thead>
           <tr>
-            <th class="text-center" style="width: 40px;">#</th>
+            <th class="text-center" style="width: 48px;">#</th>
             <th>Vendedor</th>
             <th class="text-end">Venta USD</th>
             <th class="text-center" style="width: 90px;">Puntos</th>
@@ -63,13 +63,42 @@ const filteredEmployees = computed(() => {
             class="cursor-pointer"
             :class="{ 'selected-row': selectedEmployee === emp.id }"
           >
-            <td class="text-center font-weight-bold text-medium-emphasis">{{ idx + 1 }}</td>
+            <td class="text-center">
+              <VAvatar
+                v-if="idx === 0"
+                size="24"
+                color="warning"
+                variant="tonal"
+                class="font-weight-bold"
+              >
+                <VIcon icon="tabler-trophy" size="14" />
+              </VAvatar>
+              <VAvatar
+                v-else-if="idx === 1"
+                size="24"
+                color="secondary"
+                variant="tonal"
+                class="font-weight-bold"
+              >
+                <VIcon icon="tabler-medal" size="14" />
+              </VAvatar>
+              <VAvatar
+                v-else-if="idx === 2"
+                size="24"
+                color="info"
+                variant="tonal"
+                class="font-weight-bold"
+              >
+                <VIcon icon="tabler-award" size="14" />
+              </VAvatar>
+              <span v-else class="font-weight-bold text-medium-emphasis text-caption">{{ idx + 1 }}</span>
+            </td>
             <td>
               <div class="d-flex align-center py-1">
-                <VAvatar size="30" class="me-2 border">
+                <VAvatar size="32" class="me-2 border" :color="selectedEmployee === emp.id ? 'primary' : undefined">
                   <VImg :src="emp.photo || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(emp.name)" />
                 </VAvatar>
-                <div class="d-flex flex-column">
+                <div class="d-flex flex-column overflow-hidden">
                   <span class="text-body-2 font-weight-bold text-truncate">{{ emp.name }} {{ emp.last_name || '' }}</span>
                   <span class="text-caption text-medium-emphasis">{{ emp.tickets }} tickets</span>
                 </div>
@@ -85,7 +114,7 @@ const filteredEmployees = computed(() => {
           <tr v-if="!filteredEmployees.length">
             <td colspan="4" class="text-center py-6 text-medium-emphasis">
               <VIcon icon="tabler-user-off" size="32" class="mb-1 opacity-50 d-block mx-auto" />
-              <span>No se encontraron empleados</span>
+              <span class="text-caption">No se encontraron empleados</span>
             </td>
           </tr>
         </tbody>

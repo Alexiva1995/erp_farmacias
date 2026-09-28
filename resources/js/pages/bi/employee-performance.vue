@@ -120,39 +120,43 @@ watch([startDate, endDate], () => {
       <span class="text-caption text-medium-emphasis">Cargando Balanced Scorecard...</span>
     </div>
 
-    <!-- VISTA COMPARATIVA (FACE-OFF) -->
-    <EmployeePerformanceFaceOff
-      v-else-if="compareMode"
-      :employees="dashboardData?.employees || []"
-      v-model:employee-a="employeeA"
-      v-model:employee-b="employeeB"
-      :comparison-data="comparisonData"
-      :compare-loading="compareLoading"
-      @compare="fetchComparison"
-    />
+    <!-- VISTAS CON TRANSICIÓN SUAVE -->
+    <VWindow v-model="compareMode" :touch="false" class="overflow-visible">
+      <VWindowItem :value="false">
+        <div v-if="dashboardData" class="px-1">
+          <EmployeePerformanceHallOfFame :hall-of-fame="dashboardData.hall_of_fame" />
 
-    <!-- VISTA PRINCIPAL (RANKING & DRILL-DOWN) -->
-    <div v-else-if="dashboardData" class="px-1">
-      <EmployeePerformanceHallOfFame :hall-of-fame="dashboardData.hall_of_fame" />
+          <VRow dense>
+            <!-- Ranking List -->
+            <VCol cols="12" md="5">
+              <EmployeePerformanceRanking
+                :employees="dashboardData.employees"
+                :selected-employee="selectedEmployee"
+                @select="fetchDetail"
+              />
+            </VCol>
 
-      <VRow dense>
-        <!-- Ranking List -->
-        <VCol cols="12" md="5">
-          <EmployeePerformanceRanking
-            :employees="dashboardData.employees"
-            :selected-employee="selectedEmployee"
-            @select="fetchDetail"
-          />
-        </VCol>
+            <!-- Drill-Down Detail -->
+            <VCol cols="12" md="7">
+              <EmployeePerformanceDetail
+                :employee-detail="employeeDetail"
+                :detail-loading="detailLoading"
+              />
+            </VCol>
+          </VRow>
+        </div>
+      </VWindowItem>
 
-        <!-- Drill-Down Detail -->
-        <VCol cols="12" md="7">
-          <EmployeePerformanceDetail
-            :employee-detail="employeeDetail"
-            :detail-loading="detailLoading"
-          />
-        </VCol>
-      </VRow>
-    </div>
+      <VWindowItem :value="true">
+        <EmployeePerformanceFaceOff
+          :employees="dashboardData?.employees || []"
+          v-model:employee-a="employeeA"
+          v-model:employee-b="employeeB"
+          :comparison-data="comparisonData"
+          :compare-loading="compareLoading"
+          @compare="fetchComparison"
+        />
+      </VWindowItem>
+    </VWindow>
   </VContainer>
 </template>

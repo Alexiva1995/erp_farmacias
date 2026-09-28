@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
+import { useBiThemeColors } from '@/composables/useBiThemeColors';
 
 const props = defineProps({
   employees: { type: Array, default: () => [] },
@@ -16,6 +17,8 @@ const emit = defineEmits([
   'compare'
 ]);
 
+const { colors } = useBiThemeColors();
+
 const formatCurrency = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value || 0);
 const formatNumber = (value) => new Intl.NumberFormat('en-US').format(value || 0);
 
@@ -25,13 +28,25 @@ const radarChartOptions = computed(() => ({
     background: 'transparent',
     dropShadow: { enabled: true, blur: 2, left: 1, top: 1, opacity: 0.15 } 
   },
-  colors: ['#E20074', '#7A0099'],
+  theme: {
+    mode: colors.value.isDark ? 'dark' : 'light'
+  },
+  colors: [colors.value.primary, colors.value.secondary],
   stroke: { width: 2 },
   fill: { opacity: 0.15 },
   markers: { size: 3 },
   xaxis: {
     categories: ['Ventas', 'Unidades', 'Tareas', 'Inventario', 'Estratégicos'],
-    labels: { style: { colors: '#888', fontSize: '11px' } }
+    labels: { 
+      style: { 
+        colors: colors.value.isDark ? ['#ccc', '#ccc', '#ccc', '#ccc', '#ccc'] : ['#666', '#666', '#666', '#666', '#666'], 
+        fontSize: '11px',
+        fontWeight: 600
+      } 
+    }
+  },
+  tooltip: {
+    theme: colors.value.isDark ? 'dark' : 'light'
   }
 }));
 

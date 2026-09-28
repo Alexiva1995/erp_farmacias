@@ -1,11 +1,14 @@
 <script setup>
 import { computed } from 'vue';
 import VueApexCharts from 'vue3-apexcharts';
+import { useBiThemeColors } from '@/composables/useBiThemeColors';
 
 const props = defineProps({
   employeeDetail: { type: Object, default: null },
   detailLoading: { type: Boolean, default: false }
 });
+
+const { colors } = useBiThemeColors();
 
 const formatCurrency = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value || 0);
 const formatNumber = (value) => new Intl.NumberFormat('en-US').format(value || 0);
@@ -23,18 +26,52 @@ const historyChartOptions = computed(() => ({
     toolbar: { show: false },
     background: 'transparent'
   },
-  theme: { mode: 'light' },
+  theme: { 
+    mode: colors.value.isDark ? 'dark' : 'light' 
+  },
   stroke: { width: [3, 0], curve: 'smooth' },
   plotOptions: { bar: { columnWidth: '45%', borderRadius: 4 } },
-  colors: ['#E20074', '#7A0099'],
+  colors: [colors.value.primary, colors.value.secondary],
   labels: props.employeeDetail?.history?.map(h => h.label) || [],
+  xaxis: {
+    labels: {
+      style: {
+        colors: colors.value.isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+        fontSize: '11px'
+      }
+    }
+  },
   yaxis: [
-    { title: { text: 'Ventas (USD)', style: { color: '#E20074', fontSize: '11px' } }, labels: { style: { colors: '#E20074' } } },
-    { opposite: true, title: { text: 'Unidades', style: { color: '#7A0099', fontSize: '11px' } }, labels: { style: { colors: '#7A0099' } } }
+    { 
+      title: { 
+        text: 'Ventas (USD)', 
+        style: { color: colors.value.primary, fontSize: '11px', fontWeight: 600 } 
+      }, 
+      labels: { 
+        style: { colors: colors.value.primary },
+        formatter: (val) => `$${Number(val || 0).toLocaleString()}`
+      } 
+    },
+    { 
+      opposite: true, 
+      title: { 
+        text: 'Unidades', 
+        style: { color: colors.value.secondary, fontSize: '11px', fontWeight: 600 } 
+      }, 
+      labels: { 
+        style: { colors: colors.value.secondary },
+        formatter: (val) => Number(val || 0).toLocaleString()
+      } 
+    }
   ],
-  tooltip: { shared: true, intersect: false },
+  tooltip: { 
+    theme: colors.value.isDark ? 'dark' : 'light',
+    shared: true, 
+    intersect: false 
+  },
   grid: {
-    borderColor: 'rgba(var(--v-border-color), var(--v-border-opacity))'
+    borderColor: colors.value.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+    strokeDashArray: 4
   }
 }));
 

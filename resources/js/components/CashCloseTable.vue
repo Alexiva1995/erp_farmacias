@@ -326,29 +326,16 @@ const handleDelete = (item) => {
               </IconBtn>
             </template>
             <template v-else>
-              <!-- Indicador de concordancia con trazabilidad -->
-              <VTooltip :text="item.hasTraceability ? 'Coincide con movimiento registrado' : 'Sin movimiento en trazabilidad'" location="top">
-                <template #activator="{ props: tooltipProps }">
-                  <VIcon
-                    v-bind="tooltipProps"
-                    :icon="item.hasTraceability ? 'tabler-circle-check' : 'tabler-circle-x'"
-                    size="18"
-                    :color="item.hasTraceability ? 'info' : 'error'"
-                  />
-                </template>
-              </VTooltip>
-
               <!-- Botón Exonerar unidades -->
               <VTooltip v-if="can('manage', 'admin')" text="Exonerar unidades de cobro" location="top">
                 <template #activator="{ props: tooltipProps }">
                   <IconBtn
                     v-bind="tooltipProps"
-                    :color="item.exemptQuantity > 0 ? 'info' : 'primary'"
+                    :color="item.exemptQuantity > 0 ? 'success' : 'primary'"
                     size="small"
-                    variant="tonal"
                     @click="openExemptDialog(item)"
                   >
-                    <VIcon icon="tabler-shield-check" size="18" />
+                    <VIcon :icon="item.exemptQuantity > 0 ? 'tabler-shield-check' : 'tabler-shield'" size="18" />
                   </IconBtn>
                 </template>
               </VTooltip>
