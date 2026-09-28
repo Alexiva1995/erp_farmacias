@@ -21,77 +21,67 @@ const localEndDate = computed({
 </script>
 
 <template>
-  <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
+  <VCard class="mb-6 rounded-lg" variant="outlined">
     <VCardText class="pa-4">
-      <VRow align="center" no-gutters class="gap-2">
-        <VCol cols="12" md="6">
-          <VRow dense align="center">
-            <VCol cols="5" sm="4">
-              <AppTextField
-                v-model="localStartDate"
-                type="date"
-                :disabled="loading"
-                density="compact"
-                hide-details
-                prepend-inner-icon="tabler-calendar"
-                class="premium-input-compact"
-              />
-            </VCol>
-            <VCol cols="1" class="text-center text-disabled font-weight-bold">al</VCol>
-            <VCol cols="5" sm="4">
-              <AppTextField
-                v-model="localEndDate"
-                type="date"
-                :disabled="loading"
-                density="compact"
-                hide-details
-                prepend-inner-icon="tabler-calendar"
-                class="premium-input-compact"
-              />
-            </VCol>
-          </VRow>
+      <VRow align="center" dense>
+        <VCol cols="12" sm="5" md="4" lg="3">
+          <VTextField
+            v-model="localStartDate"
+            type="date"
+            label="Fecha Inicio"
+            :disabled="loading"
+            density="comfortable"
+            variant="outlined"
+            hide-details="auto"
+            prepend-inner-icon="tabler-calendar"
+          />
         </VCol>
 
-        <VSpacer />
+        <VCol cols="12" sm="5" md="4" lg="3">
+          <VTextField
+            v-model="localEndDate"
+            type="date"
+            label="Fecha Fin"
+            :disabled="loading"
+            density="comfortable"
+            variant="outlined"
+            hide-details="auto"
+            prepend-inner-icon="tabler-calendar"
+          />
+        </VCol>
 
-        <div class="d-flex align-center gap-2">
+        <VSpacer class="d-none d-md-block" />
+
+        <VCol cols="12" sm="2" md="auto" class="d-flex align-center justify-end gap-2 mt-2 mt-sm-0">
           <VBtn
-            icon
-            variant="flat"
             color="primary"
-            size="38"
-            class="rounded-circle shadow-sm"
+            variant="flat"
+            prepend-icon="tabler-refresh"
             :loading="loading"
             :disabled="loading"
             @click="emit('fetch')"
           >
-            <VIcon icon="tabler-refresh" size="20" />
-            <VTooltip activator="parent" location="top">Sincronizar Datos</VTooltip>
+            Actualizar
           </VBtn>
 
-          <VDivider vertical class="mx-1 my-2 border-opacity-10" />
-
           <VBtn
-            icon
-            variant="text"
             color="secondary"
-            size="38"
-            class="rounded-circle shadow-sm"
+            variant="tonal"
+            icon="tabler-eraser"
             :disabled="loading"
             @click="emit('reset')"
           >
-            <VIcon icon="tabler-eraser" size="20" />
+            <VIcon icon="tabler-eraser" />
             <VTooltip activator="parent" location="top">Restablecer Periodo</VTooltip>
           </VBtn>
-        </div>
+        </VCol>
       </VRow>
     </VCardText>
   </VCard>
 </template>
 
 <style scoped>
-.gap-2 { gap: 8px; }
-.premium-input-compact :deep(.v-field__input) {
-  font-size: 0.85rem !important;
+.gap-2 {
+  gap: 8px;
 }
 </style>

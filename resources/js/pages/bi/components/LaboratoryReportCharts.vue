@@ -28,7 +28,10 @@ const props = defineProps({
 
 const { formatCurrency } = useCurrencyConverter();
 
-// --- CONFIGURACIÓN DE GRÁFICOS ---
+// Paleta corporativa
+const chartColors = ['#E20074', '#7A0099', '#28C76F', '#00BAD1', '#FF9F43', '#FF4C51'];
+
+// Configuración de Tendencia Temporal
 const trendChartOptions = computed(() => {
   const months = [...new Set(props.trends.map(t => t.month))].sort();
   
@@ -36,25 +39,24 @@ const trendChartOptions = computed(() => {
     chart: { 
       type: 'line', 
       toolbar: { show: false },
-      dropShadow: { enabled: true, top: 3, left: 2, blur: 4, opacity: 0.1 }
+      dropShadow: { enabled: true, top: 2, left: 1, blur: 4, opacity: 0.08 }
     },
     stroke: { curve: 'smooth', width: 3 },
     markers: { size: 4, hover: { size: 7 } },
-    grid: { borderColor: '#f1f1f1', strokeDashArray: 5 },
+    grid: { borderColor: 'rgba(var(--v-border-color), var(--v-border-opacity))', strokeDashArray: 4 },
     xaxis: { 
       categories: months,
-      labels: { style: { colors: '#616161', fontSize: '11px', fontWeight: 600 } }
+      labels: { style: { fontSize: '11px', fontWeight: 600 } }
     },
     yaxis: {
       labels: {
         formatter: (val) => formatCurrency(val),
-        style: { colors: '#616161', fontWeight: 600 }
+        style: { fontWeight: 600 }
       }
     },
-    colors: ['#E20074', '#28C76F', '#FF4C51', '#FF9F43', '#00BAD1', '#7A0099'],
+    colors: chartColors,
     legend: { position: 'top', horizontalAlign: 'right', fontWeight: 600 },
     tooltip: {
-      theme: 'dark',
       y: { formatter: (val) => formatCurrency(val) }
     }
   };
@@ -73,6 +75,7 @@ const trendSeries = computed(() => {
   }));
 });
 
+// Cuota de Mercado
 const marketShareChartOptions = computed(() => ({
   chart: { type: 'donut' },
   labels: props.rankingsByRevenue.map(l => l.name),
@@ -87,7 +90,7 @@ const marketShareChartOptions = computed(() => ({
           total: { 
             show: true, 
             label: 'TOTAL USD', 
-            formatter: () => formatCurrency(props.rankingsByRevenue.reduce((a, b) => a + parseFloat(b.total_revenue), 0)) 
+            formatter: () => formatCurrency(props.rankingsByRevenue.reduce((a, b) => a + parseFloat(b.total_revenue || 0), 0)) 
           } 
         } 
       } 
@@ -95,12 +98,13 @@ const marketShareChartOptions = computed(() => ({
   }
 }));
 
-const marketShareSeries = computed(() => props.rankingsByRevenue.map(l => parseFloat(l.total_revenue)));
+const marketShareSeries = computed(() => props.rankingsByRevenue.map(l => parseFloat(l.total_revenue || 0)));
 
+// Rentabilidad y Margen
 const profitabilityChartOptions = computed(() => ({
   chart: { type: 'line', toolbar: { show: false }, stacked: false },
-  stroke: { width: [0, 4], curve: 'smooth' },
-  plotOptions: { bar: { columnWidth: '50%', borderRadius: 4 } },
+  stroke: { width: [0, 3], curve: 'smooth' },
+  plotOptions: { bar: { columnWidth: '45%', borderRadius: 4 } },
   colors: ['#E20074', '#28C76F'],
   dataLabels: { 
     enabled: true, 
@@ -135,19 +139,20 @@ const profitabilitySeries = computed(() => [
   {
     name: 'Venta Bruta',
     type: 'column',
-    data: props.profitability.map(l => parseFloat(l.total_revenue))
+    data: props.profitability.map(l => parseFloat(l.total_revenue || 0))
   },
   {
     name: 'Margen %',
     type: 'line',
-    data: props.profitability.map(l => parseFloat(l.margin_percent))
+    data: props.profitability.map(l => parseFloat(l.margin_percent || 0))
   }
 ]);
 
+// Treemap de Stock
 const stockTreemapOptions = computed(() => ({
   legend: { show: false },
   chart: { height: 350, type: 'treemap', toolbar: { show: false } },
-  colors: ['#E20074', '#7A0099', '#00BAD1', '#28C76F', '#FF9F43'],
+  colors: chartColors,
   plotOptions: {
     treemap: {
       enableShades: true,
@@ -163,7 +168,7 @@ const stockTreemapOptions = computed(() => ({
 const stockSeries = computed(() => ([{
   data: props.stockOnHand.map(item => ({
     x: item.name,
-    y: parseFloat(item.inventory_value)
+    y: parseFloat(item.inventory_value || 0)
   }))
 }]));
 </script>
@@ -171,22 +176,42 @@ const stockSeries = computed(() => ([{
 <template>
   <div class="mb-4">
     <!-- TENDENCIAS Y CUOTA DE MERCADO -->
-    <VRow class="mb-4">
+    <VRow class="match-height mb-4">
       <VCol cols="12" md="8">
-        <VCard border class="rounded-lg shadow-sm h-100">
-          <VCardTitle class="pa-4 border-b">Tendencia de Venta Bruta (Top 5)</VCardTitle>
+        <VCard border class="rounded-lg h-100">
+          <VCardTitle class="pa-4 border-b d-flex align-center">
+            <VIcon icon="tabler-chart-line" class="me-2 text-primary" />
+            <span class="text-subtitle-1 font-weight-bold">Tendencia de Venta Bruta (Top 5)</span>
+          </VCardTitle>
           <VCardText class="pa-4">
             <VSkeletonLoader v-if="loading" type="card" height="320" />
-            <VueApexCharts v-else height="320" :options="trendChartOptions" :series="trendSeries" />
+            <VueApexCharts v-else-if="trends.length" height="320" :options="trendChartOptions" :series="trendSeries" />
+            <VEmptyState
+              v-else
+              icon="tabler-chart-dots"
+              title="Sin tendencias"
+              text="No se registran datos suficientes en el periodo para calcular la curva de tendencia"
+              class="py-6"
+            />
           </VCardText>
         </VCard>
       </VCol>
       <VCol cols="12" md="4">
-        <VCard border class="rounded-lg shadow-sm h-100">
-          <VCardTitle class="pa-4 border-b">Cuota de Mercado (% Ventas)</VCardTitle>
+        <VCard border class="rounded-lg h-100">
+          <VCardTitle class="pa-4 border-b d-flex align-center">
+            <VIcon icon="tabler-chart-donut-2" class="me-2 text-secondary" />
+            <span class="text-subtitle-1 font-weight-bold">Cuota de Mercado (% Ventas)</span>
+          </VCardTitle>
           <VCardText class="pa-4">
             <VSkeletonLoader v-if="loading" type="card" height="320" />
-            <VueApexCharts v-else height="320" :options="marketShareChartOptions" :series="marketShareSeries" />
+            <VueApexCharts v-else-if="rankingsByRevenue.length" height="320" :options="marketShareChartOptions" :series="marketShareSeries" />
+            <VEmptyState
+              v-else
+              icon="tabler-chart-pie"
+              title="Sin cuota"
+              text="No hay datos de facturación disponibles"
+              class="py-6"
+            />
           </VCardText>
         </VCard>
       </VCol>
@@ -195,26 +220,40 @@ const stockSeries = computed(() => ([{
     <!-- RENTABILIDAD Y STOCK -->
     <VRow class="match-height">
       <VCol cols="12" md="6">
-        <VCard border class="rounded-lg shadow-sm h-100">
+        <VCard border class="rounded-lg h-100">
           <VCardTitle class="pa-4 border-b d-flex align-center">
             <VIcon icon="tabler-trending-up" class="me-2 text-success" />
-            <span>Eficiencia vs Volumen (Profit)</span>
+            <span class="text-subtitle-1 font-weight-bold">Eficiencia vs Volumen (Margen / Venta)</span>
           </VCardTitle>
           <VCardText class="pa-4">
-            <VSkeletonLoader v-if="loading" type="card" height="380" />
-            <VueApexCharts v-else height="380" :options="profitabilityChartOptions" :series="profitabilitySeries" />
+            <VSkeletonLoader v-if="loading" type="card" height="360" />
+            <VueApexCharts v-else-if="profitability.length" height="360" :options="profitabilityChartOptions" :series="profitabilitySeries" />
+            <VEmptyState
+              v-else
+              icon="tabler-chart-bar"
+              title="Sin rentabilidad"
+              text="No se registran márgenes para los laboratorios en este periodo"
+              class="py-6"
+            />
           </VCardText>
         </VCard>
       </VCol>
       <VCol cols="12" md="6">
-        <VCard border class="rounded-lg shadow-sm h-100">
+        <VCard border class="rounded-lg h-100">
           <VCardTitle class="pa-4 border-b d-flex align-center">
             <VIcon icon="tabler-building-warehouse" class="me-2 text-primary" />
-            <span>Inversión en Stock (Por Lab)</span>
+            <span class="text-subtitle-1 font-weight-bold">Inversión en Stock (Por Laboratorio)</span>
           </VCardTitle>
           <VCardText class="pa-4">
-            <VSkeletonLoader v-if="loading" type="card" height="380" />
-            <VueApexCharts v-else height="380" :options="stockTreemapOptions" :series="stockSeries" />
+            <VSkeletonLoader v-if="loading" type="card" height="360" />
+            <VueApexCharts v-else-if="stockOnHand.length" height="360" :options="stockTreemapOptions" :series="stockSeries" />
+            <VEmptyState
+              v-else
+              icon="tabler-packages"
+              title="Sin inventario"
+              text="No hay existencias valorizadas para mostrar"
+              class="py-6"
+            />
           </VCardText>
         </VCard>
       </VCol>

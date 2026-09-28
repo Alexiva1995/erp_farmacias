@@ -1,11 +1,12 @@
 <script setup>
 /**
  * Reporte de Devoluciones a Proveedores.
- * Muestra lotes con vencimiento <= 90 días agrupados por laboratorio.
- * Incluye semaforización de urgencia, ordenamiento dinámico y generación de cartas en PDF.
+ * Visualización BI con ApexCharts, semaforización de urgencia,
+ * filtro dinámico de horizonte temporal (30-180 días) y generación de cartas en PDF.
  */
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import VueApexCharts from 'vue3-apexcharts'
 import { useSupplierReturnsStore } from '@/stores/supplier-returns-store'
 import pdfSupplierReturnsGenerator, { generateSingleLabPdfDoc } from '@/utils/pdfSupplierReturnsGenerator'
 import SupplierReturnsLotTable from '@/components/bi/SupplierReturnsLotTable.vue'
@@ -23,6 +24,7 @@ const {
 const snackbar        = ref({ show: false, message: '', color: 'success' })
 const buyerNameDialog = ref(false)
 const pdfGenerating   = ref(false)
+const showCharts      = ref(true)
 const buyerName       = ref(localStorage.getItem('supplier_returns_buyer_name') || 'Encargada de Compras')
 const expandedGroups  = ref([])
 
@@ -30,6 +32,14 @@ const expandedGroups  = ref([])
 const selectedUrgency = ref('all') // 'all' | 'critical' | 'warning' | 'preventive'
 const labSearch       = ref('')
 const sortBy          = ref('amount_desc')
+
+const horizonOptions = [
+  { title: 'Próximos 30 días', value: 30 },
+  { title: 'Próximos 60 días', value: 60 },
+  { title: 'Próximos 90 días (Estándar)', value: 90 },
+  { title: 'Próximos 120 días', value: 120 },
+  { title: 'Próximos 180 días', value: 180 },
+]
 
 const sortOptions = [
   { title: 'Mayor monto ($)', value: 'amount_desc' },
@@ -87,7 +97,7 @@ const kpiCards = computed(() => [
   {
     title: 'Laboratorios', icon: 'tabler-building-factory', color: 'primary',
     value: summary.value.total_laboratories ?? 0, suffix: '',
-    desc: 'Con lotes a 90 días',
+    desc: `Con lotes a ${filters.value.days || 90} días`,
   },
   {
     title: 'Productos en riesgo', icon: 'tabler-pill', color: 'warning',
@@ -104,6 +114,104 @@ const kpiCards = computed(() => [
     value: `$${Number(summary.value.total_amount ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`,
     suffix: '', desc: 'Costo total de inventario',
   },
+])
+
+// ── Gráficos ApexCharts de Business Intelligence ─────────────────────────────
+const topLabsChartOptions = computed(() => {
+  const topLabs = [...groups.value]
+    .sort((a, b) => b.total_amount - a.total_amount)
+    .slice(0, 5)
+
+  return {
+    chart: {
+      type: 'bar',
+      toolbar: { show: false },
+      fontFamily: 'inherit',
+    },
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        borderRadius: 4,
+        barHeight: '60%',
+        distributed: true,
+      },
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: (val) => `$${Number(val).toLocaleString('es-VE', { minimumFractionDigits: 0 })}`,
+      style: { fontSize: '11px', fontWeight: 'bold', colors: ['#ffffff'] },
+      dropShadow: { enabled: true, top: 1, left: 1, blur: 1, opacity: 0.5 },
+    },
+    xaxis: {
+      categories: topLabs.map(l => l.laboratory_name.length > 20 ? l.laboratory_name.substring(0, 18) + '...' : l.laboratory_name),
+      labels: {
+        formatter: (val) => `$${Number(val).toLocaleString('es-VE')}`,
+        style: { fontSize: '11px', fontWeight: 600 },
+      },
+    },
+    yaxis: {
+      labels: { style: { fontSize: '11px', fontWeight: 600 } },
+    },
+    colors: ['#E20074', '#7A0099', '#FF4C51', '#FF9F43', '#00BAD1'],
+    legend: { show: false },
+    tooltip: {
+      theme: 'dark',
+      y: { formatter: (val) => `$${Number(val).toLocaleString('es-VE', { minimumFractionDigits: 2 })} USD` },
+    },
+    grid: { borderColor: 'rgba(var(--v-border-color), 0.12)', strokeDashArray: 4 },
+  }
+})
+
+const topLabsSeries = computed(() => {
+  const topLabs = [...groups.value]
+    .sort((a, b) => b.total_amount - a.total_amount)
+    .slice(0, 5)
+
+  return [{
+    name: 'Monto en Riesgo',
+    data: topLabs.map(l => l.total_amount),
+  }]
+})
+
+const urgencyDonutOptions = computed(() => ({
+  chart: {
+    type: 'donut',
+    fontFamily: 'inherit',
+  },
+  labels: ['Crítico (≤ 30d)', 'Advertencia (31-60d)', 'Preventivo (> 60d)'],
+  colors: ['#FF4C51', '#FF9F43', '#00BAD1'],
+  legend: { position: 'bottom', fontSize: '12px', fontWeight: 600 },
+  dataLabels: {
+    enabled: true,
+    formatter: (val) => `${Number(val).toFixed(1)}%`,
+  },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '70%',
+        labels: {
+          show: true,
+          total: {
+            show: true,
+            label: 'TOTAL RIESGO',
+            fontSize: '11px',
+            fontWeight: 700,
+            formatter: () => `$${Number(summary.value.total_amount ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 0 })}`,
+          },
+        },
+      },
+    },
+  },
+  tooltip: {
+    theme: 'dark',
+    y: { formatter: (val) => `$${Number(val).toLocaleString('es-VE', { minimumFractionDigits: 2 })} USD` },
+  },
+}))
+
+const urgencyDonutSeries = computed(() => [
+  urgencyStats.value.critical.amount,
+  urgencyStats.value.warning.amount,
+  urgencyStats.value.preventive.amount,
 ])
 
 // ── Procesamiento, Filtrado y Ordenamiento de Grupos ──────────────────────────
@@ -155,8 +263,6 @@ const processedGroups = computed(() => {
 })
 
 // ── Watchers ──────────────────────────────────────────────────────────────────
-
-// Debounce de 500ms en el campo de búsqueda de texto del backend
 let searchTimer = null
 watch(() => filters.value.search, () => {
   clearTimeout(searchTimer)
@@ -175,18 +281,14 @@ onMounted(() => {
 onUnmounted(() => clearTimeout(searchTimer))
 
 // ── Acciones ──────────────────────────────────────────────────────────────────
-
-/** Expande todos los paneles visibles */
 const expandAll = () => {
   expandedGroups.value = processedGroups.value.map((_, idx) => idx)
 }
 
-/** Colapsa todos los paneles */
 const collapseAll = () => {
   expandedGroups.value = []
 }
 
-/** Abre el diálogo de confirmación del PDF si hay datos disponibles */
 const downloadPdf = () => {
   if (!hasGroups.value) {
     showMessage('No hay datos disponibles para generar el PDF.', 'warning')
@@ -195,7 +297,6 @@ const downloadPdf = () => {
   buyerNameDialog.value = true
 }
 
-/** Genera y descarga el PDF de todos los laboratorios; bloquea el botón durante la operación */
 const confirmDownloadPdf = async () => {
   buyerNameDialog.value = false
   pdfGenerating.value   = true
@@ -216,7 +317,6 @@ const confirmDownloadPdf = async () => {
   }
 }
 
-/** Genera la carta PDF individual para un laboratorio específico */
 const downloadSingleLab = (group) => {
   try {
     generateSingleLabPdfDoc(group, data.value, { buyerName: buyerName.value.trim() })
@@ -227,7 +327,6 @@ const downloadSingleLab = (group) => {
   }
 }
 
-/** Reinicia los filtros y emite toast informativo */
 const resetFilters = () => {
   selectedUrgency.value = 'all'
   labSearch.value       = ''
@@ -248,36 +347,49 @@ const resetFilters = () => {
           Reporte de Devoluciones a Proveedores
         </h1>
         <p class="text-caption text-disabled mb-0">
-          Lotes con vencimiento en los próximos <strong>90 días</strong>
+          Lotes con vencimiento en los próximos <strong>{{ filters.days || 90 }} días</strong>
           · Solicitud de canje preventivo
         </p>
       </div>
       <VSpacer />
-      <VBtn
-        color="error"
-        variant="flat"
-        prepend-icon="tabler-file-type-pdf"
-        :disabled="loading || pdfGenerating || !hasGroups"
-        :loading="pdfGenerating"
-        class="rounded-lg shadow-sm"
-        @click="downloadPdf"
-      >
-        Descargar Todo (PDF)
-      </VBtn>
+      <div class="d-flex align-center gap-2 flex-wrap">
+        <VBtn
+          variant="outlined"
+          color="secondary"
+          :prepend-icon="showCharts ? 'tabler-chart-bar-off' : 'tabler-chart-bar'"
+          class="rounded-lg"
+          @click="showCharts = !showCharts"
+        >
+          {{ showCharts ? 'Ocultar Gráficos' : 'Ver Gráficos BI' }}
+        </VBtn>
+
+        <VBtn
+          color="error"
+          variant="flat"
+          prepend-icon="tabler-file-type-pdf"
+          :disabled="loading || pdfGenerating || !hasGroups"
+          :loading="pdfGenerating"
+          class="rounded-lg shadow-sm"
+          @click="downloadPdf"
+        >
+          Descargar Todo (PDF)
+        </VBtn>
+      </div>
     </div>
 
     <!-- ─── Panel de Filtros Principales ────────────────────────────────────── -->
     <VCard class="mb-5 rounded-lg border shadow-sm">
       <VCardText class="pa-4">
         <VRow align="center">
-          <VCol cols="12" md="4">
+          <VCol cols="12" md="3">
             <AppTextField
               v-model="filters.search"
-              placeholder="Buscar producto, barcode o No. lote..."
+              placeholder="Buscar producto, barcode o lote..."
               prepend-inner-icon="tabler-search"
               clearable
               density="compact"
-              hide-details
+              variant="outlined"
+              hide-details="auto"
               :disabled="loading"
             />
           </VCol>
@@ -292,7 +404,8 @@ const resetFilters = () => {
               placeholder="Laboratorio"
               clearable
               density="compact"
-              hide-details
+              variant="outlined"
+              hide-details="auto"
               prepend-inner-icon="tabler-flask"
               :disabled="loading"
               @update:modelValue="store.fetchReport()"
@@ -309,15 +422,29 @@ const resetFilters = () => {
               placeholder="Proveedor / Droguería"
               clearable
               density="compact"
-              hide-details
+              variant="outlined"
+              hide-details="auto"
               prepend-inner-icon="tabler-truck"
               :disabled="loading"
               @update:modelValue="store.fetchReport()"
             />
           </VCol>
 
-          <VCol cols="auto">
-            <div class="d-flex gap-2">
+          <VCol cols="12" sm="6" md="2">
+            <AppSelect
+              v-model="filters.days"
+              :items="horizonOptions"
+              density="compact"
+              variant="outlined"
+              hide-details="auto"
+              prepend-inner-icon="tabler-calendar-time"
+              :disabled="loading"
+              @update:modelValue="store.fetchReport()"
+            />
+          </VCol>
+
+          <VCol cols="12" sm="6" md="1" class="d-flex justify-end">
+            <div class="d-flex gap-1">
               <VBtn
                 icon
                 variant="flat"
@@ -375,7 +502,7 @@ const resetFilters = () => {
               <div class="overflow-hidden">
                 <p class="text-caption text-disabled mb-0 font-weight-bold text-uppercase">{{ kpi.title }}</p>
                 <h3 class="text-h5 font-weight-black mb-0">{{ kpi.value }}{{ kpi.suffix }}</h3>
-                <p class="text-super-xs text-disabled mb-0">{{ kpi.desc }}</p>
+                <p class="text-caption text-disabled mb-0">{{ kpi.desc }}</p>
               </div>
             </template>
           </VCardText>
@@ -383,16 +510,65 @@ const resetFilters = () => {
       </VCol>
     </VRow>
 
+    <!-- ─── Gráficos Analíticos de BI (ApexCharts) ────────────────────────────── -->
+    <VExpandTransition>
+      <div v-if="showCharts && hasGroups && !loading" class="mb-5">
+        <VRow>
+          <!-- Gráfico Top 5 Laboratorios por Riesgo -->
+          <VCol cols="12" lg="7">
+            <VCard class="rounded-lg border shadow-sm h-100">
+              <VCardTitle class="pa-4 pb-1 d-flex align-center justify-space-between">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-chart-bar" color="primary" size="20" />
+                  <span class="text-body-1 font-weight-bold">Top 5 Laboratorios con Mayor Riesgo ($ USD)</span>
+                </div>
+                <VChip size="x-small" color="primary" variant="tonal">Concentración 80/20</VChip>
+              </VCardTitle>
+              <VCardText class="pa-4 pt-2">
+                <VueApexCharts
+                  type="bar"
+                  height="260"
+                  :options="topLabsChartOptions"
+                  :series="topLabsSeries"
+                />
+              </VCardText>
+            </VCard>
+          </VCol>
+
+          <!-- Gráfico Donut de Proporción por Franja de Urgencia -->
+          <VCol cols="12" lg="5">
+            <VCard class="rounded-lg border shadow-sm h-100">
+              <VCardTitle class="pa-4 pb-1 d-flex align-center justify-space-between">
+                <div class="d-flex align-center gap-2">
+                  <VIcon icon="tabler-chart-pie" color="secondary" size="20" />
+                  <span class="text-body-1 font-weight-bold">Distribución por Criticidad</span>
+                </div>
+                <VChip size="x-small" color="secondary" variant="tonal">Horizonte {{ filters.days || 90 }}d</VChip>
+              </VCardTitle>
+              <VCardText class="pa-4 pt-2">
+                <VueApexCharts
+                  type="donut"
+                  height="260"
+                  :options="urgencyDonutOptions"
+                  :series="urgencyDonutSeries"
+                />
+              </VCardText>
+            </VCard>
+          </VCol>
+        </VRow>
+      </div>
+    </VExpandTransition>
+
     <!-- ─── Desglose por Criticidad (Semaforización & Filtro Rápido) ─────────── -->
     <VCard class="mb-5 rounded-lg border shadow-sm bg-surface">
       <VCardText class="pa-4">
         <div class="d-flex align-center justify-space-between flex-wrap gap-3 mb-3">
           <div class="d-flex align-center gap-2">
             <VIcon icon="tabler-traffic-lights" color="warning" size="22" />
-            <span class="font-weight-bold text-body-2">Distribución de Riesgo por Urgencia</span>
+            <span class="font-weight-bold text-body-2">Triaje y Filtro por Franja de Riesgo</span>
           </div>
           <span class="text-caption text-disabled">
-            Corte: {{ metadata.cutoff_date || 'Próximos 90 días' }}
+            Fecha de corte: {{ metadata.cutoff_date || `Próximos ${filters.days || 90} días` }}
           </span>
         </div>
 
@@ -420,7 +596,7 @@ const resetFilters = () => {
                   <VChip size="x-small" color="error" variant="flat" class="font-weight-bold">
                     {{ Number(urgencyStats.critical.units).toLocaleString('es-VE') }} U.
                   </VChip>
-                  <p class="text-super-xs text-disabled mb-0 mt-1">{{ urgencyStats.critical.lots }} lotes</p>
+                  <p class="text-caption text-disabled mb-0 mt-1">{{ urgencyStats.critical.lots }} lotes</p>
                 </div>
               </VCardText>
             </VCard>
@@ -449,13 +625,13 @@ const resetFilters = () => {
                   <VChip size="x-small" color="warning" variant="flat" class="font-weight-bold">
                     {{ Number(urgencyStats.warning.units).toLocaleString('es-VE') }} U.
                   </VChip>
-                  <p class="text-super-xs text-disabled mb-0 mt-1">{{ urgencyStats.warning.lots }} lotes</p>
+                  <p class="text-caption text-disabled mb-0 mt-1">{{ urgencyStats.warning.lots }} lotes</p>
                 </div>
               </VCardText>
             </VCard>
           </VCol>
 
-          <!-- Preventivo 61-90 días -->
+          <!-- Preventivo > 60 días -->
           <VCol cols="12" md="4">
             <VCard
               variant="tonal"
@@ -468,7 +644,7 @@ const resetFilters = () => {
                 <div>
                   <div class="d-flex align-center gap-1 mb-1">
                     <VIcon icon="tabler-shield-check" size="16" />
-                    <span class="text-caption font-weight-bold">PREVENTIVO (61-90 DÍAS)</span>
+                    <span class="text-caption font-weight-bold">PREVENTIVO (> 60 DÍAS)</span>
                   </div>
                   <h4 class="text-h6 font-weight-black mb-0">
                     ${{ Number(urgencyStats.preventive.amount).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
@@ -478,7 +654,7 @@ const resetFilters = () => {
                   <VChip size="x-small" color="info" variant="flat" class="font-weight-bold">
                     {{ Number(urgencyStats.preventive.units).toLocaleString('es-VE') }} U.
                   </VChip>
-                  <p class="text-super-xs text-disabled mb-0 mt-1">{{ urgencyStats.preventive.lots }} lotes</p>
+                  <p class="text-caption text-disabled mb-0 mt-1">{{ urgencyStats.preventive.lots }} lotes</p>
                 </div>
               </VCardText>
             </VCard>
@@ -519,44 +695,42 @@ const resetFilters = () => {
 
     <!-- ─── Barra de Control y Lista de Laboratorios ───────────────────────────── -->
     <template v-else>
-      <!-- Barra de herramientas de la lista -->
       <div class="d-flex align-center justify-space-between mb-3 gap-3 flex-wrap">
         <div class="d-flex align-center gap-2 flex-wrap">
           <VChip color="primary" variant="tonal" size="small" prepend-icon="tabler-building-factory">
             {{ processedGroups.length }} {{ processedGroups.length === 1 ? 'laboratorio mostrado' : 'laboratorios mostrados' }}
           </VChip>
           <VChip v-if="selectedUrgency !== 'all'" color="warning" variant="tonal" size="small" closable @click:close="selectedUrgency = 'all'">
-            Franja: {{ selectedUrgency === 'critical' ? 'Crítico (≤ 30d)' : selectedUrgency === 'warning' ? 'Advertencia (31-60d)' : 'Preventivo (61-90d)' }}
+            Franja: {{ selectedUrgency === 'critical' ? 'Crítico (≤ 30d)' : selectedUrgency === 'warning' ? 'Advertencia (31-60d)' : 'Preventivo (> 60d)' }}
           </VChip>
         </div>
 
         <div class="d-flex align-center gap-2 flex-wrap">
-          <!-- Búsqueda rápida local -->
           <AppTextField
             v-model="labSearch"
             placeholder="Filtrar laboratorio..."
             prepend-inner-icon="tabler-search"
             clearable
             density="compact"
-            hide-details
+            variant="outlined"
+            hide-details="auto"
             style="inline-size: 220px;"
           />
 
-          <!-- Selector de ordenamiento -->
           <AppSelect
             v-model="sortBy"
             :items="sortOptions"
             density="compact"
-            hide-details
+            variant="outlined"
+            hide-details="auto"
             prepend-inner-icon="tabler-sort-descending"
             style="inline-size: 190px;"
           />
 
-          <!-- Botones expandir/colapsar -->
-          <VBtn variant="tonal" size="small" color="secondary" @click="expandAll">
+          <VBtn variant="tonal" size="small" color="secondary" class="rounded-lg" @click="expandAll">
             Expandir
           </VBtn>
-          <VBtn variant="tonal" size="small" color="secondary" @click="collapseAll">
+          <VBtn variant="tonal" size="small" color="secondary" class="rounded-lg" @click="collapseAll">
             Colapsar
           </VBtn>
         </div>
@@ -642,7 +816,8 @@ const resetFilters = () => {
             label="Nombre de la encargada de compras"
             prepend-inner-icon="tabler-user"
             density="compact"
-            hide-details
+            variant="outlined"
+            hide-details="auto"
             autofocus
           />
         </VCardText>
@@ -700,11 +875,6 @@ const resetFilters = () => {
 
 .ring-active {
   box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.35) !important;
-}
-
-.text-super-xs {
-  font-size: 0.65rem !important;
-  line-height: 1.2;
 }
 
 .return-panels .v-expansion-panel {
