@@ -58,14 +58,15 @@ const selectedCategoryName = computed(() => {
 <template>
   <VCard class="mb-6 rounded-lg border shadow-sm">
     <VCardText class="pa-4">
-      <!-- Fila 1: Presets rápidos y Estado -->
-      <div class="d-flex flex-wrap align-center justify-space-between gap-2 mb-3 pb-2 border-b">
-        <div class="d-flex align-center gap-1 flex-wrap">
-          <span class="text-caption font-weight-bold text-medium-emphasis me-1">RANGOS RÁPIDOS:</span>
+      <VRow align="center" dense>
+        <!-- Presets Rápidos -->
+        <VCol cols="12" md="auto" class="d-flex align-center gap-1 flex-wrap pe-2">
+          <span class="text-caption font-weight-bold text-medium-emphasis me-1">RANGO:</span>
           <VBtn
             size="x-small"
             variant="tonal"
             color="primary"
+            class="rounded-pill"
             :disabled="loading"
             @click="applyPreset('today')"
           >
@@ -75,54 +76,40 @@ const selectedCategoryName = computed(() => {
             size="x-small"
             variant="tonal"
             color="primary"
+            class="rounded-pill"
             :disabled="loading"
             @click="applyPreset('week')"
           >
-            Últimos 7 Días
+            7 Días
           </VBtn>
           <VBtn
             size="x-small"
             variant="tonal"
             color="primary"
+            class="rounded-pill"
             :disabled="loading"
             @click="applyPreset('month')"
           >
-            Mes Actual
+            Mes
           </VBtn>
           <VBtn
             size="x-small"
             variant="tonal"
             color="primary"
+            class="rounded-pill"
             :disabled="loading"
             @click="applyPreset('last_month')"
           >
-            Mes Anterior
+            Mes Ant.
           </VBtn>
-        </div>
+        </VCol>
 
-        <div v-if="selectedCategoryName" class="d-flex align-center gap-1">
-          <VChip
-            size="small"
-            color="primary"
-            closable
-            variant="tonal"
-            @click:close="filters.categoryId = null; emit('apply')"
-          >
-            <VIcon icon="tabler-category" start size="14" />
-            {{ selectedCategoryName }}
-          </VChip>
-        </div>
-      </div>
-
-      <!-- Fila 2: Inputs de Fecha, Categoría y Botones -->
-      <VRow align="center" dense>
         <!-- Fecha Inicio -->
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="2" lg="2">
           <AppDateTimePicker
             v-model="filters.startDate"
-            label="Fecha Inicio"
-            placeholder="Seleccionar fecha"
-            density="comfortable"
+            placeholder="Fecha Inicio"
+            density="compact"
             variant="outlined"
             hide-details="auto"
             :disabled="loading"
@@ -131,12 +118,11 @@ const selectedCategoryName = computed(() => {
         </VCol>
 
         <!-- Fecha Fin -->
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="2" lg="2">
           <AppDateTimePicker
             v-model="filters.endDate"
-            label="Fecha Fin"
-            placeholder="Seleccionar fecha"
-            density="comfortable"
+            placeholder="Fecha Fin"
+            density="compact"
             variant="outlined"
             hide-details="auto"
             :disabled="loading"
@@ -145,15 +131,14 @@ const selectedCategoryName = computed(() => {
         </VCol>
 
         <!-- Filtro por Categoría -->
-        <VCol cols="12" sm="6" md="3">
+        <VCol cols="12" sm="6" md="3" lg="2">
           <VAutocomplete
             v-model="filters.categoryId"
             :items="categories"
             item-title="name"
             item-value="id"
-            label="Categoría"
-            placeholder="Todas las categorías"
-            density="comfortable"
+            placeholder="Categoría"
+            density="compact"
             variant="outlined"
             hide-details="auto"
             clearable

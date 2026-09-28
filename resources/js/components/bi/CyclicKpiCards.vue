@@ -73,13 +73,13 @@ const kpiItems = computed(() => [
       cols="12"
       sm="6"
       md="4"
-      lg
+      lg="2"
       class="d-flex"
     >
       <VCard class="rounded-lg border shadow-sm w-100 h-100">
-        <VCardText class="pa-4">
+        <VCardText class="pa-3">
           <div v-if="loading" class="d-flex align-center">
-            <VSkeletonLoader type="avatar" class="me-3" />
+            <VSkeletonLoader type="avatar" class="me-2" />
             <div class="flex-grow-1">
               <VSkeletonLoader type="text" width="60%" class="mb-1" />
               <VSkeletonLoader type="heading" width="80%" class="mb-1" />
@@ -90,20 +90,20 @@ const kpiItems = computed(() => [
             <VAvatar
               :color="kpi.color"
               variant="tonal"
-              size="46"
+              size="40"
               rounded="lg"
               class="me-3 flex-shrink-0"
             >
-              <VIcon :icon="kpi.icon" size="24" />
+              <VIcon :icon="kpi.icon" size="22" />
             </VAvatar>
             <div class="min-width-0 flex-grow-1">
               <span class="text-caption text-medium-emphasis font-weight-bold d-block text-truncate">
                 {{ kpi.title }}
               </span>
-              <h4 class="text-h5 font-weight-black my-0 text-truncate">
+              <h4 class="text-h6 font-weight-black my-0 text-truncate">
                 {{ kpi.value }}
               </h4>
-              <span class="text-caption text-disabled d-block text-truncate" :title="kpi.subtitle || kpi.desc">
+              <span class="text-xs text-disabled d-block text-truncate" :title="kpi.subtitle || kpi.desc">
                 {{ kpi.subtitle || kpi.desc }}
               </span>
             </div>
