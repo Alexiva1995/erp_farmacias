@@ -19,7 +19,7 @@ const enabledBiViews = ref([])
 const availableBiViews = [
   { key: 'abc', title: 'Matriz ABC-XYZ & Foto Finish', description: 'Categorización estratégica de inventario y auditoría de Foto Finish.', icon: 'tabler-abc' },
   { key: 'sku', title: 'Margen SKU', description: 'Detalle de utilidad y rendimiento individual por SKU.', icon: 'tabler-calculator' },
-  { key: 'products', title: 'Dashboard Maestro', description: 'Visión consolidada y analíticas globales de ventas de productos.', icon: 'tabler-chart-pie' },
+  { key: 'products', title: 'Catálogo', description: 'Visión consolidada y analíticas globales de ventas de productos.', icon: 'tabler-chart-pie' },
   { key: 'expiry', title: 'BI Caducidad', description: 'Predicciones y alertas de productos próximos a vencer.', icon: 'tabler-calendar' },
   { key: 'laboratories', title: 'Marcas / Labs', description: 'Análisis comercial agrupado por laboratorios y marcas.', icon: 'tabler-building-factory-2' },
   { key: 'pos', title: 'Analíticas TPV', description: 'Métricas de ventas, transacciones y promedios en tiempo real.', icon: 'tabler-device-desktop' },

@@ -29,7 +29,7 @@ export default [
         to: 'bi-report-sku',
       },
       {
-        title: 'Dashboard Maestro',
+        title: 'Catálogo',
         to: 'bi-report-products',
       },
       {

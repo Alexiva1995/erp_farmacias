@@ -19,7 +19,6 @@ class ExpiryReportRequest extends FormRequest
             'laboratory_id' => 'nullable|integer|exists:laboratories,id',
             'category_id'   => 'nullable|integer|exists:categories,id',
             'group_id'      => 'nullable|integer|exists:groups_products,id',
-            'location_id'   => 'nullable|integer',
         ];
     }
 }

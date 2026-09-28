@@ -57,20 +57,27 @@ class ExpiryReportService
             }
 
             // Semaforización por días restantes al vencimiento
-            $daysToExpiry = Carbon::now()->diffInDays(Carbon::parse($item['expiration_date']), false);
+            $daysToExpiry = (int) Carbon::now()->diffInDays(Carbon::parse($item['expiration_date']), false);
+            $item['days_to_expiry'] = $daysToExpiry;
+
             if ($daysToExpiry < 0) {
                 $item['status'] = 'vencido';
                 $item['color']  = 'error';
             } elseif ($daysToExpiry <= 90) {
                 $item['status'] = 'critico';
                 $item['color']  = 'error';
-            } elseif ($daysToExpiry <= 180) {
+            } elseif ($daysToExpiry <= 180 || $excedente > 0) {
+                // Si tiene excedente en riesgo pero vence en >180 días, se clasifica mínimo como moderado
                 $item['status'] = 'moderado';
                 $item['color']  = 'warning';
             } else {
                 $item['status'] = 'estable';
                 $item['color']  = 'success';
             }
+
+            // Días de Cobertura (DIO) a nivel de producto/lote
+            $dailySales = ((float) ($item['venta_mensual_promedio'] ?? 0)) / 30;
+            $item['dio'] = $dailySales > 0 ? (int) round(((float) $item['stock_actual']) / $dailySales) : 999;
 
             return $item;
         }, $data);
@@ -83,18 +90,31 @@ class ExpiryReportService
     private function calculateKpis(array $filters, array $lossData): array
     {
         $currentMonth = Carbon::now()->format('Y-m');
-        $historicalLoss = collect($lossData)->firstWhere('month', $currentMonth);
-        
+        $prevMonth = Carbon::now()->subMonth()->format('Y-m');
+
+        $historicalLossCurrent = collect($lossData)->firstWhere('month', $currentMonth);
+        $historicalLossPrev = collect($lossData)->firstWhere('month', $prevMonth);
+
+        $currentCost = (float) ($historicalLossCurrent['total_cost'] ?? 0);
+        $prevCost    = (float) ($historicalLossPrev['total_cost'] ?? 0);
+        $costTrendPct = $prevCost > 0 ? round((($currentCost - $prevCost) / $prevCost) * 100, 1) : 0.0;
+
+        $currentUnits = (float) ($historicalLossCurrent['total_units'] ?? 0);
+        $prevUnits    = (float) ($historicalLossPrev['total_units'] ?? 0);
+        $unitsTrendPct = $prevUnits > 0 ? round((($currentUnits - $prevUnits) / $prevUnits) * 100, 1) : 0.0;
+
         $currentExpired = $this->repository->getCurrentExpiredStock($filters);
 
         return [
-            // El usuario quiere ver lo que sigue en inventario que ya venció este mes
-            'total_units_expired_month' => $currentExpired['total_units'] + ($historicalLoss['total_units'] ?? 0),
-            'total_cost_merma_month' => $currentExpired['total_value'] + ($historicalLoss['total_cost'] ?? 0),
-            'hist_units' => $historicalLoss['total_units'] ?? 0,
-            'hist_cost' => $historicalLoss['total_cost'] ?? 0,
+            // El usuario quiere ver lo que sigue en inventario que ya venció este mes + historial
+            'total_units_expired_month' => $currentExpired['total_units'] + ($historicalLossCurrent['total_units'] ?? 0),
+            'total_cost_merma_month'    => $currentExpired['total_value'] + ($historicalLossCurrent['total_cost'] ?? 0),
+            'hist_units'                => $historicalLossCurrent['total_units'] ?? 0,
+            'hist_cost'                 => $historicalLossCurrent['total_cost'] ?? 0,
             'current_inv_expired_units' => $currentExpired['total_units'],
             'current_inv_expired_value' => $currentExpired['total_value'],
+            'cost_trend_pct'            => $costTrendPct,
+            'units_trend_pct'           => $unitsTrendPct,
         ];
     }
 }

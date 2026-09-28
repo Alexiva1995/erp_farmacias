@@ -21,29 +21,68 @@ export function useExpiryCharts(dashboardData, metricType) {
   const axisLabelStyle = { colors: '#a3a3a3' }
   const noDataConfig = text => ({ text, style: { color: '#a3a3a3' } })
 
-  // ─── 1. Horizonte por Categoría (Barra Apilada) ────────────────────
+  // ─── 1. Horizonte por Categoría (Barra Apilada: Top 5 + Otras) ────
   const horizonChartConfig = computed(() => {
     const months = [...new Set(dashboardData.horizon.map(i => i.month))].sort()
-    const cats = [...new Set(dashboardData.horizon.map(i => i.category_name))]
     const isVal = metricType.value === 'value'
 
-    return {
-      series: cats.map(cat => ({
-        name: cat,
+    // Calcular el total por categoría para obtener las Top 5
+    const catTotals = {}
+    dashboardData.horizon.forEach(item => {
+      const cat = item.category_name || 'Sin Categoría'
+      const val = parseFloat(isVal ? item.total_value : item.total_units) || 0
+      catTotals[cat] = (catTotals[cat] || 0) + val
+    })
+
+    const sortedCats = Object.entries(catTotals)
+      .sort((a, b) => b[1] - a[1])
+      .map(entry => entry[0])
+
+    const top5Cats = sortedCats.slice(0, 5)
+    const hasOthers = sortedCats.length > 5
+
+    // Construir series para Top 5
+    const series = top5Cats.map(cat => ({
+      name: cat,
+      data: months.map(m => {
+        const item = dashboardData.horizon.find(i => i.month === m && (i.category_name || 'Sin Categoría') === cat)
+        return item ? parseFloat(isVal ? item.total_value : item.total_units) : 0
+      }),
+    }))
+
+    // Consolidar categorías restantes en "Otras"
+    if (hasOthers) {
+      const otherCats = new Set(sortedCats.slice(5))
+      series.push({
+        name: 'Otras',
         data: months.map(m => {
-          const item = dashboardData.horizon.find(i => i.month === m && i.category_name === cat)
-          return item ? parseFloat(isVal ? item.total_value : item.total_units) : 0
+          return dashboardData.horizon
+            .filter(i => i.month === m && otherCats.has(i.category_name || 'Sin Categoría'))
+            .reduce((acc, curr) => acc + parseFloat(isVal ? curr.total_value : curr.total_units), 0)
         }),
-      })),
+      })
+    }
+
+    return {
+      series,
       options: {
         chart: { type: 'bar', stacked: true, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
-        plotOptions: { bar: { borderRadius: 4 } },
+        plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
         xaxis: { categories: months, labels: { style: axisLabelStyle } },
         yaxis: { labels: { formatter: v => isVal ? `$${v.toFixed(0)}` : v.toFixed(0), style: axisLabelStyle } },
-        legend: { position: 'top', labels: { colors: '#a3a3a3' } },
+        legend: {
+          position: 'top',
+          horizontalAlign: 'right',
+          fontSize: '11px',
+          markers: { radius: 12 },
+          labels: { colors: '#a3a3a3' },
+        },
         dataLabels: { enabled: false },
-        colors: ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#00cfe8'],
+        colors: ['#7367f0', '#28c76f', '#ff9f43', '#00cfe8', '#ea5455', '#a8aaae'],
         grid: baseGridOptions,
+        tooltip: {
+          y: { formatter: v => isVal ? fmtMoney(v) : `${fmtNum(v)} U.` },
+        },
         noData: noDataConfig('Sin datos para el período seleccionado'),
       },
     }
@@ -80,18 +119,21 @@ export function useExpiryCharts(dashboardData, metricType) {
         yaxis: { labels: { formatter: v => isVal ? `$${v.toLocaleString()}` : v.toLocaleString(), style: axisLabelStyle } },
         colors: ['#28c76f'],
         grid: baseGridOptions,
-        tooltip: { theme: 'dark' },
+        tooltip: {
+          theme: 'dark',
+          y: { formatter: v => isVal ? fmtMoney(v) : `${fmtNum(v)} U.` },
+        },
         noData: noDataConfig('Sin datos proyectados'),
       },
     }
   })
 
-  // ─── 3. Top 10 Riesgo Financiero (Barra Horizontal) ─────────────────
+  // ─── 3. Top 10 Riesgo Financiero (Normalización y Legibilidad) ───────
   const riskBarChartConfig = computed(() => {
     const risks = dashboardData.overstock.reduce((acc, curr) => {
       const key = curr.product_id
       if (!acc[key]) acc[key] = { name: curr.name, lab: curr.laboratory_name ?? 'N/A', id: curr.product_id, cost: 0 }
-      acc[key].cost += parseFloat(curr.costo_excedente)
+      acc[key].cost += parseFloat(curr.costo_excedente || 0)
       return acc
     }, {})
 
@@ -100,15 +142,39 @@ export function useExpiryCharts(dashboardData, metricType) {
     return {
       series: [{ name: 'Costo en Riesgo', data: top10.map(i => i.cost) }],
       options: {
-        chart: { type: 'bar', toolbar: { show: false }, offsetX: -10 },
-        plotOptions: { bar: { horizontal: true, borderRadius: 4, distributed: true, barHeight: '70%' } },
-        colors: ['#ea5455', '#ff9f43', '#ffc107', '#28c76f', '#00cfe8', '#7367f0', '#4b4b4b', '#82868b', '#212121', '#a8aaae'],
-        xaxis: { categories: top10.map(i => `#${i.id} | ${i.name} [${i.lab}]`), labels: { formatter: v => fmtMoney(v), style: axisLabelStyle } },
-        yaxis: { labels: { style: { fontSize: '10px', fontWeight: 600, colors: '#a3a3a3' }, maxWidth: 350 } },
-        grid: { padding: { left: 20 }, borderColor: 'rgba(144, 164, 174, 0.1)' },
-        dataLabels: { enabled: true, formatter: v => fmtMoney(v), style: { fontSize: '10px', colors: ['#fff'] } },
+        chart: { type: 'bar', toolbar: { show: false }, offsetX: -5 },
+        plotOptions: {
+          bar: {
+            horizontal: true,
+            borderRadius: 4,
+            distributed: true,
+            barHeight: '75%',
+            dataLabels: { position: 'top' },
+          },
+        },
+        colors: ['#ea5455', '#ff9f43', '#ffc107', '#28c76f', '#00cfe8', '#7367f0', '#82868b', '#4b4b4b', '#a8aaae', '#d0d2d6'],
+        xaxis: {
+          categories: top10.map(i => `#${i.id} ${i.name.length > 28 ? i.name.substring(0, 26) + '...' : i.name} [${i.lab}]`),
+          labels: { formatter: v => fmtMoney(v), style: axisLabelStyle },
+        },
+        yaxis: {
+          labels: {
+            style: { fontSize: '11px', fontWeight: 600, colors: '#a3a3a3' },
+            maxWidth: 300,
+          },
+        },
+        grid: { padding: { left: 10, right: 30 }, borderColor: 'rgba(144, 164, 174, 0.1)' },
+        dataLabels: {
+          enabled: true,
+          formatter: v => fmtMoney(v),
+          offsetX: 10,
+          style: { fontSize: '10px', fontWeight: 700, colors: ['#a3a3a3'] },
+        },
         legend: { show: false },
-        tooltip: { theme: 'dark' },
+        tooltip: {
+          theme: 'dark',
+          y: { formatter: v => fmtMoney(v) },
+        },
         noData: noDataConfig('Sin productos en riesgo'),
       },
     }

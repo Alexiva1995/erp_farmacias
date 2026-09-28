@@ -14,6 +14,10 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
 {
     public function getExpiryHorizon(array $filters): array
     {
+        $now = now();
+        $nowStr = $now->toDateTimeString();
+        $sixMonthsStr = $now->copy()->addMonths(6)->toDateTimeString();
+
         $query = ProductLot::query()
             ->join('products', 'product_lots.product_id', '=', 'products.id')
             ->join('categories', 'products.category_id', '=', 'categories.id')
@@ -24,8 +28,8 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
                 DB::raw('SUM(product_lots.quantity) as total_units')
             )
             ->where('product_lots.quantity', '>', 0)
-            ->where('product_lots.expiration_date', '>=', now())
-            ->where('product_lots.expiration_date', '<=', now()->addMonths(6))
+            ->where('product_lots.expiration_date', '>=', $nowStr)
+            ->where('product_lots.expiration_date', '<=', $sixMonthsStr)
             ->groupBy('month', 'category_name')
             ->orderBy('month');
 
@@ -67,9 +71,12 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
         return $query->get()->toArray();
     }
 
-
     public function getOverstockWarning(array $filters): array
     {
+        $now = now();
+        $nowStr = $now->toDateTimeString();
+        $twelveMonthsStr = $now->copy()->addMonths(12)->toDateTimeString();
+
         $query = ProductLot::query()
             ->join('products', 'product_lots.product_id', '=', 'products.id')
             ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
@@ -83,17 +90,17 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
                 'product_lots.expiration_date',
                 'products.sales_average as venta_mensual_promedio',
                 'products.unit_cost',
-                DB::raw('TIMESTAMPDIFF(MONTH, NOW(), product_lots.expiration_date) as meses_restantes'),
+                DB::raw("TIMESTAMPDIFF(MONTH, '{$nowStr}', product_lots.expiration_date) as meses_restantes"),
                 // Unidades en riesgo = stock actual − proyección de ventas hasta el vencimiento
                 // Si es positivo → hay sobrestock en riesgo de caducar
-                DB::raw('GREATEST(0, product_lots.quantity - GREATEST(0, TIMESTAMPDIFF(MONTH, NOW(), product_lots.expiration_date)) * products.sales_average) as unidades_en_riesgo')
+                DB::raw("GREATEST(0, product_lots.quantity - GREATEST(0, TIMESTAMPDIFF(MONTH, '{$nowStr}', product_lots.expiration_date)) * products.sales_average) as unidades_en_riesgo")
             )
             ->where('product_lots.quantity', '>', 0)
-            ->where('product_lots.expiration_date', '>=', now())
+            ->where('product_lots.expiration_date', '>=', $nowStr)
             // Solo lotes con vencimiento en menos de 12 meses
-            ->where('product_lots.expiration_date', '<=', now()->addMonths(12))
-            // Límite defensivo: evita traer miles de filas en inventarios grandes
-            ->limit(200);
+            ->where('product_lots.expiration_date', '<=', $twelveMonthsStr)
+            // Límite ampliado a 500 registros para mayor fidelidad en farmacias de alto volumen
+            ->limit(500);
 
         $this->applyFilters($query, $filters);
 
@@ -102,7 +109,7 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
 
     public function getCurrentExpiredStock(array $filters): array
     {
-        $endOfMonth = now()->endOfMonth();
+        $endOfMonthStr = now()->endOfMonth()->toDateTimeString();
 
         $query = ProductLot::query()
             ->join('products', 'product_lots.product_id', '=', 'products.id')
@@ -111,7 +118,7 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
                 DB::raw('COALESCE(SUM(product_lots.quantity * products.unit_cost), 0) as total_value')
             )
             ->where('product_lots.quantity', '>', 0)
-            ->where('product_lots.expiration_date', '<=', $endOfMonth);
+            ->where('product_lots.expiration_date', '<=', $endOfMonthStr);
 
         $this->applyFilters($query, $filters);
 

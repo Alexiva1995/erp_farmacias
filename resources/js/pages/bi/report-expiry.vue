@@ -421,23 +421,25 @@ const handleExport = () => {
           :items="dashboardData.overstock"
           :loading="loading"
           :items-per-page="10"
+          @notify="e => showMessage(e.message, e.color)"
         />
       </VCol>
 
       <!-- ─── Historial de Mermas ───────────────────────────────────── -->
       <VCol cols="12" md="4">
-        <VCard class="rounded-lg border shadow-sm h-full">
+        <VCard class="rounded-lg border shadow-sm h-100 d-flex flex-column">
           <VCardItem>
             <VCardTitle class="d-flex align-center">
               <VIcon icon="tabler-history" class="me-2 text-error" />
               Historial de Mermas (6m)
             </VCardTitle>
           </VCardItem>
-          <VCardText class="position-relative" style="min-height: 530px;">
+          <VDivider class="opacity-10" />
+          <VCardText class="position-relative flex-grow-1 d-flex flex-column justify-center pa-2" style="min-height: 480px;">
             <ExpiryChartOverlay :loading="loading" />
             <VueApexCharts
               :key="`history-${metricType}`"
-              height="500"
+              height="450"
               :options="lossHistoryChartConfig.options"
               :series="lossHistoryChartConfig.series"
             />

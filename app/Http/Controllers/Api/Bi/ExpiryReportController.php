@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api\Bi;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Bi\ExpiryReportRequest;
+use App\Http\Resources\Bi\ExpiryReportResource;
 use App\Services\Bi\ExpiryReportService;
-use Illuminate\Http\JsonResponse;
 
 class ExpiryReportController extends Controller
 {
@@ -16,10 +16,10 @@ class ExpiryReportController extends Controller
         $this->service = $service;
     }
 
-    public function index(ExpiryReportRequest $request): JsonResponse
+    public function index(ExpiryReportRequest $request): ExpiryReportResource
     {
         $data = $this->service->getDashboardData($request->validated());
 
-        return response()->json($data);
+        return new ExpiryReportResource($data);
     }
 }

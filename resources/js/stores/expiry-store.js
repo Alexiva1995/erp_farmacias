@@ -9,7 +9,6 @@ const defaultFilters = () => ({
   laboratory_id: null,
   category_id: null,
   group_id: null,
-  location_id: null,
 })
 
 const defaultDashboard = () => ({
@@ -40,9 +39,10 @@ export const useExpiryStore = defineStore('ExpiryStore', () => {
 
     try {
       const response = await axios.get('/bi/expiry', { params: filters })
+      const payload = response.data?.data && !response.data.horizon ? response.data.data : response.data
 
       // Asignar propiedades directamente para mantener reactividad del objeto reactive
-      Object.assign(dashboardData, defaultDashboard(), response.data)
+      Object.assign(dashboardData, defaultDashboard(), payload)
     } catch (err) {
       console.error('Error fetching expiry dashboard data:', err)
       // Exponer el error para que la vista pueda mostrarlo al usuario

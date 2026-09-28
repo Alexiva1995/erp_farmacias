@@ -32,49 +32,79 @@ const horizonTotals = computed(() => {
 
 const overstockTotals = computed(() => {
   return props.dashboardData.overstock.reduce(
-    (acc, b) => ({
-      units: acc.units + parseFloat(b.excedente_proyectado ?? 0),
-      cost: acc.cost + parseFloat(b.costo_excedente ?? 0),
-    }),
-    { units: 0, cost: 0 }
+    (acc, b) => {
+      const stock = parseFloat(b.stock_actual ?? 0)
+      const sales = parseFloat(b.venta_mensual_promedio ?? 0)
+      const dio = sales > 0 ? (stock / (sales / 30)) : 0
+
+      return {
+        units: acc.units + parseFloat(b.excedente_proyectado ?? 0),
+        cost: acc.cost + parseFloat(b.costo_excedente ?? 0),
+        totalDio: acc.totalDio + dio,
+        countDio: sales > 0 ? acc.countDio + 1 : acc.countDio,
+      }
+    },
+    { units: 0, cost: 0, totalDio: 0, countDio: 0 }
   )
 })
 
-/** Definición declarativa de cada KPI card */
-const kpiCards = computed(() => [
-  {
-    title: 'Vencido (Mes)',
-    mainValue: `${formatNumber(props.dashboardData.kpis.total_units_expired_month)} U.`,
-    subValue: formatMoney(props.dashboardData.kpis.total_cost_merma_month),
-    icon: 'tabler-package-off',
-    color: 'error',
-    desc: 'Pérdida total registrada',
-  },
-  {
-    title: 'Stock Riesgo (<6m)',
-    mainValue: `${formatNumber(horizonTotals.value.units)} U.`,
-    subValue: `= ${formatMoney(horizonTotals.value.value)}`,
-    icon: 'tabler-alert-triangle',
-    color: 'warning',
-    desc: 'Vencimiento próximo',
-  },
-  {
-    title: 'Excedente Unidades',
-    mainValue: `${formatNumber(overstockTotals.value.units)} U.`,
-    subValue: `= ${formatMoney(overstockTotals.value.cost)}`,
-    icon: 'tabler-chart-bar-off',
-    color: 'info',
-    desc: 'Sobre existencia proyectada',
-  },
-  {
-    title: 'Costo Excedente',
-    mainValue: formatMoney(overstockTotals.value.cost),
-    subValue: 'Impacto total estimado',
-    icon: 'tabler-cash-off',
-    color: 'secondary',
-    desc: 'Capital estancado',
-  },
-])
+const avgDio = computed(() => {
+  if (!overstockTotals.value.countDio) return 0
+  return Math.round(overstockTotals.value.totalDio / overstockTotals.value.countDio)
+})
+
+/** Definición declarativa de cada KPI card con micro-indicadores */
+const kpiCards = computed(() => {
+  const trend = props.dashboardData.kpis?.cost_trend_pct ?? 0
+  const isTrendUp = trend > 0
+
+  return [
+    {
+      title: 'Vencido en Mes Actual',
+      mainValue: `${formatNumber(props.dashboardData.kpis?.total_units_expired_month ?? 0)} U.`,
+      subValue: formatMoney(props.dashboardData.kpis?.total_cost_merma_month ?? 0),
+      trendText: trend !== 0 ? `${isTrendUp ? '↑ +' : '↓ '}${trend}% vs mes ant.` : '— Estable vs mes ant.',
+      trendColor: isTrendUp ? 'error' : 'success',
+      trendIcon: isTrendUp ? 'tabler-trending-up' : 'tabler-trending-down',
+      icon: 'tabler-package-off',
+      color: 'error',
+      desc: 'Pérdida registrada acumulada',
+    },
+    {
+      title: 'Stock en Riesgo (<6m)',
+      mainValue: `${formatNumber(horizonTotals.value.units)} U.`,
+      subValue: `= ${formatMoney(horizonTotals.value.value)}`,
+      trendText: `Cobertura prom: ${avgDio.value} días`,
+      trendColor: avgDio.value > 60 ? 'warning' : 'info',
+      trendIcon: 'tabler-calendar-time',
+      icon: 'tabler-alert-triangle',
+      color: 'warning',
+      desc: 'Próximos 6 meses de caducidad',
+    },
+    {
+      title: 'Excedente Proyectado',
+      mainValue: `${formatNumber(overstockTotals.value.units)} U.`,
+      subValue: `= ${formatMoney(overstockTotals.value.cost)}`,
+      trendText: `${props.dashboardData.overstock.filter(i => i.has_overstock_risk).length} SKUs con sobrestock`,
+      trendColor: 'warning',
+      trendIcon: 'tabler-alert-circle',
+      icon: 'tabler-chart-bar-off',
+      color: 'info',
+      desc: 'Unidades que superan la venta',
+    },
+    {
+      title: 'Costo FEFO en Riesgo',
+      mainValue: formatMoney(overstockTotals.value.cost),
+      subValue: 'Pérdida directa proyectada',
+      trendText: 'Requiere acción comercial inmediata',
+      trendColor: 'error',
+      trendIcon: 'tabler-flame',
+      icon: 'tabler-cash-off',
+      color: 'secondary',
+      desc: 'Capital estancado en riesgo',
+    },
+  ]
+})
 </script>
 
 <template>
@@ -89,7 +119,7 @@ const kpiCards = computed(() => [
       <VCard class="rounded-lg border shadow-sm kpi-card h-100">
         <VCardText class="pa-4 d-flex align-center">
 
-          <!-- Skeleton loader mientras carga — VSkeletonLoader es el componente correcto en Vuetify 3 -->
+          <!-- Skeleton loader mientras carga -->
           <template v-if="loading">
             <VSkeletonLoader
               type="avatar"
@@ -116,19 +146,23 @@ const kpiCards = computed(() => [
               <VIcon :icon="kpi.icon" size="24" />
             </VAvatar>
 
-            <div class="overflow-hidden">
+            <div class="overflow-hidden flex-grow-1">
               <p class="text-caption text-disabled mb-0 font-weight-bold kpi-title">
                 {{ kpi.title }}
               </p>
               <h3 class="text-h5 font-weight-black mb-0 text-truncate">
                 {{ kpi.mainValue }}
               </h3>
-              <p class="text-xs font-weight-bold text-medium-emphasis mb-0 mt-0">
+              <p class="text-xs font-weight-bold text-medium-emphasis mb-1 mt-0">
                 {{ kpi.subValue }}
               </p>
-              <p class="text-super-xs text-disabled mb-0">
-                {{ kpi.desc }}
-              </p>
+              <!-- Microindicador de tendencia / DIO -->
+              <div class="d-flex align-center gap-1">
+                <VIcon :icon="kpi.trendIcon" size="14" :color="kpi.trendColor" />
+                <span :class="`text-super-xs font-weight-bold text-${kpi.trendColor}`">
+                  {{ kpi.trendText }}
+                </span>
+              </div>
             </div>
           </template>
 
