@@ -19,14 +19,13 @@ const selectedRow = ref(null)
 const isDetailDialogOpen = ref(false)
 
 const headers = [
-  { title: 'CATEGORÍA', key: 'category', sortable: true, width: '120px' },
-  { title: 'PRODUCTO A (FALTANTE)', key: 'product_a', sortable: true, minWidth: '160px' },
+  { title: 'PRODUCTO FALTANTE', key: 'product_a', sortable: true, minWidth: '180px' },
   { title: 'CANT.', key: 'discrepancy_a', align: 'center', sortable: true, width: '70px' },
   { title: '', key: 'action', align: 'center', sortable: false, width: '36px' },
-  { title: 'PRODUCTO B (SOBRANTE)', key: 'product_b', sortable: true, minWidth: '160px' },
+  { title: 'PRODUCTO SOBRANTE', key: 'product_b', sortable: true, minWidth: '180px' },
   { title: 'CANT.', key: 'discrepancy_b', align: 'center', sortable: true, width: '70px' },
-  { title: 'POSIBLE VENDEDOR / FACTURA', key: 'suspect', align: 'center', sortable: false, minWidth: '190px' },
-  { title: 'CONFIANZA / MOTIVO', key: 'confidence', align: 'center', sortable: true, width: '160px' },
+  { title: 'POSIBLE VENDEDOR / FACTURA', key: 'suspect', align: 'center', sortable: false, minWidth: '200px' },
+  { title: 'CONFIANZA', key: 'confidence', align: 'center', sortable: true, width: '110px' },
   { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false, width: '70px' },
 ]
 
@@ -89,20 +88,13 @@ const handleOpenDetail = item => {
           items-per-page="10"
           density="comfortable"
         >
-          <!-- Categoría -->
-          <template #item.category="{ item }">
-            <span class="text-primary font-weight-bold text-caption text-truncate d-inline-block" style="max-width: 120px;">
-              {{ item.category }}
-            </span>
-          </template>
-
           <!-- Producto A -->
           <template #item.product_a="{ item }">
             <div>
-              <span class="text-error font-weight-medium text-body-2 text-truncate d-inline-block" style="max-width: 200px;" :title="item.product_a">
+              <span class="text-error font-weight-medium text-body-2 text-truncate d-inline-block" style="max-width: 220px;" :title="item.product_a">
                 {{ item.product_a }}
               </span>
-              <span v-if="item.active_ingredient_a" class="d-block text-caption text-medium-emphasis text-truncate" style="max-width: 200px;" :title="item.active_ingredient_a">
+              <span v-if="item.active_ingredient_a" class="d-block text-caption text-medium-emphasis text-truncate" style="max-width: 220px;" :title="item.active_ingredient_a">
                 <VIcon icon="tabler-flask" size="12" class="me-1" />{{ item.active_ingredient_a }}
               </span>
             </div>
@@ -123,10 +115,10 @@ const handleOpenDetail = item => {
           <!-- Producto B -->
           <template #item.product_b="{ item }">
             <div>
-              <span class="text-success font-weight-medium text-body-2 text-truncate d-inline-block" style="max-width: 200px;" :title="item.product_b">
+              <span class="text-success font-weight-medium text-body-2 text-truncate d-inline-block" style="max-width: 220px;" :title="item.product_b">
                 {{ item.product_b }}
               </span>
-              <span v-if="item.active_ingredient_b" class="d-block text-caption text-medium-emphasis text-truncate" style="max-width: 200px;" :title="item.active_ingredient_b">
+              <span v-if="item.active_ingredient_b" class="d-block text-caption text-medium-emphasis text-truncate" style="max-width: 220px;" :title="item.active_ingredient_b">
                 <VIcon icon="tabler-flask" size="12" class="me-1" />{{ item.active_ingredient_b }}
               </span>
             </div>
@@ -144,7 +136,7 @@ const handleOpenDetail = item => {
             <div v-if="item.top_suspect" class="d-flex flex-column align-center py-1">
               <div class="d-flex align-center gap-1">
                 <VIcon icon="tabler-user-exclamation" size="15" color="warning" />
-                <span class="text-body-2 font-weight-bold text-high-emphasis text-truncate" style="max-width: 130px;">
+                <span class="text-body-2 font-weight-bold text-high-emphasis text-truncate" style="max-width: 140px;">
                   {{ item.top_suspect.name }}
                 </span>
               </div>
@@ -162,21 +154,19 @@ const handleOpenDetail = item => {
             </div>
           </template>
 
-          <!-- Nivel de Confianza -->
+          <!-- Nivel de Confianza Compacto -->
           <template #item.confidence="{ item }">
-            <div>
-              <VChip
-                size="small"
-                :color="item.confidence?.includes('Alta') ? 'primary' : 'secondary'"
-                label
-                class="font-weight-black mb-1"
-              >
-                {{ item.confidence }}
-              </VChip>
-              <span v-if="item.match_reason" class="d-block text-caption text-disabled text-truncate" style="max-width: 160px;" :title="item.match_reason">
+            <VChip
+              size="small"
+              :color="item.confidence?.includes('Alta') ? 'primary' : 'secondary'"
+              variant="tonal"
+              class="font-weight-black cursor-pointer"
+            >
+              {{ item.confidence?.includes('Muy Alta') ? 'Muy Alta' : (item.confidence?.includes('Alta') ? 'Alta' : 'Media') }}
+              <VTooltip v-if="item.match_reason" activator="parent" location="top">
                 {{ item.match_reason }}
-              </span>
-            </div>
+              </VTooltip>
+            </VChip>
           </template>
 
           <!-- Acciones de Drill-Down -->
