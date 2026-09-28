@@ -118,22 +118,32 @@ const {
   fmtNum: formatNumber,
 } = useExpiryCharts(dashboardData.value, metricType)
 
-// ─── Exportación CSV ────────────────────────────────────────────────────────────
+// ─── Exportación CSV y PDF ──────────────────────────────────────────────────
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import { applyPremiumHeader, applyFooter } from '@/utils/pdfBaseStyles'
+
 const handleExport = () => {
+  handleExportCSV()
+}
+
+const handleExportCSV = () => {
   try {
-    const data = overstockTableRef.value?.aggregatedOverstock ?? []
+    const data = overstockTableRef.value?.filteredOverstock ?? overstockTableRef.value?.aggregatedOverstock ?? []
 
     if (!data.length) {
       showMessage('No hay datos disponibles para exportar', 'warning')
       return
     }
 
-    const csvHeaders = ['ID PRODUCTO', 'PRODUCTO', 'LABORATORIO', 'STOCK ACTUAL', 'VENTA MENSUAL PROM', 'EXCEDENTE PROYECTADO (U)', 'COSTO RIESGO EXCEDENTE']
+    const csvHeaders = ['ID PRODUCTO', 'PRODUCTO', 'LABORATORIO', 'ESTADO', 'DIO (DIAS)', 'STOCK ACTUAL', 'VENTA MENSUAL PROM', 'EXCEDENTE PROYECTADO (U)', 'COSTO RIESGO EXCEDENTE']
 
     const rows = data.map(item => [
       item.product_id,
       item.name,
       item.laboratory_name ?? 'N/A',
+      item.status,
+      item.dio,
       item.stock_actual,
       item.venta_mensual_promedio,
       item.excedente_proyectado,
@@ -161,8 +171,66 @@ const handleExport = () => {
 
     showMessage('Reporte exportado exitosamente en formato CSV', 'success')
   } catch (err) {
-    console.error('Error al exportar reporte:', err)
-    showMessage('Ocurrió un error al exportar el reporte', 'error')
+    console.error('Error al exportar reporte CSV:', err)
+    showMessage('Ocurrió un error al exportar el reporte en CSV', 'error')
+  }
+}
+
+const handleExportPDF = () => {
+  try {
+    const data = overstockTableRef.value?.filteredOverstock ?? overstockTableRef.value?.aggregatedOverstock ?? []
+
+    if (!data.length) {
+      showMessage('No hay datos disponibles para exportar a PDF', 'warning')
+      return
+    }
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const startY = applyPremiumHeader(doc, 'Reporte de Vencimientos y Sobrestock en Riesgo', 'Inteligencia de Negocios (BI)')
+
+    const tableHeaders = [['ID', 'PRODUCTO', 'LABORATORIO', 'ESTADO', 'DIO', 'STOCK', 'VTA. PROM', 'EXCEDENTE (U)', 'COSTO RIESGO']]
+
+    const tableRows = data.map(item => [
+      item.product_id,
+      item.name,
+      item.laboratory_name ?? 'N/A',
+      item.status.toUpperCase(),
+      item.dio >= 999 ? '>365d' : `${item.dio}d`,
+      formatNumber(item.stock_actual),
+      formatNumber(item.venta_mensual_promedio),
+      formatNumber(item.excedente_proyectado),
+      formatMoney(item.costo_excedente),
+    ])
+
+    autoTable(doc, {
+      head: tableHeaders,
+      body: tableRows,
+      startY: startY,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2, font: 'helvetica' },
+      headStyles: { fillColor: [226, 0, 116], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 249, 250] },
+      columnStyles: {
+        0: { cellWidth: 15, halign: 'center' },
+        1: { cellWidth: 70 },
+        2: { cellWidth: 40 },
+        3: { cellWidth: 25, halign: 'center' },
+        4: { cellWidth: 18, halign: 'right' },
+        5: { cellWidth: 20, halign: 'right' },
+        6: { cellWidth: 22, halign: 'right' },
+        7: { cellWidth: 25, halign: 'right' },
+        8: { cellWidth: 32, halign: 'right', fontStyle: 'bold', textColor: [255, 76, 81] },
+      },
+      didDrawPage: () => {
+        applyFooter(doc)
+      },
+    })
+
+    doc.save(`reporte_vencimientos_${new Date().toISOString().slice(0, 10)}.pdf`)
+    showMessage('Reporte PDF generado y descargado correctamente', 'success')
+  } catch (err) {
+    console.error('Error al generar reporte PDF:', err)
+    showMessage('Ocurrió un error al generar el PDF', 'error')
   }
 }
 </script>
@@ -270,20 +338,36 @@ const handleExport = () => {
               <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
             </VBtn>
 
-            <!-- Exportar CSV -->
-            <VBtn
-              icon
-              variant="tonal"
-              color="success"
-              size="38"
-              class="rounded-circle shadow-sm"
-              :disabled="loading"
-              aria-label="Exportar reporte CSV"
-              @click="handleExport"
-            >
-              <VIcon icon="tabler-download" size="20" />
-              <VTooltip activator="parent" location="top">Exportar CSV</VTooltip>
-            </VBtn>
+            <!-- Exportar Reporte (Menú CSV / PDF) -->
+            <VMenu location="bottom end">
+              <template #activator="{ props: menuProps }">
+                <VBtn
+                  icon
+                  variant="tonal"
+                  color="success"
+                  size="38"
+                  class="rounded-circle shadow-sm"
+                  :disabled="loading"
+                  v-bind="menuProps"
+                  aria-label="Exportar reporte"
+                >
+                  <VIcon icon="tabler-download" size="20" />
+                  <VTooltip activator="parent" location="top">Exportar Reporte</VTooltip>
+                </VBtn>
+              </template>
+              <VList density="compact" class="py-1">
+                <VListItem
+                  prepend-icon="tabler-file-spreadsheet"
+                  title="Exportar a CSV / Excel"
+                  @click="handleExportCSV"
+                />
+                <VListItem
+                  prepend-icon="tabler-file-type-pdf"
+                  title="Exportar a PDF (Imprimible)"
+                  @click="handleExportPDF"
+                />
+              </VList>
+            </VMenu>
           </div>
         </VRow>
 

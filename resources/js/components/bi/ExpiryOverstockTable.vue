@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import Swal from 'sweetalert2'
 
 const props = defineProps({
   /** Datos crudos de sobrestock desde el store */
@@ -25,6 +26,9 @@ const formatNumber = val => Number(val || 0).toLocaleString('en-US')
 
 // Estado para filas expandidas (Drill-down por lote)
 const expandedRows = ref([])
+
+// Filtro rápido por segmento de riesgo
+const selectedSegment = ref('all') // 'all' | 'critical' | 'alert' | 'preventive' | 'overstock'
 
 // Estados de modales de acción operativa
 const actionModal = ref({
@@ -121,13 +125,31 @@ const aggregatedOverstock = computed(() => {
   return result.sort((a, b) => b.costo_excedente - a.costo_excedente)
 })
 
+/** Filtrado reactivo por segmento rápido de riesgo */
+const filteredOverstock = computed(() => {
+  const list = aggregatedOverstock.value
+  if (selectedSegment.value === 'critical') {
+    return list.filter(item => item.status === 'critico' || item.status === 'vencido' || item.lots.some(l => l.days_to_expiry <= 30))
+  }
+  if (selectedSegment.value === 'alert') {
+    return list.filter(item => item.status === 'moderado' || item.lots.some(l => l.days_to_expiry > 30 && l.days_to_expiry <= 90))
+  }
+  if (selectedSegment.value === 'preventive') {
+    return list.filter(item => item.lots.some(l => l.days_to_expiry > 90 && l.days_to_expiry <= 180))
+  }
+  if (selectedSegment.value === 'overstock') {
+    return list.filter(item => item.excedente_proyectado > 0 || item.has_overstock_risk)
+  }
+  return list
+})
+
 const headers = [
   { title: '', key: 'data-table-expand', width: 40 },
   { title: 'PRODUCTO / SKU', key: 'name', align: 'start', sortable: true },
   { title: 'ESTADO', key: 'status', align: 'center', sortable: true },
   { title: 'COBERTURA (DIO)', key: 'dio', align: 'end', sortable: true },
   { title: 'STOCK', key: 'stock_actual', align: 'end', sortable: true },
-  { title: 'VTA. PROM', key: 'venta_mensual_promedio', align: 'end', sortable: true },
+  { title: 'VTA. PROM (POND.)', key: 'venta_mensual_promedio', align: 'end', sortable: true },
   { title: 'EXCEDENTE (U)', key: 'excedente_proyectado', align: 'end', sortable: true },
   { title: 'COSTO RIESGO', key: 'costo_excedente', align: 'end', sortable: true },
   { title: 'ACCIONES', key: 'actions', align: 'center', sortable: false },
@@ -140,7 +162,7 @@ const statusMap = {
   estable:  { label: 'Estable',  color: 'success',  icon: 'tabler-circle-check' },
 }
 
-// ─── Gestión de Acciones Rápidas ───────────────────────────────────────────
+// ─── Gestión de Acciones Rápidas con SweetAlert2 ───────────────────────────
 const openAction = (type, product) => {
   actionModal.value = {
     show: true,
@@ -157,45 +179,127 @@ const openAction = (type, product) => {
   }
 }
 
-const confirmAction = () => {
+const confirmAction = async () => {
+  const prodName = actionModal.value.product?.name
+  const actionType = actionModal.value.type
+
+  let confirmTitle = '¿Confirmar acción?'
+  let confirmText = `Se aplicará la acción comercial para ${prodName}`
+
+  if (actionType === 'offer') {
+    confirmTitle = '¿Activar Oferta de Liquidación?'
+    confirmText = `Se configurará un ${actionModal.value.form.discount_pct}% de descuento en TPV para acelerar la rotación.`
+  } else if (actionType === 'sales_goal') {
+    confirmTitle = '¿Asignar Meta de Ventas?'
+    confirmText = `Se asignará un objetivo de ${actionModal.value.form.goal_units} u. con +${actionModal.value.form.commission_bonus}% de comisión extra.`
+  } else if (actionType === 'supplier_return') {
+    confirmTitle = '¿Generar Solicitud de Devolución?'
+    confirmText = `Se registrará la petición formal de canje ante el laboratorio proveedor.`
+  }
+
+  const result = await Swal.fire({
+    title: confirmTitle,
+    text: confirmText,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#E20074',
+    cancelButtonColor: '#7A0099',
+    confirmButtonText: 'Sí, aplicar',
+    cancelButtonText: 'Cancelar',
+    customClass: {
+      confirmButton: 'v-btn v-btn--density-default v-theme--light bg-primary text-white me-2',
+      cancelButton: 'v-btn v-btn--density-default v-theme--light bg-secondary text-white',
+    },
+  })
+
+  if (!result.isConfirmed) return
+
   actionModal.value.processing = true
   setTimeout(() => {
     actionModal.value.processing = false
-    const prodName = actionModal.value.product?.name
     let msg = ''
 
-    if (actionModal.value.type === 'offer') {
+    if (actionType === 'offer') {
       msg = `Oferta de liquidación del ${actionModal.value.form.discount_pct}% creada para ${prodName}`
-    } else if (actionModal.value.type === 'sales_goal') {
+    } else if (actionType === 'sales_goal') {
       msg = `Meta de ventas de ${actionModal.value.form.goal_units} u. asignada para ${prodName}`
-    } else if (actionModal.value.type === 'supplier_return') {
+    } else if (actionType === 'supplier_return') {
       msg = `Solicitud de canje/devolución enviada al laboratorio para ${prodName}`
     }
 
     actionModal.value.show = false
     emit('notify', { message: msg, color: 'success' })
-  }, 600)
+  }, 500)
 }
 
-// Emitir el computed para que el padre pueda usarlo (exportar CSV)
-defineExpose({ aggregatedOverstock })
+// Emitir el computed para que el padre pueda usarlo (exportar CSV / PDF)
+defineExpose({ aggregatedOverstock, filteredOverstock })
 </script>
 
 <template>
   <VCard class="rounded-lg border shadow-sm h-100 d-flex flex-column">
-    <VCardItem>
-      <VCardTitle class="d-flex align-center justify-space-between">
+    <VCardItem class="pb-2">
+      <VCardTitle class="d-flex align-center justify-space-between flex-wrap gap-2">
         <div class="d-flex align-center">
           <VIcon
             icon="tabler-alert-square"
             class="me-2 text-warning"
           />
-          Alerta de Sobrestock Proyectado
+          <span class="text-h6 font-weight-bold">Alerta de Sobrestock Proyectado</span>
         </div>
         <span class="text-caption text-disabled">
-          {{ aggregatedOverstock.length }} productos analizados
+          {{ filteredOverstock.length }} de {{ aggregatedOverstock.length }} productos
         </span>
       </VCardTitle>
+
+      <!-- Segmentos rápidos de riesgo -->
+      <div class="d-flex align-center gap-1 flex-wrap mt-2">
+        <VChip
+          size="small"
+          :variant="selectedSegment === 'all' ? 'flat' : 'outlined'"
+          :color="selectedSegment === 'all' ? 'primary' : 'secondary'"
+          class="cursor-pointer"
+          @click="selectedSegment = 'all'"
+        >
+          Todos ({{ aggregatedOverstock.length }})
+        </VChip>
+        <VChip
+          size="small"
+          :variant="selectedSegment === 'critical' ? 'flat' : 'outlined'"
+          color="error"
+          class="cursor-pointer"
+          @click="selectedSegment = 'critical'"
+        >
+          Crítico &lt;30d
+        </VChip>
+        <VChip
+          size="small"
+          :variant="selectedSegment === 'alert' ? 'flat' : 'outlined'"
+          color="warning"
+          class="cursor-pointer"
+          @click="selectedSegment = 'alert'"
+        >
+          Alerta 30-90d
+        </VChip>
+        <VChip
+          size="small"
+          :variant="selectedSegment === 'preventive' ? 'flat' : 'outlined'"
+          color="info"
+          class="cursor-pointer"
+          @click="selectedSegment = 'preventive'"
+        >
+          Preventivo 90-180d
+        </VChip>
+        <VChip
+          size="small"
+          :variant="selectedSegment === 'overstock' ? 'flat' : 'outlined'"
+          color="secondary"
+          class="cursor-pointer"
+          @click="selectedSegment = 'overstock'"
+        >
+          Solo Sobrestock
+        </VChip>
+      </div>
     </VCardItem>
 
     <VDivider class="opacity-10" />
@@ -204,13 +308,13 @@ defineExpose({ aggregatedOverstock })
       <VDataTable
         v-model:expanded="expandedRows"
         :headers="headers"
-        :items="aggregatedOverstock"
+        :items="filteredOverstock"
         :loading="loading"
         :items-per-page="itemsPerPage"
         item-value="product_id"
         show-expand
         class="overstock-table"
-        no-data-text="✅ No se detectaron riesgos de sobrestock"
+        no-data-text="✅ No se detectaron riesgos para este segmento"
       >
         <!-- Nombre del producto + badge "Sobrestock en Riesgo" -->
         <template #item.name="{ item }">
@@ -443,7 +547,9 @@ defineExpose({ aggregatedOverstock })
               type="number"
               min="5"
               max="90"
-              density="compact"
+              variant="outlined"
+              density="comfortable"
+              hide-details="auto"
               class="mb-3"
               prepend-inner-icon="tabler-percentage"
             />
@@ -458,7 +564,9 @@ defineExpose({ aggregatedOverstock })
               v-model.number="actionModal.form.goal_units"
               label="Unidades Objetivo"
               type="number"
-              density="compact"
+              variant="outlined"
+              density="comfortable"
+              hide-details="auto"
               class="mb-3"
               prepend-inner-icon="tabler-package"
             />
@@ -468,7 +576,9 @@ defineExpose({ aggregatedOverstock })
               type="number"
               min="1"
               max="30"
-              density="compact"
+              variant="outlined"
+              density="comfortable"
+              hide-details="auto"
               class="mb-3"
               prepend-inner-icon="tabler-coin"
             />
@@ -483,13 +593,17 @@ defineExpose({ aggregatedOverstock })
               v-model="actionModal.form.return_reason"
               :items="['Próximo a caducar (<90 días)', 'Sobrestock por baja rotación', 'Lote con política de canje acordada']"
               label="Motivo de Devolución"
-              density="compact"
+              variant="outlined"
+              density="comfortable"
+              hide-details="auto"
               class="mb-3"
             />
             <VTextField
               v-model="actionModal.form.notes"
               label="Observaciones adicionales"
-              density="compact"
+              variant="outlined"
+              density="comfortable"
+              hide-details="auto"
               placeholder="Ej. Notificado a representante de ventas"
             />
           </template>

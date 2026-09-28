@@ -88,12 +88,13 @@ class ExpiryReportRepository implements ExpiryReportRepositoryInterface
                 'product_lots.lot_number',
                 'product_lots.quantity as stock_actual',
                 'product_lots.expiration_date',
-                'products.sales_average as venta_mensual_promedio',
+                // Método Ponderado Plus: prioridad a sales_average_weighted (móvil ponderado 50/30/20) con fallback a sales_average
+                DB::raw('COALESCE(NULLIF(products.sales_average_weighted, 0), products.sales_average, 0) as venta_mensual_promedio'),
                 'products.unit_cost',
                 DB::raw("TIMESTAMPDIFF(MONTH, '{$nowStr}', product_lots.expiration_date) as meses_restantes"),
-                // Unidades en riesgo = stock actual − proyección de ventas hasta el vencimiento
+                // Unidades en riesgo = stock actual − proyección de ventas hasta el vencimiento (usando Promedio Ponderado Plus)
                 // Si es positivo → hay sobrestock en riesgo de caducar
-                DB::raw("GREATEST(0, product_lots.quantity - GREATEST(0, TIMESTAMPDIFF(MONTH, '{$nowStr}', product_lots.expiration_date)) * products.sales_average) as unidades_en_riesgo")
+                DB::raw("GREATEST(0, product_lots.quantity - GREATEST(0, TIMESTAMPDIFF(MONTH, '{$nowStr}', product_lots.expiration_date)) * COALESCE(NULLIF(products.sales_average_weighted, 0), products.sales_average, 0)) as unidades_en_riesgo")
             )
             ->where('product_lots.quantity', '>', 0)
             ->where('product_lots.expiration_date', '>=', $nowStr)

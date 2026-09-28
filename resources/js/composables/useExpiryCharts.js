@@ -78,7 +78,7 @@ export function useExpiryCharts(dashboardData, metricType) {
           labels: { colors: '#a3a3a3' },
         },
         dataLabels: { enabled: false },
-        colors: ['#7367f0', '#28c76f', '#ff9f43', '#00cfe8', '#ea5455', '#a8aaae'],
+        colors: ['#E20074', '#7A0099', '#28C76F', '#00BAD1', '#FF9F43', '#FF4C51'],
         grid: baseGridOptions,
         tooltip: {
           y: { formatter: v => isVal ? fmtMoney(v) : `${fmtNum(v)} U.` },
@@ -117,7 +117,7 @@ export function useExpiryCharts(dashboardData, metricType) {
         fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.1, stops: [0, 90, 100] } },
         xaxis: { categories: months.map(m => m.label), labels: { style: { ...axisLabelStyle, fontSize: '10px' } } },
         yaxis: { labels: { formatter: v => isVal ? `$${v.toLocaleString()}` : v.toLocaleString(), style: axisLabelStyle } },
-        colors: ['#28c76f'],
+        colors: ['#28C76F'],
         grid: baseGridOptions,
         tooltip: {
           theme: 'dark',
@@ -152,7 +152,7 @@ export function useExpiryCharts(dashboardData, metricType) {
             dataLabels: { position: 'top' },
           },
         },
-        colors: ['#ea5455', '#ff9f43', '#ffc107', '#28c76f', '#00cfe8', '#7367f0', '#82868b', '#4b4b4b', '#a8aaae', '#d0d2d6'],
+        colors: ['#FF4C51', '#FF9F43', '#E20074', '#7A0099', '#00BAD1', '#28C76F', '#7367F0', '#A8AAAE', '#82868B', '#D0D2D6'],
         xaxis: {
           categories: top10.map(i => `#${i.id} ${i.name.length > 28 ? i.name.substring(0, 26) + '...' : i.name} [${i.lab}]`),
           labels: { formatter: v => fmtMoney(v), style: axisLabelStyle },
@@ -191,7 +191,7 @@ export function useExpiryCharts(dashboardData, metricType) {
         chart: { type: 'bar', toolbar: { show: false } },
         plotOptions: { bar: { borderRadius: 4, dataLabels: { position: 'top' } } },
         dataLabels: { enabled: true, formatter: v => isVal ? fmtMoney(v) : fmtNum(v), offsetY: -20, style: { fontSize: '9px', colors: ['#a3a3a3'] } },
-        colors: ['#ea5455'],
+        colors: ['#FF4C51'],
         xaxis: {
           categories: reversed.map(i => {
             const [y, m] = i.month.split('-')
