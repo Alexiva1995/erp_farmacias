@@ -323,15 +323,10 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
         $totalOrders = max(1, $totalOrders);
 
         $paginated = DB::table('order_details as od1')
-            ->join('order_details as od2', function ($join) use ($productId) {
-                if ($productId) {
-                    $join->on('od1.order_id', '=', 'od2.order_id')
-                         ->on(DB::raw('COALESCE(od1.product_id, od1.dish_id)'), '!=', DB::raw('COALESCE(od2.product_id, od2.dish_id)'));
-                } else {
-                    // Garantiza pares únicos (A < B) usando COALESCE para manejar product_id o dish_id
-                    $join->on('od1.order_id', '=', 'od2.order_id')
-                         ->on(DB::raw('COALESCE(od1.product_id, od1.dish_id)'), '<', DB::raw('COALESCE(od2.product_id, od2.dish_id)'));
-                }
+            ->join('order_details as od2', function ($join) {
+                // Siempre garantiza pares únicos y no dirigidos (A < B)
+                $join->on('od1.order_id', '=', 'od2.order_id')
+                     ->on(DB::raw('COALESCE(od1.product_id, od1.dish_id)'), '<', DB::raw('COALESCE(od2.product_id, od2.dish_id)'));
             })
             ->join('orders', 'od1.order_id', '=', 'orders.id')
             // Nombres del ítem A (producto o plato)

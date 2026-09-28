@@ -214,9 +214,28 @@ const handleExport = () => {
 };
 
 // Drill-down: Selección de SKU desde los rankings
-const handleInspectProduct = (productId) => {
+const handleInspectProduct = (product) => {
+  const productId = typeof product === 'object' ? product?.id : product;
   if (!productId) return;
   selectedSkuId.value = productId;
+
+  // Obtener el nombre del producto desde el objeto o los rankings
+  let productName = (typeof product === 'object' && product?.name) ? product.name : null;
+  if (!productName) {
+    const allRankings = [
+      ...(dashboardData.value?.quadrant1?.top_volume?.data || []),
+      ...(dashboardData.value?.quadrant1?.top_revenue?.data || []),
+    ];
+    const found = allRankings.find(p => p.id === productId);
+    productName = found?.name || `ID #${productId}`;
+  }
+
+  // Sincronizar automáticamente la Venta Cruzada con este producto
+  selectedCrossSellingProductId.value = productId;
+  selectedCrossSellingProductName.value = productName;
+  crossSellingPage.value = 1;
+  fetchCrossSelling(1);
+
   const targetElement = document.getElementById('analytic-sku-card');
   if (targetElement) {
     targetElement.scrollIntoView({ behavior: 'smooth' });
