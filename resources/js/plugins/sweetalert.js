@@ -122,5 +122,21 @@ export const toast = {
     });
   },
 }
+
+export const confirmDialog = async (options = {}) => {
+  const result = await Swal.fire({
+    title: options.title || '¿Está seguro?',
+    text: options.text || '',
+    icon: options.icon || 'warning',
+    showCancelButton: true,
+    confirmButtonColor: options.confirmButtonColor || '#E20074',
+    cancelButtonColor: options.cancelButtonColor || '#808390',
+    confirmButtonText: options.confirmButtonText || 'Sí, confirmar',
+    cancelButtonText: options.cancelButtonText || 'Cancelar',
+    ...options,
+  })
+  return result.isConfirmed
+}
+
 export { Swal };
 export default Swal;
