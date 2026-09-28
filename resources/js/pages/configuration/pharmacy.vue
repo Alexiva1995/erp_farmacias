@@ -8,6 +8,10 @@ const logoInputRef = ref(null)
 const faviconInputRef = ref(null)
 const signatureInputRef = ref(null)
 
+const isDraggingLogo = ref(false)
+const isDraggingFavicon = ref(false)
+const isDraggingSignature = ref(false)
+
 const {
   form,
   logoPreview,
@@ -38,6 +42,24 @@ const onFaviconChange = (e) => {
 
 const onSignatureChange = (e) => {
   const file = e.target.files?.[0]
+  if (file) handleSignatureStampSelect(file)
+}
+
+const onDropLogo = (e) => {
+  isDraggingLogo.value = false
+  const file = e.dataTransfer?.files?.[0]
+  if (file) handleLogoSelect(file)
+}
+
+const onDropFavicon = (e) => {
+  isDraggingFavicon.value = false
+  const file = e.dataTransfer?.files?.[0]
+  if (file) handleFaviconSelect(file)
+}
+
+const onDropSignature = (e) => {
+  isDraggingSignature.value = false
+  const file = e.dataTransfer?.files?.[0]
   if (file) handleSignatureStampSelect(file)
 }
 </script>
@@ -186,22 +208,52 @@ const onSignatureChange = (e) => {
                 </VCard>
 
                 <!-- Tarjeta 2: Logotipo Oficial -->
-                <VCard variant="outlined" class="pa-5 rounded-lg mb-5 border">
-                  <div class="text-subtitle-1 font-weight-bold mb-2 text-primary d-flex align-center gap-2">
-                    <VIcon icon="tabler-photo" size="20" />
-                    Logotipo Oficial (Membretes y Reportes PDF)
+                <VCard
+                  variant="outlined"
+                  class="pa-5 rounded-lg mb-5 border transition-all upload-dropzone"
+                  :class="{ 'dropzone-active': isDraggingLogo }"
+                  @dragover.prevent="isDraggingLogo = true"
+                  @dragleave.prevent="isDraggingLogo = false"
+                  @drop.prevent="onDropLogo"
+                >
+                  <div class="d-flex align-center justify-space-between mb-2">
+                    <div class="text-subtitle-1 font-weight-bold text-primary d-flex align-center gap-2">
+                      <VIcon icon="tabler-photo" size="20" />
+                      Logotipo Oficial (Membretes y Reportes PDF)
+                    </div>
+                    <VChip
+                      v-if="logoPreview"
+                      color="success"
+                      size="x-small"
+                      variant="tonal"
+                      prepend-icon="tabler-check"
+                    >
+                      Cargado
+                    </VChip>
                   </div>
-                  <div class="text-caption text-medium-emphasis mb-4">
+                  <div class="text-caption text-medium-emphasis mb-3">
                     PNG transparente, JPG, WEBP o SVG. Tamaño máx: 5MB.
                   </div>
 
                   <input
                     ref="logoInputRef"
                     type="file"
-                    accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                    accept="image/png, image/jpeg, image/webp, image/svg+xml, .png, .jpg, .jpeg, .webp, .svg"
                     class="d-none"
                     @change="onLogoChange"
                   >
+
+                  <div
+                    class="dropzone-box pa-4 rounded-lg text-center cursor-pointer mb-3"
+                    :class="{ 'dropzone-box-active': isDraggingLogo }"
+                    @click="logoInputRef?.click()"
+                  >
+                    <VIcon icon="tabler-cloud-upload" size="32" class="text-primary mb-1" />
+                    <div class="text-body-2 font-weight-medium">
+                      {{ isDraggingLogo ? 'Suelta el logotipo aquí...' : 'Arrastra y suelta el logotipo aquí o haz clic para examinar' }}
+                    </div>
+                    <div class="text-caption text-disabled mt-1">Soporta PNG, JPG, WEBP, SVG (Máx 5MB)</div>
+                  </div>
 
                   <div class="d-flex align-center gap-3 flex-wrap">
                     <VBtn
@@ -226,22 +278,52 @@ const onSignatureChange = (e) => {
                 </VCard>
 
                 <!-- Tarjeta 3: Favicon e Identidad de Pestaña -->
-                <VCard variant="outlined" class="pa-5 rounded-lg mb-5 border">
-                  <div class="text-subtitle-1 font-weight-bold mb-2 text-primary d-flex align-center gap-2">
-                    <VIcon icon="tabler-app-window" size="20" />
-                    Favicon Institucional (Pestaña del Navegador)
+                <VCard
+                  variant="outlined"
+                  class="pa-5 rounded-lg mb-5 border transition-all upload-dropzone"
+                  :class="{ 'dropzone-active': isDraggingFavicon }"
+                  @dragover.prevent="isDraggingFavicon = true"
+                  @dragleave.prevent="isDraggingFavicon = false"
+                  @drop.prevent="onDropFavicon"
+                >
+                  <div class="d-flex align-center justify-space-between mb-2">
+                    <div class="text-subtitle-1 font-weight-bold text-primary d-flex align-center gap-2">
+                      <VIcon icon="tabler-app-window" size="20" />
+                      Favicon Institucional (Pestaña del Navegador)
+                    </div>
+                    <VChip
+                      v-if="faviconPreview"
+                      color="success"
+                      size="x-small"
+                      variant="tonal"
+                      prepend-icon="tabler-check"
+                    >
+                      Cargado
+                    </VChip>
                   </div>
-                  <div class="text-caption text-medium-emphasis mb-4">
-                    Icono que se muestra en la pestaña del navegador (ICO, PNG 32x32).
+                  <div class="text-caption text-medium-emphasis mb-3">
+                    Icono o vector SVG que se muestra en la pestaña del navegador (ICO, PNG, SVG).
                   </div>
 
                   <input
                     ref="faviconInputRef"
                     type="file"
-                    accept="image/png, image/x-icon, image/vnd.microsoft.icon, image/svg+xml"
+                    accept="image/png, image/x-icon, image/vnd.microsoft.icon, image/svg+xml, .ico, .svg, .png"
                     class="d-none"
                     @change="onFaviconChange"
                   >
+
+                  <div
+                    class="dropzone-box pa-4 rounded-lg text-center cursor-pointer mb-3"
+                    :class="{ 'dropzone-box-active': isDraggingFavicon }"
+                    @click="faviconInputRef?.click()"
+                  >
+                    <VIcon icon="tabler-cloud-upload" size="32" class="text-primary mb-1" />
+                    <div class="text-body-2 font-weight-medium">
+                      {{ isDraggingFavicon ? 'Suelta el favicon aquí...' : 'Arrastra y suelta el favicon aquí o haz clic para examinar' }}
+                    </div>
+                    <div class="text-caption text-disabled mt-1">Soporta ICO, PNG, SVG (Máx 2MB)</div>
+                  </div>
 
                   <div class="d-flex align-center gap-3 flex-wrap">
                     <VBtn
@@ -266,22 +348,52 @@ const onSignatureChange = (e) => {
                 </VCard>
 
                 <!-- Tarjeta 4: Firma y Sello Digital -->
-                <VCard variant="outlined" class="pa-5 rounded-lg border">
-                  <div class="text-subtitle-1 font-weight-bold mb-2 text-primary d-flex align-center gap-2">
-                    <VIcon icon="tabler-signature" size="20" />
-                    Firma y Sello Húmedo Digital
+                <VCard
+                  variant="outlined"
+                  class="pa-5 rounded-lg border transition-all upload-dropzone"
+                  :class="{ 'dropzone-active': isDraggingSignature }"
+                  @dragover.prevent="isDraggingSignature = true"
+                  @dragleave.prevent="isDraggingSignature = false"
+                  @drop.prevent="onDropSignature"
+                >
+                  <div class="d-flex align-center justify-space-between mb-2">
+                    <div class="text-subtitle-1 font-weight-bold text-primary d-flex align-center gap-2">
+                      <VIcon icon="tabler-signature" size="20" />
+                      Firma y Sello Húmedo Digital
+                    </div>
+                    <VChip
+                      v-if="signatureStampPreview"
+                      color="success"
+                      size="x-small"
+                      variant="tonal"
+                      prepend-icon="tabler-check"
+                    >
+                      Cargado
+                    </VChip>
                   </div>
-                  <div class="text-caption text-medium-emphasis mb-4">
-                    Imagen PNG con transparencia que se estampará en comprobantes de retención, nóminas y constancias oficiales.
+                  <div class="text-caption text-medium-emphasis mb-3">
+                    Imagen PNG o WEBP con transparencia que se estampará en comprobantes de retención, nóminas y constancias oficiales.
                   </div>
 
                   <input
                     ref="signatureInputRef"
                     type="file"
-                    accept="image/png, image/webp"
+                    accept="image/png, image/webp, .png, .webp"
                     class="d-none"
                     @change="onSignatureChange"
                   >
+
+                  <div
+                    class="dropzone-box pa-4 rounded-lg text-center cursor-pointer mb-3"
+                    :class="{ 'dropzone-box-active': isDraggingSignature }"
+                    @click="signatureInputRef?.click()"
+                  >
+                    <VIcon icon="tabler-cloud-upload" size="32" class="text-primary mb-1" />
+                    <div class="text-body-2 font-weight-medium">
+                      {{ isDraggingSignature ? 'Suelta la firma y sello aquí...' : 'Arrastra y suelta el archivo aquí o haz clic para examinar' }}
+                    </div>
+                    <div class="text-caption text-disabled mt-1">Soporta PNG, WEBP transparente (Máx 5MB)</div>
+                  </div>
 
                   <div class="d-flex align-center gap-3 flex-wrap">
                     <VBtn
@@ -451,6 +563,30 @@ const onSignatureChange = (e) => {
 </template>
 
 <style scoped>
+.upload-dropzone {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.dropzone-box {
+  border: 2px dashed rgba(var(--v-border-color), var(--v-border-opacity));
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.dropzone-box:hover {
+  border-color: rgb(var(--v-theme-primary));
+  background-color: rgba(var(--v-theme-primary), 0.04);
+}
+
+.dropzone-box-active {
+  border-color: rgb(var(--v-theme-primary)) !important;
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+}
+
+.dropzone-active {
+  border-color: rgb(var(--v-theme-primary)) !important;
+}
+
 .pdf-mock-sheet {
   min-height: 340px;
   background-color: #ffffff;

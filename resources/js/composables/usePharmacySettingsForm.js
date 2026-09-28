@@ -68,8 +68,17 @@ export function usePharmacySettingsForm() {
   const handleFaviconSelect = (file) => {
     if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Formato no válido. Ingrese un favicon ICO o PNG.')
+    const isValidType =
+      file.type.startsWith('image/') ||
+      file.type === 'image/x-icon' ||
+      file.type === 'image/vnd.microsoft.icon' ||
+      file.type === 'image/svg+xml' ||
+      file.name?.toLowerCase().endsWith('.ico') ||
+      file.name?.toLowerCase().endsWith('.svg') ||
+      file.name?.toLowerCase().endsWith('.png')
+
+    if (!isValidType) {
+      toast.error('Formato no válido. Ingrese un favicon ICO, PNG o SVG.')
       return
     }
 
