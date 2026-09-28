@@ -420,6 +420,7 @@
     "useOrderPrint": true,
     "useRetentionDates": true,
     "useExpiryCharts": true,
-    "pdfSupplierReturnsGenerator": true
+    "pdfSupplierReturnsGenerator": true,
+    "generateSingleLabPdfDoc": true
   }
 }

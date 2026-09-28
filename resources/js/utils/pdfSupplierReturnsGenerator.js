@@ -293,13 +293,36 @@ const generateSingleLabPdf = (group, meta) => {
 }
 
 /**
+ * Genera y descarga el PDF de Solicitud de Canje para un solo laboratorio.
+ *
+ * @param {Object} group
+ * @param {Object} reportDataOrMeta
+ * @param {Object} options
+ */
+export function generateSingleLabPdfDoc(group, reportDataOrMeta = {}, options = {}) {
+  const metadata = reportDataOrMeta.metadata || reportDataOrMeta || {}
+  const meta = {
+    buyerName: options.buyerName || metadata.buyer_name || 'Encargada de Compras',
+    pharmacyName: metadata.pharmacy_name || 'FARMACIA BARRIO SUCRE 2024, C.A.',
+    pharmacyRif: metadata.pharmacy_rif || 'R.I.F. J-50540695-7',
+    pharmacyAddress: metadata.pharmacy_address || 'Calle Principal Local 05 (L3) Sector Barrio Sucre · La Fría, Táchira',
+    pharmacyPhone: metadata.pharmacy_phone || '',
+    today: metadata.generated_at || new Date().toLocaleDateString('es-VE'),
+    cutoffDate: metadata.cutoff_date || '',
+    dateSlug: new Date().toISOString().slice(0, 10),
+  }
+  generateSingleLabPdf(group, meta)
+}
+
+/**
  * Genera el PDF de Solicitud de Canje Preventivo.
  * Descarga una carta independiente con el nombre del laboratorio para cada grupo.
  *
  * @param {Object} reportData  - Respuesta del endpoint /bi/supplier-returns
  * @param {Object} options     - Opciones del PDF (nombre del encargado, etc.)
+ * @returns {Promise<void>}
  */
-export default function pdfSupplierReturnsGenerator(reportData, options = {}) {
+export default async function pdfSupplierReturnsGenerator(reportData, options = {}) {
   const { groups = [], metadata = {} } = reportData
 
   if (!groups || !groups.length) return
@@ -315,10 +338,11 @@ export default function pdfSupplierReturnsGenerator(reportData, options = {}) {
     dateSlug: new Date().toISOString().slice(0, 10),
   }
 
-  // Generar y descargar una carta PDF por cada laboratorio
-  groups.forEach((group, index) => {
-    setTimeout(() => {
-      generateSingleLabPdf(group, meta)
-    }, index * 250)
-  })
+  // Generar y descargar una carta PDF por cada laboratorio de forma secuencial
+  for (let i = 0; i < groups.length; i++) {
+    generateSingleLabPdf(groups[i], meta)
+    if (i < groups.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 200))
+    }
+  }
 }

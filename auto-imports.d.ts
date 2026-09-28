@@ -64,6 +64,7 @@ declare global {
   const formatOrderItemForFrontend: typeof import('./resources/js/composables/useTpvItemFormatter.js')['formatOrderItemForFrontend']
   const formatPrice: typeof import('./resources/js/utils/formatters.js')['formatPrice']
   const generateDonationPDF: typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']
+  const generateSingleLabPdfDoc: typeof import('./resources/js/utils/pdfSupplierReturnsGenerator.js')['generateSingleLabPdfDoc']
   const getActivePinia: typeof import('pinia')['getActivePinia']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
   const getCurrentScope: typeof import('vue')['getCurrentScope']
@@ -484,6 +485,7 @@ declare module 'vue' {
     readonly formatOrderItemForFrontend: UnwrapRef<typeof import('./resources/js/composables/useTpvItemFormatter.js')['formatOrderItemForFrontend']>
     readonly formatPrice: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatPrice']>
     readonly generateDonationPDF: UnwrapRef<typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']>
+    readonly generateSingleLabPdfDoc: UnwrapRef<typeof import('./resources/js/utils/pdfSupplierReturnsGenerator.js')['generateSingleLabPdfDoc']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>

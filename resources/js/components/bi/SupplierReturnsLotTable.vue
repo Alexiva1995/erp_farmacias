@@ -23,8 +23,16 @@ const headers = [
   { title: 'MONTO USD', key: 'total_amount', align: 'end', sortable: true },
 ]
 
-/** Formatea una fecha ISO a localización venezolana */
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-VE') : '—'
+/** Formatea una fecha evitando desfases de zona horaria con strings YYYY-MM-DD */
+const fmtDate = (d) => {
+  if (!d) return '—'
+  if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) {
+    const [year, month, day] = d.substring(0, 10).split('-')
+    return `${day}/${month}/${year}`
+  }
+  const dateObj = new Date(d)
+  return isNaN(dateObj.getTime()) ? '—' : dateObj.toLocaleDateString('es-VE')
+}
 
 /** Formatea un número como moneda USD */
 const fmtMoney = (v) =>
