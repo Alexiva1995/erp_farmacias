@@ -182,20 +182,20 @@ const handleExport = async () => {
   }
 };
 
+// Columnas optimizadas sin scroll horizontal
 const headers = [
-  { title: 'ID', key: 'id', sortable: true, width: '75px' },
-  { title: 'PRODUCTO / MOLÉCULA', key: 'product_name', sortable: true, minWidth: '220px' },
-  { title: 'STOCK', key: 'current_stock', sortable: true, width: '75px', align: 'end' },
-  { title: 'VEND.', key: 'total_sold', sortable: true, width: '75px', align: 'end' },
-  { title: 'COSTO', key: 'current_cost', sortable: false, width: '85px', align: 'end' },
-  { title: 'P. LISTA', key: 'list_price', sortable: false, width: '85px', align: 'end' },
-  { title: 'M. BRUTO', key: 'gross_margin_percent', sortable: true, width: '95px', align: 'end' },
-  { title: 'DESC.', key: 'discount_avg_percent', sortable: false, width: '85px', align: 'end' },
-  { title: 'M. NETO', key: 'net_margin_percent', sortable: false, width: '95px', align: 'end' },
-  { title: 'MERMAS', key: 'loss_value', sortable: false, width: '95px', align: 'end' },
-  { title: 'M. REAL', key: 'real_margin_percent', sortable: true, width: '100px', align: 'end' },
-  { title: 'ESTADO', key: 'semaphore', sortable: false, width: '110px', align: 'center' },
-  { title: '', key: 'actions', sortable: false, width: '50px', align: 'center' }
+  { title: 'PRODUCTO / MOLÉCULA', key: 'product_name', sortable: true, minWidth: '180px' },
+  { title: 'STOCK', key: 'current_stock', sortable: true, width: '65px', align: 'end' },
+  { title: 'VEND.', key: 'total_sold', sortable: true, width: '65px', align: 'end' },
+  { title: 'COSTO', key: 'current_cost', sortable: false, width: '75px', align: 'end' },
+  { title: 'P. LISTA', key: 'list_price', sortable: false, width: '75px', align: 'end' },
+  { title: 'M. BRUTO', key: 'gross_margin_percent', sortable: true, width: '85px', align: 'end' },
+  { title: 'DESC.', key: 'discount_avg_percent', sortable: false, width: '75px', align: 'end' },
+  { title: 'M. NETO', key: 'net_margin_percent', sortable: false, width: '85px', align: 'end' },
+  { title: 'MERMAS', key: 'loss_value', sortable: false, width: '75px', align: 'end' },
+  { title: 'M. REAL', key: 'real_margin_percent', sortable: true, width: '90px', align: 'end' },
+  { title: 'ESTADO', key: 'semaphore', sortable: false, width: '95px', align: 'center' },
+  { title: '', key: 'actions', sortable: false, width: '40px', align: 'center' }
 ];
 
 const updateTableOptions = (options) => {
@@ -238,13 +238,51 @@ watch(
 );
 
 const getSemaphoreColor = (status) => {
-  const mapping = { verde: 'success', amarillo: 'warning', rojo: 'error', negro: 'secondary' };
-  return mapping[status] || 'default';
+  if (!status) return 'warning';
+  const s = String(status).toLowerCase().trim();
+  const mapping = {
+    verde: 'success',
+    green: 'success',
+    rentable: 'success',
+    amarillo: 'warning',
+    yellow: 'warning',
+    medio: 'warning',
+    rojo: 'error',
+    red: 'error',
+    peligro: 'error',
+    danger: 'error',
+    negro: 'secondary',
+    black: 'secondary',
+    perdidas: 'secondary',
+    'pérdidas': 'secondary',
+    critico: 'error',
+    'crítico': 'error',
+  };
+  return mapping[s] || 'warning';
 };
 
 const getSemaphoreLabel = (status) => {
-  const mapping = { verde: 'Rentable', amarillo: 'Medio', rojo: 'Peligro', negro: 'Pérdidas' };
-  return mapping[status] || status;
+  if (!status) return 'N/A';
+  const s = String(status).toLowerCase().trim();
+  const mapping = {
+    verde: 'Rentable',
+    green: 'Rentable',
+    rentable: 'Rentable',
+    amarillo: 'Medio',
+    yellow: 'Medio',
+    medio: 'Medio',
+    rojo: 'Peligro',
+    red: 'Peligro',
+    peligro: 'Peligro',
+    danger: 'Peligro',
+    negro: 'Pérdidas',
+    black: 'Pérdidas',
+    perdidas: 'Pérdidas',
+    'pérdidas': 'Pérdidas',
+    critico: 'Crítico',
+    'crítico': 'Crítico',
+  };
+  return mapping[s] || status;
 };
 
 const formatPercent = (val) => Number(val || 0).toFixed(2) + '%';
@@ -279,17 +317,17 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
     />
 
     <!-- Card Principal con Tabla Cascada -->
-    <VCard class="mb-6 rounded-lg border shadow-sm overflow-hidden bg-surface">
+    <VCard class="mb-6 rounded-lg border shadow-sm bg-surface">
       <VCardText class="d-flex justify-space-between align-center py-3 border-b">
-        <div class="d-flex align-center gap-2">
+        <div class="d-flex align-center ga-2">
           <VAvatar color="primary" variant="tonal" size="32" rounded="sm">
             <VIcon icon="tabler-list-details" size="18" />
           </VAvatar>
-          <h2 class="text-subtitle-1 font-weight-bold">
+          <h2 class="text-subtitle-1 font-weight-bold mb-0">
             Desglose Financiero por SKU (Waterfall)
           </h2>
         </div>
-        <div v-if="activeFilterKey" class="d-flex align-center gap-2">
+        <div v-if="activeFilterKey" class="d-flex align-center ga-2">
           <VChip
             size="small"
             color="primary"
@@ -302,7 +340,7 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
         </div>
       </VCardText>
 
-      <!-- Vista Desktop -->
+      <!-- Vista Desktop sin scroll forzado -->
       <div class="d-none d-md-block">
         <VDataTableServer
           v-model:items-per-page="itemsPerPage"
@@ -312,8 +350,8 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
           :items-length="totalItems"
           :loading="loading"
           item-value="product_id"
-          class="border-0"
-          density="comfortable"
+          class="border-0 table-compact"
+          density="compact"
           @update:options="updateTableOptions"
         >
           <!-- Loading State con Skeleton -->
@@ -321,45 +359,32 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
             <VSkeletonLoader type="table-row@5" />
           </template>
 
-          <!-- Columna ID -->
-          <template #item.id="{ item }">
-            <a
-              :href="'/inventory/traceability?q=' + (item.product_id || item.id)"
-              target="_blank"
-              class="text-decoration-none font-weight-bold text-primary"
-            >
-              {{ item.product_id || item.id }}
-            </a>
-          </template>
-
           <!-- Columna Producto y Molécula -->
           <template #item.product_name="{ item }">
-            <div class="d-flex flex-column py-2">
+            <div class="d-flex flex-column py-1">
               <span class="text-body-2 font-weight-bold text-high-emphasis text-uppercase text-truncate" :title="item.product_name">
                 {{ item.product_name }}
               </span>
-              <div class="d-flex align-center gap-1 text-caption text-medium-emphasis">
-                <span class="text-truncate" style="max-inline-size: 200px;">
+              <div class="d-flex align-center ga-1 text-caption text-medium-emphasis">
+                <span class="text-truncate" style="max-inline-size: 160px;">
                   {{ item.active_ingredient || 'Sin Molécula' }}
                 </span>
                 <span class="text-disabled">•</span>
-                <span class="text-primary font-weight-medium text-truncate" style="max-inline-size: 150px;">
+                <span class="text-primary font-weight-medium text-truncate" style="max-inline-size: 120px;">
                   {{ item.laboratory_name || 'S/L' }}
                 </span>
               </div>
             </div>
           </template>
           
-          <!-- Columna Stock Actual -->
+          <!-- Columna Stock Actual (Solo el número limpio) -->
           <template #item.current_stock="{ item }">
-            <VChip
-              size="small"
-              :color="item.current_stock > 10 ? 'default' : item.current_stock > 0 ? 'warning' : 'error'"
-              variant="tonal"
-              class="font-weight-bold"
+            <span
+              class="text-body-2 font-weight-bold"
+              :class="Number(item.current_stock) <= 0 ? 'text-error font-weight-black' : 'text-high-emphasis'"
             >
-              {{ Number(item.current_stock).toFixed(0) }}
-            </VChip>
+              {{ Number(item.current_stock || 0).toFixed(0) }}
+            </span>
           </template>
 
           <!-- Columna Vendidos -->
@@ -392,11 +417,11 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
           <!-- DESCUENTOS -->
           <template #item.discount_avg_percent="{ item }">
             <div class="d-flex flex-column py-1">
-              <span v-if="item.discount_avg_percent > 0" class="text-body-2 font-weight-bold text-error">
+              <span v-if="Number(item.discount_avg_percent) > 0" class="text-body-2 font-weight-bold text-error">
                 -{{ formatPercent(item.discount_avg_percent) }}
               </span>
               <span v-else class="text-caption text-disabled">0.00%</span>
-              <span v-if="item.total_discount_amount > 0" class="text-caption text-medium-emphasis">
+              <span v-if="Number(item.total_discount_amount) > 0" class="text-caption text-medium-emphasis">
                 -{{ formatMoney(item.total_discount_amount) }}
               </span>
             </div>
@@ -405,7 +430,10 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
           <!-- M. NETO -->
           <template #item.net_margin_percent="{ item }">
             <div class="d-flex flex-column py-1">
-              <span class="text-body-2 font-weight-bold text-primary">
+              <span
+                class="text-body-2 font-weight-bold"
+                :class="Number(item.net_margin_percent) >= 0 ? 'text-primary' : 'text-error'"
+              >
                 {{ formatPercent(item.net_margin_percent) }}
               </span>
               <span class="text-caption text-medium-emphasis">
@@ -416,34 +444,43 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
           
           <!-- MERMAS -->
           <template #item.loss_value="{ item }">
-            <div class="d-flex align-center py-1">
+            <div class="d-flex align-center justify-end py-1">
               <VChip
                 v-if="Number(item.loss_value) > 0"
-                size="small"
+                size="x-small"
                 color="error"
                 variant="tonal"
                 class="font-weight-bold"
               >
-                <VIcon icon="tabler-trending-down" size="14" class="me-1" />
                 -{{ formatMoney(item.loss_value) }}
               </VChip>
               <span v-else class="text-caption text-disabled">$0.00</span>
             </div>
           </template>
 
-          <!-- M. REAL -->
+          <!-- M. REAL (Con colores semánticos verde / amarillo / rojo) -->
           <template #item.real_margin_percent="{ item }">
             <div class="d-flex flex-column py-1">
-              <span class="text-body-2 font-weight-black" :class="`text-${getSemaphoreColor(item.semaphore)}`">
+              <span
+                class="text-body-2 font-weight-black"
+                :class="{
+                  'text-success': Number(item.real_margin_percent) > 25,
+                  'text-warning': Number(item.real_margin_percent) >= 10 && Number(item.real_margin_percent) <= 25,
+                  'text-error': Number(item.real_margin_percent) < 10
+                }"
+              >
                 {{ formatPercent(item.real_margin_percent) }}
               </span>
-              <span class="text-caption text-medium-emphasis">
+              <span
+                class="text-caption font-weight-medium"
+                :class="Number(item.real_margin_value) >= 0 ? 'text-medium-emphasis' : 'text-error'"
+              >
                 {{ formatMoney(item.real_margin_value) }}
               </span>
             </div>
           </template>
 
-          <!-- ESTADO -->
+          <!-- ESTADO (Color semántico vivo) -->
           <template #item.semaphore="{ item }">
             <VChip
               :color="getSemaphoreColor(item.semaphore)"
@@ -462,7 +499,7 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
               target="_blank"
               icon
               variant="text"
-              size="small"
+              size="x-small"
               color="primary"
             >
               <VIcon icon="tabler-history" size="18" />
@@ -491,3 +528,10 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
     </VCard>
   </div>
 </template>
+
+<style scoped>
+.table-compact :deep(th),
+.table-compact :deep(td) {
+  padding-inline: 6px !important;
+}
+</style>

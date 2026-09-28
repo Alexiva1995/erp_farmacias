@@ -9,13 +9,51 @@ defineProps({
 const emit = defineEmits(['update:page']);
 
 const getSemaphoreColor = (status) => {
-  const mapping = { verde: 'success', amarillo: 'warning', rojo: 'error', negro: 'secondary' };
-  return mapping[status] || 'default';
+  if (!status) return 'warning';
+  const s = String(status).toLowerCase().trim();
+  const mapping = {
+    verde: 'success',
+    green: 'success',
+    rentable: 'success',
+    amarillo: 'warning',
+    yellow: 'warning',
+    medio: 'warning',
+    rojo: 'error',
+    red: 'error',
+    peligro: 'error',
+    danger: 'error',
+    negro: 'secondary',
+    black: 'secondary',
+    perdidas: 'secondary',
+    'pérdidas': 'secondary',
+    critico: 'error',
+    'crítico': 'error',
+  };
+  return mapping[s] || 'warning';
 };
 
 const getSemaphoreLabel = (status) => {
-  const mapping = { verde: 'Rentable', amarillo: 'Medio', rojo: 'Peligro', negro: 'Pérdidas' };
-  return mapping[status] || status;
+  if (!status) return 'N/A';
+  const s = String(status).toLowerCase().trim();
+  const mapping = {
+    verde: 'Rentable',
+    green: 'Rentable',
+    rentable: 'Rentable',
+    amarillo: 'Medio',
+    yellow: 'Medio',
+    medio: 'Medio',
+    rojo: 'Peligro',
+    red: 'Peligro',
+    peligro: 'Peligro',
+    danger: 'Peligro',
+    negro: 'Pérdidas',
+    black: 'Pérdidas',
+    perdidas: 'Pérdidas',
+    'pérdidas': 'Pérdidas',
+    critico: 'Crítico',
+    'crítico': 'Crítico',
+  };
+  return mapping[s] || status;
 };
 
 const formatPercent = (val) => Number(val || 0).toFixed(2) + '%';
@@ -25,7 +63,7 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
 <template>
   <div class="d-md-none pa-3">
     <!-- Estado de Carga Móvil con Skeleton -->
-    <div v-if="loading" class="d-flex flex-column gap-3">
+    <div v-if="loading" class="d-flex flex-column ga-3">
       <VSkeletonLoader v-for="n in 3" :key="n" type="card" class="rounded-lg" />
     </div>
 
@@ -44,16 +82,16 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
         class="product-mobile-card rounded-lg mb-3 shadow-sm bg-surface overflow-hidden"
       >
         <div class="pa-4">
-          <div class="d-flex align-start justify-space-between gap-2 mb-2">
+          <div class="d-flex align-start justify-space-between ga-2 mb-2">
             <div class="flex-grow-1 min-width-0">
-              <div class="d-flex align-center gap-1 mb-1">
+              <div class="d-flex align-center ga-1 mb-1">
                 <span class="text-caption font-weight-bold text-primary">#{{ item.product_id || item.id }}</span>
                 <span class="text-disabled">|</span>
                 <span class="text-body-2 font-weight-bold text-high-emphasis text-uppercase text-truncate">
                   {{ item.product_name }}
                 </span>
               </div>
-              <div class="d-flex align-center flex-wrap gap-x-2 text-caption text-medium-emphasis">
+              <div class="d-flex align-center flex-wrap ga-x-2 text-caption text-medium-emphasis">
                 <span>{{ item.active_ingredient || 'Sin molécula' }}</span>
                 <span class="text-disabled">•</span>
                 <span class="text-primary font-weight-medium">{{ item.laboratory_name || 'S/L' }}</span>
@@ -75,6 +113,12 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
           <div class="rounded-lg border pa-2 bg-var-theme-background">
             <VRow dense>
               <VCol cols="6" class="pa-2">
+                <div class="text-caption text-disabled text-uppercase font-weight-bold">Stock Actual</div>
+                <div class="text-body-2 font-weight-bold" :class="Number(item.current_stock) <= 0 ? 'text-error' : ''">
+                  {{ Number(item.current_stock || 0).toFixed(0) }} uds
+                </div>
+              </VCol>
+              <VCol cols="6" class="pa-2">
                 <div class="text-caption text-disabled text-uppercase font-weight-bold">Costo Unit.</div>
                 <div class="text-body-2 font-weight-bold">{{ formatMoney(item.current_cost) }}</div>
               </VCol>
@@ -95,12 +139,12 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
               <VCol cols="6" class="pa-2">
                 <div class="text-caption text-error text-uppercase font-weight-bold">Descuentos</div>
                 <div class="text-body-2 font-weight-bold text-error">
-                  {{ item.discount_avg_percent > 0 ? '-' + formatPercent(item.discount_avg_percent) : '0.00%' }}
+                  {{ Number(item.discount_avg_percent) > 0 ? '-' + formatPercent(item.discount_avg_percent) : '0.00%' }}
                 </div>
               </VCol>
               <VCol cols="6" class="pa-2">
                 <div class="text-caption text-error text-uppercase font-weight-bold">Mermas / Venc.</div>
-                <div class="text-body-2 font-weight-bold" :class="item.loss_value > 0 ? 'text-error' : 'text-medium-emphasis'">
+                <div class="text-body-2 font-weight-bold" :class="Number(item.loss_value) > 0 ? 'text-error' : 'text-medium-emphasis'">
                   -{{ formatMoney(item.loss_value) }}
                 </div>
               </VCol>
@@ -111,7 +155,14 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
                     <div class="text-caption text-disabled text-uppercase font-weight-bold">Margen Real Efectivo</div>
                     <div class="text-caption text-medium-emphasis">{{ formatMoney(item.real_margin_value) }} Ganancia Real</div>
                   </div>
-                  <div class="text-h6 font-weight-black" :class="`text-${getSemaphoreColor(item.semaphore)}`">
+                  <div
+                    class="text-h6 font-weight-black"
+                    :class="{
+                      'text-success': Number(item.real_margin_percent) > 25,
+                      'text-warning': Number(item.real_margin_percent) >= 10 && Number(item.real_margin_percent) <= 25,
+                      'text-error': Number(item.real_margin_percent) < 10
+                    }"
+                  >
                     {{ formatPercent(item.real_margin_percent) }}
                   </div>
                 </div>
@@ -137,7 +188,7 @@ const formatMoney = (val) => '$' + Number(val || 0).toLocaleString('en-US', { mi
       </VCard>
 
       <!-- Paginación Móvil -->
-      <div class="d-flex justify-center align-center py-3 gap-3">
+      <div class="d-flex justify-center align-center py-3 ga-3">
         <VBtn
           icon
           variant="tonal"
