@@ -36,7 +36,7 @@ const kpisList = computed(() => {
       title: 'Unidades por Ticket (UPT)', 
       mainValue: (k.units_per_transaction || 0).toFixed(2), 
       subValue: `${formatNumber(k.total_units)} unidades totales`,
-      icon: 'tabler-packages',
+      icon: 'tabler-package',
       color: 'secondary',
       tooltip: 'Cantidad promedio de unidades/artículos despachados por cada transacción.'
     },
@@ -68,7 +68,7 @@ const kpisList = computed(() => {
       title: 'Tickets Abandonados', 
       mainValue: formatNumber(k.abandoned_sales), 
       subValue: `Tasa abandono: ${abandonmentRate}%`,
-      icon: 'tabler-shopping-cart-off',
+      icon: 'tabler-shopping-cart-x',
       color: 'error',
       tooltip: 'Carritos o compras canceladas o abandonadas antes de concretar el pago.'
     },
@@ -76,7 +76,7 @@ const kpisList = computed(() => {
       title: 'Descuentos Otorgados', 
       mainValue: formatCurrency(k.discount_total), 
       subValue: 'Rebajas aplicadas en caja',
-      icon: 'tabler-discount-2',
+      icon: 'tabler-discount',
       color: 'warning',
       tooltip: 'Suma acumulada del valor de descuentos y promociones concedidas en el POS.'
     },

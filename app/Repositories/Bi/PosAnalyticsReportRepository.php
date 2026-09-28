@@ -83,12 +83,26 @@ class PosAnalyticsReportRepository
         // Unidades totales y descuentos otorgados
         $detailStats = DB::table('orders')
             ->join('order_details', 'orders.id', '=', 'order_details.order_id')
+            ->leftJoin('products', 'order_details.product_id', '=', 'products.id')
+            ->leftJoin('dishes', 'order_details.dish_id', '=', 'dishes.id')
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->when($sellerId, fn($q) => $q->where('orders.seller_id', $sellerId))
             ->select(
                 DB::raw('COALESCE(SUM(order_details.quantity), 0) as total_units'),
-                DB::raw('COALESCE(SUM(CASE WHEN order_details.discount_percentage > 0 THEN ((order_details.price_before_discount - order_details.price) * order_details.quantity) ELSE 0 END), 0) as discount_total')
+                DB::raw("COALESCE(SUM(order_details.quantity * CASE
+                    WHEN order_details.price_before_discount IS NOT NULL AND order_details.price_before_discount > order_details.price AND orders.currency = 'USD'
+                        THEN (order_details.price_before_discount - order_details.price)
+                    WHEN order_details.price_before_discount IS NOT NULL AND order_details.price_before_discount > order_details.price AND orders.currency != 'USD'
+                        THEN ((order_details.price_before_discount - order_details.price) / NULLIF(orders.usd_conversion, 0))
+                    WHEN order_details.discount_percentage IS NOT NULL AND order_details.discount_percentage > 0 AND order_details.discount_percentage < 100
+                        THEN (COALESCE(NULLIF(order_details.unit_price_usd, 0), CASE WHEN orders.currency = 'USD' THEN order_details.price ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) END) * (order_details.discount_percentage / (100 - order_details.discount_percentage)))
+                    WHEN products.sale_price > 0 AND (CASE WHEN order_details.unit_price_usd > 0 THEN order_details.unit_price_usd WHEN orders.currency = 'USD' THEN order_details.price ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) END) < products.sale_price
+                        THEN (products.sale_price - (CASE WHEN order_details.unit_price_usd > 0 THEN order_details.unit_price_usd WHEN orders.currency = 'USD' THEN order_details.price ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) END))
+                    WHEN dishes.designated_price > 0 AND (CASE WHEN order_details.unit_price_usd > 0 THEN order_details.unit_price_usd WHEN orders.currency = 'USD' THEN order_details.price ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) END) < dishes.designated_price
+                        THEN (dishes.designated_price - (CASE WHEN order_details.unit_price_usd > 0 THEN order_details.unit_price_usd WHEN orders.currency = 'USD' THEN order_details.price ELSE (order_details.price / NULLIF(orders.usd_conversion, 0)) END))
+                    ELSE 0
+                END), 0) as discount_total")
             )
             ->first();
 

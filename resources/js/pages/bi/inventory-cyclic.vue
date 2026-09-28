@@ -75,6 +75,12 @@ const handleSelectCategory = categoryName => {
   }
 }
 
+const handleSelectProduct = productName => {
+  if (window.toast) {
+    window.toast.info(`Producto seleccionado: ${productName}`)
+  }
+}
+
 const exportPdf = () => {
   if (!dashboardData.value) return
   generateBiInventoryCyclicPdf(dashboardData.value, filters.value)
@@ -175,6 +181,7 @@ onMounted(() => {
         :chart-key="chartKey"
         :loading="loading"
         @select-category="handleSelectCategory"
+        @select-product="handleSelectProduct"
       />
 
       <!-- Fila 4: Tabla de Cruce de Códigos (Sustituciones) -->

@@ -64,9 +64,11 @@ const kpiItems = computed(() => [
       :key="idx"
       cols="12"
       sm="6"
-      md
+      md="4"
+      lg
+      class="d-flex"
     >
-      <VCard class="rounded-lg border shadow-sm h-100">
+      <VCard class="rounded-lg border shadow-sm w-100 h-100">
         <VCardText class="pa-4">
           <div v-if="loading" class="d-flex align-center">
             <VSkeletonLoader type="avatar" class="me-3" />

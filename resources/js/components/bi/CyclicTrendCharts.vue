@@ -19,7 +19,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['select-category'])
+const emit = defineEmits(['select-category', 'select-product'])
 
 const theme = useTheme()
 const isDark = computed(() => theme.current.value.dark)
@@ -102,6 +102,15 @@ const topMissingOptions = computed(() => ({
     toolbar: { show: false },
     fontFamily: 'inherit',
     background: 'transparent',
+    events: {
+      dataPointSelection: (event, chartContext, config) => {
+        const selectedIndex = config.dataPointIndex
+        const label = props.dashboardData?.deviations?.top_missing?.categories?.[selectedIndex]
+        if (label) {
+          emit('select-product', label)
+        }
+      },
+    },
   },
   plotOptions: {
     bar: {
@@ -129,6 +138,15 @@ const topSurplusOptions = computed(() => ({
     toolbar: { show: false },
     fontFamily: 'inherit',
     background: 'transparent',
+    events: {
+      dataPointSelection: (event, chartContext, config) => {
+        const selectedIndex = config.dataPointIndex
+        const label = props.dashboardData?.deviations?.top_surplus?.categories?.[selectedIndex]
+        if (label) {
+          emit('select-product', label)
+        }
+      },
+    },
   },
   plotOptions: {
     bar: {
