@@ -55,13 +55,16 @@ class PosAnalyticsReportService
                         $h = (int)$slot->hour;
                         $topSeller = $temporal['top_sellers'][$h] ?? $temporal['top_sellers']["$h"] ?? null;
 
+                        $sellerName = is_array($topSeller) ? ($topSeller['seller_name'] ?? 'S/V') : ($topSeller->seller_name ?? 'S/V');
+                        $sellerRev  = is_array($topSeller) ? ($topSeller['revenue'] ?? 0.0) : ($topSeller->revenue ?? 0.0);
+
                         return [
                             'x' => str_pad((string)$h, 2, '0', STR_PAD_LEFT) . ':00',
                             'y' => $totalHourlyCount > 0 ? round(((int)$slot->count / $totalHourlyCount) * 100, 1) : 0,
                             'revenue' => round((float)$slot->revenue, 2),
                             'top_seller' => $topSeller ? [
-                                'seller_name' => collect(explode(' ', $topSeller->seller_name))->take(2)->implode(' '),
-                                'revenue' => round((float)$topSeller->revenue, 2),
+                                'seller_name' => collect(explode(' ', (string)$sellerName))->take(2)->implode(' '),
+                                'revenue' => round((float)$sellerRev, 2),
                             ] : null,
                         ];
                     })->toArray(),

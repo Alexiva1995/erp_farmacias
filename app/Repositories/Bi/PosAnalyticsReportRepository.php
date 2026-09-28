@@ -35,7 +35,7 @@ class PosAnalyticsReportRepository
         
         $quotationsQuery = DB::table('quotations')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->when($sellerId, fn($q) => $q->where('user_id', $sellerId));
+            ->when($sellerId, fn($q) => $q->where('created_by', $sellerId));
 
         $quotationsCount = $quotationsQuery->count();
 
@@ -47,15 +47,15 @@ class PosAnalyticsReportRepository
         $divisorDays = $operationalDays > 0 ? $operationalDays : $diffDays;
         $avgDailySales = $totalRevenue / ($divisorDays ?: 1);
 
-        // Tasa Conversión (Coincidencia por cliente y total en periodo)
+        // Tasa Conversión (Coincidencia por cliente en periodo)
         $convertedQuotations = DB::table('quotations')
             ->whereBetween('quotations.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->when($sellerId, fn($q) => $q->where('quotations.user_id', $sellerId))
+            ->when($sellerId, fn($q) => $q->where('quotations.created_by', $sellerId))
+            ->whereNotNull('quotations.client_id')
             ->whereExists(function ($query) use ($startDate, $endDate, $sellerId) {
                 $query->select(DB::raw(1))
                     ->from('orders')
                     ->whereColumn('orders.client_id', 'quotations.client_id')
-                    ->whereColumn('orders.total_amount_usd', 'quotations.total')
                     ->where('orders.status', 'Completed')
                     ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                     ->when($sellerId, fn($q) => $q->where('orders.seller_id', $sellerId));
@@ -74,8 +74,8 @@ class PosAnalyticsReportRepository
             ->groupBy('orders.id')
             ->havingRaw('SUM(order_details.quantity) > 1');
 
-        $crossSellingCount = DB::table(DB::raw("({$crossSellingQuery->toSql()}) as cross_orders"))
-            ->mergeBindings($crossSellingQuery)
+        $crossSellingCount = DB::query()
+            ->fromSub($crossSellingQuery, 'cross_orders')
             ->count();
 
         $crossSellingRate = $completedSales > 0 ? ($crossSellingCount / $completedSales) * 100 : 0;
@@ -133,19 +133,38 @@ class PosAnalyticsReportRepository
             ->orderBy('sale_date')
             ->get();
 
-        // 2. Rendimiento diario agregado (Suma total por día de la semana)
-        $dailyFocus = DB::table('orders')
+        // 2. Rendimiento diario agregado (Suma total por día de la semana 1=Dom, 7=Sab)
+        $dailyFocusRaw = DB::table('orders')
             ->where('status', 'Completed')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->when($sellerId, fn($q) => $q->where('seller_id', $sellerId))
             ->select(
-                DB::raw('DAYNAME(created_at) as day_name'),
                 DB::raw('DAYOFWEEK(created_at) as day_index'),
                 DB::raw('SUM(total_amount_usd) as total_revenue')
             )
-            ->groupBy('day_name', 'day_index')
+            ->groupBy('day_index')
             ->orderBy('day_index')
-            ->get();
+            ->get()
+            ->keyBy('day_index');
+
+        $daysMap = [
+            1 => 'Dom',
+            2 => 'Lun',
+            3 => 'Mar',
+            4 => 'Mié',
+            5 => 'Jue',
+            6 => 'Vie',
+            7 => 'Sáb',
+        ];
+
+        $dailyFocus = [];
+        foreach ($daysMap as $index => $name) {
+            $dailyFocus[] = [
+                'day_index' => $index,
+                'day_name' => $name,
+                'total_revenue' => (float)($dailyFocusRaw[$index]->total_revenue ?? 0.0),
+            ];
+        }
 
         // 3. Franjas horarias
         $hourlySlots = DB::table('orders')
@@ -169,7 +188,7 @@ class PosAnalyticsReportRepository
             ->when($sellerId, fn($q) => $q->where('orders.seller_id', $sellerId))
             ->select(
                 DB::raw('HOUR(orders.created_at) as hr'),
-                DB::raw('COALESCE(users.username, users.name, "S/V") as seller_name'),
+                DB::raw("COALESCE(users.username, users.email, 'S/V') as seller_name"),
                 DB::raw('SUM(orders.total_amount_usd) as revenue')
             )
             ->groupBy('hr', 'seller_name')
@@ -203,8 +222,8 @@ class PosAnalyticsReportRepository
             ->select('orders.id', DB::raw('SUM(order_details.quantity) as total_qty'))
             ->groupBy('orders.id');
 
-        $unitStats = DB::table(DB::raw("({$unitsQuery->toSql()}) as order_qtys"))
-            ->mergeBindings($unitsQuery)
+        $unitStats = DB::query()
+            ->fromSub($unitsQuery, 'order_qtys')
             ->select(
                 DB::raw("COUNT(CASE WHEN total_qty = 1 THEN 1 END) as qty_1"),
                 DB::raw("COUNT(CASE WHEN total_qty BETWEEN 2 AND 3 THEN 1 END) as qty_2_3"),
@@ -251,7 +270,7 @@ class PosAnalyticsReportRepository
     public function getFilterOptions(): array
     {
         $sellers = DB::table('users')
-            ->select('id', DB::raw('COALESCE(username, name, email) as name'))
+            ->select('id', DB::raw("COALESCE(username, email) as name"))
             ->whereExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('orders')

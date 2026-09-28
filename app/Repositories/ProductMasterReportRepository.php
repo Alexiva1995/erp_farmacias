@@ -312,6 +312,8 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate   = $filters['end_date']   ?? now()->format('Y-m-d');
         $page      = (int) ($filters['page'] ?? 1);
+        $productId = !empty($filters['product_id']) ? (int) $filters['product_id'] : null;
+        $search    = !empty($filters['search']) ? trim((string)$filters['search']) : null;
 
         $totalOrders = DB::table('orders')
             ->where('status', 'Completed')
@@ -321,10 +323,15 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
         $totalOrders = max(1, $totalOrders);
 
         $paginated = DB::table('order_details as od1')
-            ->join('order_details as od2', function ($join) {
-                // Garantiza pares únicos (A < B) usando COALESCE para manejar product_id o dish_id
-                $join->on('od1.order_id', '=', 'od2.order_id')
-                     ->on(DB::raw('COALESCE(od1.product_id, od1.dish_id)'), '<', DB::raw('COALESCE(od2.product_id, od2.dish_id)'));
+            ->join('order_details as od2', function ($join) use ($productId) {
+                if ($productId) {
+                    $join->on('od1.order_id', '=', 'od2.order_id')
+                         ->on(DB::raw('COALESCE(od1.product_id, od1.dish_id)'), '!=', DB::raw('COALESCE(od2.product_id, od2.dish_id)'));
+                } else {
+                    // Garantiza pares únicos (A < B) usando COALESCE para manejar product_id o dish_id
+                    $join->on('od1.order_id', '=', 'od2.order_id')
+                         ->on(DB::raw('COALESCE(od1.product_id, od1.dish_id)'), '<', DB::raw('COALESCE(od2.product_id, od2.dish_id)'));
+                }
             })
             ->join('orders', 'od1.order_id', '=', 'orders.id')
             // Nombres del ítem A (producto o plato)
@@ -350,16 +357,30 @@ class ProductMasterReportRepository implements ProductMasterReportRepositoryInte
             )
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', ["{$startDate} 00:00:00", "{$endDate} 23:59:59"])
+            ->when($productId, function ($q) use ($productId) {
+                $q->where(function ($sub) use ($productId) {
+                    $sub->where('od1.product_id', $productId)
+                        ->orWhere('od1.dish_id', $productId);
+                });
+            })
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('pa.name', 'like', "%{$search}%")
+                        ->orWhere('pb.name', 'like', "%{$search}%")
+                        ->orWhere('pa.active_ingredient', 'like', "%{$search}%")
+                        ->orWhere('pb.active_ingredient', 'like', "%{$search}%");
+                });
+            })
             ->groupBy('product_id_a', 'product_a', 'ingredient_a', 'lab_a', 'product_id_b', 'product_b', 'ingredient_b', 'lab_b')
-            ->havingRaw('COUNT(*) > 1') // Solo pares con frecuencia real (>1 coincidencia)
+            ->havingRaw('COUNT(*) >= 1') // Si es producto específico o general, mostrar asociaciones ordenadas
             ->orderByDesc('frequency')
-            ->paginate(5, ['*'], 'page', $page);
+            ->paginate(7, ['*'], 'page', $page);
 
         // Transformar colección para inyectar soporte y confianza estadística
         $paginated->getCollection()->transform(function ($item) use ($totalOrders) {
             $freq = (int) $item->frequency;
             $support = round(($freq / $totalOrders) * 100, 1);
-            $confidence = min(98, max(15, round(($freq / ($freq + 12)) * 100)));
+            $confidence = min(98, max(15, round(($freq / ($freq + 8)) * 100)));
             $item->support_percent = $support;
             $item->confidence_percent = $confidence;
             return $item;

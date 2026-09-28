@@ -16,11 +16,16 @@ class InventoryCyclicReportRepository
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+        $categoryId = $filters['category_id'] ?? null;
 
         $query = DB::table('product_counts')
             ->join('products', 'products.id', '=', 'product_counts.product_id')
             ->whereIn('product_counts.status', ['approved', 'pending'])
             ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        if (!empty($categoryId)) {
+            $query->where('products.category_id', $categoryId);
+        }
 
         $totalCounted = (clone $query)->count();
         $noDifferenceCount = (clone $query)->where('discrepancy', 0)->count();
@@ -39,6 +44,8 @@ class InventoryCyclicReportRepository
         return [
             'eri' => round($eri, 2),
             'net_loss' => round($netLoss, 2),
+            'missing_loss_value' => round((float)($stats->total_missing_value ?? 0), 2),
+            'surplus_gain_value' => round((float)($stats->total_surplus_value ?? 0), 2),
             'error_rate' => round($errorRate, 2),
             'total_missing_units' => (int)($stats->total_missing_qty ?? 0),
             'total_surplus_units' => (int)($stats->total_surplus_qty ?? 0),
@@ -53,12 +60,18 @@ class InventoryCyclicReportRepository
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+        $categoryId = $filters['category_id'] ?? null;
 
-        $results = DB::table('product_counts')
+        $query = DB::table('product_counts')
             ->join('products', 'products.id', '=', 'product_counts.product_id')
             ->whereIn('product_counts.status', ['approved', 'pending'])
-            ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->select(
+            ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        if (!empty($categoryId)) {
+            $query->where('products.category_id', $categoryId);
+        }
+
+        $results = $query->select(
                 DB::raw('DATE_FORMAT(product_counts.created_at, "%Y-%m") as month'),
                 DB::raw('SUM(CASE WHEN discrepancy < 0 THEN ABS(discrepancy) ELSE 0 END) as missing'),
                 DB::raw('SUM(CASE WHEN discrepancy > 0 THEN discrepancy ELSE 0 END) as surplus'),
@@ -78,6 +91,7 @@ class InventoryCyclicReportRepository
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+        $categoryId = $filters['category_id'] ?? null;
 
         $baseQuery = DB::table('product_counts')
             ->join('products', 'products.id', '=', 'product_counts.product_id')
@@ -88,6 +102,10 @@ class InventoryCyclicReportRepository
                 'product_counts.discrepancy',
                 DB::raw('ABS(product_counts.discrepancy) * products.unit_cost as impact_value')
             );
+
+        if (!empty($categoryId)) {
+            $baseQuery->where('products.category_id', $categoryId);
+        }
 
         $topMissing = (clone $baseQuery)
             ->where('discrepancy', '<', 0)
@@ -114,13 +132,19 @@ class InventoryCyclicReportRepository
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+        $categoryId = $filters['category_id'] ?? null;
 
-        return DB::table('product_counts')
+        $query = DB::table('product_counts')
             ->join('products', 'products.id', '=', 'product_counts.product_id')
             ->join('categories', 'categories.id', '=', 'products.category_id')
             ->whereIn('product_counts.status', ['approved', 'pending'])
-            ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->select(
+            ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        if (!empty($categoryId)) {
+            $query->where('products.category_id', $categoryId);
+        }
+
+        return $query->select(
                 'categories.name',
                 DB::raw('SUM(ABS(product_counts.discrepancy)) as total_deviation'),
                 DB::raw('COUNT(*) as total_counts')
@@ -138,18 +162,20 @@ class InventoryCyclicReportRepository
     {
         $startDate = $filters['start_date'] ?? now()->startOfMonth()->format('Y-m-d');
         $endDate = $filters['end_date'] ?? now()->format('Y-m-d');
+        $categoryId = $filters['category_id'] ?? null;
 
-        // Buscamos productos en la misma categoría donde uno tenga faltante y otro sobrante
-        // Que la diferencia neta de ambos sea cercana a cero (opcional)
-        // Pero primero busquemos los que tienen discrepancias simétricas
-        
-        $counts = DB::table('product_counts')
+        $query = DB::table('product_counts')
             ->join('products', 'products.id', '=', 'product_counts.product_id')
             ->join('categories', 'categories.id', '=', 'products.category_id')
             ->whereIn('product_counts.status', ['approved', 'pending'])
             ->where('discrepancy', '!=', 0)
-            ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->select(
+            ->whereBetween('product_counts.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        if (!empty($categoryId)) {
+            $query->where('products.category_id', $categoryId);
+        }
+
+        $counts = $query->select(
                 'products.id',
                 'products.name',
                 'products.category_id',

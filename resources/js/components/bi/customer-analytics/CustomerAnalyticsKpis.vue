@@ -91,7 +91,7 @@ const cards = computed(() => {
               <div class="text-subtitle-1 font-weight-black my-0 text-truncate">
                 {{ kpi.value }}
               </div>
-              <div class="text-caption text-disabled text-truncate font-size-11" :title="kpi.desc">
+              <div class="text-caption text-disabled text-truncate" :title="kpi.desc">
                 {{ kpi.desc }}
               </div>
             </div>
@@ -103,9 +103,6 @@ const cards = computed(() => {
 </template>
 
 <style scoped>
-.font-size-11 {
-  font-size: 0.72rem !important;
-}
 .kpi-hover-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }

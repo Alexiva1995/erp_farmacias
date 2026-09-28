@@ -13,7 +13,13 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
 })
+
+const emit = defineEmits(['select-category'])
 
 const theme = useTheme()
 const isDark = computed(() => theme.current.value.dark)
@@ -145,6 +151,17 @@ const topSurplusOptions = computed(() => ({
 
 // 5. Desviación por Categoría
 const categoryOptions = computed(() => ({
+  chart: {
+    events: {
+      dataPointSelection: (event, chartContext, config) => {
+        const selectedIndex = config.dataPointIndex
+        const label = props.dashboardData?.deviations?.categories?.labels?.[selectedIndex]
+        if (label) {
+          emit('select-category', label)
+        }
+      },
+    },
+  },
   labels: props.dashboardData?.deviations?.categories?.labels || [],
   colors: [
     currentColors.value.primary || '#E20074',
@@ -185,8 +202,12 @@ const hasCategoryData = computed(() => {
               Variación Histórica de Inventario
             </VCardTitle>
           </VCardItem>
-          <VCardText>
+          <VCardText style="min-height: 320px;">
+            <div v-if="loading" class="d-flex align-center justify-center h-100 py-10">
+              <VSkeletonLoader type="image" width="100%" height="280" />
+            </div>
             <VueApexCharts
+              v-else
               :key="`trend-${chartKey}`"
               height="300"
               :options="trendOptions"
@@ -204,8 +225,12 @@ const hasCategoryData = computed(() => {
               Impacto Financiero ($)
             </VCardTitle>
           </VCardItem>
-          <VCardText>
+          <VCardText style="min-height: 320px;">
+            <div v-if="loading" class="d-flex align-center justify-center h-100 py-10">
+              <VSkeletonLoader type="image" width="100%" height="280" />
+            </div>
             <VueApexCharts
+              v-else
               :key="`impact-${chartKey}`"
               height="300"
               :options="impactOptions"
@@ -226,9 +251,12 @@ const hasCategoryData = computed(() => {
               Mayores Faltantes (Top 10)
             </VCardTitle>
           </VCardItem>
-          <VCardText>
+          <VCardText style="min-height: 370px;">
+            <div v-if="loading" class="d-flex align-center justify-center h-100 py-10">
+              <VSkeletonLoader type="image" width="100%" height="320" />
+            </div>
             <VueApexCharts
-              v-if="hasMissingData"
+              v-else-if="hasMissingData"
               :key="`missing-${chartKey}`"
               height="350"
               :options="topMissingOptions"
@@ -252,9 +280,12 @@ const hasCategoryData = computed(() => {
               Mayores Sobrantes (Top 10)
             </VCardTitle>
           </VCardItem>
-          <VCardText>
+          <VCardText style="min-height: 370px;">
+            <div v-if="loading" class="d-flex align-center justify-center h-100 py-10">
+              <VSkeletonLoader type="image" width="100%" height="320" />
+            </div>
             <VueApexCharts
-              v-if="hasSurplusData"
+              v-else-if="hasSurplusData"
               :key="`surplus-${chartKey}`"
               height="350"
               :options="topSurplusOptions"
@@ -278,9 +309,12 @@ const hasCategoryData = computed(() => {
               Desviación por Categoría
             </VCardTitle>
           </VCardItem>
-          <VCardText class="d-flex justify-center align-center" style="min-height: 350px;">
+          <VCardText class="d-flex justify-center align-center" style="min-height: 370px;">
+            <div v-if="loading" class="d-flex align-center justify-center w-100 py-10">
+              <VSkeletonLoader type="image" width="100%" height="320" />
+            </div>
             <VueApexCharts
-              v-if="hasCategoryData"
+              v-else-if="hasCategoryData"
               :key="`category-${chartKey}`"
               width="100%"
               type="donut"

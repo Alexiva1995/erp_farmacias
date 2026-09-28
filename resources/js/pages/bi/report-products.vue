@@ -55,13 +55,15 @@ const hasActiveAdvancedFilters = computed(() =>
 // ─────────────────────────────────────────────
 // Paginación y loading por sección
 // ─────────────────────────────────────────────
-const volumePage          = ref(1);
-const revenuePage         = ref(1);
-const loadingVolume       = ref(false);
-const loadingRevenue      = ref(false);
-const crossSellingPage    = ref(1);
-const loadingCrossSelling = ref(false);
-const selectedTrendGroup  = ref(null);
+const volumePage                  = ref(1);
+const revenuePage                 = ref(1);
+const loadingVolume               = ref(false);
+const loadingRevenue              = ref(false);
+const crossSellingPage            = ref(1);
+const loadingCrossSelling         = ref(false);
+const selectedCrossSellingProductId   = ref(null);
+const selectedCrossSellingProductName = ref('');
+const selectedTrendGroup          = ref(null);
 
 // ─────────────────────────────────────────────
 // Parámetros comunes — computed
@@ -165,9 +167,12 @@ const fetchRankings = async (sortBy = 'total_sold', page = 1) => {
 const fetchCrossSelling = async (page = 1) => {
   loadingCrossSelling.value = true;
   try {
-    const { data } = await axios.get('/bi/products/cross-selling', {
-      params: { ...baseParams.value, page },
-    });
+    const params = {
+      ...baseParams.value,
+      page,
+      product_id: selectedCrossSellingProductId.value || undefined,
+    };
+    const { data } = await axios.get('/bi/products/cross-selling', { params });
     if (dashboardData.value?.quadrant2) {
       dashboardData.value.quadrant2.cross_selling = data;
       crossSellingPage.value = page;
@@ -177,6 +182,21 @@ const fetchCrossSelling = async (page = 1) => {
   } finally {
     loadingCrossSelling.value = false;
   }
+};
+
+const handleSelectCrossSellingProduct = (item) => {
+  if (!item) {
+    selectedCrossSellingProductId.value = null;
+    selectedCrossSellingProductName.value = '';
+  } else if (typeof item === 'object') {
+    selectedCrossSellingProductId.value = item.id;
+    selectedCrossSellingProductName.value = item.name || `ID #${item.id}`;
+  } else {
+    selectedCrossSellingProductId.value = item;
+    selectedCrossSellingProductName.value = `ID #${item}`;
+  }
+  crossSellingPage.value = 1;
+  fetchCrossSelling(1);
 };
 
 // Exportación ejecutiva a PDF
@@ -366,7 +386,10 @@ onMounted(() => {
           :cross-selling="safeCrossSelling"
           :page="crossSellingPage"
           :loading="loadingCrossSelling"
+          :selected-product-id="selectedCrossSellingProductId"
+          :selected-product-name="selectedCrossSellingProductName"
           @page-change="fetchCrossSelling($event)"
+          @select-product="handleSelectCrossSellingProduct"
         />
       </VCol>
     </VRow>

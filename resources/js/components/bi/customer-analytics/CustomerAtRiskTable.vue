@@ -14,9 +14,16 @@ const props = defineProps({
 });
 
 const search = ref('');
+const currentPage = ref(1);
+const itemsPerPage = ref(5);
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value || 0);
+};
+
+const sanitizePhoneForWa = (phone) => {
+  if (!phone) return '';
+  return phone.replace(/\D/g, '');
 };
 
 const copyPhone = async (phone) => {
@@ -38,6 +45,21 @@ const filteredClients = computed(() => {
     return fullName.includes(term) || phone.includes(term);
   });
 });
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredClients.value.length / itemsPerPage.value) || 1;
+});
+
+const paginatedClients = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  return filteredClients.value.slice(start, start + itemsPerPage.value);
+});
+
+const getSeverityColor = (days) => {
+  if (days >= 90) return 'error';
+  if (days >= 60) return 'warning';
+  return 'info';
+};
 </script>
 
 <template>
@@ -58,6 +80,7 @@ const filteredClients = computed(() => {
             hide-details="auto"
             prepend-inner-icon="tabler-search"
             clearable
+            @update:model-value="currentPage = 1"
           />
         </div>
       </div>
@@ -76,11 +99,11 @@ const filteredClients = computed(() => {
               <th class="text-uppercase font-weight-bold text-end">Gasto Acum.</th>
               <th class="text-uppercase font-weight-bold text-center">Última Compra</th>
               <th class="text-uppercase font-weight-bold text-center">Inactividad</th>
-              <th class="text-uppercase font-weight-bold text-center">Acción</th>
+              <th class="text-uppercase font-weight-bold text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="client in filteredClients" :key="client.id">
+            <tr v-for="client in paginatedClients" :key="client.id">
               <td>
                 <div class="font-weight-bold text-primary">
                   {{ client.name }} {{ client.last_name }}
@@ -96,27 +119,66 @@ const filteredClients = computed(() => {
                 {{ client.last_order_date }}
               </td>
               <td class="text-center">
-                <VChip size="x-small" label color="error" variant="tonal" class="font-weight-bold">
+                <VChip
+                  size="x-small"
+                  label
+                  :color="getSeverityColor(client.recency_days)"
+                  variant="tonal"
+                  class="font-weight-bold"
+                >
                   {{ client.recency_days }} días
                 </VChip>
               </td>
               <td class="text-center">
-                <VBtn
-                  v-if="client.phone"
-                  icon
-                  variant="text"
-                  size="x-small"
-                  color="secondary"
-                  @click="copyPhone(client.phone)"
-                >
-                  <VIcon icon="tabler-copy" size="16" />
-                  <VTooltip activator="parent" location="top">Copiar Teléfono</VTooltip>
-                </VBtn>
-                <span v-else class="text-disabled">-</span>
+                <div class="d-inline-flex align-center justify-center gap-1">
+                  <!-- Contactar vía WhatsApp -->
+                  <VBtn
+                    v-if="client.phone"
+                    :href="`https://wa.me/${sanitizePhoneForWa(client.phone)}`"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    icon
+                    variant="text"
+                    size="x-small"
+                    color="success"
+                  >
+                    <VIcon icon="tabler-brand-whatsapp" size="17" />
+                    <VTooltip activator="parent" location="top">Enviar WhatsApp</VTooltip>
+                  </VBtn>
+
+                  <!-- Copiar Teléfono -->
+                  <VBtn
+                    v-if="client.phone"
+                    icon
+                    variant="text"
+                    size="x-small"
+                    color="secondary"
+                    @click="copyPhone(client.phone)"
+                  >
+                    <VIcon icon="tabler-copy" size="16" />
+                    <VTooltip activator="parent" location="top">Copiar Teléfono</VTooltip>
+                  </VBtn>
+
+                  <span v-else class="text-disabled">-</span>
+                </div>
               </td>
             </tr>
           </tbody>
         </VTable>
+      </div>
+
+      <!-- Paginación -->
+      <div v-if="totalPages > 1" class="d-flex align-center justify-space-between px-4 py-2 border-t">
+        <span class="text-caption text-medium-emphasis">
+          Total: {{ filteredClients.length }} clientes
+        </span>
+        <VPagination
+          v-model="currentPage"
+          :length="totalPages"
+          :total-visible="4"
+          density="compact"
+          size="small"
+        />
       </div>
     </template>
 

@@ -18,6 +18,8 @@ class InventoryCyclicReportResource extends JsonResource
             'kpis' => [
                 'eri' => (float)($this->resource['kpis']['eri'] ?? 100),
                 'net_loss' => (float)($this->resource['kpis']['net_loss'] ?? 0),
+                'missing_loss_value' => (float)($this->resource['kpis']['missing_loss_value'] ?? 0),
+                'surplus_gain_value' => (float)($this->resource['kpis']['surplus_gain_value'] ?? 0),
                 'error_rate' => (float)($this->resource['kpis']['error_rate'] ?? 0),
                 'total_missing_units' => (int)($this->resource['kpis']['total_missing_units'] ?? 0),
                 'total_surplus_units' => (int)($this->resource['kpis']['total_surplus_units'] ?? 0),

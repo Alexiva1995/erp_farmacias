@@ -6,13 +6,17 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  categories: {
+    type: Array,
+    default: () => [],
+  },
   loading: {
     type: Boolean,
     default: false,
   },
 })
 
-const emit = defineEmits(['apply', 'clear'])
+const emit = defineEmits(['apply', 'clear', 'export-pdf', 'export-excel'])
 </script>
 
 <template>
@@ -20,7 +24,7 @@ const emit = defineEmits(['apply', 'clear'])
     <VCardText class="pa-4">
       <VRow align="center" dense>
         <!-- Fecha Inicio -->
-        <VCol cols="12" sm="5" md="3">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             v-model="filters.startDate"
             label="Fecha Inicio"
@@ -34,7 +38,7 @@ const emit = defineEmits(['apply', 'clear'])
         </VCol>
 
         <!-- Fecha Fin -->
-        <VCol cols="12" sm="5" md="3">
+        <VCol cols="12" sm="6" md="3">
           <AppDateTimePicker
             v-model="filters.endDate"
             label="Fecha Fin"
@@ -47,10 +51,28 @@ const emit = defineEmits(['apply', 'clear'])
           />
         </VCol>
 
+        <!-- Filtro por Categoría -->
+        <VCol cols="12" sm="6" md="3">
+          <VAutocomplete
+            v-model="filters.categoryId"
+            :items="categories"
+            item-title="name"
+            item-value="id"
+            label="Categoría"
+            placeholder="Todas las categorías"
+            density="comfortable"
+            variant="outlined"
+            hide-details="auto"
+            clearable
+            :disabled="loading"
+            prepend-inner-icon="tabler-category"
+          />
+        </VCol>
+
         <VSpacer />
 
-        <!-- Acciones de Filtrado -->
-        <VCol cols="12" sm="2" md="auto" class="d-flex align-center gap-2 justify-end">
+        <!-- Acciones de Filtrado y Exportación -->
+        <VCol cols="12" sm="6" md="auto" class="d-flex align-center gap-2 justify-end flex-wrap">
           <VBtn
             color="primary"
             variant="flat"
@@ -71,6 +93,27 @@ const emit = defineEmits(['apply', 'clear'])
           >
             <VIcon icon="tabler-eraser" />
             <VTooltip activator="parent" location="top">Limpiar Filtros</VTooltip>
+          </VBtn>
+
+          <VBtn
+            color="error"
+            variant="tonal"
+            :disabled="loading"
+            prepend-icon="tabler-file-type-pdf"
+            @click="emit('export-pdf')"
+          >
+            PDF
+          </VBtn>
+
+          <VBtn
+            color="success"
+            variant="tonal"
+            :disabled="loading"
+            icon="tabler-file-spreadsheet"
+            @click="emit('export-excel')"
+          >
+            <VIcon icon="tabler-file-spreadsheet" />
+            <VTooltip activator="parent" location="top">Exportar Excel (CSV)</VTooltip>
           </VBtn>
         </VCol>
       </VRow>
