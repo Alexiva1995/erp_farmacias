@@ -104,7 +104,7 @@ const handleSave = () => {
               v-model="form.command"
               label="Comando o Disparador"
               placeholder="ej: /factura"
-              density="compact"
+              density="comfortable"
               variant="outlined"
               prepend-inner-icon="tabler-terminal-2"
               hide-details="auto"
@@ -117,7 +117,7 @@ const handleSave = () => {
               v-model="form.alias"
               label="Nombre / Alias"
               placeholder="ej: Escaneo Facturas IA"
-              density="compact"
+              density="comfortable"
               variant="outlined"
               prepend-inner-icon="tabler-tag"
               hide-details="auto"
@@ -135,7 +135,7 @@ const handleSave = () => {
               prepend-inner-icon="tabler-brand-telegram"
               hint="Selecciona el canal de Telegram asignado para las respuestas de este comando."
               persistent-hint
-              density="compact"
+              density="comfortable"
               variant="outlined"
             />
           </VCol>
@@ -146,7 +146,7 @@ const handleSave = () => {
               v-model="form.description"
               label="Descripción del Comando"
               rows="3"
-              density="compact"
+              density="comfortable"
               variant="outlined"
               placeholder="Describe la funcionalidad y las acciones automáticas que ejecuta..."
               hide-details="auto"
@@ -159,21 +159,21 @@ const handleSave = () => {
               v-model="form.payload_template"
               label="Plantilla de Respuesta (Opcional)"
               rows="2"
-              density="compact"
+              density="comfortable"
               variant="outlined"
               placeholder="Plantilla predeterminada enviada al bot de Telegram..."
               hide-details="auto"
             />
           </VCol>
 
-          <!-- Swtich Activo -->
+          <!-- Switch Activo -->
           <VCol cols="12">
             <VSwitch
               v-model="form.is_active"
               label="Comando Habilitado"
               color="success"
-              hide-details
-              density="compact"
+              hide-details="auto"
+              density="comfortable"
             />
           </VCol>
         </VRow>

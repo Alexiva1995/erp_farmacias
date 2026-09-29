@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { $api } from '@/utils/api'
+import axios from '@axios'
 import TelegramCommandStatsCards from './TelegramCommandStatsCards.vue'
 import TelegramCommandEditDialog from './TelegramCommandEditDialog.vue'
 
@@ -48,8 +48,8 @@ const selectedCommand = ref(null)
 const fetchCommands = async () => {
   loading.value = true
   try {
-    const response = await $api(`/telegram/commands/${props.moduleName}`)
-    commands.value = response.data || []
+    const { data } = await axios.get(`/api/telegram/commands/${props.moduleName}`)
+    commands.value = data.data || []
   } catch (error) {
     showToast('Error al cargar la lista de comandos de Telegram.', 'error')
   } finally {
@@ -62,8 +62,8 @@ const fetchCommands = async () => {
  */
 const fetchChannels = async () => {
   try {
-    const response = await $api('/telegram/channels')
-    availableChannels.value = response.data || []
+    const { data } = await axios.get('/api/telegram/channels')
+    availableChannels.value = data.data || []
   } catch (error) {
     console.error('Error al cargar lista de canales:', error)
   }
@@ -77,9 +77,8 @@ const toggleCommand = async (commandItem) => {
   const targetState = commandItem.is_active
 
   try {
-    await $api(`/telegram/commands/${commandItem.id}/toggle`, {
-      method: 'PATCH',
-      body: { is_active: targetState },
+    await axios.patch(`/api/telegram/commands/${commandItem.id}/toggle`, {
+      is_active: targetState,
     })
 
     showToast(
@@ -112,14 +111,11 @@ const updateChannelAssignment = async (commandItem, newChannelId) => {
       payload_template: commandItem.payload_template,
     }
 
-    const response = await $api(`/telegram/commands/${commandItem.id}`, {
-      method: 'PUT',
-      body: payload,
-    })
+    const { data } = await axios.put(`/api/telegram/commands/${commandItem.id}`, payload)
 
     // Actualizar localmente la relación canal
     commandItem.channel_id = newChannelId
-    commandItem.channel = response.data?.channel || null
+    commandItem.channel = data.data?.channel || null
 
     const channelObj = availableChannels.value.find(c => c.id === newChannelId)
     showToast(`Canal de "${commandItem.command}" asignado a: ${channelObj ? channelObj.name : 'General Principal'}`, 'success')
@@ -145,18 +141,15 @@ const openEditDialog = (commandItem) => {
 const handleSaveCommand = async (updatedData) => {
   savingEdit.value = true
   try {
-    const response = await $api(`/telegram/commands/${updatedData.id}`, {
-      method: 'PUT',
-      body: updatedData,
-    })
+    const { data } = await axios.put(`/api/telegram/commands/${updatedData.id}`, updatedData)
 
     showToast('Comando actualizado correctamente.', 'success')
     editDialog.value = false
 
     // Actualizar el elemento en la lista local de forma inmutable
     const index = commands.value.findIndex(c => c.id === updatedData.id)
-    if (index !== -1 && response.data) {
-      commands.value[index] = response.data
+    if (index !== -1 && data.data) {
+      commands.value[index] = data.data
     }
   } catch (error) {
     showToast('Error al guardar cambios del comando.', 'error')
@@ -246,10 +239,10 @@ onMounted(() => {
               v-model="search"
               placeholder="Buscar por comando, alias o descripción..."
               prepend-inner-icon="tabler-search"
-              density="compact"
+              density="comfortable"
               variant="outlined"
               clearable
-              hide-details
+              hide-details="auto"
             />
           </VCol>
         </VRow>
@@ -281,8 +274,8 @@ onMounted(() => {
               <VSwitch
                 v-model="cmd.is_active"
                 color="success"
-                hide-details
-                density="compact"
+                hide-details="auto"
+                density="comfortable"
                 :disabled="updatingId === cmd.id"
                 @change="toggleCommand(cmd)"
               >
@@ -299,7 +292,7 @@ onMounted(() => {
               </VSwitch>
             </td>
             <td>
-              <VChip color="primary" size="small" variant="flat" class="font-weight-bold">
+              <VChip color="primary" size="small" variant="tonal" class="font-weight-bold">
                 {{ cmd.command }}
               </VChip>
             </td>
@@ -312,9 +305,9 @@ onMounted(() => {
                 :items="channelOptions"
                 item-title="title"
                 item-value="value"
-                density="compact"
+                density="comfortable"
                 variant="outlined"
-                hide-details
+                hide-details="auto"
                 style="width: 100%; min-width: 220px;"
                 :disabled="updatingId === cmd.id"
                 @update:model-value="(val) => updateChannelAssignment(cmd, val)"
@@ -362,15 +355,15 @@ onMounted(() => {
         >
           <VCardText>
             <div class="d-flex align-center justify-space-between mb-2">
-              <VChip color="primary" size="small" variant="flat" class="font-weight-bold">
+              <VChip color="primary" size="small" variant="tonal" class="font-weight-bold">
                 {{ cmd.command }}
               </VChip>
 
               <VSwitch
                 v-model="cmd.is_active"
                 color="success"
-                hide-details
-                density="compact"
+                hide-details="auto"
+                density="comfortable"
                 :disabled="updatingId === cmd.id"
                 @change="toggleCommand(cmd)"
               />
@@ -393,9 +386,9 @@ onMounted(() => {
                   :items="channelOptions"
                   item-title="title"
                   item-value="value"
-                  density="compact"
+                  density="comfortable"
                   variant="outlined"
-                  hide-details
+                  hide-details="auto"
                   :disabled="updatingId === cmd.id"
                   @update:model-value="(val) => updateChannelAssignment(cmd, val)"
                 />
