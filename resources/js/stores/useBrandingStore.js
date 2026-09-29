@@ -49,6 +49,7 @@ export const useBrandingStore = defineStore('branding', () => {
     expense_auto_approve: false,
     enable_invoices: true,
     enable_invoice_locations: true,
+    enable_reservations: true,
   })
 
   const isLoading = ref(false)

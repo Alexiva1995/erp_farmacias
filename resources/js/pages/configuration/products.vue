@@ -38,6 +38,7 @@ const enableDonations         = ref(true)
 const enableLocations         = ref(true)
 const enableOptimization      = ref(true)
 const enableDishes            = ref(true)
+const enableReservations      = ref(true)
 const traceabilityMode        = ref('units')
 const productFormFields       = ref([])
 
@@ -61,6 +62,7 @@ const fetchSettings = async () => {
     'enable_locations',
     'enable_optimization',
     'enable_dishes',
+    'enable_reservations',
     'traceability_mode',
     'product_form_fields'
   ].join(',')
@@ -84,6 +86,7 @@ const fetchSettings = async () => {
       enableLocations.value        = settings.enable_locations         ?? true
       enableOptimization.value     = settings.enable_optimization      ?? true
       enableDishes.value           = settings.enable_dishes            ?? true
+      enableReservations.value     = settings.enable_reservations      ?? true
       traceabilityMode.value       = settings.traceability_mode        ?? 'units'
       productFormFields.value      = settings.product_form_fields      ?? []
     }
@@ -120,6 +123,7 @@ const updateSettings = () => {
         enable_locations:          enableLocations.value,
         enable_optimization:       enableOptimization.value,
         enable_dishes:             enableDishes.value,
+        enable_reservations:       enableReservations.value,
         traceability_mode:         traceabilityMode.value,
         product_form_fields:       productFormFields.value,
       })
@@ -214,6 +218,7 @@ onMounted(fetchSettings)
         v-model:enable-locations="enableLocations"
         v-model:enable-optimization="enableOptimization"
         v-model:enable-dishes="enableDishes"
+        v-model:enable-reservations="enableReservations"
         v-model:traceability-mode="traceabilityMode"
         :is-saving="isSaving"
         :can-edit="canEdit"

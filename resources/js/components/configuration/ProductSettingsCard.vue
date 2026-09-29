@@ -12,6 +12,7 @@ const props = defineProps({
   enableLocations: { type: Boolean, default: true },
   enableOptimization: { type: Boolean, default: true },
   enableDishes: { type: Boolean, default: true },
+  enableReservations: { type: Boolean, default: true },
   traceabilityMode: { type: String, default: 'units' },
   isSaving: { type: Boolean, default: false },
   canEdit: { type: Boolean, default: true },
@@ -30,6 +31,7 @@ const emit = defineEmits([
   'update:enableLocations',
   'update:enableOptimization',
   'update:enableDishes',
+  'update:enableReservations',
   'update:traceabilityMode',
   'change',
 ])
@@ -109,7 +111,7 @@ const features = [
     title: 'Grupos de Marcas',
     description: 'Manejo de marcas agrupadas por corporaciones.',
     tooltip: 'Organiza laboratorios y marcas bajo un mismo consorcio o distribuidor.',
-    icon: 'tabler-brand-sublime',
+    icon: 'tabler-tags',
   },
   {
     key: 'enableLocations',
@@ -271,6 +273,65 @@ const features = [
               </div>
               <p class="text-caption text-medium-emphasis mb-0">
                 Seguimiento por consumo (peso/volumen) o unidades fijas.
+              </p>
+            </div>
+          </VCard>
+        </VCol>
+
+        <!-- Reservas Especial -->
+        <VCol cols="12" sm="6" md="4" lg="3">
+          <VCard
+            variant="outlined"
+            class="rounded-lg h-100 pa-4 d-flex flex-column justify-space-between transition-all"
+            :class="props.enableReservations ? 'border-primary bg-surface' : 'opacity-90'"
+          >
+            <div>
+              <div class="d-flex align-start justify-space-between w-100 mb-3">
+                <div class="d-flex align-center gap-3">
+                  <VAvatar
+                    :color="props.enableReservations ? 'primary' : 'secondary'"
+                    variant="tonal"
+                    size="38"
+                    class="rounded-lg"
+                  >
+                    <VIcon icon="tabler-calendar-event" size="20" />
+                  </VAvatar>
+                  <div>
+                    <div class="d-flex align-center gap-1">
+                      <h3 class="text-subtitle-2 font-weight-bold mb-0">Reservas</h3>
+                      <VTooltip location="top">
+                        <template #activator="{ props: tooltipProps }">
+                          <VIcon
+                            v-bind="tooltipProps"
+                            icon="tabler-info-circle"
+                            size="16"
+                            class="text-medium-emphasis cursor-pointer"
+                          />
+                        </template>
+                        <span>Habilita el módulo de reservas y alquiler de espacios o citas en el ERP.</span>
+                      </VTooltip>
+                    </div>
+                    <VChip
+                      :color="props.enableReservations ? 'success' : 'secondary'"
+                      size="x-small"
+                      variant="tonal"
+                      class="mt-1 font-weight-bold"
+                    >
+                      {{ props.enableReservations ? 'Habilitado' : 'Deshabilitado' }}
+                    </VChip>
+                  </div>
+                </div>
+                <VSwitch
+                  :model-value="props.enableReservations"
+                  color="primary"
+                  density="comfortable"
+                  hide-details="auto"
+                  :disabled="isSaving || !canEdit"
+                  @update:model-value="(val) => updateField(val, 'enableReservations')"
+                />
+              </div>
+              <p class="text-caption text-medium-emphasis mb-0">
+                Gestión de reservas de servicios, canchas y agendamiento.
               </p>
             </div>
           </VCard>
