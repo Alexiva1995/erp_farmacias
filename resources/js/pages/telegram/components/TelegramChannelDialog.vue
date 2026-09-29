@@ -51,7 +51,7 @@ watch(
       }
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const handleSave = () => {
@@ -88,7 +88,10 @@ const close = () => {
               <VTextField
                 v-model="form.name"
                 label="Nombre del Canal *"
-                placeholder="ej: Alertas de Ventas Farmacia"
+                placeholder="Alertas de Ventas Farmacia"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
                 prepend-inner-icon="tabler-tag"
                 required
               />
@@ -98,9 +101,12 @@ const close = () => {
               <VTextField
                 v-model="form.chat_id"
                 label="Telegram Chat ID *"
-                placeholder="ej: -1001987654321"
+                placeholder="-1001987654321"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
                 prepend-inner-icon="tabler-message"
-                hint="ID numérico del grupo o canal de Telegram"
+                hint="ID numérico del canal o grupo"
                 persistent-hint
                 required
               />
@@ -113,17 +119,20 @@ const close = () => {
                 item-title="title"
                 item-value="value"
                 label="Módulo Asignado"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
                 prepend-inner-icon="tabler-category"
               />
             </VCol>
 
-            <VCol cols="12" md="6">
+            <VCol cols="12" md="6" class="d-flex align-center">
               <VSwitch
                 v-model="form.is_active"
                 label="Canal Habilitado"
                 color="success"
-                class="mt-2"
-                hide-details
+                density="comfortable"
+                hide-details="auto"
               />
             </VCol>
 
@@ -131,8 +140,11 @@ const close = () => {
               <VTextarea
                 v-model="form.description"
                 label="Descripción / Propósito"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
                 rows="2"
-                placeholder="Detalla qué tipo de mensajes o notificaciones deben llegar a este canal..."
+                placeholder="Detalla qué tipo de mensajes o notificaciones deben enviarse a este canal..."
               />
             </VCol>
           </VRow>

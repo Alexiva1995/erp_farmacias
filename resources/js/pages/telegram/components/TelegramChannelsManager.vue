@@ -1,5 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import axios from '@axios'
+import Swal from 'sweetalert2'
 import TelegramChannelDialog from './TelegramChannelDialog.vue'
 
 const channels = ref([])
@@ -11,33 +13,25 @@ const savingChannel = ref(false)
 const dialogShow = ref(false)
 const selectedChannel = ref(null)
 
-const deleteConfirmDialog = ref(false)
-const channelToDelete = ref(null)
-const deleting = ref(false)
-
-const snackbar = ref({
+const snackbar = reactive({
   show: false,
   text: '',
   color: 'success',
 })
 
+const showToast = (text, color = 'success') => {
+  snackbar.text = text
+  snackbar.color = color
+  snackbar.show = true
+}
+
 const fetchChannels = async () => {
   loading.value = true
   try {
-    const response = await fetch('/api/telegram/channels', {
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
-      },
-    })
-    if (response.ok) {
-      const res = await response.json()
-      channels.value = res.data || []
-    } else {
-      showToast('Error al cargar la lista de canales', 'error')
-    }
+    const { data } = await axios.get('/api/telegram/channels')
+    channels.value = data.data || []
   } catch (error) {
-    showToast('Error de comunicación con el servidor', 'error')
+    showToast('Error al cargar la lista de canales.', 'error')
   } finally {
     loading.value = false
   }
@@ -55,31 +49,18 @@ const openEditDialog = (channel) => {
 
 const saveChannel = async (formData) => {
   savingChannel.value = true
-  const isEdit = !!formData.id
+  const isEdit = Boolean(formData.id)
   const url = isEdit ? `/api/telegram/channels/${formData.id}` : '/api/telegram/channels'
-  const method = isEdit ? 'PUT' : 'POST'
+  const method = isEdit ? 'put' : 'post'
 
   try {
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
-      },
-      body: JSON.stringify(formData),
-    })
-
-    if (response.ok) {
-      showToast(isEdit ? 'Canal actualizado con éxito' : 'Canal registrado con éxito', 'success')
-      dialogShow.value = false
-      fetchChannels()
-    } else {
-      const errorRes = await response.json()
-      showToast(errorRes.message || 'Error al guardar el canal', 'error')
-    }
+    const { data } = await axios[method](url, formData)
+    showToast(data.message || (isEdit ? 'Canal actualizado con éxito.' : 'Canal registrado con éxito.'), 'success')
+    dialogShow.value = false
+    await fetchChannels()
   } catch (error) {
-    showToast('Error de servidor al guardar canal', 'error')
+    const errorMsg = error.response?.data?.message || 'Error al persistir el canal.'
+    showToast(errorMsg, 'error')
   } finally {
     savingChannel.value = false
   }
@@ -90,25 +71,13 @@ const toggleChannel = async (channel) => {
   const targetState = channel.is_active
 
   try {
-    const response = await fetch(`/api/telegram/channels/${channel.id}/toggle`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
-      },
-      body: JSON.stringify({ is_active: targetState }),
+    const { data } = await axios.patch(`/api/telegram/channels/${channel.id}/toggle`, {
+      is_active: targetState,
     })
-
-    if (response.ok) {
-      showToast(`Canal "${channel.name}" ${targetState ? 'habilitado' : 'pausado'}.`, 'success')
-    } else {
-      channel.is_active = !targetState
-      showToast('Error al cambiar estado del canal', 'error')
-    }
+    showToast(data.message || `Canal "${channel.name}" ${targetState ? 'habilitado' : 'pausado'}.`, 'success')
   } catch (error) {
     channel.is_active = !targetState
-    showToast('Error de red al actualizar estado', 'error')
+    showToast('Error al cambiar el estado del canal.', 'error')
   } finally {
     togglingId.value = null
   }
@@ -117,56 +86,37 @@ const toggleChannel = async (channel) => {
 const testChannel = async (channel) => {
   testingId.value = channel.id
   try {
-    const response = await fetch(`/api/telegram/channels/${channel.id}/test`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
-      },
-    })
-    const res = await response.json()
-    if (response.ok) {
-      showToast(res.message || 'Mensaje de prueba enviado correctamente', 'success')
-    } else {
-      showToast(res.message || 'Error al enviar mensaje de prueba', 'error')
-    }
+    const { data } = await axios.post(`/api/telegram/channels/${channel.id}/test`)
+    showToast(data.message || 'Mensaje de prueba enviado correctamente.', 'success')
   } catch (error) {
-    showToast('Error al conectar con la API de Telegram', 'error')
+    const errorMsg = error.response?.data?.message || 'Error al despachar mensaje de prueba.'
+    showToast(errorMsg, 'error')
   } finally {
     testingId.value = null
   }
 }
 
-const confirmDelete = (channel) => {
-  channelToDelete.value = channel
-  deleteConfirmDialog.value = true
-}
+const confirmDelete = async (channel) => {
+  const result = await Swal.fire({
+    title: '¿Eliminar canal?',
+    text: `¿Estás seguro de que deseas eliminar el canal "${channel.name}"? Esta acción no se puede deshacer.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#FF4C51',
+    cancelButtonColor: '#808390',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar',
+  })
 
-const deleteChannel = async () => {
-  if (!channelToDelete.value) return
-  deleting.value = true
+  if (!result.isConfirmed) return
 
   try {
-    const response = await fetch(`/api/telegram/channels/${channelToDelete.value.id}`, {
-      method: 'DELETE',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
-      },
-    })
-
-    if (response.ok) {
-      showToast('Canal eliminado correctamente', 'success')
-      deleteConfirmDialog.value = false
-      fetchChannels()
-    } else {
-      showToast('Error al eliminar canal', 'error')
-    }
+    const { data } = await axios.delete(`/api/telegram/channels/${channel.id}`)
+    showToast(data.message || 'Canal eliminado correctamente.', 'success')
+    await fetchChannels()
   } catch (error) {
-    showToast('Error de servidor al eliminar canal', 'error')
-  } finally {
-    deleting.value = false
-    channelToDelete.value = null
+    const errorMsg = error.response?.data?.message || 'Error al eliminar el canal.'
+    showToast(errorMsg, 'error')
   }
 }
 
@@ -180,14 +130,6 @@ const getModuleBadgeColor = (moduleName) => {
   }
 }
 
-const showToast = (text, color = 'success') => {
-  snackbar.value = {
-    show: true,
-    text,
-    color,
-  }
-}
-
 onMounted(() => {
   fetchChannels()
 })
@@ -195,8 +137,8 @@ onMounted(() => {
 
 <template>
   <div>
-    <VCard class="mb-6">
-      <VCardItem>
+    <VCard>
+      <VCardItem class="pb-4">
         <template #prepend>
           <VAvatar color="primary" variant="tonal" rounded size="42">
             <VIcon icon="tabler-topology-ring-3" size="24" />
@@ -205,8 +147,8 @@ onMounted(() => {
         <VCardTitle class="text-h6 font-weight-bold">
           Gestión de Canales de Telegram
         </VCardTitle>
-        <VCardSubtitle>
-          Agrega múltiples canales y asignales nombres legibles para direccionar las alertas por módulo.
+        <VCardSubtitle class="text-body-2">
+          Asigna canales específicos para direccionar alertas automáticas por módulo del sistema.
         </VCardSubtitle>
 
         <template #append>
@@ -220,7 +162,9 @@ onMounted(() => {
         </template>
       </VCardItem>
 
-      <VCardText>
+      <VDivider />
+
+      <VCardText class="pt-0">
         <VProgressLinear
           v-if="loading"
           indeterminate
@@ -241,17 +185,19 @@ onMounted(() => {
           </thead>
           <tbody>
             <tr v-if="channels.length === 0 && !loading">
-              <td colspan="6" class="text-center py-6 text-muted">
-                No hay canales configurados. Haz clic en "Añadir Canal" para crear el primero.
+              <td colspan="6" class="text-center py-8 text-medium-emphasis">
+                <VIcon icon="tabler-topology-star-ring-3" size="40" class="mb-2 opacity-50" />
+                <div class="text-body-2 font-weight-medium">No hay canales de Telegram registrados.</div>
+                <div class="text-caption">Haz clic en "Añadir Canal" para configurar el primero.</div>
               </td>
             </tr>
             <tr v-for="ch in channels" :key="ch.id">
-              <td style="width: 130px;">
+              <td style="width: 140px;">
                 <VSwitch
                   v-model="ch.is_active"
                   color="success"
-                  hide-details
-                  density="compact"
+                  hide-details="auto"
+                  density="comfortable"
                   :disabled="togglingId === ch.id"
                   @change="toggleChannel(ch)"
                 >
@@ -260,7 +206,7 @@ onMounted(() => {
                       size="x-small"
                       :color="ch.is_active ? 'success' : 'secondary'"
                       variant="tonal"
-                      class="ms-1"
+                      class="ms-1 font-weight-medium"
                     >
                       {{ ch.is_active ? 'Activo' : 'Pausado' }}
                     </VChip>
@@ -268,12 +214,12 @@ onMounted(() => {
                 </VSwitch>
               </td>
 
-              <td class="font-weight-bold text-body-1">
+              <td class="font-weight-bold text-body-2">
                 {{ ch.name }}
               </td>
 
               <td>
-                <VChip size="small" variant="flat" color="default" class="font-weight-medium">
+                <VChip size="small" variant="tonal" color="default" class="font-weight-medium">
                   {{ ch.chat_id }}
                 </VChip>
               </td>
@@ -290,7 +236,7 @@ onMounted(() => {
               </td>
 
               <td>
-                <span class="text-body-2 text-wrap" style="max-width: 250px; display: inline-block;">
+                <span class="text-body-2 text-wrap" style="max-width: 280px; display: inline-block;">
                   {{ ch.description || 'Sin descripción' }}
                 </span>
               </td>
@@ -306,7 +252,7 @@ onMounted(() => {
                 >
                   <VIcon icon="tabler-send" size="18" />
                   <VTooltip activator="parent" location="top">
-                    Enviar mensaje de prueba a este canal
+                    Enviar mensaje de prueba en vivo
                   </VTooltip>
                 </VBtn>
 
@@ -350,33 +296,12 @@ onMounted(() => {
       @save="saveChannel"
     />
 
-    <!-- Diálogo de Confirmación de Eliminación -->
-    <VDialog v-model="deleteConfirmDialog" max-width="450px">
-      <VCard>
-        <VCardTitle class="pt-6 px-6 text-h6 font-weight-bold">
-          Confirmar Eliminación
-        </VCardTitle>
-        <VCardText class="px-6 py-2">
-          ¿Estás seguro de que deseas eliminar el canal
-          <strong>"{{ channelToDelete?.name }}"</strong>? Esta acción no se puede deshacer.
-        </VCardText>
-        <VCardActions class="px-6 pb-6 pt-4">
-          <VSpacer />
-          <VBtn variant="outlined" color="secondary" @click="deleteConfirmDialog = false">
-            Cancelar
-          </VBtn>
-          <VBtn color="error" :loading="deleting" @click="deleteChannel">
-            Sí, Eliminar
-          </VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
-
     <VSnackbar
       v-model="snackbar.show"
       :color="snackbar.color"
       timeout="4000"
       location="top right"
+      variant="flat"
     >
       {{ snackbar.text }}
     </VSnackbar>
