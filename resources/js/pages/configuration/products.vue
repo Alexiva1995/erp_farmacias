@@ -127,7 +127,7 @@ const updateSettings = () => {
         traceability_mode:         traceabilityMode.value,
         product_form_fields:       productFormFields.value,
       })
-      await brandingStore.fetchSettings()
+      await brandingStore.fetchSettings(true)
       toast.success("Configuración de productos actualizada exitosamente")
     } catch (error) {
       console.error("Error al guardar configuración de productos:", error)

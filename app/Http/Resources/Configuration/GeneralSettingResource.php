@@ -111,6 +111,7 @@ class GeneralSettingResource extends JsonResource
             'enable_optimization' => (bool) ($this->enable_optimization ?? true),
             'traceability_mode' => $this->traceability_mode ?? 'units',
             'enable_dishes' => (bool) ($this->enable_dishes ?? true),
+            'enable_reservations' => (bool) ($this->enable_reservations ?? true),
             'enable_quotations' => (bool) ($this->enable_quotations ?? true),
             'quotation_style' => $this->quotation_style ?? 'pharmacy',
             'tpv_style' => $this->tpv_style ?? 'pharmacy',

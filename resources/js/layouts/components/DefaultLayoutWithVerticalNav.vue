@@ -35,7 +35,7 @@ const processedNavItems = computed(() => {
 
     if (title === 'reservas' || to === 'reservations') {
       const enableReservations = brandingStore.settings.enable_reservations ?? true;
-      return enabledModules.includes('reservation') && enableReservations;
+      return Boolean(enableReservations);
     }
     if (title === 'lotería' || to === 'lottery' || title === 'loteria') {
       return enabledModules.includes('lottery');
