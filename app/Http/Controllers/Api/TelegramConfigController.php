@@ -46,6 +46,26 @@ class TelegramConfigController extends Controller
             ]
         );
 
+        // Si existen campos vacíos en la BD, auto-completar con la configuración del .env
+        $updates = [];
+        if (empty($config->bot_token) && config('services.telegram.bot_token')) {
+            $updates['bot_token'] = config('services.telegram.bot_token');
+        }
+        if (empty($config->chat_id) && config('services.telegram.chat_id')) {
+            $updates['chat_id'] = config('services.telegram.chat_id');
+        }
+        if (empty($config->admin_chat_id) && config('services.telegram.admin_chat_id')) {
+            $updates['admin_chat_id'] = config('services.telegram.admin_chat_id');
+        }
+        if (empty($config->webhook_url)) {
+            $updates['webhook_url'] = rtrim(config('app.url'), '/') . '/api/public/telegram/webhook';
+        }
+
+        if (!empty($updates)) {
+            $config->update($updates);
+            $config->refresh();
+        }
+
         return response()->json([
             'data' => new TelegramConfigResource($config),
             'channels' => TelegramChannelResource::collection($config->channels),
