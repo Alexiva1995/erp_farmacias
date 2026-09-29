@@ -4,22 +4,27 @@ import { computed } from 'vue'
 const props = defineProps({
   view: {
     type: Object,
-    required: true
+    required: true,
   },
   isActive: {
     type: Boolean,
-    default: false
+    default: false,
   },
   isSaving: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
+  canEdit: {
+    type: Boolean,
+    default: true,
+  },
 })
 
 const emit = defineEmits(['toggle'])
 
+// Despacha el evento de alternancia si los permisos y el estado lo permiten
 const handleToggle = () => {
-  if (props.isSaving) return
+  if (props.isSaving || !props.canEdit) return
   emit('toggle', props.view.key)
 }
 </script>
@@ -27,52 +32,62 @@ const handleToggle = () => {
 <template>
   <VCard
     variant="outlined"
-    class="rounded-lg cursor-pointer ia-module-card h-100 transition-all"
+    class="rounded-lg h-100 transition-swing"
     :class="[
-      isActive ? 'is-active border-primary' : 'opacity-70 border-color-light',
-      { 'is-disabled pointer-events-none opacity-50': isSaving }
+      isActive ? 'border-primary' : 'border-color-light',
+      { 'cursor-pointer': canEdit && !isSaving, 'opacity-60 pointer-events-none': !canEdit || isSaving }
     ]"
     @click="handleToggle"
   >
     <VCardItem class="py-4 px-4 h-100 d-flex flex-column justify-space-between">
       <div>
         <div class="d-flex align-center justify-space-between w-100 mb-3">
-          <div class="d-flex align-center gap-2">
+          <div class="d-flex align-center gap-3 overflow-hidden">
             <VAvatar
               :color="isActive ? 'primary' : 'secondary'"
               variant="tonal"
-              size="38"
-              class="rounded-lg"
+              size="40"
+              class="rounded-lg flex-shrink-0"
             >
-              <VIcon :icon="view.icon" size="20" />
+              <VIcon :icon="view.icon" size="22" />
             </VAvatar>
-            <div>
-              <h3 class="text-subtitle-2 font-weight-bold mb-0 text-truncate" style="max-width: 130px;" :title="view.title">
+
+            <div class="overflow-hidden">
+              <h3 class="text-subtitle-2 font-weight-bold mb-0 text-truncate" :title="view.title">
                 {{ view.title }}
               </h3>
               <VChip
-                :color="isActive ? 'success' : 'grey-darken-1'"
+                :color="isActive ? 'success' : 'secondary'"
                 size="x-small"
-                variant="flat"
-                class="mt-1 font-weight-bold text-white"
+                variant="tonal"
+                class="mt-1 font-weight-bold"
               >
-                {{ isActive ? 'Visible' : 'Oculto' }}
+                {{ isActive ? 'Activo' : 'Inactivo' }}
               </VChip>
             </div>
           </div>
 
-          <VSwitch
-            :model-value="isActive"
-            :disabled="isSaving"
-            density="compact"
-            hide-details
-            color="primary"
-            class="ms-2"
-            @click.stop="handleToggle"
-          />
+          <VTooltip
+            location="top"
+            :text="!canEdit ? 'Sin permisos de edición' : (isActive ? 'Desactivar módulo' : 'Activar módulo')"
+          >
+            <template #activator="{ props: tooltipProps }">
+              <div v-bind="tooltipProps">
+                <VSwitch
+                  :model-value="isActive"
+                  :disabled="isSaving || !canEdit"
+                  density="comfortable"
+                  hide-details="auto"
+                  color="primary"
+                  class="ms-2"
+                  @click.stop="handleToggle"
+                />
+              </div>
+            </template>
+          </VTooltip>
         </div>
 
-        <p class="text-caption text-medium-emphasis mb-0 leading-tight">
+        <p class="text-caption text-medium-emphasis mb-0 line-clamp-2">
           {{ view.description }}
         </p>
       </div>
@@ -81,18 +96,11 @@ const handleToggle = () => {
 </template>
 
 <style scoped>
-.ia-module-card {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  border-width: 1.5px !important;
-}
-
-.ia-module-card:hover:not(.is-disabled) {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px -4px rgba(var(--v-theme-primary), 0.15) !important;
-}
-
-.ia-module-card.is-active {
-  background-color: rgba(var(--v-theme-primary), 0.03) !important;
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .border-color-light {
