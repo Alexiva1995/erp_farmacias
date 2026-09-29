@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useAbility } from '@casl/vue'
 import axios from '@/plugins/axios'
 import { toast } from "@/plugins/sweetalert"
 import { useBrandingStore } from "@/stores/useBrandingStore"
@@ -7,7 +8,15 @@ import ProductSettingsCard from '@/components/configuration/ProductSettingsCard.
 import ProductTypesCard from '@/components/configuration/ProductTypesCard.vue'
 import ProductFormFieldsCard from '@/components/configuration/ProductFormFieldsCard.vue'
 
+const ability = useAbility()
 const brandingStore = useBrandingStore()
+
+// Permisos de edición mediante CASL
+const canEdit = computed(() => {
+  return ability.can('manage', 'admin') || 
+         ability.can('manage', 'all') || 
+         ability.can('edit', 'Configuration')
+})
 
 // Estados reactivos de la UI
 const isLoading = ref(true)
@@ -91,7 +100,7 @@ const fetchSettings = async () => {
 // Control de guardado con debounce
 let saveDebounceTimer = null
 const updateSettings = () => {
-  if (isLoading.value) return
+  if (isLoading.value || !canEdit.value) return
   isSaving.value = true
   if (saveDebounceTimer) clearTimeout(saveDebounceTimer)
 
@@ -122,7 +131,7 @@ const updateSettings = () => {
     } finally {
       isSaving.value = false
     }
-  }, 300)
+  }, 350)
 }
 
 onMounted(fetchSettings)
@@ -140,18 +149,36 @@ onMounted(fetchSettings)
       style="z-index: 99;"
     />
 
+    <!-- Alerta de permisos insuficientes -->
+    <VAlert
+      v-if="!canEdit"
+      type="warning"
+      variant="tonal"
+      density="comfortable"
+      class="mb-6 rounded-lg"
+    >
+      <template #title> Modo de Solo Lectura </template>
+      No dispones de permisos suficientes para modificar las configuraciones de productos en el sistema.
+    </VAlert>
+
     <!-- Banner de Error con Reintento -->
     <VAlert
       v-if="hasError"
       type="error"
       variant="tonal"
+      density="comfortable"
       class="mb-6 rounded-lg"
       closable
     >
       <template #title> Error de Carga </template>
       {{ errorMessage }}
       <template #append>
-        <VBtn color="error" variant="text" size="small" @click="fetchSettings">
+        <VBtn
+          color="error"
+          variant="text"
+          size="small"
+          @click="fetchSettings"
+        >
           Reintentar
         </VBtn>
       </template>
@@ -161,12 +188,12 @@ onMounted(fetchSettings)
     <div v-if="isLoading" class="d-flex flex-column gap-6">
       <VCard class="mb-6 rounded-lg border shadow-sm">
         <VCardItem class="py-5">
-          <VSkeletonLoader type="article, grid" height="150" />
+          <VSkeletonLoader type="article, grid" height="180" />
         </VCardItem>
       </VCard>
       <VCard class="mb-6 rounded-lg border shadow-sm">
         <VCardItem class="py-5">
-          <VSkeletonLoader type="article, grid" height="150" />
+          <VSkeletonLoader type="article, grid" height="180" />
         </VCardItem>
       </VCard>
     </div>
@@ -189,6 +216,7 @@ onMounted(fetchSettings)
         v-model:enable-dishes="enableDishes"
         v-model:traceability-mode="traceabilityMode"
         :is-saving="isSaving"
+        :can-edit="canEdit"
         @change="updateSettings"
       />
 
@@ -197,6 +225,7 @@ onMounted(fetchSettings)
         v-if="enableProductTypes"
         v-model:enabled-product-types="enabledProductTypes"
         :is-saving="isSaving"
+        :can-edit="canEdit"
         @change="updateSettings"
       />
 
@@ -204,6 +233,7 @@ onMounted(fetchSettings)
       <ProductFormFieldsCard
         v-model:product-form-fields="productFormFields"
         :is-saving="isSaving"
+        :can-edit="canEdit"
         @change="updateSettings"
       />
     </div>
