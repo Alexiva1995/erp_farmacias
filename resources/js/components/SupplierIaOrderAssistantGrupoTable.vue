@@ -303,7 +303,8 @@ const getLigasSummary = (productos) => {
 // Headers para la tabla interna en desktop
 const innerHeaders = computed(() => {
   const base = [
-    { title: "ID / PRODUCTO", key: "name", sortable: true, minWidth: '250px' },
+    { title: "ID", key: "id", sortable: true, width: '70px' },
+    { title: "PRODUCTO", key: "name", sortable: true, minWidth: '220px' },
   ];
 
   if (props.showGraphs) {
@@ -415,20 +416,29 @@ function rowClass(item) {
               :items-per-page="-1"
               :row-props="({ item }) => ({ class: rowClass(item) })"
             >
-              <!-- ID / PRODUCTO -->
+              <!-- ID -->
+              <template #item.id="{ item }">
+                <a
+                  :href="'/inventory/traceability?q=' + item.id"
+                  target="_blank"
+                  class="text-decoration-none text-sm font-weight-black text-primary"
+                >
+                  {{ item.id }}
+                </a>
+              </template>
+
+              <!-- PRODUCTO -->
               <template #item.name="{ item }">
                 <div class="d-flex flex-column py-1">
                   <div class="d-flex align-center gap-1">
-                    <a :href="'/inventory/traceability?q=' + item.id" target="_blank" class="text-decoration-none text-xs font-weight-black text-primary me-1">
-                      #{{ item.id }}
-                    </a>
                     <span
                       class="text-sm font-weight-black text-high-emphasis text-uppercase text-wrap cursor-pointer hover-opacity"
                       :class="{ 'text-primary': item.psychotropic == 1, 'opacity-50': togglingScarce === item.id }"
+                      :title="item.name + ' - Clic para marcar como escaso'"
                       @click="handleToggleScarce(item)"
                     >
                       <VIcon v-if="togglingScarce === item.id" size="small" class="mr-1 rotate-spinner">tabler-loader-2</VIcon>
-                      {{ item.name }}
+                      {{ item.name.toUpperCase() }}
                     </span>
                     <!-- Badge: producto nuevo sin historial de ventas -->
                     <VChip
