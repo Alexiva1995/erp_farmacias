@@ -1318,13 +1318,14 @@ class IaAssistantReportService
                 $ropLiga = $datosLiga['rop'];
                 $objLiga = $datosLiga['objetivo'];
 
-                // MODIFICACION 1: Calculo de Stock Util de Liga
+                // MODIFICACION 1: Calculo de Stock Util de Liga con unidades discretas
                 $stockUtilLiga = 0;
                 foreach ($tierItems as $sku) {
-                    $stockUtilLiga += min($sku->stock_efectivo, $sku->demanda_ponderada);
+                    // El stock útil no puede ser fraccional; 1 caja física cubre hasta 1 unidad de demanda entera
+                    $stockUtilLiga += min($sku->stock_efectivo, ceil($sku->demanda_ponderada));
                 }
 
-                if ($stockUtilLiga >= $ropLiga) {
+                if ($stockUtilLiga >= $ropLiga || $stockUtilLiga >= $objLiga) {
                     foreach ($tierItems as $sku) {
                         $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
                         $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
