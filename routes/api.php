@@ -701,6 +701,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::resource("suppliers", SupplierController::class)->except(["create", "edit", "show"]);
     Route::prefix("suppliers")->group(function () {
         Route::get("/{supplier}/connection", [SupplierController::class, "connectionServiceSupplier"]);
+        Route::post("/{supplier}/connection", [SupplierController::class, "saveConnectionConfig"]);
         Route::get("/supplier-connection-statuses", [SupplierController::class, "getConnectionStatus"]);
         Route::post("/{supplier}/payment-rules", [SupplierController::class, "storePaymentRules"]);
         Route::get("/{supplier}/payment-rules", [SupplierController::class, "getPaymentRules"]);

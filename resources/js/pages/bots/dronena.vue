@@ -52,12 +52,13 @@ const fetchSupplierData = async () => {
       form.value.supplier_id = supplier.id
 
       // Cargar conexión configurada del proveedor
-      const connRes = await axios.get(`/suppliers/${supplier.id}/connection`)
-      if (connRes.data && connRes.data.type) {
-        form.value.type = connRes.data.type || 'dronena_bot'
-        form.value.host = connRes.data.host || 'https://www.dronena.com/NuevaExperiencia/'
-        form.value.username = connRes.data.username || ''
-        form.value.has_password = Boolean(connRes.data.has_password)
+      const connRes = await axios.get(`/suppliers/${supplier.id}/connection-config`)
+      const connData = connRes.data?.connections?.dronena_bot || connRes.data
+      if (connData) {
+        form.value.type = connData.type || 'dronena_bot'
+        form.value.host = connData.host || 'https://www.dronena.com/NuevaExperiencia/'
+        form.value.username = connData.username || ''
+        form.value.has_password = Boolean(connData.has_password)
       }
     }
 
@@ -95,7 +96,7 @@ const saveConfig = async () => {
       payload.password = form.value.password
     }
 
-    await axios.post(`/suppliers/${supplierId.value}/connection`, payload)
+    await axios.post(`/suppliers/${supplierId.value}/connection-config`, payload)
     toast.success('Configuración del Bot Dronena guardada correctamente.')
     form.value.password = ''
     await fetchSupplierData()
@@ -264,26 +265,34 @@ onMounted(() => {
                   />
                 </VCol>
 
-                <VCol cols="12" class="d-flex align-center flex-wrap gap-4 mt-2">
-                  <VBtn
-                    type="submit"
-                    color="primary"
-                    prepend-icon="tabler-device-floppy"
-                    :loading="isSaving"
-                    :disabled="!isDirty"
-                  >
-                    Guardar Configuración
-                  </VBtn>
+                <VCol cols="12" class="mt-2">
+                  <VRow>
+                    <VCol cols="12" sm="6">
+                      <VBtn
+                        type="submit"
+                        color="primary"
+                        block
+                        prepend-icon="tabler-device-floppy"
+                        :loading="isSaving"
+                        :disabled="!isDirty"
+                      >
+                        Guardar Configuración
+                      </VBtn>
+                    </VCol>
 
-                  <VBtn
-                    color="success"
-                    variant="tonal"
-                    prepend-icon="tabler-player-play"
-                    :loading="isSyncing"
-                    @click="runSync"
-                  >
-                    Ejecutar Sincronización Ahora
-                  </VBtn>
+                    <VCol cols="12" sm="6">
+                      <VBtn
+                        color="success"
+                        variant="tonal"
+                        block
+                        prepend-icon="tabler-player-play"
+                        :loading="isSyncing"
+                        @click="runSync"
+                      >
+                        Ejecutar Sincronización Ahora
+                      </VBtn>
+                    </VCol>
+                  </VRow>
                 </VCol>
               </VRow>
             </VForm>
