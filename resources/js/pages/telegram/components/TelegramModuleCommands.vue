@@ -184,7 +184,7 @@ const finalFilteredCommands = computed(() => {
                   color="success"
                   hide-details="auto"
                   density="comfortable"
-                  :disabled="updatingId === cmd.id || !$can('edit', 'TelegramConfig')"
+                  :disabled="updatingId === cmd.id"
                   @change="toggleCommand(cmd)"
                 >
                   <template #label>
@@ -217,16 +217,9 @@ const finalFilteredCommands = computed(() => {
                   variant="outlined"
                   hide-details="auto"
                   style="min-width: 240px;"
-                  :disabled="updatingId === cmd.id || !$can('edit', 'TelegramConfig')"
+                  :disabled="updatingId === cmd.id"
                   @update:model-value="(val) => updateChannelAssignment(cmd, val)"
-                >
-                  <template #selection="{ item }">
-                    <VChip size="small" variant="tonal" color="info" class="text-truncate">
-                      <VIcon icon="tabler-brand-telegram" size="14" class="me-1" />
-                      {{ item.title }}
-                    </VChip>
-                  </template>
-                </VSelect>
+                />
               </td>
               <td>
                 <span class="text-body-2 text-medium-emphasis text-wrap" style="max-width: 320px; display: inline-block;">
@@ -242,7 +235,6 @@ const finalFilteredCommands = computed(() => {
                     color="info"
                     size="small"
                     :loading="testingId === cmd.id"
-                    :disabled="!$can('read', 'TelegramConfig')"
                     @click="testCommand(cmd)"
                   >
                     <VIcon icon="tabler-send" size="18" />
@@ -257,7 +249,6 @@ const finalFilteredCommands = computed(() => {
                     variant="text"
                     color="default"
                     size="small"
-                    :disabled="!$can('edit', 'TelegramConfig')"
                     @click="openEditDialog(cmd)"
                   >
                     <VIcon icon="tabler-pencil" size="18" />
