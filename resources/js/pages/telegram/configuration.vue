@@ -40,7 +40,12 @@ const snackbar = reactive({
 
 // ==================== COMPUTED & VALIDACIONES ====================
 const isDirty = computed(() => {
-  return JSON.stringify(configForm) !== JSON.stringify(initialConfig.value)
+  const fields = ['bot_token', 'chat_id', 'admin_chat_id', 'webhook_url', 'is_active']
+  return fields.some(key => {
+    const currentVal = configForm[key] ?? ''
+    const initialVal = initialConfig.value[key] ?? ''
+    return String(currentVal) !== String(initialVal)
+  })
 })
 
 const isWebhookConfigured = computed(() => {
@@ -54,13 +59,22 @@ const showToast = (text, color = 'success') => {
   snackbar.show = true
 }
 
+const syncInitialConfig = (data) => {
+  const fields = ['bot_token', 'chat_id', 'admin_chat_id', 'webhook_url', 'is_active']
+  const cleanData = {}
+  fields.forEach(k => {
+    cleanData[k] = data[k] ?? (k === 'is_active' ? true : '')
+  })
+  Object.assign(configForm, cleanData)
+  initialConfig.value = { ...cleanData }
+}
+
 const fetchConfig = async () => {
   loadingConfig.value = true
   try {
     const { data } = await axios.get('/telegram/config')
     if (data && data.data) {
-      Object.assign(configForm, data.data)
-      initialConfig.value = JSON.parse(JSON.stringify(data.data))
+      syncInitialConfig(data.data)
     }
   } catch (error) {
     showToast('Error al cargar la configuración de Telegram.', 'error')
@@ -73,7 +87,11 @@ const saveConfig = async () => {
   savingConfig.value = true
   try {
     const { data } = await axios.put('/telegram/config', configForm)
-    initialConfig.value = JSON.parse(JSON.stringify(configForm))
+    if (data && data.data) {
+      syncInitialConfig(data.data)
+    } else {
+      initialConfig.value = { ...configForm }
+    }
     showToast(data.message || 'Configuración guardada exitosamente.', 'success')
   } catch (error) {
     const errorMsg = error.response?.data?.message || 'Error al persistir la configuración.'

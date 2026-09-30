@@ -293,6 +293,7 @@ class TelegramConfigController extends Controller
                 ->retry(3, 100)
                 ->post($url, [
                     'url' => $webhookUrl,
+                    'drop_pending_updates' => true,
                 ]);
 
             if ($response->successful() && ($response->json()['ok'] ?? false)) {
