@@ -1,7 +1,9 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
-import { toast, confirmDialog } from '@/plugins/sweetalert'
+import { toast } from '@/plugins/sweetalert'
+import Swal from 'sweetalert2'
+import DronenaDiscrepanciesModal from '@/components/dialogs/DronenaDiscrepanciesModal.vue'
 import { useAbility } from '@casl/vue'
 
 // Control de permisos CASL
@@ -13,14 +15,28 @@ const isLoading = ref(false)
 const isSaving = ref(false)
 const isSyncing = ref(false)
 const showPassword = ref(false)
-const activeTab = ref('connection')
-const formRef = ref(null)
-
-// Identificador del proveedor
 const supplierId = ref(null)
+const supplierDetails = ref(null)
 
-// Modelo de datos del formulario
-const form = reactive({
+// Estado del modal de discrepancias y resultados
+const showDiscrepanciesModal = ref(false)
+const syncSummary = ref({
+  updated: 0,
+  created: 0,
+  skipped: 0,
+  total_extracted: 0,
+  drocerca: {},
+  details: [],
+})
+const syncDiscrepancies = ref({
+  paid_in_erp_pending_in_drocerca: [],
+  pending_in_erp_paid_in_drocerca: [],
+  total_discrepancies: 0,
+})
+
+// Datos del formulario
+const form = ref({
+  supplier_id: null,
   type: 'drocerca_bot',
   host: 'http://drocerca.proteoerp.org:8082/proteoerp/portalcli',
   username: '',
@@ -28,42 +44,20 @@ const form = reactive({
   has_password: false,
   is_active: true,
   sync_frequency: 'daily',
-  cron_expression: '04:30 AM Diario',
-  auto_download_pdf: true,
 })
 
-// Snapshot para rastreo de cambios (Dirty State)
-const originalForm = ref({
-  username: '',
-  host: '',
-  is_active: true,
-  auto_download_pdf: true,
-})
+// Snapshot inicial para detección de cambios (Dirty state)
+const initialSnapshot = ref('')
 
 const isDirty = computed(() => {
-  return (
-    form.username !== originalForm.value.username ||
-    form.host !== originalForm.value.host ||
-    form.password.length > 0 ||
-    form.is_active !== originalForm.value.is_active ||
-    form.auto_download_pdf !== originalForm.value.auto_download_pdf
-  )
+  return JSON.stringify({
+    username: form.value.username,
+    host: form.value.host,
+    password: form.value.password,
+  }) !== initialSnapshot.value
 })
 
-// Reglas de validación reactivas
-const rules = {
-  required: value => Boolean(value) || 'Este campo es obligatorio',
-  url: value => {
-    try {
-      new URL(value)
-      return true
-    } catch {
-      return 'Debe ingresar una URL válida (http/https)'
-    }
-  },
-}
-
-// Cargar configuración existente del proveedor y conexión
+// Cargar datos del proveedor Drocerca y su conexión registrada
 const fetchSupplierData = async () => {
   isLoading.value = true
   try {
@@ -76,96 +70,121 @@ const fetchSupplierData = async () => {
 
     if (supplier) {
       supplierId.value = supplier.id
+      supplierDetails.value = supplier
+      form.value.supplier_id = supplier.id
 
-      const connRes = await axios.get(`/suppliers/${supplier.id}/connection`)
-      if (connRes.data) {
-        form.type = connRes.data.type || 'drocerca_bot'
-        form.host = connRes.data.host || 'http://drocerca.proteoerp.org:8082/proteoerp/portalcli'
-        form.username = connRes.data.username || ''
-        form.has_password = Boolean(connRes.data.has_password)
-        form.is_active = connRes.data.is_active !== undefined ? Boolean(connRes.data.is_active) : true
+      // Cargar conexión configurada del proveedor
+      const connRes = await axios.get(`/suppliers/${supplier.id}/connection-config`).catch(() => 
+        axios.get(`/suppliers/${supplier.id}/connection`)
+      )
+      const connData = connRes.data?.connections?.drocerca_bot || connRes.data
+      if (connData) {
+        form.value.type = connData.type || 'drocerca_bot'
+        form.value.host = connData.host || 'http://drocerca.proteoerp.org:8082/proteoerp/portalcli'
+        form.value.username = connData.username || ''
+        form.value.has_password = Boolean(connData.has_password)
       }
     }
 
-    // Actualizar snapshot para dirty state
-    originalForm.value = {
-      username: form.username,
-      host: form.host,
-      is_active: form.is_active,
-      auto_download_pdf: form.auto_download_pdf,
-    }
+    initialSnapshot.value = JSON.stringify({
+      username: form.value.username,
+      host: form.value.host,
+      password: '',
+    })
   } catch (error) {
     console.error('Error al cargar configuración de Drocerca:', error)
-    toast.error('No se pudo cargar la configuración de Drocerca')
+    toast.error('No se pudo cargar la configuración del Bot Drocerca.')
   } finally {
     isLoading.value = false
   }
 }
 
-// Guardar configuración
+// Guardar configuración de conexión
 const saveConfig = async () => {
   if (!supplierId.value) {
-    toast.error('No se encontró el proveedor Drocerca registrado en el sistema')
+    toast.error('No se encontró el proveedor Drocerca en el sistema.')
     return
-  }
-
-  if (formRef.value) {
-    const { valid } = await formRef.value.validate()
-    if (!valid) return
   }
 
   isSaving.value = true
   try {
     const payload = {
       type: 'drocerca_bot',
-      host: form.host,
-      username: form.username,
-      is_active: form.is_active,
+      host: form.value.host || 'http://drocerca.proteoerp.org:8082/proteoerp/portalcli',
+      username: form.value.username,
       pasv: true,
       has_header: true,
     }
 
-    if (form.password) {
-      payload.password = form.password
+    if (form.value.password) {
+      payload.password = form.value.password
     }
 
-    await axios.post(`/suppliers/${supplierId.value}/connection`, payload)
-    toast.success('Configuración del Bot Drocerca guardada correctamente')
-    form.password = ''
+    await axios.post(`/suppliers/${supplierId.value}/connection-config`, payload).catch(() =>
+      axios.post(`/suppliers/${supplierId.value}/connection`, payload)
+    )
+    toast.success('Configuración del Bot Drocerca guardada correctamente.')
+    form.value.password = ''
     await fetchSupplierData()
   } catch (error) {
     console.error('Error al guardar credenciales de Drocerca:', error)
-    toast.error(error.response?.data?.message || 'Error al persistir la configuración')
+    toast.error(error.response?.data?.message || 'Error al guardar la configuración.')
   } finally {
     isSaving.value = false
   }
 }
 
-// Ejecutar sincronización manual previa confirmación modal
+// Confirmar y ejecutar sincronización manual con el bot
 const runSync = async () => {
-  const confirmed = await confirmDialog({
-    title: '¿Ejecutar Sincronización?',
-    text: 'El bot iniciará sesión en el portal de Drocerca para extraer facturas pendientes y totales fiscales. ¿Deseas continuar?',
+  if (!supplierId.value) {
+    toast.error('No se puede sincronizar sin un proveedor vinculado.')
+    return
+  }
+
+  const result = await Swal.fire({
+    title: '¿Iniciar sincronización con Drocerca?',
+    text: 'El bot se conectará al portal ProteoERP para descargar facturas, tasas y actualizar cuentas por pagar.',
     icon: 'info',
-    confirmButtonText: 'Sí, Sincronizar Ahora',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, ejecutar sincronización',
     cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#28C76F',
+    cancelButtonColor: '#7A0099',
   })
 
-  if (!confirmed) return
+  if (!result.isConfirmed) return
 
   isSyncing.value = true
   try {
     const payload = {
       supplier_id: supplierId.value,
     }
-    if (form.username) payload.username = form.username
-    if (form.password) payload.password = form.password
+    if (form.value.username) payload.username = form.value.username
+    if (form.value.password) payload.password = form.value.password
 
     const res = await axios.post('/sync-drocerca', payload)
-    toast.success(res.data?.message || 'Sincronización completada exitosamente')
+    const resultData = res.data?.data || {}
+
+    syncSummary.value = {
+      updated: resultData.updated || 0,
+      created: resultData.created || 0,
+      skipped: resultData.skipped || 0,
+      total_extracted: resultData.total_extracted || 0,
+      drocerca: resultData,
+      details: resultData.details || [],
+    }
+
+    syncDiscrepancies.value = resultData.discrepancies || {
+      paid_in_erp_pending_in_drocerca: [],
+      pending_in_erp_paid_in_drocerca: [],
+      total_discrepancies: 0,
+    }
+
+    toast.success(res.data?.message || 'Sincronización con Drocerca completada exitosamente.')
+    showDiscrepanciesModal.value = true
   } catch (error) {
     console.error('Error al sincronizar con Drocerca:', error)
-    toast.error(error.response?.data?.message || 'Error al ejecutar la extracción')
+    toast.error(error.response?.data?.message || 'Error al ejecutar la sincronización con Drocerca.')
   } finally {
     isSyncing.value = false
   }
@@ -192,7 +211,7 @@ onMounted(() => {
         </VCardTitle>
 
         <VCardSubtitle class="text-body-2">
-          Gestión de credenciales y automatización de descargas de facturas para el portal ProteoERP Drocerca.
+          Configuración de credenciales de acceso automatizado al portal ProteoERP Drocerca para descarga y sincronización de facturas.
         </VCardSubtitle>
 
         <template #append>
@@ -211,19 +230,18 @@ onMounted(() => {
     </VCard>
 
     <VRow>
-      <!-- Contenedor Principal de Ajustes con Tabs -->
+      <!-- Formulario de Configuración Principal -->
       <VCol cols="12" md="8">
         <VCard border flat rounded="lg">
-          <VTabs v-model="activeTab" color="primary" density="comfortable">
-            <VTab value="connection">
-              <VIcon icon="tabler-key" class="me-2" size="20" />
-              Conexión y Credenciales
-            </VTab>
-            <VTab value="automation">
-              <VIcon icon="tabler-settings-automation" class="me-2" size="20" />
-              Automatización & Reglas
-            </VTab>
-          </VTabs>
+          <VCardItem>
+            <VCardTitle class="text-h6 font-weight-bold d-flex align-center gap-2">
+              <VIcon icon="tabler-key" color="primary" size="22" />
+              Credenciales de Acceso
+            </VCardTitle>
+            <VCardSubtitle class="text-body-2">
+              Parámetros de autenticación para que el bot acceda a la plataforma web de Drocerca.
+            </VCardSubtitle>
+          </VCardItem>
 
           <VDivider />
 
@@ -235,76 +253,74 @@ onMounted(() => {
               class="mb-4"
             />
 
-            <VWindow v-model="activeTab">
-              <!-- Tab 1: Conexión y Credenciales -->
-              <VWindowItem value="connection">
-                <VAlert
-                  type="info"
-                  variant="tonal"
-                  density="comfortable"
-                  icon="tabler-info-circle"
-                  class="mb-6 rounded-lg"
-                >
-                  El bot se conecta automáticamente a <strong>http://drocerca.proteoerp.org:8082/proteoerp/portalcli</strong>, accede a la sección de Facturación, descarga cada PDF digital de NovusFactura y extrae Número de Control, Fecha de Vencimiento, Tipo de Cambio (Tasa), Base Exenta, Base Imponible e IVA.
-                </VAlert>
+            <VAlert
+              type="info"
+              variant="tonal"
+              density="comfortable"
+              icon="tabler-info-circle"
+              class="mb-6 rounded-lg"
+            >
+              El bot se conecta automáticamente a <strong>http://drocerca.proteoerp.org:8082/proteoerp/portalcli</strong>, accede a la sección de Facturación, descarga cada PDF digital de NovusFactura y extrae Número de Control, Fecha de Vencimiento, Tipo de Cambio (Tasa), Base Exenta, Base Imponible e IVA.
+            </VAlert>
 
-                <VForm ref="formRef" @submit.prevent="saveConfig">
+            <VForm @submit.prevent="saveConfig">
+              <VRow>
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="form.username"
+                    label="Usuario / Código de Cliente"
+                    placeholder="Ej: W008B3"
+                    prepend-inner-icon="tabler-user"
+                    hint="Código o usuario comercial asignado por Drocerca"
+                    persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
+                    :disabled="isLoading || isSaving || !canManageBot"
+                  />
+                </VCol>
+
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="form.password"
+                    :type="showPassword ? 'text' : 'password'"
+                    label="Contraseña del Portal"
+                    :placeholder="form.has_password ? '•••••••••••• (Configurada)' : 'Ingresa la contraseña'"
+                    prepend-inner-icon="tabler-lock"
+                    :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                    :hint="form.has_password ? 'Dejar en blanco para mantener la contraseña actual' : 'Se almacena encriptada de forma segura'"
+                    persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
+                    :disabled="isLoading || isSaving || !canManageBot"
+                    @click:append-inner="showPassword = !showPassword"
+                  />
+                </VCol>
+
+                <VCol cols="12">
+                  <VTextField
+                    v-model="form.host"
+                    label="URL del Portal Drocerca"
+                    placeholder="http://drocerca.proteoerp.org:8082/proteoerp/portalcli"
+                    prepend-inner-icon="tabler-world"
+                    hint="URL base de la plataforma web de Drocerca"
+                    persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
+                    :disabled="isLoading || isSaving || !canManageBot"
+                  />
+                </VCol>
+
+                <VCol cols="12" class="mt-2">
                   <VRow>
-                    <VCol cols="12" md="6">
-                      <VTextField
-                        v-model="form.username"
-                        label="Usuario / Código de Cliente"
-                        placeholder="Ej: W008B3"
-                        prepend-inner-icon="tabler-user"
-                        variant="outlined"
-                        density="comfortable"
-                        hide-details="auto"
-                        hint="Usuario asignado en Drocerca"
-                        persistent-hint
-                        :rules="[rules.required]"
-                        :disabled="isLoading || isSaving || !canManageBot"
-                      />
-                    </VCol>
-
-                    <VCol cols="12" md="6">
-                      <VTextField
-                        v-model="form.password"
-                        :type="showPassword ? 'text' : 'password'"
-                        label="Contraseña de Acceso"
-                        :placeholder="form.has_password ? '•••••••••••• (Configurada)' : 'Ingresa la contraseña'"
-                        prepend-inner-icon="tabler-lock"
-                        :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                        variant="outlined"
-                        density="comfortable"
-                        hide-details="auto"
-                        hint="Se almacena encriptada de forma segura"
-                        persistent-hint
-                        :disabled="isLoading || isSaving || !canManageBot"
-                        @click:append-inner="showPassword = !showPassword"
-                      />
-                    </VCol>
-
-                    <VCol cols="12">
-                      <VTextField
-                        v-model="form.host"
-                        label="URL del Portal de Clientes"
-                        placeholder="http://drocerca.proteoerp.org:8082/proteoerp/portalcli"
-                        prepend-inner-icon="tabler-world"
-                        variant="outlined"
-                        density="comfortable"
-                        hide-details="auto"
-                        hint="URL base de la plataforma web de Drocerca"
-                        persistent-hint
-                        :rules="[rules.required, rules.url]"
-                        :disabled="isLoading || isSaving || !canManageBot"
-                      />
-                    </VCol>
-
-                    <VCol cols="12" class="d-flex align-center flex-wrap gap-3 mt-3">
+                    <VCol cols="12" sm="6">
                       <VBtn
                         v-if="canManageBot"
                         type="submit"
                         color="primary"
+                        block
                         density="comfortable"
                         prepend-icon="tabler-device-floppy"
                         :loading="isSaving"
@@ -312,12 +328,13 @@ onMounted(() => {
                       >
                         Guardar Configuración
                       </VBtn>
+                    </VCol>
 
-                      <VSpacer />
-
+                    <VCol cols="12" :sm="canManageBot ? 6 : 12">
                       <VBtn
-                        color="primary"
+                        color="success"
                         variant="tonal"
+                        block
                         density="comfortable"
                         prepend-icon="tabler-player-play"
                         :loading="isSyncing"
@@ -328,37 +345,9 @@ onMounted(() => {
                       </VBtn>
                     </VCol>
                   </VRow>
-                </VForm>
-              </VWindowItem>
-
-              <!-- Tab 2: Automatización & Reglas -->
-              <VWindowItem value="automation">
-                <VRow>
-                  <VCol cols="12">
-                    <VSwitch
-                      v-model="form.is_active"
-                      color="primary"
-                      label="Activar ejecución automática en tareas programadas"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details="auto"
-                      :disabled="!canManageBot"
-                    />
-                  </VCol>
-                  <VCol cols="12">
-                    <VSwitch
-                      v-model="form.auto_download_pdf"
-                      color="primary"
-                      label="Descargar y parsear automáticamente facturas digitales PDF"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details="auto"
-                      :disabled="!canManageBot"
-                    />
-                  </VCol>
-                </VRow>
-              </VWindowItem>
-            </VWindow>
+                </VCol>
+              </VRow>
+            </VForm>
           </VCardText>
         </VCard>
       </VCol>
@@ -369,52 +358,42 @@ onMounted(() => {
           <VCardItem>
             <VCardTitle class="text-h6 font-weight-bold d-flex align-center gap-2">
               <VIcon icon="tabler-activity" color="success" size="22" />
-              Estado del Bot Drocerca
+              Estado del Servicio
             </VCardTitle>
           </VCardItem>
           <VDivider />
-          <VCardText class="py-3">
-            <VList density="compact" class="py-0">
-              <VListItem class="px-0">
-                <template #prepend>
-                  <VIcon icon="tabler-building" size="18" class="me-2 text-medium-emphasis" />
-                </template>
-                <VListItemTitle class="text-body-2 text-medium-emphasis">Proveedor vinculado:</VListItemTitle>
-                <template #append>
-                  <VChip size="small" color="primary" variant="tonal" class="font-weight-bold">
-                    {{ supplierId ? `ID ${supplierId} (Drocerca)` : 'No detectado' }}
-                  </VChip>
-                </template>
-              </VListItem>
+          <VCardText>
+            <div class="d-flex align-center justify-space-between mb-4">
+              <span class="text-body-2 text-medium-emphasis">Proveedor vinculado:</span>
+              <VChip size="small" color="primary" variant="tonal" class="font-weight-bold">
+                {{ supplierId ? `ID: ${supplierId} (${supplierDetails?.name || 'Drocerca'})` : 'No detectado' }}
+              </VChip>
+            </div>
 
-              <VListItem class="px-0">
-                <template #prepend>
-                  <VIcon icon="tabler-shield-lock" size="18" class="me-2 text-medium-emphasis" />
-                </template>
-                <VListItemTitle class="text-body-2 text-medium-emphasis">Credenciales:</VListItemTitle>
-                <template #append>
-                  <VChip
-                    size="small"
-                    :color="form.has_password ? 'success' : (form.username ? 'warning' : 'error')"
-                    variant="tonal"
-                  >
-                    {{ form.has_password ? 'Configuradas' : (form.username ? 'Incompletas' : 'Sin configurar') }}
-                  </VChip>
-                </template>
-              </VListItem>
+            <div class="d-flex align-center justify-space-between mb-4">
+              <span class="text-body-2 text-medium-emphasis">Credenciales:</span>
+              <VChip
+                size="small"
+                :color="form.has_password || form.username ? 'success' : 'warning'"
+                variant="tonal"
+              >
+                {{ form.has_password ? 'Configuradas' : (form.username ? 'Parcial' : 'Sin configurar') }}
+              </VChip>
+            </div>
 
-              <VListItem class="px-0">
-                <template #prepend>
-                  <VIcon icon="tabler-clock" size="18" class="me-2 text-medium-emphasis" />
-                </template>
-                <VListItemTitle class="text-body-2 text-medium-emphasis">Tarea Automática (Cron):</VListItemTitle>
-                <template #append>
-                  <VChip size="small" color="info" variant="tonal">
-                    {{ form.cron_expression }}
-                  </VChip>
-                </template>
-              </VListItem>
-            </VList>
+            <div class="d-flex align-center justify-space-between mb-4">
+              <span class="text-body-2 text-medium-emphasis">Tarea Automática (Cron):</span>
+              <VChip size="small" color="info" variant="tonal">
+                04:30 AM Diario
+              </VChip>
+            </div>
+
+            <div class="d-flex align-center justify-space-between mb-2">
+              <span class="text-body-2 text-medium-emphasis">Tipo de Integración:</span>
+              <VChip size="small" color="secondary" variant="tonal">
+                ProteoERP / NovusFactura
+              </VChip>
+            </div>
           </VCardText>
         </VCard>
 
@@ -429,7 +408,7 @@ onMounted(() => {
           <VCardText class="text-body-2 text-medium-emphasis">
             <ul class="ps-4 mb-0 d-flex flex-column gap-2">
               <li>Inicia sesión automáticamente en <code>portalcli</code> de ProteoERP Drocerca.</li>
-              <li>Extrae las facturas desde el módulo de Facturación.</li>
+              <li>Extrae las facturas pendientes desde el módulo de Facturación.</li>
               <li>Descarga y lee cada PDF de NovusFactura para extraer fecha de vencimiento, número de control, tasa BCV, base exenta, imponible e IVA.</li>
               <li>Almacena los PDFs en el ERP y actualiza el módulo de cuentas por pagar.</li>
             </ul>
@@ -437,5 +416,14 @@ onMounted(() => {
         </VCard>
       </VCol>
     </VRow>
+
+    <!-- Modal Unificado de Discrepancias y Resultados -->
+    <DronenaDiscrepanciesModal
+      v-model="showDiscrepanciesModal"
+      supplier-key="drocerca"
+      :discrepancies="syncDiscrepancies"
+      :sync-summary="syncSummary"
+      @close="showDiscrepanciesModal = false"
+    />
   </div>
 </template>

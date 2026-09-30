@@ -1,15 +1,35 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
+import Swal from 'sweetalert2'
+import DronenaDiscrepanciesModal from '@/components/dialogs/DronenaDiscrepanciesModal.vue'
 
-// Estado reactivo
+// Estado reactivo del componente
 const isLoading = ref(false)
 const isSaving = ref(false)
 const isSyncing = ref(false)
 const showPassword = ref(false)
 const supplierId = ref(null)
+const supplierDetails = ref(null)
 
+// Estado del modal de discrepancias y resultados
+const showDiscrepanciesModal = ref(false)
+const syncSummary = ref({
+  updated: 0,
+  created: 0,
+  skipped: 0,
+  total_extracted: 0,
+  mafarta: {},
+  details: [],
+})
+const syncDiscrepancies = ref({
+  paid_in_erp_pending_in_dronena: [],
+  pending_in_erp_paid_in_dronena: [],
+  total_discrepancies: 0,
+})
+
+// Datos del formulario
 const form = ref({
   supplier_id: null,
   type: 'mafarta_bot',
@@ -21,7 +41,18 @@ const form = ref({
   sync_frequency: 'daily',
 })
 
-// Cargar datos del proveedor Mafarta / Cobeca y su conexión
+// Snapshot inicial para detección de cambios (Dirty state)
+const initialSnapshot = ref('')
+
+const isDirty = computed(() => {
+  return JSON.stringify({
+    username: form.value.username,
+    host: form.value.host,
+    password: form.value.password,
+  }) !== initialSnapshot.value
+})
+
+// Cargar datos del proveedor Mafarta / Cobeca y su conexión registrada
 const fetchSupplierData = async () => {
   isLoading.value = true
   try {
@@ -29,41 +60,51 @@ const fetchSupplierData = async () => {
     const list = data?.data || data || []
     let supplier = list.find(s => 
       s.name?.toUpperCase().includes('MAFARTA') || 
-      s.name?.toUpperCase().includes('COBECA') ||
-      s.id === 23
+      s.name?.toUpperCase().includes('COBECA')
     )
 
     if (!supplier) {
       const cobecaRes = await axios.get('/suppliers', { params: { search: 'COBECA' } })
       const cobecaList = cobecaRes.data?.data || cobecaRes.data || []
-      supplier = cobecaList[0] || list[0]
+      supplier = cobecaList.find(s => 
+        s.name?.toUpperCase().includes('MAFARTA') || 
+        s.name?.toUpperCase().includes('COBECA')
+      ) || cobecaList[0] || list[0]
     }
 
     if (supplier) {
       supplierId.value = supplier.id
+      supplierDetails.value = supplier
       form.value.supplier_id = supplier.id
 
-      // Cargar conexión configurada
-      const connRes = await axios.get(`/suppliers/${supplier.id}/connection`)
-      if (connRes.data && connRes.data.type) {
-        form.value.type = connRes.data.type || 'mafarta_bot'
-        form.value.host = connRes.data.host || 'https://sic.drogueriascobeca.com'
-        form.value.username = connRes.data.username || ''
-        form.value.has_password = Boolean(connRes.data.has_password)
+      // Cargar conexión configurada del proveedor
+      const connRes = await axios.get(`/suppliers/${supplier.id}/connection-config`)
+      const connData = connRes.data?.connections?.mafarta_bot || connRes.data
+      if (connData) {
+        form.value.type = connData.type || 'mafarta_bot'
+        form.value.host = connData.host || 'https://sic.drogueriascobeca.com'
+        form.value.username = connData.username || ''
+        form.value.has_password = Boolean(connData.has_password)
       }
     }
+
+    initialSnapshot.value = JSON.stringify({
+      username: form.value.username,
+      host: form.value.host,
+      password: '',
+    })
   } catch (error) {
     console.error('Error al cargar configuración de Mafarta/Cobeca:', error)
-    toast.error('No se pudo cargar la configuración de Mafarta / Cobeca')
+    toast.error('No se pudo cargar la configuración del Bot Mafarta / Cobeca.')
   } finally {
     isLoading.value = false
   }
 }
 
-// Guardar configuración
+// Guardar configuración de conexión
 const saveConfig = async () => {
   if (!supplierId.value) {
-    toast.error('No se encontró el proveedor Mafarta / Cobeca registrado')
+    toast.error('No se encontró el proveedor Mafarta / Cobeca en el sistema.')
     return
   }
 
@@ -81,20 +122,38 @@ const saveConfig = async () => {
       payload.password = form.value.password
     }
 
-    await axios.post(`/suppliers/${supplierId.value}/connection`, payload)
-    toast.success('Configuración del Bot Mafarta / Cobeca guardada correctamente')
+    await axios.post(`/suppliers/${supplierId.value}/connection-config`, payload)
+    toast.success('Configuración del Bot Mafarta / Cobeca guardada correctamente.')
     form.value.password = ''
-    fetchSupplierData()
+    await fetchSupplierData()
   } catch (error) {
     console.error('Error al guardar credenciales de Mafarta / Cobeca:', error)
-    toast.error(error.response?.data?.message || 'Error al guardar la configuración')
+    toast.error(error.response?.data?.message || 'Error al guardar la configuración.')
   } finally {
     isSaving.value = false
   }
 }
 
-// Ejecutar sincronización manual con el bot de Mafarta / Cobeca
+// Confirmar y ejecutar sincronización manual con el bot
 const runSync = async () => {
+  if (!supplierId.value) {
+    toast.error('No se puede sincronizar sin un proveedor vinculado.')
+    return
+  }
+
+  const result = await Swal.fire({
+    title: '¿Iniciar sincronización con Mafarta / Cobeca?',
+    text: 'El bot se autenticará en la plataforma SIC para consultar el estado de cuenta, facturas pendientes y actualizar saldos indexados.',
+    icon: 'info',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, ejecutar sincronización',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#28C76F',
+    cancelButtonColor: '#7A0099',
+  })
+
+  if (!result.isConfirmed) return
+
   isSyncing.value = true
   try {
     const payload = {
@@ -104,10 +163,28 @@ const runSync = async () => {
     if (form.value.password) payload.password = form.value.password
 
     const res = await axios.post('/sync-mafarta', payload)
-    toast.success(res.data?.message || 'Sincronización con Mafarta / Cobeca completada exitosamente')
+    const resultData = res.data?.data || {}
+
+    syncSummary.value = {
+      updated: resultData.updated || 0,
+      created: resultData.created || 0,
+      skipped: resultData.skipped || 0,
+      total_extracted: resultData.total_extracted || 0,
+      mafarta: resultData,
+      details: resultData.details || [],
+    }
+
+    syncDiscrepancies.value = resultData.discrepancies || {
+      paid_in_erp_pending_in_dronena: [],
+      pending_in_erp_paid_in_dronena: [],
+      total_discrepancies: 0,
+    }
+
+    toast.success(res.data?.message || 'Sincronización con Mafarta / Cobeca completada exitosamente.')
+    showDiscrepanciesModal.value = true
   } catch (error) {
     console.error('Error al sincronizar con Mafarta / Cobeca:', error)
-    toast.error(error.response?.data?.message || 'Error al ejecutar la sincronización con Mafarta / Cobeca')
+    toast.error(error.response?.data?.message || 'Error al ejecutar la sincronización con Mafarta / Cobeca.')
   } finally {
     isSyncing.value = false
   }
@@ -134,7 +211,7 @@ onMounted(() => {
         </VCardTitle>
 
         <VCardSubtitle class="text-body-2">
-          Configuración de credenciales de acceso automatizado a la plataforma SIC Droguerías Cobeca para consulta y sincronización de facturas, vencimientos y montos en divisas.
+          Configuración de credenciales de acceso automatizado a la plataforma SIC Droguerías Cobeca para consulta y sincronización de facturas, vencimientos y saldos indexados.
         </VCardSubtitle>
 
         <template #append>
@@ -158,10 +235,10 @@ onMounted(() => {
           <VCardItem>
             <VCardTitle class="text-h6 font-weight-bold d-flex align-center gap-2">
               <VIcon icon="tabler-key" color="primary" size="22" />
-              Credenciales del Bot Mafarta / Cobeca
+              Credenciales de Acceso
             </VCardTitle>
-            <VCardSubtitle>
-              Ingresa los datos para la conexión y extracción automatizada con la plataforma SIC de Droguerías Cobeca.
+            <VCardSubtitle class="text-body-2">
+              Parámetros de autenticación para que el bot acceda a la plataforma SIC de Droguerías Cobeca.
             </VCardSubtitle>
           </VCardItem>
 
@@ -182,7 +259,7 @@ onMounted(() => {
               icon="tabler-info-circle"
               class="mb-6 rounded-lg"
             >
-              El bot se conecta a <strong>https://sic.drogueriascobeca.com</strong> mediante autenticación por token, consulta el estado de cuenta oficial de Cobeca/Mafarta, obtiene el detalle de cada factura y sincroniza fecha de vencimiento, tasa y saldo indexado.
+              El bot se conecta a <strong>https://sic.drogueriascobeca.com</strong> mediante autenticación de servicio SIC, consulta el estado de cuenta y sincroniza fecha de vencimiento, tasa y saldo indexado.
             </VAlert>
 
             <VForm @submit.prevent="saveConfig">
@@ -193,8 +270,11 @@ onMounted(() => {
                     label="Usuario / RIF / Código de Cliente"
                     placeholder="Ej: J123456780 o usuario SIC"
                     prepend-inner-icon="tabler-user"
-                    hint="Usuario asignado en la plataforma SIC Cobeca"
+                    hint="Usuario o RIF asignado en la plataforma SIC Cobeca"
                     persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                   />
                 </VCol>
 
@@ -206,8 +286,11 @@ onMounted(() => {
                     :placeholder="form.has_password ? '•••••••••••• (Configurada)' : 'Ingresa la contraseña'"
                     prepend-inner-icon="tabler-lock"
                     :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                    hint="Se almacena encriptada de forma segura"
+                    :hint="form.has_password ? 'Dejar en blanco para mantener la contraseña actual' : 'Se almacena encriptada de forma segura'"
                     persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                     @click:append-inner="showPassword = !showPassword"
                   />
                 </VCol>
@@ -220,28 +303,40 @@ onMounted(() => {
                     prepend-inner-icon="tabler-world"
                     hint="URL base del portal API/SIC de Droguerías Cobeca"
                     persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                   />
                 </VCol>
 
-                <VCol cols="12" class="d-flex align-center gap-4 mt-2">
-                  <VBtn
-                    type="submit"
-                    color="primary"
-                    prepend-icon="tabler-device-floppy"
-                    :loading="isSaving"
-                  >
-                    Guardar Configuración
-                  </VBtn>
+                <VCol cols="12" class="mt-2">
+                  <VRow>
+                    <VCol cols="12" sm="6">
+                      <VBtn
+                        type="submit"
+                        color="primary"
+                        block
+                        prepend-icon="tabler-device-floppy"
+                        :loading="isSaving"
+                        :disabled="!isDirty"
+                      >
+                        Guardar Configuración
+                      </VBtn>
+                    </VCol>
 
-                  <VBtn
-                    color="success"
-                    variant="tonal"
-                    prepend-icon="tabler-player-play"
-                    :loading="isSyncing"
-                    @click="runSync"
-                  >
-                    Ejecutar Sincronización Ahora
-                  </VBtn>
+                    <VCol cols="12" sm="6">
+                      <VBtn
+                        color="success"
+                        variant="tonal"
+                        block
+                        prepend-icon="tabler-player-play"
+                        :loading="isSyncing"
+                        @click="runSync"
+                      >
+                        Ejecutar Sincronización Ahora
+                      </VBtn>
+                    </VCol>
+                  </VRow>
                 </VCol>
               </VRow>
             </VForm>
@@ -255,7 +350,7 @@ onMounted(() => {
           <VCardItem>
             <VCardTitle class="text-h6 font-weight-bold d-flex align-center gap-2">
               <VIcon icon="tabler-activity" color="success" size="22" />
-              Estado del Bot Mafarta / Cobeca
+              Estado del Servicio
             </VCardTitle>
           </VCardItem>
           <VDivider />
@@ -263,7 +358,7 @@ onMounted(() => {
             <div class="d-flex align-center justify-space-between mb-4">
               <span class="text-body-2 text-medium-emphasis">Proveedor vinculado:</span>
               <VChip size="small" color="primary" variant="tonal" class="font-weight-bold">
-                {{ supplierId ? `ID: ${supplierId} (Mafarta/Cobeca)` : 'No detectado' }}
+                {{ supplierId ? `ID: ${supplierId} (${supplierDetails?.name || 'Cobeca/Mafarta'})` : 'No detectado' }}
               </VChip>
             </div>
 
@@ -280,7 +375,7 @@ onMounted(() => {
 
             <div class="d-flex align-center justify-space-between mb-2">
               <span class="text-body-2 text-medium-emphasis">Tipo de Integración:</span>
-              <VChip size="small" color="info" variant="tonal">
+              <VChip size="small" color="secondary" variant="tonal">
                 API SIC Token Auth
               </VChip>
             </div>
@@ -306,5 +401,14 @@ onMounted(() => {
         </VCard>
       </VCol>
     </VRow>
+
+    <!-- Modal de Discrepancias y Resultados -->
+    <DronenaDiscrepanciesModal
+      v-model="showDiscrepanciesModal"
+      supplier-key="mafarta"
+      :discrepancies="syncDiscrepancies"
+      :sync-summary="syncSummary"
+      @close="showDiscrepanciesModal = false"
+    />
   </div>
 </template>

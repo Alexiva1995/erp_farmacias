@@ -1,15 +1,40 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
+import Swal from 'sweetalert2'
+import DronenaDiscrepanciesModal from '@/components/dialogs/DronenaDiscrepanciesModal.vue'
+import { useAbility } from '@casl/vue'
 
-// Estado reactivo
+// Control de permisos CASL
+const ability = useAbility()
+const canManageBot = computed(() => ability.can('manage', 'bots') || ability.can('update', 'Supplier') || ability.can('manage', 'all'))
+
+// Estados reactivos de interfaz
 const isLoading = ref(false)
 const isSaving = ref(false)
 const isSyncing = ref(false)
 const showPassword = ref(false)
 const supplierId = ref(null)
+const supplierDetails = ref(null)
 
+// Estado del modal de discrepancias y resumen de sincronización
+const showDiscrepanciesModal = ref(false)
+const syncSummary = ref({
+  updated: 0,
+  created: 0,
+  skipped: 0,
+  total_extracted: 0,
+  dromega: {},
+  details: [],
+})
+const syncDiscrepancies = ref({
+  paid_in_erp_pending_in_dromega: [],
+  pending_in_erp_paid_in_dromega: [],
+  total_discrepancies: 0,
+})
+
+// Modelo reactivo del formulario
 const form = ref({
   supplier_id: null,
   type: 'dromega_bot',
@@ -22,7 +47,19 @@ const form = ref({
   sync_frequency: 'daily',
 })
 
-// Cargar datos del proveedor Droguería Mega y su conexión
+// Snapshot inicial para detección de cambios (Dirty state)
+const initialSnapshot = ref('')
+
+const isDirty = computed(() => {
+  return JSON.stringify({
+    username: form.value.username,
+    host: form.value.host,
+    password: form.value.password,
+    cookie: form.value.cookie,
+  }) !== initialSnapshot.value
+})
+
+// Cargar datos del proveedor Droguería Mega y su conexión registrada
 const fetchSupplierData = async () => {
   isLoading.value = true
   try {
@@ -42,29 +79,40 @@ const fetchSupplierData = async () => {
 
     if (supplier) {
       supplierId.value = supplier.id
+      supplierDetails.value = supplier
       form.value.supplier_id = supplier.id
 
-      // Cargar conexión configurada
-      const connRes = await axios.get(`/suppliers/${supplier.id}/connection`)
-      if (connRes.data && connRes.data.type) {
-        form.value.type = connRes.data.type || 'dromega_bot'
-        form.value.host = connRes.data.host || 'https://www.drogueriamega.com/mydas'
-        form.value.username = connRes.data.username || ''
-        form.value.has_password = Boolean(connRes.data.has_password)
+      // Cargar conexión configurada del proveedor
+      const connRes = await axios.get(`/suppliers/${supplier.id}/connection-config`).catch(() => 
+        axios.get(`/suppliers/${supplier.id}/connection`)
+      )
+      const connData = connRes.data?.connections?.dromega_bot || connRes.data
+      if (connData) {
+        form.value.type = connData.type || 'dromega_bot'
+        form.value.host = connData.host || 'https://www.drogueriamega.com/mydas'
+        form.value.username = connData.username || ''
+        form.value.has_password = Boolean(connData.has_password)
       }
     }
+
+    initialSnapshot.value = JSON.stringify({
+      username: form.value.username,
+      host: form.value.host,
+      password: '',
+      cookie: '',
+    })
   } catch (error) {
     console.error('Error al cargar configuración de Droguería Mega:', error)
-    toast.error('No se pudo cargar la configuración de Droguería Mega')
+    toast.error('No se pudo cargar la configuración del Bot Droguería Mega.')
   } finally {
     isLoading.value = false
   }
 }
 
-// Guardar configuración
+// Guardar configuración de conexión
 const saveConfig = async () => {
   if (!supplierId.value) {
-    toast.error('No se encontró el proveedor Droguería Mega registrado')
+    toast.error('No se encontró el proveedor Droguería Mega registrado en el sistema.')
     return
   }
 
@@ -82,20 +130,42 @@ const saveConfig = async () => {
       payload.password = form.value.password
     }
 
-    await axios.post(`/suppliers/${supplierId.value}/connection`, payload)
-    toast.success('Configuración del Bot Droguería Mega guardada correctamente')
+    await axios.post(`/suppliers/${supplierId.value}/connection-config`, payload).catch(() =>
+      axios.post(`/suppliers/${supplierId.value}/connection`, payload)
+    )
+
+    toast.success('Configuración del Bot Droguería Mega guardada correctamente.')
     form.value.password = ''
-    fetchSupplierData()
+    form.value.cookie = ''
+    await fetchSupplierData()
   } catch (error) {
     console.error('Error al guardar credenciales de Droguería Mega:', error)
-    toast.error(error.response?.data?.message || 'Error al guardar la configuración')
+    toast.error(error.response?.data?.message || 'Error al guardar la configuración.')
   } finally {
     isSaving.value = false
   }
 }
 
-// Ejecutar sincronización manual con el bot de Droguería Mega
+// Confirmar y ejecutar sincronización manual con el bot
 const runSync = async () => {
+  if (!supplierId.value) {
+    toast.error('No se puede sincronizar sin un proveedor vinculado.')
+    return
+  }
+
+  const result = await Swal.fire({
+    title: '¿Iniciar sincronización con Droguería Mega?',
+    text: 'El bot se conectará a la plataforma Mydas para extraer facturas, saldos, fechas de vencimiento y discrepancias.',
+    icon: 'info',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, ejecutar sincronización',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#28C76F',
+    cancelButtonColor: '#7A0099',
+  })
+
+  if (!result.isConfirmed) return
+
   isSyncing.value = true
   try {
     const payload = {
@@ -105,11 +175,31 @@ const runSync = async () => {
     if (form.value.password) payload.password = form.value.password
     if (form.value.cookie) payload.cookie = form.value.cookie
 
-    const res = await axios.post('/sync-dromega', payload)
-    toast.success(res.data?.message || 'Sincronización con Droguería Mega completada exitosamente')
+    const res = await axios.post('/invoices/sync-dromega', payload).catch(() =>
+      axios.post('/sync-dromega', payload)
+    )
+    const resultData = res.data?.data || {}
+
+    syncSummary.value = {
+      updated: resultData.updated || 0,
+      created: resultData.created || 0,
+      skipped: resultData.skipped || 0,
+      total_extracted: resultData.total_extracted || 0,
+      dromega: resultData,
+      details: resultData.details || resultData.processed || [],
+    }
+
+    syncDiscrepancies.value = resultData.discrepancies || {
+      paid_in_erp_pending_in_dromega: [],
+      pending_in_erp_paid_in_dromega: [],
+      total_discrepancies: 0,
+    }
+
+    toast.success(res.data?.message || 'Sincronización con Droguería Mega completada exitosamente.')
+    showDiscrepanciesModal.value = true
   } catch (error) {
     console.error('Error al sincronizar con Droguería Mega:', error)
-    toast.error(error.response?.data?.message || 'Error al ejecutar la sincronización con Droguería Mega')
+    toast.error(error.response?.data?.message || 'Error al ejecutar la sincronización con Droguería Mega.')
   } finally {
     isSyncing.value = false
   }
@@ -162,8 +252,8 @@ onMounted(() => {
               <VIcon icon="tabler-key" color="primary" size="22" />
               Credenciales del Bot Droguería Mega
             </VCardTitle>
-            <VCardSubtitle>
-              Ingresa los datos para la conexión con el portal Mydas de Droguería Mega.
+            <VCardSubtitle class="text-body-2">
+              Parámetros de autenticación para que el bot acceda a la plataforma web Mydas de Droguería Mega.
             </VCardSubtitle>
           </VCardItem>
 
@@ -184,7 +274,7 @@ onMounted(() => {
               icon="tabler-info-circle"
               class="mb-6 rounded-lg"
             >
-              El bot se conecta a <strong>https://www.drogueriamega.com/mydas</strong>, gestiona la sesión con cookies y token CSRF, accede al estado de cuenta de clientes y descarga facturas con detalle de montos y fechas de pago.
+              El bot se conecta automáticamente a <strong>https://www.drogueriamega.com/mydas</strong>, gestiona la sesión con cookies y token CSRF, accede al estado de cuenta de clientes y descarga facturas con detalle de montos y fechas de pago.
             </VAlert>
 
             <VForm @submit.prevent="saveConfig">
@@ -195,8 +285,11 @@ onMounted(() => {
                     label="Usuario / Código de Cliente"
                     placeholder="Ej: usuario Mydas"
                     prepend-inner-icon="tabler-user"
-                    hint="Usuario asignado en Droguería Mega"
+                    hint="Usuario o código asignado en Droguería Mega"
                     persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                   />
                 </VCol>
 
@@ -208,8 +301,11 @@ onMounted(() => {
                     :placeholder="form.has_password ? '•••••••••••• (Configurada)' : 'Ingresa la contraseña'"
                     prepend-inner-icon="tabler-lock"
                     :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                    hint="Se almacena encriptada de forma segura"
+                    :hint="form.has_password ? 'Dejar en blanco para mantener la contraseña actual' : 'Se almacena encriptada de forma segura'"
                     persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                     @click:append-inner="showPassword = !showPassword"
                   />
                 </VCol>
@@ -222,6 +318,9 @@ onMounted(() => {
                     prepend-inner-icon="tabler-world"
                     hint="URL base de la plataforma Droguería Mega"
                     persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                   />
                 </VCol>
 
@@ -231,30 +330,43 @@ onMounted(() => {
                     label="Cookie de Sesión Manual (Opcional)"
                     placeholder="Dejar vacío para login automático"
                     prepend-inner-icon="tabler-cookie"
-                    hint="Opcional si se requiere sobreescribir la sesión"
+                    hint="Opcional: Solo si se requiere sobreescribir la sesión activa"
                     persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                   />
                 </VCol>
 
-                <VCol cols="12" class="d-flex align-center gap-4 mt-2">
-                  <VBtn
-                    type="submit"
-                    color="primary"
-                    prepend-icon="tabler-device-floppy"
-                    :loading="isSaving"
-                  >
-                    Guardar Configuración
-                  </VBtn>
+                <VCol cols="12" class="mt-2">
+                  <VRow>
+                    <VCol cols="12" sm="6">
+                      <VBtn
+                        type="submit"
+                        color="primary"
+                        block
+                        prepend-icon="tabler-device-floppy"
+                        :loading="isSaving"
+                        :disabled="!isDirty || !canManageBot"
+                      >
+                        Guardar Configuración
+                      </VBtn>
+                    </VCol>
 
-                  <VBtn
-                    color="success"
-                    variant="tonal"
-                    prepend-icon="tabler-player-play"
-                    :loading="isSyncing"
-                    @click="runSync"
-                  >
-                    Ejecutar Sincronización Ahora
-                  </VBtn>
+                    <VCol cols="12" sm="6">
+                      <VBtn
+                        color="success"
+                        variant="tonal"
+                        block
+                        prepend-icon="tabler-player-play"
+                        :loading="isSyncing"
+                        :disabled="!canManageBot"
+                        @click="runSync"
+                      >
+                        Ejecutar Sincronización Ahora
+                      </VBtn>
+                    </VCol>
+                  </VRow>
                 </VCol>
               </VRow>
             </VForm>
@@ -276,7 +388,7 @@ onMounted(() => {
             <div class="d-flex align-center justify-space-between mb-4">
               <span class="text-body-2 text-medium-emphasis">Proveedor vinculado:</span>
               <VChip size="small" color="primary" variant="tonal" class="font-weight-bold">
-                {{ supplierId ? `ID: ${supplierId} (Dromega)` : 'No detectado' }}
+                {{ supplierId ? `ID: ${supplierId} (${supplierDetails?.name || 'Dromega'})` : 'No detectado' }}
               </VChip>
             </div>
 
@@ -291,10 +403,17 @@ onMounted(() => {
               </VChip>
             </div>
 
+            <div class="d-flex align-center justify-space-between mb-4">
+              <span class="text-body-2 text-medium-emphasis">Tarea Automática (Cron):</span>
+              <VChip size="small" color="info" variant="tonal">
+                04:30 AM Diario
+              </VChip>
+            </div>
+
             <div class="d-flex align-center justify-space-between mb-2">
               <span class="text-body-2 text-medium-emphasis">Tipo de Integración:</span>
-              <VChip size="small" color="info" variant="tonal">
-                Mydas Portal Scraper
+              <VChip size="small" color="secondary" variant="tonal">
+                Mydas Scraper Web / Portal
               </VChip>
             </div>
           </VCardText>
@@ -310,14 +429,24 @@ onMounted(() => {
           <VDivider />
           <VCardText class="text-body-2 text-medium-emphasis">
             <ul class="ps-4 mb-0 d-flex flex-column gap-2">
-              <li>Inicia sesión automática en el sistema Mydas de Droguería Mega.</li>
-              <li>Consulta el estado de cuenta y sincroniza facturas emitidas.</li>
+              <li>Inicia sesión automática en el sistema Mydas de Droguería Mega con bypass CSRF.</li>
+              <li>Consulta el estado de cuenta y sincroniza facturas emitidas y pendientes.</li>
               <li>Recupera fechas de vencimiento, montos fiscales y detalles de productos.</li>
+              <li>Compara el balance ERP vs Portal y detecta discrepancias de pago.</li>
               <li>Registra las facturas en el sistema para control de cuentas por pagar.</li>
             </ul>
           </VCardText>
         </VCard>
       </VCol>
     </VRow>
+
+    <!-- Modal de Discrepancias y Resultados exclusivo de Droguería Mega -->
+    <DronenaDiscrepanciesModal
+      v-model="showDiscrepanciesModal"
+      supplier-key="dromega"
+      :discrepancies="syncDiscrepancies"
+      :sync-summary="syncSummary"
+      @close="showDiscrepanciesModal = false"
+    />
   </div>
 </template>
