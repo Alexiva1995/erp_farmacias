@@ -1452,8 +1452,10 @@ class IaAssistantReportService
             $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
             $stockEfectivo = $currentStock + $autoOrder;
 
+            $isCachedQuiebre = isset($item->dias_quiebre_90d_cache) && $item->dias_quiebre_90d_cache !== null;
+
             // Estimación de quiebre basado en última fecha de venta o trazabilidad (cache)
-            if (isset($item->dias_quiebre_90d_cache) && $item->dias_quiebre_90d_cache !== null) {
+            if ($isCachedQuiebre) {
                 $diasQuiebre90d = (int) $item->dias_quiebre_90d_cache;
             } else {
                 if ($currentStock <= 0) {
@@ -1480,7 +1482,10 @@ class IaAssistantReportService
                 $d3 = min($d3, max(0, $ageDays - 60));
                 $d2 = min($d2, max(0, $ageDays - 30));
                 $d1 = min($d1, $ageDays);
-                $diasQuiebre90d = min($diasQuiebre90d, $ageDays);
+                
+                if (!$isCachedQuiebre) {
+                    $diasQuiebre90d = min($diasQuiebre90d, $ageDays);
+                }
             }
 
             // Venta Diaria Real (VDR) con regla de corte de mínimo 3 días
