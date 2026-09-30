@@ -257,7 +257,8 @@ class TelegramConfigController extends Controller
 
         $alias = $command->alias ?: $command->command;
         $preview = $command->payload_template ?: 'Ejecución y respuesta estándar del sistema.';
-        $message = "🧪 *[PRUEBA DE COMANDO]*\n\n📌 *Comando:* `{$command->command}`\n🏷️ *Alias:* {$alias}\n📂 *Módulo:* {$command->module}\n\n💬 *Mensaje configurado:*\n{$preview}";
+        $moduleVal = is_object($command->module) ? $command->module->value : $command->module;
+        $message = "🧪 *[PRUEBA DE COMANDO]*\n\n📌 *Comando:* `{$command->command}`\n🏷️ *Alias:* {$alias}\n📂 *Módulo:* {$moduleVal}\n\n💬 *Mensaje configurado:*\n{$preview}";
 
         $success = $this->telegramService->sendMessage($message, $chatId);
 
