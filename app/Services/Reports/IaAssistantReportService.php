@@ -1372,6 +1372,27 @@ class IaAssistantReportService
                         }
                     }
                 }
+
+                // FASE 4: REGLA DE PROTECCIÓN DE QUIEBRE INDIVIDUAL PARA BEST SELLERS Y PRODUCTOS ACTIVOS
+                foreach ($tierItems as $sku) {
+                    $ropIndividual = (float) ($sku->rop_calculado ?? $sku->rop ?? 0);
+                    $stockEfectivo = (float) ($sku->stock_efectivo ?? 0);
+
+                    // Si un producto individual tiene Stock Efectivo < ROP y tiene demanda/ventas reales
+                    if ($ropIndividual > 0 && $stockEfectivo < $ropIndividual) {
+                        $faltanteIndividual = ceil($ropIndividual - $stockEfectivo);
+
+                        $ipoValor = (float) ($sku->ipo ?? 0);
+                        $ipoDecimal = $ipoValor > 1.0 ? ($ipoValor / 100) : $ipoValor;
+                        $tieneVentas = (float) ($sku->promedio_calculado ?? 0) > 0 || (float) ($sku->sales_average ?? 0) > 0;
+
+                        // Si el producto lidera ventas de su liga (IPO >= 25%)
+                        // O si su inventario físico está por debajo del 50% de su ROP con ventas activas:
+                        if ($faltanteIndividual > 0 && $tieneVentas && ($ipoDecimal >= 0.25 || $stockEfectivo < ($ropIndividual * 0.5))) {
+                            $sku->solicitar = max((int) ($sku->solicitar ?? 0), (int) $faltanteIndividual);
+                        }
+                    }
+                }
             }
         }
 

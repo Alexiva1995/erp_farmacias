@@ -16,6 +16,45 @@ class StoreProductRequest extends FormRequest
     }
 
     /**
+     * Prepare data before validation
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('photo_url') && is_string($this->input('photo_url'))) {
+            $this->request->remove('photo_url');
+        }
+
+        $merges = [
+            'is_colombian_origin' => filter_var($this->input('is_colombian_origin'), FILTER_VALIDATE_BOOLEAN),
+            'is_novaventa' => filter_var($this->input('is_novaventa'), FILTER_VALIDATE_BOOLEAN),
+            'psychotropic' => filter_var($this->input('psychotropic'), FILTER_VALIDATE_BOOLEAN),
+            'iva' => filter_var($this->input('iva'), FILTER_VALIDATE_BOOLEAN),
+            'is_scarce' => filter_var($this->input('is_scarce'), FILTER_VALIDATE_BOOLEAN),
+            'is_unified_group' => filter_var($this->input('is_unified_group'), FILTER_VALIDATE_BOOLEAN),
+            'no_pvp' => filter_var($this->input('no_pvp'), FILTER_VALIDATE_BOOLEAN),
+        ];
+
+        if ($this->has('group_id')) {
+            $val = $this->input('group_id');
+            $merges['group_id'] = (empty($val) || $val === 'null' || $val === 'undefined') ? null : (int) $val;
+        }
+        if ($this->has('laboratory_id') && (empty($this->input('laboratory_id')) || $this->input('laboratory_id') === 'null')) {
+            $merges['laboratory_id'] = null;
+        }
+        if ($this->has('category_id') && (empty($this->input('category_id')) || $this->input('category_id') === 'null')) {
+            $merges['category_id'] = null;
+        }
+        if ($this->has('origin_id') && (empty($this->input('origin_id')) || $this->input('origin_id') === 'null')) {
+            $merges['origin_id'] = null;
+        }
+        if ($this->has('supplier_id') && (empty($this->input('supplier_id')) || $this->input('supplier_id') === 'null')) {
+            $merges['supplier_id'] = null;
+        }
+
+        $this->merge($merges);
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>

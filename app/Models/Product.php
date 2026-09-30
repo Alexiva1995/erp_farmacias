@@ -197,7 +197,7 @@ class Product extends Model
      */
     public function group(): BelongsTo
     {
-        return $this->belongsTo(GroupsProduct::class);
+        return $this->belongsTo(GroupsProduct::class, 'group_id');
     }
 
     /**

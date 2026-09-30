@@ -27,7 +27,7 @@ class UpdateProductRequest extends FormRequest
             $this->request->remove('photo_url');
         }
 
-        $this->merge([
+        $merges = [
             'is_colombian_origin' => filter_var($this->input('is_colombian_origin'), FILTER_VALIDATE_BOOLEAN),
             'is_novaventa' => filter_var($this->input('is_novaventa'), FILTER_VALIDATE_BOOLEAN),
             'psychotropic' => filter_var($this->input('psychotropic'), FILTER_VALIDATE_BOOLEAN),
@@ -35,7 +35,26 @@ class UpdateProductRequest extends FormRequest
             'is_scarce' => filter_var($this->input('is_scarce'), FILTER_VALIDATE_BOOLEAN),
             'is_unified_group' => filter_var($this->input('is_unified_group'), FILTER_VALIDATE_BOOLEAN),
             'no_pvp' => filter_var($this->input('no_pvp'), FILTER_VALIDATE_BOOLEAN),
-        ]);
+        ];
+
+        if ($this->has('group_id')) {
+            $val = $this->input('group_id');
+            $merges['group_id'] = (empty($val) || $val === 'null' || $val === 'undefined') ? null : (int) $val;
+        }
+        if ($this->has('laboratory_id') && (empty($this->input('laboratory_id')) || $this->input('laboratory_id') === 'null')) {
+            $merges['laboratory_id'] = null;
+        }
+        if ($this->has('category_id') && (empty($this->input('category_id')) || $this->input('category_id') === 'null')) {
+            $merges['category_id'] = null;
+        }
+        if ($this->has('origin_id') && (empty($this->input('origin_id')) || $this->input('origin_id') === 'null')) {
+            $merges['origin_id'] = null;
+        }
+        if ($this->has('supplier_id') && (empty($this->input('supplier_id')) || $this->input('supplier_id') === 'null')) {
+            $merges['supplier_id'] = null;
+        }
+
+        $this->merge($merges);
     }
 
     /**
