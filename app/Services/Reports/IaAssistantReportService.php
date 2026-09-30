@@ -1305,6 +1305,11 @@ class IaAssistantReportService
             $item->liga_id = $miLiga;
             $item->liga_nombre = $miLiga === 3 ? 'Premium' : ($miLiga === 2 ? 'Promedio' : 'Económica');
             $item->liga_color = $miLiga === 3 ? 'success' : ($miLiga === 2 ? 'info' : 'pink');
+            
+            // Atributos para JSON Audit
+            $item->tier_level = $miLiga;
+            $item->tier_name = mb_strtoupper($item->liga_nombre);
+            $item->promedio_historico = round($stockObjetivo, 2);
 
             if (!isset($ropYStockPorLiga[$gId][$miLiga])) {
                 $ropYStockPorLiga[$gId][$miLiga] = ['rop' => 0, 'stock' => 0, 'objetivo' => 0];
@@ -1501,6 +1506,17 @@ class IaAssistantReportService
             $item->dias_quiebre = $diasQuiebre90d;
             $item->promedio_calculado = round($demandaMensualAjustada, 2);
             $item->demanda_ponderada = round($stockObjetivo, 2);
+
+            $item->ventas_30d = $v1;
+            $item->ventas_m2 = $v2;
+            $item->ventas_m3 = $v3;
+            $item->dias_con_stock_m1 = $d1;
+            $item->dias_con_stock_m2 = $d2;
+            $item->dias_con_stock_m3 = $d3;
+            $item->lead_time_days = $effectiveLeadTime;
+            $item->buffer_days = $bufferDays;
+            $item->stock_fisico = $currentStock;
+            $item->stock_transito = $autoOrder;
 
             if ($stockEfectivo <= $rop) {
                 $sugerido = $stockObjetivo - $stockEfectivo;

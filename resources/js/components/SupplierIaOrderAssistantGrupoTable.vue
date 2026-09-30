@@ -214,6 +214,46 @@ const grupoKpi = (productos) => {
   return { falta, exceso, ok };
 };
 
+// Copiar JSON de auditoría
+const copiarJsonAuditoria = async (grupo) => {
+  try {
+    const payload = {
+      group_id: grupo.group_id,
+      group_name: grupo.group_name || `Grupo #${grupo.group_id}`,
+      lead_time_days: 7,
+      buffer_days: 7,
+      products: grupo.productos.map(p => ({
+        product_id: p.id,
+        name: p.name,
+        tier_level: p.tier_level || p.liga_id || 1,
+        tier_name: p.tier_name || p.liga_nombre || 'ECONÓMICA',
+        costo: parseFloat(p.unit_cost || p.cost_price || 0),
+        ventas_30d: parseFloat(p.ventas_30d || 0),
+        ventas_m2: parseFloat(p.ventas_m2 || 0),
+        ventas_m3: parseFloat(p.ventas_m3 || 0),
+        dias_con_stock_m1: parseFloat(p.dias_con_stock_m1 || 0),
+        dias_con_stock_m2: parseFloat(p.dias_con_stock_m2 || 0),
+        dias_con_stock_m3: parseFloat(p.dias_con_stock_m3 || 0),
+        promedio_historico: parseFloat(p.promedio_historico || p.promedio_calculado || 0),
+        stock_fisico: parseFloat(p.stock_fisico || p.stock || 0),
+        stock_transito: parseFloat(p.stock_transito || p.totalQuantityInAutoOrder || 0),
+      }))
+    };
+
+    if (grupo.productos.length > 0 && grupo.productos[0].lead_time_days) {
+      payload.lead_time_days = grupo.productos[0].lead_time_days;
+      payload.buffer_days = grupo.productos[0].buffer_days;
+    }
+
+    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+    toast.success('JSON de auditoría copiado al portapapeles');
+  } catch (err) {
+    console.error(err);
+    toast.error('Error al copiar el JSON');
+  }
+};
+
+
 // Resumen por Ligas (Económica, Premium, Promedio)
 const getLigasSummary = (productos) => {
   const tiers = [
@@ -339,6 +379,14 @@ function rowClass(item) {
 
           <!-- KPIs rápidos del grupo -->
           <div class="d-flex align-center gap-2" @click.stop>
+            <VBtn
+              size="x-small"
+              variant="text"
+              color="primary"
+              icon="tabler-copy"
+              @click="copiarJsonAuditoria(grupo)"
+              title="Copiar JSON de Auditoría"
+            ></VBtn>
             <VChip v-if="grupoKpi(grupo.productos).falta > 0" size="x-small" color="success" variant="tonal" class="font-weight-bold">
               <VIcon start size="10">tabler-arrow-up</VIcon>
               {{ grupoKpi(grupo.productos).falta }} faltan
