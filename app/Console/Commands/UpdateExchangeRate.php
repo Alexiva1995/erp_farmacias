@@ -160,7 +160,10 @@ class UpdateExchangeRate extends Command
                    "💶 *Euro Oficial:* {$eurValFormatted} Bs.\n\n" .
                    "Valores actualizados al *{$fechaStr}*.";
 
-        $telegramService->sendMessage($message);
+        if ($telegramService->isCommandActive('/tasas', 'generales')) {
+            $targetChatId = $telegramService->getTargetChatIdForCommand('/tasas', 'generales');
+            $telegramService->sendMessage($message, $targetChatId);
+        }
     }
 }
 

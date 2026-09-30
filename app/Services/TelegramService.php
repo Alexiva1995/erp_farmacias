@@ -259,4 +259,32 @@ class TelegramService
 
         return true;
     }
+
+    /**
+     * Obtener el Chat ID de destino configurado para un comando específico (canal asignado o fallback).
+     */
+    public function getTargetChatIdForCommand(string $command, ?string $module = null): ?string
+    {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('telegram_commands')) {
+                $query = \App\Models\TelegramCommand::with('channel')->where('command', $command);
+                if ($module) {
+                    $normalizedModule = match (strtolower($module)) {
+                        'canchas' => 'alquileres',
+                        'general' => 'generales',
+                        default => strtolower($module),
+                    };
+                    $query->where('module', $normalizedModule);
+                }
+                $cmd = $query->first();
+                if ($cmd && $cmd->channel && $cmd->channel->is_active && !empty($cmd->channel->chat_id)) {
+                    return (string) $cmd->channel->chat_id;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[TelegramService] Error obteniendo canal de comando: ' . $e->getMessage());
+        }
+
+        return $this->getChatId();
+    }
 }

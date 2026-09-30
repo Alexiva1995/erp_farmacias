@@ -69,7 +69,10 @@ class CloseCash extends Command
                      . "✨ *Sistema de Cierre Diario completado a las 11:59 PM.*";
 
                 $telegram = resolve(TelegramService::class);
-                $telegram->sendToAdmin($msg);
+                if ($telegram->isCommandActive('/cierre_general', 'generales')) {
+                    $targetChatId = $telegram->getTargetChatIdForCommand('/cierre_general', 'generales') ?: $telegram->getAdminChatId();
+                    $telegram->sendMessage($msg, $targetChatId);
+                }
             }
         } catch (\Exception $e) {
             Log::error("Error enviando notificación de Cierre General Diario a Telegram: {$e->getMessage()}");
