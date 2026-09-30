@@ -150,8 +150,9 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             }
             $invoice = $invoiceQuery->first();
 
-            $claimAmount = $doc['monto_reclamo_db'] ?? 0;
-            $ndRefAmount = $doc['monto_nd_referencial_db'] ?? 0;
+            // Para facturas normales no se descuenta ni se asigna ND referencial
+            $claimAmount = $isND ? 0 : ($doc['monto_reclamo_db'] ?? 0);
+            $ndRefAmount = 0; // Las ND se gestionan como documentos separados e independientes
             $netPayable = $doc['saldo_db'] ?? null;
 
             if ($invoice) {
@@ -160,14 +161,14 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'is_indexed' => $isIndexed,
                     'currency' => 'Bs',
                     'claim_amount' => $claimAmount,
-                    'nd_referential_amount' => $ndRefAmount,
+                    'nd_referential_amount' => 0,
                     'net_payable_amount' => $netPayable,
                 ];
 
                 // Normalizar número de factura con el prefijo oficial (A para facturas, ND- para notas de débito)
-                if ($isND && !str_starts_with($invoice->invoice_number, 'ND-')) {
+                if ($isND) {
                     $updateData['invoice_number'] = $erpDocNumber;
-                } elseif (!$isND && !str_starts_with($invoice->invoice_number, 'A')) {
+                } elseif (!str_starts_with($invoice->invoice_number, 'A')) {
                     $updateData['invoice_number'] = $erpDocNumber;
                 }
 
@@ -175,11 +176,12 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     $updateData['payment_date'] = $expDate;
                 }
 
-                // Si la factura tiene PDF disponible, descargar y parsear para obtener montos fiscales exactos y tasa oficial
+                // Si tiene PDF disponible, descargar y parsear para obtener montos fiscales exactos y tasa oficial
                 if (!empty($doc['pdf_url'])) {
                     $pdfData = $this->fetchAndParsePdf($doc['pdf_url'], $client);
                     if ($pdfData) {
-                        if (!empty($pdfData['invoice_number'])) {
+                        // Solo para facturas normales se actualiza con el invoice_number del PDF; para ND siempre se preserva ND-
+                        if (!$isND && !empty($pdfData['invoice_number'])) {
                             $updateData['invoice_number'] = $pdfData['invoice_number'];
                         }
                         if (!empty($pdfData['control_number'])) {
@@ -232,7 +234,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'payment_date' => $expDate,
                     'is_indexed' => $isIndexed,
                     'claim_amount' => $claimAmount,
-                    'nd_referential_amount' => $ndRefAmount,
+                    'nd_referential_amount' => 0,
                     'net_payable_amount' => $netPayable,
                     'total_amount' => (float) ($invoice->total_amount ?? 0),
                     'total_usd' => (float) ($invoice->total_usd ?? 0),
@@ -248,9 +250,11 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                 $calcTotalAmount = (float) ($pdfData['total_amount'] ?? $doc['monto_db']);
                 $calcTotalUsd = (float) ($pdfData['total_usd'] ?? ($calcRate > 0 ? round($calcTotalAmount / $calcRate, 2) : 0));
 
+                $targetInvoiceNumber = $isND ? $erpDocNumber : ($pdfData['invoice_number'] ?? $erpDocNumber);
+
                 $newInvoice = Invoice::create([
                     'supplier_id' => $supplierId,
-                    'invoice_number' => $pdfData['invoice_number'] ?? $erpDocNumber,
+                    'invoice_number' => $targetInvoiceNumber,
                     'control_number' => $pdfData['control_number'] ?? null,
                     'created_invoice_date' => $pdfData['created_invoice_date'] ?? ($doc['fecha_emision_db'] ?: $today),
                     'exp_date' => $expDate,
@@ -264,7 +268,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'total_usd' => $calcTotalUsd,
                     'exchange_rate' => $calcRate,
                     'claim_amount' => $claimAmount,
-                    'nd_referential_amount' => $ndRefAmount,
+                    'nd_referential_amount' => 0,
                     'net_payable_amount' => $netPayable ?: $calcTotalAmount,
                     'invoice_photo' => $pdfData['invoice_photo'] ?? null,
                     'status' => $isND ? 'ordered' : 'pending',

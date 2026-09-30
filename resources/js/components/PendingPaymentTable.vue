@@ -67,10 +67,6 @@ const selectedTotals = computed(() => {
 
   props.selectedTableInvoices.forEach((item) => {
     let amount = parseFloat(getDisplayAmount(item)) || 0;
-    // Si tiene Nota de Débito referencial aprobada (descuento), se resta al total a pagar
-    if (item.nd_referential_amount && parseFloat(item.nd_referential_amount) > 0) {
-      amount = Math.max(0, amount - parseFloat(item.nd_referential_amount));
-    }
 
     if (item.currency === "COP") {
       cop += amount;
@@ -312,20 +308,8 @@ const openInvoiceTab = (item) => {
             <span class="text-sm font-weight-black" :class="getRemainingAmountClass(item)">
               {{ formatCurrency(getDisplayAmount(item), item.currency, true) }} {{ (item.currency === 'COP') ? 'COP' : (item.currency === 'USD' ? 'USD' : 'Bs.') }}
             </span>
-            <div v-if="item.nd_referential_amount > 0 || item.claim_amount > 0" class="d-flex align-center gap-1 mt-1">
+            <div v-if="item.claim_amount > 0" class="d-flex align-center gap-1 mt-1">
               <VChip
-                v-if="item.nd_referential_amount > 0"
-                size="x-small"
-                variant="tonal"
-                color="error"
-                class="font-weight-black cursor-pointer"
-                style="font-size: 0.62rem; height: 18px;"
-              >
-                ND: -{{ formatCurrency(item.nd_referential_amount, item.currency, true) }}
-                <VTooltip activator="parent" location="top">Nota de Débito Referencial Aprobada (-{{ formatCurrency(item.nd_referential_amount, item.currency) }})</VTooltip>
-              </VChip>
-              <VChip
-                v-if="item.claim_amount > 0"
                 size="x-small"
                 variant="tonal"
                 color="warning"

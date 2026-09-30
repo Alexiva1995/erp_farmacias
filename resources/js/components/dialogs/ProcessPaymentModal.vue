@@ -373,11 +373,6 @@ const totalInBS = computed(() => {
       }
     }
 
-    // Restar descuento por Nota de Débito Referencial si aplica
-    if (invoice.nd_referential_amount && parseFloat(invoice.nd_referential_amount) > 0) {
-      amount = Math.max(0, amount - parseFloat(invoice.nd_referential_amount));
-    }
-
     return sum + amount;
   }, 0);
 });
@@ -610,10 +605,6 @@ const getInvoiceBsAmount = (invoice) => {
     } else {
       amount = parseFloat(invoice.total_amount_bs) || 0;
     }
-  }
-
-  if (invoice.nd_referential_amount && parseFloat(invoice.nd_referential_amount) > 0) {
-    amount = Math.max(0, amount - parseFloat(invoice.nd_referential_amount));
   }
 
   return Number(amount.toFixed(2));
