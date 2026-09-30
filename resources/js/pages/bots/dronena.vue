@@ -136,7 +136,7 @@ const runSync = async () => {
     if (form.value.username) payload.username = form.value.username
     if (form.value.password) payload.password = form.value.password
 
-    const res = await axios.post('/sync-dronena', payload)
+    const res = await axios.post('/invoices/sync-dronena', payload)
     toast.success(res.data?.message || 'Sincronización con Dronena completada exitosamente.')
   } catch (error) {
     console.error('Error al sincronizar con Dronena:', error)

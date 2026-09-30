@@ -689,6 +689,14 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::post('/{invoice}/photo', 'uploadPhoto')->name('photo.upload');
     });
 
+    // Alias directos para sincronización de bots
+    Route::post('/sync-dronena', [InvoiceController::class, 'syncDronena']);
+    Route::post('/sync-drocerca', [InvoiceController::class, 'syncDrocerca']);
+    Route::post('/sync-mafarta', [InvoiceController::class, 'syncMafarta']);
+    Route::post('/sync-cristmedicals', [InvoiceController::class, 'syncCristmedicals']);
+    Route::post('/sync-dromega', [InvoiceController::class, 'syncDromega']);
+    Route::post('/sync-drosymca', [InvoiceController::class, 'syncDrosymca']);
+
     // Devoluciones de Facturas
     Route::prefix('invoice-returns')->name('invoice-returns.')->controller(InvoiceReturnController::class)->group(function () {
         Route::get('/', 'index')->name('index');
