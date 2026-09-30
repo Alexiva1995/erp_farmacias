@@ -311,16 +311,16 @@ const innerHeaders = computed(() => {
   }
 
   base.push(
-    { title: "COSTO ($)", key: "unit_cost", sortable: true, align: 'end', width: '85px' },
-    { title: "VENTA 30D", key: "total_sold_completed", sortable: true, align: 'center', width: '80px' },
-    { title: "QUIEBRE (90D)", key: "dias_quiebre", sortable: true, align: 'center', width: '90px' },
-    { title: "PROM. (ROP)", key: "promedio_calculado", sortable: true, align: 'center', width: '85px' },
-    { title: "STOCK FÍSICO", key: "lote_quantity", sortable: true, align: 'center', width: '85px' },
-    { title: "TRÁNSITO", key: "totalQuantityInAutoOrder", sortable: true, align: 'center', width: '80px' },
-    { title: "STOCK ÚTIL", key: "stock_util", sortable: true, align: 'center', width: '85px' },
-    { title: "IPO %", key: "ipo", sortable: true, align: 'center', width: '75px' },
-    { title: "SUGERIDO FINAL", key: "solicitar", sortable: true, align: 'center', width: '105px' },
-    { title: "ACCIÓN", key: "actions", sortable: false, align: 'end', width: '90px' }
+    { title: "COSTO", key: "unit_cost", sortable: true, align: 'end', width: '75px' },
+    { title: "VTA. 30D", key: "total_sold_completed", sortable: true, align: 'center', width: '75px' },
+    { title: "QUIEBRE", key: "dias_quiebre", sortable: true, align: 'center', width: '75px' },
+    { title: "ROP", key: "promedio_calculado", sortable: true, align: 'center', width: '70px' },
+    { title: "FÍSICO", key: "lote_quantity", sortable: true, align: 'center', width: '70px' },
+    { title: "TRÁNS.", key: "totalQuantityInAutoOrder", sortable: true, align: 'center', width: '70px' },
+    { title: "ÚTIL", key: "stock_util", sortable: true, align: 'center', width: '70px' },
+    { title: "IPO", key: "ipo", sortable: true, align: 'center', width: '65px' },
+    { title: "SUG.", key: "solicitar", sortable: true, align: 'center', width: '75px' },
+    { title: "ACCIÓN", key: "actions", sortable: false, align: 'end', width: '80px' }
   );
 
   return base;

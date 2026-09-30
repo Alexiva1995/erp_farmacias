@@ -1412,7 +1412,8 @@ class IaAssistantReportService
                 'order_details.product_id',
                 \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN orders.created_at >= "' . $dateM1 . '" THEN order_details.quantity ELSE 0 END) as v1'),
                 \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN orders.created_at >= "' . $dateM2 . '" AND orders.created_at < "' . $dateM1 . '" THEN order_details.quantity ELSE 0 END) as v2'),
-                \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN orders.created_at >= "' . $dateM3 . '" AND orders.created_at < "' . $dateM2 . '" THEN order_details.quantity ELSE 0 END) as v3')
+                \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN orders.created_at >= "' . $dateM3 . '" AND orders.created_at < "' . $dateM2 . '" THEN order_details.quantity ELSE 0 END) as v3'),
+                \Illuminate\Support\Facades\DB::raw('MAX(orders.created_at) as last_sale_date')
             )
             ->groupBy('order_details.product_id')
             ->get()
@@ -1444,22 +1445,39 @@ class IaAssistantReportService
             $v1 = (float)($salesRow->v1 ?? 0);
             $v2 = (float)($salesRow->v2 ?? 0);
             $v3 = (float)($salesRow->v3 ?? 0);
+            $lastSaleDate = ($salesRow && !empty($salesRow->last_sale_date)) ? \Carbon\Carbon::parse($salesRow->last_sale_date) : null;
 
             $lotRow = $lotsData->get($item->id);
             $currentStock = (float)($item->lote_quantity ?? $item->stock ?? 0);
             $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
             $stockEfectivo = $currentStock + $autoOrder;
 
-            // Estimación de días con stock por mes
-            // Si el producto tiene stock actual > 0 y ventas en el mes, asumimos 30 días con stock.
-            // Si no tiene stock actual y tuvo ventas, calculamos los días basado en distribución de ventas o mínimo 5 días.
-            // Si no tuvo ventas y stock es 0, días con stock es 0 (quiebre total).
+            // Estimación de quiebre basado en última fecha de venta
+            if ($currentStock <= 0) {
+                if ($lastSaleDate) {
+                    $daysSinceLastSale = (int) $lastSaleDate->diffInDays($now);
+                    $diasQuiebre90d = min(90, $daysSinceLastSale);
+                } else {
+                    $diasQuiebre90d = 90; // Sin stock y sin ventas en 90 días = quiebre total
+                }
+            } else {
+                $diasQuiebre90d = 0;
+            }
+
+            // Días de presencia de stock (Inverso al quiebre)
+            $d1 = max(0, 30 - min(30, $diasQuiebre90d));
+            $d2 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 30)));
+            $d3 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 60)));
+
             $firstLot = $lotRow ? \Carbon\Carbon::parse($lotRow->first_lot_date) : null;
             $ageDays = $firstLot ? max(1, $firstLot->diffInDays($now)) : 90;
 
-            $d1 = ($currentStock > 0 || $v1 > 0) ? min(30, max(3, min($ageDays, 30))) : 0;
-            $d2 = ($currentStock > 0 || $v2 > 0) ? min(30, max(3, max(0, min($ageDays - 30, 30)))) : 0;
-            $d3 = ($currentStock > 0 || $v3 > 0) ? min(30, max(3, max(0, min($ageDays - 60, 30)))) : 0;
+            if ($ageDays < 90) {
+                $d3 = min($d3, max(0, $ageDays - 60));
+                $d2 = min($d2, max(0, $ageDays - 30));
+                $d1 = min($d1, $ageDays);
+                $diasQuiebre90d = min($diasQuiebre90d, $ageDays);
+            }
 
             // Venta Diaria Real (VDR) con regla de corte de mínimo 3 días
             $vdr1 = $d1 >= 3 ? ($v1 / $d1) : ($v1 / 30);
@@ -1502,7 +1520,6 @@ class IaAssistantReportService
             $rop = $vpd * ($effectiveLeadTime + $bufferDays);
             $stockObjetivo = $vpd * $coverageDays;
 
-            $diasQuiebre90d = max(0, 90 - (int)($d1 + $d2 + $d3));
             $item->dias_quiebre = $diasQuiebre90d;
             $item->promedio_calculado = round($demandaMensualAjustada, 2);
             $item->demanda_ponderada = round($stockObjetivo, 2);
