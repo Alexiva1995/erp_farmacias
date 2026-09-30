@@ -88,7 +88,7 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
             ->groupBy('product_id', 'supplier_id');
 
         $tipoFiltracion = $filtros['tipo_filtracion'] ?? 'combinado';
-        $baseAvgCol = in_array($tipoFiltracion, ['weighted', 'stockout_adjusted_rop', 'stockout_adjusted_rop_plus'])
+        $baseAvgCol = in_array($tipoFiltracion, ['weighted', 'stockout_adjusted_rop', 'stockout_adjusted_rop_plus', 'stockout_adjusted_rop_hiperplus'])
             ? 'COALESCE(NULLIF(products.sales_average_weighted, 0), products.sales_average, 0)'
             : 'COALESCE(products.sales_average, 0)';
 
@@ -145,7 +145,7 @@ class MarketOpportunityRepository implements MarketOpportunityRepositoryInterfac
         $tipoFiltracion = $filtros['tipo_filtracion'] ?? 'combinado';
         $demandaSql = match($tipoFiltracion) {
             'sales'      => 'sub.total_sold_completed',
-            'average', 'weighted', 'stockout_adjusted_rop', 'stockout_adjusted_rop_plus' => 'sub.promedio_calculado',
+            'average', 'weighted', 'stockout_adjusted_rop', 'stockout_adjusted_rop_plus', 'stockout_adjusted_rop_hiperplus' => 'sub.promedio_calculado',
             'combinado'  => "(CASE WHEN sub.total_sold_completed > 0 THEN ((sub.promedio_calculado + sub.total_sold_completed) / 2) ELSE sub.promedio_calculado END)",
             default      => "(CASE WHEN sub.total_sold_completed > 0 THEN ((sub.promedio_calculado + sub.total_sold_completed) / 2) ELSE sub.promedio_calculado END)",
         };

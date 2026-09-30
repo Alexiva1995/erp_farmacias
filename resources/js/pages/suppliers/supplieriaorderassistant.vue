@@ -191,7 +191,7 @@ async function actualizarTabla() {
       gruposData.total_grupos = 0;
     }
   } catch (e) {
-    if (axios.isCancel(e) || e.name === 'CanceledError' || e.code === 'ERR_CANCELED') {
+    if (axios?.isCancel?.(e) || e.name === 'CanceledError' || e.code === 'ERR_CANCELED' || e.name === 'AbortError') {
       return;
     }
     console.error("Error al cargar los productos:", e);

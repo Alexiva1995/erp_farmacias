@@ -75,7 +75,7 @@ async function consultarDataReport(){
     })
     return { ...respuestaApi.data }
   } catch (error) {
-    if (axios.isCancel(error) || error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+    if (axios?.isCancel?.(error) || error.name === 'CanceledError' || error.code === 'ERR_CANCELED' || error.name === 'AbortError') {
       return { data: { data: reportState.items, total: reportState.total } };
     }
     console.error("Error al consultar reporte:", error);
