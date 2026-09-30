@@ -290,37 +290,48 @@ onMounted(() => {
                       />
                     </VCol>
 
-                    <VCol cols="12" class="d-flex flex-wrap align-center gap-3 pt-4">
-                      <VBtn
-                        type="submit"
-                        color="primary"
-                        prepend-icon="tabler-device-floppy"
-                        :loading="savingConfig"
-                        :disabled="loadingConfig"
-                      >
-                        Guardar Parámetros
-                      </VBtn>
+                    <VCol cols="12" class="pt-4">
+                      <VRow dense>
+                        <VCol cols="12" sm="4">
+                          <VBtn
+                            type="submit"
+                            color="primary"
+                            block
+                            prepend-icon="tabler-device-floppy"
+                            :loading="savingConfig"
+                            :disabled="loadingConfig"
+                          >
+                            Guardar
+                          </VBtn>
+                        </VCol>
 
-                      <VBtn
-                        color="success"
-                        variant="tonal"
-                        prepend-icon="tabler-webhook"
-                        :loading="registeringWebhook"
-                        :disabled="loadingConfig || !configForm.bot_token"
-                        @click="registerWebhook"
-                      >
-                        Sincronizar Webhook
-                      </VBtn>
+                        <VCol cols="12" sm="4">
+                          <VBtn
+                            color="success"
+                            variant="tonal"
+                            block
+                            prepend-icon="tabler-webhook"
+                            :loading="registeringWebhook"
+                            :disabled="loadingConfig || !configForm.bot_token"
+                            @click="registerWebhook"
+                          >
+                            Sincronizar Webhook
+                          </VBtn>
+                        </VCol>
 
-                      <VBtn
-                        color="info"
-                        variant="outlined"
-                        prepend-icon="tabler-refresh"
-                        :loading="checkingStatus"
-                        @click="checkWebhookStatus"
-                      >
-                        Verificar Conexión
-                      </VBtn>
+                        <VCol cols="12" sm="4">
+                          <VBtn
+                            color="info"
+                            variant="outlined"
+                            block
+                            prepend-icon="tabler-refresh"
+                            :loading="checkingStatus"
+                            @click="() => checkWebhookStatus(false)"
+                          >
+                            Verificar Conexión
+                          </VBtn>
+                        </VCol>
+                      </VRow>
                     </VCol>
                   </VRow>
                 </VForm>

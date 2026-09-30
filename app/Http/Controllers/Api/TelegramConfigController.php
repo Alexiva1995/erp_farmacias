@@ -41,7 +41,7 @@ class TelegramConfigController extends Controller
                 'bot_token' => config('services.telegram.bot_token'),
                 'chat_id' => config('services.telegram.chat_id'),
                 'admin_chat_id' => config('services.telegram.admin_chat_id'),
-                'webhook_url' => config('app.url') . '/api/public/telegram/webhook',
+                'webhook_url' => rtrim(config('app.url'), '/') . '/api/public/telegram/webhook',
                 'is_active' => true,
             ]
         );
