@@ -1328,11 +1328,10 @@ class IaAssistantReportService
                 $ropLiga = $datosLiga['rop'];
                 $objLiga = $datosLiga['objetivo'];
 
-                // MODIFICACION 1: Calculo de Stock Util de Liga con unidades discretas
+                // MODIFICACION 1: Calculo de Stock Util de Liga con precisión decimal (sin inflar artificialmente)
                 $stockUtilLiga = 0;
                 foreach ($tierItems as $sku) {
-                    // El stock útil no puede ser fraccional; 1 caja física cubre hasta 1 unidad de demanda entera
-                    $stockUtilLiga += min($sku->stock_efectivo, ceil($sku->demanda_ponderada));
+                    $stockUtilLiga += min($sku->stock_efectivo, $sku->demanda_ponderada);
                 }
 
                 if ($stockUtilLiga >= $ropLiga || $stockUtilLiga >= $objLiga) {
@@ -1341,8 +1340,6 @@ class IaAssistantReportService
                         $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
                     }
                 } else {
-                    $faltanteLiga = $objLiga - $stockUtilLiga;
-                    
                     $validPrices = collect($tierItems)->map(function($it) {
                         return (float)(($it->sale_price ?? 0) > 0 ? $it->sale_price : ($it->unit_cost ?? 0));
                     })->filter(fn($val) => $val > 0);
@@ -1362,11 +1359,13 @@ class IaAssistantReportService
                     foreach ($tierItems as $sku) {
                         if ($puntuacionTotalLiga > 0) {
                             $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;
-                            // faltanteLiga ya es el neto a pedir (descontando el stock util de la liga)
-                            // por lo tanto, la cuota asignada es directamente lo que se debe comprar.
-                            $sugeridoTeorico = ceil($faltanteLiga * $cuotaParticipacion);
                             
-                            $sku->solicitar = (int)$sugeridoTeorico;
+                            // Distribuimos el OBJETIVO ideal de la liga, no el faltante ciego.
+                            // Así descontamos el stock físico individual correctamente sin penalizar doble ni pedir sobre-stock.
+                            $objetivoAsignado = $objLiga * $cuotaParticipacion;
+                            $exceso = $objetivoAsignado - $sku->stock_efectivo;
+                            
+                            $sku->solicitar = $exceso > 0 ? ceil($exceso) : floor($exceso);
                         } else {
                             $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
                             $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
