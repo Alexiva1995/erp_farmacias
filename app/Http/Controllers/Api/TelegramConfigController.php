@@ -237,6 +237,42 @@ class TelegramConfigController extends Controller
     }
 
     /**
+     * Enviar mensaje de prueba simulando el comando en su canal asignado.
+     */
+    public function testCommandMessage(int $id): JsonResponse
+    {
+        $command = TelegramCommand::with('channel')->findOrFail($id);
+
+        $chatId = $command->channel?->chat_id;
+        if (!$chatId) {
+            $config = TelegramConfig::first();
+            $chatId = $config?->chat_id ?: config('services.telegram.chat_id');
+        }
+
+        if (!$chatId) {
+            return response()->json([
+                'message' => 'No hay un canal o Chat ID configurado para emitir el mensaje de prueba.',
+            ], 422);
+        }
+
+        $alias = $command->alias ?: $command->command;
+        $preview = $command->payload_template ?: 'Ejecución y respuesta estándar del sistema.';
+        $message = "🧪 *[PRUEBA DE COMANDO]*\n\n📌 *Comando:* `{$command->command}`\n🏷️ *Alias:* {$alias}\n📂 *Módulo:* {$command->module}\n\n💬 *Mensaje configurado:*\n{$preview}";
+
+        $success = $this->telegramService->sendMessage($message, $chatId);
+
+        if ($success) {
+            return response()->json([
+                'message' => "Mensaje de prueba del comando '{$command->command}' enviado con éxito.",
+            ]);
+        }
+
+        return response()->json([
+            'message' => "No se pudo enviar la prueba de '{$command->command}'. Verifica el Bot Token y los permisos del bot.",
+        ], 400);
+    }
+
+    /**
      * Registrar Webhook en la API de Telegram.
      */
     public function registerWebhook(): JsonResponse

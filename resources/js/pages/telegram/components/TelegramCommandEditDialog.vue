@@ -14,6 +14,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  moduleName: {
+    type: String,
+    default: 'general',
+  },
   saving: {
     type: Boolean,
     default: false,
@@ -34,13 +38,35 @@ const form = ref({
   is_active: true,
 })
 
-// Variables dinámicas admitidas para la plantilla
-const availableVariables = ['{fecha}', '{tasa_bcv}', '{tasa_cop}', '{usuario}', '{sucursal}']
+// Variables dinámicas configuradas por módulo operativo
+const moduleVariablesMap = {
+  alquileres: [
+    '{fecha}',
+    '{hora}',
+    '{cliente}',
+    '{cancha_espacio}',
+    '{horario_reserva}',
+    '{monto}',
+    '{estado_pago}',
+    '{usuario}',
+  ],
+  general: [
+    '{fecha}',
+    '{hora}',
+    '{usuario}',
+    '{sucursal}',
+    '{monto}',
+  ],
+}
+
+const availableVariables = computed(() => {
+  return moduleVariablesMap[props.moduleName] || moduleVariablesMap.general
+})
 
 // Reglas de validación
 const commandRules = [
   v => !!v || 'El comando es obligatorio.',
-  v => (v && v.startsWith('/')) || 'El comando debe iniciar con "/" (ej: /tasa).',
+  v => (v && v.startsWith('/')) || 'El comando debe iniciar con "/" (ej: /cancelar_reserva).',
 ]
 
 const aliasRules = [
@@ -54,15 +80,20 @@ const insertVariable = (variable) => {
 // Vista previa reactiva de la plantilla
 const previewMessage = computed(() => {
   if (!form.value.payload_template) {
-    return 'Sin plantilla configurada. Se emitirá el mensaje por defecto del sistema.'
+    return 'Sin plantilla personalizada. Se emitirá el mensaje y estructura estándar del sistema.'
   }
 
+  const now = new Date()
   let text = form.value.payload_template
-  text = text.replace(/{fecha}/g, new Date().toLocaleDateString('es-VE'))
-  text = text.replace(/{tasa_bcv}/g, '42.50 Bs.')
-  text = text.replace(/{tasa_cop}/g, '4,100.00 COP')
-  text = text.replace(/{usuario}/g, 'Admin Farmacia')
-  text = text.replace(/{sucursal}/g, 'Farmacia Principal')
+  text = text.replace(/{fecha}/g, now.toLocaleDateString('es-VE'))
+  text = text.replace(/{hora}/g, now.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }))
+  text = text.replace(/{cliente}/g, 'Carlos Mendoza')
+  text = text.replace(/{cancha_espacio}/g, 'Cancha Principal A')
+  text = text.replace(/{horario_reserva}/g, '06:00 PM - 08:00 PM')
+  text = text.replace(/{estado_pago}/g, 'Confirmado (Pago Móvil)')
+  text = text.replace(/{usuario}/g, 'Recepción / Admin')
+  text = text.replace(/{sucursal}/g, 'Sede Principal')
+  text = text.replace(/{monto}/g, '$25.00')
 
   return text
 })
@@ -101,23 +132,23 @@ const handleSave = async () => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="700px"
+    max-width="720px"
     persistent
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
     <VCard rounded="lg">
       <VCardTitle class="px-6 pt-6 d-flex align-center justify-space-between">
         <div class="d-flex align-center">
-          <VAvatar color="primary" variant="tonal" size="38" class="me-3">
-            <VIcon icon="tabler-pencil" size="20" />
+          <VAvatar color="primary" variant="tonal" size="40" class="me-3">
+            <VIcon icon="tabler-pencil" size="22" />
           </VAvatar>
 
           <div>
             <div class="text-h6 font-weight-bold">
-              Editar Comando y Notificación
+              Configuración de Comando y Plantilla
             </div>
             <div class="text-caption text-medium-emphasis">
-              {{ form.command || 'Configuración de Parámetros' }}
+              {{ form.command || 'Parámetros del disparador' }}
             </div>
           </div>
         </div>
@@ -143,7 +174,7 @@ const handleSave = async () => {
               <VTextField
                 v-model="form.command"
                 label="Comando / Disparador"
-                placeholder="ej: /tasa"
+                placeholder="ej: /cancelar_reserva"
                 density="comfortable"
                 variant="outlined"
                 prepend-inner-icon="tabler-terminal-2"
@@ -157,7 +188,7 @@ const handleSave = async () => {
               <VTextField
                 v-model="form.alias"
                 label="Nombre / Alias"
-                placeholder="ej: Notificación Tasas BCV"
+                placeholder="ej: Cancelación de Reservación"
                 density="comfortable"
                 variant="outlined"
                 prepend-inner-icon="tabler-tag"
@@ -175,7 +206,7 @@ const handleSave = async () => {
                 item-value="value"
                 label="Canal Destino de Telegram"
                 prepend-inner-icon="tabler-brand-telegram"
-                hint="Canal o chat grupal donde se emitirán los mensajes asociados a este comando."
+                hint="Canal o chat grupal de Telegram donde se difundirán las respuestas asociadas a este comando."
                 persistent-hint
                 density="comfortable"
                 variant="outlined"
@@ -187,11 +218,11 @@ const handleSave = async () => {
             <VCol cols="12">
               <VTextarea
                 v-model="form.description"
-                label="Descripción"
+                label="Descripción y Propósito Operativo"
                 rows="2"
                 density="comfortable"
                 variant="outlined"
-                placeholder="Explica cuándo y cómo se dispara este comando..."
+                placeholder="Detalla cuándo, quién y cómo se dispara este comando..."
                 hide-details="auto"
               />
             </VCol>
@@ -199,7 +230,9 @@ const handleSave = async () => {
             <!-- Plantilla de Respuesta -->
             <VCol cols="12">
               <div class="d-flex align-center justify-space-between mb-2">
-                <span class="text-caption font-weight-bold text-medium-emphasis">Plantilla de Respuesta</span>
+                <span class="text-caption font-weight-bold text-medium-emphasis">
+                  Variables Dinámicas Disponibles (Haz clic para insertar)
+                </span>
                 <div class="d-flex gap-1 flex-wrap">
                   <VChip
                     v-for="v in availableVariables"
@@ -219,7 +252,7 @@ const handleSave = async () => {
                 rows="3"
                 density="comfortable"
                 variant="outlined"
-                placeholder="Mensaje personalizado. Haz clic en las etiquetas para insertarlas..."
+                placeholder="Personaliza el mensaje de salida. Las variables entre llaves serán reemplazadas en tiempo de ejecución..."
                 hide-details="auto"
               />
             </VCol>
@@ -229,7 +262,7 @@ const handleSave = async () => {
               <div class="pa-3 rounded bg-var-theme-background border">
                 <div class="d-flex align-center mb-1 text-caption font-weight-bold text-medium-emphasis">
                   <VIcon icon="tabler-brand-telegram" size="16" class="me-1 text-info" />
-                  Vista Previa del Mensaje
+                  Vista Previa del Mensaje en Telegram
                 </div>
                 <div class="text-body-2 font-italic text-high-emphasis text-wrap" style="white-space: pre-line;">
                   {{ previewMessage }}
@@ -241,7 +274,7 @@ const handleSave = async () => {
             <VCol cols="12">
               <VSwitch
                 v-model="form.is_active"
-                label="Habilitar envío y respuesta para este comando"
+                label="Habilitar recepción y respuesta para este comando"
                 color="success"
                 hide-details="auto"
                 density="comfortable"

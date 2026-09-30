@@ -184,6 +184,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/commands/{module}', [\App\Http\Controllers\Api\TelegramConfigController::class, 'getModuleCommands']);
         Route::patch('/commands/{id}/toggle', [\App\Http\Controllers\Api\TelegramConfigController::class, 'toggleCommand']);
         Route::put('/commands/{id}', [\App\Http\Controllers\Api\TelegramConfigController::class, 'updateCommand']);
+        Route::post('/commands/{id}/test', [\App\Http\Controllers\Api\TelegramConfigController::class, 'testCommandMessage']);
     });
 
     Route::get('/general-settings', [GeneralSettingController::class, 'index']);
