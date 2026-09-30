@@ -55,11 +55,13 @@ class SupplierQueryService
      */
     private function applyFilters(Builder $query, array $filters): Builder
     {
-        if (!empty($filters["q"])) {
-            $searchTerm = "%{$filters["q"]}%";
+        $searchVal = $filters["q"] ?? $filters["search"] ?? null;
+        if (!empty($searchVal)) {
+            $searchTerm = "%{$searchVal}%";
             $query->where(function ($subQuery) use ($searchTerm) {
                 $subQuery
                     ->where("suppliers.name", "like", $searchTerm)
+                    ->orWhere("suppliers.rif", "like", $searchTerm)
                     ->orWhere("suppliers.sales_phone", "like", $searchTerm)
                     ->orWhere("suppliers.collections_phone", "like", $searchTerm)
                     ->orWhere("suppliers.id", "like", $searchTerm);

@@ -29,6 +29,17 @@ class MafartaScraperService implements MafartaScraperServiceInterface
         $supplier = null;
         if ($supplierId) {
             $supplier = Supplier::with('connections')->find($supplierId);
+            // Si el proveedor recibido por parámetro no corresponde a Mafarta o Cobeca, resolver el proveedor real
+            if ($supplier && !str_contains(strtoupper($supplier->name), 'MAFARTA') && !str_contains(strtoupper($supplier->name), 'COBECA')) {
+                $realSupplier = Supplier::with('connections')
+                    ->where('name', 'LIKE', '%MAFARTA%')
+                    ->orWhere('name', 'LIKE', '%COBECA%')
+                    ->first();
+                if ($realSupplier) {
+                    $supplier = $realSupplier;
+                    $supplierId = $realSupplier->id;
+                }
+            }
         } else {
             $supplier = Supplier::with('connections')
                 ->where('name', 'LIKE', '%MAFARTA%')
@@ -126,11 +137,22 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                 'NC-' . str_pad($cleanNumber, 10, '0', STR_PAD_LEFT),
             ]);
 
-            $invoice = Invoice::where('supplier_id', $supplierId)
-                ->where(function ($query) use ($possibleNumbers) {
-                    $query->whereIn('invoice_number', $possibleNumbers);
+            $invoice = Invoice::where(function ($q) use ($possibleNumbers) {
+                    $q->whereIn('invoice_number', $possibleNumbers);
+                })
+                ->where(function ($q) use ($supplierId) {
+                    $q->where('supplier_id', $supplierId)
+                      ->orWhereHas('supplier', function ($sq) {
+                          $sq->where('name', 'LIKE', '%MAFARTA%')
+                            ->orWhere('name', 'LIKE', '%COBECA%');
+                      });
                 })
                 ->first();
+
+            if (!$invoice) {
+                // Si la factura ya existe globalmente en la base de datos por número único, reutilizarla
+                $invoice = Invoice::whereIn('invoice_number', $possibleNumbers)->first();
+            }
 
             // Consultar detalle completo en el API si falta nroControl o detalles
             $controlNumber = $doc['nroControl'] ?? null;

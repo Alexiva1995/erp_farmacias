@@ -29,8 +29,8 @@ const syncSummary = ref({
   details: [],
 })
 const syncDiscrepancies = ref({
-  paid_in_erp_pending_in_dronena: [],
-  pending_in_erp_paid_in_dronena: [],
+  paid_in_erp_pending_in_mafarta: [],
+  pending_in_erp_paid_in_mafarta: [],
   total_discrepancies: 0,
 })
 
@@ -61,7 +61,7 @@ const isDirty = computed(() => {
 const fetchSupplierData = async () => {
   isLoading.value = true
   try {
-    const { data } = await axios.get('/suppliers', { params: { search: 'MAFARTA' } })
+    const { data } = await axios.get('/suppliers', { params: { q: 'MAFARTA', search: 'MAFARTA', itemsPerPage: -1 } })
     const list = data?.data || data || []
     let supplier = list.find(s => 
       s.name?.toUpperCase().includes('MAFARTA') || 
@@ -69,12 +69,22 @@ const fetchSupplierData = async () => {
     )
 
     if (!supplier) {
-      const cobecaRes = await axios.get('/suppliers', { params: { search: 'COBECA' } })
+      const cobecaRes = await axios.get('/suppliers', { params: { q: 'COBECA', search: 'COBECA', itemsPerPage: -1 } })
       const cobecaList = cobecaRes.data?.data || cobecaRes.data || []
       supplier = cobecaList.find(s => 
         s.name?.toUpperCase().includes('MAFARTA') || 
         s.name?.toUpperCase().includes('COBECA')
-      ) || cobecaList[0] || list[0]
+      )
+    }
+
+    if (!supplier) {
+      const allRes = await axios.get('/suppliers', { params: { itemsPerPage: -1 } })
+      const allList = allRes.data?.data || allRes.data || []
+      supplier = allList.find(s => 
+        s.name?.toUpperCase().includes('MAFARTA') || 
+        s.name?.toUpperCase().includes('COBECA') ||
+        [23, 25].includes(s.id)
+      )
     }
 
     if (supplier) {
@@ -91,6 +101,10 @@ const fetchSupplierData = async () => {
         form.value.username = connData.username || ''
         form.value.has_password = Boolean(connData.has_password)
       }
+    } else {
+      supplierId.value = null
+      supplierDetails.value = null
+      form.value.supplier_id = null
     }
 
     initialSnapshot.value = JSON.stringify({
@@ -180,8 +194,8 @@ const runSync = async () => {
     }
 
     syncDiscrepancies.value = resultData.discrepancies || {
-      paid_in_erp_pending_in_dronena: [],
-      pending_in_erp_paid_in_dronena: [],
+      paid_in_erp_pending_in_mafarta: [],
+      pending_in_erp_paid_in_mafarta: [],
       total_discrepancies: 0,
     }
 
