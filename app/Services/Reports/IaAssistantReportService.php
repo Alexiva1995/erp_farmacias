@@ -1452,16 +1452,20 @@ class IaAssistantReportService
             $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
             $stockEfectivo = $currentStock + $autoOrder;
 
-            // Estimación de quiebre basado en última fecha de venta
-            if ($currentStock <= 0) {
-                if ($lastSaleDate) {
-                    $daysSinceLastSale = (int) $lastSaleDate->diffInDays($now);
-                    $diasQuiebre90d = min(90, $daysSinceLastSale);
-                } else {
-                    $diasQuiebre90d = 90; // Sin stock y sin ventas en 90 días = quiebre total
-                }
+            // Estimación de quiebre basado en última fecha de venta o trazabilidad (cache)
+            if (isset($item->dias_quiebre_90d_cache) && $item->dias_quiebre_90d_cache !== null) {
+                $diasQuiebre90d = (int) $item->dias_quiebre_90d_cache;
             } else {
-                $diasQuiebre90d = 0;
+                if ($currentStock <= 0) {
+                    if ($lastSaleDate) {
+                        $daysSinceLastSale = (int) $lastSaleDate->diffInDays($now);
+                        $diasQuiebre90d = min(90, $daysSinceLastSale);
+                    } else {
+                        $diasQuiebre90d = 90; // Sin stock y sin ventas en 90 días = quiebre total
+                    }
+                } else {
+                    $diasQuiebre90d = 0;
+                }
             }
 
             // Días de presencia de stock (Inverso al quiebre)
