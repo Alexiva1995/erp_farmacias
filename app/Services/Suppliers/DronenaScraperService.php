@@ -140,8 +140,9 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                 $invoiceQuery = Invoice::where(function ($q) use ($possibleNumbers, $cleanNumber) {
                     $q->whereIn('invoice_number', $possibleNumbers)
                       ->orWhere(function ($sub) use ($cleanNumber) {
-                          $sub->where('invoice_number', 'LIKE', "A%{$cleanNumber}")
-                              ->where('invoice_number', 'NOT LIKE', 'ND-%');
+                          $sub->where('invoice_number', 'LIKE', "%{$cleanNumber}")
+                              ->where('invoice_number', 'NOT LIKE', 'ND-%')
+                              ->where('invoice_number', 'NOT LIKE', 'ND%');
                       });
                 });
             }
