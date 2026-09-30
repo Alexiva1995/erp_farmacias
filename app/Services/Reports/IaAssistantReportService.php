@@ -1029,46 +1029,55 @@ class IaAssistantReportService
         foreach ($itemsPorLiga as $gId => $ligas) {
             foreach ($ligas as $miLiga => $tierItems) {
                 $datosLiga = $ropYStockPorLiga[$gId][$miLiga];
-                $stockLiga = $datosLiga['stock'];
                 $ropLiga = $datosLiga['rop'];
                 $objLiga = $datosLiga['objetivo'];
 
-                if ($stockLiga >= $ropLiga) {
-                    // Liga cubierta
-                    foreach ($tierItems as $item) {
-                        $exceso = $item->demanda_ponderada - $item->stock_efectivo;
-                        $item->solicitar = $exceso < 0 ? floor($exceso) : 0;
+                // --------------------------------------------------------------------------
+                // MODIFICACION 1: Calculo de Stock Util de Liga (Inmunidad contra el Hueso)
+                // --------------------------------------------------------------------------
+                $stockUtilLiga = 0;
+                foreach ($tierItems as $sku) {
+                    $stockUtilLiga += min($sku->stock_efectivo, $sku->demanda_ponderada);
+                }
+
+                if ($stockUtilLiga >= $ropLiga) {
+                    // La liga realmente esta abastecida de mercancia util
+                    foreach ($tierItems as $sku) {
+                        $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
+                        $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
                     }
                 } else {
-                    // REGLA DE REPOSICIÓN INTELIGENTE INTRA-LIGA (Reparto proporcional)
-                    $faltanteLiga = $objLiga - $stockLiga;
+                    // Hay quiebre de inventario util: Se calcula el faltante
+                    $faltanteLiga = $objLiga - $stockUtilLiga;
                     
                     $validPrices = collect($tierItems)->map(function($it) {
                         return (float)(($it->sale_price ?? 0) > 0 ? $it->sale_price : ($it->unit_cost ?? 0));
                     })->filter(fn($val) => $val > 0);
                     $promedioPrecioLiga = $validPrices->isNotEmpty() ? $validPrices->avg() : 0;
 
-                    foreach ($tierItems as $item) {
-                        $ipo = $preferenceShareByProduct[$item->id] ?? 0;
-                        $precioItem = (float)(($item->sale_price ?? 0) > 0 ? $item->sale_price : ($item->unit_cost ?? 0));
+                    // --------------------------------------------------------------------------
+                    // MODIFICACION 2: Reparto Continuo Suave (Sin tijeretazo rigido)
+                    // --------------------------------------------------------------------------
+                    foreach ($tierItems as $sku) {
+                        $ipo = $preferenceShareByProduct[$sku->id] ?? 0;
+                        $precioItem = (float)(($sku->sale_price ?? 0) > 0 ? $sku->sale_price : ($sku->unit_cost ?? 0));
                         
-                        if ($ipo > 0.15) { // Filtro de corte: Descarta productos hueso (<15% ventas)
-                            $factorPrecioIntraLiga = ($precioItem > 0 && $precioItem <= $promedioPrecioLiga) ? 1.15 : 0.85;
-                            $item->puntuacionCompra = $ipo * $factorPrecioIntraLiga;
-                        } else {
-                            $item->puntuacionCompra = 0;
-                        }
+                        $factorPrecio = ($precioItem > 0 && $precioItem <= $promedioPrecioLiga) ? 1.15 : 0.85;
+                        $sku->puntuacionCompra = $ipo * $factorPrecio;
                     }
 
                     $puntuacionTotalLiga = collect($tierItems)->sum('puntuacionCompra');
 
-                    foreach ($tierItems as $item) {
-                        if ($puntuacionTotalLiga > 0 && $item->puntuacionCompra > 0) {
-                            $cuota = $item->puntuacionCompra / $puntuacionTotalLiga;
-                            $item->solicitar = ceil($faltanteLiga * $cuota);
+                    foreach ($tierItems as $sku) {
+                        if ($puntuacionTotalLiga > 0) {
+                            $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;
+                            $sugeridoTeorico = ceil($faltanteLiga * $cuotaParticipacion);
+                            
+                            // La resta con el stock fisico auto-regula al 'hueso'
+                            $sku->solicitar = max(0, (int)($sugeridoTeorico - $sku->stock_efectivo));
                         } else {
-                            $exceso = $item->demanda_ponderada - $item->stock_efectivo;
-                            $item->solicitar = $exceso < 0 ? floor($exceso) : 0;
+                            $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
+                            $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
                         }
                     }
                 }
