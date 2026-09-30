@@ -1030,7 +1030,7 @@ class IaAssistantReportService
         $allGroupProducts = \App\Models\Product::whereIn('group_id', $groupIds)
             ->where('is_deleted', false)
             ->where('is_scarce', false)
-            ->get(['id', 'group_id', 'sales_average', 'sales_average_weighted', 'unit_cost', 'sale_price', 'is_colombian_origin', 'lote_quantity', 'stock'])
+            ->get(['id', 'group_id', 'sales_average', 'sales_average_weighted', 'unit_cost', 'sale_price', 'is_colombian_origin'])
             ->groupBy('group_id');
 
         $allProductIds = $allGroupProducts->flatten()->pluck('id')->unique()->toArray();
