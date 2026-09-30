@@ -197,21 +197,36 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                 'FA' . $paddedNumber,
                 'F' . $docNumber,
                 'FC' . $docNumber,
-                'FA' . $docNumber,
+            // Normalizar números de control para buscar tanto con guion como con espacio
+            $cleanCtrl = str_replace(' ', '-', trim($finalControlNumber));
+            $spaceCtrl = str_replace('-', ' ', trim($finalControlNumber));
+            $possibleControls = array_unique(array_filter([
+                $finalControlNumber,
+                $cleanCtrl,
+                $spaceCtrl,
+                $controlNumber,
+                str_replace(' ', '-', trim($controlNumber)),
+                str_replace('-', ' ', trim($controlNumber)),
             ]));
 
-            $invoiceQuery = Invoice::where(function ($q) use ($possibleNumbers, $cleanNumber, $finalControlNumber) {
+            $invoiceQuery = Invoice::where(function ($q) use ($possibleNumbers, $cleanNumber, $possibleControls) {
                 $q->whereIn('invoice_number', $possibleNumbers);
                 if (!empty($cleanNumber) && strlen($cleanNumber) >= 4) {
                     $q->orWhere('invoice_number', 'LIKE', "%{$cleanNumber}");
                 }
-                if (!empty($finalControlNumber) && $finalControlNumber !== 'N/A') {
-                    $q->orWhere('control_number', $finalControlNumber);
+                if (!empty($possibleControls)) {
+                    $q->orWhereIn('control_number', $possibleControls);
                 }
             });
 
             if ($supplierId) {
-                $invoiceQuery->where('supplier_id', $supplierId);
+                $invoiceQuery->where(function ($q) use ($supplierId) {
+                    $q->where('supplier_id', $supplierId)
+                      ->orWhereHas('supplier', function ($sq) {
+                          $sq->where('name', 'LIKE', '%DROCERCA%')
+                            ->orWhere('name', 'LIKE', '%CERCA%');
+                      });
+                });
             }
 
             $matchingInvoices = $invoiceQuery->orderByDesc('id')->get();
@@ -245,7 +260,7 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                     $updateData['payment_date'] = $expDate;
                 }
 
-                if (!empty($invoicePhoto) && empty($invoice->invoice_photo)) {
+                if (!empty($invoicePhoto)) {
                     $updateData['invoice_photo'] = $invoicePhoto;
                 }
                 if (floatval($exchangeRate) > 0 && floatval($invoice->exchange_rate ?? 0) <= 0) {
