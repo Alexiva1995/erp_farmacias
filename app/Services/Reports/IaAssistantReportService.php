@@ -1040,25 +1040,33 @@ class IaAssistantReportService
                         $item->solicitar = $exceso < 0 ? floor($exceso) : 0;
                     }
                 } else {
-                    // Faltante en la liga: se asigna a los líderes
+                    // REGLA DE REPOSICIÓN INTELIGENTE INTRA-LIGA (Reparto proporcional)
                     $faltanteLiga = $objLiga - $stockLiga;
                     
-                    // Ordenamos los items por IPO (o promedio) de mayor a menor
-                    usort($tierItems, function($a, $b) use ($preferenceShareByProduct) {
-                        $ipoA = $preferenceShareByProduct[$a->id] ?? 0;
-                        $ipoB = $preferenceShareByProduct[$b->id] ?? 0;
-                        return $ipoB <=> $ipoA; // Descendente
-                    });
+                    $validPrices = collect($tierItems)->map(function($it) {
+                        return (float)(($it->sale_price ?? 0) > 0 ? $it->sale_price : ($it->unit_cost ?? 0));
+                    })->filter(fn($val) => $val > 0);
+                    $promedioPrecioLiga = $validPrices->isNotEmpty() ? $validPrices->avg() : 0;
 
-                    $faltanteRestante = $faltanteLiga;
-                    foreach ($tierItems as $idx => $item) {
-                        if ($idx === 0) {
-                            // El líder absorbe todo el faltante necesario para llegar al objetivo
-                            $sugerido = $item->demanda_ponderada - $item->stock_efectivo + ($faltanteRestante - ($item->demanda_ponderada - $item->stock_efectivo)); // Básicamente el faltanteLiga
-                            $sugerido = max(0, ceil($faltanteRestante));
-                            $item->solicitar = $sugerido;
+                    foreach ($tierItems as $item) {
+                        $ipo = $preferenceShareByProduct[$item->id] ?? 0;
+                        $precioItem = (float)(($item->sale_price ?? 0) > 0 ? $item->sale_price : ($item->unit_cost ?? 0));
+                        
+                        if ($ipo > 0.15) { // Filtro de corte: Descarta productos hueso (<15% ventas)
+                            $factorPrecioIntraLiga = ($precioItem > 0 && $precioItem <= $promedioPrecioLiga) ? 1.15 : 0.85;
+                            $item->puntuacionCompra = $ipo * $factorPrecioIntraLiga;
                         } else {
-                            // Los secundarios no piden nada
+                            $item->puntuacionCompra = 0;
+                        }
+                    }
+
+                    $puntuacionTotalLiga = collect($tierItems)->sum('puntuacionCompra');
+
+                    foreach ($tierItems as $item) {
+                        if ($puntuacionTotalLiga > 0 && $item->puntuacionCompra > 0) {
+                            $cuota = $item->puntuacionCompra / $puntuacionTotalLiga;
+                            $item->solicitar = ceil($faltanteLiga * $cuota);
+                        } else {
                             $exceso = $item->demanda_ponderada - $item->stock_efectivo;
                             $item->solicitar = $exceso < 0 ? floor($exceso) : 0;
                         }
