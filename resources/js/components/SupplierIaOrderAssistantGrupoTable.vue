@@ -501,9 +501,19 @@ function rowClass(item) {
                 </div>
               </template>
 
-              <!-- COSTO ($) -->
+              <!-- COSTO -->
               <template #item.unit_cost="{ item }">
-                <span class="font-weight-medium">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
+                <div class="d-flex flex-column align-end">
+                  <span class="font-weight-medium">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
+                  <div v-if="props.withSuppliers && item.best_supplier && Number(item.best_supplier_price) > 0" class="d-flex align-center" style="line-height: 1;">
+                    <span class="font-weight-black text-warning" style="font-size: 11px;">
+                      ${{ Number(item.best_supplier_price || 0).toFixed(2) }}
+                    </span>
+                    <span v-if="item.best_supplier_percentage && !isNaN(item.best_supplier_percentage) && item.best_supplier_percentage !== 0" class="ms-1 font-weight-bold" style="font-size: 9px;" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
+                      ({{ item.best_supplier_percentage < 0 ? '↓' : '↑' }}{{ Math.abs(item.best_supplier_percentage).toFixed(0) }}%)
+                    </span>
+                  </div>
+                </div>
               </template>
 
               <!-- VENTA 30D -->
@@ -675,9 +685,19 @@ function rowClass(item) {
                   </VCardItem>
 
                   <VCardText class="pb-2 pt-0">
-                    <div class="d-flex justify-space-between text-xs my-1">
+                    <div class="d-flex justify-space-between align-center text-xs my-1">
                       <span class="text-disabled">Costo:</span>
-                      <span class="font-weight-bold">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
+                      <div class="d-flex flex-column align-end">
+                        <span class="font-weight-bold">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
+                        <div v-if="props.withSuppliers && item.best_supplier && Number(item.best_supplier_price) > 0" class="d-flex align-center" style="line-height: 1;">
+                          <span class="font-weight-black text-warning" style="font-size: 10px;">
+                            ${{ Number(item.best_supplier_price || 0).toFixed(2) }}
+                          </span>
+                          <span v-if="item.best_supplier_percentage && !isNaN(item.best_supplier_percentage) && item.best_supplier_percentage !== 0" class="ms-1 font-weight-bold" style="font-size: 9px;" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
+                            ({{ item.best_supplier_percentage < 0 ? '↓' : '↑' }}{{ Math.abs(item.best_supplier_percentage).toFixed(0) }}%)
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
                       <span class="text-disabled">Venta 30d:</span>
