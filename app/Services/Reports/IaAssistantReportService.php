@@ -1117,7 +1117,7 @@ class IaAssistantReportService
 
                 $pIds = $tierProdsColl->pluck('id')->toArray();
                 $totalTierWeighted = $tierProdsColl->sum(function($gp) {
-                    return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                    return (float)($gp->promedio_calculado ?? (($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0)));
                 });
                 
                 $totalTierSales90 = 0;
@@ -1221,7 +1221,7 @@ class IaAssistantReportService
                         $pId = $gp->id;
                         $baseIpo = 1.0 / $tierProdsColl->count();
                         if ($totalTierWeighted > 0) {
-                            $itemWeight = (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                            $itemWeight = (float)($gp->promedio_calculado ?? (($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0)));
                             $baseIpo = max(0.05, $itemWeight / $totalTierWeighted);
                         }
                         $preferenceShareByProduct[$pId] = $baseIpo;
@@ -1276,7 +1276,7 @@ class IaAssistantReportService
             $elasticityFactor = $priceElasticityFactorByProduct[$item->id] ?? 1.0;
             
             $tierTotalDemand = collect($ligasPorGrupo[$gId][$miLiga] ?? [])->sum(function($gp) {
-                return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                return (float)($gp->promedio_calculado ?? (($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0)));
             });
 
             $baseDemand = $tierTotalDemand > 0 ? $tierTotalDemand : ($item->promedio_calculado ?? 0);
