@@ -139,8 +139,8 @@ const finalFilteredCommands = computed(() => {
         />
       </VCardText>
 
-      <!-- Vista de Escritorio: Tabla -->
-      <VTable v-else-if="finalFilteredCommands.length > 0" class="d-none d-md-table text-no-wrap">
+      <!-- Vista de Comandos: Tabla con soporte Responsive -->
+      <VTable v-else-if="finalFilteredCommands.length > 0" class="text-no-wrap">
         <thead>
           <tr>
             <th class="text-uppercase text-caption font-weight-bold" style="width: 140px;">Estado</th>
@@ -245,86 +245,6 @@ const finalFilteredCommands = computed(() => {
           </tr>
         </tbody>
       </VTable>
-
-      <!-- Vista Móvil Adaptativa: Cards -->
-      <div v-else-if="finalFilteredCommands.length > 0" class="d-md-none px-4 pb-4">
-        <VCard
-          v-for="cmd in finalFilteredCommands"
-          :key="cmd.id"
-          class="mb-3"
-          border
-          flat
-          rounded="lg"
-        >
-          <VCardText>
-            <div class="d-flex align-center justify-space-between mb-2">
-              <VChip color="primary" size="small" variant="tonal" class="font-weight-bold">
-                {{ cmd.command }}
-              </VChip>
-
-              <VSwitch
-                v-model="cmd.is_active"
-                color="success"
-                hide-details="auto"
-                density="comfortable"
-                :disabled="updatingId === cmd.id || !$can('edit', 'TelegramConfig')"
-                @change="toggleCommand(cmd)"
-              />
-            </div>
-
-            <div class="text-subtitle-1 font-weight-bold mb-1">
-              {{ cmd.alias }}
-            </div>
-
-            <div class="text-body-2 text-medium-emphasis mb-3">
-              {{ cmd.description || 'Sin descripción asignada' }}
-            </div>
-
-            <VDivider class="mb-3" />
-
-            <div class="d-flex align-center justify-space-between">
-              <div style="flex-grow: 1;" class="me-2">
-                <VSelect
-                  :model-value="cmd.channel_id"
-                  :items="channelOptions"
-                  item-title="title"
-                  item-value="value"
-                  density="comfortable"
-                  variant="outlined"
-                  hide-details="auto"
-                  :disabled="updatingId === cmd.id || !$can('edit', 'TelegramConfig')"
-                  @update:model-value="(val) => updateChannelAssignment(cmd, val)"
-                />
-              </div>
-
-              <div class="d-flex align-center gap-1">
-                <VBtn
-                  icon
-                  variant="tonal"
-                  color="info"
-                  size="small"
-                  :loading="testingId === cmd.id"
-                  :disabled="!$can('read', 'TelegramConfig')"
-                  @click="testCommand(cmd)"
-                >
-                  <VIcon icon="tabler-send" size="18" />
-                </VBtn>
-
-                <VBtn
-                  icon
-                  variant="tonal"
-                  color="primary"
-                  size="small"
-                  :disabled="!$can('edit', 'TelegramConfig')"
-                  @click="openEditDialog(cmd)"
-                >
-                  <VIcon icon="tabler-pencil" size="18" />
-                </VBtn>
-              </div>
-            </div>
-          </VCardText>
-        </VCard>
-      </div>
 
       <!-- Estado Vacío Informativo -->
       <VCardText v-else class="text-center py-10">
