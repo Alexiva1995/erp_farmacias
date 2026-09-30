@@ -71,12 +71,12 @@ class TelegramWebhookService
         if (isset($message['photo'])) {
             $stateData = Cache::get('telegram_state_' . $fromId);
             if ($stateData && is_array($stateData) && $stateData['state'] === 'waiting_for_payment_photo') {
-                if ($botType === 'farmacia' || $botType === 'all') {
+                if ($this->telegramService->isModuleEnabled('farmacia')) {
                     $this->processPaymentPhoto($message['photo'], $fromId, $chatId, $stateData);
                     return;
                 }
             }
-            if ($botType === 'restaurante' || $botType === 'all') {
+            if ($this->telegramService->isModuleEnabled('restaurante')) {
                 $this->processInvoicePhoto($message['photo'], $fromId, $chatId);
                 return;
             }
@@ -86,6 +86,10 @@ class TelegramWebhookService
         // Permite al usuario abortar cualquier flujo activo (ej: registro de facturas) escribiendo 'cancelar'
         $cleanText = strtolower(trim($text));
         if ($cleanText === 'cancelar' || $cleanText === '/cancelar') {
+            if (!$this->telegramService->isCommandActive('/cancelar', 'generales')) {
+                $this->telegramService->sendMessage("⚠️ El comando */cancelar* o el módulo *Generales* se encuentra desactivado en la configuración.", $chatId);
+                return;
+            }
             Cache::forget('telegram_state_' . $fromId);
             Cache::forget('telegram_pending_invoice_' . $fromId);
             $this->telegramService->sendMessage("❌ *[PROCESO CANCELADO]*\n\nSe ha cancelado el flujo activo y limpiado tu estado.", $chatId);
@@ -95,8 +99,8 @@ class TelegramWebhookService
         // 1. Verificar si el usuario está en un estado conversacional esperando un dato específico
         $stateData = Cache::get('telegram_state_' . $fromId);
         if ($stateData && is_array($stateData)) {
-            // Flujo de Registro de Facturas (Solo Restaurante/All)
-            if ($botType === 'restaurante' || $botType === 'all') {
+            // Flujo de Registro de Facturas (Solo Restaurante)
+            if ($this->telegramService->isModuleEnabled('restaurante')) {
                 if ($stateData['state'] === 'waiting_for_invoice_total') {
                     $this->processUserProvidedTotal(trim($text), $fromId, $chatId, $stateData);
                     return;
@@ -115,8 +119,8 @@ class TelegramWebhookService
                 }
             }
 
-            // Flujo de Pagos (Solo Farmacia/All)
-            if ($botType === 'farmacia' || $botType === 'all') {
+            // Flujo de Pagos (Solo Farmacia)
+            if ($this->telegramService->isModuleEnabled('farmacia')) {
                 if ($stateData['state'] === 'waiting_for_payment_amount') {
                     $this->processUserProvidedPaymentAmount(trim($text), $fromId, $chatId, $stateData);
                     return;
@@ -141,97 +145,151 @@ class TelegramWebhookService
             }
         }
 
-        // (La foto ya fue procesada al inicio del método si existía)
-
         // ==================== COMANDOS DE RESTAURANTE / MINIMARKET ====================
-        if ($botType === 'restaurante' || $botType === 'canchas' || $botType === 'all') {
-            // Caso B: Comando para iniciar el registro de facturas
-            if (preg_match('/^(?:registrar\s+factura|\/registrar_factura)(?:\s+(informal))?(?:\s+(COP|USD|Bs))?(?:\s+(.+))?$/i', trim($text), $matches)) {
-                $isInformal = !empty($matches[1]);
-                $forcedCurrency = !empty($matches[2]) ? $matches[2] : null;
-                $supplierName = !empty($matches[3]) ? trim($matches[3]) : null;
-
-                $this->initInvoiceRegistration($supplierName, $isInformal, $forcedCurrency, $fromId, $chatId);
+        // Caso B: Comando para iniciar el registro de facturas
+        if (preg_match('/^(?:registrar\s+factura|\/registrar_factura)(?:\s+(informal))?(?:\s+(COP|USD|Bs))?(?:\s+(.+))?$/i', trim($text), $matches)) {
+            if (!$this->telegramService->isCommandActive('/registrar_factura', 'restaurante')) {
+                $this->telegramService->sendMessage("⚠️ El comando */registrar_factura* o el módulo *Restaurante* se encuentra desactivado en la configuración.", $chatId);
                 return;
             }
+            $isInformal = !empty($matches[1]);
+            $forcedCurrency = !empty($matches[2]) ? $matches[2] : null;
+            $supplierName = !empty($matches[3]) ? trim($matches[3]) : null;
 
-            // Caso D: Comando para registrar productos rápidamente
-            if (preg_match('/^(?:registrar\s+productos?|\/registrar_productos?)(?:\s+(.+))?$/i', trim($text), $matches)) {
-                $productsList = isset($matches[1]) ? trim($matches[1]) : null;
-                if ($productsList) {
-                    $this->processProductsList($productsList, $fromId, $chatId);
-                } else {
-                    Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_products_list'], 300);
-                    $this->telegramService->sendMessage("📋 Envíame la lista de productos que deseas registrar en la base de datos (escribe un nombre por línea o sepáralos por comas):", $chatId);
-                }
-                return;
-            }
-
-            // Caso E: Comando para registro ultra rápido de facturas de frutas
-            if (preg_match('/^(?:registrar\s+frutas?|\/registrar_frutas?)(?:\s+(.+))?$/i', trim($text), $matches)) {
-                $fruitsText = isset($matches[1]) ? trim($matches[1]) : null;
-                if ($fruitsText) {
-                    $this->processFastFruitInvoice($fruitsText, $fromId, $chatId);
-                } else {
-                    Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_fast_fruit_invoice'], 300);
-                    $this->telegramService->sendMessage("🍎 *[REGISTRO RÁPIDO DE FRUTAS]*\n\nEnvíame la lista de frutas con sus cantidades y precios.\n\n*Ejemplo:* `Fresa 2000g 18.000 COP - Cambur 1000 2.000 COP - kiwi 320 1560 COP`", $chatId);
-                }
-                return;
-            }
+            $this->initInvoiceRegistration($supplierName, $isInformal, $forcedCurrency, $fromId, $chatId);
+            return;
         }
 
-        // ==================== COMANDOS DE CANCHAS / RESERVAS ====================
-        if ($botType === 'canchas' || $botType === 'all') {
-            // Caso C: Comando para cancelar reservas
-            if (preg_match('/^cancelar\s+reserva\s+(.+)$/i', trim($text), $matches)) {
-                $this->processReservationCancellation(trim($matches[1]), $chatId);
+        // Caso D: Comando para registrar productos rápidamente
+        if (preg_match('/^(?:registrar\s+productos?|\/registrar_productos?)(?:\s+(.+))?$/i', trim($text), $matches)) {
+            if (!$this->telegramService->isCommandActive('/registrar_productos', 'restaurante')) {
+                $this->telegramService->sendMessage("⚠️ El comando */registrar_productos* o el módulo *Restaurante* se encuentra desactivado en la configuración.", $chatId);
                 return;
             }
+            $productsList = isset($matches[1]) ? trim($matches[1]) : null;
+            if ($productsList) {
+                $this->processProductsList($productsList, $fromId, $chatId);
+            } else {
+                Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_products_list'], 300);
+                $this->telegramService->sendMessage("📋 Envíame la lista de productos que deseas registrar en la base de datos (escribe un nombre por línea o sepáralos por comas):", $chatId);
+            }
+            return;
+        }
 
-            // Caso D: Comando para consultar los horarios fijos de hoy
-            if ($cleanText === 'fijos' || $cleanText === '/fijos') {
-                $this->sendDailyFixedSchedules($chatId);
+        // Caso E: Comando para registro ultra rápido de facturas de frutas
+        if (preg_match('/^(?:registrar\s+frutas?|\/registrar_frutas?)(?:\s+(.+))?$/i', trim($text), $matches)) {
+            if (!$this->telegramService->isCommandActive('/registrar_frutas', 'restaurante')) {
+                $this->telegramService->sendMessage("⚠️ El comando */registrar_frutas* o el módulo *Restaurante* se encuentra desactivado en la configuración.", $chatId);
                 return;
             }
+            $fruitsText = isset($matches[1]) ? trim($matches[1]) : null;
+            if ($fruitsText) {
+                $this->processFastFruitInvoice($fruitsText, $fromId, $chatId);
+            } else {
+                Cache::put('telegram_state_' . $fromId, ['state' => 'waiting_for_fast_fruit_invoice'], 300);
+                $this->telegramService->sendMessage("🍎 *[REGISTRO RÁPIDO DE FRUTAS]*\n\nEnvíame la lista de frutas con sus cantidades y precios.\n\n*Ejemplo:* `Fresa 2000g 18.000 COP - Cambur 1000 2.000 COP - kiwi 320 1560 COP`", $chatId);
+            }
+            return;
+        }
+
+        // ==================== COMANDOS DE CANCHAS / ALQUILERES ====================
+        // Caso C: Comando para cancelar reservas
+        if (preg_match('/^cancelar\s+reserva\s+(.+)$/i', trim($text), $matches)) {
+            if (!$this->telegramService->isCommandActive('cancelar reserva', 'alquileres')) {
+                $this->telegramService->sendMessage("⚠️ La gestión de *Cancelación de Reservas* o el módulo *Alquileres* se encuentra desactivado en la configuración.", $chatId);
+                return;
+            }
+            $this->processReservationCancellation(trim($matches[1]), $chatId);
+            return;
+        }
+
+        // Caso D: Comando para consultar los horarios fijos de hoy
+        if ($cleanText === 'fijos' || $cleanText === '/fijos') {
+            if (!$this->telegramService->isCommandActive('/fijos', 'alquileres')) {
+                $this->telegramService->sendMessage("⚠️ El comando */fijos* o el módulo *Alquileres* se encuentra desactivado en la configuración.", $chatId);
+                return;
+            }
+            $this->sendDailyFixedSchedules($chatId);
+            return;
         }
 
         // ==================== COMANDOS DE FARMACIA ====================
-        if ($botType === 'farmacia' || $botType === 'all') {
-            // Caso E: Comando para revisar facturas cargadas una a una
-            if ($cleanText === 'facturas cargadas' || $cleanText === '/facturas_cargadas' || $cleanText === 'facturas_cargadas') {
-                $this->initLoadedInvoicesReviewFlow($chatId, 0);
+        // Caso E: Comando para revisar facturas cargadas una a una
+        if ($cleanText === 'facturas cargadas' || $cleanText === '/facturas_cargadas' || $cleanText === 'facturas_cargadas') {
+            if (!$this->telegramService->isCommandActive('/facturas_cargadas', 'farmacia')) {
+                $this->telegramService->sendMessage("⚠️ El comando */facturas_cargadas* o el módulo *Farmacia* se encuentra desactivado en la configuración.", $chatId);
                 return;
             }
+            $this->initLoadedInvoicesReviewFlow($chatId, 0);
+            return;
+        }
 
-            // Caso F: Comando para gestionar pagos pendientes
-            if ($cleanText === 'pagos' || $cleanText === '/pagos') {
-                $this->initPaymentsFlow($fromId, $chatId);
+        // Caso F: Comando para gestionar pagos pendientes
+        if ($cleanText === 'pagos' || $cleanText === '/pagos') {
+            if (!$this->telegramService->isCommandActive('/pagos', 'farmacia')) {
+                $this->telegramService->sendMessage("⚠️ El comando */pagos* o el módulo *Farmacia* se encuentra desactivado en la configuración.", $chatId);
                 return;
             }
+            $this->initPaymentsFlow($fromId, $chatId);
+            return;
+        }
 
-            // Caso H: Comando para consultar pagos pendientes de los próximos 7 días
-            if ($cleanText === 'pagos pendientes' || $cleanText === '/pagos_pendientes' || $cleanText === 'pagos_pendientes') {
-                $this->sendOverduePayments($chatId);
+        // Caso H: Comando para consultar pagos pendientes de los próximos 7 días
+        if ($cleanText === 'pagos pendientes' || $cleanText === '/pagos_pendientes' || $cleanText === 'pagos_pendientes') {
+            if (!$this->telegramService->isCommandActive('/pagos_pendientes', 'farmacia')) {
+                $this->telegramService->sendMessage("⚠️ El comando */pagos_pendientes* o el módulo *Farmacia* se encuentra desactivado en la configuración.", $chatId);
                 return;
             }
+            $this->sendOverduePayments($chatId);
+            return;
+        }
 
-            // Caso I: Comando para consultar el listado detallado de deudas por proveedor
-            if ($cleanText === 'deudas' || $cleanText === '/deudas') {
-                $this->initDebtsFlow($fromId, $chatId);
+        // Caso I: Comando para consultar el listado detallado de deudas por proveedor
+        if ($cleanText === 'deudas' || $cleanText === '/deudas') {
+            if (!$this->telegramService->isCommandActive('/deudas', 'farmacia')) {
+                $this->telegramService->sendMessage("⚠️ El comando */deudas* o el módulo *Farmacia* se encuentra desactivado en la configuración.", $chatId);
                 return;
             }
+            $this->initDebtsFlow($fromId, $chatId);
+            return;
+        }
 
-            // Caso J: Comando de Pedido Automático Inteligente
-            if ($cleanText === 'pedido' || $cleanText === '/pedido') {
-                $this->processAutomaticOrderFromTelegram($chatId);
+        // Caso J: Comando de Pedido Automático Inteligente
+        if ($cleanText === 'pedido' || $cleanText === '/pedido') {
+            if (!$this->telegramService->isCommandActive('/pedido', 'farmacia')) {
+                $this->telegramService->sendMessage("⚠️ El comando */pedido* o el módulo *Farmacia* se encuentra desactivado en la configuración.", $chatId);
                 return;
             }
+            $this->processAutomaticOrderFromTelegram($chatId);
+            return;
+        }
 
-            // Caso K: Comando de Gestión de Fallas y Faltantes de Stock
-            if ($cleanText === 'fallas' || $cleanText === '/fallas') {
-                $this->telegramService->sendMessage("📋 *[GESTOR DE FALLAS DE STOCK]*\n\nConsultando reporte de fallas y productos con faltantes registrados...", $chatId);
+        // Caso K: Comando de Gestión de Fallas y Faltantes de Stock
+        if ($cleanText === 'fallas' || $cleanText === '/fallas') {
+            if (!$this->telegramService->isCommandActive('/fallas', 'farmacia')) {
+                $this->telegramService->sendMessage("⚠️ El comando */fallas* o el módulo *Farmacia* se encuentra desactivado en la configuración.", $chatId);
                 return;
             }
+            $this->telegramService->sendMessage("📋 *[GESTOR DE FALLAS DE STOCK]*\n\nConsultando reporte de fallas y productos con faltantes registrados...", $chatId);
+            return;
+        }
+
+        // ==================== COMANDOS DE COSMÉTICOS ====================
+        if ($cleanText === 'catalogo' || $cleanText === '/catalogo_promociones' || $cleanText === 'promociones') {
+            if (!$this->telegramService->isCommandActive('/catalogo_promociones', 'cosmeticos')) {
+                $this->telegramService->sendMessage("⚠️ El comando */catalogo_promociones* o el módulo *Cosméticos* se encuentra desactivado en la configuración.", $chatId);
+                return;
+            }
+            $this->telegramService->sendMessage("💄 *[CATÁLOGO Y PROMOCIONES DE BELLEZA]*\n\nConsultando promociones activas...", $chatId);
+            return;
+        }
+        if ($cleanText === 'stock cosmeticos' || $cleanText === '/consultar_stock_cosmeticos') {
+            if (!$this->telegramService->isCommandActive('/consultar_stock_cosmeticos', 'cosmeticos')) {
+                $this->telegramService->sendMessage("⚠️ El comando */consultar_stock_cosmeticos* o el módulo *Cosméticos* se encuentra desactivado en la configuración.", $chatId);
+                return;
+            }
+            $this->telegramService->sendMessage("💅 *[STOCK DE COSMÉTICOS]*\n\nConsultando disponibilidad de inventario...", $chatId);
+            return;
         }
     }
 
@@ -532,6 +590,40 @@ class TelegramWebhookService
         $messageId = $callbackQuery['message']['message_id'] ?? null;
         $chatId = $callbackQuery['message']['chat']['id'] ?? null;
         $fromId = $callbackQuery['from']['id'] ?? null;
+
+        // Validaciones por módulo antes de despachar callbacks
+        $isRestauranteCallback = str_starts_with($callbackData, 'inv_review_') ||
+            str_starts_with($callbackData, 'approve_fruit_invoice_') ||
+            str_starts_with($callbackData, 'keep_loaded_fruit_invoice_') ||
+            str_starts_with($callbackData, 'confirm_invoice_') ||
+            str_starts_with($callbackData, 'create_supplier_') ||
+            str_starts_with($callbackData, 'cancel_invoice_');
+
+        if ($isRestauranteCallback && !$this->telegramService->isModuleEnabled('restaurante')) {
+            $this->answerCallback($callbackQueryId, '⚠️ El módulo Restaurante se encuentra desactivado.');
+            return;
+        }
+
+        $isFarmaciaCallback = str_starts_with($callbackData, 'pay_') ||
+            str_starts_with($callbackData, 'skip_supplier_') ||
+            str_starts_with($callbackData, 'exit_payments') ||
+            str_starts_with($callbackData, 'show_debt_') ||
+            str_starts_with($callbackData, 'exit_debts') ||
+            str_starts_with($callbackData, 'dronena_bank_') ||
+            str_starts_with($callbackData, 'skip_payment_photo') ||
+            str_starts_with($callbackData, 'confirm_payment_registration') ||
+            str_starts_with($callbackData, 'stockout_') ||
+            str_starts_with($callbackData, 'falla_');
+
+        if ($isFarmaciaCallback && !$this->telegramService->isModuleEnabled('farmacia')) {
+            $this->answerCallback($callbackQueryId, '⚠️ El módulo Farmacia se encuentra desactivado.');
+            return;
+        }
+
+        if (str_starts_with($callbackData, 'cancel_res_') && !$this->telegramService->isModuleEnabled('alquileres')) {
+            $this->answerCallback($callbackQueryId, '⚠️ El módulo Alquileres se encuentra desactivado.');
+            return;
+        }
 
         if (str_starts_with($callbackData, 'inv_review_')) {
             $this->handleInvoiceReviewCallback($callbackData, $callbackQueryId, $messageId, $chatId);
@@ -2552,6 +2644,11 @@ class TelegramWebhookService
      */
     protected function sendDailyFixedSchedules($chatId): void
     {
+        if (!$this->telegramService->isCommandActive('/fijos', 'alquileres')) {
+            $this->telegramService->sendMessage("⚠️ El módulo *Alquileres* o el comando */fijos* se encuentra desactivado en la configuración.", $chatId);
+            return;
+        }
+
         $dayOfWeek = \Carbon\Carbon::now()->dayOfWeekIso; // 1 = Lunes, ..., 7 = Domingo
         $todayStr = \Carbon\Carbon::now()->toDateString();
         
@@ -3358,6 +3455,11 @@ class TelegramWebhookService
      */
     public function sendOverduePayments($chatId): void
     {
+        if (!$this->telegramService->isCommandActive('/pagos_pendientes', 'farmacia')) {
+            $this->telegramService->sendMessage("⚠️ El módulo *Farmacia* o el comando */pagos_pendientes* se encuentra desactivado en la configuración.", $chatId);
+            return;
+        }
+
         try {
             $today = \Carbon\Carbon::today()->toDateString();
 

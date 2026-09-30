@@ -361,11 +361,12 @@ class InvoiceController extends Controller
                 $dronena = $this->dronenaScraperService->syncInvoices();
                 $results['dronena'] = $dronena;
                 $results['total_updated'] += ($dronena['updated'] ?? 0);
+                $results['total_created'] += ($dronena['created'] ?? 0);
                 $results['total_skipped'] += ($dronena['skipped'] ?? 0);
                 if (!empty($dronena['discrepancies'])) {
                     $results['discrepancies'] = $dronena['discrepancies'];
                 }
-                $results['messages'][] = "Dronena: {$dronena['updated']} actualizadas";
+                $results['messages'][] = "Dronena: " . (($dronena['created'] ?? 0) > 0 ? "{$dronena['created']} nuevas creadas, " : '') . "{$dronena['updated']} actualizadas";
             } catch (\Throwable $e) {
                 Log::error('Error syncAll Dronena: ' . $e->getMessage());
                 $results['errors'][] = 'Dronena: ' . $e->getMessage();

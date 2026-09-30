@@ -50,6 +50,7 @@ export const useBrandingStore = defineStore('branding', () => {
     enable_invoices: true,
     enable_invoice_locations: true,
     enable_reservations: true,
+    enabled_telegram_views: ['configuration', 'generales', 'farmacia', 'restaurante', 'cosmeticos', 'alquileres'],
   })
 
   const isLoading = ref(false)

@@ -164,7 +164,7 @@ export const useTelegramSettings = () => {
       })
 
       initialViews.value = [...enabledTelegramViews.value]
-      await brandingStore.fetchSettings()
+      await brandingStore.fetchSettings(true)
       toast.success('Configuración de módulos de Telegram guardada correctamente')
     } catch (error) {
       console.error('Error al guardar configuración de Telegram:', error)

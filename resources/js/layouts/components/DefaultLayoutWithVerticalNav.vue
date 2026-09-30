@@ -367,6 +367,28 @@ const processedNavItems = computed(() => {
           if (childs.length === 0) return null;
         }
 
+        // Filtrado dinámico de submenús de Telegram según enabled_telegram_views
+        if (copy.title === 'Telegram') {
+          const enabledTelegram = brandingStore.settings.enabled_telegram_views || ['configuration', 'generales', 'farmacia', 'restaurante', 'cosmeticos', 'alquileres'];
+          const telegramRouteMap = {
+            'configuration': 'telegram-configuration',
+            'generales': 'telegram-generales',
+            'farmacia': 'telegram-farmacia',
+            'restaurante': 'telegram-restaurante',
+            'cosmeticos': 'telegram-cosmeticos',
+            'alquileres': 'telegram-alquileres',
+          };
+          childs = childs.filter(c => {
+            for (const [key, name] of Object.entries(telegramRouteMap)) {
+              if (c.to === name) {
+                return enabledTelegram.includes(key);
+              }
+            }
+            return true;
+          });
+          if (childs.length === 0) return null;
+        }
+
         copy.children = childs;
       }
       return copy;

@@ -157,15 +157,17 @@ class ReservationServices
         if ($reservation->request_weekly_fixed) {
             try {
                 $telegram = resolve(\App\Services\TelegramService::class);
-                $weeklyMsg = "🔄 *¡Solicitud de Hora Fija Semanal!* 🔄\n\n"
-                           . "El cliente *{$reservation->client_name}* ({$reservation->identification}) "
-                           . "solicita que su horario de reserva sea *FIJO SEMANALMENTE*:\n"
-                           . "⚽ *Cancha:* {$reservation->court->name}\n"
-                           . "📅 *Fecha Solicitud:* {$reservation->date->format('d/m/Y')}\n"
-                           . "🕒 *Horario:* " . substr($reservation->start_time, 0, 5) . " a " . substr($reservation->end_time, 0, 5) . "\n"
-                           . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n\n"
-                           . "⚠️ _Requiere aprobación administrativa en el panel._";
-                $telegram->sendMessage($weeklyMsg);
+                if ($telegram->isModuleEnabled('alquileres')) {
+                    $weeklyMsg = "🔄 *¡Solicitud de Hora Fija Semanal!* 🔄\n\n"
+                               . "El cliente *{$reservation->client_name}* ({$reservation->identification}) "
+                               . "solicita que su horario de reserva sea *FIJO SEMANALMENTE*:\n"
+                               . "⚽ *Cancha:* {$reservation->court->name}\n"
+                               . "📅 *Fecha Solicitud:* {$reservation->date->format('d/m/Y')}\n"
+                               . "🕒 *Horario:* " . substr($reservation->start_time, 0, 5) . " a " . substr($reservation->end_time, 0, 5) . "\n"
+                               . "📞 *WhatsApp:* {$reservation->client_whatsapp}\n\n"
+                               . "⚠️ _Requiere aprobación administrativa en el panel._";
+                    $telegram->sendMessage($weeklyMsg);
+                }
             } catch (\Exception $e) {
                 \Log::error("Error al enviar alerta de hora fija a Telegram: " . $e->getMessage());
             }
@@ -245,6 +247,9 @@ class ReservationServices
     {
         try {
             $telegram = resolve(\App\Services\TelegramService::class);
+            if (!$telegram->isModuleEnabled('alquileres')) {
+                return;
+            }
             
             $today = $reservation->date->toDateString();
             $todayFormatted = $reservation->date->format('d/m/Y');

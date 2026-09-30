@@ -228,6 +228,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                 $processed[] = [
                     'invoice_number' => $invoice->invoice_number,
                     'action' => 'updated',
+                    'exists_in_erp' => true,
                     'control_number' => $invoice->control_number,
                     'created_invoice_date' => $invoice->created_invoice_date,
                     'exp_date' => $expDate,
@@ -252,45 +253,62 @@ class DronenaScraperService implements DronenaScraperServiceInterface
 
                 $targetInvoiceNumber = $isND ? $erpDocNumber : ($pdfData['invoice_number'] ?? $erpDocNumber);
 
-                $newInvoice = Invoice::create([
-                    'supplier_id' => $supplierId,
-                    'invoice_number' => $targetInvoiceNumber,
-                    'control_number' => $pdfData['control_number'] ?? null,
-                    'created_invoice_date' => $pdfData['created_invoice_date'] ?? ($doc['fecha_emision_db'] ?: $today),
-                    'exp_date' => $expDate,
-                    'payment_date' => $expDate,
-                    'currency' => $currency,
-                    'is_indexed' => $isIndexed,
-                    'exempt_amount' => $pdfData['exempt_amount'] ?? 0,
-                    'taxable_base' => $pdfData['taxable_base'] ?? 0,
-                    'tax_amount' => $pdfData['tax_amount'] ?? 0,
-                    'total_amount' => $calcTotalAmount,
-                    'total_usd' => $calcTotalUsd,
-                    'exchange_rate' => $calcRate,
-                    'claim_amount' => $claimAmount,
-                    'nd_referential_amount' => 0,
-                    'net_payable_amount' => $netPayable ?: $calcTotalAmount,
-                    'invoice_photo' => $pdfData['invoice_photo'] ?? null,
-                    'status' => $isND ? 'ordered' : 'pending',
-                    'status_payment' => 0,
-                    'uploaded_by' => 1,
-                    'registered_by' => 1,
-                    'loaded_by' => 1,
-                    'ordered_by' => 1,
-                ]);
+                try {
+                    $newInvoice = Invoice::create([
+                        'supplier_id' => $supplierId,
+                        'invoice_number' => $targetInvoiceNumber,
+                        'control_number' => $pdfData['control_number'] ?? 'N/A',
+                        'created_invoice_date' => $pdfData['created_invoice_date'] ?? ($doc['fecha_emision_db'] ?: $today),
+                        'exp_date' => $expDate,
+                        'payment_date' => $expDate,
+                        'currency' => $currency,
+                        'is_indexed' => $isIndexed,
+                        'exempt_amount' => $pdfData['exempt_amount'] ?? 0,
+                        'taxable_base' => $pdfData['taxable_base'] ?? 0,
+                        'tax_amount' => $pdfData['tax_amount'] ?? 0,
+                        'total_amount' => $calcTotalAmount,
+                        'total_usd' => $calcTotalUsd,
+                        'exchange_rate' => $calcRate,
+                        'claim_amount' => $claimAmount,
+                        'nd_referential_amount' => 0,
+                        'net_payable_amount' => $netPayable ?: $calcTotalAmount,
+                        'invoice_photo' => $pdfData['invoice_photo'] ?? null,
+                        'status' => $isND ? 'ordered' : 'pending',
+                        'status_payment' => 0,
+                        'uploaded_by' => 1,
+                        'registered_by' => 1,
+                        'loaded_by' => 1,
+                        'ordered_by' => 1,
+                    ]);
 
-                $createdCount++;
-                $processed[] = [
-                    'invoice_number' => $newInvoice->invoice_number,
-                    'action' => 'created',
-                    'control_number' => $newInvoice->control_number,
-                    'created_invoice_date' => $newInvoice->created_invoice_date,
-                    'exp_date' => $expDate,
-                    'payment_date' => $expDate,
-                    'is_indexed' => $isIndexed,
-                    'total_amount' => (float) ($newInvoice->total_amount ?? 0),
-                    'total_usd' => (float) ($newInvoice->total_usd ?? 0),
-                ];
+                    $createdCount++;
+                    $processed[] = [
+                        'invoice_number' => $newInvoice->invoice_number,
+                        'action' => 'created',
+                        'exists_in_erp' => false,
+                        'control_number' => $newInvoice->control_number,
+                        'created_invoice_date' => $newInvoice->created_invoice_date,
+                        'exp_date' => $expDate,
+                        'payment_date' => $expDate,
+                        'is_indexed' => $isIndexed,
+                        'total_amount' => (float) ($newInvoice->total_amount ?? 0),
+                        'total_usd' => (float) ($newInvoice->total_usd ?? 0),
+                    ];
+                } catch (\Throwable $createEx) {
+                    Log::warning("[DronenaScraper] Error creando documento {$targetInvoiceNumber}: " . $createEx->getMessage());
+                    $processed[] = [
+                        'invoice_number' => $targetInvoiceNumber,
+                        'action' => 'created',
+                        'exists_in_erp' => false,
+                        'control_number' => $pdfData['control_number'] ?? 'N/A',
+                        'created_invoice_date' => $doc['fecha_emision_db'] ?: $today,
+                        'exp_date' => $expDate,
+                        'payment_date' => $expDate,
+                        'is_indexed' => $isIndexed,
+                        'total_amount' => $calcTotalAmount,
+                        'total_usd' => $calcTotalUsd,
+                    ];
+                }
             }
         }
 
@@ -374,6 +392,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         return [
             'total_extracted' => count($documents),
             'updated' => $updatedCount,
+            'created' => $createdCount,
             'skipped' => $skippedCount,
             'supplier_id' => $supplierId,
             'discrepancies' => [

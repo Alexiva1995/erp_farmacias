@@ -33,6 +33,11 @@ class SendUpcomingPaymentsTelegram extends Command
             return Command::SUCCESS;
         }
 
+        if (!resolve(\App\Services\TelegramService::class)->isCommandActive('/pagos_pendientes', 'farmacia')) {
+            $this->info('Comando omitido: El módulo de farmacia o el comando /pagos_pendientes está desactivado en Telegram.');
+            return Command::SUCCESS;
+        }
+
         $webhookService->sendOverduePayments($adminChatId);
         $this->info('Reporte de pagos vencidos enviado exitosamente.');
         return 0;

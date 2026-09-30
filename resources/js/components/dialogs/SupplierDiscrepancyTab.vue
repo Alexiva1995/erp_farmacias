@@ -298,6 +298,16 @@ const formatNumber = (value) => {
         <h4 class="text-subtitle-2 font-weight-bold text-high-emphasis mb-0">
           Facturas Procesadas desde {{ props.supplierTitle }} ({{ props.processedDetails.length }})
         </h4>
+        <div class="d-flex align-center gap-3">
+          <span class="d-flex align-center gap-1 text-caption text-success font-weight-bold">
+            <VIcon icon="tabler-circle-filled" size="8" color="success" />
+            Encontrada en ERP
+          </span>
+          <span class="d-flex align-center gap-1 text-caption text-error font-weight-bold">
+            <VIcon icon="tabler-circle-filled" size="8" color="error" />
+            No existía (Creada)
+          </span>
+        </div>
       </div>
 
       <VTable density="compact" class="border rounded-lg bg-surface">
@@ -312,7 +322,19 @@ const formatNumber = (value) => {
         </thead>
         <tbody>
           <tr v-for="(item, idx) in props.processedDetails" :key="idx">
-            <td class="font-weight-bold text-primary">{{ item.invoice_number }}</td>
+            <td
+              :class="[
+                'font-weight-bold',
+                (item.action === 'updated' || item.exists_in_erp === true) ? 'text-success' : 'text-error'
+              ]"
+            >
+              <div class="d-flex align-center gap-1">
+                <span>{{ item.invoice_number }}</span>
+                <VTooltip activator="parent" location="top">
+                  {{ (item.action === 'updated' || item.exists_in_erp === true) ? 'Documento ya existente en el ERP (Actualizado)' : 'Documento no registrado previamente (Creado por el Bot)' }}
+                </VTooltip>
+              </div>
+            </td>
             <td class="text-medium-emphasis">{{ item.control_number || 'N/A' }}</td>
             <td class="text-center text-medium-emphasis">{{ item.exp_date || 'N/A' }}</td>
             <td class="text-center">
@@ -325,7 +347,7 @@ const formatNumber = (value) => {
                 {{ item.is_indexed ? 'Sí' : 'No' }}
               </VChip>
             </td>
-            <td class="text-right font-weight-bold text-error">{{ formatNumber(item.total_usd) }} USD</td>
+            <td class="text-right font-weight-bold text-high-emphasis">{{ formatNumber(item.total_usd) }} USD</td>
           </tr>
         </tbody>
       </VTable>

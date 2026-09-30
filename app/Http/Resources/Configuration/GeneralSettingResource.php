@@ -132,6 +132,7 @@ class GeneralSettingResource extends JsonResource
             'expense_mode' => $this->expense_mode ?? 'real',
             'expense_auto_approve' => (bool) ($this->expense_auto_approve ?? false),
             'enabled_ia_assistant_views' => $this->enabled_ia_assistant_views ?? ['pedidos', 'reporte', 'oportunidad', 'comparador', 'automatizacion'],
+            'enabled_telegram_views' => $this->enabled_telegram_views ?? ['configuration', 'generales', 'farmacia', 'restaurante', 'cosmeticos', 'alquileres'],
             'enable_invoices' => (bool) ($this->enable_invoices ?? true),
             'enable_invoice_locations' => (bool) ($this->enable_invoice_locations ?? true),
             'enabled_bi_views' => $this->enabled_bi_views ?? ['abc', 'dead-stock', 'sku', 'products', 'expiry', 'laboratories', 'pos', 'cyclic', 'customer', 'performance'],

@@ -44,6 +44,10 @@ class ProductFailureServices implements ProductFailureContract
             return;
         }
 
+        if (!$this->telegramService->isCommandActive('/fallas', 'farmacia')) {
+            return;
+        }
+
         $failuresChatId = config('services.telegram.failures_chat_id') ?: $this->telegramService->getChatId();
         if (empty($failuresChatId)) {
             return;

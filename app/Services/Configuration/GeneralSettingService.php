@@ -68,6 +68,21 @@ class GeneralSettingService
             $data['section3_image'] = $this->uploadFile($data['section3_image'], 'branding');
         }
 
+        if (isset($data['enabled_telegram_views']) && is_array($data['enabled_telegram_views'])) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('telegram_commands')) {
+                    $allModules = ['generales', 'farmacia', 'restaurante', 'cosmeticos', 'alquileres'];
+                    foreach ($allModules as $mod) {
+                        if (!in_array($mod, $data['enabled_telegram_views'], true)) {
+                            \App\Models\TelegramCommand::where('module', $mod)->update(['is_active' => false]);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Registro silencioso seguro si las tablas no existen
+            }
+        }
+
         return $this->repository->updateSettings($data);
     }
 

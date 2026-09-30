@@ -37,6 +37,11 @@ class SendDailyReservationsTelegram extends Command
             return Command::SUCCESS;
         }
 
+        if (!$this->telegramService->isCommandActive('/reservas_dia', 'alquileres')) {
+            $this->info('Comando omitido: El módulo de alquileres o el comando /reservas_dia está desactivado en Telegram.');
+            return Command::SUCCESS;
+        }
+
         $today          = Carbon::today()->toDateString();
         $todayFormatted = Carbon::today()->format('d/m/Y');
         $dayOfWeek      = Carbon::today()->dayOfWeekIso;

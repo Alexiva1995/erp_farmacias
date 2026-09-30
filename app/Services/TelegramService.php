@@ -191,4 +191,72 @@ class TelegramService
             return false;
         }
     }
+
+    /**
+     * Verificar si un módulo de Telegram está habilitado globalmente y en la configuración.
+     */
+    public function isModuleEnabled(string $module): bool
+    {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('telegram_configs')) {
+                $config = TelegramConfig::first();
+                if ($config && isset($config->is_active) && !$config->is_active) {
+                    return false;
+                }
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('general_settings')) {
+                $setting = \App\Models\GeneralSetting::first();
+                if ($setting && is_array($setting->enabled_telegram_views)) {
+                    $normalizedModule = match (strtolower($module)) {
+                        'canchas' => 'alquileres',
+                        'general' => 'generales',
+                        default => strtolower($module),
+                    };
+
+                    return in_array($normalizedModule, $setting->enabled_telegram_views, true);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[TelegramService] Error verificando si módulo está activo: ' . $e->getMessage());
+        }
+
+        return true;
+    }
+
+    /**
+     * Verificar si un comando específico está activo y habilitado.
+     */
+    public function isCommandActive(string $command, ?string $module = null): bool
+    {
+        if ($module && !$this->isModuleEnabled($module)) {
+            return false;
+        }
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('telegram_commands')) {
+                $query = \App\Models\TelegramCommand::query()->where('command', $command);
+                if ($module) {
+                    $normalizedModule = match (strtolower($module)) {
+                        'canchas' => 'alquileres',
+                        'general' => 'generales',
+                        default => strtolower($module),
+                    };
+                    $query->where('module', $normalizedModule);
+                }
+                $cmd = $query->first();
+                if ($cmd !== null) {
+                    // Si el módulo del comando no está habilitado en enabled_telegram_views, retornar false
+                    if (!$this->isModuleEnabled((string) $cmd->module)) {
+                        return false;
+                    }
+                    return (bool) $cmd->is_active;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[TelegramService] Error verificando estado del comando: ' . $e->getMessage());
+        }
+
+        return true;
+    }
 }
