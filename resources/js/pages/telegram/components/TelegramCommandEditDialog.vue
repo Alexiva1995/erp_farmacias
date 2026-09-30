@@ -32,6 +32,23 @@ const form = ref({
   is_active: true,
 })
 
+// Variables dinámicas admitidas para la plantilla
+const availableVariables = ['{fecha}', '{tasa_bcv}', '{tasa_cop}', '{usuario}', '{sucursal}']
+
+// Reglas de validación
+const commandRules = [
+  (v) => !!v || 'El comando es obligatorio.',
+  (v) => (v && v.startsWith('/')) || 'El comando debe iniciar con "/" (ej: /tasa).',
+]
+
+const aliasRules = [
+  (v) => !!v || 'El nombre o alias es obligatorio.',
+]
+
+const insertVariable = (variable) => {
+  form.value.payload_template = (form.value.payload_template || '') + ` ${variable}`
+}
+
 watch(
   () => props.commandData,
   (newVal) => {
@@ -55,6 +72,9 @@ const handleClose = () => {
 }
 
 const handleSave = () => {
+  if (!form.value.command || !form.value.command.startsWith('/') || !form.value.alias) {
+    return
+  }
   emit('save', { ...form.value })
 }
 </script>
@@ -62,7 +82,7 @@ const handleSave = () => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="620px"
+    max-width="640px"
     persistent
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
@@ -75,10 +95,10 @@ const handleSave = () => {
 
           <div>
             <div class="text-h6 font-weight-bold">
-              Editar Comando
+              Editar Comando y Notificación
             </div>
             <div class="text-caption text-medium-emphasis">
-              {{ form.command ? form.command : 'Configuración de Disparo' }}
+              {{ form.command || 'Configuración de Parámetros' }}
             </div>
           </div>
         </div>
@@ -102,11 +122,12 @@ const handleSave = () => {
           <VCol cols="12" md="6">
             <VTextField
               v-model="form.command"
-              label="Comando o Disparador"
-              placeholder="ej: /factura"
+              label="Comando / Disparador"
+              placeholder="ej: /tasa"
               density="comfortable"
               variant="outlined"
               prepend-inner-icon="tabler-terminal-2"
+              :rules="commandRules"
               hide-details="auto"
             />
           </VCol>
@@ -116,10 +137,11 @@ const handleSave = () => {
             <VTextField
               v-model="form.alias"
               label="Nombre / Alias"
-              placeholder="ej: Escaneo Facturas IA"
+              placeholder="ej: Notificación Tasas BCV"
               density="comfortable"
               variant="outlined"
               prepend-inner-icon="tabler-tag"
+              :rules="aliasRules"
               hide-details="auto"
             />
           </VCol>
@@ -133,7 +155,7 @@ const handleSave = () => {
               item-value="value"
               label="Canal Destino de Telegram"
               prepend-inner-icon="tabler-brand-telegram"
-              hint="Selecciona el canal de Telegram asignado para las respuestas de este comando."
+              hint="Canal o chat grupal donde se emitirán los mensajes asociados a este comando."
               persistent-hint
               density="comfortable"
               variant="outlined"
@@ -144,24 +166,39 @@ const handleSave = () => {
           <VCol cols="12">
             <VTextarea
               v-model="form.description"
-              label="Descripción del Comando"
-              rows="3"
+              label="Descripción"
+              rows="2"
               density="comfortable"
               variant="outlined"
-              placeholder="Describe la funcionalidad y las acciones automáticas que ejecuta..."
+              placeholder="Explica cuándo y cómo se dispara este comando..."
               hide-details="auto"
             />
           </VCol>
 
           <!-- Plantilla de Respuesta -->
           <VCol cols="12">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <span class="text-caption font-weight-bold text-medium-emphasis">Plantilla de Respuesta</span>
+              <div class="d-flex gap-1 flex-wrap">
+                <VChip
+                  v-for="v in availableVariables"
+                  :key="v"
+                  size="x-small"
+                  variant="outlined"
+                  color="primary"
+                  class="cursor-pointer"
+                  @click="insertVariable(v)"
+                >
+                  + {{ v }}
+                </VChip>
+              </div>
+            </div>
             <VTextarea
               v-model="form.payload_template"
-              label="Plantilla de Respuesta (Opcional)"
-              rows="2"
+              rows="3"
               density="comfortable"
               variant="outlined"
-              placeholder="Plantilla predeterminada enviada al bot de Telegram..."
+              placeholder="Mensaje personalizado. Haz clic en las etiquetas para insertarlas..."
               hide-details="auto"
             />
           </VCol>
@@ -170,7 +207,7 @@ const handleSave = () => {
           <VCol cols="12">
             <VSwitch
               v-model="form.is_active"
-              label="Comando Habilitado"
+              label="Habilitar envío y respuesta para este comando"
               color="success"
               hide-details="auto"
               density="comfortable"

@@ -251,7 +251,7 @@ onMounted(() => {
       <!-- Estado de Carga con Esqueletos -->
       <VCardText v-if="loading" class="pt-0">
         <VSkeletonLoader
-          type="table-row-divider@4"
+          type="table-tbody"
           class="my-2"
         />
       </VCardText>
