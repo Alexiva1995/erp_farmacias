@@ -358,6 +358,9 @@ function rowClass(item) {
                   </span>
                 </span>
                 <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
+                <VChip v-if="item.liga_nombre" :color="item.liga_color" size="x-small" variant="outlined" class="ml-1 font-weight-bold text-uppercase" style="padding: 0 4px; height: 16px;">
+                  {{ item.liga_nombre }}
+                </VChip>
                 <VIcon v-if="item.is_favorite == 1" icon="tabler-star-filled" color="warning" size="13" class="ml-1" title="Producto Favorito" />
                 <!-- Advertencia: promedio desactualizado (> 48h) -->
                 <VTooltip v-if="item.is_stale_average" location="top">

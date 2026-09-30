@@ -797,18 +797,29 @@ class IaAssistantReportService
                 return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
             });
 
-            // CLUSTERIZACIÓN POR LIGAS (TIERS)
+            // CLUSTERIZACIÓN POR LIGAS (TIERS) DINÁMICO POR RANGOS DE PRECIO
             $validPrices = $groupProds->map(fn($gp) => (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0)))->filter(fn($val) => $val > 0);
             $minPrice = $validPrices->isNotEmpty() ? $validPrices->min() : 0;
+            $maxPrice = $validPrices->isNotEmpty() ? $validPrices->max() : 0;
+            $rango = $maxPrice - $minPrice;
             
             $ligas = [];
             foreach ($groupProds as $gp) {
                 $price = (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
-                $tier = 1; // Liga 1: Económicos
-                if ($gp->is_colombian_origin) {
-                    $tier = 2; // Liga 2: Intermedios / Colombianos
-                } elseif ($minPrice > 0 && $price >= ($minPrice * 1.5)) {
-                    $tier = 3; // Liga 3: Premium / Nacionales
+                
+                if ($minPrice == 0 || $rango <= ($minPrice * 0.15)) {
+                    $tier = 1; // Margen muy estrecho, compiten directo
+                } else {
+                    $limiteTercio1 = $minPrice + ($rango * 0.33);
+                    $limiteTercio2 = $minPrice + ($rango * 0.66);
+                    
+                    if ($price <= $limiteTercio1) {
+                        $tier = 1; // Económica (Rosada)
+                    } elseif ($price <= $limiteTercio2) {
+                        $tier = 2; // Promedio (Azul)
+                    } else {
+                        $tier = 3; // Premium (Verde)
+                    }
                 }
                 $ligas[$tier][] = $gp;
             }
@@ -1014,6 +1025,8 @@ class IaAssistantReportService
             $item->rop_calculado = $rop;
             $item->stock_efectivo = $stockEfectivo;
             $item->liga_id = $miLiga;
+            $item->liga_nombre = $miLiga === 3 ? 'Premium' : ($miLiga === 2 ? 'Promedio' : 'Económica');
+            $item->liga_color = $miLiga === 3 ? 'green' : ($miLiga === 2 ? 'blue' : 'pink');
 
             if (!isset($ropYStockPorLiga[$gId][$miLiga])) {
                 $ropYStockPorLiga[$gId][$miLiga] = ['rop' => 0, 'stock' => 0, 'objetivo' => 0];
