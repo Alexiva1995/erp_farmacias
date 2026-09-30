@@ -89,28 +89,49 @@ class TelegramConfigController extends Controller
     // ==================== GESTIÓN DE CANALES DE TELEGRAM ====================
 
     /**
-     * Obtener todos los canales de Telegram registrados (auto-registra Canal General Principal si está vacío).
+     * Obtener todos los canales de Telegram registrados (auto-sincroniza canales existentes del .env si no existen).
      */
     public function getChannels(): AnonymousResourceCollection
     {
-        if (TelegramChannel::count() === 0) {
-            $config = TelegramConfig::firstOrCreate(['id' => 1]);
-            $defaultChatId = $config->chat_id ?: config('services.telegram.chat_id');
+        $config = TelegramConfig::firstOrCreate(['id' => 1]);
 
-            // Solo auto-crear el canal si existe un chat_id real configurado (no hardcodeado).
-            if ($defaultChatId) {
-                TelegramChannel::create([
-                    'telegram_config_id' => $config->id,
-                    'name'               => 'Canal General Principal',
-                    'chat_id'            => $defaultChatId,
-                    'module'             => 'general',
-                    'description'        => 'Canal principal asignado a las notificaciones globales del sistema.',
-                    'is_active'          => true,
-                ]);
+        $channelsToSync = [
+            [
+                'name' => 'Canal General / Tasas',
+                'chat_id' => $config->chat_id ?: config('services.telegram.chat_id'),
+                'module' => 'generales',
+                'description' => 'Canal principal asignado a las notificaciones de tasas cambiarias y alertas globales.',
+            ],
+            [
+                'name' => 'Canal de Cierres / Admin',
+                'chat_id' => $config->admin_chat_id ?: config('services.telegram.admin_chat_id'),
+                'module' => 'generales',
+                'description' => 'Canal administrativo donde se envían los cierres de caja y reportes consolidados.',
+            ],
+            [
+                'name' => 'Canal de Fallas de Stock',
+                'chat_id' => config('services.telegram.failures_chat_id'),
+                'module' => 'farmacia',
+                'description' => 'Canal asignado a las alertas y reportes de fallas de inventario y mostrador.',
+            ],
+        ];
+
+        foreach ($channelsToSync as $chData) {
+            if (!empty($chData['chat_id'])) {
+                TelegramChannel::firstOrCreate(
+                    ['chat_id' => (string) $chData['chat_id']],
+                    [
+                        'telegram_config_id' => $config->id,
+                        'name' => $chData['name'],
+                        'module' => $chData['module'],
+                        'description' => $chData['description'],
+                        'is_active' => true,
+                    ]
+                );
             }
         }
 
-        $channels = TelegramChannel::orderBy('id', 'desc')->get();
+        $channels = TelegramChannel::orderBy('id', 'asc')->get();
         return TelegramChannelResource::collection($channels);
     }
 
