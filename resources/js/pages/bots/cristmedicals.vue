@@ -431,5 +431,14 @@ onMounted(() => {
         </VCard>
       </VCol>
     </VRow>
+
+    <!-- Modal Unificado de Discrepancias y Resultados -->
+    <DronenaDiscrepanciesModal
+      v-model="showDiscrepanciesModal"
+      supplier-key="cristmedicals"
+      :discrepancies="syncDiscrepancies"
+      :sync-summary="syncSummary"
+      @close="showDiscrepanciesModal = false"
+    />
   </div>
 </template>

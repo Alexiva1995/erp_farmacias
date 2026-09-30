@@ -73,35 +73,33 @@ const getSupplierSummary = (key) => {
 };
 
 const getPaidInErpPending = (key) => {
-  if (key === "dronena") {
-    return (
-      props.discrepancies?.paid_in_erp_pending_in_dronena ||
-      props.syncSummary?.dronena?.discrepancies?.paid_in_erp_pending_in_dronena ||
-      []
-    );
-  }
   const summary = props.syncSummary?.[key];
-  return summary?.discrepancies?.[`paid_in_erp_pending_in_${key}`] || [];
+  return (
+    props.discrepancies?.[`paid_in_erp_pending_in_${key}`] ||
+    summary?.discrepancies?.[`paid_in_erp_pending_in_${key}`] ||
+    (key === "dronena" ? (props.discrepancies?.paid_in_erp_pending_in_dronena || props.syncSummary?.dronena?.discrepancies?.paid_in_erp_pending_in_dronena) : null) ||
+    []
+  );
 };
 
 const getPendingInErpPaid = (key) => {
-  if (key === "dronena") {
-    return (
-      props.discrepancies?.pending_in_erp_paid_in_dronena ||
-      props.syncSummary?.dronena?.discrepancies?.pending_in_erp_paid_in_dronena ||
-      []
-    );
-  }
   const summary = props.syncSummary?.[key];
-  return summary?.discrepancies?.[`pending_in_erp_paid_in_${key}`] || [];
+  return (
+    props.discrepancies?.[`pending_in_erp_paid_in_${key}`] ||
+    summary?.discrepancies?.[`pending_in_erp_paid_in_${key}`] ||
+    (key === "dronena" ? (props.discrepancies?.pending_in_erp_paid_in_dronena || props.syncSummary?.dronena?.discrepancies?.pending_in_erp_paid_in_dronena) : null) ||
+    []
+  );
 };
 
 const getProcessedDetails = (key) => {
   const summary = props.syncSummary?.[key];
-  if (key === "dronena") {
-    return summary?.details || props.syncSummary?.details || [];
-  }
-  return summary?.details || [];
+  return (
+    summary?.details ||
+    summary?.processed ||
+    props.syncSummary?.details ||
+    []
+  );
 };
 
 const getBadgeInfo = (key) => {

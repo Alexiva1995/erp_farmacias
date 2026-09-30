@@ -1,15 +1,40 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
+import Swal from 'sweetalert2'
+import DronenaDiscrepanciesModal from '@/components/dialogs/DronenaDiscrepanciesModal.vue'
+import { useAbility } from '@casl/vue'
 
-// Estado reactivo
+// Control de permisos CASL
+const ability = useAbility()
+const canManageBot = computed(() => ability.can('manage', 'bots') || ability.can('update', 'Supplier') || ability.can('manage', 'all'))
+
+// Estado reactivo del componente
 const isLoading = ref(false)
 const isSaving = ref(false)
 const isSyncing = ref(false)
 const showPassword = ref(false)
 const supplierId = ref(null)
+const supplierDetails = ref(null)
 
+// Estado del modal de discrepancias y resultados
+const showDiscrepanciesModal = ref(false)
+const syncSummary = ref({
+  updated: 0,
+  created: 0,
+  skipped: 0,
+  total_extracted: 0,
+  drosymca: {},
+  details: [],
+})
+const syncDiscrepancies = ref({
+  paid_in_erp_pending_in_drosymca: [],
+  pending_in_erp_paid_in_drosymca: [],
+  total_discrepancies: 0,
+})
+
+// Datos del formulario
 const form = ref({
   supplier_id: null,
   type: 'drosymca_bot',
@@ -22,7 +47,19 @@ const form = ref({
   sync_frequency: 'daily',
 })
 
-// Cargar datos del proveedor Drosymca y su conexión
+// Snapshot inicial para detección de cambios (Dirty state)
+const initialSnapshot = ref('')
+
+const isDirty = computed(() => {
+  return JSON.stringify({
+    username: form.value.username,
+    host: form.value.host,
+    password: form.value.password,
+    invoice_number: form.value.invoice_number,
+  }) !== initialSnapshot.value
+})
+
+// Cargar datos del proveedor Drosymca y su conexión registrada
 const fetchSupplierData = async () => {
   isLoading.value = true
   try {
@@ -31,34 +68,46 @@ const fetchSupplierData = async () => {
     let supplier = list.find(s => 
       s.name?.toUpperCase().includes('DROSYMCA') || 
       s.name?.toUpperCase().includes('SYMCA') ||
-      s.id === 1006
+      [10, 1006].includes(s.id)
     ) || list[0]
 
     if (supplier) {
       supplierId.value = supplier.id
+      supplierDetails.value = supplier
       form.value.supplier_id = supplier.id
 
-      // Cargar conexión configurada
-      const connRes = await axios.get(`/suppliers/${supplier.id}/connection`)
-      if (connRes.data && connRes.data.type) {
-        form.value.type = connRes.data.type || 'drosymca_bot'
-        form.value.host = connRes.data.host || 'https://app.drosymca.com'
-        form.value.username = connRes.data.username || ''
-        form.value.has_password = Boolean(connRes.data.has_password)
+      // Cargar conexión configurada del proveedor
+      const connRes = await axios.get(`/suppliers/${supplier.id}/connection-config`).catch(async () => {
+        return await axios.get(`/suppliers/${supplier.id}/connection`)
+      })
+
+      const connData = connRes.data?.connections?.drosymca_bot || connRes.data
+      if (connData) {
+        form.value.type = connData.type || 'drosymca_bot'
+        form.value.host = connData.host || 'https://app.drosymca.com'
+        form.value.username = connData.username || ''
+        form.value.has_password = Boolean(connData.has_password)
       }
     }
+
+    initialSnapshot.value = JSON.stringify({
+      username: form.value.username,
+      host: form.value.host,
+      password: '',
+      invoice_number: form.value.invoice_number,
+    })
   } catch (error) {
     console.error('Error al cargar configuración de Drosymca:', error)
-    toast.error('No se pudo cargar la configuración de Drosymca')
+    toast.error('No se pudo cargar la configuración del Bot Drosymca.')
   } finally {
     isLoading.value = false
   }
 }
 
-// Guardar configuración
+// Guardar configuración de conexión
 const saveConfig = async () => {
   if (!supplierId.value) {
-    toast.error('No se encontró el proveedor Drosymca registrado')
+    toast.error('No se encontró el proveedor Drosymca en el sistema.')
     return
   }
 
@@ -76,20 +125,52 @@ const saveConfig = async () => {
       payload.password = form.value.password
     }
 
-    await axios.post(`/suppliers/${supplierId.value}/connection`, payload)
-    toast.success('Configuración del Bot Drosymca guardada correctamente')
+    await axios.post(`/suppliers/${supplierId.value}/connection-config`, payload).catch(async () => {
+      return await axios.post(`/suppliers/${supplierId.value}/connection`, payload)
+    })
+    toast.success('Configuración del Bot Drosymca guardada correctamente.')
     form.value.password = ''
-    fetchSupplierData()
+    await fetchSupplierData()
   } catch (error) {
     console.error('Error al guardar credenciales de Drosymca:', error)
-    toast.error(error.response?.data?.message || 'Error al guardar la configuración')
+    toast.error(error.response?.data?.message || 'Error al guardar la configuración.')
   } finally {
     isSaving.value = false
   }
 }
 
-// Ejecutar sincronización manual con el bot de Drosymca
+// Confirmar y ejecutar sincronización manual con el bot
 const runSync = async () => {
+  if (!supplierId.value) {
+    toast.error('No se puede sincronizar sin un proveedor vinculado.')
+    return
+  }
+
+  const result = await Swal.fire({
+    title: '¿Iniciar sincronización con Drosymca?',
+    html: `
+      <div class="text-start text-body-2">
+        <p class="mb-2">El bot automatizado realizará las siguientes acciones:</p>
+        <ul class="ps-4 mb-0">
+          <li>Iniciar sesión en el portal web de <strong>Drosymca</strong> (<code>app.drosymca.com</code>).</li>
+          <li>Consultar y extraer todas las facturas y comprobantes pendientes de pago.</li>
+          <li>Actualizar o registrar montos, vencimientos y tasas oficiales.</li>
+        </ul>
+      </div>
+    `,
+    icon: 'info',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, ejecutar sincronización',
+    cancelButtonText: 'Cancelar',
+    customClass: {
+      confirmButton: 'v-btn v-btn--elevated bg-primary text-white me-3',
+      cancelButton: 'v-btn v-btn--outlined text-secondary',
+    },
+    buttonsStyling: false,
+  })
+
+  if (!result.isConfirmed) return
+
   isSyncing.value = true
   try {
     const payload = {
@@ -99,11 +180,30 @@ const runSync = async () => {
     if (form.value.password) payload.password = form.value.password
     if (form.value.invoice_number) payload.invoice_number = form.value.invoice_number
 
-    const res = await axios.post('/sync-drosymca', payload)
-    toast.success(res.data?.message || 'Sincronización con Drosymca completada exitosamente')
+    const response = await axios.post('/sync-drosymca', payload)
+    const data = response.data?.data || {}
+
+    // Resumen para el modal unificado de resultados
+    syncSummary.value = {
+      updated: data.updated || 0,
+      created: data.created || 0,
+      skipped: data.skipped || 0,
+      total_extracted: (data.updated || 0) + (data.created || 0) + (data.skipped || 0),
+      drosymca: data.drosymca || data.drosymca_invoices || {},
+      details: data.details || [],
+    }
+
+    syncDiscrepancies.value = {
+      paid_in_erp_pending_in_drosymca: data.discrepancies?.paid_in_erp_pending_in_drosymca || [],
+      pending_in_erp_paid_in_drosymca: data.discrepancies?.pending_in_erp_paid_in_drosymca || [],
+      total_discrepancies: data.discrepancies?.total_discrepancies || 0,
+    }
+
+    showDiscrepanciesModal.value = true
+    toast.success(response.data?.message || 'Sincronización con Drosymca completada exitosamente.')
   } catch (error) {
     console.error('Error al sincronizar con Drosymca:', error)
-    toast.error(error.response?.data?.message || 'Error al ejecutar la sincronización con Drosymca')
+    toast.error(error.response?.data?.message || 'Error crítico al ejecutar la sincronización con Drosymca.')
   } finally {
     isSyncing.value = false
   }
@@ -189,6 +289,9 @@ onMounted(() => {
                     label="Usuario / Código de Cliente"
                     placeholder="Ej: usuario Drosymca"
                     prepend-inner-icon="tabler-user"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                     hint="Usuario asignado en el portal de Drosymca"
                     persistent-hint
                   />
@@ -202,6 +305,9 @@ onMounted(() => {
                     :placeholder="form.has_password ? '•••••••••••• (Configurada)' : 'Ingresa la contraseña'"
                     prepend-inner-icon="tabler-lock"
                     :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                     hint="Se almacena encriptada de forma segura"
                     persistent-hint
                     @click:append-inner="showPassword = !showPassword"
@@ -214,6 +320,9 @@ onMounted(() => {
                     label="URL del Portal Drosymca"
                     placeholder="https://app.drosymca.com"
                     prepend-inner-icon="tabler-world"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                     hint="URL base de la plataforma web de Drosymca"
                     persistent-hint
                   />
@@ -225,6 +334,9 @@ onMounted(() => {
                     label="Factura Específica (Opcional)"
                     placeholder="Ej: FACT-98765"
                     prepend-inner-icon="tabler-file-invoice"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                     hint="Dejar vacío para sincronizar todas las pendientes"
                     persistent-hint
                   />
@@ -232,15 +344,18 @@ onMounted(() => {
 
                 <VCol cols="12" class="d-flex align-center gap-4 mt-2">
                   <VBtn
+                    v-if="canManageBot"
                     type="submit"
                     color="primary"
                     prepend-icon="tabler-device-floppy"
                     :loading="isSaving"
+                    :disabled="!isDirty"
                   >
                     Guardar Configuración
                   </VBtn>
 
                   <VBtn
+                    v-if="canManageBot"
                     color="success"
                     variant="tonal"
                     prepend-icon="tabler-player-play"
@@ -313,5 +428,14 @@ onMounted(() => {
         </VCard>
       </VCol>
     </VRow>
+
+    <!-- Modal de Discrepancias y Resumen de Sincronización -->
+    <DronenaDiscrepanciesModal
+      v-model="showDiscrepanciesModal"
+      supplier-key="drosymca"
+      :discrepancies="syncDiscrepancies"
+      :sync-summary="syncSummary"
+      @refresh="fetchSupplierData"
+    />
   </div>
 </template>

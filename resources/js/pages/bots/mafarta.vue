@@ -4,6 +4,11 @@ import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
 import Swal from 'sweetalert2'
 import DronenaDiscrepanciesModal from '@/components/dialogs/DronenaDiscrepanciesModal.vue'
+import { useAbility } from '@casl/vue'
+
+// Control de permisos CASL
+const ability = useAbility()
+const canManageBot = computed(() => ability.can('manage', 'bots') || ability.can('update', 'Supplier') || ability.can('manage', 'all'))
 
 // Estado reactivo del componente
 const isLoading = ref(false)
@@ -309,7 +314,7 @@ onMounted(() => {
                   />
                 </VCol>
 
-                <VCol cols="12" class="mt-2">
+                <VCol v-if="canManageBot" cols="12" class="mt-2">
                   <VRow>
                     <VCol cols="12" sm="6">
                       <VBtn
