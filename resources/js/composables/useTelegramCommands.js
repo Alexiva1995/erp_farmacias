@@ -41,7 +41,7 @@ export function useTelegramCommands(moduleName) {
   const fetchCommands = async () => {
     loading.value = true
     try {
-      const { data } = await axios.get(`/api/telegram/commands/${moduleName}`)
+      const { data } = await axios.get(`/telegram/commands/${moduleName}`)
       commands.value = data.data || []
     } catch (error) {
       showToast('Error al cargar la lista de comandos de Telegram.', 'error')
@@ -55,7 +55,7 @@ export function useTelegramCommands(moduleName) {
    */
   const fetchChannels = async () => {
     try {
-      const { data } = await axios.get('/api/telegram/channels')
+      const { data } = await axios.get('/telegram/channels')
       availableChannels.value = data.data || []
     } catch (error) {
       console.error('Error al cargar la lista de canales:', error)
@@ -94,7 +94,7 @@ export function useTelegramCommands(moduleName) {
 
     updatingId.value = commandItem.id
     try {
-      await axios.patch(`/api/telegram/commands/${commandItem.id}/toggle`, {
+      await axios.patch(`/telegram/commands/${commandItem.id}/toggle`, {
         is_active: targetState,
       })
       showToast(
@@ -126,7 +126,7 @@ export function useTelegramCommands(moduleName) {
         payload_template: commandItem.payload_template,
       }
 
-      const { data } = await axios.put(`/api/telegram/commands/${commandItem.id}`, payload)
+      const { data } = await axios.put(`/telegram/commands/${commandItem.id}`, payload)
       commandItem.channel_id = newChannelId
       commandItem.channel = data.data?.channel || null
 
@@ -146,7 +146,7 @@ export function useTelegramCommands(moduleName) {
   const testCommand = async (commandItem) => {
     testingId.value = commandItem.id
     try {
-      const { data } = await axios.post(`/api/telegram/commands/${commandItem.id}/test`)
+      const { data } = await axios.post(`/telegram/commands/${commandItem.id}/test`)
       showToast(data.message || `Prueba enviada para "${commandItem.command}".`, 'success')
     } catch (error) {
       const msg = error.response?.data?.message || 'Error al emitir el mensaje de prueba.'
@@ -170,7 +170,7 @@ export function useTelegramCommands(moduleName) {
   const handleSaveCommand = async (updatedData) => {
     savingEdit.value = true
     try {
-      const { data } = await axios.put(`/api/telegram/commands/${updatedData.id}`, updatedData)
+      const { data } = await axios.put(`/telegram/commands/${updatedData.id}`, updatedData)
 
       showToast('Comando actualizado correctamente.', 'success')
       editDialog.value = false

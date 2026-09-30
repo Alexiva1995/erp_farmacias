@@ -28,7 +28,7 @@ const showToast = (text, color = 'success') => {
 const fetchChannels = async () => {
   loading.value = true
   try {
-    const { data } = await axios.get('/api/telegram/channels')
+    const { data } = await axios.get('/telegram/channels')
     channels.value = data.data || []
   } catch (error) {
     showToast('Error al cargar la lista de canales.', 'error')
@@ -50,7 +50,7 @@ const openEditDialog = (channel) => {
 const saveChannel = async (formData) => {
   savingChannel.value = true
   const isEdit = Boolean(formData.id)
-  const url = isEdit ? `/api/telegram/channels/${formData.id}` : '/api/telegram/channels'
+  const url = isEdit ? `/telegram/channels/${formData.id}` : '/telegram/channels'
   const method = isEdit ? 'put' : 'post'
 
   try {
@@ -71,7 +71,7 @@ const toggleChannel = async (channel) => {
   const targetState = channel.is_active
 
   try {
-    const { data } = await axios.patch(`/api/telegram/channels/${channel.id}/toggle`, {
+    const { data } = await axios.patch(`/telegram/channels/${channel.id}/toggle`, {
       is_active: targetState,
     })
     showToast(data.message || `Canal "${channel.name}" ${targetState ? 'habilitado' : 'pausado'}.`, 'success')
@@ -86,7 +86,7 @@ const toggleChannel = async (channel) => {
 const testChannel = async (channel) => {
   testingId.value = channel.id
   try {
-    const { data } = await axios.post(`/api/telegram/channels/${channel.id}/test`)
+    const { data } = await axios.post(`/telegram/channels/${channel.id}/test`)
     showToast(data.message || 'Mensaje de prueba enviado correctamente.', 'success')
   } catch (error) {
     const errorMsg = error.response?.data?.message || 'Error al despachar mensaje de prueba.'
@@ -111,7 +111,7 @@ const confirmDelete = async (channel) => {
   if (!result.isConfirmed) return
 
   try {
-    const { data } = await axios.delete(`/api/telegram/channels/${channel.id}`)
+    const { data } = await axios.delete(`/telegram/channels/${channel.id}`)
     showToast(data.message || 'Canal eliminado correctamente.', 'success')
     await fetchChannels()
   } catch (error) {

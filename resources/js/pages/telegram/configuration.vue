@@ -57,7 +57,7 @@ const showToast = (text, color = 'success') => {
 const fetchConfig = async () => {
   loadingConfig.value = true
   try {
-    const { data } = await axios.get('/api/telegram/config')
+    const { data } = await axios.get('/telegram/config')
     if (data && data.data) {
       Object.assign(configForm, data.data)
       initialConfig.value = JSON.parse(JSON.stringify(data.data))
@@ -72,7 +72,7 @@ const fetchConfig = async () => {
 const saveConfig = async () => {
   savingConfig.value = true
   try {
-    const { data } = await axios.put('/api/telegram/config', configForm)
+    const { data } = await axios.put('/telegram/config', configForm)
     initialConfig.value = JSON.parse(JSON.stringify(configForm))
     showToast(data.message || 'Configuración guardada exitosamente.', 'success')
   } catch (error) {
@@ -101,7 +101,7 @@ const registerWebhook = async () => {
 
   registeringWebhook.value = true
   try {
-    const { data } = await axios.post('/api/telegram/webhook/register')
+    const { data } = await axios.post('/telegram/webhook/register')
     showToast(data.message || 'Webhook registrado con éxito en Telegram.', 'success')
     await checkWebhookStatus()
   } catch (error) {
@@ -115,7 +115,7 @@ const registerWebhook = async () => {
 const checkWebhookStatus = async (silent = false) => {
   checkingStatus.value = true
   try {
-    const { data } = await axios.get('/api/telegram/webhook/status')
+    const { data } = await axios.get('/telegram/webhook/status')
     if (data.status === 'success' && data.info) {
       webhookInfo.value = data.info
       if (!silent) {
