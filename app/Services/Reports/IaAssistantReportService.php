@@ -1295,7 +1295,7 @@ class IaAssistantReportService
             $item->stock_efectivo = $stockEfectivo;
             $item->liga_id = $miLiga;
             $item->liga_nombre = $miLiga === 3 ? 'Premium' : ($miLiga === 2 ? 'Promedio' : 'Económica');
-            $item->liga_color = $miLiga === 3 ? 'green' : ($miLiga === 2 ? 'blue' : 'pink');
+            $item->liga_color = $miLiga === 3 ? 'success' : ($miLiga === 2 ? 'info' : 'pink');
 
             if (!isset($ropYStockPorLiga[$gId][$miLiga])) {
                 $ropYStockPorLiga[$gId][$miLiga] = ['rop' => 0, 'stock' => 0, 'objetivo' => 0];

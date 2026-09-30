@@ -358,7 +358,15 @@ function rowClass(item) {
                   </span>
                 </span>
                 <span v-if="item.is_colombian_origin == 1" class="text-info font-weight-bold ml-1">(COL)</span>
-                <VChip v-if="item.liga_nombre" :color="item.liga_color" size="x-small" variant="outlined" class="ml-1 font-weight-bold text-uppercase" style="padding: 0 4px; height: 16px;">
+                <VChip
+                  v-if="item.liga_nombre"
+                  :color="item.liga_color || (item.liga_nombre === 'Premium' ? 'success' : (item.liga_nombre === 'Promedio' ? 'info' : 'pink'))"
+                  size="x-small"
+                  variant="tonal"
+                  class="ml-1 font-weight-black text-uppercase"
+                  style="font-size: 10px; height: 18px; padding: 0 6px;"
+                  label
+                >
                   {{ item.liga_nombre }}
                 </VChip>
                 <VIcon v-if="item.is_favorite == 1" icon="tabler-star-filled" color="warning" size="13" class="ml-1" title="Producto Favorito" />

@@ -382,6 +382,17 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
                   <span class="text-disabled mr-2">|</span>
                   {{ item.name.toUpperCase() }}
                   <span v-if="item.is_colombian_origin == 1" class="text-xs opacity-60 ml-1">(COL)</span>
+                  <VChip
+                    v-if="item.liga_nombre"
+                    :color="item.liga_color || (item.liga_nombre === 'Premium' ? 'success' : (item.liga_nombre === 'Promedio' ? 'info' : 'pink'))"
+                    size="x-small"
+                    variant="tonal"
+                    class="ml-1 font-weight-black text-uppercase"
+                    style="font-size: 10px; height: 18px; padding: 0 6px;"
+                    label
+                  >
+                    {{ item.liga_nombre }}
+                  </VChip>
                 </span>
                 <div class="d-flex align-center gap-1 text-super-xs">
                   <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 150px;">
@@ -478,6 +489,17 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
                   <span class="text-sm font-weight-black text-high-emphasis text-uppercase d-block leading-tight">
                     {{ item.name }}
                     <span v-if="item.is_colombian_origin == 1" class="text-xs opacity-60 ml-1">(COL)</span>
+                  <VChip
+                    v-if="item.liga_nombre"
+                    :color="item.liga_color || (item.liga_nombre === 'Premium' ? 'success' : (item.liga_nombre === 'Promedio' ? 'info' : 'pink'))"
+                    size="x-small"
+                    variant="tonal"
+                    class="ml-1 font-weight-black text-uppercase"
+                    style="font-size: 10px; height: 18px; padding: 0 6px;"
+                    label
+                  >
+                    {{ item.liga_nombre }}
+                  </VChip>
                   </span>
                   <span class="text-xs text-disabled d-block mt-1">
                     #<a
