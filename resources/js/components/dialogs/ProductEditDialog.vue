@@ -294,7 +294,9 @@ const submitForm = () => {
     }
 
     const value = formData.value[key];
-    if (value !== null && value !== undefined && !Array.isArray(value) && typeof value !== "object") {
+    if (value === null) {
+      payload.append(key, "");
+    } else if (value !== undefined && !Array.isArray(value) && typeof value !== "object") {
       payload.append(key, value);
     }
   });
