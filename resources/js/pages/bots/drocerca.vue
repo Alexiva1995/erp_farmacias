@@ -17,7 +17,6 @@ const form = ref({
   username: '',
   password: '',
   has_password: false,
-  invoice_path: 'Facturas',
   is_active: true,
   sync_frequency: 'daily',
 })
@@ -43,7 +42,6 @@ const fetchSupplierData = async () => {
         form.value.type = connRes.data.type || 'drocerca_bot'
         form.value.host = connRes.data.host || 'http://drocerca.proteoerp.org:8082/proteoerp/portalcli'
         form.value.username = connRes.data.username || ''
-        form.value.invoice_path = connRes.data.invoice_path || 'Facturas'
         form.value.has_password = Boolean(connRes.data.has_password)
       }
     }
@@ -68,7 +66,6 @@ const saveConfig = async () => {
       type: 'drocerca_bot',
       host: form.value.host || 'http://drocerca.proteoerp.org:8082/proteoerp/portalcli',
       username: form.value.username,
-      invoice_path: form.value.invoice_path,
       pasv: true,
       has_header: true,
     }
@@ -208,24 +205,13 @@ onMounted(() => {
                   />
                 </VCol>
 
-                <VCol cols="12" md="6">
+                <VCol cols="12">
                   <VTextField
                     v-model="form.host"
                     label="URL del Portal de Clientes"
                     placeholder="http://drocerca.proteoerp.org:8082/proteoerp/portalcli"
                     prepend-inner-icon="tabler-world"
                     hint="URL base de la plataforma web de Drocerca"
-                    persistent-hint
-                  />
-                </VCol>
-
-                <VCol cols="12" md="6">
-                  <VTextField
-                    v-model="form.invoice_path"
-                    label="Ruta de Facturas / Descarga"
-                    placeholder="Facturas"
-                    prepend-inner-icon="tabler-folder"
-                    hint="Ruta interna de almacenamiento de comprobantes"
                     persistent-hint
                   />
                 </VCol>

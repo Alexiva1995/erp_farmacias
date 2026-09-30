@@ -1,16 +1,18 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
+import Swal from 'sweetalert2'
 
-// Estado reactivo
+// Estado reactivo del componente
 const isLoading = ref(false)
 const isSaving = ref(false)
-const isTesting = ref(false)
 const isSyncing = ref(false)
 const showPassword = ref(false)
 const supplierId = ref(null)
+const supplierDetails = ref(null)
 
+// Datos del formulario
 const form = ref({
   supplier_id: null,
   type: 'dronena_bot',
@@ -18,12 +20,22 @@ const form = ref({
   username: '',
   password: '',
   has_password: false,
-  invoice_path: 'Clientes/d719/Factura',
   is_active: true,
   sync_frequency: 'daily',
 })
 
-// Cargar datos del proveedor Dronena y su conexión
+// Snapshot inicial para detección de cambios (Dirty state)
+const initialSnapshot = ref('')
+
+const isDirty = computed(() => {
+  return JSON.stringify({
+    username: form.value.username,
+    host: form.value.host,
+    password: form.value.password,
+  }) !== initialSnapshot.value
+})
+
+// Cargar datos del proveedor Dronena y su conexión registrada
 const fetchSupplierData = async () => {
   isLoading.value = true
   try {
@@ -36,30 +48,36 @@ const fetchSupplierData = async () => {
 
     if (supplier) {
       supplierId.value = supplier.id
+      supplierDetails.value = supplier
       form.value.supplier_id = supplier.id
 
-      // Cargar conexión configurada
-      const connRes = await axios.get(/suppliers//connection)
+      // Cargar conexión configurada del proveedor
+      const connRes = await axios.get(`/suppliers/${supplier.id}/connection`)
       if (connRes.data && connRes.data.type) {
         form.value.type = connRes.data.type || 'dronena_bot'
         form.value.host = connRes.data.host || 'https://www.dronena.com/NuevaExperiencia/'
         form.value.username = connRes.data.username || ''
-        form.value.invoice_path = connRes.data.invoice_path || 'Clientes/d719/Factura'
         form.value.has_password = Boolean(connRes.data.has_password)
       }
     }
+
+    initialSnapshot.value = JSON.stringify({
+      username: form.value.username,
+      host: form.value.host,
+      password: '',
+    })
   } catch (error) {
     console.error('Error al cargar configuración de Dronena:', error)
-    toast.error('No se pudo cargar la configuración de Dronena')
+    toast.error('No se pudo cargar la configuración del Bot Dronena.')
   } finally {
     isLoading.value = false
   }
 }
 
-// Guardar configuración
+// Guardar configuración de conexión
 const saveConfig = async () => {
   if (!supplierId.value) {
-    toast.error('No se encontró el proveedor Dronena registrado')
+    toast.error('No se encontró el proveedor Dronena en el sistema.')
     return
   }
 
@@ -69,7 +87,6 @@ const saveConfig = async () => {
       type: 'dronena_bot',
       host: form.value.host || 'https://www.dronena.com/NuevaExperiencia/',
       username: form.value.username,
-      invoice_path: form.value.invoice_path,
       pasv: true,
       has_header: true,
     }
@@ -78,20 +95,38 @@ const saveConfig = async () => {
       payload.password = form.value.password
     }
 
-    await axios.post(/suppliers//connection, payload)
-    toast.success('Configuración del Bot Dronena guardada correctamente')
+    await axios.post(`/suppliers/${supplierId.value}/connection`, payload)
+    toast.success('Configuración del Bot Dronena guardada correctamente.')
     form.value.password = ''
-    fetchSupplierData()
+    await fetchSupplierData()
   } catch (error) {
     console.error('Error al guardar credenciales de Dronena:', error)
-    toast.error(error.response?.data?.message || 'Error al guardar la configuración')
+    toast.error(error.response?.data?.message || 'Error al guardar la configuración.')
   } finally {
     isSaving.value = false
   }
 }
 
-// Ejecutar sincronización manual con el bot
+// Confirmar y ejecutar sincronización manual con el bot
 const runSync = async () => {
+  if (!supplierId.value) {
+    toast.error('No se puede sincronizar sin un proveedor vinculado.')
+    return
+  }
+
+  const result = await Swal.fire({
+    title: '¿Iniciar sincronización con Dronena?',
+    text: 'El bot se conectará a la plataforma externa para descargar facturas y actualizar cuentas por pagar.',
+    icon: 'info',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, ejecutar sincronización',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#28C76F',
+    cancelButtonColor: '#7A0099',
+  })
+
+  if (!result.isConfirmed) return
+
   isSyncing.value = true
   try {
     const payload = {
@@ -101,10 +136,10 @@ const runSync = async () => {
     if (form.value.password) payload.password = form.value.password
 
     const res = await axios.post('/sync-dronena', payload)
-    toast.success(res.data?.message || 'Sincronización con Dronena completada exitosamente')
+    toast.success(res.data?.message || 'Sincronización con Dronena completada exitosamente.')
   } catch (error) {
     console.error('Error al sincronizar con Dronena:', error)
-    toast.error(error.response?.data?.message || 'Error al ejecutar la sincronización con Dronena')
+    toast.error(error.response?.data?.message || 'Error al ejecutar la sincronización con Dronena.')
   } finally {
     isSyncing.value = false
   }
@@ -155,10 +190,10 @@ onMounted(() => {
           <VCardItem>
             <VCardTitle class="text-h6 font-weight-bold d-flex align-center gap-2">
               <VIcon icon="tabler-key" color="primary" size="22" />
-              Credenciales del Bot
+              Credenciales de Acceso
             </VCardTitle>
-            <VCardSubtitle>
-              Ingresa los datos para que el bot acceda a la plataforma web de Dronena.
+            <VCardSubtitle class="text-body-2">
+              Parámetros de autenticación para que el bot acceda a la plataforma web de Dronena.
             </VCardSubtitle>
           </VCardItem>
 
@@ -190,8 +225,11 @@ onMounted(() => {
                     label="Usuario / Código de Cliente"
                     placeholder="Ej: D719"
                     prepend-inner-icon="tabler-user"
-                    hint="Código o usuario asignado por Dronena"
+                    hint="Código o usuario comercial asignado por Dronena"
                     persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                   />
                 </VCol>
 
@@ -203,13 +241,16 @@ onMounted(() => {
                     :placeholder="form.has_password ? '•••••••••••• (Configurada)' : 'Ingresa la contraseña'"
                     prepend-inner-icon="tabler-lock"
                     :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                    hint="Se almacena encriptada de forma segura"
+                    :hint="form.has_password ? 'Dejar en blanco para mantener la contraseña actual' : 'Se almacena encriptada de forma segura'"
                     persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                     @click:append-inner="showPassword = !showPassword"
                   />
                 </VCol>
 
-                <VCol cols="12" md="6">
+                <VCol cols="12">
                   <VTextField
                     v-model="form.host"
                     label="URL del Portal Dronena"
@@ -217,26 +258,19 @@ onMounted(() => {
                     prepend-inner-icon="tabler-world"
                     hint="URL base de la plataforma web de Dronena"
                     persistent-hint
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
                   />
                 </VCol>
 
-                <VCol cols="12" md="6">
-                  <VTextField
-                    v-model="form.invoice_path"
-                    label="Ruta de Facturas / Descarga"
-                    placeholder="Clientes/d719/Factura"
-                    prepend-inner-icon="tabler-folder"
-                    hint="Ruta relativa para almacenamiento interno"
-                    persistent-hint
-                  />
-                </VCol>
-
-                <VCol cols="12" class="d-flex align-center gap-4 mt-2">
+                <VCol cols="12" class="d-flex align-center flex-wrap gap-4 mt-2">
                   <VBtn
                     type="submit"
                     color="primary"
                     prepend-icon="tabler-device-floppy"
                     :loading="isSaving"
+                    :disabled="!isDirty"
                   >
                     Guardar Configuración
                   </VBtn>
@@ -271,9 +305,8 @@ onMounted(() => {
             <div class="d-flex align-center justify-space-between mb-4">
               <span class="text-body-2 text-medium-emphasis">Proveedor vinculado:</span>
               <VChip size="small" color="primary" variant="tonal" class="font-weight-bold">
-                {{ supplierId ? `ID: ${supplierId} (Dronena)` : 'No detectado' }}
+                {{ supplierId ? `ID: ${supplierId} (${supplierDetails?.name || 'Dronena'})` : 'No detectado' }}
               </VChip>
-
             </div>
 
             <div class="d-flex align-center justify-space-between mb-4">
@@ -287,10 +320,17 @@ onMounted(() => {
               </VChip>
             </div>
 
-            <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center justify-space-between mb-4">
               <span class="text-body-2 text-medium-emphasis">Tarea Automática (Cron):</span>
               <VChip size="small" color="info" variant="tonal">
                 04:00 AM Diario
+              </VChip>
+            </div>
+
+            <div class="d-flex align-center justify-space-between mb-2">
+              <span class="text-body-2 text-medium-emphasis">Tipo de Integración:</span>
+              <VChip size="small" color="secondary" variant="tonal">
+                Scraper Web / Portal
               </VChip>
             </div>
           </VCardText>

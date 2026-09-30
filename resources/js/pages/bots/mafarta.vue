@@ -17,7 +17,6 @@ const form = ref({
   username: '',
   password: '',
   has_password: false,
-  invoice_path: 'Facturas',
   is_active: true,
   sync_frequency: 'daily',
 })
@@ -50,7 +49,6 @@ const fetchSupplierData = async () => {
         form.value.type = connRes.data.type || 'mafarta_bot'
         form.value.host = connRes.data.host || 'https://sic.drogueriascobeca.com'
         form.value.username = connRes.data.username || ''
-        form.value.invoice_path = connRes.data.invoice_path || 'Facturas'
         form.value.has_password = Boolean(connRes.data.has_password)
       }
     }
@@ -75,7 +73,6 @@ const saveConfig = async () => {
       type: 'mafarta_bot',
       host: form.value.host || 'https://sic.drogueriascobeca.com',
       username: form.value.username,
-      invoice_path: form.value.invoice_path,
       pasv: true,
       has_header: true,
     }
@@ -215,24 +212,13 @@ onMounted(() => {
                   />
                 </VCol>
 
-                <VCol cols="12" md="6">
+                <VCol cols="12">
                   <VTextField
                     v-model="form.host"
                     label="URL de la Plataforma SIC"
                     placeholder="https://sic.drogueriascobeca.com"
                     prepend-inner-icon="tabler-world"
                     hint="URL base del portal API/SIC de Droguerías Cobeca"
-                    persistent-hint
-                  />
-                </VCol>
-
-                <VCol cols="12" md="6">
-                  <VTextField
-                    v-model="form.invoice_path"
-                    label="Carpeta o Ruta de Documentos"
-                    placeholder="Facturas"
-                    prepend-inner-icon="tabler-folder"
-                    hint="Identificador o ruta interna de almacenamiento"
                     persistent-hint
                   />
                 </VCol>

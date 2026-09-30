@@ -137,8 +137,23 @@ class GeneralSettingResource extends JsonResource
             'enabled_bi_views' => $this->enabled_bi_views ?? ['abc', 'dead-stock', 'sku', 'products', 'expiry', 'laboratories', 'pos', 'cyclic', 'customer', 'performance'],
             'active_bot_suppliers' => \App\Models\Supplier::whereNull('deleted_at')
                 ->where(function ($q) {
+                    $q->whereNull('is_active')
+                      ->orWhere('is_active', true)
+                      ->orWhere('is_active', 1);
+                })
+                ->where(function ($q) {
                     $q->where('name', 'like', '%DRONENA%')
-                      ->orWhere('name', 'like', '%DROCERCA%');
+                      ->orWhere('name', 'like', '%NENA%')
+                      ->orWhere('name', 'like', '%DROCERCA%')
+                      ->orWhere('name', 'like', '%CERCA%')
+                      ->orWhere('name', 'like', '%MAFARTA%')
+                      ->orWhere('name', 'like', '%COBECA%')
+                      ->orWhere('name', 'like', '%CRIST%')
+                      ->orWhere('name', 'like', '%DROMEGA%')
+                      ->orWhere('name', 'like', '%MEGA%')
+                      ->orWhere('name', 'like', '%DROSYMCA%')
+                      ->orWhere('name', 'like', '%SYMCA%')
+                      ->orWhereIn('id', [3, 9, 15, 21, 23, 38, 1002, 1005, 1006, 1014]);
                 })
                 ->pluck('name')
                 ->map(fn($n) => strtoupper($n))

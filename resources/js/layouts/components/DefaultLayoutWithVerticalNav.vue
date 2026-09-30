@@ -340,15 +340,27 @@ const processedNavItems = computed(() => {
 
         // Filtrar Optimización si está desactivado en la configuración
         const enableOptimization = brandingStore.settings.enable_optimization ?? true;
-        // Filtrar Bots si el proveedor correspondiente está inactivo/eliminado (soft-deleted)
+        // Filtrar Bots si el proveedor correspondiente está inactivo/deshabilitado/eliminado
         if (copy.title === 'BOTS') {
-          const activeBots = (brandingStore.settings.active_bot_suppliers || ['DRONENA', 'DROCERCA']).map(b => b.toUpperCase());
+          const activeBots = (brandingStore.settings.active_bot_suppliers || ['DRONENA', 'DROCERCA', 'MAFARTA', 'COBECA', 'CRISTMEDICALS', 'DROMEGA', 'DROSYMCA']).map(b => b.toUpperCase());
           childs = childs.filter(c => {
             if (c.to === 'bots-dronena') {
               return activeBots.some(name => name.includes('DRONENA') || name.includes('NENA'));
             }
             if (c.to === 'bots-drocerca') {
               return activeBots.some(name => name.includes('DROCERCA') || name.includes('CERCA'));
+            }
+            if (c.to === 'bots-mafarta') {
+              return activeBots.some(name => name.includes('MAFARTA') || name.includes('COBECA'));
+            }
+            if (c.to === 'bots-cristmedicals') {
+              return activeBots.some(name => name.includes('CRISTMEDICALS') || name.includes('CRIST'));
+            }
+            if (c.to === 'bots-dromega') {
+              return activeBots.some(name => name.includes('DROMEGA') || name.includes('MEGA'));
+            }
+            if (c.to === 'bots-drosymca') {
+              return activeBots.some(name => name.includes('DROSYMCA') || name.includes('SYMCA'));
             }
             return true;
           });

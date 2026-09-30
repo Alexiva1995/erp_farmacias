@@ -18,7 +18,6 @@ const form = ref({
   password: '',
   has_password: false,
   invoice_number: '',
-  invoice_path: 'Facturas',
   is_active: true,
   sync_frequency: 'daily',
 })
@@ -45,7 +44,6 @@ const fetchSupplierData = async () => {
         form.value.type = connRes.data.type || 'drosymca_bot'
         form.value.host = connRes.data.host || 'https://app.drosymca.com'
         form.value.username = connRes.data.username || ''
-        form.value.invoice_path = connRes.data.invoice_path || 'Facturas'
         form.value.has_password = Boolean(connRes.data.has_password)
       }
     }
@@ -70,7 +68,6 @@ const saveConfig = async () => {
       type: 'drosymca_bot',
       host: form.value.host || 'https://app.drosymca.com',
       username: form.value.username,
-      invoice_path: form.value.invoice_path,
       pasv: true,
       has_header: true,
     }
