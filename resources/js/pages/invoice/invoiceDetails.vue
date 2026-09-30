@@ -224,8 +224,7 @@ const processedInvoiceDetails = computed(() => {
     }
 
     // Detectar si el costo nominal viene en USD (típico en auto-órdenes y catálogos de droguerías)
-    const isCostInUsd = isUsd || (detail.auto_order_unit_cost_usd != null && Math.abs(unitCost - detail.auto_order_unit_cost_usd) < (unitCost * 0.5 + 0.1))
-      || (hasValidRate && rate > 10 && unitCost < (rate * 0.2));
+    const isCostInUsd = isUsd || (detail.auto_order_unit_cost_usd != null && Math.abs(unitCost - detail.auto_order_unit_cost_usd) < (unitCost * 0.5 + 0.1));
 
     const unitCostUsd = isCostInUsd ? unitCost : (hasValidRate ? unitCost / rate : unitCost);
     const unitCostBs = isCostInUsd ? (unitCost * rate) : unitCost;
