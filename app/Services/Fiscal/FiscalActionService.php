@@ -39,42 +39,69 @@ class FiscalActionService
      */
     public function confirmCommand(int $id, array $data): bool
     {
+        $status = $data['status'] ?? 'success';
+        $response = $data['response'] ?? null;
+
+        // Detectar si la respuesta de la impresora fiscal fue Timeout (TO), Error (ER) o cadena de error
+        if (is_string($response)) {
+            $respUpper = strtoupper(trim($response));
+            if ($respUpper === 'TO' || $respUpper === 'ER' || str_starts_with($respUpper, 'ERROR')) {
+                $status = 'error';
+            }
+        }
+
         $updated = $this->repository->update($id, [
-            'status' => $data['status'] ?? 'success',
-            'response' => $data['response'] ?? null
+            'status' => $status,
+            'response' => $response
         ]);
 
         $command = $this->repository->find($id);
-        if ($command && $command->command === 'REPORT_Z' && ($data['status'] ?? 'success') === 'success') {
+        if ($command && $command->command === 'REPORT_Z') {
             $date = $command->payload['target_date'] ?? $command->created_at?->format('Y-m-d') ?? now()->format('Y-m-d');
-            $zReportService = app(\App\Services\Fiscal\FiscalZReportService::class);
-            
-            // 1. Consolidar y cerrar el reporte Z de la fecha
-            $report = $zReportService->generateForDate($date, null, true);
-            if ($report) {
-                $zNum = null;
-                if (is_array($data['response'] ?? null) && !empty($data['response']['z_number'])) {
-                    $zNum = (int) $data['response']['z_number'];
-                } elseif (is_string($data['response'] ?? null) && preg_match('/(?:Z|Reporte\s*Z)[^\d]*(\d+)/i', $data['response'], $m)) {
-                    $zNum = (int) $m[1];
+
+            if ($status === 'success') {
+                $zReportService = app(\App\Services\Fiscal\FiscalZReportService::class);
+                
+                // 1. Consolidar y cerrar el reporte Z de la fecha
+                $report = $zReportService->generateForDate($date, null, true);
+                if ($report) {
+                    $zNum = null;
+                    if (is_array($response) && !empty($response['z_number'])) {
+                        $zNum = (int) $response['z_number'];
+                    } elseif (is_string($response) && preg_match('/(?:Z|Reporte\s*Z)[^\d]*(\d+)/i', $response, $m)) {
+                        $zNum = (int) $m[1];
+                    }
+
+                    $updateData = [
+                        'status' => 'closed',
+                        'closing_time' => now()->format('H:i:s'),
+                    ];
+                    if ($zNum) {
+                        $updateData['report_number'] = $zNum;
+                    }
+
+                    $report->update($updateData);
+
+                    // 2. Crear inmediatamente el nuevo Reporte Z abierto para el siguiente ciclo
+                    $nextDate = \Carbon\Carbon::parse($date)->addDay()->format('Y-m-d');
+                    $nextNum = ($zNum ?: $report->report_number) ? (($zNum ?: $report->report_number) + 1) : null;
+                    $zReportService->openNextReport($nextDate, $nextNum);
+
+                    \Illuminate\Support\Facades\Log::info("[FiscalReportZ] Reporte Z de fecha {$date} cerrado exitosamente y nuevo Reporte Z inicializado para {$nextDate}.");
                 }
+            } else {
+                // Si el comando falló (Timeout / TO / Error), programar reintento automático a los 5 minutos
+                $retryCount = (int) ($command->payload['retry_count'] ?? 0);
+                $maxRetries = 3;
 
-                $updateData = [
-                    'status' => 'closed',
-                    'closing_time' => now()->format('H:i:s'),
-                ];
-                if ($zNum) {
-                    $updateData['report_number'] = $zNum;
+                if ($retryCount < $maxRetries) {
+                    \App\Jobs\RetryFiscalReportZJob::dispatch($date, $retryCount + 1)
+                        ->delay(now()->addMinutes(5));
+
+                    \Illuminate\Support\Facades\Log::warning("[FiscalReportZ] Reporte Z (Comando #{$id}) falló con respuesta '{$response}'. Reintento #" . ($retryCount + 1) . " programado en 5 minutos.");
+                } else {
+                    \Illuminate\Support\Facades\Log::error("[FiscalReportZ] Se alcanzó el límite máximo de reintentos ({$maxRetries}) para el Reporte Z de la fecha {$date}.");
                 }
-
-                $report->update($updateData);
-
-                // 2. Crear inmediatamente el nuevo Reporte Z abierto para el siguiente ciclo
-                $nextDate = \Carbon\Carbon::parse($date)->addDay()->format('Y-m-d');
-                $nextNum = ($zNum ?: $report->report_number) ? (($zNum ?: $report->report_number) + 1) : null;
-                $zReportService->openNextReport($nextDate, $nextNum);
-
-                \Illuminate\Support\Facades\Log::info("[FiscalReportZ] Reporte Z de fecha {$date} cerrado exitosamente y nuevo Reporte Z inicializado para {$nextDate}.");
             }
         }
 

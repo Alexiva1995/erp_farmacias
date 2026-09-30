@@ -351,7 +351,10 @@ def process_general_commands(sim):
                                 res_output = call_pnp(pnp.PFRepMemoriaNumero, z_num, z_num, "R")
                             else:
                                 res_output = call_pnp(pnp.PFComando, f"U|{z_num}|{z_num}|R")
-                    status = "success"
+                    if res_output in ["TO", "ER"] or (isinstance(res_output, str) and res_output.startswith("ERROR")):
+                        status = "error"
+                    else:
+                        status = "success"
                 except Exception as ex:
                     res_output = str(ex)
                     status = "error"

@@ -255,6 +255,7 @@ onMounted(() => {
                         :type="showToken ? 'text' : 'password'"
                         label="Bot Token de Telegram *"
                         placeholder="123456789:ABCdefGhIJKlmNoPQRstuVWXyz"
+                        autocomplete="new-password"
                         variant="outlined"
                         density="comfortable"
                         hide-details="auto"
