@@ -112,20 +112,26 @@ const registerWebhook = async () => {
   }
 }
 
-const checkWebhookStatus = async () => {
+const checkWebhookStatus = async (silent = false) => {
   checkingStatus.value = true
   try {
     const { data } = await axios.get('/api/telegram/webhook/status')
     if (data.status === 'success' && data.info) {
       webhookInfo.value = data.info
-      showToast('Diagnóstico de Webhook actualizado.', 'info')
+      if (!silent) {
+        showToast('Diagnóstico de Webhook actualizado.', 'info')
+      }
     } else {
       webhookInfo.value = null
-      showToast(data.message || 'El webhook no se encuentra activo.', 'warning')
+      if (!silent) {
+        showToast(data.message || 'El webhook no se encuentra activo.', 'warning')
+      }
     }
   } catch (error) {
     webhookInfo.value = null
-    showToast('Fallo de conexión al consultar el estado en Telegram.', 'error')
+    if (!silent) {
+      showToast('Fallo de conexión al consultar el estado en Telegram.', 'error')
+    }
   } finally {
     checkingStatus.value = false
   }
@@ -133,7 +139,7 @@ const checkWebhookStatus = async () => {
 
 onMounted(() => {
   fetchConfig()
-  checkWebhookStatus()
+  checkWebhookStatus(true)
 })
 </script>
 
