@@ -35,8 +35,8 @@ const orderBy = ref("desc");
 const selectedLaboratory = ref([]);
 const selectedGroup = ref([]);
 
-const tipo_de_vista = ref(false);
-const tipo_de_filtracion = ref("stockout_adjusted_rop");
+const tipo_de_vista = ref(true);
+const tipo_de_filtracion = ref("stockout_adjusted_rop_hiperplus");
 const lapso_de_tiempo = ref("1 month");
 const stock = ref("fallas");
 const hasStock = ref("all");
@@ -75,8 +75,8 @@ const handleClearFilters = () => {
   withSuppliers.value = true;
   soloConCoincidencias.value = false;
   con_descuento.value = false;
-  tipo_de_vista.value = false;
-  tipo_de_filtracion.value = "stockout_adjusted_rop";
+  tipo_de_vista.value = true;
+  tipo_de_filtracion.value = "stockout_adjusted_rop_hiperplus";
   lapso_de_tiempo.value = "1 month";
   stock.value = "fallas";
   hasStock.value = "all";

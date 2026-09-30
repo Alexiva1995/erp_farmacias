@@ -244,12 +244,14 @@ const headers = computed(() => {
   }
 
   base.push(
-    { title: "Vent.", key: "total_sold_completed", sortable: true, align: 'end', width: '65px' },
-    { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '65px' },
-    { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'end', width: '70px' },
-    { title: "Ped.", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '70px' },
-    { title: "Pedido", key: "solicitar", sortable: true, align: 'center', width: '100px' },
-    { title: "Acción", key: "actions", sortable: false, align: 'end', width: '110px' }
+    { title: "Vent.", key: "total_sold_completed", sortable: true, align: 'center', width: '65px' },
+    { title: "Quiebre", key: "dias_quiebre", sortable: true, align: 'center', width: '70px' },
+    { title: "Stock", key: "lote_quantity", sortable: true, align: 'center', width: '65px' },
+    { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'center', width: '70px' },
+    { title: "Ped.", key: "totalQuantityInAutoOrder", sortable: true, align: 'center', width: '65px' },
+    { title: "IPO", key: "ipo", sortable: true, align: 'center', width: '65px' },
+    { title: "Pedido", key: "solicitar", sortable: true, align: 'center', width: '90px' },
+    { title: "Acción", key: "actions", sortable: false, align: 'end', width: '100px' }
   );
 
   return base;
@@ -409,10 +411,20 @@ function rowClass(item) {
             </span>
           </template>
 
+          <!-- Quiebre (90D) -->
+          <template #item.dias_quiebre="{ item }">
+            <span
+              class="font-weight-bold"
+              :class="Number(item.dias_quiebre || 0) > 30 ? 'text-error font-weight-black' : (Number(item.dias_quiebre || 0) >= 11 ? 'text-warning font-weight-bold' : (Number(item.dias_quiebre || 0) >= 1 ? 'text-medium-emphasis font-weight-medium' : 'text-disabled'))"
+            >
+              {{ item.dias_quiebre !== undefined ? Math.round(item.dias_quiebre) + 'd' : '0d' }}
+            </span>
+          </template>
+
           <!-- Stock -->
           <template #item.lote_quantity="{ item }">
-            <span class="font-weight-medium">
-              {{ item.lote_quantity ? Math.round(item.lote_quantity) : 0 }}
+            <span class="font-weight-medium" :class="Number(item.lote_quantity ?? item.stock) <= 0 ? 'text-error' : ''">
+              {{ (item.lote_quantity ?? item.stock) ? Math.round(item.lote_quantity ?? item.stock) : 0 }}
             </span>
           </template>
 
@@ -471,9 +483,21 @@ function rowClass(item) {
             </VTooltip>
           </template>
 
+          <!-- IPO % -->
+          <template #item.ipo="{ item }">
+            <VChip
+              size="x-small"
+              variant="tonal"
+              class="font-weight-bold"
+              :color="parseFloat(item.ipo ?? item.preferencia_product ?? 0) < 25 ? 'error' : (parseFloat(item.ipo ?? item.preferencia_product ?? 0) <= 60 ? 'warning' : 'success')"
+            >
+              {{ item.ipo ? item.ipo + '%' : (item.preferencia_product ? Math.round(item.preferencia_product) + '%' : (item.liga_id ? '100%' : '—')) }}
+            </VChip>
+          </template>
+
           <!-- Pedido (Editable) -->
           <template #item.solicitar="{ item }">
-            <div class="d-flex flex-column align-center py-1" style="inline-size: 100px;">
+            <div class="d-flex flex-column align-center py-1" style="inline-size: 90px;">
               <VTextField
                 :model-value="getInputValue(item)"
                 @update:model-value="(val) => updateInputValue(item, val)"
@@ -482,6 +506,11 @@ function rowClass(item) {
                 hide-details
                 variant="outlined"
                 class="centered-input-text-sm mb-1"
+                :class="{
+                  'input-dirty-highlight': (item.id in editedValues) || (item.manual_solicitar !== null && item.manual_solicitar !== undefined),
+                  'text-success font-weight-black': roundIaAnalysis(item.solicitar) > 0,
+                  'text-error': roundIaAnalysis(item.solicitar) < 0
+                }"
                 @click.stop
               />
               <span v-if="props.withSuppliers && item.best_supplier && item.best_supplier_percentage !== 0" class="text-super-xs font-weight-bold" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
@@ -615,11 +644,33 @@ function rowClass(item) {
                 <div class="grid-mobile-info">
                   <div class="info-item">
                     <span class="label">Stock</span>
-                    <span class="value">{{ item.lote_quantity ? Math.round(Number(item.lote_quantity)) : 0 }}</span>
+                    <span class="value" :class="Number(item.lote_quantity ?? item.stock) <= 0 ? 'text-error' : ''">{{ item.lote_quantity ? Math.round(Number(item.lote_quantity)) : 0 }}</span>
                   </div>
                   <div class="info-item">
                     <span class="label">Vent.</span>
                     <span class="value">{{ item.total_sold_completed ? Math.round(Number(item.total_sold_completed)) : 0 }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">Quiebre</span>
+                    <span
+                      class="value font-weight-bold"
+                      :class="Number(item.dias_quiebre || 0) > 30 ? 'text-error font-weight-black' : (Number(item.dias_quiebre || 0) >= 11 ? 'text-warning font-weight-bold' : (Number(item.dias_quiebre || 0) >= 1 ? 'text-medium-emphasis font-weight-medium' : 'text-disabled'))"
+                    >
+                      {{ item.dias_quiebre !== undefined ? Math.round(item.dias_quiebre) + 'd' : '0d' }}
+                    </span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">IPO</span>
+                    <span class="value">
+                      <VChip
+                        size="x-small"
+                        variant="tonal"
+                        class="font-weight-bold"
+                        :color="parseFloat(item.ipo ?? item.preferencia_product ?? 0) < 25 ? 'error' : (parseFloat(item.ipo ?? item.preferencia_product ?? 0) <= 60 ? 'warning' : 'success')"
+                      >
+                        {{ item.ipo ? item.ipo + '%' : (item.preferencia_product ? Math.round(item.preferencia_product) + '%' : (item.liga_id ? '100%' : '—')) }}
+                      </VChip>
+                    </span>
                   </div>
                   <div class="info-item">
                     <span class="label">Pedido</span>
@@ -803,5 +854,14 @@ function rowClass(item) {
 }
 .legend-needs { background: rgba(40, 199, 111, 40%); }
 .legend-excess { background: rgba(234, 84, 85, 40%); }
+
+.input-dirty-highlight :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.8 !important;
+  border-color: rgba(var(--v-theme-warning), 0.8) !important;
+}
+
+.input-dirty-highlight :deep(.v-field) {
+  background-color: rgba(var(--v-theme-warning), 0.08) !important;
+}
 </style>
 

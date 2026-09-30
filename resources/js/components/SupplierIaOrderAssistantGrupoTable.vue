@@ -525,7 +525,7 @@ function rowClass(item) {
               <template #item.dias_quiebre="{ item }">
                 <span
                   class="font-weight-bold"
-                  :class="Number(item.dias_quiebre || 0) >= 30 ? 'text-error' : (Number(item.dias_quiebre || 0) > 0 ? 'text-warning' : 'text-disabled')"
+                  :class="Number(item.dias_quiebre || 0) > 30 ? 'text-error font-weight-black' : (Number(item.dias_quiebre || 0) >= 11 ? 'text-warning font-weight-bold' : (Number(item.dias_quiebre || 0) >= 1 ? 'text-medium-emphasis font-weight-medium' : 'text-disabled'))"
                 >
                   {{ item.dias_quiebre !== undefined ? Math.round(item.dias_quiebre) + 'd' : '0d' }}
                 </span>
@@ -558,11 +558,16 @@ function rowClass(item) {
                 </span>
               </template>
 
-              <!-- IPO % -->
+              <!-- IPO % (Semáforo de Posición de Inventario) -->
               <template #item.ipo="{ item }">
-                <span class="font-weight-bold" :class="Number(item.ipo ?? item.preferencia_product) > 0 ? 'text-primary' : 'text-disabled'">
+                <VChip
+                  size="x-small"
+                  variant="tonal"
+                  class="font-weight-bold"
+                  :color="parseFloat(item.ipo ?? item.preferencia_product ?? 0) < 25 ? 'error' : (parseFloat(item.ipo ?? item.preferencia_product ?? 0) <= 60 ? 'warning' : 'success')"
+                >
                   {{ item.ipo ? item.ipo + '%' : (item.preferencia_product ? Math.round(item.preferencia_product) + '%' : (item.liga_id ? '100%' : '—')) }}
-                </span>
+                </VChip>
               </template>
 
               <!-- SUGERIDO FINAL -->
@@ -577,6 +582,7 @@ function rowClass(item) {
                     variant="outlined"
                     class="centered-input-text-super-xs"
                     :class="{
+                      'input-dirty-highlight': (item.id in editedValues) || (item.manual_solicitar !== null && item.manual_solicitar !== undefined),
                       'text-success font-weight-black': roundIaAnalysis(item.solicitar) > 0,
                       'text-error': roundIaAnalysis(item.solicitar) < 0
                     }"
@@ -705,7 +711,12 @@ function rowClass(item) {
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
                       <span class="text-disabled">Días Quiebre (90d):</span>
-                      <span class="font-weight-bold" :class="Number(item.dias_quiebre || 0) >= 30 ? 'text-error' : 'text-warning'">{{ item.dias_quiebre !== undefined ? Math.round(item.dias_quiebre) + 'd' : '0d' }}</span>
+                      <span
+                        class="font-weight-bold"
+                        :class="Number(item.dias_quiebre || 0) > 30 ? 'text-error font-weight-black' : (Number(item.dias_quiebre || 0) >= 11 ? 'text-warning font-weight-bold' : (Number(item.dias_quiebre || 0) >= 1 ? 'text-medium-emphasis font-weight-medium' : 'text-disabled'))"
+                      >
+                        {{ item.dias_quiebre !== undefined ? Math.round(item.dias_quiebre) + 'd' : '0d' }}
+                      </span>
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
                       <span class="text-disabled">Prom. (ROP):</span>
@@ -713,7 +724,9 @@ function rowClass(item) {
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
                       <span class="text-disabled">Stock Físico:</span>
-                      <span class="font-weight-bold">{{ (item.lote_quantity ?? item.stock) ? Math.round(item.lote_quantity ?? item.stock) : 0 }}</span>
+                      <span class="font-weight-bold" :class="Number(item.lote_quantity ?? item.stock) <= 0 ? 'text-error' : ''">
+                        {{ (item.lote_quantity ?? item.stock) ? Math.round(item.lote_quantity ?? item.stock) : 0 }}
+                      </span>
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
                       <span class="text-disabled">Stock Útil:</span>
@@ -721,7 +734,14 @@ function rowClass(item) {
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
                       <span class="text-disabled">IPO:</span>
-                      <span class="font-weight-bold text-primary">{{ item.ipo ? item.ipo + '%' : (item.preferencia_product ? Math.round(item.preferencia_product) + '%' : '100%') }}</span>
+                      <VChip
+                        size="x-small"
+                        variant="tonal"
+                        class="font-weight-bold"
+                        :color="parseFloat(item.ipo ?? item.preferencia_product ?? 0) < 25 ? 'error' : (parseFloat(item.ipo ?? item.preferencia_product ?? 0) <= 60 ? 'warning' : 'success')"
+                      >
+                        {{ item.ipo ? item.ipo + '%' : (item.preferencia_product ? Math.round(item.preferencia_product) + '%' : (item.liga_id ? '100%' : '—')) }}
+                      </VChip>
                     </div>
                   </VCardText>
 
@@ -738,6 +758,9 @@ function rowClass(item) {
                         hide-details
                         variant="outlined"
                         class="centered-input-text-super-xs"
+                        :class="{
+                          'input-dirty-highlight': (item.id in editedValues) || (item.manual_solicitar !== null && item.manual_solicitar !== undefined)
+                        }"
                         style="max-inline-size: 70px;"
                         @click.stop
                       />
@@ -875,5 +898,14 @@ function rowClass(item) {
   font-size: 11px !important;
   font-weight: 800 !important;
   padding: 4px 6px !important;
+}
+
+.input-dirty-highlight :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.8 !important;
+  border-color: rgba(var(--v-theme-warning), 0.8) !important;
+}
+
+.input-dirty-highlight :deep(.v-field) {
+  background-color: rgba(var(--v-theme-warning), 0.08) !important;
 }
 </style>

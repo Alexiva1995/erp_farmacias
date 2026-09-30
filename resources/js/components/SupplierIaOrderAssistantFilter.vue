@@ -106,7 +106,7 @@ const tipoExclusionOpciones = [
 ];
 
 const hasAdvancedFilters = computed(() => (
-  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.isFavorite || props.tipoExclusion?.length || props.tipo_de_filtracion !== 'combinado' || props.stock !== 'fallas' || props.selectedSupplier || props.hasStock !== 'all')
+  !!(props.selectedGroup?.length || props.isColombian || props.isNovaventa || props.isFavorite || props.tipoExclusion?.length || props.tipo_de_filtracion !== 'stockout_adjusted_rop_hiperplus' || !props.tipo_de_vista || props.stock !== 'fallas' || props.selectedSupplier || props.hasStock !== 'all')
 ));
 </script>
 
