@@ -192,11 +192,11 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                 'F' . $cleanNumber,
                 'F' . $paddedNumber,
                 'FC' . $cleanNumber,
-                'FC' . $paddedNumber,
-                'FA' . $cleanNumber,
-                'FA' . $paddedNumber,
                 'F' . $docNumber,
                 'FC' . $docNumber,
+                'FA' . $docNumber,
+            ]));
+
             // Normalizar números de control para buscar tanto con guion como con espacio
             $cleanCtrl = str_replace(' ', '-', trim($finalControlNumber));
             $spaceCtrl = str_replace('-', ' ', trim($finalControlNumber));
