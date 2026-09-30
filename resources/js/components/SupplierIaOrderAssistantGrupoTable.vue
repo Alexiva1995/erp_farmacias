@@ -7,6 +7,7 @@ import { ref, computed, watch } from 'vue';
 import axios from "@/plugins/axios";
 import Swal from 'sweetalert2';
 import { toast } from "@/plugins/sweetalert";
+import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 
 const brandingStore = useBrandingStore();
 const { mdAndUp } = useDisplay();
@@ -118,85 +119,71 @@ const onActionClick = async (item, action) => {
       const { isConfirmed } = await Swal.fire({
         title: "Coincidencia por IA",
         html: `Por IA se sugiere que este producto corresponde a:<br><strong>${item.best_supplier.matched_name || item.best_supplier.name}</strong> del proveedor.<br><br>¿Deseas confirmar esta coincidencia y agregarlo a la orden?`,
-        icon: "info",
+        icon: "question",
         showCancelButton: true,
         confirmButtonText: "Sí, agregar",
         cancelButtonText: "Cancelar",
+        confirmButtonColor: "#28c76f",
+        cancelButtonColor: "#ea5455",
       });
       if (!isConfirmed) return;
     }
-    
+
     isProcessing.value[item.id] = 'adding';
     try {
       const payload = {
         product_id: item.id,
         quantity: quantity,
+        product_supplier_id: item.best_supplier?.product_suppliers_id || item.best_supplier?.product_supplier_id || item.best_supplier?.id || null,
+        supplier_id: props.selectedSupplierId || item.best_supplier?.supplier_id || null,
       };
-
-      if (isColombian) {
-        // El backend resuelve el proveedor colombiano dinámicamente
-      } else if (props.selectedSupplierId) {
-        payload.supplier_id = typeof props.selectedSupplierId === 'object' ? props.selectedSupplierId?.id : props.selectedSupplierId;
-        if (item.best_supplier_price) {
-          payload.unit_cost = item.best_supplier_price;
-        }
-      } else if (item.best_supplier) {
-        const psId = item.best_supplier.product_suppliers_id || item.best_supplier.product_supplier_id;
-        if (psId) {
-          payload.product_supplier_id = psId;
-        }
-        if (item.best_supplier.id) {
-          payload.supplier_id = item.best_supplier.id;
-        }
-        if (item.best_supplier_price) {
-          payload.unit_cost = item.best_supplier_price;
-        }
-      }
-
       await axios.post('/suppliers-ia-order-assistant/add-to-order', payload);
-      toast.success("Producto añadido a la orden.");
+      toast.success("Producto agregado a la orden");
       emit('remove-item', item.id);
-    } catch (error) {
-       console.error("Error adding to order:", error);
-       toast.error("Error al añadir producto a la orden.");
+    } catch (e) {
+      console.error(e);
+      toast.error(e.response?.data?.message || "Error al agregar a la orden");
     } finally {
-      delete isProcessing.value[item.id];
+      isProcessing.value[item.id] = null;
     }
   } else if (action === 'ignore') {
     isProcessing.value[item.id] = 'ignoring';
     try {
       await axios.post(`/suppliers-ia-order-assistant/products/${item.id}/ignore`);
-      toast.success("Producto ignorado.");
+      toast.success("Producto ignorado por 7 días");
       emit('remove-item', item.id);
-    } catch (error) {
-      console.error("Error ignoring product:", error);
-      toast.error("No se pudo ignorar el producto.");
+    } catch (e) {
+      console.error(e);
+      toast.error(e.response?.data?.message || "Error al ignorar");
     } finally {
-      delete isProcessing.value[item.id];
+      isProcessing.value[item.id] = null;
     }
   }
 };
 
-// Sparkline
+// Gráficas Lazy
 const readyCharts = ref(new Set());
 const markChartAsReady = (id) => {
   if (!readyCharts.value.has(id)) {
-    requestAnimationFrame(() => readyCharts.value.add(id));
+    readyCharts.value.add(id);
   }
 };
 
-const getChartOptions = (item, color = '#7367f0') => ({
+const getChartOptions = (item, color) => ({
   chart: {
     type: 'area',
-    height: 22,
     sparkline: { enabled: true },
-    animations: { enabled: true },
-    parentHeightOffset: 0,
+    animations: { enabled: false }
   },
   stroke: { curve: 'smooth', width: 2 },
   fill: {
     type: 'gradient',
-    gradient: { opacityFrom: 0.4, opacityTo: 0 }
+    gradient: {
+      shadeIntensity: 1,
+      opacityFrom: 0.45,
+      opacityTo: 0.05,
+      stops: [0, 100]
+    }
   },
   xaxis: {
     categories: item.sales_trend_labels || []
@@ -220,37 +207,79 @@ const grupoKpi = (productos) => {
   let falta = 0, exceso = 0, ok = 0;
   productos.forEach(p => {
     const v = roundIaAnalysis(p.solicitar);
-    if (v > 0 || (v === 0 && (p.lote_quantity ?? 0) <= 0)) falta++;
+    if (v > 0 || (v === 0 && (p.lote_quantity ?? p.stock ?? 0) <= 0)) falta++;
     else if (v < 0) exceso++;
     else ok++;
   });
   return { falta, exceso, ok };
 };
 
+// Resumen por Ligas (Económica, Premium, Promedio)
+const getLigasSummary = (productos) => {
+  const tiers = [
+    { id: 1, name: 'ECONÓMICA', color: '#ea5455', chipColor: 'pink' },
+    { id: 3, name: 'PREMIUM', color: '#28c76f', chipColor: 'success' },
+    { id: 2, name: 'PROMEDIO', color: '#00cfe8', chipColor: 'info' },
+  ];
+
+  return tiers.map(tier => {
+    const prods = productos.filter(p => {
+      if (p.liga_id) return Number(p.liga_id) === tier.id;
+      if (tier.id === 1) return p.liga_nombre === 'Económica';
+      if (tier.id === 2) return p.liga_nombre === 'Promedio';
+      if (tier.id === 3) return p.liga_nombre === 'Premium';
+      return false;
+    });
+
+    if (!prods.length) return null;
+
+    const demandaRop = prods.reduce((acc, p) => acc + parseFloat(p.demanda_ponderada ?? p.promedio_calculado ?? 0), 0);
+    const stockUtil = prods.reduce((acc, p) => {
+      const util = p.stock_util !== undefined 
+        ? parseFloat(p.stock_util) 
+        : Math.min(parseFloat(p.lote_quantity ?? p.stock ?? 0), Math.ceil(parseFloat(p.demanda_ponderada ?? p.promedio_calculado ?? 0)));
+      return acc + util;
+    }, 0);
+    const ventas30d = prods.reduce((acc, p) => acc + parseFloat(p.total_sold_completed ?? 0), 0);
+    
+    const validCosts = prods.map(p => parseFloat(p.unit_cost ?? 0)).filter(c => c > 0);
+    const costoProm = validCosts.length > 0 ? (validCosts.reduce((a, b) => a + b, 0) / validCosts.length) : 0;
+    
+    const faltante = Math.max(0, demandaRop - stockUtil);
+
+    return {
+      ...tier,
+      count: prods.length,
+      demandaRop: demandaRop.toFixed(1),
+      stockUtil: stockUtil.toFixed(1),
+      ventas30d: Math.round(ventas30d),
+      costoProm: costoProm.toFixed(2),
+      faltante: faltante.toFixed(1),
+      isCovered: faltante <= 0
+    };
+  }).filter(Boolean);
+};
+
 // Headers para la tabla interna en desktop
 const innerHeaders = computed(() => {
   const base = [
-    { title: "ID", key: "id", sortable: true, width: '50px' },
-    { title: "Producto", key: "name", sortable: true, minWidth: '260px' },
+    { title: "ID / PRODUCTO", key: "name", sortable: true, minWidth: '250px' },
   ];
 
   if (props.showGraphs) {
-    base.push({ title: "Trend", key: "trend", sortable: false, width: '80px' });
-  }
-
-  base.push({ title: "Costo", key: "unit_cost", sortable: true, align: 'end', width: '80px' });
-
-  if (props.withSuppliers) {
-    base.push({ title: "COSTP", key: "best_supplier_price", sortable: false, align: 'end', width: '90px' });
+    base.push({ title: "TREND", key: "trend", sortable: false, width: '80px' });
   }
 
   base.push(
-    { title: "Vent.", key: "total_sold_completed", sortable: true, align: 'end', width: '65px' },
-    { title: "Stock", key: "lote_quantity", sortable: true, align: 'end', width: '65px' },
-    { title: "Prom.", key: "promedio_calculado", sortable: true, align: 'end', width: '70px' },
-    { title: "Ped.", key: "totalQuantityInAutoOrder", sortable: true, align: 'end', width: '70px' },
-    { title: "Pedido", key: "solicitar", sortable: true, align: 'center', width: '100px' },
-    { title: "Acción", key: "actions", sortable: false, align: 'end', width: '110px' }
+    { title: "COSTO ($)", key: "unit_cost", sortable: true, align: 'end', width: '85px' },
+    { title: "VENTA 30D", key: "total_sold_completed", sortable: true, align: 'center', width: '85px' },
+    { title: "PROM. (ROP)", key: "promedio_calculado", sortable: true, align: 'center', width: '85px' },
+    { title: "STOCK FÍSICO", key: "lote_quantity", sortable: true, align: 'center', width: '85px' },
+    { title: "TRÁNSITO", key: "totalQuantityInAutoOrder", sortable: true, align: 'center', width: '80px' },
+    { title: "STOCK ÚTIL", key: "stock_util", sortable: true, align: 'center', width: '85px' },
+    { title: "IPO %", key: "ipo", sortable: true, align: 'center', width: '75px' },
+    { title: "SUGERIDO FINAL", key: "solicitar", sortable: true, align: 'center', width: '105px' },
+    { title: "ACCIÓN", key: "actions", sortable: false, align: 'end', width: '90px' }
   );
 
   return base;
@@ -321,7 +350,8 @@ function rowClass(item) {
               {{ grupoKpi(grupo.productos).ok }} ok
             </VChip>
           </div>
-        </div>        <!-- Productos del grupo (expandible) en formato tarjetas -->
+        </div>
+
         <!-- Contenido expandido -->
         <div v-if="isExpanded(grupo.group_id)" class="grupo-body pa-4 bg-var-theme-background">
           
@@ -336,15 +366,13 @@ function rowClass(item) {
               :items-per-page="-1"
               :row-props="({ item }) => ({ class: rowClass(item) })"
             >
-              <template #item.id="{ item }">
-                <a :href="'/inventory/traceability?q=' + item.id" target="_blank" class="text-decoration-none text-xs font-weight-black text-primary">
-                  {{ item.id }}
-                </a>
-              </template>
-
+              <!-- ID / PRODUCTO -->
               <template #item.name="{ item }">
                 <div class="d-flex flex-column py-1">
                   <div class="d-flex align-center gap-1">
+                    <a :href="'/inventory/traceability?q=' + item.id" target="_blank" class="text-decoration-none text-xs font-weight-black text-primary me-1">
+                      #{{ item.id }}
+                    </a>
                     <span
                       class="text-sm font-weight-black text-high-emphasis text-uppercase text-wrap cursor-pointer hover-opacity"
                       :class="{ 'text-primary': item.psychotropic == 1, 'opacity-50': togglingScarce === item.id }"
@@ -402,6 +430,7 @@ function rowClass(item) {
                 </div>
               </template>
 
+              <!-- Gráfica si está activa -->
               <template v-if="props.showGraphs" #item.trend="{ item }">
                 <div style="block-size: 22px; inline-size: 80px;" v-intersect="() => markChartAsReady(item.id)">
                   <VueApexCharts
@@ -413,63 +442,72 @@ function rowClass(item) {
                 </div>
               </template>
 
+              <!-- COSTO ($) -->
               <template #item.unit_cost="{ item }">
                 <span class="font-weight-medium">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
               </template>
 
-              <template v-if="props.withSuppliers" #item.best_supplier_price="{ item }">
-                <span v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="font-weight-black text-warning">
-                  ${{ Number(item.best_supplier_price || 0).toFixed(2) }}
-                  <span v-if="item.best_supplier_percentage && !isNaN(item.best_supplier_percentage) && item.best_supplier_percentage !== 0" class="ms-1" style="font-size: 10px;" :class="item.best_supplier_percentage < 0 ? 'text-success' : 'text-error'">
-                    ({{ item.best_supplier_percentage < 0 ? '↓' : '↑' }}{{ Math.abs(item.best_supplier_percentage).toFixed(0) }}%)
-                  </span>
-                </span>
-                <span v-else class="text-disabled text-xs font-weight-bold">
-                  —
-                </span>
-              </template>
-
+              <!-- VENTA 30D -->
               <template #item.total_sold_completed="{ item }">
                 <span class="font-weight-bold">{{ item.total_sold_completed ? Math.round(item.total_sold_completed) : 0 }}</span>
               </template>
 
-              <template #item.lote_quantity="{ item }">
-                <span class="font-weight-bold" :class="Number(item.lote_quantity) <= 0 ? 'text-error' : ''">
-                  {{ item.lote_quantity ? Math.round(item.lote_quantity) : 0 }}
-                </span>
-              </template>
-
-              <template #item.preferencia_product="{ item }">
-                <span :class="item.preferencia_product > 0 ? 'text-primary font-weight-black' : ''">
-                  {{ item.preferencia_product ? parseFloat(item.preferencia_product).toFixed(1) + '%' : '—' }}
-                </span>
-              </template>
-
+              <!-- PROM. (ROP) -->
               <template #item.promedio_calculado="{ item }">
-                <span>{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '—' }}</span>
+                <span class="font-weight-bold">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '0.0' }}</span>
               </template>
 
+              <!-- STOCK FÍSICO -->
+              <template #item.lote_quantity="{ item }">
+                <span class="font-weight-bold" :class="Number(item.lote_quantity ?? item.stock) <= 0 ? 'text-error' : ''">
+                  {{ (item.lote_quantity ?? item.stock) ? Math.round(item.lote_quantity ?? item.stock) : 0 }}
+                </span>
+              </template>
+
+              <!-- TRÁNSITO -->
               <template #item.totalQuantityInAutoOrder="{ item }">
-                <VChip v-if="item.totalQuantityInAutoOrder > 0" color="info" size="x-small" variant="tonal" class="font-weight-black">
+                <VChip v-if="Number(item.totalQuantityInAutoOrder) > 0" color="info" size="x-small" variant="tonal" class="font-weight-black">
                   {{ item.totalQuantityInAutoOrder }}
                 </VChip>
-                <span v-else>—</span>
+                <span v-else class="text-disabled">0</span>
               </template>
 
+              <!-- STOCK ÚTIL -->
+              <template #item.stock_util="{ item }">
+                <span class="font-weight-medium">
+                  {{ (item.stock_util !== undefined ? parseFloat(item.stock_util) : Math.min(parseFloat(item.lote_quantity ?? item.stock ?? 0), Math.ceil(parseFloat(item.demanda_ponderada ?? item.promedio_calculado ?? 0)))).toFixed(1) }}
+                </span>
+              </template>
+
+              <!-- IPO % -->
+              <template #item.ipo="{ item }">
+                <span class="font-weight-bold" :class="Number(item.ipo ?? item.preferencia_product) > 0 ? 'text-primary' : 'text-disabled'">
+                  {{ item.ipo ? item.ipo + '%' : (item.preferencia_product ? Math.round(item.preferencia_product) + '%' : (item.liga_id ? '100%' : '—')) }}
+                </span>
+              </template>
+
+              <!-- SUGERIDO FINAL -->
               <template #item.solicitar="{ item }">
-                <VTextField
-                  :model-value="getInputValue(item)"
-                  @update:model-value="(val) => updateInputValue(item, val)"
-                  type="number"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  class="centered-input-text-super-xs mx-auto"
-                  style="max-inline-size: 85px;"
-                  @click.stop
-                />
+                <div class="d-flex align-center justify-center">
+                  <VTextField
+                    :model-value="getInputValue(item)"
+                    @update:model-value="(val) => updateInputValue(item, val)"
+                    type="number"
+                    density="compact"
+                    hide-details
+                    variant="outlined"
+                    class="centered-input-text-super-xs"
+                    :class="{
+                      'text-success font-weight-black': roundIaAnalysis(item.solicitar) > 0,
+                      'text-error': roundIaAnalysis(item.solicitar) < 0
+                    }"
+                    style="max-inline-size: 75px;"
+                    @click.stop
+                  />
+                </div>
               </template>
 
+              <!-- ACCIÓN -->
               <template #item.actions="{ item }">
                 <div class="d-flex justify-end ga-1">
                   <!-- Indicador de Matching en Progreso -->
@@ -521,7 +559,7 @@ function rowClass(item) {
             </VDataTable>
           </div>
 
-          <!-- Vista Móvil (Cards - existente) -->
+          <!-- Vista Móvil (Cards) -->
           <div v-else class="d-block d-md-none">
             <VRow>
               <VCol
@@ -537,7 +575,6 @@ function rowClass(item) {
                     'card-excess': roundIaAnalysis(item.solicitar) < 0,
                   }"
                 >
-                  <!-- Cabecera de la Tarjeta -->
                   <VCardItem class="pb-1">
                     <template #prepend>
                       <a :href="`/inventory/traceability?q=${item.id}`" target="_blank"
@@ -551,358 +588,199 @@ function rowClass(item) {
                         :class="{ 'text-primary': item.psychotropic == 1, 'opacity-50': togglingScarce === item.id }"
                         @click="handleToggleScarce(item)"
                       >
-                        <VIcon v-if="togglingScarce === item.id" size="x-small" class="mr-1 rotate-spinner">tabler-loader-2</VIcon>
                         {{ item.name }}
                       </span>
-                      <!-- Badge: nuevo sin historial -->
+                    </VCardTitle>
+                    <template #append>
                       <VChip
-                        v-if="item.is_new_without_history"
-                        color="secondary"
+                        v-if="item.liga_nombre"
+                        :color="item.liga_color || (item.liga_nombre === 'Premium' ? 'success' : (item.liga_nombre === 'Promedio' ? 'info' : 'pink'))"
                         size="x-small"
                         variant="tonal"
-                        class="ml-1"
+                        class="font-weight-black text-uppercase"
+                        label
                       >
-                        <VIcon start size="10">tabler-sparkles</VIcon>
-                        NUEVO
+                        {{ item.liga_nombre }}
                       </VChip>
-                    </VCardTitle>
-                    <VCardSubtitle class="text-super-xs d-flex align-center flex-wrap ga-1 mt-1">
-                      <span class="text-truncate" style="max-inline-size: 150px;">{{ item.active_ingredient }}</span>
-                      <span v-if="item.laboratory" class="text-primary font-weight-black text-uppercase">
-                        • {{ item.laboratory.name }}
-                      </span>
-                      <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" density="compact" variant="tonal" class="px-1 text-super-xs">COL</VChip>
-                      <!-- Advertencia promedio desactualizado -->
-                      <VTooltip v-if="item.is_stale_average" location="top">
-                        <template #activator="{ props: tooltipProps }">
-                          <VIcon v-bind="tooltipProps" icon="tabler-alert-triangle" color="warning" size="12" class="ml-1" />
-                        </template>
-                        <span>Promedio desactualizado (&gt;48h)</span>
-                      </VTooltip>
-                    </VCardSubtitle>
+                    </template>
                   </VCardItem>
 
-                  <VDivider />
-
-                  <VCardText class="flex-grow-1 py-3 px-3">
-                    <!-- Grid de Estadísticas -->
-                    <div class="stats-grid mb-3">
-                      <div class="stat-item">
-                        <span class="stat-label">Ventas</span>
-                        <span class="stat-value">{{ item.total_sold_completed ? Math.round(item.total_sold_completed) : 0 }}</span>
-                      </div>
-                      <div class="stat-item">
-                        <span class="stat-label">Stock</span>
-                        <span class="stat-value">{{ item.lote_quantity ? Math.round(item.lote_quantity) : 0 }}</span>
-                      </div>
-                      <div class="stat-item">
-                        <span class="stat-label">Prom.</span>
-                        <span class="stat-value">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '—' }}</span>
-                      </div>
+                  <VCardText class="pb-2 pt-0">
+                    <div class="d-flex justify-space-between text-xs my-1">
+                      <span class="text-disabled">Costo:</span>
+                      <span class="font-weight-bold">${{ Number(item.unit_cost || 0).toFixed(2) }}</span>
                     </div>
-
-                    <!-- Precios y Tendencia -->
-                    <VRow no-gutters align="center">
-                      <VCol cols="7">
-                        <div class="d-flex flex-column ga-1">
-                          <div class="d-flex align-center justify-space-between text-xs">
-                            <span class="text-disabled">Costo Actual:</span>
-                            <span class="font-weight-bold">${{ Number(item.unit_cost ?? 0).toFixed(2) }}</span>
-                          </div>
-                          <div v-if="props.withSuppliers" class="d-flex align-center justify-space-between text-xs">
-                            <span class="text-warning font-weight-bold">Mejor Precio:</span>
-                            <span v-if="item.best_supplier && Number(item.best_supplier_price) > 0" class="text-warning font-weight-black">${{ Number(item.best_supplier_price ?? 0).toFixed(2) }}</span>
-                            <span v-else class="text-disabled font-weight-medium">—</span>
-                          </div>
-                          <div v-if="item.totalQuantityInAutoOrder > 0" class="d-flex align-center justify-space-between text-xs">
-                            <span class="text-info font-weight-bold">En Pedido:</span>
-                            <VChip color="info" size="x-small" variant="tonal" class="font-weight-black">{{ item.totalQuantityInAutoOrder }}</VChip>
-                          </div>
-                        </div>
-                      </VCol>
-                      <VCol cols="5" class="ps-3 border-s">
-                        <div v-if="props.showGraphs" class="trend-container">
-                          <div class="text-super-xs text-disabled text-center mb-1">Tendencia</div>
-                          <div style="block-size:30px; inline-size:100%;" v-intersect="() => markChartAsReady(item.id)">
-                            <VueApexCharts
-                              v-if="readyCharts.has(item.id)"
-                              type="area" height="30" width="100%"
-                              :options="getChartOptions(item, roundIaAnalysis(item.solicitar) > 0 ? '#28c76f' : '#7367f0')"
-                              :series="getSeries(item)"
-                            />
-                          </div>
-                        </div>
-                      </VCol>
-                    </VRow>
+                    <div class="d-flex justify-space-between text-xs my-1">
+                      <span class="text-disabled">Venta 30d:</span>
+                      <span class="font-weight-bold">{{ item.total_sold_completed ? Math.round(item.total_sold_completed) : 0 }}</span>
+                    </div>
+                    <div class="d-flex justify-space-between text-xs my-1">
+                      <span class="text-disabled">Prom. (ROP):</span>
+                      <span class="font-weight-bold">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '0.0' }}</span>
+                    </div>
+                    <div class="d-flex justify-space-between text-xs my-1">
+                      <span class="text-disabled">Stock Físico:</span>
+                      <span class="font-weight-bold">{{ (item.lote_quantity ?? item.stock) ? Math.round(item.lote_quantity ?? item.stock) : 0 }}</span>
+                    </div>
+                    <div class="d-flex justify-space-between text-xs my-1">
+                      <span class="text-disabled">Stock Útil:</span>
+                      <span class="font-weight-bold">{{ (item.stock_util !== undefined ? parseFloat(item.stock_util) : Math.min(parseFloat(item.lote_quantity ?? item.stock ?? 0), Math.ceil(parseFloat(item.demanda_ponderada ?? item.promedio_calculado ?? 0)))).toFixed(1) }}</span>
+                    </div>
+                    <div class="d-flex justify-space-between text-xs my-1">
+                      <span class="text-disabled">IPO:</span>
+                      <span class="font-weight-bold text-primary">{{ item.ipo ? item.ipo + '%' : (item.preferencia_product ? Math.round(item.preferencia_product) + '%' : '100%') }}</span>
+                    </div>
                   </VCardText>
 
                   <VDivider />
 
-                  <!-- Pie de Tarjeta: Acciones -->
-                  <VCardActions class="pa-3 bg-var-theme-background">
-                    <div class="d-flex align-center w-100 ga-2">
-                      <div class="flex-grow-1">
-                        <div class="d-flex align-center ga-2">
-                          <span class="text-xs font-weight-bold">Análisis:</span>
-                          <VTextField
-                            :model-value="getInputValue(item)"
-                            @update:model-value="(val) => updateInputValue(item, val)"
-                            type="number"
-                            density="compact"
-                            hide-details
-                            variant="outlined"
-                            class="centered-input-text-super-xs"
-                            style="max-inline-size: 80px;"
-                          />
-                        </div>
-                      </div>
-
-                      <div class="d-flex ga-1">
-                         <div v-if="item.ia_matching_in_progress" class="d-flex align-center ga-1 pr-2">
-                           <VProgressCircular indeterminate size="14" width="2" color="info" />
-                           <span class="text-xs font-weight-bold text-info">Buscando Proveedor...</span>
-                         </div>
-                         <template v-else>
-                           <VBtn
-                             v-if="!isRestaurant"
-                             icon
-                             variant="tonal"
-                             color="error"
-                             class="rounded-lg"
-                             size="32"
-                             :loading="isProcessing[item.id] === 'ignoring'"
-                             @click.stop="onActionClick(item, 'ignore')"
-                           >
-                             <VIcon icon="tabler-trash-x" size="18" />
-                             <VTooltip activator="parent" location="top">Rechazar / Ignorar</VTooltip>
-                           </VBtn>
-                            <!-- Rechazar match IA en móvil -->
-                            <VBtn
-                              v-if="item.best_supplier?.is_ai_matched"
-                              icon variant="tonal" color="warning" size="32"
-                              @click.stop="rejectAiMatch(item)"
-                            >
-                              <VIcon icon="tabler-brain-off" size="18" />
-                            </VBtn>
-                            <VBtn
-                              icon
-                              variant="tonal"
-                              :color="item.best_supplier?.is_ai_matched ? 'info' : 'success'"
-                              size="32"
-                              :loading="isProcessing[item.id] === 'adding'"
-                              @click.stop="onActionClick(item, 'add')"
-                            >
-                              <VIcon :icon="item.best_supplier?.is_ai_matched ? 'tabler-brain' : 'tabler-shopping-cart-plus'" size="18" />
-                              <VTooltip activator="parent" location="top">
-                                {{ item.best_supplier?.is_ai_matched ? 'Coincidencia sugerida por IA' : 'Añadir a Orden' }}
-                              </VTooltip>
-                           </VBtn>
-                         </template>
-                      </div>
+                  <VCardActions class="pa-2 d-flex justify-space-between align-center">
+                    <div class="d-flex align-center gap-1">
+                      <span class="text-super-xs font-weight-bold text-disabled">Sugerido:</span>
+                      <VTextField
+                        :model-value="getInputValue(item)"
+                        @update:model-value="(val) => updateInputValue(item, val)"
+                        type="number"
+                        density="compact"
+                        hide-details
+                        variant="outlined"
+                        class="centered-input-text-super-xs"
+                        style="max-inline-size: 70px;"
+                        @click.stop
+                      />
+                    </div>
+                    <div class="d-flex ga-1">
+                      <VBtn
+                        v-if="!isRestaurant"
+                        variant="tonal"
+                        color="error"
+                        size="28"
+                        icon
+                        :loading="isProcessing[item.id] === 'ignoring'"
+                        @click.stop="onActionClick(item, 'ignore')"
+                      >
+                        <VIcon size="16">tabler-trash-x</VIcon>
+                      </VBtn>
+                      <VBtn
+                        variant="tonal"
+                        color="success"
+                        size="28"
+                        icon
+                        :loading="isProcessing[item.id] === 'adding'"
+                        @click.stop="onActionClick(item, 'add')"
+                      >
+                        <VIcon size="16">tabler-shopping-cart-plus</VIcon>
+                      </VBtn>
                     </div>
                   </VCardActions>
                 </VCard>
               </VCol>
             </VRow>
           </div>
+
+          <!-- Tarjetas de Resumen por Liga (Hiperplus) -->
+          <div class="d-flex flex-wrap ga-3 mt-4">
+            <VCard
+              v-for="liga in getLigasSummary(grupo.productos)"
+              :key="liga.id"
+              variant="outlined"
+              class="flex-1-1 pa-3 rounded-lg border"
+              :style="{ borderColor: liga.color + '66', backgroundColor: 'rgba(var(--v-theme-surface), 0.7)' }"
+            >
+              <div class="d-flex align-center justify-space-between mb-2">
+                <VChip :color="liga.chipColor" size="small" variant="tonal" class="font-weight-black text-uppercase px-2" label>
+                  {{ liga.name }}
+                </VChip>
+                <div class="text-xs font-weight-bold" :class="liga.isCovered ? 'text-success' : 'text-warning'">
+                  Faltante Liga: <span class="font-weight-black">{{ liga.faltante }}</span>
+                  <span v-if="liga.isCovered" class="text-super-xs font-weight-normal ms-1">(Cubierta)</span>
+                </div>
+              </div>
+              <VDivider class="my-2 opacity-20" />
+              <div class="d-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;">
+                <div>
+                  <span class="text-disabled">Demanda ROP:</span>
+                  <span class="font-weight-black text-high-emphasis ms-1">{{ liga.demandaRop }}</span>
+                </div>
+                <div>
+                  <span class="text-disabled">Stock Útil:</span>
+                  <span class="font-weight-black text-high-emphasis ms-1">{{ liga.stockUtil }}</span>
+                </div>
+                <div>
+                  <span class="text-disabled">Ventas 30d:</span>
+                  <span class="font-weight-black text-high-emphasis ms-1">{{ liga.ventas30d }}</span>
+                </div>
+                <div>
+                  <span class="text-disabled">Costo Prom.:</span>
+                  <span class="font-weight-black text-high-emphasis ms-1">${{ liga.costoProm }}</span>
+                </div>
+              </div>
+            </VCard>
+          </div>
+
         </div>
       </div>
     </div>
 
-    <!-- Paginación de grupos -->
-    <div v-if="!loading && totalGrupos > 0" class="d-flex align-center justify-space-between pa-4 border-t">
-      <span class="text-sm text-disabled">
-        Mostrando grupos {{ (currentPage - 1) * perPage + 1 }}–{{ Math.min(currentPage * perPage, totalGrupos) }} de {{ totalGrupos }}
-      </span>
-        <AppMobilePagination
-          :page="props.currentPage"
-          :items-per-page="props.perPage"
-          :total-items="props.totalGrupos"
-          :loading="props.loading"
-          :items-per-page-options="[10, 25, 50, 100]"
-          @update:page="(p) => emit('page-change', { page: p, itemsPerPage: props.perPage })"
-          @update:items-per-page="(i) => emit('page-change', { page: 1, itemsPerPage: i })"
-        />
+    <!-- Paginación Móvil -->
+    <div v-if="!mdAndUp && grupos.length > 0" class="pa-3 border-t">
+      <AppMobilePagination
+        :current-page="currentPage"
+        :last-page="lastPage"
+        @page-change="(p) => emit('page-change', p)"
+      />
     </div>
+
   </VCard>
 </template>
 
 <style scoped>
-.grupo-card {
-  border: 1px solid rgba(var(--v-border-color), 0.12) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.inner-products-table :deep(th) {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
-.grupo-header {
-  background: rgba(var(--v-border-color), 0.03);
-  transition: background 0.2s;
-  user-select: none;
+.inner-products-table :deep(td) {
+  font-size: 12px !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
 }
 
-.grupo-header:hover {
-  background: rgba(var(--v-theme-primary), 0.08);
+.row-needs {
+  border-inline-start: 3px solid rgb(var(--v-theme-success)) !important;
 }
 
-.grupo-header--expanded {
-  background: rgba(var(--v-theme-primary), 0.08);
-  border-bottom: 1px solid rgba(var(--v-border-color), 0.12);
-}
-
-/* Estilos de Tarjeta de Producto */
-.producto-card {
-  border: 1px solid rgba(var(--v-border-color), 0.1) !important;
-  transition: transform 0.2s, box-shadow 0.2s;
-  border-radius: 12px !important;
-  background: rgb(var(--v-theme-surface));
-}
-
-.producto-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-color: rgba(var(--v-theme-primary), 0.3) !important;
+.row-excess {
+  border-inline-start: 3px solid rgb(var(--v-theme-error)) !important;
 }
 
 .card-needs {
-  border-left: 4px solid #28c76f !important;
+  border-inline-start: 4px solid rgb(var(--v-theme-success)) !important;
 }
 
 .card-excess {
-  border-left: 4px solid #ea5455 !important;
+  border-inline-start: 4px solid rgb(var(--v-theme-error)) !important;
 }
 
-/* Grid de Estadísticas */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  background: rgba(var(--v-border-color), 0.04);
-  padding: 8px;
-  border-radius: 8px;
+.grupo-header--expanded {
+  background-color: rgba(var(--v-theme-primary), 0.05);
 }
 
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.stat-label {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-
-.stat-value {
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-.trend-container {
-  min-height: 45px;
-}
-
-:deep(.centered-input-text-super-xs .v-field__input) {
-  font-size: 0.75rem !important;
-  font-weight: 800 !important;
-  min-height: 32px !important;
-  padding-block: 4px !important;
-  text-align: center !important;
-}
-
-.text-super-xs {
-  font-size: 0.68rem !important;
-}
-
-.hover-opacity:hover {
-  opacity: 0.7;
-  text-decoration: underline;
-  color: rgb(var(--v-theme-primary));
-}
-
-/* Animaciones */
 .rotate-spinner {
-  animation: rotate 1s linear infinite;
+  animation: spin 1s linear infinite;
 }
 
-@keyframes rotate {
+@keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-/* Skeleton Loading */
-.skeleton-group {
-  background: rgba(var(--v-border-color), 0.05);
-}
-
-.skeleton-bar {
-  height: 12px;
-  border-radius: 6px;
-  background: linear-gradient(
-    90deg,
-    rgba(var(--v-border-color), 0.08) 25%,
-    rgba(var(--v-border-color), 0.16) 50%,
-    rgba(var(--v-border-color), 0.08) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-.skeleton-bar.short { width: 40%; }
-.skeleton-bar.medium { width: 70%; }
-
-.bg-var-theme-background-secondary {
-  background-color: rgba(var(--v-theme-secondary), 0.03);
-}
-
-.inner-products-table {
-  background: transparent !important;
-}
-
-:deep(.inner-products-table .v-table__wrapper) {
-  border-radius: 8px !important;
-  overflow: hidden !important;
-}
-
-:deep(.inner-products-table table) {
-  border-collapse: separate !important;
-  border-spacing: 0 4px !important;
-}
-
-:deep(.inner-products-table tr) {
-  background: white !important;
-  transition: all 0.2s ease;
-}
-
-:deep(.inner-products-table tr:hover) {
-  filter: brightness(0.98);
-  transform: scale(1.002);
-}
-
-:deep(.inner-products-table td) {
-  border-bottom: none !important;
-  font-size: 0.75rem !important;
-}
-
-:deep(.row-needs td:first-child) {
-  border-left: 0px !important;
-  box-shadow: inset 4px 0 0 #28c76f !important;
-}
-
-:deep(.row-needs td:last-child) {
-  border-right: 0px !important;
-  box-shadow: inset -4px 0 0 #28c76f !important;
-}
-
-:deep(.row-excess td:first-child) {
-  border-left: 0px !important;
-  box-shadow: inset 4px 0 0 #ea5455 !important;
-}
-
-:deep(.row-excess td:last-child) {
-  border-right: 0px !important;
-  box-shadow: inset -4px 0 0 #ea5455 !important;
+.centered-input-text-super-xs :deep(input) {
+  text-align: center;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  padding: 4px 6px !important;
 }
 </style>

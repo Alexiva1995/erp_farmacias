@@ -1295,8 +1295,12 @@ class IaAssistantReportService
 
             $item->promedio_calculado = round($demandaTrueIntent, 2);
             $item->demanda_ponderada = round($stockObjetivo, 2);
-            $item->rop_calculado = $rop;
+            $item->rop_calculado = round($rop, 2);
             $item->stock_efectivo = $stockEfectivo;
+            $item->stock_fisico = $stockActual;
+            $item->stock_transito = $autoOrder;
+            $item->stock_util = round(min($stockEfectivo, ceil($stockObjetivo)), 2);
+            $item->ipo = round($ipo * 100, 1);
             $item->liga_id = $miLiga;
             $item->liga_nombre = $miLiga === 3 ? 'Premium' : ($miLiga === 2 ? 'Promedio' : 'Económica');
             $item->liga_color = $miLiga === 3 ? 'success' : ($miLiga === 2 ? 'info' : 'pink');
