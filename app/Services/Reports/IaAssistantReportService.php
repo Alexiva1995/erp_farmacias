@@ -1293,14 +1293,20 @@ class IaAssistantReportService
             $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
             $stockEfectivo = $stockActual + $autoOrder;
 
+            // --- REGLA 1: Tope de Stock Útil al ROP por Producto (Capping Rule) ---
+            $stockUtil = min((float)$stockEfectivo, (float)$rop);
+            $excesoPasivo = max(0.0, (float)$stockEfectivo - (float)$rop);
+
             $item->dias_quiebre = $item->dias_quiebre ?? 0;
             $item->promedio_calculado = round($demandaTrueIntent, 2);
             $item->demanda_ponderada = round($stockObjetivo, 2);
             $item->rop_calculado = round($rop, 2);
+            $item->rop = round($rop, 2);
             $item->stock_efectivo = $stockEfectivo;
             $item->stock_fisico = $stockActual;
             $item->stock_transito = $autoOrder;
-            $item->stock_util = round(min($stockEfectivo, ceil($stockObjetivo)), 2);
+            $item->stock_util = round($stockUtil, 2);
+            $item->exceso_pasivo = round($excesoPasivo, 2);
             $item->ipo = round($ipo * 100, 1);
             $item->liga_id = $miLiga;
             $item->liga_nombre = $miLiga === 3 ? 'Premium' : ($miLiga === 2 ? 'Promedio' : 'Económica');
@@ -1312,10 +1318,11 @@ class IaAssistantReportService
             $item->promedio_historico = round($stockObjetivo, 2);
 
             if (!isset($ropYStockPorLiga[$gId][$miLiga])) {
-                $ropYStockPorLiga[$gId][$miLiga] = ['rop' => 0, 'stock' => 0, 'objetivo' => 0];
+                $ropYStockPorLiga[$gId][$miLiga] = ['rop' => 0, 'stock' => 0, 'stock_util' => 0, 'objetivo' => 0];
             }
             $ropYStockPorLiga[$gId][$miLiga]['rop'] += $rop;
             $ropYStockPorLiga[$gId][$miLiga]['stock'] += $stockEfectivo;
+            $ropYStockPorLiga[$gId][$miLiga]['stock_util'] += $stockUtil;
             $ropYStockPorLiga[$gId][$miLiga]['objetivo'] += $stockObjetivo;
             
             $itemsPorLiga[$gId][$miLiga][] = $item;
@@ -1328,10 +1335,11 @@ class IaAssistantReportService
                 $ropLiga = $datosLiga['rop'];
                 $objLiga = $datosLiga['objetivo'];
 
-                // MODIFICACION 1: Calculo de Stock Util de Liga con precisión decimal (sin inflar artificialmente)
+                // Calculo de Stock Util de Liga con precisión decimal (capado al ROP individual de cada SKU)
                 $stockUtilLiga = 0;
                 foreach ($tierItems as $sku) {
-                    $stockUtilLiga += min($sku->stock_efectivo, $sku->demanda_ponderada);
+                    $ropSku = (float)($sku->rop_calculado ?? $sku->rop ?? 0);
+                    $stockUtilLiga += min((float)$sku->stock_efectivo, $ropSku);
                 }
 
                 if ($stockUtilLiga >= $ropLiga || $stockUtilLiga >= $objLiga) {
@@ -1345,7 +1353,7 @@ class IaAssistantReportService
                     })->filter(fn($val) => $val > 0);
                     $promedioPrecioLiga = $validPrices->isNotEmpty() ? $validPrices->avg() : 0;
 
-                    // MODIFICACION 2: Reparto Continuo Suave
+                    // Reparto Continuo Suave
                     foreach ($tierItems as $sku) {
                         $ipo = $preferenceShareByProduct[$sku->id] ?? 0;
                         $precioItem = (float)(($sku->sale_price ?? 0) > 0 ? $sku->sale_price : ($sku->unit_cost ?? 0));
@@ -1361,7 +1369,6 @@ class IaAssistantReportService
                             $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;
                             
                             // Distribuimos el OBJETIVO ideal de la liga, no el faltante ciego.
-                            // Así descontamos el stock físico individual correctamente sin penalizar doble ni pedir sobre-stock.
                             $objetivoAsignado = $objLiga * $cuotaParticipacion;
                             $exceso = $objetivoAsignado - $sku->stock_efectivo;
                             
@@ -1373,23 +1380,23 @@ class IaAssistantReportService
                     }
                 }
 
-                // FASE 4: REGLA DE PROTECCIÓN DE QUIEBRE INDIVIDUAL PARA BEST SELLERS Y PRODUCTOS ACTIVOS
+                // --- REGLA 2: PROTECCIÓN DE SUPLENCIA INDIVIDUAL PARA BEST SELLERS Y QUIEBRES ---
                 foreach ($tierItems as $sku) {
                     $ropIndividual = (float) ($sku->rop_calculado ?? $sku->rop ?? 0);
                     $stockEfectivo = (float) ($sku->stock_efectivo ?? 0);
+                    $faltanteIndividual = (int) ceil($ropIndividual - $stockEfectivo);
 
-                    // Si un producto individual tiene Stock Efectivo < ROP y tiene demanda/ventas reales
-                    if ($ropIndividual > 0 && $stockEfectivo < $ropIndividual) {
-                        $faltanteIndividual = ceil($ropIndividual - $stockEfectivo);
-
+                    // Si el SKU individual tiene déficit respecto a su ROP
+                    if ($faltanteIndividual > 0 && $ropIndividual > 0) {
                         $ipoValor = (float) ($sku->ipo ?? 0);
                         $ipoDecimal = $ipoValor > 1.0 ? ($ipoValor / 100) : $ipoValor;
-                        $tieneVentas = (float) ($sku->promedio_calculado ?? 0) > 0 || (float) ($sku->sales_average ?? 0) > 0;
+                        $diasQuiebre = (int) ($sku->dias_quiebre ?? 0);
+                        $diasConStockM1 = (float) ($sku->dias_con_stock_m1 ?? 30);
+                        $tieneQuiebreReciente = $diasQuiebre > 0 || $diasConStockM1 < 25;
 
-                        // Si el producto lidera ventas de su liga (IPO >= 25%)
-                        // O si su inventario físico está por debajo del 50% de su ROP con ventas activas:
-                        if ($faltanteIndividual > 0 && $tieneVentas && ($ipoDecimal >= 0.25 || $stockEfectivo < ($ropIndividual * 0.5))) {
-                            $sku->solicitar = max((int) ($sku->solicitar ?? 0), (int) $faltanteIndividual);
+                        // Si el producto es líder de liga (IPO >= 35%) O registra quiebre de stock en el período
+                        if ($ipoDecimal >= 0.35 || $tieneQuiebreReciente) {
+                            $sku->solicitar = max((int) ($sku->solicitar ?? 0), $faltanteIndividual);
                         }
                     }
                 }
