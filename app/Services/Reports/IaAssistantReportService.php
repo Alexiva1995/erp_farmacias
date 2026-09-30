@@ -727,384 +727,6 @@ class IaAssistantReportService
             return $resultados;
         }
 
-
-    /**
-     * Procesa el reporte con el método STOCKOUT-ADJUSTED ROP HIPERPLUS (Clusterización por Ligas).
-     */
-    private function processStockoutAdjustedRopHiperplusReport($resultados, array $filtros)
-    {
-        $isPaginator = $resultados instanceof LengthAwarePaginator;
-        $items = $isPaginator ? $resultados->getCollection() : collect($resultados);
-
-        if ($items->isEmpty()) {
-            return $resultados;
-        }
-
-        $items = $this->processStockoutAdjustedRopReport($items, $filtros);
-        $groupIds = $items->pluck('group_id')->filter()->unique()->toArray();
-
-        if (empty($groupIds)) {
-            return $isPaginator ? $resultados->setCollection($items) : $items;
-        }
-
-        $allGroupProducts = \App\Models\Product::whereIn('group_id', $groupIds)
-            ->where('is_deleted', false)
-            ->where('is_scarce', false)
-            ->get(['id', 'group_id', 'sales_average', 'sales_average_weighted', 'unit_cost', 'sale_price', 'is_colombian_origin', 'lote_quantity', 'stock'])
-            ->groupBy('group_id');
-
-        $allProductIds = $allGroupProducts->flatten()->pluck('id')->unique()->toArray();
-
-        $now = now();
-        $date90Days = $now->copy()->subDays(90)->format('Y-m-d H:i:s');
-
-        $dailySales = \Illuminate\Support\Facades\DB::table('order_details')
-            ->join('orders', 'order_details.order_id', '=', 'orders.id')
-            ->whereIn('order_details.product_id', $allProductIds)
-            ->where('orders.status', 'Completed')
-            ->where('orders.created_at', '>=', $date90Days)
-            ->select(
-                'order_details.product_id',
-                \Illuminate\Support\Facades\DB::raw('DATE(orders.created_at) as sale_date'),
-                \Illuminate\Support\Facades\DB::raw('SUM(order_details.quantity) as total_qty'),
-                \Illuminate\Support\Facades\DB::raw('SUM(order_details.price * order_details.quantity) as total_revenue')
-            )
-            ->groupBy('order_details.product_id', \Illuminate\Support\Facades\DB::raw('DATE(orders.created_at)'))
-            ->get();
-
-        $salesByProductAndDate = [];
-        $totalSalesByProduct = [];
-        foreach ($dailySales as $row) {
-            $pId = (int)$row->product_id;
-            $d = (string)$row->sale_date;
-            $salesByProductAndDate[$pId][$d] = [
-                'qty' => (float)$row->total_qty,
-                'revenue' => (float)$row->total_revenue,
-            ];
-            $totalSalesByProduct[$pId] = ($totalSalesByProduct[$pId] ?? 0) + (float)$row->total_qty;
-        }
-
-        $preferenceShareByProduct = [];
-        $priceElasticityFactorByProduct = [];
-        $groupDemandSum = [];
-        $ligasPorGrupo = [];
-
-        foreach ($groupIds as $gId) {
-            $groupProds = $allGroupProducts->get($gId);
-            if (!$groupProds) continue;
-
-            $groupDemandSum[$gId] = $groupProds->sum(function($gp) {
-                return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
-            });
-
-            // CLUSTERIZACIÓN POR LIGAS (TIERS) DINÁMICO POR RANGOS DE PRECIO
-            $validPrices = $groupProds->map(fn($gp) => (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0)))->filter(fn($val) => $val > 0);
-            $minPrice = $validPrices->isNotEmpty() ? $validPrices->min() : 0;
-            $maxPrice = $validPrices->isNotEmpty() ? $validPrices->max() : 0;
-            $rango = $maxPrice - $minPrice;
-            
-            $ligas = [];
-            foreach ($groupProds as $gp) {
-                $price = (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
-                
-                if ($minPrice == 0 || $rango <= ($minPrice * 0.15)) {
-                    $tier = 1; // Margen muy estrecho, compiten directo
-                } else {
-                    $limiteTercio1 = $minPrice + ($rango * 0.33);
-                    $limiteTercio2 = $minPrice + ($rango * 0.66);
-                    
-                    if ($price <= $limiteTercio1) {
-                        $tier = 1; // Económica (Rosada)
-                    } elseif ($price <= $limiteTercio2) {
-                        $tier = 2; // Promedio (Azul)
-                    } else {
-                        $tier = 3; // Premium (Verde)
-                    }
-                }
-                $ligas[$tier][] = $gp;
-            }
-            $ligasPorGrupo[$gId] = $ligas;
-
-            foreach ($ligas as $tier => $tierProds) {
-                $tierProdsColl = collect($tierProds);
-                if ($tierProdsColl->count() <= 1) {
-                    foreach ($tierProdsColl as $gp) {
-                        $preferenceShareByProduct[$gp->id] = 1.0;
-                        $priceElasticityFactorByProduct[$gp->id] = 1.0;
-                    }
-                    continue;
-                }
-
-                $pIds = $tierProdsColl->pluck('id')->toArray();
-                $totalTierWeighted = $tierProdsColl->sum(function($gp) {
-                    return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
-                });
-                
-                $totalTierSales90 = 0;
-                foreach ($pIds as $pId) {
-                    $totalTierSales90 += ($totalSalesByProduct[$pId] ?? 0);
-                }
-
-                $productsSellingOnDate = [];
-                foreach ($pIds as $pId) {
-                    foreach (($salesByProductAndDate[$pId] ?? []) as $dateStr => $data) {
-                        if ($data['qty'] > 0) $productsSellingOnDate[$dateStr][] = $pId;
-                    }
-                }
-
-                $concurrentDates = [];
-                foreach ($productsSellingOnDate as $dateStr => $sellingPIds) {
-                    if (count(array_unique($sellingPIds)) >= 2) $concurrentDates[] = $dateStr;
-                }
-
-                if (count($concurrentDates) >= 3) {
-                    $concurrentVelocities = [];
-                    $concurrentAvgPrices = [];
-                    $dailyPriceGaps = [];
-
-                    $tierDailyAvgPrices = [];
-                    foreach ($concurrentDates as $cDate) {
-                        $dayRevenue = 0;
-                        $dayQty = 0;
-                        foreach ($pIds as $pId) {
-                            if (isset($salesByProductAndDate[$pId][$cDate])) {
-                                $dayRevenue += $salesByProductAndDate[$pId][$cDate]['revenue'];
-                                $dayQty += $salesByProductAndDate[$pId][$cDate]['qty'];
-                            }
-                        }
-                        $tierDailyAvgPrices[$cDate] = $dayQty > 0 ? ($dayRevenue / $dayQty) : 0;
-                    }
-
-                    foreach ($tierProdsColl as $gp) {
-                        $pId = $gp->id;
-                        $soldInConcurrent = 0;
-                        $revInConcurrent = 0;
-                        $daysActive = 0;
-                        $accumulatedGap = 0;
-                        $gapDays = 0;
-
-                        foreach ($concurrentDates as $cDate) {
-                            if (isset($salesByProductAndDate[$pId][$cDate])) {
-                                $itemDayQty = $salesByProductAndDate[$pId][$cDate]['qty'];
-                                $itemDayPrice = $itemDayQty > 0 ? ($salesByProductAndDate[$pId][$cDate]['revenue'] / $itemDayQty) : 0;
-                                $soldInConcurrent += $itemDayQty;
-                                $daysActive++;
-
-                                $tierDayPrice = $tierDailyAvgPrices[$cDate] ?? 0;
-                                if ($itemDayPrice > 0 && $tierDayPrice > 0) {
-                                    $accumulatedGap += ($itemDayPrice / $tierDayPrice);
-                                    $gapDays++;
-                                }
-                            }
-                        }
-                        $concurrentVelocities[$pId] = $daysActive > 0 ? ($soldInConcurrent / $daysActive) : 0;
-                        $dailyPriceGaps[$pId] = $gapDays > 0 ? ($accumulatedGap / $gapDays) : 1.0;
-                    }
-
-                    $totalConcurrentVelocity = array_sum($concurrentVelocities);
-
-                    foreach ($tierProdsColl as $gp) {
-                        $pId = $gp->id;
-                        $baseIpo = 1.0 / $tierProdsColl->count();
-                        if ($totalConcurrentVelocity > 0 && $concurrentVelocities[$pId] > 0) {
-                            $baseIpo = max(0.05, $concurrentVelocities[$pId] / $totalConcurrentVelocity);
-                        } elseif ($totalTierWeighted > 0) {
-                            $itemWeight = (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
-                            $baseIpo = max(0.05, $itemWeight / $totalTierWeighted);
-                        }
-                        $preferenceShareByProduct[$pId] = $baseIpo;
-
-                        // INMUNIDAD POR DOMINANCIA: Si es lider (>50%) o unico que vende, no hay castigo
-                        $salesShare = $totalTierSales90 > 0 ? (($totalSalesByProduct[$pId] ?? 0) / $totalTierSales90) : 0;
-                        $pGap = $dailyPriceGaps[$pId] ?? 1.0;
-
-                        if ($salesShare >= 0.50 || $baseIpo >= 0.50) {
-                            $priceElasticityFactorByProduct[$pId] = 1.0; // Inmune
-                        } else {
-                            if ($pGap > 1.0) {
-                                $priceElasticityFactorByProduct[$pId] = max(0.40, 1.0 - (0.60 * ($pGap - 1.0)));
-                            } elseif ($pGap < 1.0 && $pGap > 0) {
-                                // PREMIO SOLO SI ROTA
-                                if (($totalSalesByProduct[$pId] ?? 0) > 0) {
-                                    $priceElasticityFactorByProduct[$pId] = min(1.40, 1.0 + (0.50 * (1.0 - $pGap)));
-                                } else {
-                                    $priceElasticityFactorByProduct[$pId] = 1.0;
-                                }
-                            } else {
-                                $priceElasticityFactorByProduct[$pId] = 1.0;
-                            }
-                        }
-                    }
-                } else {
-                    $tierValidPrices = $tierProdsColl->map(fn($gp) => (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0)))->filter(fn($val) => $val > 0);
-                    $avgStaticPrice = $tierValidPrices->isNotEmpty() ? $tierValidPrices->avg() : 0;
-
-                    foreach ($tierProdsColl as $gp) {
-                        $pId = $gp->id;
-                        $baseIpo = 1.0 / $tierProdsColl->count();
-                        if ($totalTierWeighted > 0) {
-                            $itemWeight = (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
-                            $baseIpo = max(0.05, $itemWeight / $totalTierWeighted);
-                        }
-                        $preferenceShareByProduct[$pId] = $baseIpo;
-
-                        $salesShare = $totalTierSales90 > 0 ? (($totalSalesByProduct[$pId] ?? 0) / $totalTierSales90) : 0;
-                        
-                        if ($salesShare >= 0.50 || $baseIpo >= 0.50) {
-                            $priceElasticityFactorByProduct[$pId] = 1.0;
-                        } else {
-                            $itemPrice = (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
-                            if ($itemPrice > 0 && $avgStaticPrice > 0) {
-                                $priceRatio = $itemPrice / $avgStaticPrice;
-                                if ($priceRatio > 1.0) {
-                                    $priceElasticityFactorByProduct[$pId] = max(0.50, 1.0 - (0.50 * ($priceRatio - 1.0)));
-                                } else {
-                                    if (($totalSalesByProduct[$pId] ?? 0) > 0) {
-                                        $priceElasticityFactorByProduct[$pId] = min(1.30, 1.0 + (0.30 * (1.0 - $priceRatio)));
-                                    } else {
-                                        $priceElasticityFactorByProduct[$pId] = 1.0;
-                                    }
-                                }
-                            } else {
-                                $priceElasticityFactorByProduct[$pId] = 1.0;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        $coverageDays = $this->extractCoverageDays($filtros['lapso_de_tiempo'] ?? '1 month');
-        $leadTimeDays = 7;
-        $bufferDays = 7;
-
-        // Primero calculamos ROP y Stock Objetivo de todas las ligas
-        $ropYStockPorLiga = [];
-        $itemsPorLiga = [];
-
-        $items->each(function($item) use ($preferenceShareByProduct, $groupDemandSum, $priceElasticityFactorByProduct, $coverageDays, $leadTimeDays, $bufferDays, $ligasPorGrupo, &$ropYStockPorLiga, &$itemsPorLiga) {
-            if (!$item->group_id || !isset($preferenceShareByProduct[$item->id])) return;
-
-            $gId = $item->group_id;
-            
-            // Buscar a qué liga pertenece
-            $miLiga = 1;
-            foreach ($ligasPorGrupo[$gId] ?? [] as $tier => $tierProds) {
-                if (collect($tierProds)->contains('id', $item->id)) {
-                    $miLiga = $tier;
-                    break;
-                }
-            }
-
-            $ipo = $preferenceShareByProduct[$item->id] ?? 1.0;
-            $elasticityFactor = $priceElasticityFactorByProduct[$item->id] ?? 1.0;
-            
-            // La demanda true intent se basa en su porción de la liga, multiplicada por la demanda de su liga...
-            // Espera, el grupoDemandSum es del grupo entero. Mejor:
-            $tierTotalDemand = collect($ligasPorGrupo[$gId][$miLiga] ?? [])->sum(function($gp) {
-                return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
-            });
-
-            // Si tierTotalDemand es 0, usamos la base del item
-            $baseDemand = $tierTotalDemand > 0 ? $tierTotalDemand : ($item->promedio_calculado ?? 0);
-            $demandaTrueIntent = $baseDemand * $ipo * $elasticityFactor;
-
-            $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
-            $effectiveLeadTime = $isColombian ? 14 : $leadTimeDays;
-
-            $vpd = $demandaTrueIntent / 30;
-            $rop = $vpd * ($effectiveLeadTime + $bufferDays);
-            $stockObjetivo = $vpd * $coverageDays;
-
-            $stockActual = (float)($item->lote_quantity ?? $item->stock ?? 0);
-            $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
-            $stockEfectivo = $stockActual + $autoOrder;
-
-            $item->promedio_calculado = round($demandaTrueIntent, 2);
-            $item->demanda_ponderada = round($stockObjetivo, 2);
-            $item->rop_calculado = $rop;
-            $item->stock_efectivo = $stockEfectivo;
-            $item->liga_id = $miLiga;
-            $item->liga_nombre = $miLiga === 3 ? 'Premium' : ($miLiga === 2 ? 'Promedio' : 'Económica');
-            $item->liga_color = $miLiga === 3 ? 'green' : ($miLiga === 2 ? 'blue' : 'pink');
-
-            if (!isset($ropYStockPorLiga[$gId][$miLiga])) {
-                $ropYStockPorLiga[$gId][$miLiga] = ['rop' => 0, 'stock' => 0, 'objetivo' => 0];
-            }
-            $ropYStockPorLiga[$gId][$miLiga]['rop'] += $rop;
-            $ropYStockPorLiga[$gId][$miLiga]['stock'] += $stockEfectivo;
-            $ropYStockPorLiga[$gId][$miLiga]['objetivo'] += $stockObjetivo;
-            
-            $itemsPorLiga[$gId][$miLiga][] = $item;
-        });
-
-        // Cascada de Decisión por Liga
-        foreach ($itemsPorLiga as $gId => $ligas) {
-            foreach ($ligas as $miLiga => $tierItems) {
-                $datosLiga = $ropYStockPorLiga[$gId][$miLiga];
-                $ropLiga = $datosLiga['rop'];
-                $objLiga = $datosLiga['objetivo'];
-
-                // --------------------------------------------------------------------------
-                // MODIFICACION 1: Calculo de Stock Util de Liga (Inmunidad contra el Hueso)
-                // --------------------------------------------------------------------------
-                $stockUtilLiga = 0;
-                foreach ($tierItems as $sku) {
-                    $stockUtilLiga += min($sku->stock_efectivo, $sku->demanda_ponderada);
-                }
-
-                if ($stockUtilLiga >= $ropLiga) {
-                    // La liga realmente esta abastecida de mercancia util
-                    foreach ($tierItems as $sku) {
-                        $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
-                        $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
-                    }
-                } else {
-                    // Hay quiebre de inventario util: Se calcula el faltante
-                    $faltanteLiga = $objLiga - $stockUtilLiga;
-                    
-                    $validPrices = collect($tierItems)->map(function($it) {
-                        return (float)(($it->sale_price ?? 0) > 0 ? $it->sale_price : ($it->unit_cost ?? 0));
-                    })->filter(fn($val) => $val > 0);
-                    $promedioPrecioLiga = $validPrices->isNotEmpty() ? $validPrices->avg() : 0;
-
-                    // --------------------------------------------------------------------------
-                    // MODIFICACION 2: Reparto Continuo Suave (Sin tijeretazo rigido)
-                    // --------------------------------------------------------------------------
-                    foreach ($tierItems as $sku) {
-                        $ipo = $preferenceShareByProduct[$sku->id] ?? 0;
-                        $precioItem = (float)(($sku->sale_price ?? 0) > 0 ? $sku->sale_price : ($sku->unit_cost ?? 0));
-                        
-                        $factorPrecio = ($precioItem > 0 && $precioItem <= $promedioPrecioLiga) ? 1.15 : 0.85;
-                        $sku->puntuacionCompra = $ipo * $factorPrecio;
-                    }
-
-                    $puntuacionTotalLiga = collect($tierItems)->sum('puntuacionCompra');
-
-                    foreach ($tierItems as $sku) {
-                        if ($puntuacionTotalLiga > 0) {
-                            $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;
-                            $sugeridoTeorico = ceil($faltanteLiga * $cuotaParticipacion);
-                            
-                            // La resta con el stock fisico auto-regula al 'hueso'
-                            $sku->solicitar = max(0, (int)($sugeridoTeorico - $sku->stock_efectivo));
-                        } else {
-                            $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
-                            $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
-                        }
-                    }
-                }
-            }
-        }
-
-        if ($isPaginator) {
-            $resultados->setCollection($items);
-            return $resultados;
-        }
-
-        return $items;
-    }
-
         // 1. Primero ejecutamos el cálculo base de Stockout-Adjusted ROP (Limpia quiebres individuales)
         $items = $this->processStockoutAdjustedRopReport($items, $filtros);
 
@@ -1381,6 +1003,370 @@ class IaAssistantReportService
      * Neutraliza el sesgo de días sin stock, aplica techo antiespeculativo de 1.5x max histórico
      * y pondera dinámicamente según la confiabilidad de días con stock de cada mes.
      */
+
+    /**
+     * Procesa el reporte con el método STOCKOUT-ADJUSTED ROP HIPERPLUS (Clusterización por Ligas).
+     */
+    private function processStockoutAdjustedRopHiperplusReport($resultados, array $filtros)
+    {
+        $isPaginator = $resultados instanceof LengthAwarePaginator;
+        $items = $isPaginator ? $resultados->getCollection() : collect($resultados);
+
+        if ($items->isEmpty()) {
+            return $resultados;
+        }
+
+        $items = $this->processStockoutAdjustedRopReport($items, $filtros);
+        $groupIds = $items->pluck('group_id')->filter()->unique()->toArray();
+
+        if (empty($groupIds)) {
+            return $isPaginator ? $resultados->setCollection($items) : $items;
+        }
+
+        $allGroupProducts = \App\Models\Product::whereIn('group_id', $groupIds)
+            ->where('is_deleted', false)
+            ->where('is_scarce', false)
+            ->get(['id', 'group_id', 'sales_average', 'sales_average_weighted', 'unit_cost', 'sale_price', 'is_colombian_origin', 'lote_quantity', 'stock'])
+            ->groupBy('group_id');
+
+        $allProductIds = $allGroupProducts->flatten()->pluck('id')->unique()->toArray();
+
+        $now = now();
+        $date90Days = $now->copy()->subDays(90)->format('Y-m-d H:i:s');
+
+        $dailySales = \Illuminate\Support\Facades\DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->whereIn('order_details.product_id', $allProductIds)
+            ->where('orders.status', 'Completed')
+            ->where('orders.created_at', '>=', $date90Days)
+            ->select(
+                'order_details.product_id',
+                \Illuminate\Support\Facades\DB::raw('DATE(orders.created_at) as sale_date'),
+                \Illuminate\Support\Facades\DB::raw('SUM(order_details.quantity) as total_qty'),
+                \Illuminate\Support\Facades\DB::raw('SUM(order_details.price * order_details.quantity) as total_revenue')
+            )
+            ->groupBy('order_details.product_id', \Illuminate\Support\Facades\DB::raw('DATE(orders.created_at)'))
+            ->get();
+
+        $salesByProductAndDate = [];
+        $totalSalesByProduct = [];
+        foreach ($dailySales as $row) {
+            $pId = (int)$row->product_id;
+            $d = (string)$row->sale_date;
+            $salesByProductAndDate[$pId][$d] = [
+                'qty' => (float)$row->total_qty,
+                'revenue' => (float)$row->total_revenue,
+            ];
+            $totalSalesByProduct[$pId] = ($totalSalesByProduct[$pId] ?? 0) + (float)$row->total_qty;
+        }
+
+        $preferenceShareByProduct = [];
+        $priceElasticityFactorByProduct = [];
+        $groupDemandSum = [];
+        $ligasPorGrupo = [];
+
+        foreach ($groupIds as $gId) {
+            $groupProds = $allGroupProducts->get($gId);
+            if (!$groupProds) continue;
+
+            $groupDemandSum[$gId] = $groupProds->sum(function($gp) {
+                return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+            });
+
+            // CLUSTERIZACIÓN POR LIGAS (TIERS) DINÁMICO POR RANGOS DE PRECIO
+            $validPrices = $groupProds->map(fn($gp) => (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0)))->filter(fn($val) => $val > 0);
+            $minPrice = $validPrices->isNotEmpty() ? $validPrices->min() : 0;
+            $maxPrice = $validPrices->isNotEmpty() ? $validPrices->max() : 0;
+            $rango = $maxPrice - $minPrice;
+            
+            $ligas = [];
+            foreach ($groupProds as $gp) {
+                $price = (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
+                
+                if ($minPrice == 0 || $rango <= ($minPrice * 0.15)) {
+                    $tier = 1; // Margen muy estrecho, compiten directo
+                } else {
+                    $limiteTercio1 = $minPrice + ($rango * 0.33);
+                    $limiteTercio2 = $minPrice + ($rango * 0.66);
+                    
+                    if ($price <= $limiteTercio1) {
+                        $tier = 1; // Económica (Rosada)
+                    } elseif ($price <= $limiteTercio2) {
+                        $tier = 2; // Promedio (Azul)
+                    } else {
+                        $tier = 3; // Premium (Verde)
+                    }
+                }
+                $ligas[$tier][] = $gp;
+            }
+            $ligasPorGrupo[$gId] = $ligas;
+
+            foreach ($ligas as $tier => $tierProds) {
+                $tierProdsColl = collect($tierProds);
+                if ($tierProdsColl->count() <= 1) {
+                    foreach ($tierProdsColl as $gp) {
+                        $preferenceShareByProduct[$gp->id] = 1.0;
+                        $priceElasticityFactorByProduct[$gp->id] = 1.0;
+                    }
+                    continue;
+                }
+
+                $pIds = $tierProdsColl->pluck('id')->toArray();
+                $totalTierWeighted = $tierProdsColl->sum(function($gp) {
+                    return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                });
+                
+                $totalTierSales90 = 0;
+                foreach ($pIds as $pId) {
+                    $totalTierSales90 += ($totalSalesByProduct[$pId] ?? 0);
+                }
+
+                $productsSellingOnDate = [];
+                foreach ($pIds as $pId) {
+                    foreach (($salesByProductAndDate[$pId] ?? []) as $dateStr => $data) {
+                        if ($data['qty'] > 0) $productsSellingOnDate[$dateStr][] = $pId;
+                    }
+                }
+
+                $concurrentDates = [];
+                foreach ($productsSellingOnDate as $dateStr => $sellingPIds) {
+                    if (count(array_unique($sellingPIds)) >= 2) $concurrentDates[] = $dateStr;
+                }
+
+                if (count($concurrentDates) >= 3) {
+                    $concurrentVelocities = [];
+                    $concurrentAvgPrices = [];
+                    $dailyPriceGaps = [];
+
+                    $tierDailyAvgPrices = [];
+                    foreach ($concurrentDates as $cDate) {
+                        $dayRevenue = 0;
+                        $dayQty = 0;
+                        foreach ($pIds as $pId) {
+                            if (isset($salesByProductAndDate[$pId][$cDate])) {
+                                $dayRevenue += $salesByProductAndDate[$pId][$cDate]['revenue'];
+                                $dayQty += $salesByProductAndDate[$pId][$cDate]['qty'];
+                            }
+                        }
+                        $tierDailyAvgPrices[$cDate] = $dayQty > 0 ? ($dayRevenue / $dayQty) : 0;
+                    }
+
+                    foreach ($tierProdsColl as $gp) {
+                        $pId = $gp->id;
+                        $soldInConcurrent = 0;
+                        $revInConcurrent = 0;
+                        $daysActive = 0;
+                        $accumulatedGap = 0;
+                        $gapDays = 0;
+
+                        foreach ($concurrentDates as $cDate) {
+                            if (isset($salesByProductAndDate[$pId][$cDate])) {
+                                $itemDayQty = $salesByProductAndDate[$pId][$cDate]['qty'];
+                                $itemDayPrice = $itemDayQty > 0 ? ($salesByProductAndDate[$pId][$cDate]['revenue'] / $itemDayQty) : 0;
+                                $soldInConcurrent += $itemDayQty;
+                                $daysActive++;
+
+                                $tierDayPrice = $tierDailyAvgPrices[$cDate] ?? 0;
+                                if ($itemDayPrice > 0 && $tierDayPrice > 0) {
+                                    $accumulatedGap += ($itemDayPrice / $tierDayPrice);
+                                    $gapDays++;
+                                }
+                            }
+                        }
+                        $concurrentVelocities[$pId] = $daysActive > 0 ? ($soldInConcurrent / $daysActive) : 0;
+                        $dailyPriceGaps[$pId] = $gapDays > 0 ? ($accumulatedGap / $gapDays) : 1.0;
+                    }
+
+                    $totalConcurrentVelocity = array_sum($concurrentVelocities);
+
+                    foreach ($tierProdsColl as $gp) {
+                        $pId = $gp->id;
+                        $baseIpo = 1.0 / $tierProdsColl->count();
+                        if ($totalConcurrentVelocity > 0 && $concurrentVelocities[$pId] > 0) {
+                            $baseIpo = max(0.05, $concurrentVelocities[$pId] / $totalConcurrentVelocity);
+                        } elseif ($totalTierWeighted > 0) {
+                            $itemWeight = (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                            $baseIpo = max(0.05, $itemWeight / $totalTierWeighted);
+                        }
+                        $preferenceShareByProduct[$pId] = $baseIpo;
+
+                        $salesShare = $totalTierSales90 > 0 ? (($totalSalesByProduct[$pId] ?? 0) / $totalTierSales90) : 0;
+                        $pGap = $dailyPriceGaps[$pId] ?? 1.0;
+
+                        if ($salesShare >= 0.50 || $baseIpo >= 0.50) {
+                            $priceElasticityFactorByProduct[$pId] = 1.0;
+                        } else {
+                            if ($pGap > 1.0) {
+                                $priceElasticityFactorByProduct[$pId] = max(0.40, 1.0 - (0.60 * ($pGap - 1.0)));
+                            } elseif ($pGap < 1.0 && $pGap > 0) {
+                                if (($totalSalesByProduct[$pId] ?? 0) > 0) {
+                                    $priceElasticityFactorByProduct[$pId] = min(1.40, 1.0 + (0.50 * (1.0 - $pGap)));
+                                } else {
+                                    $priceElasticityFactorByProduct[$pId] = 1.0;
+                                }
+                            } else {
+                                $priceElasticityFactorByProduct[$pId] = 1.0;
+                            }
+                        }
+                    }
+                } else {
+                    $tierValidPrices = $tierProdsColl->map(fn($gp) => (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0)))->filter(fn($val) => $val > 0);
+                    $avgStaticPrice = $tierValidPrices->isNotEmpty() ? $tierValidPrices->avg() : 0;
+
+                    foreach ($tierProdsColl as $gp) {
+                        $pId = $gp->id;
+                        $baseIpo = 1.0 / $tierProdsColl->count();
+                        if ($totalTierWeighted > 0) {
+                            $itemWeight = (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+                            $baseIpo = max(0.05, $itemWeight / $totalTierWeighted);
+                        }
+                        $preferenceShareByProduct[$pId] = $baseIpo;
+
+                        $salesShare = $totalTierSales90 > 0 ? (($totalSalesByProduct[$pId] ?? 0) / $totalTierSales90) : 0;
+                        
+                        if ($salesShare >= 0.50 || $baseIpo >= 0.50) {
+                            $priceElasticityFactorByProduct[$pId] = 1.0;
+                        } else {
+                            $itemPrice = (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
+                            if ($itemPrice > 0 && $avgStaticPrice > 0) {
+                                $priceRatio = $itemPrice / $avgStaticPrice;
+                                if ($priceRatio > 1.0) {
+                                    $priceElasticityFactorByProduct[$pId] = max(0.50, 1.0 - (0.50 * ($priceRatio - 1.0)));
+                                } else {
+                                    if (($totalSalesByProduct[$pId] ?? 0) > 0) {
+                                        $priceElasticityFactorByProduct[$pId] = min(1.30, 1.0 + (0.30 * (1.0 - $priceRatio)));
+                                    } else {
+                                        $priceElasticityFactorByProduct[$pId] = 1.0;
+                                    }
+                                }
+                            } else {
+                                $priceElasticityFactorByProduct[$pId] = 1.0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        $coverageDays = $this->extractCoverageDays($filtros['lapso_de_tiempo'] ?? '1 month');
+        $leadTimeDays = 7;
+        $bufferDays = 7;
+
+        $ropYStockPorLiga = [];
+        $itemsPorLiga = [];
+
+        $items->each(function($item) use ($preferenceShareByProduct, $groupDemandSum, $priceElasticityFactorByProduct, $coverageDays, $leadTimeDays, $bufferDays, $ligasPorGrupo, &$ropYStockPorLiga, &$itemsPorLiga) {
+            if (!$item->group_id || !isset($preferenceShareByProduct[$item->id])) return;
+
+            $gId = $item->group_id;
+            
+            $miLiga = 1;
+            foreach ($ligasPorGrupo[$gId] ?? [] as $tier => $tierProds) {
+                if (collect($tierProds)->contains('id', $item->id)) {
+                    $miLiga = $tier;
+                    break;
+                }
+            }
+
+            $ipo = $preferenceShareByProduct[$item->id] ?? 1.0;
+            $elasticityFactor = $priceElasticityFactorByProduct[$item->id] ?? 1.0;
+            
+            $tierTotalDemand = collect($ligasPorGrupo[$gId][$miLiga] ?? [])->sum(function($gp) {
+                return (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
+            });
+
+            $baseDemand = $tierTotalDemand > 0 ? $tierTotalDemand : ($item->promedio_calculado ?? 0);
+            $demandaTrueIntent = $baseDemand * $ipo * $elasticityFactor;
+
+            $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
+            $effectiveLeadTime = $isColombian ? 14 : $leadTimeDays;
+
+            $vpd = $demandaTrueIntent / 30;
+            $rop = $vpd * ($effectiveLeadTime + $bufferDays);
+            $stockObjetivo = $vpd * $coverageDays;
+
+            $stockActual = (float)($item->lote_quantity ?? $item->stock ?? 0);
+            $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
+            $stockEfectivo = $stockActual + $autoOrder;
+
+            $item->promedio_calculado = round($demandaTrueIntent, 2);
+            $item->demanda_ponderada = round($stockObjetivo, 2);
+            $item->rop_calculado = $rop;
+            $item->stock_efectivo = $stockEfectivo;
+            $item->liga_id = $miLiga;
+            $item->liga_nombre = $miLiga === 3 ? 'Premium' : ($miLiga === 2 ? 'Promedio' : 'Económica');
+            $item->liga_color = $miLiga === 3 ? 'green' : ($miLiga === 2 ? 'blue' : 'pink');
+
+            if (!isset($ropYStockPorLiga[$gId][$miLiga])) {
+                $ropYStockPorLiga[$gId][$miLiga] = ['rop' => 0, 'stock' => 0, 'objetivo' => 0];
+            }
+            $ropYStockPorLiga[$gId][$miLiga]['rop'] += $rop;
+            $ropYStockPorLiga[$gId][$miLiga]['stock'] += $stockEfectivo;
+            $ropYStockPorLiga[$gId][$miLiga]['objetivo'] += $stockObjetivo;
+            
+            $itemsPorLiga[$gId][$miLiga][] = $item;
+        });
+
+        // Cascada de Decisión por Liga
+        foreach ($itemsPorLiga as $gId => $ligas) {
+            foreach ($ligas as $miLiga => $tierItems) {
+                $datosLiga = $ropYStockPorLiga[$gId][$miLiga];
+                $ropLiga = $datosLiga['rop'];
+                $objLiga = $datosLiga['objetivo'];
+
+                // MODIFICACION 1: Calculo de Stock Util de Liga
+                $stockUtilLiga = 0;
+                foreach ($tierItems as $sku) {
+                    $stockUtilLiga += min($sku->stock_efectivo, $sku->demanda_ponderada);
+                }
+
+                if ($stockUtilLiga >= $ropLiga) {
+                    foreach ($tierItems as $sku) {
+                        $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
+                        $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
+                    }
+                } else {
+                    $faltanteLiga = $objLiga - $stockUtilLiga;
+                    
+                    $validPrices = collect($tierItems)->map(function($it) {
+                        return (float)(($it->sale_price ?? 0) > 0 ? $it->sale_price : ($it->unit_cost ?? 0));
+                    })->filter(fn($val) => $val > 0);
+                    $promedioPrecioLiga = $validPrices->isNotEmpty() ? $validPrices->avg() : 0;
+
+                    // MODIFICACION 2: Reparto Continuo Suave
+                    foreach ($tierItems as $sku) {
+                        $ipo = $preferenceShareByProduct[$sku->id] ?? 0;
+                        $precioItem = (float)(($sku->sale_price ?? 0) > 0 ? $sku->sale_price : ($sku->unit_cost ?? 0));
+                        
+                        $factorPrecio = ($precioItem > 0 && $precioItem <= $promedioPrecioLiga) ? 1.15 : 0.85;
+                        $sku->puntuacionCompra = $ipo * $factorPrecio;
+                    }
+
+                    $puntuacionTotalLiga = collect($tierItems)->sum('puntuacionCompra');
+
+                    foreach ($tierItems as $sku) {
+                        if ($puntuacionTotalLiga > 0) {
+                            $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;
+                            $sugeridoTeorico = ceil($faltanteLiga * $cuotaParticipacion);
+                            
+                            $sku->solicitar = max(0, (int)($sugeridoTeorico - $sku->stock_efectivo));
+                        } else {
+                            $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
+                            $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($isPaginator) {
+            $resultados->setCollection($items);
+            return $resultados;
+        }
+
+        return $items;
+    }
+
     private function processStockoutAdjustedRopReport($resultados, array $filtros)
     {
         $isPaginator = $resultados instanceof LengthAwarePaginator;
