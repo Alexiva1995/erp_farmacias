@@ -1,6 +1,8 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useAbility } from '@casl/vue'
 import axios from '@axios'
+import { useTelegramCommands } from '@/composables/useTelegramCommands'
 import TelegramCommandStatsCards from './TelegramCommandStatsCards.vue'
 import TelegramCommandEditDialog from './TelegramCommandEditDialog.vue'
 
@@ -23,121 +25,33 @@ const props = defineProps({
   },
 })
 
-// Reactividad de Estado
-const commands = ref([])
-const availableChannels = ref([])
-const loading = ref(false)
-const search = ref('')
-const updatingId = ref(null)
+const ability = useAbility()
 
-// Toast / Feedback State
-const snackbar = ref({
-  show: false,
-  text: '',
-  color: 'success',
-})
+const {
+  commands,
+  loading,
+  updatingId,
+  search,
+  snackbar,
+  filteredCommands,
+  channelOptions,
+  fetchCommands,
+  fetchChannels,
+  toggleCommand,
+  updateChannelAssignment,
+  showToast,
+} = useTelegramCommands(props.moduleName)
 
 // Dialog de edición
 const editDialog = ref(false)
 const savingEdit = ref(false)
 const selectedCommand = ref(null)
 
-/**
- * Cargar comandos del módulo especificado desde la API.
- */
-const fetchCommands = async () => {
-  loading.value = true
-  try {
-    const { data } = await axios.get(`/api/telegram/commands/${props.moduleName}`)
-    commands.value = data.data || []
-  } catch (error) {
-    showToast('Error al cargar la lista de comandos de Telegram.', 'error')
-  } finally {
-    loading.value = false
-  }
-}
-
-/**
- * Cargar canales registrados en Telegram.
- */
-const fetchChannels = async () => {
-  try {
-    const { data } = await axios.get('/api/telegram/channels')
-    availableChannels.value = data.data || []
-  } catch (error) {
-    console.error('Error al cargar lista de canales:', error)
-  }
-}
-
-/**
- * Alternar el estado activo/inactivo de un comando.
- */
-const toggleCommand = async (commandItem) => {
-  updatingId.value = commandItem.id
-  const targetState = commandItem.is_active
-
-  try {
-    await axios.patch(`/api/telegram/commands/${commandItem.id}/toggle`, {
-      is_active: targetState,
-    })
-
-    showToast(
-      `Comando "${commandItem.command}" ${targetState ? 'activado' : 'desactivado'} con éxito.`,
-      'success'
-    )
-  } catch (error) {
-    // Revertir cambio en caso de error de red o servidor
-    commandItem.is_active = !targetState
-    showToast('Error al cambiar el estado del comando.', 'error')
-  } finally {
-    updatingId.value = null
-  }
-}
-
-/**
- * Actualizar canal asignado a un comando de forma reactiva sin re-renderizado masivo.
- */
-const updateChannelAssignment = async (commandItem, newChannelId) => {
-  updatingId.value = commandItem.id
-  const originalChannelId = commandItem.channel_id
-
-  try {
-    const payload = {
-      command: commandItem.command,
-      alias: commandItem.alias,
-      description: commandItem.description,
-      channel_id: newChannelId,
-      is_active: commandItem.is_active,
-      payload_template: commandItem.payload_template,
-    }
-
-    const { data } = await axios.put(`/api/telegram/commands/${commandItem.id}`, payload)
-
-    // Actualizar localmente la relación canal
-    commandItem.channel_id = newChannelId
-    commandItem.channel = data.data?.channel || null
-
-    const channelObj = availableChannels.value.find(c => c.id === newChannelId)
-    showToast(`Canal de "${commandItem.command}" asignado a: ${channelObj ? channelObj.name : 'General Principal'}`, 'success')
-  } catch (error) {
-    commandItem.channel_id = originalChannelId
-    showToast('Error al asignar el canal destino.', 'error')
-  } finally {
-    updatingId.value = null
-  }
-}
-
-/**
- * Abrir modal de edición.
- */
 const openEditDialog = (commandItem) => {
   selectedCommand.value = { ...commandItem }
   editDialog.value = true
 }
 
-/**
- * Guardar cambios del comando desde el diálogo.
- */
 const handleSaveCommand = async (updatedData) => {
   savingEdit.value = true
   try {
@@ -146,7 +60,6 @@ const handleSaveCommand = async (updatedData) => {
     showToast('Comando actualizado correctamente.', 'success')
     editDialog.value = false
 
-    // Actualizar el elemento en la lista local de forma inmutable
     const index = commands.value.findIndex(c => c.id === updatedData.id)
     if (index !== -1 && data.data) {
       commands.value[index] = data.data
@@ -157,36 +70,6 @@ const handleSaveCommand = async (updatedData) => {
     savingEdit.value = false
   }
 }
-
-const showToast = (text, color = 'success') => {
-  snackbar.value = {
-    show: true,
-    text,
-    color,
-  }
-}
-
-// Filtro Reactivo Computado
-const filteredCommands = computed(() => {
-  if (!search.value) return commands.value
-  const query = search.value.toLowerCase().trim()
-  return commands.value.filter(cmd =>
-    cmd.command?.toLowerCase().includes(query) ||
-    cmd.alias?.toLowerCase().includes(query) ||
-    (cmd.description && cmd.description.toLowerCase().includes(query))
-  )
-})
-
-// Opciones de Canales
-const channelOptions = computed(() => {
-  return [
-    { title: 'General / Chat Principal', value: null },
-    ...availableChannels.value.map(c => ({
-      title: `${c.name} (${c.chat_id})`,
-      value: c.id,
-    })),
-  ]
-})
 
 onMounted(() => {
   fetchCommands()
@@ -276,7 +159,7 @@ onMounted(() => {
                 color="success"
                 hide-details="auto"
                 density="comfortable"
-                :disabled="updatingId === cmd.id"
+                :disabled="updatingId === cmd.id || !ability.can('update', 'Telegram')"
                 @change="toggleCommand(cmd)"
               >
                 <template #label>
@@ -309,7 +192,7 @@ onMounted(() => {
                 variant="outlined"
                 hide-details="auto"
                 style="width: 100%; min-width: 220px;"
-                :disabled="updatingId === cmd.id"
+                :disabled="updatingId === cmd.id || !ability.can('update', 'Telegram')"
                 @update:model-value="(val) => updateChannelAssignment(cmd, val)"
               >
                 <template #selection="{ item }">
@@ -331,6 +214,7 @@ onMounted(() => {
                 variant="text"
                 color="default"
                 size="small"
+                :disabled="!ability.can('update', 'Telegram')"
                 @click="openEditDialog(cmd)"
               >
                 <VIcon icon="tabler-pencil" size="18" />
@@ -364,7 +248,7 @@ onMounted(() => {
                 color="success"
                 hide-details="auto"
                 density="comfortable"
-                :disabled="updatingId === cmd.id"
+                :disabled="updatingId === cmd.id || !ability.can('update', 'Telegram')"
                 @change="toggleCommand(cmd)"
               />
             </div>
@@ -389,7 +273,7 @@ onMounted(() => {
                   density="comfortable"
                   variant="outlined"
                   hide-details="auto"
-                  :disabled="updatingId === cmd.id"
+                  :disabled="updatingId === cmd.id || !ability.can('update', 'Telegram')"
                   @update:model-value="(val) => updateChannelAssignment(cmd, val)"
                 />
               </div>
@@ -399,6 +283,7 @@ onMounted(() => {
                 variant="tonal"
                 color="primary"
                 size="small"
+                :disabled="!ability.can('update', 'Telegram')"
                 @click="openEditDialog(cmd)"
               >
                 <VIcon icon="tabler-pencil" size="18" />
