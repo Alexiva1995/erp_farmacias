@@ -1362,9 +1362,11 @@ class IaAssistantReportService
                     foreach ($tierItems as $sku) {
                         if ($puntuacionTotalLiga > 0) {
                             $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;
+                            // faltanteLiga ya es el neto a pedir (descontando el stock util de la liga)
+                            // por lo tanto, la cuota asignada es directamente lo que se debe comprar.
                             $sugeridoTeorico = ceil($faltanteLiga * $cuotaParticipacion);
                             
-                            $sku->solicitar = max(0, (int)($sugeridoTeorico - $sku->stock_efectivo));
+                            $sku->solicitar = (int)$sugeridoTeorico;
                         } else {
                             $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
                             $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
