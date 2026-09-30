@@ -131,8 +131,10 @@ const finalFilteredCommands = computed(() => {
         </VRow>
       </VCardText>
 
+      <VDivider />
+
       <!-- Estado de Carga con Esqueletos -->
-      <VCardText v-if="loading" class="pt-0">
+      <VCardText v-if="loading" class="pt-4">
         <VSkeletonLoader
           type="table-tbody"
           class="my-2"
@@ -140,111 +142,113 @@ const finalFilteredCommands = computed(() => {
       </VCardText>
 
       <!-- Vista de Comandos: Tabla con soporte Responsive -->
-      <VTable v-else-if="finalFilteredCommands.length > 0" class="text-no-wrap">
-        <thead>
-          <tr>
-            <th class="text-uppercase text-caption font-weight-bold" style="width: 140px;">Estado</th>
-            <th class="text-uppercase text-caption font-weight-bold">Comando</th>
-            <th class="text-uppercase text-caption font-weight-bold">Nombre / Alias</th>
-            <th class="text-uppercase text-caption font-weight-bold" style="width: 280px;">Canal Destino</th>
-            <th class="text-uppercase text-caption font-weight-bold">Descripción</th>
-            <th class="text-uppercase text-caption font-weight-bold text-center" style="width: 130px;">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="cmd in finalFilteredCommands" :key="cmd.id">
-            <td>
-              <VSwitch
-                v-model="cmd.is_active"
-                color="success"
-                hide-details="auto"
-                density="comfortable"
-                :disabled="updatingId === cmd.id || !$can('edit', 'TelegramConfig')"
-                @change="toggleCommand(cmd)"
-              >
-                <template #label>
-                  <VChip
-                    size="x-small"
-                    :color="cmd.is_active ? 'success' : 'secondary'"
-                    variant="tonal"
-                    class="ms-1 font-weight-medium"
+      <div v-else-if="finalFilteredCommands.length > 0" class="table-responsive">
+        <VTable class="text-no-wrap">
+          <thead>
+            <tr>
+              <th class="text-uppercase text-caption font-weight-bold" style="width: 140px;">Estado</th>
+              <th class="text-uppercase text-caption font-weight-bold">Comando</th>
+              <th class="text-uppercase text-caption font-weight-bold">Nombre / Alias</th>
+              <th class="text-uppercase text-caption font-weight-bold" style="width: 280px;">Canal Destino</th>
+              <th class="text-uppercase text-caption font-weight-bold">Descripción</th>
+              <th class="text-uppercase text-caption font-weight-bold text-center" style="width: 130px;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="cmd in finalFilteredCommands" :key="cmd.id">
+              <td style="width: 140px;">
+                <VSwitch
+                  v-model="cmd.is_active"
+                  color="success"
+                  hide-details="auto"
+                  density="comfortable"
+                  :disabled="updatingId === cmd.id || !$can('edit', 'TelegramConfig')"
+                  @change="toggleCommand(cmd)"
+                >
+                  <template #label>
+                    <VChip
+                      size="x-small"
+                      :color="cmd.is_active ? 'success' : 'secondary'"
+                      variant="tonal"
+                      class="ms-1 font-weight-medium"
+                    >
+                      {{ cmd.is_active ? 'Activo' : 'Inactivo' }}
+                    </VChip>
+                  </template>
+                </VSwitch>
+              </td>
+              <td>
+                <VChip color="primary" size="small" variant="tonal" class="font-weight-bold">
+                  {{ cmd.command }}
+                </VChip>
+              </td>
+              <td class="font-weight-bold text-high-emphasis">
+                {{ cmd.alias }}
+              </td>
+              <td>
+                <VSelect
+                  :model-value="cmd.channel_id"
+                  :items="channelOptions"
+                  item-title="title"
+                  item-value="value"
+                  density="comfortable"
+                  variant="outlined"
+                  hide-details="auto"
+                  style="min-width: 240px;"
+                  :disabled="updatingId === cmd.id || !$can('edit', 'TelegramConfig')"
+                  @update:model-value="(val) => updateChannelAssignment(cmd, val)"
+                >
+                  <template #selection="{ item }">
+                    <VChip size="small" variant="tonal" color="info" class="text-truncate">
+                      <VIcon icon="tabler-brand-telegram" size="14" class="me-1" />
+                      {{ item.title }}
+                    </VChip>
+                  </template>
+                </VSelect>
+              </td>
+              <td>
+                <span class="text-body-2 text-medium-emphasis text-wrap" style="max-width: 320px; display: inline-block;">
+                  {{ cmd.description || 'Sin descripción asignada' }}
+                </span>
+              </td>
+              <td class="text-center">
+                <div class="d-flex align-center justify-center gap-1">
+                  <!-- Botón de Prueba Rápida -->
+                  <VBtn
+                    icon
+                    variant="text"
+                    color="info"
+                    size="small"
+                    :loading="testingId === cmd.id"
+                    :disabled="!$can('read', 'TelegramConfig')"
+                    @click="testCommand(cmd)"
                   >
-                    {{ cmd.is_active ? 'Activo' : 'Inactivo' }}
-                  </VChip>
-                </template>
-              </VSwitch>
-            </td>
-            <td>
-              <VChip color="primary" size="small" variant="tonal" class="font-weight-bold">
-                {{ cmd.command }}
-              </VChip>
-            </td>
-            <td class="font-weight-bold text-high-emphasis">
-              {{ cmd.alias }}
-            </td>
-            <td>
-              <VSelect
-                :model-value="cmd.channel_id"
-                :items="channelOptions"
-                item-title="title"
-                item-value="value"
-                density="comfortable"
-                variant="outlined"
-                hide-details="auto"
-                style="min-width: 240px;"
-                :disabled="updatingId === cmd.id || !$can('edit', 'TelegramConfig')"
-                @update:model-value="(val) => updateChannelAssignment(cmd, val)"
-              >
-                <template #selection="{ item }">
-                  <VChip size="small" variant="tonal" color="info" class="text-truncate">
-                    <VIcon icon="tabler-brand-telegram" size="14" class="me-1" />
-                    {{ item.title }}
-                  </VChip>
-                </template>
-              </VSelect>
-            </td>
-            <td>
-              <span class="text-body-2 text-medium-emphasis text-wrap" style="max-width: 320px; display: inline-block;">
-                {{ cmd.description || 'Sin descripción asignada' }}
-              </span>
-            </td>
-            <td class="text-center">
-              <div class="d-flex align-center justify-center gap-1">
-                <!-- Botón de Prueba Rápida -->
-                <VBtn
-                  icon
-                  variant="text"
-                  color="info"
-                  size="small"
-                  :loading="testingId === cmd.id"
-                  :disabled="!$can('read', 'TelegramConfig')"
-                  @click="testCommand(cmd)"
-                >
-                  <VIcon icon="tabler-send" size="18" />
-                  <VTooltip activator="parent" location="top">
-                    Probar envío de comando a Telegram
-                  </VTooltip>
-                </VBtn>
+                    <VIcon icon="tabler-send" size="18" />
+                    <VTooltip activator="parent" location="top">
+                      Probar envío de comando a Telegram
+                    </VTooltip>
+                  </VBtn>
 
-                <!-- Botón de Edición -->
-                <VBtn
-                  icon
-                  variant="text"
-                  color="default"
-                  size="small"
-                  :disabled="!$can('edit', 'TelegramConfig')"
-                  @click="openEditDialog(cmd)"
-                >
-                  <VIcon icon="tabler-pencil" size="18" />
-                  <VTooltip activator="parent" location="top">
-                    Editar parámetros del comando
-                  </VTooltip>
-                </VBtn>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </VTable>
+                  <!-- Botón de Edición -->
+                  <VBtn
+                    icon
+                    variant="text"
+                    color="default"
+                    size="small"
+                    :disabled="!$can('edit', 'TelegramConfig')"
+                    @click="openEditDialog(cmd)"
+                  >
+                    <VIcon icon="tabler-pencil" size="18" />
+                    <VTooltip activator="parent" location="top">
+                      Editar parámetros del comando
+                    </VTooltip>
+                  </VBtn>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </VTable>
+      </div>
 
       <!-- Estado Vacío Informativo -->
       <VCardText v-else class="text-center py-10">
