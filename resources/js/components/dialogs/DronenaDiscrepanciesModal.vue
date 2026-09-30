@@ -4,12 +4,16 @@ import SupplierDiscrepancyTab from "@/components/dialogs/SupplierDiscrepancyTab.
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
-import { ref } from "vue";
+import { ref, computed, watch } from "vue";
 
 const props = defineProps({
   modelValue: {
     type: Boolean,
     default: false,
+  },
+  supplierKey: {
+    type: String,
+    default: null,
   },
   discrepancies: {
     type: Object,
@@ -38,7 +42,11 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "close", "invoices-marked-as-paid"]);
 
-const activeTab = ref("dronena");
+const activeTab = ref(props.supplierKey || "dronena");
+watch(() => props.supplierKey, (newKey) => {
+  if (newKey) activeTab.value = newKey;
+});
+
 const isMarkingPaid = ref(false);
 const isMarkingPending = ref(false);
 const hasMadeChanges = ref(false);
@@ -52,6 +60,13 @@ const suppliersConfig = [
   { key: "dromega", title: "Droguería Mega", icon: "tabler-pill" },
   { key: "drosymca", title: "Drosymca", icon: "tabler-building-store" },
 ];
+
+const displayedSuppliers = computed(() => {
+  if (props.supplierKey) {
+    return suppliersConfig.filter(s => s.key === props.supplierKey);
+  }
+  return suppliersConfig;
+});
 
 const getSupplierSummary = (key) => {
   return props.syncSummary?.[key] || (key === "dronena" ? props.syncSummary : {}) || {};
@@ -246,7 +261,7 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
           </VAvatar>
           <div class="d-flex flex-column leading-none">
             <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
-              Resultado de Sincronización con Droguerías
+              {{ displayedSuppliers.length === 1 ? `Resultado de Sincronización — ${displayedSuppliers[0].title}` : 'Resultado de Sincronización con Droguerías' }}
             </h2>
             <div class="d-flex align-center gap-2 mt-1">
               <span
@@ -273,10 +288,10 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
       </VCardTitle>
 
       <!-- ── Pestañas Dinámicas por Droguería ──────────────────────────── -->
-      <div class="bg-surface border-b px-2">
+      <div v-if="displayedSuppliers.length > 1" class="bg-surface border-b px-2">
         <VTabs v-model="activeTab" color="primary" density="compact" show-arrows>
           <VTab
-            v-for="sup in suppliersConfig"
+            v-for="sup in displayedSuppliers"
             :key="sup.key"
             :value="sup.key"
           >
@@ -299,7 +314,7 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
       <VCardText class="pa-4 pa-sm-5 modal-scroll-content bg-background">
         <VWindow v-model="activeTab">
           <VWindowItem
-            v-for="sup in suppliersConfig"
+            v-for="sup in displayedSuppliers"
             :key="sup.key"
             :value="sup.key"
           >

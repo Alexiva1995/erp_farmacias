@@ -150,10 +150,31 @@ class ResourceService
     }
 
     /**
-     * Obtiene todas las tasa, utilizando caché.
+     * Obtiene todas las tasas, utilizando caché o filtradas por fecha histórica.
      */
-    public function getAllExchangeRate(): Collection
+    public function getAllExchangeRate(?string $date = null): Collection
     {
+        if (!empty($date)) {
+            try {
+                $parsedDate = \Carbon\Carbon::parse($date)->endOfDay();
+                $historicalRates = ExchangeRate::query()
+                    ->whereIn('id', function ($query) use ($parsedDate) {
+                        $query->selectRaw('MAX(id)')
+                            ->from('exchange_rates')
+                            ->where('created_at', '<=', $parsedDate)
+                            ->groupBy('currency_code');
+                    })
+                    ->orderBy('currency_code')
+                    ->get(['currency_code', 'rate', 'source']);
+
+                if ($historicalRates->isNotEmpty()) {
+                    return $historicalRates;
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Error al consultar tasas para fecha '{$date}': " . $e->getMessage());
+            }
+        }
+
         return Cache::remember('resources.all_exchange_rates', now()->addHours(1), function () {
             return ExchangeRate::query()
                 ->whereIn('id', function ($query) {

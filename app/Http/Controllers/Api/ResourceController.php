@@ -9,6 +9,7 @@ use App\Models\Laboratory;
 use App\Models\Origin;
 use App\Services\Resources\ResourceService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\Product;
 
@@ -127,9 +128,10 @@ class ResourceController extends Controller
         }
     }
 
-    public function getExchangeRates(): JsonResponse
+    public function getExchangeRates(Request $request): JsonResponse
     {
-        $rates = $this->resourceService->getAllExchangeRate();
+        $date = $request->query('date');
+        $rates = $this->resourceService->getAllExchangeRate($date);
         return response()->json($rates);
     }
     public function getAllProducts()

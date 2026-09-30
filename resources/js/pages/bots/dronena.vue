@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
 import Swal from 'sweetalert2'
+import DronenaDiscrepanciesModal from '@/components/dialogs/DronenaDiscrepanciesModal.vue'
 
 // Estado reactivo del componente
 const isLoading = ref(false)
@@ -11,6 +12,22 @@ const isSyncing = ref(false)
 const showPassword = ref(false)
 const supplierId = ref(null)
 const supplierDetails = ref(null)
+
+// Estado del modal de discrepancias y resultados
+const showDiscrepanciesModal = ref(false)
+const syncSummary = ref({
+  updated: 0,
+  created: 0,
+  skipped: 0,
+  total_extracted: 0,
+  dronena: {},
+  details: [],
+})
+const syncDiscrepancies = ref({
+  paid_in_erp_pending_in_dronena: [],
+  pending_in_erp_paid_in_dronena: [],
+  total_discrepancies: 0,
+})
 
 // Datos del formulario
 const form = ref({
@@ -137,7 +154,25 @@ const runSync = async () => {
     if (form.value.password) payload.password = form.value.password
 
     const res = await axios.post('/invoices/sync-dronena', payload)
+    const resultData = res.data?.data || {}
+
+    syncSummary.value = {
+      updated: resultData.updated || 0,
+      created: resultData.created || 0,
+      skipped: resultData.skipped || 0,
+      total_extracted: resultData.total_extracted || 0,
+      dronena: resultData,
+      details: resultData.details || [],
+    }
+
+    syncDiscrepancies.value = resultData.discrepancies || {
+      paid_in_erp_pending_in_dronena: [],
+      pending_in_erp_paid_in_dronena: [],
+      total_discrepancies: 0,
+    }
+
     toast.success(res.data?.message || 'Sincronización con Dronena completada exitosamente.')
+    showDiscrepanciesModal.value = true
   } catch (error) {
     console.error('Error al sincronizar con Dronena:', error)
     toast.error(error.response?.data?.message || 'Error al ejecutar la sincronización con Dronena.')
@@ -364,5 +399,14 @@ onMounted(() => {
         </VCard>
       </VCol>
     </VRow>
+
+    <!-- Modal de Discrepancias y Resultados exclusivo de Dronena -->
+    <DronenaDiscrepanciesModal
+      v-model="showDiscrepanciesModal"
+      supplier-key="dronena"
+      :discrepancies="syncDiscrepancies"
+      :sync-summary="syncSummary"
+      @close="showDiscrepanciesModal = false"
+    />
   </div>
 </template>

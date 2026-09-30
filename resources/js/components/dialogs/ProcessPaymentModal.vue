@@ -208,6 +208,7 @@ watch(shouldShowDestinationBank, (show) => {
 const loading = ref(false);
 const uploading = ref(false);
 const exchangeRates = ref({});
+const effectiveExchangeRate = ref(props.exchangeRate || 1);
 const errors = ref({});
 
 // Multi-moneda y conversión de origen
@@ -256,11 +257,15 @@ watch(() => form.value.payment_method, (newMethod) => {
   }
 });
 
-watch(() => form.value.payment_date, (newDate) => {
+watch(() => form.value.payment_date, async (newDate) => {
   if (form.value.payment_method === 'cambista' && (!form.value.reference || form.value.reference.startsWith('CAMBISTA-') || form.value.reference.startsWith('EFECTIVO-'))) {
     form.value.reference = `CAMBISTA-${newDate}`;
   } else if (form.value.payment_method === 'cash' && (!form.value.reference || form.value.reference.startsWith('EFECTIVO-') || form.value.reference.startsWith('CAMBISTA-'))) {
     form.value.reference = `EFECTIVO-${newDate}`;
+  }
+
+  if (newDate) {
+    await fetchExchangeRates(newDate);
   }
 });
 
@@ -358,8 +363,8 @@ const totalInBS = computed(() => {
         amount = parseFloat(invoice.total_amount) || 0;
       }
     } else if (invoice.is_indexed) {
-      // Si la factura está indexada, el usuario quiere usar la "tasa de hoy"
-      amount = (parseFloat(invoice.total_usd) || 0) * props.exchangeRate;
+      // Si la factura está indexada, se calcula con la tasa BCV de la fecha de pago seleccionada
+      amount = (parseFloat(invoice.total_usd) || 0) * effectiveExchangeRate.value;
     } else {
       // Si no está indexada, es su monto en dólares por la tasa de la factura
       const invUsd = parseFloat(invoice.total_usd) || 0;
@@ -377,12 +382,21 @@ const totalInBS = computed(() => {
   }, 0);
 });
 
-const fetchExchangeRates = async () => {
+const fetchExchangeRates = async (date = null) => {
   try {
-    const { data } = await axios.get("/public/exchange-rates");
+    const targetDate = date || form.value.payment_date;
+    const params = targetDate ? { date: targetDate } : {};
+    const { data } = await axios.get("/public/exchange-rates", { params });
     const rates = {};
     data.forEach(r => rates[r.currency_code] = parseFloat(r.rate));
     exchangeRates.value = rates;
+    if (rates["BS"]) {
+      effectiveExchangeRate.value = rates["BS"];
+    } else if (rates["VES"]) {
+      effectiveExchangeRate.value = rates["VES"];
+    } else if (props.exchangeRate) {
+      effectiveExchangeRate.value = props.exchangeRate;
+    }
     updateSourceCalculations();
   } catch (error) {
     console.error("Error al cargar tasas:", error);
@@ -430,7 +444,7 @@ const updateSourceCalculations = () => {
   // Si el destino es VES y origen es COP
   if (destCurrency === 'VES' && srcCurr === 'COP') {
     const copRate = exchangeRates.value["COP"] || 4000;
-    const bcvRate = exchangeRates.value["BS"] || props.exchangeRate || 1;
+    const bcvRate = exchangeRates.value["BS"] || effectiveExchangeRate.value || props.exchangeRate || 1;
     // Tasa COP por 1 Bolívar
     const copPerBs = (copRate / bcvRate);
     if (!customConversionMode.value) {
@@ -442,7 +456,7 @@ const updateSourceCalculations = () => {
   } 
   // Si el destino es VES y origen es USD
   else if (destCurrency === 'VES' && srcCurr === 'USD') {
-    const bcvRate = exchangeRates.value["BS"] || props.exchangeRate || 1;
+    const bcvRate = exchangeRates.value["BS"] || effectiveExchangeRate.value || props.exchangeRate || 1;
     if (!customConversionMode.value) {
       exchangeRateApplied.value = lastUsedRate || Number(bcvRate.toFixed(4));
     }
@@ -459,7 +473,7 @@ const updateSourceCalculations = () => {
   }
   // Si el destino es USD y origen es VES
   else if (destCurrency === 'USD' && srcCurr === 'VES') {
-    const bcvRate = exchangeRates.value["BS"] || props.exchangeRate || 1;
+    const bcvRate = exchangeRates.value["BS"] || effectiveExchangeRate.value || props.exchangeRate || 1;
     if (!customConversionMode.value) {
       exchangeRateApplied.value = lastUsedRate || Number(bcvRate.toFixed(4));
     }
@@ -594,7 +608,7 @@ const getInvoiceBsAmount = (invoice) => {
       amount = parseFloat(invoice.total_amount) || 0;
     }
   } else if (invoice.is_indexed) {
-    amount = (parseFloat(invoice.total_usd) || 0) * props.exchangeRate;
+    amount = (parseFloat(invoice.total_usd) || 0) * effectiveExchangeRate.value;
   } else {
     const invUsd = parseFloat(invoice.total_usd) || 0;
     const invRate = parseFloat(invoice.exchange_rate) || 0;
@@ -639,6 +653,12 @@ const formatNumber = (value, currency = null) => {
   }).format(num);
 };
 
+watch(totalInBS, (newBs) => {
+  if (!form.value.is_partial && (form.value.payment_currency === "VES" || form.value.payment_currency === "Bs")) {
+    form.value.payment_amount = Number(newBs.toFixed(2));
+  }
+});
+
 watch(() => form.value.payment_currency, (newCurrency) => {
   if (!form.value.is_partial) {
     if (newCurrency === "VES" || newCurrency === "BS") {
@@ -653,10 +673,11 @@ watch(() => form.value.payment_currency, (newCurrency) => {
 
 watch(() => props.modelValue, (val) => {
   if (val) {
-    fetchExchangeRates();
-    const isAllCop = props.paymentGroup?.currency === 'COP' || (props.invoices.length > 0 && props.invoices.every(i => i.currency === 'COP'));
     const today = new Date().toISOString().split("T")[0];
+    effectiveExchangeRate.value = props.exchangeRate || 1;
     form.value.payment_date = today;
+    fetchExchangeRates(today);
+    const isAllCop = props.paymentGroup?.currency === 'COP' || (props.invoices.length > 0 && props.invoices.every(i => i.currency === 'COP'));
     form.value.reference = `CAMBISTA-${today}`;
     form.value.photo_url = null;
     form.value.payment_currency = isAllCop ? 'COP' : 'VES';
@@ -789,7 +810,7 @@ watch(() => props.modelValue, (val) => {
                   {{ props.invoices.length }} {{ props.invoices.length === 1 ? 'FACTURA' : 'FACTURAS' }}
                 </VChip>
               </div>
-              <span class="text-super-xs text-disabled uppercase font-weight-bold">Tasa BCV Referencial: {{ formatNumber(exchangeRate, 'VES') }} Bs/USD</span>
+              <span class="text-super-xs text-disabled uppercase font-weight-bold">Tasa BCV Referencial: {{ formatNumber(effectiveExchangeRate, 'VES') }} Bs/USD</span>
             </div>
           </div>
 
