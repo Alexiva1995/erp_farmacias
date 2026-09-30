@@ -200,19 +200,33 @@ const formatNumber = (value) => {
       <VTable density="compact" class="bg-surface">
         <thead>
           <tr class="table-header-row">
-            <th class="text-left font-weight-bold">N° Factura</th>
+            <th class="text-left font-weight-bold">N° Documento</th>
             <th class="text-left font-weight-bold">N° Control</th>
             <th class="text-right font-weight-bold">Monto ERP</th>
             <th class="text-right font-weight-bold">Saldo Portal</th>
+            <th class="text-center font-weight-bold" style="width: 140px;">Acción</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in props.paidInErpPending" :key="item.id">
+          <tr v-for="item in props.paidInErpPending" :key="item.id || item.invoice_number">
             <td class="font-weight-bold text-primary">{{ item.invoice_number }}</td>
             <td class="text-medium-emphasis">{{ item.control_number || 'N/A' }}</td>
             <td class="text-right text-medium-emphasis">{{ formatNumber(item.amount) }} {{ item.currency }}</td>
             <td class="text-right font-weight-bold text-error">
               {{ formatNumber(item.portal_amount) }} {{ item.currency || 'Bs' }}
+            </td>
+            <td class="text-center">
+              <VBtn
+                color="warning"
+                variant="tonal"
+                size="x-small"
+                prepend-icon="tabler-arrow-back-up"
+                class="rounded-lg font-weight-bold"
+                :disabled="props.isMarkingPending"
+                @click="emit('mark-paid-as-pending', { supplierTitle: props.supplierTitle, items: [item] })"
+              >
+                Por Pagar
+              </VBtn>
             </td>
           </tr>
         </tbody>
@@ -249,14 +263,15 @@ const formatNumber = (value) => {
       <VTable density="compact" class="bg-surface">
         <thead>
           <tr class="table-header-row">
-            <th class="text-left font-weight-bold">N° Factura</th>
+            <th class="text-left font-weight-bold">N° Documento</th>
             <th class="text-left font-weight-bold">N° Control</th>
             <th class="text-right font-weight-bold">Monto ERP</th>
             <th class="text-center font-weight-bold">Estado ERP</th>
+            <th class="text-center font-weight-bold" style="width: 140px;">Acción</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in props.pendingInErpPaid" :key="item.id">
+          <tr v-for="item in props.pendingInErpPaid" :key="item.id || item.invoice_number">
             <td class="font-weight-bold text-primary">{{ item.invoice_number }}</td>
             <td class="text-medium-emphasis">{{ item.control_number || 'N/A' }}</td>
             <td class="text-right font-weight-bold">
@@ -264,6 +279,19 @@ const formatNumber = (value) => {
             </td>
             <td class="text-center">
               <span class="text-caption text-error font-weight-medium">Por Pagar</span>
+            </td>
+            <td class="text-center">
+              <VBtn
+                color="success"
+                variant="tonal"
+                size="x-small"
+                prepend-icon="tabler-check"
+                class="rounded-lg font-weight-bold"
+                :disabled="props.isMarkingPaid"
+                @click="emit('mark-pending-as-paid', { supplierTitle: props.supplierTitle, items: [item] })"
+              >
+                Pagada
+              </VBtn>
             </td>
           </tr>
         </tbody>

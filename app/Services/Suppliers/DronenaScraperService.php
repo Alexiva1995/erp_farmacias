@@ -312,11 +312,14 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             }
         }
 
-        // Calcular discrepancias entre ERP y portal de Dronena
-        $portalNumbers = [];
+        // Calcular discrepancias entre ERP y portal de Dronena separando estrictamente Facturas (FA) de Notas de Débito (ND)
+        $portalDocuments = [];
         foreach ($documents as $d) {
-            $pClean = ltrim($d['numero_factura'], 'A0');
-            $portalNumbers[$pClean] = $d;
+            $tipoDoc = $d['tipo'] ?? 'FA';
+            $isDocND = in_array($tipoDoc, ['ND', 'ND$']);
+            $numOnly = ltrim(preg_replace('/\D/', '', $d['numero_factura']) ?: $d['numero_factura'], '0');
+            $docKey = ($isDocND ? 'ND_' : 'FA_') . $numOnly;
+            $portalDocuments[$docKey] = $d;
         }
 
         $erpInvoicesQuery = Invoice::query()->select([
@@ -327,6 +330,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             'total_amount',
             'currency',
             'status_payment',
+            'status',
         ]);
         if ($supplierId) {
             $erpInvoicesQuery->where('supplier_id', $supplierId);
@@ -337,22 +341,21 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         }
         $erpInvoices = $erpInvoicesQuery->get();
 
-
-
         $paidInErpPendingInDronena = [];
         $pendingInErpPaidInDronena = [];
 
         foreach ($erpInvoices as $inv) {
-            $invClean = ltrim($inv->invoice_number, 'A0');
-            $isPaidInErp = ($inv->status_payment == 1);
-            $isPendingInPortal = isset($portalNumbers[$invClean]);
+            $isInvND = str_starts_with($inv->invoice_number, 'ND') || ($inv->status === 'ordered' && str_contains($inv->invoice_number, 'ND'));
+            $invNumOnly = ltrim(preg_replace('/\D/', '', $inv->invoice_number) ?: $inv->invoice_number, '0');
+            $invKey = ($isInvND ? 'ND_' : 'FA_') . $invNumOnly;
+
+            $isPaidInErp = ((int) $inv->status_payment === 1);
+            $isPendingInPortal = isset($portalDocuments[$invKey]);
 
             $controlNumber = $inv->control_number;
             if (empty($controlNumber) || $controlNumber === 'N/A') {
                 $matchedControl = Invoice::where('supplier_id', $inv->supplier_id)
-                    ->where(function ($q) use ($invClean) {
-                        $q->where('invoice_number', 'LIKE', "%{$invClean}");
-                    })
+                    ->where('invoice_number', 'LIKE', "%{$invNumOnly}")
                     ->whereNotNull('control_number')
                     ->where('control_number', '!=', '')
                     ->where('control_number', '!=', 'N/A')
@@ -364,15 +367,15 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             }
 
             if ($isPaidInErp && $isPendingInPortal) {
-                $pDoc = $portalNumbers[$invClean];
+                $pDoc = $portalDocuments[$invKey];
                 $paidInErpPendingInDronena[] = [
                     'id' => $inv->id,
                     'invoice_number' => $inv->invoice_number,
                     'control_number' => $controlNumber,
-                    'amount' => $inv->total_amount,
+                    'amount' => (float) $inv->total_amount,
                     'currency' => $inv->currency,
-                    'portal_amount' => $pDoc['saldo_db'] ?? $inv->total_amount,
-                    'portal_type' => $pDoc['tipo_documento'] ?? 'FA',
+                    'portal_amount' => (float) ($pDoc['saldo_db'] ?? $pDoc['monto_db'] ?? $inv->total_amount),
+                    'portal_type' => $pDoc['tipo'] ?? ($isInvND ? 'ND' : 'FA'),
                     'erp_status' => 'Pagada en ERP',
                     'portal_status' => 'Pendiente en Dronena',
                 ];
@@ -381,7 +384,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                     'id' => $inv->id,
                     'invoice_number' => $inv->invoice_number,
                     'control_number' => $controlNumber,
-                    'amount' => $inv->total_amount,
+                    'amount' => (float) $inv->total_amount,
                     'currency' => $inv->currency,
                     'erp_status' => 'Pendiente en ERP',
                     'portal_status' => 'Liquidada/No pendiente en Dronena',

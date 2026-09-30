@@ -115,12 +115,19 @@ const handleMarkPendingAsPaid = async ({ supplierTitle, items }) => {
   const count = items?.length || 0;
   if (count === 0) return;
 
+  const isSingle = count === 1;
+  const singleDoc = items[0];
+
   const result = await Swal.fire({
-    title: `¿Marcar las ${count} facturas de ${supplierTitle} como Pagadas?`,
-    text: `Estas facturas ya figuran liquidadas en ${supplierTitle} y pasarán automáticamente a estado Pagada en tu ERP.`,
+    title: isSingle
+      ? `¿Marcar ${singleDoc.invoice_number} como Pagada?`
+      : `¿Marcar los ${count} documentos de ${supplierTitle} como Pagados?`,
+    text: isSingle
+      ? `Este documento figura liquidado en ${supplierTitle} y pasará automáticamente a estado Pagada en tu ERP.`
+      : `Estos documentos ya figuran liquidados en ${supplierTitle} y pasarán automáticamente a estado Pagada en tu ERP.`,
     icon: "question",
     showCancelButton: true,
-    confirmButtonText: "Sí, marcar como pagadas",
+    confirmButtonText: "Sí, marcar como pagada",
     cancelButtonText: "Cancelar",
     confirmButtonColor: "#28c76f",
   });
@@ -137,11 +144,19 @@ const handleMarkPendingAsPaid = async ({ supplierTitle, items }) => {
       invoice_numbers: invoiceNumbers,
     });
 
-    toast.success(data.message || `${count} facturas de ${supplierTitle} marcadas como pagadas`);
+    toast.success(data.message || `${isSingle ? singleDoc.invoice_number : count + ' documentos'} de ${supplierTitle} marcado(s) como pagado(s)`);
     hasMadeChanges.value = true;
 
     // Remover visualmente de la lista local de discrepancias
-    items.length = 0;
+    const currentList = getPendingInErpPaid(activeTab.value);
+    invoiceIds.forEach((id) => {
+      const idx = currentList.findIndex((i) => i.id === id);
+      if (idx !== -1) currentList.splice(idx, 1);
+    });
+    invoiceNumbers.forEach((num) => {
+      const idx = currentList.findIndex((i) => i.invoice_number === num);
+      if (idx !== -1) currentList.splice(idx, 1);
+    });
   } catch (error) {
     console.error(`Error marcando facturas de ${supplierTitle}:`, error);
     toast.error(error.response?.data?.message || `Error al marcar las facturas de ${supplierTitle} como pagadas.`);
@@ -154,9 +169,16 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
   const count = items?.length || 0;
   if (count === 0) return;
 
+  const isSingle = count === 1;
+  const singleDoc = items[0];
+
   const result = await Swal.fire({
-    title: `¿Pasar las ${count} facturas de ${supplierTitle} a Por Pagar?`,
-    text: `Estas facturas aún registran saldo pendiente en ${supplierTitle} y volverán a estado Pendiente en tu ERP.`,
+    title: isSingle
+      ? `¿Pasar ${singleDoc.invoice_number} a Por Pagar?`
+      : `¿Pasar los ${count} documentos de ${supplierTitle} a Por Pagar?`,
+    text: isSingle
+      ? `Este documento aún registra saldo pendiente en ${supplierTitle} y volverá a estado Pendiente (Por Pagar) en tu ERP.`
+      : `Estos documentos aún registran saldo pendiente en ${supplierTitle} y volverán a estado Pendiente en tu ERP.`,
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Sí, cambiar a Por Pagar",
@@ -176,11 +198,19 @@ const handleMarkPaidAsPending = async ({ supplierTitle, items }) => {
       invoice_numbers: invoiceNumbers,
     });
 
-    toast.success(data.message || `${count} facturas de ${supplierTitle} pasadas a Por Pagar`);
+    toast.success(data.message || `${isSingle ? singleDoc.invoice_number : count + ' documentos'} de ${supplierTitle} pasado(s) a Por Pagar`);
     hasMadeChanges.value = true;
 
     // Remover visualmente de la lista local de discrepancias
-    items.length = 0;
+    const currentList = getPaidInErpPending(activeTab.value);
+    invoiceIds.forEach((id) => {
+      const idx = currentList.findIndex((i) => i.id === id);
+      if (idx !== -1) currentList.splice(idx, 1);
+    });
+    invoiceNumbers.forEach((num) => {
+      const idx = currentList.findIndex((i) => i.invoice_number === num);
+      if (idx !== -1) currentList.splice(idx, 1);
+    });
   } catch (error) {
     console.error(`Error revirtiendo facturas de ${supplierTitle}:`, error);
     toast.error(error.response?.data?.message || `Error al actualizar las facturas de ${supplierTitle}.`);
