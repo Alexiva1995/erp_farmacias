@@ -94,8 +94,8 @@ const finalFilteredCommands = computed(() => {
     <TelegramCommandStatsCards :commands="commands" />
 
     <!-- Tarjeta Principal de Tabla y Filtros -->
-    <VCard border flat rounded="lg">
-      <VCardText class="pb-3 pt-5">
+    <VCard>
+      <VCardItem class="pb-3">
         <VRow align="center">
           <VCol cols="12" sm="7" md="6">
             <VTextField
@@ -129,20 +129,18 @@ const finalFilteredCommands = computed(() => {
             </VBtnToggle>
           </VCol>
         </VRow>
-      </VCardText>
+      </VCardItem>
 
       <VDivider />
 
-      <!-- Estado de Carga con Esqueletos -->
-      <VCardText v-if="loading" class="pt-4">
-        <VSkeletonLoader
-          type="table-tbody"
-          class="my-2"
+      <VCardText class="pt-0">
+        <VProgressLinear
+          v-if="loading"
+          indeterminate
+          color="primary"
+          class="mb-4"
         />
-      </VCardText>
 
-      <!-- Vista de Comandos: Tabla con soporte Responsive -->
-      <div v-else-if="finalFilteredCommands.length > 0" class="table-responsive">
         <VTable class="text-no-wrap">
           <thead>
             <tr>
@@ -155,6 +153,30 @@ const finalFilteredCommands = computed(() => {
             </tr>
           </thead>
           <tbody>
+            <tr v-if="finalFilteredCommands.length === 0 && !loading">
+              <td colspan="6" class="text-center py-10 text-medium-emphasis">
+                <VAvatar color="secondary" variant="tonal" size="64" class="mb-3">
+                  <VIcon icon="tabler-search-off" size="36" />
+                </VAvatar>
+                <div class="text-h6 font-weight-bold mb-1">
+                  No se encontraron comandos
+                </div>
+                <div class="text-body-2 text-medium-emphasis mb-4">
+                  {{ search ? `No hay resultados para la búsqueda "${search}".` : 'No existen comandos configurados para este filtro.' }}
+                </div>
+                <VBtn
+                  v-if="search || activeFilter !== 'all'"
+                  color="primary"
+                  variant="tonal"
+                  size="small"
+                  prepend-icon="tabler-x"
+                  @click="search = ''; activeFilter = 'all'"
+                >
+                  Limpiar filtros
+                </VBtn>
+              </td>
+            </tr>
+
             <tr v-for="cmd in finalFilteredCommands" :key="cmd.id">
               <td style="width: 140px;">
                 <VSwitch
@@ -248,29 +270,6 @@ const finalFilteredCommands = computed(() => {
             </tr>
           </tbody>
         </VTable>
-      </div>
-
-      <!-- Estado Vacío Informativo -->
-      <VCardText v-else class="text-center py-10">
-        <VAvatar color="secondary" variant="tonal" size="64" class="mb-3">
-          <VIcon icon="tabler-search-off" size="36" />
-        </VAvatar>
-        <div class="text-h6 font-weight-bold mb-1">
-          No se encontraron comandos
-        </div>
-        <div class="text-body-2 text-medium-emphasis mb-4">
-          {{ search ? `No hay resultados para la búsqueda "${search}".` : 'No existen comandos configurados para este filtro.' }}
-        </div>
-        <VBtn
-          v-if="search || activeFilter !== 'all'"
-          color="primary"
-          variant="tonal"
-          size="small"
-          prepend-icon="tabler-x"
-          @click="search = ''; activeFilter = 'all'"
-        >
-          Limpiar filtros
-        </VBtn>
       </VCardText>
     </VCard>
 
