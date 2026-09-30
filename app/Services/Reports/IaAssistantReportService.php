@@ -1293,6 +1293,7 @@ class IaAssistantReportService
             $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
             $stockEfectivo = $stockActual + $autoOrder;
 
+            $item->dias_quiebre = $item->dias_quiebre ?? 0;
             $item->promedio_calculado = round($demandaTrueIntent, 2);
             $item->demanda_ponderada = round($stockObjetivo, 2);
             $item->rop_calculado = round($rop, 2);
@@ -1496,6 +1497,8 @@ class IaAssistantReportService
             $rop = $vpd * ($effectiveLeadTime + $bufferDays);
             $stockObjetivo = $vpd * $coverageDays;
 
+            $diasQuiebre90d = max(0, 90 - (int)($d1 + $d2 + $d3));
+            $item->dias_quiebre = $diasQuiebre90d;
             $item->promedio_calculado = round($demandaMensualAjustada, 2);
             $item->demanda_ponderada = round($stockObjetivo, 2);
 

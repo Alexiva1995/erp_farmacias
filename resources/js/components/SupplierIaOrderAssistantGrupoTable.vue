@@ -272,7 +272,8 @@ const innerHeaders = computed(() => {
 
   base.push(
     { title: "COSTO ($)", key: "unit_cost", sortable: true, align: 'end', width: '85px' },
-    { title: "VENTA 30D", key: "total_sold_completed", sortable: true, align: 'center', width: '85px' },
+    { title: "VENTA 30D", key: "total_sold_completed", sortable: true, align: 'center', width: '80px' },
+    { title: "QUIEBRE (90D)", key: "dias_quiebre", sortable: true, align: 'center', width: '90px' },
     { title: "PROM. (ROP)", key: "promedio_calculado", sortable: true, align: 'center', width: '85px' },
     { title: "STOCK FÍSICO", key: "lote_quantity", sortable: true, align: 'center', width: '85px' },
     { title: "TRÁNSITO", key: "totalQuantityInAutoOrder", sortable: true, align: 'center', width: '80px' },
@@ -452,6 +453,16 @@ function rowClass(item) {
                 <span class="font-weight-bold">{{ item.total_sold_completed ? Math.round(item.total_sold_completed) : 0 }}</span>
               </template>
 
+              <!-- QUIEBRE (90D) -->
+              <template #item.dias_quiebre="{ item }">
+                <span
+                  class="font-weight-bold"
+                  :class="Number(item.dias_quiebre || 0) >= 30 ? 'text-error' : (Number(item.dias_quiebre || 0) > 0 ? 'text-warning' : 'text-disabled')"
+                >
+                  {{ item.dias_quiebre !== undefined ? Math.round(item.dias_quiebre) + 'd' : '0d' }}
+                </span>
+              </template>
+
               <!-- PROM. (ROP) -->
               <template #item.promedio_calculado="{ item }">
                 <span class="font-weight-bold">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '0.0' }}</span>
@@ -613,6 +624,10 @@ function rowClass(item) {
                     <div class="d-flex justify-space-between text-xs my-1">
                       <span class="text-disabled">Venta 30d:</span>
                       <span class="font-weight-bold">{{ item.total_sold_completed ? Math.round(item.total_sold_completed) : 0 }}</span>
+                    </div>
+                    <div class="d-flex justify-space-between text-xs my-1">
+                      <span class="text-disabled">Días Quiebre (90d):</span>
+                      <span class="font-weight-bold" :class="Number(item.dias_quiebre || 0) >= 30 ? 'text-error' : 'text-warning'">{{ item.dias_quiebre !== undefined ? Math.round(item.dias_quiebre) + 'd' : '0d' }}</span>
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
                       <span class="text-disabled">Prom. (ROP):</span>
