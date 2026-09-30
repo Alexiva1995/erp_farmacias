@@ -70,6 +70,7 @@ const tipoDeVistaOpcion = [
 ];
 
 const tipoFiltracionOpcion = [
+  { title: "Ponderado Hiperplus (Inteligencia Predictiva por Ligas)", value: "stockout_adjusted_rop_hiperplus" },
   { title: "Stockout-Adjusted ROP PLUS (Inteligencia de Demanda)", value: "stockout_adjusted_rop_plus" },
   { title: "Stockout-Adjusted ROP (Predeterminado)",               value: "stockout_adjusted_rop"      },
   { title: "Ponderado (Óptimo ROP)",                              value: "weighted"                   },
