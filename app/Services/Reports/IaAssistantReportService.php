@@ -44,7 +44,9 @@ class IaAssistantReportService
                 $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtros);
             }
 
-            if ($tipo === 'stockout_adjusted_rop_plus' || $tipo === 'stockout_adjusted_rop_hiperplus') {
+            if ($tipo === 'stockout_adjusted_rop_hiperplus') {
+                $procesado = $this->processStockoutAdjustedRopHiperplusReport($resultado, $filtros);
+            } elseif ($tipo === 'stockout_adjusted_rop_plus') {
                 $procesado = $this->processStockoutAdjustedRopPlusReport($resultado, $filtros);
             } elseif ($tipo === 'stockout_adjusted_rop') {
                 $procesado = $this->processStockoutAdjustedRopReport($resultado, $filtros);
@@ -426,7 +428,9 @@ class IaAssistantReportService
             $procesado = $this->processRegularReport($resultado, $tipo, $filtros);
         } else {
             $resultado = $this->productRepository->filtrarIndividualProductForAssistantReportTypeAveragesWithoutPaginate($filtrosHidratacion);
-            if ($tipo === 'stockout_adjusted_rop_plus' || $tipo === 'stockout_adjusted_rop_hiperplus') {
+            if ($tipo === 'stockout_adjusted_rop_hiperplus') {
+                $procesado = $this->processStockoutAdjustedRopHiperplusReport($resultado, $filtros);
+            } elseif ($tipo === 'stockout_adjusted_rop_plus') {
                 $procesado = $this->processStockoutAdjustedRopPlusReport($resultado, $filtros);
             } elseif ($tipo === 'stockout_adjusted_rop') {
                 $procesado = $this->processStockoutAdjustedRopReport($resultado, $filtros);
