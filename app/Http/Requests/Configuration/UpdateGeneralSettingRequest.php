@@ -98,6 +98,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'expense_mode' => 'nullable|string|in:simple,real',
             'expense_auto_approve' => 'nullable|boolean',
             'enabled_ia_assistant_views' => 'nullable|array',
+            'enabled_telegram_views' => 'nullable|array',
             'enable_invoices' => 'nullable|boolean',
             'enable_invoice_locations' => 'nullable|boolean',
             'enabled_bi_views' => 'nullable|array',

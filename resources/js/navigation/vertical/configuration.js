@@ -60,6 +60,10 @@ export default [
         to: 'configuration-ia-assistant',
       },
       {
+        title: 'Telegram',
+        to: 'configuration-telegram',
+      },
+      {
         title: 'Productos',
         to: 'configuration-products',
       },
