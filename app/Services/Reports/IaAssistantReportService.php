@@ -1353,50 +1353,79 @@ class IaAssistantReportService
                     })->filter(fn($val) => $val > 0);
                     $promedioPrecioLiga = $validPrices->isNotEmpty() ? $validPrices->avg() : 0;
 
-                    // Reparto Continuo Suave
+                    // FASE 4.1: PRE-ASIGNACIÓN PRIORITARIA (Best Seller Safety Net)
+                    $presupuestoObjetivoLiga = $objLiga;
+                    
+                    foreach ($tierItems as $sku) {
+                        $sku->pre_asignado_bs = 0;
+                        $ropIndividual = (float)($sku->rop_calculado ?? $sku->rop ?? 0);
+                        $stockEfectivo = (float)($sku->stock_efectivo ?? 0);
+                        $faltanteIndividual = (int)ceil($ropIndividual - $stockEfectivo);
+
+                        if ($faltanteIndividual > 0 && $ropIndividual > 0) {
+                            $ipoValor = (float)($sku->ipo ?? 0);
+                            $ipoDecimal = $ipoValor > 1.0 ? ($ipoValor / 100) : $ipoValor;
+                            $diasQuiebre = (int)($sku->dias_quiebre ?? 0);
+                            $diasConStockM1 = (float)($sku->dias_con_stock_m1 ?? 30);
+                            $tieneQuiebreReciente = $diasQuiebre > 0 || $diasConStockM1 < 25;
+
+                            // Si es Best Seller o sufre quiebre crónico
+                            if ($ipoDecimal >= 0.35 || $tieneQuiebreReciente) {
+                                $sku->pre_asignado_bs = $faltanteIndividual;
+                                // Resta su objetivo directo (ROP) del presupuesto global de la liga
+                                $presupuestoObjetivoLiga -= $ropIndividual;
+                            }
+                        }
+                    }
+
+                    // Asegurar que el presupuesto sobrante no sea negativo
+                    $presupuestoObjetivoLiga = max(0, $presupuestoObjetivoLiga);
+
+                    // FASE 4.2: CALIFICACIÓN DE CASCADA Y PENALIZACIÓN DE BAJO IPO
                     foreach ($tierItems as $sku) {
                         $ipo = $preferenceShareByProduct[$sku->id] ?? 0;
                         $precioItem = (float)(($sku->sale_price ?? 0) > 0 ? $sku->sale_price : ($sku->unit_cost ?? 0));
+                        $stockFisico = (float)($sku->stock_fisico ?? 0);
                         
-                        $factorPrecio = ($precioItem > 0 && $precioItem <= $promedioPrecioLiga) ? 1.15 : 0.85;
-                        $sku->puntuacionCompra = $ipo * $factorPrecio;
+                        $ipoValor = (float)($sku->ipo ?? 0);
+                        $ipoDecimal = $ipoValor > 1.0 ? ($ipoValor / 100) : $ipoValor;
+
+                        // Antigüedad para proteger lanzamientos recientes (sin histórico)
+                        $diasAntiguedad = isset($sku->created_at) ? \Carbon\Carbon::parse($sku->created_at)->diffInDays(now()) : 999;
+                        $esProductoNuevo = $diasAntiguedad < 90;
+
+                        // Penalización: IPO < 10%, tiene stock físico, NO es BS y NO es producto nuevo
+                        if ($ipoDecimal < 0.10 && $stockFisico > 0 && $sku->pre_asignado_bs == 0 && !$esProductoNuevo) {
+                            $sku->puntuacionCompra = 0;
+                        } else {
+                            $factorPrecio = ($precioItem > 0 && $precioItem <= $promedioPrecioLiga) ? 1.15 : 0.85;
+                            $sku->puntuacionCompra = $ipo * $factorPrecio;
+                        }
                     }
 
                     $puntuacionTotalLiga = collect($tierItems)->sum('puntuacionCompra');
 
+                    // FASE 4.3: DISTRIBUCIÓN DEL PRESUPUESTO SOBRANTE
                     foreach ($tierItems as $sku) {
-                        if ($puntuacionTotalLiga > 0) {
+                        if ($puntuacionTotalLiga > 0 && $sku->puntuacionCompra > 0) {
                             $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;
+                            $objetivoAsignado = $presupuestoObjetivoLiga * $cuotaParticipacion;
                             
-                            // Distribuimos el OBJETIVO ideal de la liga, no el faltante ciego.
-                            $objetivoAsignado = $objLiga * $cuotaParticipacion;
-                            $exceso = $objetivoAsignado - $sku->stock_efectivo;
-                            
-                            $sku->solicitar = $exceso > 0 ? ceil($exceso) : floor($exceso);
+                            if ($sku->pre_asignado_bs > 0) {
+                                // Mantiene su pre-asignación y absorbe su cuota del restante
+                                $sku->solicitar = $sku->pre_asignado_bs + ceil($objetivoAsignado);
+                            } else {
+                                $exceso = $objetivoAsignado - $sku->stock_efectivo;
+                                $sku->solicitar = $exceso > 0 ? ceil($exceso) : floor($exceso);
+                            }
                         } else {
-                            $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
-                            $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
-                        }
-                    }
-                }
-
-                // --- REGLA 2: PROTECCIÓN DE SUPLENCIA INDIVIDUAL PARA BEST SELLERS Y QUIEBRES ---
-                foreach ($tierItems as $sku) {
-                    $ropIndividual = (float) ($sku->rop_calculado ?? $sku->rop ?? 0);
-                    $stockEfectivo = (float) ($sku->stock_efectivo ?? 0);
-                    $faltanteIndividual = (int) ceil($ropIndividual - $stockEfectivo);
-
-                    // Si el SKU individual tiene déficit respecto a su ROP
-                    if ($faltanteIndividual > 0 && $ropIndividual > 0) {
-                        $ipoValor = (float) ($sku->ipo ?? 0);
-                        $ipoDecimal = $ipoValor > 1.0 ? ($ipoValor / 100) : $ipoValor;
-                        $diasQuiebre = (int) ($sku->dias_quiebre ?? 0);
-                        $diasConStockM1 = (float) ($sku->dias_con_stock_m1 ?? 30);
-                        $tieneQuiebreReciente = $diasQuiebre > 0 || $diasConStockM1 < 25;
-
-                        // Si el producto es líder de liga (IPO >= 35%) O registra quiebre de stock en el período
-                        if ($ipoDecimal >= 0.35 || $tieneQuiebreReciente) {
-                            $sku->solicitar = max((int) ($sku->solicitar ?? 0), $faltanteIndividual);
+                            // Si no participa en la cascada (ej. penalizado)
+                            if ($sku->pre_asignado_bs > 0) {
+                                $sku->solicitar = $sku->pre_asignado_bs;
+                            } else {
+                                $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
+                                $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
+                            }
                         }
                     }
                 }
