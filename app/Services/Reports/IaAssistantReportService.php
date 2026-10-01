@@ -1701,6 +1701,9 @@ class IaAssistantReportService
                     $w3 = 0.20;
                 }
 
+                $demandaMensualAjustada = ($w1 * $cap1) + ($w2 * $cap2) + ($w3 * $cap3);
+            }
+
             $esQuiebreExtremo = ($v1 + $v2 + $v3 <= 0) && ($d1 + $d2 + $d3 <= 0 || $diasQuiebre90d >= 60);
 
             if ($esQuiebreExtremo) {
