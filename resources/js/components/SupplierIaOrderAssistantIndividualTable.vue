@@ -749,12 +749,24 @@ function rowClass(item) {
   padding-inline: 4px !important;
 }
 
-:deep(.row-needs td) {
+:deep(tr.row-needs td) {
   background-color: rgba(40, 199, 111, 4%) !important;
 }
+:deep(tr.row-needs td:first-child) {
+  border-inline-start: 4px solid rgb(var(--v-theme-success)) !important;
+}
+:deep(tr.row-needs td:last-child) {
+  border-inline-end: 4px solid rgb(var(--v-theme-success)) !important;
+}
 
-:deep(.row-excess td) {
+:deep(tr.row-excess td) {
   background-color: rgba(234, 84, 85, 4%) !important;
+}
+:deep(tr.row-excess td:first-child) {
+  border-inline-start: 4px solid rgb(var(--v-theme-error)) !important;
+}
+:deep(tr.row-excess td:last-child) {
+  border-inline-end: 4px solid rgb(var(--v-theme-error)) !important;
 }
 
 :deep(.centered-input-text-sm .v-field__input) {

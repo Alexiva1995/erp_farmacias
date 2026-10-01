@@ -864,12 +864,18 @@ function rowClass(item) {
   padding-bottom: 6px !important;
 }
 
-.row-needs {
-  border-inline-start: 3px solid rgb(var(--v-theme-success)) !important;
+.inner-products-table :deep(tr.row-needs td:first-child) {
+  border-inline-start: 4px solid rgb(var(--v-theme-success)) !important;
+}
+.inner-products-table :deep(tr.row-needs td:last-child) {
+  border-inline-end: 4px solid rgb(var(--v-theme-success)) !important;
 }
 
-.row-excess {
-  border-inline-start: 3px solid rgb(var(--v-theme-error)) !important;
+.inner-products-table :deep(tr.row-excess td:first-child) {
+  border-inline-start: 4px solid rgb(var(--v-theme-error)) !important;
+}
+.inner-products-table :deep(tr.row-excess td:last-child) {
+  border-inline-end: 4px solid rgb(var(--v-theme-error)) !important;
 }
 
 .card-needs {
