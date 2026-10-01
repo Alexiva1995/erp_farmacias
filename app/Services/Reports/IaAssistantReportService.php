@@ -1279,19 +1279,24 @@ class IaAssistantReportService
                 return (float)($gp->promedio_calculado ?? (($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0)));
             });
 
-            $baseDemand = $tierTotalDemand > 0 ? $tierTotalDemand : ($item->promedio_calculado ?? 0);
-            $demandaTrueIntent = $baseDemand * $ipo * $elasticityFactor;
+            $isExtremo = (bool)($item->is_quiebre_extremo_sin_historial ?? false);
 
-            $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
-            $effectiveLeadTime = $isColombian ? 14 : $leadTimeDays;
-
-            $vpd = $demandaTrueIntent / 30;
-            $rop = $vpd * ($effectiveLeadTime + $bufferDays);
-            // Regla del ROP Mínimo = 1.0 (Lote mínimo) solo para demandas mensuales >= 1.0
-            if ($demandaTrueIntent >= 1.0) {
-                $rop = max(1.0, $rop);
+            if ($isExtremo) {
+                $demandaTrueIntent = 0.0;
+                $vpd = 0.0;
+                $rop = 0.0;
+                $stockObjetivo = 0.0;
+            } else {
+                $baseDemand = $tierTotalDemand > 0 ? $tierTotalDemand : ($item->promedio_calculado ?? 0);
+                $demandaTrueIntent = $baseDemand * $ipo * $elasticityFactor;
+                $vpd = $demandaTrueIntent / 30;
+                $rop = $vpd * ($effectiveLeadTime + $bufferDays);
+                // Regla del ROP Mínimo = 1.0 (Lote mínimo) solo para demandas mensuales >= 1.0
+                if ($demandaTrueIntent >= 1.0) {
+                    $rop = max(1.0, $rop);
+                }
+                $stockObjetivo = $vpd * $coverageDays;
             }
-            $stockObjetivo = $vpd * $coverageDays;
 
             $stockActual = (float)($item->lote_quantity ?? $item->stock ?? 0);
             $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
@@ -1359,7 +1364,11 @@ class IaAssistantReportService
                         $isBestSeller = $ipoDecimal >= 0.35 || (bool)($sku->es_best_seller_liga ?? false);
 
                         // Regla Óptima: "Best Seller True-Demand Bypass"
-                        if ($isBestSeller && $ropIndividual > $stockEfectivo) {
+                        if ($sku->is_quiebre_extremo_sin_historial ?? false) {
+                            $sku->solicitar = $stockEfectivo <= 0 ? 1 : 0;
+                            $sku->pre_asignado_bs = $stockEfectivo <= 0 ? 1.0 : 0.0;
+                            $sku->rescate_best_seller = 0;
+                        } elseif ($isBestSeller && $ropIndividual > $stockEfectivo) {
                             $deficitIndividual = $ropIndividual - $stockEfectivo;
                             $sugeridoRescate = (int)ceil($deficitIndividual);
                             $sku->solicitar = $sugeridoRescate;
@@ -1392,7 +1401,12 @@ class IaAssistantReportService
                         $stockEfectivo = (float)($sku->stock_efectivo ?? 0);
                         $faltanteIndividual = max(0.0, $ropIndividual - $stockEfectivo);
 
-                        if ($faltanteIndividual > 0 && $ropIndividual > 0) {
+                        if ($sku->is_quiebre_extremo_sin_historial ?? false) {
+                            if ($stockEfectivo <= 0) {
+                                $sku->pre_asignado_bs = 1.0;
+                                $sku->solicitar = 1;
+                            }
+                        } elseif ($faltanteIndividual > 0 && $ropIndividual > 0) {
                             $ipoValor = (float)($sku->ipo ?? 0);
                             $ipoDecimal = $ipoValor > 1.0 ? ($ipoValor / 100) : $ipoValor;
                             $diasQuiebre = (int)($sku->dias_quiebre ?? 0);
@@ -1440,7 +1454,11 @@ class IaAssistantReportService
                         $sku->presupuesto_disponible_liga = round($presupuestoObjetivoLiga, 2);
                         $sku->ventas_totales_liga = round((float)($objLiga ?? collect($tierItems)->sum('demanda_ponderada')), 2);
 
-                        if ($puntuacionTotalLiga > 0 && $sku->puntuacionCompra > 0) {
+                        if ($sku->is_quiebre_extremo_sin_historial ?? false) {
+                            $sku->cuota_participacion_ipo = 0;
+                            $sku->asignacion_cascada = 0;
+                            $sku->solicitar = $sku->stock_efectivo <= 0 ? 1 : 0;
+                        } elseif ($puntuacionTotalLiga > 0 && $sku->puntuacionCompra > 0) {
                             $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;
                             $objetivoAsignado = $presupuestoObjetivoLiga * $cuotaParticipacion;
                             $sku->cuota_participacion_ipo = round($cuotaParticipacion * 100, 1);
@@ -1683,23 +1701,33 @@ class IaAssistantReportService
                     $w3 = 0.20;
                 }
 
-                $demandaMensualAjustada = ($w1 * $cap1) + ($w2 * $cap2) + ($w3 * $cap3);
-            }
+            $esQuiebreExtremo = ($v1 + $v2 + $v3 <= 0) && ($d1 + $d2 + $d3 <= 0 || $diasQuiebre90d >= 60);
 
-            // Si no hay ventas en los 3 meses, usar fallback a sales_average o sales_average_weighted
-            if ($demandaMensualAjustada <= 0) {
-                $demandaMensualAjustada = (float)(($item->sales_average_weighted ?? 0) > 0 ? $item->sales_average_weighted : ($item->sales_average ?? 0));
-            }
+            if ($esQuiebreExtremo) {
+                // Protocolo de Rescate por Quiebre Extremo (>60d/90d sin stock ni ventas)
+                // No inventar una demanda matemática ficticia: la demanda histórica observable reciente es 0.0
+                $demandaMensualAjustada = 0.0;
+                $vpd = 0.0;
+                $rop = 0.0;
+                $stockObjetivo = 0.0;
+                $item->is_quiebre_extremo_sin_historial = true;
+            } else {
+                $item->is_quiebre_extremo_sin_historial = false;
+                // Si no hay ventas en los 3 meses pero sí tuvo stock:
+                if ($demandaMensualAjustada <= 0) {
+                    $demandaMensualAjustada = (float)(($item->sales_average_weighted ?? 0) > 0 ? $item->sales_average_weighted : ($item->sales_average ?? 0));
+                }
 
-            $vpd = $demandaMensualAjustada / 30;
-            $rop = $vpd * ($effectiveLeadTime + $bufferDays);
-            
-            // Regla del ROP Mínimo = 1.0 (Lote mínimo) solo para demandas mensuales >= 1.0
-            if ($demandaMensualAjustada >= 1.0) {
-                $rop = max(1.0, $rop);
-            }
+                $vpd = $demandaMensualAjustada / 30;
+                $rop = $vpd * ($effectiveLeadTime + $bufferDays);
+                
+                // Regla del ROP Mínimo = 1.0 (Lote mínimo) solo para demandas mensuales >= 1.0
+                if ($demandaMensualAjustada >= 1.0) {
+                    $rop = max(1.0, $rop);
+                }
 
-            $stockObjetivo = $vpd * $coverageDays;
+                $stockObjetivo = $vpd * $coverageDays;
+            }
 
             $item->dias_quiebre = $diasQuiebre90d;
             $item->promedio_calculado = round($demandaMensualAjustada, 2);
@@ -1714,14 +1742,17 @@ class IaAssistantReportService
             $item->peso_m1 = isset($w1) ? round($w1 * 100, 1) : 0;
             $item->peso_m2 = isset($w2) ? round($w2 * 100, 1) : 0;
             $item->peso_m3 = isset($w3) ? round($w3 * 100, 1) : 0;
-            $item->is_quiebre_cronico_sanado = ($d1 < 5 && ($v2 + $v3) > 0);
+            $item->is_quiebre_cronico_sanado = (!$esQuiebreExtremo && $d1 < 5 && ($v2 + $v3) > 0);
             $item->vdr_sanada = round($vpd, 3);
             $item->lead_time_days = $effectiveLeadTime;
             $item->buffer_days = $bufferDays;
             $item->stock_fisico = $currentStock;
             $item->stock_transito = $autoOrder;
 
-            if ($stockEfectivo <= $rop) {
+            if ($esQuiebreExtremo) {
+                $item->solicitar = $stockEfectivo <= 0 ? 1 : 0;
+                $item->motivo_sugerido = 'Lote Mínimo de Exposición / Rescate de Catálogo';
+            } elseif ($stockEfectivo <= $rop) {
                 $sugerido = $stockObjetivo - $stockEfectivo;
                 $item->solicitar = $sugerido > 0 ? ceil($sugerido) : 0;
             } else {

@@ -63,13 +63,16 @@
             <VCard 
               variant="outlined" 
               class="bg-white rounded pa-2 border-s-lg"
-              :class="hasQuiebreAlert ? 'border-warning' : 'border-info'"
+              :class="isQuiebreExtremo ? 'border-warning' : (hasQuiebreAlert ? 'border-warning' : 'border-info')"
             >
               <div class="d-flex align-center justify-space-between mb-1">
                 <span class="text-xs font-weight-black text-slate-800 text-uppercase" style="color: #0f172a;">
                   📊 FASE 2: Historial y Sanación
                 </span>
-                <VChip v-if="hasQuiebreAlert" color="warning" size="x-small" variant="tonal" class="font-weight-bold" style="height: 18px;">
+                <VChip v-if="isQuiebreExtremo" color="warning" size="x-small" variant="flat" class="font-weight-black text-white px-2" style="height: 18px;">
+                  QUIEBRE PROLONGADO (>90D)
+                </VChip>
+                <VChip v-else-if="hasQuiebreAlert" color="warning" size="x-small" variant="tonal" class="font-weight-bold" style="height: 18px;">
                   SANACIÓN APLICADA
                 </VChip>
               </div>
@@ -106,7 +109,11 @@
               </div>
 
               <!-- Banner de Alerta de Quiebre -->
-              <div v-if="hasQuiebreAlert" class="pa-1 bg-amber-lighten-5 border border-amber rounded mb-1 d-flex align-center ga-1 text-super-xs text-amber-darken-4 font-weight-bold">
+              <div v-if="isQuiebreExtremo" class="pa-1 bg-amber-lighten-5 border border-amber rounded mb-1 d-flex align-center ga-1 text-super-xs text-amber-darken-4 font-weight-bold">
+                <VIcon icon="tabler-alert-triangle" size="12" color="warning" />
+                <span>Sin historial en 90 días (Demanda: 0.0 un/mes). Activado Protocolo de Rescate / Lote de Exposición.</span>
+              </div>
+              <div v-else-if="hasQuiebreAlert" class="pa-1 bg-amber-lighten-5 border border-amber rounded mb-1 d-flex align-center ga-1 text-super-xs text-amber-darken-4 font-weight-bold">
                 <VIcon icon="tabler-alert-triangle" size="12" color="warning" />
                 <span>Quiebre detectado ({{ Number(item?.dias_quiebre || 0) }}d). Se recalculó la velocidad diaria por días con stock real.</span>
               </div>
@@ -115,7 +122,9 @@
               <div class="d-flex flex-column ga-1 text-xs text-high-emphasis">
                 <div class="d-flex justify-space-between">
                   <span>• <strong>Venta Diaria Sanada (VPD):</strong></span>
-                  <span class="font-mono font-weight-bold text-primary">{{ vpdCalculated.toFixed(3) }} un/día ({{ Number(item?.promedio_calculado ?? 0).toFixed(1) }} un/mes)</span>
+                  <span class="font-mono font-weight-bold" :class="vpdCalculated > 0 ? 'text-primary' : 'text-disabled'">
+                    {{ vpdCalculated.toFixed(3) }} un/día ({{ Number(item?.promedio_calculado ?? 0).toFixed(1) }} un/mes)
+                  </span>
                 </div>
                 <div class="d-flex justify-space-between">
                   <span>• <strong>ROP Calculado:</strong></span>
@@ -171,24 +180,24 @@
           <VCol cols="12" md="6" class="d-flex flex-column ga-2">
             
             <!-- FASE 4: CASCADA Y PRE-ASIGNACIÓN PRIORITARIA -->
-            <VCard variant="outlined" class="bg-white rounded pa-2 border-s-lg" :class="faltanteDirecto > 0 || Number(item?.presupuesto_disponible_liga || 0) > 0 ? 'border-indigo' : 'border-success'">
+            <VCard variant="outlined" class="bg-white rounded pa-2 border-s-lg" :class="faltanteDirecto > 0 || isQuiebreExtremo || Number(item?.presupuesto_disponible_liga || 0) > 0 ? 'border-indigo' : 'border-success'">
               <div class="d-flex align-center justify-space-between mb-1">
                 <span class="text-xs font-weight-black text-slate-800 text-uppercase" style="color: #0f172a;">
                   ⚡ FASE 4: Cascada de Reposición
                 </span>
-                <VChip v-if="faltanteDirecto <= 0 && Number(item?.presupuesto_disponible_liga || 0) <= 0" color="success" size="x-small" variant="tonal" class="font-weight-bold" style="height: 18px;">
+                <VChip v-if="!isQuiebreExtremo && faltanteDirecto <= 0 && Number(item?.presupuesto_disponible_liga || 0) <= 0" color="success" size="x-small" variant="tonal" class="font-weight-bold" style="height: 18px;">
                   LIGA CUBIERTA
                 </VChip>
               </div>
 
               <!-- Caso: Liga / Producto Cubierto -->
-              <div v-if="faltanteDirecto <= 0 && Number(item?.presupuesto_disponible_liga || 0) <= 0" class="d-flex flex-column ga-1 text-xs">
+              <div v-if="!isQuiebreExtremo && faltanteDirecto <= 0 && Number(item?.presupuesto_disponible_liga || 0) <= 0" class="d-flex flex-column ga-1 text-xs">
                 <div class="pa-2 bg-success-lighten-5 rounded border border-success text-success-darken-3 font-weight-medium text-super-xs">
                   ✓ El stock actual (<strong>{{ Number(item?.stock_efectivo || 0).toFixed(1) }} un</strong>) cubre el ROP (<strong>{{ Number(item?.rop_calculado ?? item?.rop ?? 0).toFixed(2) }} un</strong>). Sin déficit en la Liga.
                 </div>
               </div>
 
-              <!-- Caso: Hay Faltante y Corre Cascada -->
+              <!-- Caso: Hay Faltante o Quiebre Extremo -->
               <div v-else class="d-flex flex-column ga-1 text-xs text-high-emphasis">
                 <div class="d-flex justify-space-between">
                   <span>• <strong>Faltante Individual (ROP - Stock):</strong></span>
@@ -202,7 +211,10 @@
                   <span>• <strong>Cuota IPO ({{ item?.cuota_participacion_ipo }}%):</strong></span>
                   <span class="font-mono font-weight-bold text-info">+{{ Number(item?.asignacion_cascada || 0).toFixed(2) }} un</span>
                 </div>
-                <div v-if="Number(item?.pre_asignado_bs || 0) > 0" class="mt-1 pa-1-5 px-2 bg-success-lighten-5 rounded border border-success text-success-darken-3 font-weight-bold text-super-xs">
+                <div v-if="isQuiebreExtremo" class="mt-1 pa-1-5 px-2 bg-amber-lighten-5 rounded border border-warning text-warning-darken-4 font-weight-bold text-super-xs">
+                  ⚡ Protocolo de Rescate: +1 un asignada como Lote Mínimo de Exposición para presencia de catálogo.
+                </div>
+                <div v-else-if="Number(item?.pre_asignado_bs || 0) > 0" class="mt-1 pa-1-5 px-2 bg-success-lighten-5 rounded border border-success text-success-darken-3 font-weight-bold text-super-xs">
                   ✓ Pre-asignación Bloqueada: +{{ Number(item?.pre_asignado_bs || 0).toFixed(1) }} un reservada por Best Seller/Quiebre.
                 </div>
               </div>
@@ -247,7 +259,9 @@
                 </div>
                 <div class="d-flex justify-space-between">
                   <span>• <strong>Regla de Lote Mínimo:</strong></span>
-                  <span class="text-disabled">Aplicada</span>
+                  <span class="font-weight-bold" :class="isQuiebreExtremo ? 'text-warning' : 'text-disabled'">
+                    {{ isQuiebreExtremo ? 'Lote de Exposición (+1 un)' : 'Aplicada' }}
+                  </span>
                 </div>
               </div>
 
@@ -294,9 +308,23 @@ const leadTimeDays = computed(() => Number(props.item?.lead_time_days ?? 7));
 const bufferDays = computed(() => Number(props.item?.buffer_days ?? 7));
 const totalCoverageDays = computed(() => leadTimeDays.value + bufferDays.value);
 
+// Quiebre Extremo sin Historial
+const isQuiebreExtremo = computed(() => {
+  if (props.item?.is_quiebre_extremo_sin_historial) return true;
+  const v1 = Number(props.item?.ventas_30d ?? 0);
+  const v2 = Number(props.item?.ventas_m2 ?? 0);
+  const v3 = Number(props.item?.ventas_m3 ?? 0);
+  const d1 = Number(props.item?.dias_con_stock_m1 ?? 0);
+  const d2 = Number(props.item?.dias_con_stock_m2 ?? 0);
+  const d3 = Number(props.item?.dias_con_stock_m3 ?? 0);
+  const q90 = Number(props.item?.dias_quiebre ?? 0);
+  return (v1 + v2 + v3 === 0) && (d1 + d2 + d3 === 0 || q90 >= 60);
+});
+
 // VPD Calculada
 const vpdCalculated = computed(() => {
-  if (props.item?.vdr_sanada !== undefined && Number(props.item.vdr_sanada) > 0) {
+  if (isQuiebreExtremo.value) return 0;
+  if (props.item?.vdr_sanada !== undefined && Number(props.item.vdr_sanada) >= 0) {
     return Number(props.item.vdr_sanada);
   }
   const prom = Number(props.item?.promedio_calculado ?? 0);
@@ -305,6 +333,7 @@ const vpdCalculated = computed(() => {
 
 // Quiebre y Estado
 const hasQuiebreAlert = computed(() => {
+  if (isQuiebreExtremo.value) return false;
   return Number(props.item?.dias_quiebre ?? 0) > 0 || 
          Number(props.item?.dias_con_stock_m1 ?? 30) < 5 ||
          Boolean(props.item?.is_quiebre_cronico_sanado);
