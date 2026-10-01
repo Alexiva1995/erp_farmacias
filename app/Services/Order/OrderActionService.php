@@ -1679,7 +1679,7 @@ class OrderActionService
                 }
 
                 $product = $item->product;
-                $stockBefore = $product ? ($product->stock ?? 0) : 0;
+                $stockBefore = (float) ($product ? ($product->lots()->sum('quantity') ?? 0) : 0);
                 
                 // Activar bandera estática para que ProductLotObserver no cree un movimiento automático de 'AJUSTE'
                 \App\Observers\ProductLotObserver::$isReturningLot = true;
@@ -1695,7 +1695,7 @@ class OrderActionService
                     $product->updateQuietly(['stock' => $totalStock]);
                     \App\Services\Inventory\StockoutService::syncStockout($product, $totalStock);
                 } else {
-                    $totalStock = 0;
+                    $totalStock = $stockBefore + (float) $item->quantity;
                 }
 
                 // Crear el movimiento de inventario de tipo 'return' (devolución por cancelación) asociado a la orden

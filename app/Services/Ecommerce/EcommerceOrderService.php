@@ -271,7 +271,7 @@ class EcommerceOrderService
     }
 
     /**
-     * Cancelar una orden de e-commerce y devolver stock.
+     * Cancelar una orden de e-commerce y devolver stock a lotes y trazabilidad.
      */
     public function cancelOrder(int $id): bool
     {
@@ -282,31 +282,99 @@ class EcommerceOrderService
                 throw new Exception('La orden no fue encontrada.');
             }
 
-            $items = DB::table('ecommerce_order_items')
-                ->where('ecommerce_order_id', $id)
-                ->get();
+            if ($ecommerceOrder->status === 'Cancelled') {
+                throw new Exception('La orden ya se encuentra cancelada.');
+            }
 
-            foreach ($items as $item) {
-                if (!empty($item->product_variant_id)) {
-                    DB::table('product_variants')
-                        ->where('id', $item->product_variant_id)
-                        ->increment('stock', $item->quantity);
-                } else {
-                    DB::table('products')
-                        ->where('id', $item->product_id)
-                        ->increment('stock', $item->quantity);
+            $tpvOrderId = data_get($ecommerceOrder, 'tpv_order_id');
+            $tpvOrder = $tpvOrderId ? \App\Models\Order::find($tpvOrderId) : null;
+            if (!$tpvOrder) {
+                $tpvOrder = \App\Models\Order::whereJsonContains('payment_methods', ['reference' => 'ECO-' . $id])->first();
+            }
+
+            // Si existe orden vinculada en el TPV y no está cancelada, cancelar mediante OrderActionService
+            if ($tpvOrder && !in_array(strtolower($tpvOrder->status), ['cancelled', 'abandoned'])) {
+                app(\App\Services\Order\OrderActionService::class)->cancelledOrder($tpvOrder);
+
+                // Devolver stock de variantes específicas si aplica
+                $items = DB::table('ecommerce_order_items')->where('ecommerce_order_id', $id)->get();
+                foreach ($items as $item) {
+                    if (!empty($item->product_variant_id)) {
+                        DB::table('product_variants')
+                            ->where('id', $item->product_variant_id)
+                            ->increment('stock', $item->quantity);
+                    }
+                }
+            } else {
+                // Si no hay orden TPV asociada, devolver inventario a lotes y registrar trazabilidad directamente
+                $items = DB::table('ecommerce_order_items')
+                    ->where('ecommerce_order_id', $id)
+                    ->get();
+
+                foreach ($items as $item) {
+                    if (!empty($item->product_variant_id)) {
+                        DB::table('product_variants')
+                            ->where('id', $item->product_variant_id)
+                            ->increment('stock', $item->quantity);
+                    }
+
+                    if (!empty($item->product_id)) {
+                        $product = \App\Models\Product::find($item->product_id);
+                        if ($product) {
+                            $productLot = \App\Models\ProductLot::where('product_id', $product->id)
+                                ->where(function ($q) {
+                                    $q->whereNull('expiration_date')
+                                        ->orWhere('expiration_date', '>', now());
+                                })
+                                ->orderBy('expiration_date', 'asc')
+                                ->orderBy('id', 'asc')
+                                ->first()
+                                ?? \App\Models\ProductLot::where('product_id', $product->id)->orderBy('id', 'desc')->first();
+
+                            if (!$productLot) {
+                                $productLot = \App\Models\ProductLot::create([
+                                    'product_id' => $product->id,
+                                    'lot_number' => 'LOT-RETURN-' . $product->id,
+                                    'quantity' => 0,
+                                    'expiration_date' => now()->addYears(2),
+                                    'cost_price' => $product->cost_price ?? 0,
+                                ]);
+                            }
+
+                            $stockBefore = (float) ($product->lots()->sum('quantity') ?? 0);
+
+                            \App\Observers\ProductLotObserver::$isReturningLot = true;
+                            try {
+                                $productLot->increment('quantity', $item->quantity);
+                            } finally {
+                                \App\Observers\ProductLotObserver::$isReturningLot = false;
+                            }
+
+                            $totalStock = (float) ($product->lots()->sum('quantity') ?? 0);
+                            $product->updateQuietly(['stock' => $totalStock]);
+                            \App\Services\Inventory\StockoutService::syncStockout($product, $totalStock);
+
+                            \App\Models\InventoryMovement::create([
+                                'product_id' => $product->id,
+                                'product_lot_id' => $productLot->id,
+                                'movement_type' => 'return',
+                                'quantity' => $item->quantity,
+                                'invoice_id' => null,
+                                'supplier_id' => null,
+                                'order_id' => $tpvOrder?->id,
+                                'user_id' => \Illuminate\Support\Facades\Auth::id() ?? 1,
+                                'stock_before' => $stockBefore,
+                                'stock_after' => $totalStock,
+                                'movement_date' => now(),
+                            ]);
+                        }
+                    }
                 }
             }
 
             DB::table('ecommerce_orders')
                 ->where('id', $id)
                 ->update(['status' => 'Cancelled', 'updated_at' => now()]);
-
-            $tpvOrderId = data_get($ecommerceOrder, 'tpv_order_id');
-            if (!empty($tpvOrderId)) {
-                \App\Models\Order::where('id', $tpvOrderId)
-                    ->update(['status' => 'cancelled']);
-            }
 
             return true;
         });
