@@ -238,8 +238,7 @@ onMounted(() => {
     block-size: 100%;
     overscroll-behavior: contain;
     touch-action: pan-y;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    overflow: hidden !important;
     -webkit-overflow-scrolling: touch;
   }
 
