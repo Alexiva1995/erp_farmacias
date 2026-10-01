@@ -1279,6 +1279,8 @@ class IaAssistantReportService
                 return (float)($gp->promedio_calculado ?? (($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0)));
             });
 
+            $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
+            $effectiveLeadTime = $isColombian ? 14 : $leadTimeDays;
             $isExtremo = (bool)($item->is_quiebre_extremo_sin_historial ?? false);
 
             if ($isExtremo) {
