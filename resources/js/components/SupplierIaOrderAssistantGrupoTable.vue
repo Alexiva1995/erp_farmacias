@@ -470,8 +470,6 @@ function rowClass(item) {
                     </VChip>
                   </div>
                   <div class="d-flex align-center gap-1 text-super-xs flex-wrap">
-                    <span class="text-disabled">{{ item.active_ingredient }}</span>
-                    <span class="text-disabled mx-1">|</span>
                     <span class="text-primary font-weight-black text-uppercase">
                       {{ item.laboratory?.name || 'S/L' }}
                       <span v-if="item.best_supplier && props.withSuppliers" class="text-warning ml-1">- {{ item.best_supplier?.name }}</span>
