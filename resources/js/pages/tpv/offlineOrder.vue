@@ -304,7 +304,7 @@ onUnmounted(() => {
             <template v-else>
               <v-icon icon="mdi-cloud-upload" start />
               Sincronizar y Volver al TPV
-            </v-btn>
+            </template>
           </v-btn>
         </div>
       </v-alert>
