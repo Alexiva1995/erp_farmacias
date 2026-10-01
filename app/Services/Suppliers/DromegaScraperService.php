@@ -60,44 +60,56 @@ class DromegaScraperService implements DromegaScraperServiceInterface
             $csrfToken = $m[1];
         }
 
-        // 2. POST login
+        // 2. POST login — capturar headerSize propio del POST para parsear el body correcto
         $postData = [
-            'fwl_csrf' => $csrfToken ?? '',
-            'username' => $username,
-            'password' => $password,
+            'fwl_csrf'    => $csrfToken ?? '',
+            'username'    => $username,
+            'password'    => $password,
             'remember-me' => 'on',
         ];
 
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL => self::LOGIN_URL,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => http_build_query($postData),
+            CURLOPT_URL            => self::LOGIN_URL,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => http_build_query($postData),
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER => true,
+            CURLOPT_HEADER         => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_COOKIEJAR => $cookieFile,
-            CURLOPT_COOKIEFILE => $cookieFile,
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_COOKIEJAR      => $cookieFile,
+            CURLOPT_COOKIEFILE     => $cookieFile,
+            CURLOPT_TIMEOUT        => 30,
             CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            CURLOPT_HTTPHEADER => [
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            CURLOPT_HTTPHEADER     => [
                 'Referer: ' . self::BASE_URL . '/',
                 'Origin: https://www.drogueriamega.com',
                 'Content-Type: application/x-www-form-urlencoded',
             ],
         ]);
-        $loginRes = curl_exec($ch);
-        $loginCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $loginUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+        $loginRes        = curl_exec($ch);
+        $loginCode       = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $loginUrl        = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+        $loginHeaderSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
 
-        if ($loginRes === false || $loginCode >= 400 || str_contains($loginUrl, 'admin_action=login') || !str_contains($loginUrl, 'clientes')) {
-            // Verificar si el HTML retornado contiene mensaje de error o sigue en login
-            $loginBody = substr($loginRes ?: '', $headerSize);
-            if (str_contains($loginBody, 'password') && str_contains($loginBody, 'username') && !str_contains($loginBody, 'estado-cuenta')) {
+        // Solo falla definitivamente si: curl falló, HTTP 4xx/5xx, o la URL sigue siendo el endpoint de login
+        // NO requerimos que la URL contenga 'clientes' — el portal puede redirigir a /mydas/ o /mydas/inicio
+        $stillOnLogin = ($loginRes === false)
+            || ($loginCode >= 400)
+            || str_contains((string) $loginUrl, 'admin_action=login');
+
+        if ($stillOnLogin) {
+            $loginBody      = substr((string) ($loginRes ?: ''), $loginHeaderSize);
+            $hasLoginForm   = str_contains($loginBody, 'name="username"') || str_contains($loginBody, "name='username'");
+            $hasSessionSign = str_contains($loginBody, 'logout')
+                || str_contains($loginBody, 'cerrar-sesion')
+                || str_contains($loginBody, 'bienvenido')
+                || str_contains($loginBody, 'cuentas-por-pagar');
+
+            if ($hasLoginForm && !$hasSessionSign) {
                 if (file_exists($cookieFile)) {
                     @unlink($cookieFile);
                 }
