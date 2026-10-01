@@ -34,8 +34,12 @@ const expandedGroupId = ref(null);
 const auditModalOpen = ref(false);
 const selectedAuditItem = ref(null);
 
-const openAuditModal = (item) => {
-  selectedAuditItem.value = item;
+const openAuditModal = (item, grupo = null) => {
+  selectedAuditItem.value = {
+    ...item,
+    group_name: item.group_name || grupo?.group_name || null,
+    group_id: item.group_id || grupo?.group_id || null,
+  };
   auditModalOpen.value = true;
 };
 
@@ -614,7 +618,7 @@ function rowClass(item) {
                       color="primary"
                       size="30"
                       icon
-                      @click.stop="openAuditModal(item)"
+                      @click.stop="openAuditModal(item, grupo)"
                     >
                       <VIcon size="18">tabler-terminal-2</VIcon>
                       <VTooltip activator="parent" location="top">Ver Log de Decisión</VTooltip>
@@ -789,7 +793,7 @@ function rowClass(item) {
                         color="primary"
                         size="28"
                         icon
-                        @click.stop="openAuditModal(item)"
+                        @click.stop="openAuditModal(item, grupo)"
                       >
                         <VIcon size="16">tabler-terminal-2</VIcon>
                       </VBtn>

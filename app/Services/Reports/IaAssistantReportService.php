@@ -1313,6 +1313,7 @@ class IaAssistantReportService
             $item->stock_util = round($stockUtil, 2);
             $item->exceso_pasivo = round($excesoPasivo, 2);
             $item->ipo = round($ipo * 100, 1);
+            $item->ventas_totales_liga = round($tierTotalDemand, 2);
             $item->liga_id = $miLiga;
             $item->liga_nombre = $miLiga === 3 ? 'Premium' : ($miLiga === 2 ? 'Promedio' : 'Económica');
             $item->liga_color = $miLiga === 3 ? 'success' : ($miLiga === 2 ? 'info' : 'pink');
@@ -1351,6 +1352,13 @@ class IaAssistantReportService
                     foreach ($tierItems as $sku) {
                         $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
                         $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
+                        $sku->presupuesto_disponible_liga = 0;
+                        $sku->ventas_totales_liga = round((float)($objLiga ?? collect($tierItems)->sum('demanda_ponderada')), 2);
+                        $sku->cuota_participacion_ipo = round(((float)($sku->ipo ?? 0)), 1);
+                        $sku->asignacion_cascada = 0;
+                        $sku->pre_asignado_bs = 0;
+                        $sku->ajuste_financiero = 0;
+                        $sku->rescate_best_seller = 0;
                     }
                 } else {
                     $validPrices = collect($tierItems)->map(function($it) {
