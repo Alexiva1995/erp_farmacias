@@ -8,6 +8,7 @@ export const useBrandingStore = defineStore('branding', () => {
     app_rif: '',
     address: '',
     fiscal_printer_serial: '',
+    fiscal_machine_type: 'pnp',
     app_logo: '',
     app_favicon: '',
     primary_color: '#E20074',

@@ -152,6 +152,32 @@ onMounted(() => {
                   </template>
                 </VRadio>
               </VRadioGroup>
+
+              <VDivider class="my-4" />
+
+              <div>
+                <VLabel class="mb-2 font-weight-bold text-caption text-uppercase text-medium-emphasis letter-spacing-1">
+                  Controlador / Protocolo de Máquina Fiscal
+                </VLabel>
+                <VSelect
+                  v-model="form.fiscal_machine_type"
+                  :items="[
+                    { title: 'Protocolo PNP (Impresora Fiscal Estándar)', value: 'pnp' },
+                    { title: 'Bixolon / HKA Fiscal', value: 'bixolon' },
+                    { title: 'Hasar Fiscal', value: 'hasar' },
+                    { title: 'Custom / Genérica', value: 'custom' },
+                  ]"
+                  label="Tipo de Máquina Fiscal"
+                  prepend-inner-icon="tabler-printer"
+                  variant="outlined"
+                  density="comfortable"
+                  hide-details="auto"
+                  :disabled="isSaving"
+                />
+                <p class="text-caption text-medium-emphasis mt-2 mb-0">
+                  Seleccione <strong>PNP</strong> para utilizar el puente y protocolo fiscal estándar configurado actualmente.
+                </p>
+              </div>
             </VCard>
           </VCol>
 

@@ -181,6 +181,23 @@ const onDropSignature = (e) => {
 
                     <VCol cols="12" sm="6">
                       <VSelect
+                        v-model="form.fiscal_machine_type"
+                        :items="[
+                          { title: 'Protocolo PNP (Impresora Fiscal Estándar)', value: 'pnp' },
+                          { title: 'Bixolon / HKA Fiscal', value: 'bixolon' },
+                          { title: 'Hasar Fiscal', value: 'hasar' },
+                          { title: 'Custom / Genérica', value: 'custom' },
+                        ]"
+                        label="Controlador / Máquina Fiscal"
+                        prepend-inner-icon="tabler-cpu"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                      />
+                    </VCol>
+
+                    <VCol cols="12" sm="6">
+                      <VSelect
                         v-model="form.default_currency"
                         :items="['COP', 'USD', 'BS']"
                         label="Moneda Base del Sistema"
@@ -466,7 +483,7 @@ const onDropSignature = (e) => {
                             v-if="form.fiscal_printer_serial"
                             class="text-caption text-medium-emphasis"
                           >
-                            Máquina Fiscal: {{ form.fiscal_printer_serial }}
+                            Máquina Fiscal: {{ form.fiscal_printer_serial }} ({{ (form.fiscal_machine_type || 'pnp').toUpperCase() }})
                           </div>
                           <div
                             v-if="form.address"

@@ -18,6 +18,7 @@ class GeneralSetting extends Model
         'app_name',
         'app_rif',
         'fiscal_printer_serial',
+        'fiscal_machine_type',
         'app_logo',
         'app_favicon',
         'app_signature_stamp',

@@ -13,6 +13,7 @@ export function usePharmacySettingsForm() {
     app_rif: '',
     address: '',
     fiscal_printer_serial: '',
+    fiscal_machine_type: 'pnp',
     default_currency: 'COP',
   }
 
@@ -152,12 +153,14 @@ export function usePharmacySettingsForm() {
       form.app_rif = parsed.app_rif || ''
       form.address = parsed.address || ''
       form.fiscal_printer_serial = parsed.fiscal_printer_serial || ''
+      form.fiscal_machine_type = parsed.fiscal_machine_type || 'pnp'
       form.default_currency = parsed.default_currency || 'COP'
     } catch {
       form.app_name = ''
       form.app_rif = ''
       form.address = ''
       form.fiscal_printer_serial = ''
+      form.fiscal_machine_type = 'pnp'
       form.default_currency = 'COP'
     }
     removeLogo()
@@ -177,6 +180,7 @@ export function usePharmacySettingsForm() {
       form.app_rif = brandingStore.settings.app_rif || ''
       form.address = brandingStore.settings.address || ''
       form.fiscal_printer_serial = brandingStore.settings.fiscal_printer_serial || ''
+      form.fiscal_machine_type = brandingStore.settings.fiscal_machine_type || 'pnp'
       form.default_currency = brandingStore.settings.default_currency || 'COP'
 
       currentSavedLogo.value = brandingStore.settings.app_logo || ''
@@ -193,6 +197,7 @@ export function usePharmacySettingsForm() {
         app_rif: form.app_rif,
         address: form.address,
         fiscal_printer_serial: form.fiscal_printer_serial,
+        fiscal_machine_type: form.fiscal_machine_type,
         default_currency: form.default_currency,
       })
     } catch (error) {
@@ -216,6 +221,7 @@ export function usePharmacySettingsForm() {
     formData.append('app_rif', form.app_rif ? form.app_rif.trim() : '')
     formData.append('address', form.address ? form.address.trim() : '')
     formData.append('fiscal_printer_serial', form.fiscal_printer_serial ? form.fiscal_printer_serial.trim() : '')
+    formData.append('fiscal_machine_type', form.fiscal_machine_type || 'pnp')
     formData.append('default_currency', form.default_currency || 'COP')
 
     if (logoFile.value) {

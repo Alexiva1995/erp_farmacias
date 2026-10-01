@@ -4,9 +4,11 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, onUnmounted, reactive, ref } from "vue";
 import { useDisplay } from "vuetify";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 // --- Composables & Estados ---
 const { mobile } = useDisplay();
+const brandingStore = useBrandingStore();
 const fetchingHistory = ref(false);
 const checkingConnection = ref(false);
 const isBridgeConnected = ref(false);
@@ -244,7 +246,21 @@ onUnmounted(() => {
               </div>
             </div>
             
-            <div class="d-flex align-center gap-2">
+            <div class="d-flex align-center flex-wrap gap-2">
+              <!-- Chip de Máquina Fiscal Configurada -->
+              <VChip
+                color="primary"
+                variant="tonal"
+                size="small"
+                class="font-weight-bold"
+              >
+                <VIcon start icon="tabler-cpu" size="14" />
+                Máquina: {{ (brandingStore.settings?.fiscal_machine_type || 'pnp').toUpperCase() }}
+                <template v-if="brandingStore.settings?.fiscal_printer_serial">
+                  · {{ brandingStore.settings.fiscal_printer_serial }}
+                </template>
+              </VChip>
+
               <!-- Botón Dinámico de Conexión del Puente Fiscal -->
               <VBtn
                 :color="isBridgeConnected ? 'success' : 'error'"

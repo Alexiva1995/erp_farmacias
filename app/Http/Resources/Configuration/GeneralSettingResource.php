@@ -125,6 +125,7 @@ class GeneralSettingResource extends JsonResource
             'app_rif' => $this->app_rif,
             'address' => $this->address,
             'fiscal_printer_serial' => $this->fiscal_printer_serial,
+            'fiscal_machine_type' => $this->fiscal_machine_type ?? 'pnp',
             'app_logo' => $this->app_logo,
             'app_favicon' => $this->app_favicon,
             'app_signature_stamp' => $this->app_signature_stamp,

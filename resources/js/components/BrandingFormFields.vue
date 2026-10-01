@@ -91,6 +91,22 @@ const emit = defineEmits([
         </VCol>
         <VCol cols="12" sm="6" md="3">
           <VSelect
+            v-model="form.fiscal_machine_type"
+            :items="[
+              { title: 'Protocolo PNP (Estándar)', value: 'pnp' },
+              { title: 'Bixolon / HKA Fiscal', value: 'bixolon' },
+              { title: 'Hasar Fiscal', value: 'hasar' },
+              { title: 'Custom / Genérica', value: 'custom' },
+            ]"
+            label="Tipo Máquina Fiscal"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="tabler-cpu"
+            :disabled="isLoading"
+          />
+        </VCol>
+        <VCol cols="12" sm="6" md="3">
+          <VSelect
             v-model="form.default_currency"
             :items="['COP', 'USD', 'BS']"
             label="Moneda del Sistema"

@@ -6,6 +6,7 @@ import { toast, Swal } from '@/plugins/sweetalert'
 export const useGeneralSettings = () => {
   const defaultSettings = {
     fiscal_mode: 'demo',
+    fiscal_machine_type: 'pnp',
     enable_ce: false,
     blind_cash_closure: false,
     tpv_mode: 'complete',
@@ -29,13 +30,14 @@ export const useGeneralSettings = () => {
     try {
       const response = await axios.get('/general-settings', {
         params: {
-          only: 'fiscal_mode,special_taxpayer_status,enable_ce,all_foreign_sales_spe,blind_cash_closure,tpv_mode',
+          only: 'fiscal_mode,fiscal_machine_type,special_taxpayer_status,enable_ce,all_foreign_sales_spe,blind_cash_closure,tpv_mode',
         },
       })
       const settings = response.data?.data || {}
 
       const parsedData = {
         fiscal_mode: settings.fiscal_mode ?? 'demo',
+        fiscal_machine_type: settings.fiscal_machine_type ?? 'pnp',
         enable_ce: Boolean(settings.enable_ce || settings.special_taxpayer_status === 'activa'),
         blind_cash_closure: Boolean(settings.blind_cash_closure),
         tpv_mode: settings.tpv_mode ?? 'complete',
@@ -84,6 +86,7 @@ export const useGeneralSettings = () => {
     try {
       await axios.post('/general-settings', {
         fiscal_mode: form.value.fiscal_mode,
+        fiscal_machine_type: form.value.fiscal_machine_type || 'pnp',
         enable_ce: form.value.enable_ce,
         special_taxpayer_status: form.value.enable_ce ? 'activa' : 'desactivada',
         all_foreign_sales_spe: form.value.enable_ce,

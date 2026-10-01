@@ -1,0 +1,45 @@
+PASOS HA SEGUIR PARA LA INTEGRACION DE LAS IMPRESORAS FISCALES CON PHP en Linux utilizando tfinulx
+
+1-. Pegar  la carpeta tfhka_php_linux en el directorio htdocs/ ó www/ del Servidor PHP. (El Servidor PHP debe estar Levantado).
+2-. Ejecutar en tu navegador Web la siguiente URL: 
+
+      Maquina 64 bit: http://[NameServidor]/tfhka_php_linux/tfinulx/64_bit/
+      Maquina 32 bit: http://[NameServidor]/tfhka_php_linux/tfinulx/32_bit/
+
+      Si el servidor esta en la misma maquina donde se ejecuta el navegador:  [NameServidor] = localhost
+
+3.- Establecer permisos de ejeción del puerto serial y directorios:
+
+      sudo usermod -a -G dialout www-data
+      sudo chmod 777 /dev/ttySX
+
+	
+4.- Establecer el puerto serial donde esta conectada la impresora.
+5.- Probar enviando un Comando.  Ej: "D"  (Imprimir programación).
+6.- La libreria de comunicación fiscal de php es el archivo TfhkaPHP.php que tiene las funciones básicas para la comunicación fiscal con la impresora. En el archivo index.php de cada directorio de plataformas es el que hace uso de esta librería. La librería TfhkaPHP.php, el archivo Puerto.txt, el archivo tfinulx y el archivo de index.php deben estar en el mismo directorio para que funcione la comunicación fiscal con la impresora.
+
+NOTA:  Esta modalidad de comunicación de Impresora Fiscales con aplicaiones PHP en Linux solo aplica en los siguientes escenarios:
+
+- El cliente y el servidor PHP están en el mismo PC donde está conectada la impresora fiscal.
+- El servidor PHP esta en la misma PC donde esta conectada la impresora fiscal, el cliente en otra PC sin impresora fiscal.
+- Si el servidor principal del sistema y datos PHP esta en otra PC distinta al PC cliente donde está la impresora fiscal, este PC cliente debe disponer de un servidor virtual PHP Apache o Lammp instalado y levantado en su localhost.
+
+	
+PASOS HA SEGUIR PARA LA INTEGRACION DE LAS IMPRESORAS FISCALES CON PHP en Windows utilizando IntTFHKA
+
+1-. Pegar  la carpeta tfhka_php_windows en el directorio htdocs/ ó www/ del Servidor PHP. (El Servidor PHP debe estar Levantado).
+2-. Ejecutar en tu navegador Web la siguiente URL: 
+
+      http://[NameServidor]/tfhka_php_windows/IntTFHKA/index.php
+
+      Si el servidor esta en la misma maquina donde se ejecuta el navegador:  [NameServidor] = localhost
+	
+3.- Establecer el puerto serial donde esta conectada la impresora y hacer clic en "SetPort".
+4.- Probar enviando un Comando.  Ej: "D"  (Imprimir programación).
+5.- La libreria de comunicación fiscal de php es el archivo TfhkaPHP.php que tiene las funciones básicas para la comunicación fiscal con la impresora. En el archivo index.php de cada directorio de plataformas es el que hace uso de esta librería. La librería TfhkaPHP.php, el archivo Puerto.dat, el archivo IntTFHKA y el archivo de index.php deben estar en el mismo directorio para que funcione la comunicación fiscal con la impresora.
+
+NOTA:  Esta modalidad de comunicación de Impresora Fiscales con aplicaiones PHP en Linux solo aplica en los siguientes escenarios:
+
+- El cliente y el servidor PHP están en el mismo PC donde está conectada la impresora fiscal.
+- El servidor PHP esta en la misma PC donde esta conectada la impresora fiscal, el cliente en otra PC sin impresora fiscal.
+- Si el servidor principal del sistema y datos PHP esta en otra PC distinta al PC cliente donde está la impresora fiscal, este PC cliente debe disponer de un servidor virtual PHP Apache o Lammp instalado y levantado en su localhost.
