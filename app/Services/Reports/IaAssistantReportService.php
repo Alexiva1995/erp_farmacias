@@ -1456,6 +1456,10 @@ class IaAssistantReportService
                         $sku->presupuesto_disponible_liga = round($presupuestoObjetivoLiga, 2);
                         $sku->ventas_totales_liga = round((float)($objLiga ?? collect($tierItems)->sum('demanda_ponderada')), 2);
 
+                        $demandaIndividual = (float)($sku->demanda_ponderada ?? $sku->promedio_calculado ?? 0);
+                        $stockEfectivo = (float)($sku->stock_efectivo ?? 0);
+                        $necesidadIndividual = max(0.0, $demandaIndividual - $stockEfectivo);
+
                         if ($sku->is_quiebre_extremo_sin_historial ?? false) {
                             $sku->cuota_participacion_ipo = 0;
                             $sku->asignacion_cascada = 0;
@@ -1466,14 +1470,19 @@ class IaAssistantReportService
                             $sku->cuota_participacion_ipo = round($cuotaParticipacion * 100, 1);
                             $sku->asignacion_cascada = round($objetivoAsignado, 2);
                             
-                            $totalDemandTarget = (float)($sku->pre_asignado_bs ?? 0) + $objetivoAsignado;
-                            $sku->solicitar = (int)ceil(max(0, $totalDemandTarget));
+                            // Topar siempre a la necesidad real de demanda mensual no cubierta
+                            if ($sku->pre_asignado_bs > 0) {
+                                $totalDemandTarget = min($necesidadIndividual, (float)$sku->pre_asignado_bs + $objetivoAsignado);
+                            } else {
+                                $totalDemandTarget = min($necesidadIndividual, max(0.0, $objetivoAsignado - $stockEfectivo));
+                            }
+                            $sku->solicitar = $totalDemandTarget > 0 ? (int)ceil($totalDemandTarget) : ($demandaIndividual < $stockEfectivo ? (int)floor($demandaIndividual - $stockEfectivo) : 0);
                         } else {
                             $sku->cuota_participacion_ipo = 0;
                             $sku->asignacion_cascada = 0;
-                            // Si no participa en la cascada (ej. penalizado)
                             if (($sku->pre_asignado_bs ?? 0) > 0) {
-                                $sku->solicitar = (int)ceil($sku->pre_asignado_bs);
+                                $target = min($necesidadIndividual, (float)$sku->pre_asignado_bs);
+                                $sku->solicitar = (int)ceil($target);
                             } else {
                                 $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
                                 $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
@@ -1513,10 +1522,14 @@ class IaAssistantReportService
                         }
                     }
 
-                    // Asignar remanente financiero recuperado al Best Seller
+                    // Asignar remanente financiero recuperado al Best Seller (topado a su necesidad mensual real)
                     if ($remanenteBestSeller > 0 && $bestSellerSku) {
-                        $bestSellerSku->solicitar += $remanenteBestSeller;
-                        $bestSellerSku->rescate_best_seller = $remanenteBestSeller;
+                        $necesidadBS = max(0.0, (float)($bestSellerSku->demanda_ponderada ?? 0) - (float)($bestSellerSku->stock_efectivo ?? 0));
+                        if ($bestSellerSku->solicitar < ceil($necesidadBS)) {
+                            $canAdd = min($remanenteBestSeller, (int)ceil($necesidadBS) - $bestSellerSku->solicitar);
+                            $bestSellerSku->solicitar += $canAdd;
+                            $bestSellerSku->rescate_best_seller = $canAdd;
+                        }
                     }
                 }
             }
