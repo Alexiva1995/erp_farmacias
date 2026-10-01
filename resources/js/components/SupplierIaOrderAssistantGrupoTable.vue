@@ -286,7 +286,8 @@ const getLigasSummary = (productos) => {
 
     if (!prods.length) return null;
 
-    const demandaRop = prods.reduce((acc, p) => acc + parseFloat(p.demanda_ponderada ?? p.promedio_calculado ?? 0), 0);
+    const demandaTotal = prods.reduce((acc, p) => acc + parseFloat(p.demanda_ponderada ?? p.promedio_calculado ?? 0), 0);
+    const ropTotal = prods.reduce((acc, p) => acc + parseFloat(p.rop_calculado ?? p.rop ?? 0), 0);
     const stockUtil = prods.reduce((acc, p) => {
       const util = p.stock_util !== undefined 
         ? parseFloat(p.stock_util) 
@@ -298,12 +299,13 @@ const getLigasSummary = (productos) => {
     const validCosts = prods.map(p => parseFloat(p.unit_cost ?? 0)).filter(c => c > 0);
     const costoProm = validCosts.length > 0 ? (validCosts.reduce((a, b) => a + b, 0) / validCosts.length) : 0;
     
-    const faltante = Math.max(0, demandaRop - stockUtil);
+    const faltante = Math.max(0, demandaTotal - stockUtil);
 
     return {
       ...tier,
       count: prods.length,
-      demandaRop: demandaRop.toFixed(1),
+      demandaTotal: demandaTotal.toFixed(1),
+      ropTotal: ropTotal.toFixed(1),
       stockUtil: stockUtil.toFixed(1),
       ventas30d: Math.round(ventas30d),
       costoProm: costoProm.toFixed(2),
@@ -846,8 +848,12 @@ function rowClass(item) {
               <VDivider class="my-2 opacity-20" />
               <div class="d-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;">
                 <div>
-                  <span class="text-disabled">Demanda ROP:</span>
-                  <span class="font-weight-black text-high-emphasis ms-1">{{ liga.demandaRop }}</span>
+                  <span class="text-disabled">Demanda:</span>
+                  <span class="font-weight-black text-high-emphasis ms-1">{{ liga.demandaTotal }}</span>
+                </div>
+                <div>
+                  <span class="text-disabled">ROP:</span>
+                  <span class="font-weight-black text-primary ms-1">{{ liga.ropTotal }}</span>
                 </div>
                 <div>
                   <span class="text-disabled">Stock Útil:</span>
