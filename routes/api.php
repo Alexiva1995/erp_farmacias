@@ -75,11 +75,12 @@ use App\Http\Controllers\Public\SupplierPublicUploadController;
 use App\Http\Controllers\Public\SupplierOrderResponseController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\FiscalPrinterController;
+use App\Http\Controllers\Api\FactoryFiscalController;
 use App\Http\Controllers\Api\IaAssistantActionController;
 use App\Http\Controllers\Api\DishController;
 use App\Http\Controllers\Api\EcommerceController;
 
-// Fiscal Printer Bridge (OUTSIDE AUTH TO AVOID LOGIN ISSUES IN PYTHON)
+// Fiscal Printer Bridge (OUTSIDE AUTH TO AVOID LOGIN ISSUES IN PYTHON / LOCAL APPS)
 Route::prefix('fiscal')->group(function () {
     Route::get('/pending', [FiscalPrinterController::class, 'getPending']);
     Route::patch('/confirm/{id}', [FiscalPrinterController::class, 'confirm']);
@@ -92,6 +93,16 @@ Route::prefix('fiscal')->group(function () {
     
     // Nueva ruta de réplica
     Route::patch('/confirm-replica/{id}', [FiscalPrinterController::class, 'confirmReplica']);
+
+    // Rutas dedicadas para The Factory HKA (TCP / Directo)
+    Route::prefix('factory')->group(function () {
+        Route::post('/test-connection', [FactoryFiscalController::class, 'testConnection']);
+        Route::post('/print-invoice/{id}', [FactoryFiscalController::class, 'printInvoice']);
+        Route::post('/credit-note', [FactoryFiscalController::class, 'printCreditNote']);
+        Route::post('/report-x', [FactoryFiscalController::class, 'printReportX']);
+        Route::post('/report-z', [FactoryFiscalController::class, 'printReportZ']);
+        Route::get('/status-s1', [FactoryFiscalController::class, 'getStatusS1']);
+    });
 });
 
 /*

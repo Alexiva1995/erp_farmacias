@@ -2,7 +2,7 @@
 import FiscalCommandHistoryTable from "@/components/fiscal/FiscalCommandHistoryTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, onUnmounted, reactive, ref } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { useDisplay } from "vuetify";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
@@ -14,18 +14,23 @@ const checkingConnection = ref(false);
 const isBridgeConnected = ref(false);
 const commands = ref([]);
 const zReportNumber = ref("");
+const statusS1Data = ref(null);
+const loadingS1 = ref(false);
 let poller = null;
 
-// Formulario de Nota de Crédito (NC) — campos requeridos por Protocolo PNP 0141 v5.4
-// Comando 0x40 Campo 7 = 'D' para devolución
+const isFactory = computed(() => {
+  return (brandingStore.settings?.fiscal_machine_type || 'pnp') === 'factory';
+});
+
+// Formulario de Nota de Crédito (NC) — campos requeridos por Protocolos Fiscales
 const ncForm = reactive({
-  invoice_number: "",   // Número de la factura original (Campo 3)
-  machine_serial: "",   // Serial físico de la máquina fiscal (Campo 4)
-  invoice_date:   "",   // Fecha de la factura original YYYY-MM-DD (Campo 5)
-  invoice_hour:   "",   // Hora de la factura original HH:mm:ss (Campo 6)
-  refund_amount:  null, // Monto total a devolver (base para el renglón de devolución)
-  client_name:    "",   // Razón social del cliente (Campo 1)
-  client_rif:     "",   // RIF del cliente (Campo 2)
+  invoice_number: "",   // Número de la factura original
+  machine_serial: "",   // Serial físico de la máquina fiscal
+  invoice_date:   "",   // Fecha de la factura original YYYY-MM-DD
+  invoice_hour:   "",   // Hora de la factura original HH:mm:ss
+  refund_amount:  null, // Monto total a devolver
+  client_name:    "",   // Razón social del cliente
+  client_rif:     "",   // RIF del cliente
   is_taxable:     true, // Si el monto incluye IVA 16%
 });
 
@@ -120,20 +125,54 @@ const fetchCommands = async (isBackground = false) => {
 const checkBridgeStatus = async (showToast = true) => {
   checkingConnection.value = true;
   try {
-    const response = await axios.get("/fiscal/commands/status");
-    isBridgeConnected.value = !!response.data?.is_connected;
-    if (showToast) {
-      if (isBridgeConnected.value) {
-        toast.success("Puente fiscal conectado y respondiendo.");
-      } else {
-        toast.error("El puente fiscal no está ejecutándose en la estación local.");
+    if (isFactory.value) {
+      const response = await axios.post("/fiscal/factory/test-connection");
+      const data = response.data?.data || response.data;
+      isBridgeConnected.value = !!(data.success && data.printer_present);
+      if (showToast) {
+        if (isBridgeConnected.value) {
+          toast.success("Impresora The Factory HKA conectada y respondiendo.");
+        } else if (data.connected) {
+          toast.warning("Conectado al listener TCP, pero la impresora no responde.");
+        } else {
+          toast.error(data.message || "Sin conexión con The Factory HKA.");
+        }
+      }
+    } else {
+      const response = await axios.get("/fiscal/commands/status");
+      isBridgeConnected.value = !!response.data?.is_connected;
+      if (showToast) {
+        if (isBridgeConnected.value) {
+          toast.success("Puente fiscal PNP conectado y respondiendo.");
+        } else {
+          toast.error("El puente fiscal PNP no está ejecutándose en la estación local.");
+        }
       }
     }
   } catch (error) {
     isBridgeConnected.value = false;
-    if (showToast) toast.error("Sin comunicación con el puente fiscal.");
+    if (showToast) toast.error("Sin comunicación con el servicio de impresora fiscal.");
   } finally {
     checkingConnection.value = false;
+  }
+};
+
+const fetchStatusS1 = async () => {
+  loadingS1.value = true;
+  try {
+    const response = await axios.get("/fiscal/factory/status-s1");
+    const data = response.data?.data || response.data;
+    if (data.success) {
+      statusS1Data.value = data;
+      toast.success("Estado S1 consultado exitosamente.");
+    } else {
+      toast.error(data.message || "No se pudo consultar el estado S1.");
+    }
+  } catch (err) {
+    console.error("Error al consultar estado S1:", err);
+    toast.error("Error de comunicación al consultar estado S1.");
+  } finally {
+    loadingS1.value = false;
   }
 };
 
@@ -158,12 +197,52 @@ const sendCommand = async (commandKey, payload = {}) => {
 };
 
 // --- Manejadores de Eventos ---
-const handleReportX = () => sendCommand("REPORT_X");
+const handleReportX = async () => {
+  if (isFactory.value) {
+    actionLoading.REPORT_X = true;
+    try {
+      const response = await axios.post("/fiscal/factory/report-x");
+      const res = response.data?.data || response.data;
+      if (res.success) {
+        toast.success(res.message || "Reporte X impreso exitosamente en The Factory.");
+        await fetchCommands(true);
+      } else {
+        toast.error(res.message || "Error al imprimir Reporte X.");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Error al emitir Reporte X en Factory.");
+    } finally {
+      actionLoading.REPORT_X = false;
+    }
+  } else {
+    sendCommand("REPORT_X");
+  }
+};
 
 const handleReportZ = () => {
   toast.confirm(
     "¿Seguro que desea generar el Reporte Z? Esto cerrará la jornada fiscal actual.",
-    () => sendCommand("REPORT_Z")
+    async () => {
+      if (isFactory.value) {
+        actionLoading.REPORT_Z = true;
+        try {
+          const response = await axios.post("/fiscal/factory/report-z");
+          const res = response.data?.data || response.data;
+          if (res.success) {
+            toast.success(res.message || "Reporte Z diario cerrado exitosamente en The Factory.");
+            await fetchCommands(true);
+          } else {
+            toast.error(res.message || "Error al imprimir Reporte Z.");
+          }
+        } catch (err) {
+          toast.error(err.response?.data?.message || "Error al emitir Reporte Z en Factory.");
+        } finally {
+          actionLoading.REPORT_Z = false;
+        }
+      } else {
+        sendCommand("REPORT_Z");
+      }
+    }
   );
 };
 
@@ -175,7 +254,7 @@ const handleReprintZ = () => {
   );
 };
 
-/** Validar y enviar Nota de Crédito según Protocolo PNP 0141 v5.4 */
+/** Validar y enviar Nota de Crédito */
 const handleCreditNote = () => {
   const invNumber = String(ncForm.invoice_number || "").trim();
   const machineSerial = String(ncForm.machine_serial || "").trim().toUpperCase();
@@ -185,14 +264,14 @@ const handleCreditNote = () => {
   const clientName = String(ncForm.client_name || "").trim() || "CLIENTE GENERICO";
   const clientRif = String(ncForm.client_rif || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase() || "V000000000";
 
-  // Validación de campos requeridos por el protocolo
+  // Validación de campos requeridos
   if (!invNumber)
     return toast.error("Ingrese el número de la factura original.");
   if (!machineSerial)
     return toast.error("Ingrese el serial de la máquina fiscal que emitió la factura.");
   if (!invDate)
     return toast.error("Ingrese la fecha de la factura original.");
-  if (!invHour)
+  if (!invHour && !isFactory.value)
     return toast.error("Ingrese la hora de la factura original.");
   if (isNaN(refundAmt) || refundAmt <= 0)
     return toast.error("Ingrese un monto de devolución válido (mayor a 0).");
@@ -200,16 +279,44 @@ const handleCreditNote = () => {
   toast.confirm(
     `¿Confirma la emisión de una Nota de Crédito por Bs ${refundAmt.toFixed(2)} ` +
     `sobre la Factura #${invNumber}?\n\nEsta acción genera un documento fiscal irreversible.`,
-    () => sendCommand("CREDIT_NOTE", {
-      invoice_number: invNumber,
-      machine_serial: machineSerial,
-      invoice_date:   invDate,
-      invoice_hour:   invHour,
-      refund_amount:  refundAmt,
-      client_name:    clientName,
-      client_rif:     clientRif,
-      is_taxable:     Boolean(ncForm.is_taxable),
-    })
+    async () => {
+      if (isFactory.value) {
+        actionLoading.CREDIT_NOTE = true;
+        try {
+          const response = await axios.post("/fiscal/factory/credit-note", {
+            invoice_number: invNumber,
+            machine_serial: machineSerial,
+            invoice_date:   invDate,
+            refund_amount:  refundAmt,
+            client_name:    clientName,
+            client_rif:     clientRif,
+            is_taxable:     Boolean(ncForm.is_taxable),
+          });
+          const res = response.data?.data || response.data;
+          if (res.success) {
+            toast.success(res.message || "Nota de Crédito fiscal emitida exitosamente en Factory.");
+            await fetchCommands(true);
+          } else {
+            toast.error(res.message || "Error al emitir Nota de Crédito en Factory.");
+          }
+        } catch (err) {
+          toast.error(err.response?.data?.message || "Error al emitir Nota de Crédito en Factory.");
+        } finally {
+          actionLoading.CREDIT_NOTE = false;
+        }
+      } else {
+        sendCommand("CREDIT_NOTE", {
+          invoice_number: invNumber,
+          machine_serial: machineSerial,
+          invoice_date:   invDate,
+          invoice_hour:   invHour,
+          refund_amount:  refundAmt,
+          client_name:    clientName,
+          client_rif:     clientRif,
+          is_taxable:     Boolean(ncForm.is_taxable),
+        });
+      }
+    }
   );
 };
 
@@ -326,6 +433,50 @@ onUnmounted(() => {
               >
                 Reporte Z
               </VBtn>
+            </div>
+
+            <!-- Opción directa para The Factory HKA: Lectura S1 -->
+            <div
+              v-if="isFactory"
+              class="mb-4"
+            >
+              <VBtn
+                color="primary"
+                variant="tonal"
+                prepend-icon="tabler-info-square-rounded"
+                block
+                class="font-weight-bold"
+                :loading="loadingS1"
+                @click="fetchStatusS1"
+              >
+                Consultar Contadores / Estado S1 (Factory)
+              </VBtn>
+
+              <VCard
+                v-if="statusS1Data"
+                variant="outlined"
+                color="primary"
+                class="mt-3 pa-3 rounded-lg"
+              >
+                <div class="d-flex align-center justify-space-between mb-2">
+                  <span class="text-caption font-weight-bold text-primary">Estado Fiscal S1</span>
+                  <VBtn
+                    icon="tabler-x"
+                    variant="text"
+                    size="x-small"
+                    color="secondary"
+                    @click="statusS1Data = null"
+                  />
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  <div><strong>Serial Máquina:</strong> {{ statusS1Data.machine_serial || 'N/A' }}</div>
+                  <div><strong>RIF:</strong> {{ statusS1Data.rif || 'N/A' }}</div>
+                  <div><strong>Última Factura:</strong> #{{ statusS1Data.last_invoice_number || '0' }} (Hoy: {{ statusS1Data.daily_invoice_count || '0' }})</div>
+                  <div><strong>Última Nota Crédito:</strong> #{{ statusS1Data.last_credit_note || '0' }} (Hoy: {{ statusS1Data.daily_credit_note_count || '0' }})</div>
+                  <div><strong>Cierres Z Totales:</strong> {{ statusS1Data.daily_closure_z_counter || '0' }}</div>
+                  <div><strong>Total Ventas del Día:</strong> Bs {{ statusS1Data.daily_sales_total || '0.00' }}</div>
+                </div>
+              </VCard>
             </div>
 
             <VSpacer />

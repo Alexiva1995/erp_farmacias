@@ -845,6 +845,16 @@ class OrderActionService
                 ]);
             }
 
+            // Si la máquina fiscal configurada es The Factory HKA, emitir impresión directa por Socket TCP
+            $generalSetting = \App\Models\GeneralSetting::first();
+            if ($generalSetting && $generalSetting->fiscal_machine_type === 'factory') {
+                try {
+                    $factoryService = app(\App\Contracts\Fiscal\FactoryFiscalServiceInterface::class);
+                    $factoryService->printInvoice($fiscalHistory->id);
+                } catch (\Exception $ex) {
+                    \Illuminate\Support\Facades\Log::warning("[FactoryFiscal] No se pudo imprimir la factura fiscal en tiempo real: " . $ex->getMessage());
+                }
+            }
 
             return $fiscalHistory;
         }

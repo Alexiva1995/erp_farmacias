@@ -14,6 +14,8 @@ export function usePharmacySettingsForm() {
     address: '',
     fiscal_printer_serial: '',
     fiscal_machine_type: 'pnp',
+    factory_printer_ip: '127.0.0.1',
+    factory_printer_port: 8090,
     default_currency: 'COP',
   }
 
@@ -154,6 +156,8 @@ export function usePharmacySettingsForm() {
       form.address = parsed.address || ''
       form.fiscal_printer_serial = parsed.fiscal_printer_serial || ''
       form.fiscal_machine_type = parsed.fiscal_machine_type || 'pnp'
+      form.factory_printer_ip = parsed.factory_printer_ip || '127.0.0.1'
+      form.factory_printer_port = parsed.factory_printer_port || 8090
       form.default_currency = parsed.default_currency || 'COP'
     } catch {
       form.app_name = ''
@@ -161,6 +165,8 @@ export function usePharmacySettingsForm() {
       form.address = ''
       form.fiscal_printer_serial = ''
       form.fiscal_machine_type = 'pnp'
+      form.factory_printer_ip = '127.0.0.1'
+      form.factory_printer_port = 8090
       form.default_currency = 'COP'
     }
     removeLogo()
@@ -181,6 +187,8 @@ export function usePharmacySettingsForm() {
       form.address = brandingStore.settings.address || ''
       form.fiscal_printer_serial = brandingStore.settings.fiscal_printer_serial || ''
       form.fiscal_machine_type = brandingStore.settings.fiscal_machine_type || 'pnp'
+      form.factory_printer_ip = brandingStore.settings.factory_printer_ip || '127.0.0.1'
+      form.factory_printer_port = brandingStore.settings.factory_printer_port || 8090
       form.default_currency = brandingStore.settings.default_currency || 'COP'
 
       currentSavedLogo.value = brandingStore.settings.app_logo || ''
@@ -198,6 +206,8 @@ export function usePharmacySettingsForm() {
         address: form.address,
         fiscal_printer_serial: form.fiscal_printer_serial,
         fiscal_machine_type: form.fiscal_machine_type,
+        factory_printer_ip: form.factory_printer_ip,
+        factory_printer_port: form.factory_printer_port,
         default_currency: form.default_currency,
       })
     } catch (error) {
@@ -222,6 +232,8 @@ export function usePharmacySettingsForm() {
     formData.append('address', form.address ? form.address.trim() : '')
     formData.append('fiscal_printer_serial', form.fiscal_printer_serial ? form.fiscal_printer_serial.trim() : '')
     formData.append('fiscal_machine_type', form.fiscal_machine_type || 'pnp')
+    formData.append('factory_printer_ip', form.factory_printer_ip ? form.factory_printer_ip.trim() : '127.0.0.1')
+    formData.append('factory_printer_port', form.factory_printer_port ? String(form.factory_printer_port) : '8090')
     formData.append('default_currency', form.default_currency || 'COP')
 
     if (logoFile.value) {

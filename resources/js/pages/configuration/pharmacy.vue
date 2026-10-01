@@ -57,10 +57,40 @@ const onDropFavicon = (e) => {
   if (file) handleFaviconSelect(file)
 }
 
-const onDropSignature = (e) => {
-  isDraggingSignature.value = false
-  const file = e.dataTransfer?.files?.[0]
-  if (file) handleSignatureStampSelect(file)
+import axios from '@/plugins/axios'
+import { toast } from '@/plugins/sweetalert'
+
+const testingFactory = ref(false)
+const factoryTestResult = ref(null)
+
+const testFactoryConnection = async () => {
+  testingFactory.value = true
+  factoryTestResult.value = null
+  try {
+    const response = await axios.post('/fiscal/factory/test-connection', {
+      ip: form.factory_printer_ip,
+      port: form.factory_printer_port ? Number(form.factory_printer_port) : 8090,
+    })
+    const resData = response.data?.data || response.data
+    factoryTestResult.value = resData
+    if (resData.success && resData.printer_present) {
+      toast.success(resData.message || 'Impresora The Factory HKA conectada correctamente')
+    } else if (resData.connected) {
+      toast.warning(resData.message || 'Conectado al listener TCP, pero la impresora no responde')
+    } else {
+      toast.error(resData.message || 'Error al conectar con la impresora Factory')
+    }
+  } catch (err) {
+    console.error('Error al probar conexión Factory:', err)
+    factoryTestResult.value = {
+      success: false,
+      connected: false,
+      message: err.response?.data?.message || err.message || 'Error de comunicación',
+    }
+    toast.error('Error de comunicación con el servicio de The Factory HKA')
+  } finally {
+    testingFactory.value = false
+  }
 }
 </script>
 
@@ -184,6 +214,7 @@ const onDropSignature = (e) => {
                         v-model="form.fiscal_machine_type"
                         :items="[
                           { title: 'Protocolo PNP (Impresora Fiscal Estándar)', value: 'pnp' },
+                          { title: 'Factory (The Factory HKA - TCP / Directo)', value: 'factory' },
                           { title: 'Bixolon / HKA Fiscal', value: 'bixolon' },
                           { title: 'Hasar Fiscal', value: 'hasar' },
                           { title: 'Custom / Genérica', value: 'custom' },
@@ -194,6 +225,86 @@ const onDropSignature = (e) => {
                         density="comfortable"
                         hide-details="auto"
                       />
+                    </VCol>
+
+                    <!-- Campos específicos para The Factory HKA -->
+                    <VCol
+                      v-if="form.fiscal_machine_type === 'factory'"
+                      cols="12"
+                    >
+                      <VCard
+                        variant="tonal"
+                        color="primary"
+                        class="pa-4 rounded-lg border"
+                      >
+                        <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-3">
+                          <div class="d-flex align-center gap-2 font-weight-bold text-subtitle-2">
+                            <VIcon icon="tabler-network" size="20" />
+                            Parámetros de Conexión The Factory HKA (TCP Listener)
+                          </div>
+                          <VBtn
+                            size="small"
+                            color="primary"
+                            variant="elevated"
+                            prepend-icon="tabler-plug-connected"
+                            :loading="testingFactory"
+                            :disabled="testingFactory"
+                            @click="testFactoryConnection"
+                          >
+                            Probar Conexión Factory
+                          </VBtn>
+                        </div>
+
+                        <VRow>
+                          <VCol cols="12" sm="6">
+                            <VTextField
+                              v-model="form.factory_printer_ip"
+                              label="IP del TCP Listener"
+                              placeholder="Ej: 127.0.0.1"
+                              prepend-inner-icon="tabler-server"
+                              variant="outlined"
+                              density="comfortable"
+                              hide-details="auto"
+                            />
+                          </VCol>
+
+                          <VCol cols="12" sm="6">
+                            <VTextField
+                              v-model="form.factory_printer_port"
+                              label="Puerto TCP Listener"
+                              placeholder="Ej: 8090"
+                              type="number"
+                              prepend-inner-icon="tabler-hash"
+                              variant="outlined"
+                              density="comfortable"
+                              hide-details="auto"
+                            />
+                          </VCol>
+                        </VRow>
+
+                        <!-- Resultado del Test de Conexión -->
+                        <VAlert
+                          v-if="factoryTestResult"
+                          class="mt-3"
+                          :type="factoryTestResult.success && factoryTestResult.printer_present ? 'success' : (factoryTestResult.connected ? 'warning' : 'error')"
+                          variant="tonal"
+                          density="compact"
+                          closable
+                          @click:close="factoryTestResult = null"
+                        >
+                          <div class="text-body-2 font-weight-medium">
+                            {{ factoryTestResult.message }}
+                          </div>
+                          <div
+                            v-if="factoryTestResult.connected"
+                            class="text-caption mt-1"
+                          >
+                            Endpoint: {{ factoryTestResult.ip }}:{{ factoryTestResult.port }} |
+                            Estado: {{ factoryTestResult.status_code || 'N/A' }} |
+                            Error: {{ factoryTestResult.error_code || '0' }}
+                          </div>
+                        </VAlert>
+                      </VCard>
                     </VCol>
 
                     <VCol cols="12" sm="6">

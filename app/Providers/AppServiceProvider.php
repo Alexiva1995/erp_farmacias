@@ -275,6 +275,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\Fiscal\FactoryFiscalServiceInterface::class,
+            \App\Services\Fiscal\FactoryFiscalService::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Repositories\GeneralPromotionRepositoryInterface::class,
             \App\Repositories\GeneralPromotionRepository::class
         );

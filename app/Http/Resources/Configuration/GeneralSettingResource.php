@@ -126,6 +126,8 @@ class GeneralSettingResource extends JsonResource
             'address' => $this->address,
             'fiscal_printer_serial' => $this->fiscal_printer_serial,
             'fiscal_machine_type' => $this->fiscal_machine_type ?? 'pnp',
+            'factory_printer_ip' => $this->factory_printer_ip ?? '127.0.0.1',
+            'factory_printer_port' => (int) ($this->factory_printer_port ?? 8090),
             'app_logo' => $this->app_logo,
             'app_favicon' => $this->app_favicon,
             'app_signature_stamp' => $this->app_signature_stamp,

@@ -19,6 +19,8 @@ class GeneralSetting extends Model
         'app_rif',
         'fiscal_printer_serial',
         'fiscal_machine_type',
+        'factory_printer_ip',
+        'factory_printer_port',
         'app_logo',
         'app_favicon',
         'app_signature_stamp',
@@ -143,5 +145,6 @@ class GeneralSetting extends Model
         'enable_invoices' => 'boolean',
         'enable_invoice_locations' => 'boolean',
         'enabled_bi_views' => 'array',
+        'factory_printer_port' => 'integer',
     ];
 }
