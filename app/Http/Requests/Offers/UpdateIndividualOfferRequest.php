@@ -18,6 +18,7 @@ class UpdateIndividualOfferRequest extends FormRequest
             'discount_percent' => 'sometimes|required|numeric|min:0|max:100',
             'start_date' => 'sometimes|required|date',
             'end_date' => 'sometimes|required|date|after_or_equal:start_date',
+            'one_per_customer' => 'sometimes|boolean',
         ];
     }
 }

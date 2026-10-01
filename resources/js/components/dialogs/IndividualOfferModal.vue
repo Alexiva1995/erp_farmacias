@@ -38,6 +38,7 @@ const defaultIndividualOffer = {
   discount_percent: null,
   start_date: "",
   end_date: "",
+  one_per_customer: false,
 };
 
 const localFormData = ref({ ...defaultIndividualOffer });
@@ -168,6 +169,7 @@ watch(
           discount_percent: props.productOfferToEdit.discount_percent,
           start_date: formatDateForInput(props.productOfferToEdit.start_date),
           end_date: formatDateForInput(props.productOfferToEdit.end_date),
+          one_per_customer: !!props.productOfferToEdit.one_per_customer,
         };
       } else {
         localFormData.value = {
@@ -414,6 +416,19 @@ const endDateConfig = computed(() => ({
                   :config="endDateConfig"
                 />
               </div>
+            </VCol>
+
+            <!-- Límite 1 por persona -->
+            <VCol cols="12" class="mt-2">
+              <VCheckbox
+                v-model="localFormData.one_per_customer"
+                label="Limitar a 1 oferta por cliente/persona"
+                color="primary"
+                hide-details
+                density="compact"
+                class="font-weight-black text-high-emphasis"
+                :disabled="props.loading"
+              />
             </VCol>
           </VRow>
         </div>

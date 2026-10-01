@@ -18,6 +18,7 @@ class StoreIndividualOfferRequest extends FormRequest
             'discount_percent' => 'required|numeric',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'one_per_customer' => 'sometimes|boolean',
         ];
     }
 }

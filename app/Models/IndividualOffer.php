@@ -12,6 +12,7 @@ class IndividualOffer extends Model
         'discount_percent',
         'start_date',
         'end_date',
+        'one_per_customer',
     ];
 
     public function product(): BelongsTo
