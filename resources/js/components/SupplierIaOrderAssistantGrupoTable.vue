@@ -278,9 +278,10 @@ const getLigasSummary = (productos) => {
   return tiers.map(tier => {
     const prods = productos.filter(p => {
       if (p.liga_id) return Number(p.liga_id) === tier.id;
-      if (tier.id === 1) return p.liga_nombre === 'Económica';
-      if (tier.id === 2) return p.liga_nombre === 'Promedio';
-      if (tier.id === 3) return p.liga_nombre === 'Premium';
+      const ligaNorm = String(p.tier_name || p.liga_nombre || '').toLowerCase();
+      if (tier.id === 1) return ligaNorm.includes('econ');
+      if (tier.id === 2) return ligaNorm.includes('prom');
+      if (tier.id === 3) return ligaNorm.includes('prem');
       return false;
     });
 
@@ -299,7 +300,7 @@ const getLigasSummary = (productos) => {
     const validCosts = prods.map(p => parseFloat(p.unit_cost ?? 0)).filter(c => c > 0);
     const costoProm = validCosts.length > 0 ? (validCosts.reduce((a, b) => a + b, 0) / validCosts.length) : 0;
     
-    const faltante = Math.max(0, demandaTotal - stockUtil);
+    const faltante = Math.max(0, ropTotal - stockUtil);
 
     return {
       ...tier,
@@ -833,39 +834,39 @@ function rowClass(item) {
               v-for="liga in getLigasSummary(grupo.productos)"
               :key="liga.id"
               variant="outlined"
-              class="flex-1-1 pa-3 rounded-lg border"
-              :style="{ borderColor: liga.color + '66', backgroundColor: 'rgba(var(--v-theme-surface), 0.7)' }"
+              class="flex-1-1 pa-3 pa-sm-4 rounded-lg border elevation-1"
+              :style="{ borderColor: liga.color + '55', backgroundColor: 'rgba(var(--v-theme-surface), 0.95)' }"
             >
               <div class="d-flex align-center justify-space-between mb-2">
                 <VChip :color="liga.chipColor" size="small" variant="tonal" class="font-weight-black text-uppercase px-2" label>
-                  {{ liga.name }}
+                  {{ liga.name }} ({{ liga.count }})
                 </VChip>
                 <div class="text-xs font-weight-bold" :class="liga.isCovered ? 'text-success' : 'text-warning'">
-                  Faltante Liga: <span class="font-weight-black">{{ liga.faltante }}</span>
+                  Faltante ROP: <span class="font-weight-black font-mono">{{ liga.faltante }}</span>
                   <span v-if="liga.isCovered" class="text-super-xs font-weight-normal ms-1">(Cubierta)</span>
                 </div>
               </div>
               <VDivider class="my-2 opacity-20" />
-              <div class="d-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;">
+              <div class="d-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 8px; font-size: 11px;">
                 <div>
-                  <span class="text-disabled">Demanda:</span>
-                  <span class="font-weight-black text-high-emphasis ms-1">{{ liga.demandaTotal }}</span>
+                  <span class="text-disabled">Demanda (30d):</span>
+                  <span class="font-weight-black text-high-emphasis ms-1 font-mono">{{ liga.demandaTotal }}</span>
                 </div>
                 <div>
-                  <span class="text-disabled">ROP:</span>
-                  <span class="font-weight-black text-primary ms-1">{{ liga.ropTotal }}</span>
+                  <span class="text-disabled">ROP (14d):</span>
+                  <span class="font-weight-black text-primary ms-1 font-mono">{{ liga.ropTotal }}</span>
                 </div>
                 <div>
                   <span class="text-disabled">Stock Útil:</span>
-                  <span class="font-weight-black text-high-emphasis ms-1">{{ liga.stockUtil }}</span>
+                  <span class="font-weight-black text-high-emphasis ms-1 font-mono">{{ liga.stockUtil }}</span>
                 </div>
                 <div>
-                  <span class="text-disabled">Ventas 30d:</span>
-                  <span class="font-weight-black text-high-emphasis ms-1">{{ liga.ventas30d }}</span>
+                  <span class="text-disabled">Ventas (30d):</span>
+                  <span class="font-weight-black text-high-emphasis ms-1 font-mono">{{ liga.ventas30d }}</span>
                 </div>
                 <div>
                   <span class="text-disabled">Costo Prom.:</span>
-                  <span class="font-weight-black text-high-emphasis ms-1">${{ liga.costoProm }}</span>
+                  <span class="font-weight-black text-success ms-1 font-mono">${{ liga.costoProm }}</span>
                 </div>
               </div>
             </VCard>

@@ -1374,7 +1374,7 @@ class IaAssistantReportService
                         $sku->pre_asignado_bs = 0;
                         $ropIndividual = (float)($sku->rop_calculado ?? $sku->rop ?? 0);
                         $stockEfectivo = (float)($sku->stock_efectivo ?? 0);
-                        $faltanteIndividual = (int)ceil($ropIndividual - $stockEfectivo);
+                        $faltanteIndividual = max(0.0, $ropIndividual - $stockEfectivo);
 
                         if ($faltanteIndividual > 0 && $ropIndividual > 0) {
                             $ipoValor = (float)($sku->ipo ?? 0);
@@ -1385,15 +1385,15 @@ class IaAssistantReportService
 
                             // Si es Best Seller o sufre quiebre crónico
                             if ($ipoDecimal >= 0.35 || $tieneQuiebreReciente) {
-                                $sku->pre_asignado_bs = $faltanteIndividual;
-                                // Resta su objetivo directo (ROP) del presupuesto global de la liga
-                                $presupuestoObjetivoLiga -= $ropIndividual;
+                                $sku->pre_asignado_bs = round($faltanteIndividual, 2);
+                                // Resta su objetivo directo (ROP faltante) del presupuesto global de la liga
+                                $presupuestoObjetivoLiga -= $faltanteIndividual;
                             }
                         }
                     }
 
                     // Asegurar que el presupuesto sobrante no sea negativo
-                    $presupuestoObjetivoLiga = max(0, $presupuestoObjetivoLiga);
+                    $presupuestoObjetivoLiga = max(0.0, $presupuestoObjetivoLiga);
 
                     // FASE 4.2: CALIFICACIÓN DE CASCADA Y PENALIZACIÓN DE BAJO IPO
                     foreach ($tierItems as $sku) {
@@ -1430,19 +1430,14 @@ class IaAssistantReportService
                             $sku->cuota_participacion_ipo = round($cuotaParticipacion * 100, 1);
                             $sku->asignacion_cascada = round($objetivoAsignado, 2);
                             
-                            if ($sku->pre_asignado_bs > 0) {
-                                // Mantiene su pre-asignación y absorbe su cuota del restante
-                                $sku->solicitar = $sku->pre_asignado_bs + ceil($objetivoAsignado);
-                            } else {
-                                $exceso = $objetivoAsignado - $sku->stock_efectivo;
-                                $sku->solicitar = $exceso > 0 ? ceil($exceso) : floor($exceso);
-                            }
+                            $totalDemandTarget = (float)($sku->pre_asignado_bs ?? 0) + $objetivoAsignado;
+                            $sku->solicitar = (int)ceil(max(0, $totalDemandTarget));
                         } else {
                             $sku->cuota_participacion_ipo = 0;
                             $sku->asignacion_cascada = 0;
                             // Si no participa en la cascada (ej. penalizado)
-                            if ($sku->pre_asignado_bs > 0) {
-                                $sku->solicitar = $sku->pre_asignado_bs;
+                            if (($sku->pre_asignado_bs ?? 0) > 0) {
+                                $sku->solicitar = (int)ceil($sku->pre_asignado_bs);
                             } else {
                                 $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
                                 $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;

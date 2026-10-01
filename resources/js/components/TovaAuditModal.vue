@@ -1,21 +1,28 @@
 <template>
   <VDialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" max-width="880">
     <VCard class="pa-0 rounded-lg overflow-hidden elevation-6">
-      <!-- Encabezado Estilizado del Sistema -->
-      <VCardItem class="bg-primary text-white px-4 py-2 d-flex justify-space-between align-center">
-        <div class="d-flex align-center ga-2">
-          <VIcon icon="tabler-calculator" size="20" color="white" />
-          <div>
-            <div class="text-subtitle-2 font-weight-black text-uppercase text-truncate" style="max-width: 650px;">
+      <!-- Header Premium del Sistema -->
+      <VCardTitle class="pa-0">
+        <div class="header-gradient px-4 py-2 d-flex align-center shadow-sm">
+          <VAvatar color="white" variant="flat" size="34" class="me-3 elevation-2">
+            <VIcon icon="tabler-calculator" color="primary" size="20" />
+          </VAvatar>
+          <div class="flex-grow-1 overflow-hidden">
+            <h2 class="text-subtitle-2 font-weight-black text-white leading-tight mb-0 text-uppercase text-truncate" style="max-inline-size: 680px;">
               Auditoría: {{ item?.name || item?.producto || 'Producto' }}
-            </div>
-            <div class="text-super-xs text-white opacity-80">
-              SKU: {{ item?.product_id ?? item?.id }} | Grupo: {{ item?.group_name || 'Sin Grupo' }} (#{{ item?.group_id || 'N/A' }})
+            </h2>
+            <div class="d-flex align-center gap-2 mt-0">
+              <span class="text-super-xs text-white opacity-90 text-uppercase font-weight-bold text-truncate">
+                SKU: {{ item?.product_id ?? item?.id }} | Grupo: {{ item?.group_name || 'Sin Grupo' }} (#{{ item?.group_id || 'N/A' }})
+              </span>
             </div>
           </div>
+          <VSpacer />
+          <VBtn icon variant="tonal" color="white" size="small" class="rounded-lg ms-2" @click="$emit('update:modelValue', false)">
+            <VIcon size="18">tabler-x</VIcon>
+          </VBtn>
         </div>
-        <VBtn icon="tabler-x" variant="text" size="small" color="white" @click="$emit('update:modelValue', false)" />
-      </VCardItem>
+      </VCardTitle>
 
       <!-- Contenido Compacto en 2 Columnas Sin Scroll Forzado -->
       <VCardText class="pa-3 bg-grey-lighten-5">
@@ -195,10 +202,8 @@
                   <span>• <strong>Cuota IPO ({{ item?.cuota_participacion_ipo }}%):</strong></span>
                   <span class="font-mono font-weight-bold text-info">+{{ Number(item?.asignacion_cascada || 0).toFixed(2) }} un</span>
                 </div>
-                <div v-if="Number(item?.pre_asignado_bs || 0) > 0" class="mt-1">
-                  <VChip color="success" size="x-small" variant="tonal" class="font-weight-bold text-wrap text-start">
-                    ✓ Pre-asignación Bloqueada: +{{ item?.pre_asignado_bs }} un reservada por Best Seller/Quiebre.
-                  </VChip>
+                <div v-if="Number(item?.pre_asignado_bs || 0) > 0" class="mt-1 pa-1-5 px-2 bg-success-lighten-5 rounded border border-success text-success-darken-3 font-weight-bold text-super-xs">
+                  ✓ Pre-asignación Bloqueada: +{{ Number(item?.pre_asignado_bs || 0).toFixed(1) }} un reservada por Best Seller/Quiebre.
                 </div>
               </div>
             </VCard>
@@ -328,6 +333,13 @@ const stockPasivo = computed(() => {
 </script>
 
 <style scoped>
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end)) 100%
+  );
+}
 .tracking-wide {
   letter-spacing: 0.5px;
 }
