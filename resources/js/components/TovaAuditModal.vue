@@ -211,8 +211,13 @@
                   <span>• <strong>Cuota IPO ({{ item?.cuota_participacion_ipo }}%):</strong></span>
                   <span class="font-mono font-weight-bold text-info">+{{ Number(item?.asignacion_cascada || 0).toFixed(2) }} un</span>
                 </div>
-                <div v-if="isQuiebreExtremo" class="mt-1 pa-1-5 px-2 bg-amber-lighten-5 rounded border border-warning text-warning-darken-4 font-weight-bold text-super-xs">
-                  ⚡ Protocolo de Rescate: +1 un asignada como Lote Mínimo de Exposición para presencia de catálogo.
+                <div v-if="isQuiebreExtremo">
+                  <div v-if="Number(item?.solicitar || 0) > 0" class="mt-1 pa-1-5 px-2 bg-amber-lighten-5 rounded border border-warning text-warning-darken-4 font-weight-bold text-super-xs">
+                    ⚡ Protocolo de Rescate: +1 un asignada como Lote de Exposición (Único SKU o Liga desabastecida).
+                  </div>
+                  <div v-else class="mt-1 pa-1-5 px-2 bg-info-lighten-5 rounded border border-info text-info-darken-3 font-weight-bold text-super-xs">
+                    ✓ Rescate de Catálogo Omitido: La Liga ya tiene presencia y cobertura en anaquel con producto líder/sustituto.
+                  </div>
                 </div>
                 <div v-else-if="Number(item?.pre_asignado_bs || 0) > 0" class="mt-1 pa-1-5 px-2 bg-success-lighten-5 rounded border border-success text-success-darken-3 font-weight-bold text-super-xs">
                   ✓ Pre-asignación Bloqueada: +{{ Number(item?.pre_asignado_bs || 0).toFixed(1) }} un reservada por Best Seller/Quiebre.
@@ -259,8 +264,8 @@
                 </div>
                 <div class="d-flex justify-space-between">
                   <span>• <strong>Regla de Lote Mínimo:</strong></span>
-                  <span class="font-weight-bold" :class="isQuiebreExtremo ? 'text-warning' : 'text-disabled'">
-                    {{ isQuiebreExtremo ? 'Lote de Exposición (+1 un)' : 'Aplicada' }}
+                  <span class="font-weight-bold" :class="isQuiebreExtremo ? (Number(item?.solicitar || 0) > 0 ? 'text-warning' : 'text-info') : 'text-disabled'">
+                    {{ isQuiebreExtremo ? (Number(item?.solicitar || 0) > 0 ? 'Lote de Exposición (+1 un)' : 'Omitido (Liga Cubierta)') : 'Aplicada' }}
                   </span>
                 </div>
               </div>

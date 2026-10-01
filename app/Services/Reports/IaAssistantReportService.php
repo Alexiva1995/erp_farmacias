@@ -1351,12 +1351,19 @@ class IaAssistantReportService
 
                 // Calculo de Stock Util de Liga con precisión decimal (capado a la demanda objetivo individual de cada SKU)
                 $stockUtilLiga = 0;
+                $stockFisicoTotalLiga = 0;
+                $stockEfectivoTotalLiga = 0;
                 foreach ($tierItems as $sku) {
                     $maxSku = (float)($sku->demanda_ponderada ?? $sku->promedio_calculado ?? 0);
                     $stockUtilLiga += min((float)$sku->stock_efectivo, $maxSku);
+                    $stockFisicoTotalLiga += (float)($sku->stock_fisico ?? 0);
+                    $stockEfectivoTotalLiga += (float)($sku->stock_efectivo ?? 0);
                 }
 
-                if ($stockUtilLiga >= $ropLiga || $stockUtilLiga >= $objLiga) {
+                $totalSkusLiga = count($tierItems);
+                $ligaCubierta = ($stockUtilLiga >= $ropLiga || $stockUtilLiga >= $objLiga);
+
+                if ($ligaCubierta) {
                     foreach ($tierItems as $sku) {
                         $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
                         $ropIndividual = (float)($sku->rop_calculado ?? $sku->rop ?? 0);
@@ -1365,10 +1372,20 @@ class IaAssistantReportService
                         $ipoDecimal = $ipoValor > 1.0 ? ($ipoValor / 100) : $ipoValor;
                         $isBestSeller = $ipoDecimal >= 0.35 || (bool)($sku->es_best_seller_liga ?? false);
 
-                        // Regla Óptima: "Best Seller True-Demand Bypass"
+                        // Regla de Rescate de Catálogo Condicionado:
+                        // Si la liga ya está cubierta, NO rescatar SKUs secundarios con 0 ventas.
+                        // Solo se rescata si es el único SKU de la liga y toda la liga está sin stock.
                         if ($sku->is_quiebre_extremo_sin_historial ?? false) {
-                            $sku->solicitar = $stockEfectivo <= 0 ? 1 : 0;
-                            $sku->pre_asignado_bs = $stockEfectivo <= 0 ? 1.0 : 0.0;
+                            $esUnicoSku = ($totalSkusLiga === 1) || ($ipoValor >= 99.0);
+                            if ($esUnicoSku && $stockEfectivoTotalLiga <= 0) {
+                                $sku->solicitar = 1;
+                                $sku->pre_asignado_bs = 1.0;
+                                $sku->motivo_sugerido = 'Lote de Exposición (Único SKU de liga)';
+                            } else {
+                                $sku->solicitar = 0;
+                                $sku->pre_asignado_bs = 0.0;
+                                $sku->motivo_sugerido = 'Rescate omitido (Liga cubierta con producto líder)';
+                            }
                             $sku->rescate_best_seller = 0;
                         } elseif ($isBestSeller && $ropIndividual > $stockEfectivo) {
                             $deficitIndividual = $ropIndividual - $stockEfectivo;
@@ -1394,7 +1411,7 @@ class IaAssistantReportService
                     })->filter(fn($val) => $val > 0);
                     $promedioPrecioLiga = $validPrices->isNotEmpty() ? $validPrices->avg() : 0;
 
-                    // FASE 4.1: PRE-ASIGNACIÓN PRIORITARIA (Best Seller Safety Net)
+                    // FASE 4.1: PRE-ASIGNACIÓN PRIORITARIA (Best Seller Safety Net y Rescate Condicionado)
                     $presupuestoObjetivoLiga = $objLiga;
                     
                     foreach ($tierItems as $sku) {
@@ -1404,9 +1421,17 @@ class IaAssistantReportService
                         $faltanteIndividual = max(0.0, $ropIndividual - $stockEfectivo);
 
                         if ($sku->is_quiebre_extremo_sin_historial ?? false) {
-                            if ($stockEfectivo <= 0) {
+                            $esUnicoSku = ($totalSkusLiga === 1) || (((float)($sku->ipo ?? 0)) >= 99.0);
+                            // Rescate condicionado: SOLO si es único SKU o si toda la liga tiene stock 0
+                            if ($stockEfectivo <= 0 && ($esUnicoSku || $stockEfectivoTotalLiga <= 0)) {
                                 $sku->pre_asignado_bs = 1.0;
                                 $sku->solicitar = 1;
+                                $sku->motivo_sugerido = 'Lote de Exposición (Liga desabastecida)';
+                                $presupuestoObjetivoLiga = max(0.0, $presupuestoObjetivoLiga - 1.0);
+                            } else {
+                                $sku->pre_asignado_bs = 0.0;
+                                $sku->solicitar = 0;
+                                $sku->motivo_sugerido = 'Rescate omitido (Liga abastecida por sustitutos)';
                             }
                         } elseif ($faltanteIndividual > 0 && $ropIndividual > 0) {
                             $ipoValor = (float)($sku->ipo ?? 0);
@@ -1463,7 +1488,7 @@ class IaAssistantReportService
                         if ($sku->is_quiebre_extremo_sin_historial ?? false) {
                             $sku->cuota_participacion_ipo = 0;
                             $sku->asignacion_cascada = 0;
-                            $sku->solicitar = $sku->stock_efectivo <= 0 ? 1 : 0;
+                            $sku->solicitar = (int)($sku->pre_asignado_bs ?? 0);
                         } elseif ($puntuacionTotalLiga > 0 && $sku->puntuacionCompra > 0) {
                             $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;
                             $objetivoAsignado = $presupuestoObjetivoLiga * $cuotaParticipacion;
