@@ -1412,9 +1412,14 @@ class IaAssistantReportService
 
                     // FASE 4.3: DISTRIBUCIÓN DEL PRESUPUESTO SOBRANTE
                     foreach ($tierItems as $sku) {
+                        $sku->presupuesto_disponible_liga = round($presupuestoObjetivoLiga, 2);
+                        $sku->ventas_totales_liga = round($tierTotalDemand, 2);
+
                         if ($puntuacionTotalLiga > 0 && $sku->puntuacionCompra > 0) {
                             $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;
                             $objetivoAsignado = $presupuestoObjetivoLiga * $cuotaParticipacion;
+                            $sku->cuota_participacion_ipo = round($cuotaParticipacion * 100, 1);
+                            $sku->asignacion_cascada = round($objetivoAsignado, 2);
                             
                             if ($sku->pre_asignado_bs > 0) {
                                 // Mantiene su pre-asignación y absorbe su cuota del restante
@@ -1424,6 +1429,8 @@ class IaAssistantReportService
                                 $sku->solicitar = $exceso > 0 ? ceil($exceso) : floor($exceso);
                             }
                         } else {
+                            $sku->cuota_participacion_ipo = 0;
+                            $sku->asignacion_cascada = 0;
                             // Si no participa en la cascada (ej. penalizado)
                             if ($sku->pre_asignado_bs > 0) {
                                 $sku->solicitar = $sku->pre_asignado_bs;
@@ -1659,6 +1666,11 @@ class IaAssistantReportService
             $item->dias_con_stock_m1 = $d1;
             $item->dias_con_stock_m2 = $d2;
             $item->dias_con_stock_m3 = $d3;
+            $item->peso_m1 = isset($w1) ? round($w1 * 100, 1) : 0;
+            $item->peso_m2 = isset($w2) ? round($w2 * 100, 1) : 0;
+            $item->peso_m3 = isset($w3) ? round($w3 * 100, 1) : 0;
+            $item->is_quiebre_cronico_sanado = ($d1 < 5 && ($v2 + $v3) > 0);
+            $item->vdr_sanada = round($vpd, 3);
             $item->lead_time_days = $effectiveLeadTime;
             $item->buffer_days = $bufferDays;
             $item->stock_fisico = $currentStock;
