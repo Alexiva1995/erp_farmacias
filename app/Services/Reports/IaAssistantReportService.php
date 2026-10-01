@@ -1033,6 +1033,21 @@ class IaAssistantReportService
             ->get(['id', 'group_id', 'sales_average', 'sales_average_weighted', 'unit_cost', 'sale_price', 'is_colombian_origin'])
             ->groupBy('group_id');
 
+        // Sincronizar demandas sanadas calculadas en processStockoutAdjustedRopReport
+        $sanedDemands = $items->keyBy('id');
+        foreach ($allGroupProducts as $gId => $groupProds) {
+            foreach ($groupProds as $gp) {
+                if (isset($sanedDemands[$gp->id])) {
+                    $saned = $sanedDemands[$gp->id];
+                    $gp->promedio_calculado = (float)($saned->demanda_sanada_individual ?? $saned->promedio_calculado ?? 0);
+                    $gp->vdr_sanada = (float)($saned->vdr_sanada_individual ?? $saned->vdr_sanada ?? 0);
+                    if ($gp->promedio_calculado > 0) {
+                        $gp->sales_average_weighted = $gp->promedio_calculado;
+                    }
+                }
+            }
+        }
+
         $allProductIds = $allGroupProducts->flatten()->pluck('id')->unique()->toArray();
 
         $now = now();
@@ -1708,9 +1723,9 @@ class IaAssistantReportService
                 $vdrSanada = ($v2 + $v3) / $diasStockHistorico;
                 $demandaMensualAjustada = $vdrSanada * 30;
 
-                // Techo antiespeculativo (1.5x sobre el máximo histórico vendido)
-                $maxHist = max($v2, $v3, (float)($item->sales_average ?? 0), 1.0);
-                $capLimit = $maxHist * 1.5;
+                // Techo antiespeculativo basado en la tasa máxima histórica observada
+                $maxHistVdr = max($v2 / max(1, $d2), $v3 / max(1, $d3), ((float)($item->sales_average ?? 0)) / 30, 0.033);
+                $capLimit = max(1.0, $maxHistVdr * 30 * 1.5);
                 $demandaMensualAjustada = min($demandaMensualAjustada, $capLimit);
             } else {
                 // Venta Diaria Real (VDR) estándar con corte de mínimo 3 días
@@ -1723,9 +1738,9 @@ class IaAssistantReportService
                 $demandaAjustada2 = $vdr2 * 30;
                 $demandaAjustada3 = $vdr3 * 30;
 
-                // Techo antiespeculativo (Cap Factor 1.5x sobre el máximo histórico vendido)
-                $maxHist = max($v1, $v2, $v3, (float)($item->sales_average ?? 0), 1.0);
-                $capLimit = $maxHist * 1.5;
+                // Techo antiespeculativo sobre la demanda mensual ajustada
+                $maxVdr = max($vdr1, $vdr2, $vdr3, ((float)($item->sales_average ?? 0)) / 30, 0.033);
+                $capLimit = max(1.0, $maxVdr * 30 * 1.5);
 
                 $cap1 = min($demandaAjustada1, $capLimit);
                 $cap2 = min($demandaAjustada2, $capLimit);
@@ -1793,6 +1808,9 @@ class IaAssistantReportService
             $item->peso_m3 = isset($w3) ? round($w3 * 100, 1) : 0;
             $item->is_quiebre_cronico_sanado = (!$esQuiebreExtremo && $d1 < 5 && ($v2 + $v3) > 0);
             $item->vdr_sanada = round($vpd, 3);
+            $item->vdr_sanada_individual = round($vpd, 3);
+            $item->demanda_sanada_individual = round($demandaMensualAjustada, 2);
+            $item->rop_calculado_individual = round($rop, 2);
             $item->lead_time_days = $effectiveLeadTime;
             $item->buffer_days = $bufferDays;
             $item->stock_fisico = $currentStock;

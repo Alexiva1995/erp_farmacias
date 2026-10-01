@@ -123,12 +123,12 @@
                 <div class="d-flex justify-space-between">
                   <span>• <strong>Venta Diaria Sanada (VPD):</strong></span>
                   <span class="font-mono font-weight-bold" :class="vpdCalculated > 0 ? 'text-primary' : 'text-disabled'">
-                    {{ vpdCalculated.toFixed(3) }} un/día ({{ Number(item?.promedio_calculado ?? 0).toFixed(1) }} un/mes)
+                    {{ vpdCalculated.toFixed(3) }} un/día ({{ Number(item?.demanda_sanada_individual ?? item?.promedio_calculado ?? 0).toFixed(1) }} un/mes)
                   </span>
                 </div>
                 <div class="d-flex justify-space-between">
-                  <span>• <strong>ROP Calculado:</strong></span>
-                  <span class="font-mono font-weight-bold text-info">{{ Number(item?.rop_calculado ?? item?.rop ?? 0).toFixed(2) }} un</span>
+                  <span>• <strong>ROP Individual (14d):</strong></span>
+                  <span class="font-mono font-weight-bold text-info">{{ Number(item?.rop_calculado_individual ?? item?.rop_calculado ?? item?.rop ?? 0).toFixed(2) }} un</span>
                 </div>
                 <div class="d-flex justify-space-between">
                   <span>• <strong>Stock Físico / Tránsito:</strong></span>
@@ -170,6 +170,10 @@
                 <div class="d-flex justify-space-between align-center">
                   <span>• <strong>Índice de Posición (IPO):</strong></span>
                   <span class="font-mono font-weight-bold text-subtitle-2 text-primary">{{ Number(item?.ipo || 0).toFixed(1) }}%</span>
+                </div>
+                <div v-if="Number(item?.promedio_calculado ?? 0) > 0" class="d-flex justify-space-between align-center text-super-xs text-medium-emphasis">
+                  <span>• <strong>Demanda Cuota Liga:</strong></span>
+                  <span class="font-mono font-weight-bold text-slate-700">{{ Number(item?.promedio_calculado ?? 0).toFixed(1) }} un/mes (ROP Liga: {{ Number(item?.rop ?? 0).toFixed(2) }} un)</span>
                 </div>
               </div>
             </VCard>
@@ -252,15 +256,21 @@
             </VCard>
 
             <!-- FASE 5: RESULTADO FINAL -->
-            <VCard variant="outlined" class="bg-white rounded pa-2 border-s-lg border-success flex-grow-1 d-flex flex-column justify-space-between">
+            <VCard 
+              variant="outlined" 
+              class="bg-white rounded pa-2 border-s-lg flex-grow-1 d-flex flex-column justify-space-between"
+              :class="Number(item?.solicitar || 0) > 0 ? 'border-success' : (Number(item?.solicitar || 0) < 0 ? 'border-warning' : 'border-info')"
+            >
               <div class="text-xs font-weight-black text-slate-800 text-uppercase mb-1" style="color: #0f172a;">
                 📦 FASE 5: Sugerido Final y Resultado
               </div>
               
               <div class="text-xs text-high-emphasis mb-1">
                 <div class="d-flex justify-space-between">
-                  <span>• <strong>Reparto de Liga:</strong></span>
-                  <span class="font-mono font-weight-bold">{{ Number(item?.solicitar || 0) }} un</span>
+                  <span>• <strong>Balance de Inventario:</strong></span>
+                  <span class="font-mono font-weight-bold" :class="Number(item?.solicitar || 0) > 0 ? 'text-success' : (Number(item?.solicitar || 0) < 0 ? 'text-warning-darken-3' : 'text-info')">
+                    {{ Number(item?.solicitar || 0) > 0 ? '+' + Number(item?.solicitar || 0) + ' un (Déficit)' : (Number(item?.solicitar || 0) < 0 ? Number(item?.solicitar || 0) + ' un (Sobrestock)' : '0 un (Equilibrado)') }}
+                  </span>
                 </div>
                 <div class="d-flex justify-space-between">
                   <span>• <strong>Regla de Lote Mínimo:</strong></span>
@@ -270,10 +280,16 @@
                 </div>
               </div>
 
-              <div class="pa-2 rounded bg-success-lighten-5 border border-success text-center">
-                <span class="text-super-xs font-weight-bold text-success text-uppercase d-block">Resultado Final Sugerido</span>
-                <span class="text-h6 font-weight-black text-success font-mono">
-                  {{ Number(item?.solicitar || 0) > 0 ? '+' : '' }}{{ Number(item?.solicitar || 0) }} UNIDADES
+              <!-- Banner de Sugerido Final -->
+              <div 
+                class="pa-2 rounded text-center border"
+                :class="Number(item?.solicitar || 0) > 0 ? 'bg-success-lighten-5 border-success text-success' : (Number(item?.solicitar || 0) < 0 ? 'bg-amber-lighten-5 border-warning text-warning-darken-4' : 'bg-blue-lighten-5 border-info text-info-darken-3')"
+              >
+                <span class="text-super-xs font-weight-bold text-uppercase d-block">
+                  {{ Number(item?.solicitar || 0) > 0 ? 'Resultado Final Sugerido' : (Number(item?.solicitar || 0) < 0 ? 'Sobrestock Detectado' : 'Estado del Inventario') }}
+                </span>
+                <span class="text-h6 font-weight-black font-mono">
+                  {{ Number(item?.solicitar || 0) > 0 ? '+' + Number(item?.solicitar || 0) + ' UNIDADES' : (Number(item?.solicitar || 0) < 0 ? Number(item?.solicitar || 0) + ' UNIDADES' : 'STOCK ÓPTIMO (0 UN)') }}
                 </span>
               </div>
             </VCard>
@@ -329,10 +345,13 @@ const isQuiebreExtremo = computed(() => {
 // VPD Calculada
 const vpdCalculated = computed(() => {
   if (isQuiebreExtremo.value) return 0;
+  if (props.item?.vdr_sanada_individual !== undefined && Number(props.item.vdr_sanada_individual) >= 0) {
+    return Number(props.item.vdr_sanada_individual);
+  }
   if (props.item?.vdr_sanada !== undefined && Number(props.item.vdr_sanada) >= 0) {
     return Number(props.item.vdr_sanada);
   }
-  const prom = Number(props.item?.promedio_calculado ?? 0);
+  const prom = Number(props.item?.demanda_sanada_individual ?? props.item?.promedio_calculado ?? 0);
   return prom > 0 ? (prom / 30) : 0;
 });
 
