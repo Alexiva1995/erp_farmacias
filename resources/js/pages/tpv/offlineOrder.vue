@@ -4,13 +4,13 @@ import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 
 const router = useRouter()
+const emit = defineEmits(['synced'])
 
 // ─── Estado de la Aplicación y Tasas ─────────────────────────────────────────
-// En producción, estos valores se actualizan en caché mientras hay conexión
 const cachedRates = ref({
   USD: 1,
   BS: 45.50,
-  COP: 4100
+  COP: 4100,
 })
 
 const searchQuery = ref('')
@@ -75,17 +75,17 @@ const loadLocalCatalog = () => {
         { 
           id: 1, barcode: '12345', name: 'Paracetamol 500mg', 
           base_price_usd: 2.50, stock: 100,
-          has_individual_offer: false, offer_price_usd: null, offer_expires_at: null 
+          has_individual_offer: false, offer_price_usd: null, offer_expires_at: null,
         },
         { 
           id: 2, barcode: '54321', name: 'Losartán 50mg (OFERTA)', 
           base_price_usd: 6.00, stock: 50,
-          has_individual_offer: true, offer_price_usd: 4.50, offer_expires_at: '2026-12-31T23:59:59' 
+          has_individual_offer: true, offer_price_usd: 4.50, offer_expires_at: '2026-12-31T23:59:59',
         },
         { 
-          id: 3, barcode: '11111', name: 'Vitamina C', 
+          id: 3, barcode: '11111', name: 'Vitamina C 1g', 
           base_price_usd: 5.00, stock: 20,
-          has_individual_offer: true, offer_price_usd: 2.00, offer_expires_at: '2020-01-01T00:00:00' 
+          has_individual_offer: true, offer_price_usd: 2.00, offer_expires_at: '2020-01-01T00:00:00',
         },
       ]
       const writeTx = dbInstance.value.transaction([STORE_PRODUCTS], 'readwrite')
@@ -150,7 +150,7 @@ const totals = computed(() => {
   return {
     USD: cartTotalUSD.value.toFixed(2),
     BS: (cartTotalUSD.value * cachedRates.value.BS).toFixed(2),
-    COP: (cartTotalUSD.value * cachedRates.value.COP).toFixed(0)
+    COP: (cartTotalUSD.value * cachedRates.value.COP).toFixed(0),
   }
 })
 
@@ -174,7 +174,7 @@ const processOfflineOrder = () => {
       items: JSON.parse(JSON.stringify(cart.value)),
       total_usd: cartTotalUSD.value,
       rates_used: { ...cachedRates.value },
-      status: 'pending_sync'
+      status: 'pending_sync',
     }
 
     const transaction = dbInstance.value.transaction([STORE_ORDERS], 'readwrite')
@@ -216,35 +216,33 @@ const syncAndReturn = async () => {
     syncProgress.value.total = orders.length
     syncProgress.value.current = 0
 
-    // Si no hay ventas por subir, volvemos directamente al TPV principal
     if (orders.length === 0) {
-      router.push('/tpv/order-user')
+      router.push('/tpv/orderUser').catch(() => {
+        window.location.href = '/tpv/orderUser'
+      })
       return
     }
 
-    // Proceso secuencial para poder mostrar progreso y auditar errores
     for (const order of orders) {
       try {
         syncProgress.value.current++
-        
-        // Petición hacia el controlador de Laravel
         await axios.post('/tpv/orders/sync-contingency', order)
 
-        // Si Laravel retorna 200 OK, eliminamos la orden de la base local
         const deleteTx = dbInstance.value.transaction([STORE_ORDERS], 'readwrite')
-        deleteTx.objectStore(STORE_ORDERS).delete(order.uuid)
+        deleteTx.objectStore('offline_orders').delete(order.uuid)
       } catch (error) {
         console.error(`Fallo al sincronizar la orden contingente ${order.uuid}:`, error)
-        // La orden no se borra, se queda para reintento futuro
       }
     }
 
     isSyncing.value = false
     updatePendingSyncCount()
     
-    // Si la cola llegó a cero, redirigimos al TPV Online
     if (syncPendingCount.value === 0) {
-      router.push('/tpv/order-user')
+      emit('synced')
+      router.push('/tpv/orderUser').catch(() => {
+        window.location.href = '/tpv/orderUser'
+      })
     } else {
       alert('Se presentaron errores sincronizando algunas órdenes. Estas se mantendrán en contingencia para revisión.')
     }
@@ -272,17 +270,17 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <v-container fluid>
+  <VContainer fluid>
     <!-- Alerta dinámica cuando vuelve el Internet -->
-    <v-slide-y-transition>
-      <v-alert
+    <VSlideYTransition>
+      <VAlert
         v-if="isOnline && syncPendingCount > 0"
         type="success"
         variant="elevated"
         class="mb-6"
         elevation="3"
       >
-        <div class="d-flex align-center justify-space-between w-100">
+        <div class="d-flex align-center justify-space-between w-100 flex-wrap gap-2">
           <div>
             <span class="text-h6 font-weight-bold d-block mb-1">¡Conexión Restablecida!</span>
             <span class="text-body-2">
@@ -290,61 +288,59 @@ onUnmounted(() => {
             </span>
           </div>
           
-          <v-btn
+          <VBtn
             color="white"
-            variant="outlined"
+            variant="flat"
             size="large"
+            class="text-success font-weight-bold"
             :loading="isSyncing"
+            prepend-icon="tabler-cloud-upload"
             @click="syncAndReturn"
-            class="ml-4"
           >
             <template v-if="isSyncing">
               Sincronizando {{ syncProgress.current }} de {{ syncProgress.total }}...
             </template>
             <template v-else>
-              <v-icon icon="mdi-cloud-upload" start />
               Sincronizar y Volver al TPV
             </template>
-          </v-btn>
+          </VBtn>
         </div>
-      </v-alert>
-    </v-slide-y-transition>
+      </VAlert>
+    </VSlideYTransition>
 
     <!-- Alerta visual de estado offline -->
-    <v-alert
+    <VAlert
       v-if="!isOnline"
       type="warning"
       variant="tonal"
       class="mb-6"
       border="start"
-      icon="mdi-wifi-off"
+      icon="tabler-wifi-off"
     >
       <div class="text-h6">PUNTO DE VENTA OFFLINE (MODO CONTINGENCIA)</div>
       <div class="text-body-2">
-        Las ventas se guardan en el navegador con las tasas de cambio congeladas. 
-        Al regresar la conexión, aparecerá la opción para sincronizar al servidor central.
+        Las ventas se guardan localmente en el navegador. Al reconectar, aparecerá la opción para sincronizar al servidor central.
       </div>
-    </v-alert>
+    </VAlert>
 
-    <v-row>
-      <v-col cols="12" md="8">
-        <v-card class="mb-4">
-          <v-card-text>
-            <v-text-field
+    <VRow>
+      <VCol cols="12" md="8">
+        <VCard class="mb-4">
+          <VCardText class="pa-4">
+            <VTextField
               v-model="searchQuery"
-              label="Escanear Código de Barras o Buscar Producto"
-              variant="outlined"
-              append-inner-icon="mdi-barcode-scan"
+              placeholder="Escanear código de barras o escribir nombre del producto..."
+              prepend-inner-icon="tabler-barcode"
               @keyup.enter="searchProduct"
               hide-details
               autofocus
               :disabled="isSyncing"
             />
-          </v-card-text>
-        </v-card>
+          </VCardText>
+        </VCard>
 
-        <v-card>
-          <v-table>
+        <VCard>
+          <VTable>
             <thead>
               <tr>
                 <th class="text-left">Código</th>
@@ -352,103 +348,114 @@ onUnmounted(() => {
                 <th class="text-right">Precio USD</th>
                 <th class="text-center">Cant.</th>
                 <th class="text-right">Subtotal USD</th>
-                <th class="text-center">Borrar</th>
+                <th class="text-center">Acción</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="cart.length === 0">
-                <td colspan="6" class="text-center py-8 text-grey">
-                  <v-icon icon="mdi-cart-off" size="large" class="mb-2" />
-                  <br> Carrito vacío
+                <td colspan="6" class="text-center py-8 text-disabled">
+                  <VIcon icon="tabler-shopping-cart-x" size="48" class="mb-2 opacity-50" />
+                  <p class="text-body-1 mb-0">No hay productos en la orden de contingencia</p>
                 </td>
               </tr>
               <tr v-for="(item, index) in cart" :key="item.id">
-                <td>{{ item.barcode }}</td>
+                <td><span class="text-caption font-weight-medium">{{ item.barcode }}</span></td>
                 <td>
-                  {{ item.name }}
-                  <v-chip 
+                  <span class="font-weight-medium">{{ item.name }}</span>
+                  <VChip 
                     v-if="item.has_individual_offer && new Date() < new Date(item.offer_expires_at)"
                     color="success" 
                     size="x-small" 
-                    class="ml-2"
+                    class="ms-2 font-weight-bold"
                   >
-                    OFERTA ACTIVA
-                  </v-chip>
+                    OFERTA
+                  </VChip>
                 </td>
                 <td class="text-right">
                   <div v-if="item.has_individual_offer && new Date() < new Date(item.offer_expires_at)">
-                    <span class="text-decoration-line-through text-grey text-caption mr-1">${{ item.base_price_usd.toFixed(2) }}</span>
+                    <span class="text-decoration-line-through text-disabled text-caption me-1">${{ item.base_price_usd.toFixed(2) }}</span>
                     <span class="text-success font-weight-bold">${{ getActivePrice(item).toFixed(2) }}</span>
                   </div>
-                  <div v-else>
+                  <div v-else class="font-weight-medium">
                     ${{ getActivePrice(item).toFixed(2) }}
                   </div>
                 </td>
                 <td class="text-center">
-                  <v-btn icon="mdi-minus" size="x-small" variant="text" @click="item.quantity > 1 ? item.quantity-- : removeFromCart(index)" :disabled="isSyncing" />
-                  <span class="mx-2">{{ item.quantity }}</span>
-                  <v-btn icon="mdi-plus" size="x-small" variant="text" :disabled="item.quantity >= item.stock || isSyncing" @click="item.quantity++" />
+                  <div class="d-inline-flex align-center">
+                    <VBtn icon="tabler-minus" size="x-small" variant="tonal" @click="item.quantity > 1 ? item.quantity-- : removeFromCart(index)" :disabled="isSyncing" />
+                    <span class="mx-2 font-weight-bold">{{ item.quantity }}</span>
+                    <VBtn icon="tabler-plus" size="x-small" variant="tonal" :disabled="item.quantity >= item.stock || isSyncing" @click="item.quantity++" />
+                  </div>
                 </td>
                 <td class="text-right font-weight-bold">
                   ${{ (getActivePrice(item) * item.quantity).toFixed(2) }}
                 </td>
                 <td class="text-center">
-                  <v-btn icon="mdi-delete" color="error" size="small" variant="text" @click="removeFromCart(index)" :disabled="isSyncing" />
+                  <VBtn icon="tabler-trash" color="error" size="small" variant="text" @click="removeFromCart(index)" :disabled="isSyncing" />
                 </td>
               </tr>
             </tbody>
-          </v-table>
-        </v-card>
-      </v-col>
+          </VTable>
+        </VCard>
+      </VCol>
 
       <!-- Resumen Multimoneda -->
-      <v-col cols="12" md="4">
-        <v-card color="grey-lighten-4" class="h-100 d-flex flex-column">
-          <v-card-title class="bg-primary text-white">Totalizador Multimoneda</v-card-title>
+      <VCol cols="12" md="4">
+        <VCard class="h-100 d-flex flex-column">
+          <VCardItem class="bg-primary text-white py-3">
+            <VCardTitle class="text-white text-h6 font-weight-bold">Totalizador Multimoneda</VCardTitle>
+          </VCardItem>
           
-          <v-card-text class="flex-grow-1 pt-4">
+          <VCardText class="flex-grow-1 pt-6">
             <div class="d-flex justify-space-between align-center mb-4">
-              <span class="text-h6 text-grey-darken-1">TOTAL USD:</span>
+              <span class="text-h6 text-medium-emphasis">TOTAL USD:</span>
               <span class="text-h4 font-weight-black text-primary">${{ totals.USD }}</span>
             </div>
-            <v-divider class="mb-4" />
-            <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-body-1 text-grey-darken-1">TOTAL BS:</span>
+            <VDivider class="mb-4" />
+            <div class="d-flex justify-space-between align-center mb-3">
+              <span class="text-body-1 text-medium-emphasis">TOTAL BS:</span>
               <span class="text-h5 font-weight-bold">Bs {{ totals.BS }}</span>
             </div>
-            <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-body-1 text-grey-darken-1">TOTAL COP:</span>
+            <div class="d-flex justify-space-between align-center mb-3">
+              <span class="text-body-1 text-medium-emphasis">TOTAL COP:</span>
               <span class="text-h5 font-weight-bold">$ {{ totals.COP }}</span>
             </div>
             
-            <div class="mt-4 text-caption text-grey">
-              Tasas aplicadas: 1 USD = {{ cachedRates.BS }} BS | {{ cachedRates.COP }} COP
+            <div class="mt-4 pa-3 rounded bg-var-theme-background text-caption text-medium-emphasis">
+              Tasas congeladas: 1 USD = {{ cachedRates.BS }} BS | {{ cachedRates.COP }} COP
             </div>
 
-            <v-sheet color="warning-lighten-4" class="pa-3 mt-6 rounded d-flex align-center" v-if="syncPendingCount > 0 && !isOnline">
-              <v-icon icon="mdi-cloud-sync" color="warning-darken-2" class="mr-2" />
-              <span class="text-caption text-warning-darken-2 font-weight-medium">
+            <VSheet color="warning" variant="tonal" class="pa-3 mt-6 rounded d-flex align-center" v-if="syncPendingCount > 0 && !isOnline">
+              <VIcon icon="tabler-cloud-upload" size="24" class="me-2 text-warning" />
+              <span class="text-caption font-weight-medium">
                 {{ syncPendingCount }} orden(es) pendiente(s) por sincronizar.
               </span>
-            </v-sheet>
-          </v-card-text>
+            </VSheet>
+          </VCardText>
 
-          <v-card-actions class="pa-4">
-            <v-btn 
+          <VCardActions class="pa-4">
+            <VBtn 
               color="success" 
-              variant="elevated" 
+              variant="flat" 
               block 
               size="x-large" 
+              class="font-weight-bold"
+              prepend-icon="tabler-device-floppy"
               :disabled="cart.length === 0 || isProcessing || isSyncing" 
               :loading="isProcessing" 
               @click="processOfflineOrder"
             >
-              <v-icon icon="mdi-cash-register" start />
               Registrar Venta Offline
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+            </VBtn>
+          </VCardActions>
+        </VCard>
+      </VCol>
+    </VRow>
+  </VContainer>
 </template>
+
+<style scoped>
+.gap-2 {
+  gap: 8px;
+}
+</style>
