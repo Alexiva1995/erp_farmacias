@@ -8,6 +8,7 @@ definePage({
 
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from '@/plugins/axios'
+import { toast } from '@/plugins/sweetalert'
 import { useBrandingStore } from '@/stores/useBrandingStore'
 
 const brandingStore = useBrandingStore()

@@ -8,6 +8,7 @@ definePage({
 
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from '@/plugins/axios'
+import { toast } from '@/plugins/sweetalert'
 import { useBrandingStore } from '@/stores/useBrandingStore'
 
 const brandingStore = useBrandingStore()
@@ -255,9 +256,13 @@ const submitOrder = async () => {
       paymentProof.value = null
       clientLookupState.value = 'idle'
       clientLookupMessage.value = ''
+    } else {
+      toast.error(data.message || 'No se pudo completar el pedido.')
     }
   } catch (e) {
     console.error('Error en checkout:', e)
+    const errorMsg = e.response?.data?.message || (e.response?.data?.errors ? Object.values(e.response.data.errors).flat().join(', ') : 'Error al procesar la compra. Verifica la información ingresada.')
+    toast.error(errorMsg)
   } finally {
     orderSubmitting.value = false
   }

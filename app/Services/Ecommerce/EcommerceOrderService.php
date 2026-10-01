@@ -160,11 +160,11 @@ class EcommerceOrderService
             $orderId = DB::table('ecommerce_orders')->insertGetId([
                 'user_id'                  => $tiendaUserId,
                 'customer_name'            => $orderData['customer_name'],
-                'customer_email'           => $orderData['customer_email'] ?? null,
-                'customer_phone'           => $orderData['customer_phone'] ?? null,
+                'customer_email'           => !empty($orderData['customer_email']) ? trim((string) $orderData['customer_email']) : null,
+                'customer_phone'           => !empty($orderData['customer_phone']) ? trim((string) $orderData['customer_phone']) : null,
                 'customer_document_type'   => $orderData['customer_document_type'] ?? 'V-',
-                'customer_document_number' => $orderData['customer_document_number'] ?? null,
-                'shipping_address'         => $orderData['shipping_address'] ?? '',
+                'customer_document_number' => !empty($orderData['customer_document_number']) ? trim((string) $orderData['customer_document_number']) : null,
+                'shipping_address'         => !empty($orderData['shipping_address']) ? trim((string) $orderData['shipping_address']) : null,
                 'total_amount'             => $totalAmount,           // En USD (precio base)
                 'currency'                 => $currency,              // Moneda del cliente
                 'total_in_currency'        => $totalInCurrency,       // Monto en moneda del cliente
