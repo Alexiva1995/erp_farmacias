@@ -1352,14 +1352,30 @@ class IaAssistantReportService
                 if ($stockUtilLiga >= $ropLiga || $stockUtilLiga >= $objLiga) {
                     foreach ($tierItems as $sku) {
                         $exceso = $sku->demanda_ponderada - $sku->stock_efectivo;
-                        $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
+                        $ropIndividual = (float)($sku->rop_calculado ?? $sku->rop ?? 0);
+                        $stockEfectivo = (float)($sku->stock_efectivo ?? 0);
+                        $ipoValor = (float)($sku->ipo ?? 0);
+                        $ipoDecimal = $ipoValor > 1.0 ? ($ipoValor / 100) : $ipoValor;
+                        $isBestSeller = $ipoDecimal >= 0.35 || (bool)($sku->es_best_seller_liga ?? false);
+
+                        // Regla Óptima: "Best Seller True-Demand Bypass"
+                        if ($isBestSeller && $ropIndividual > $stockEfectivo) {
+                            $deficitIndividual = $ropIndividual - $stockEfectivo;
+                            $sugeridoRescate = (int)ceil($deficitIndividual);
+                            $sku->solicitar = $sugeridoRescate;
+                            $sku->pre_asignado_bs = round($deficitIndividual, 2);
+                            $sku->rescate_best_seller = $sugeridoRescate;
+                        } else {
+                            $sku->solicitar = $exceso < 0 ? floor($exceso) : 0;
+                            $sku->pre_asignado_bs = 0;
+                            $sku->rescate_best_seller = 0;
+                        }
+
                         $sku->presupuesto_disponible_liga = 0;
                         $sku->ventas_totales_liga = round((float)($objLiga ?? collect($tierItems)->sum('demanda_ponderada')), 2);
                         $sku->cuota_participacion_ipo = round(((float)($sku->ipo ?? 0)), 1);
                         $sku->asignacion_cascada = 0;
-                        $sku->pre_asignado_bs = 0;
                         $sku->ajuste_financiero = 0;
-                        $sku->rescate_best_seller = 0;
                     }
                 } else {
                     $validPrices = collect($tierItems)->map(function($it) {
