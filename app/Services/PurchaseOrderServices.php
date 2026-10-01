@@ -22,6 +22,7 @@ class PurchaseOrderServices implements PurchaseOrder
     protected \App\Contracts\Suppliers\DrocercaFtpServiceInterface $drocercaFtpService,
     protected \App\Contracts\Suppliers\MarfartaPcCorreoServiceInterface $marfartaPcCorreoService,
     protected \App\Contracts\Suppliers\CristmedicalsApiServiceInterface $cristmedicalsApiService,
+    protected \App\Contracts\Suppliers\DromegaFtpServiceInterface $dromegaFtpService,
   ) {
   }
 
@@ -80,12 +81,13 @@ class PurchaseOrderServices implements PurchaseOrder
       }
     }
     
-    // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca, Mafarta, Cristmedicals)
+    // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca, Mafarta, Cristmedicals, Dromega)
     $isDronena = false;
     $isVitalclinic = false;
     $isDrocerca = false;
     $isMafarta = false;
     $isCristmedicals = false;
+    $isDromega = false;
 
     if ($supplier) {
       $supplierName = strtoupper($supplier->name);
@@ -135,6 +137,18 @@ class PurchaseOrderServices implements PurchaseOrder
           $isCristmedicals = true;
         }
       }
+
+      if (str_contains($supplierName, 'DROMEGA') || str_contains($supplierName, 'MEGA') || in_array((int)$supplier->id, [9, 15, 38, 1005])) {
+        $isDromega = true;
+      } else {
+        $hasDromegaFtp = $supplier->connections()->where(function ($query) {
+          $query->where('host', 'LIKE', '%dromega%')
+            ->orWhere('username', 'LIKE', '%dromega%');
+        })->exists();
+        if ($hasDromegaFtp) {
+          $isDromega = true;
+        }
+      }
     }
 
     if ($isDronena) {
@@ -179,6 +193,15 @@ class PurchaseOrderServices implements PurchaseOrder
       } catch (\Throwable $e) {
         \Illuminate\Support\Facades\Log::error("[CRISTMEDICALS API] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
         throw new \Exception("Error al transmitir el pedido a Cristmedicals por API: " . $e->getMessage());
+      }
+    }
+
+    if ($isDromega) {
+      try {
+        $this->dromegaFtpService->sendOrderFtp($autoOrder);
+      } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("[DROMEGA FTP] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
+        throw new \Exception("Error al transmitir el pedido a Dromega por FTP: " . $e->getMessage());
       }
     }
 
