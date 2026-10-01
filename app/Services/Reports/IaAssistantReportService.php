@@ -1287,6 +1287,10 @@ class IaAssistantReportService
 
             $vpd = $demandaTrueIntent / 30;
             $rop = $vpd * ($effectiveLeadTime + $bufferDays);
+            // Regla del ROP Mínimo = 1.0 (Lote mínimo) solo para demandas mensuales >= 1.0
+            if ($demandaTrueIntent >= 1.0) {
+                $rop = max(1.0, $rop);
+            }
             $stockObjetivo = $vpd * $coverageDays;
 
             $stockActual = (float)($item->lote_quantity ?? $item->stock ?? 0);
@@ -1585,37 +1589,50 @@ class IaAssistantReportService
                 }
             }
 
-            // Venta Diaria Real (VDR) con regla de corte de mínimo 3 días
-            $vdr1 = $d1 >= 3 ? ($v1 / $d1) : ($v1 / 30);
-            $vdr2 = $d2 >= 3 ? ($v2 / $d2) : ($v2 / 30);
-            $vdr3 = $d3 >= 3 ? ($v3 / $d3) : ($v3 / 30);
+            // Sanación de Demanda por Quiebre Crónico en M1:
+            // Si d1 < 5 días y existen ventas en M2 o M3, reconstruir VDR estrictamente con los días con stock real
+            if ($d1 < 5 && ($v2 + $v3) > 0) {
+                $diasStockHistorico = max(1, $d2 + $d3);
+                $vdrSanada = ($v2 + $v3) / $diasStockHistorico;
+                $demandaMensualAjustada = $vdrSanada * 30;
 
-            // Normalización a mes completo (30 días)
-            $demandaAjustada1 = $vdr1 * 30;
-            $demandaAjustada2 = $vdr2 * 30;
-            $demandaAjustada3 = $vdr3 * 30;
-
-            // Techo antiespeculativo (Cap Factor 1.5x sobre el máximo histórico vendido)
-            $maxHist = max($v1, $v2, $v3, (float)($item->sales_average ?? 0), 1.0);
-            $capLimit = $maxHist * 1.5;
-
-            $cap1 = min($demandaAjustada1, $capLimit);
-            $cap2 = min($demandaAjustada2, $capLimit);
-            $cap3 = min($demandaAjustada3, $capLimit);
-
-            // Ponderación dinámica según días con stock
-            $totalDiasStock = $d1 + $d2 + $d3;
-            if ($totalDiasStock > 0) {
-                $w1 = $d1 / $totalDiasStock;
-                $w2 = $d2 / $totalDiasStock;
-                $w3 = $d3 / $totalDiasStock;
+                // Techo antiespeculativo (1.5x sobre el máximo histórico vendido)
+                $maxHist = max($v2, $v3, (float)($item->sales_average ?? 0), 1.0);
+                $capLimit = $maxHist * 1.5;
+                $demandaMensualAjustada = min($demandaMensualAjustada, $capLimit);
             } else {
-                $w1 = 0.50;
-                $w2 = 0.30;
-                $w3 = 0.20;
-            }
+                // Venta Diaria Real (VDR) estándar con corte de mínimo 3 días
+                $vdr1 = $d1 >= 3 ? ($v1 / $d1) : ($v1 / 30);
+                $vdr2 = $d2 >= 3 ? ($v2 / $d2) : ($v2 / 30);
+                $vdr3 = $d3 >= 3 ? ($v3 / $d3) : ($v3 / 30);
 
-            $demandaMensualAjustada = ($w1 * $cap1) + ($w2 * $cap2) + ($w3 * $cap3);
+                // Normalización a mes completo (30 días)
+                $demandaAjustada1 = $vdr1 * 30;
+                $demandaAjustada2 = $vdr2 * 30;
+                $demandaAjustada3 = $vdr3 * 30;
+
+                // Techo antiespeculativo (Cap Factor 1.5x sobre el máximo histórico vendido)
+                $maxHist = max($v1, $v2, $v3, (float)($item->sales_average ?? 0), 1.0);
+                $capLimit = $maxHist * 1.5;
+
+                $cap1 = min($demandaAjustada1, $capLimit);
+                $cap2 = min($demandaAjustada2, $capLimit);
+                $cap3 = min($demandaAjustada3, $capLimit);
+
+                // Ponderación dinámica según días con stock
+                $totalDiasStock = $d1 + $d2 + $d3;
+                if ($totalDiasStock > 0) {
+                    $w1 = $d1 / $totalDiasStock;
+                    $w2 = $d2 / $totalDiasStock;
+                    $w3 = $d3 / $totalDiasStock;
+                } else {
+                    $w1 = 0.50;
+                    $w2 = 0.30;
+                    $w3 = 0.20;
+                }
+
+                $demandaMensualAjustada = ($w1 * $cap1) + ($w2 * $cap2) + ($w3 * $cap3);
+            }
 
             // Si no hay ventas en los 3 meses, usar fallback a sales_average o sales_average_weighted
             if ($demandaMensualAjustada <= 0) {
@@ -1624,6 +1641,12 @@ class IaAssistantReportService
 
             $vpd = $demandaMensualAjustada / 30;
             $rop = $vpd * ($effectiveLeadTime + $bufferDays);
+            
+            // Regla del ROP Mínimo = 1.0 (Lote mínimo) solo para demandas mensuales >= 1.0
+            if ($demandaMensualAjustada >= 1.0) {
+                $rop = max(1.0, $rop);
+            }
+
             $stockObjetivo = $vpd * $coverageDays;
 
             $item->dias_quiebre = $diasQuiebre90d;
