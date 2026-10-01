@@ -38,10 +38,10 @@
                   🏷️ FASE 1: Clusterización y Liga
                 </span>
                 <VChip
-                  :color="item?.liga_color || (item?.liga_nombre === 'Premium' ? 'success' : (item?.liga_nombre === 'Promedio' ? 'info' : 'pink'))"
+                  :color="String(item?.tier_name || item?.liga_nombre || '').toLowerCase().includes('econ') ? 'pink' : (item?.liga_color || (String(item?.tier_name || item?.liga_nombre || '').toLowerCase().includes('prem') ? 'success' : 'info'))"
                   size="x-small"
                   variant="flat"
-                  class="font-weight-black text-uppercase"
+                  class="font-weight-black text-uppercase text-white px-2"
                   style="height: 18px;"
                 >
                   LIGA {{ item?.tier_name || item?.liga_nombre || 'N/A' }}

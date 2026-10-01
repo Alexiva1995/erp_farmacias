@@ -478,15 +478,15 @@ function rowClass(item) {
                     </span>
                     <VChip v-if="item.is_colombian_origin == 1" size="x-small" color="info" label class="ml-1 text-super-xs px-1">COL</VChip>
                     <VChip
-                      v-if="item.liga_nombre"
-                      :color="item.liga_color || (item.liga_nombre === 'Premium' ? 'success' : (item.liga_nombre === 'Promedio' ? 'info' : 'pink'))"
+                      v-if="item.liga_nombre || item.tier_name"
+                      :color="String(item.tier_name || item.liga_nombre || '').toLowerCase().includes('econ') ? 'pink' : (item.liga_color || (String(item.tier_name || item.liga_nombre || '').toLowerCase().includes('prem') ? 'success' : 'info'))"
                       size="x-small"
                       variant="tonal"
                       class="ml-1 font-weight-black text-uppercase"
                       style="font-size: 10px; height: 18px; padding: 0 6px;"
                       label
                     >
-                      {{ item.liga_nombre }}
+                      {{ item.tier_name || item.liga_nombre }}
                     </VChip>
                     <!-- Advertencia: promedio desactualizado (> 48h) -->
                     <VTooltip v-if="item.is_stale_average" location="top">
@@ -703,14 +703,14 @@ function rowClass(item) {
                     </VCardTitle>
                     <template #append>
                       <VChip
-                        v-if="item.liga_nombre"
-                        :color="item.liga_color || (item.liga_nombre === 'Premium' ? 'success' : (item.liga_nombre === 'Promedio' ? 'info' : 'pink'))"
+                        v-if="item.liga_nombre || item.tier_name"
+                        :color="String(item.tier_name || item.liga_nombre || '').toLowerCase().includes('econ') ? 'pink' : (item.liga_color || (String(item.tier_name || item.liga_nombre || '').toLowerCase().includes('prem') ? 'success' : 'info'))"
                         size="x-small"
                         variant="tonal"
                         class="font-weight-black text-uppercase"
                         label
                       >
-                        {{ item.liga_nombre }}
+                        {{ item.tier_name || item.liga_nombre }}
                       </VChip>
                     </template>
                   </VCardItem>
