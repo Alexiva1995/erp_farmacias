@@ -1,4 +1,5 @@
 <script setup>
+import { nextTick, onMounted, ref, watch } from 'vue'
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { VNodeRenderer } from './VNodeRenderer'
 import { layoutConfig } from '@layouts'
@@ -9,6 +10,7 @@ import {
 } from '@layouts/components'
 import { useLayoutConfigStore } from '@layouts/stores/config'
 import { injectionKeyIsVerticalNavHovered } from '@layouts/symbols'
+import { openGroups } from '@layouts/utils'
 
 const props = defineProps({
   tag: {
@@ -31,6 +33,7 @@ const props = defineProps({
 })
 
 const refNav = ref()
+const refScrollbar = ref()
 const isHovered = useElementHover(refNav)
 
 provide(injectionKeyIsVerticalNavHovered, isHovered)
@@ -63,6 +66,29 @@ const handleNavScroll = evt => {
 }
 
 const hideTitleAndIcon = configStore.isVerticalNavMini(isHovered)
+
+// Refrescar PerfectScrollbar cuando se expanden/colapsan submenús
+const updateScrollbar = () => {
+  nextTick(() => {
+    const ps = refScrollbar.value?._ps || refScrollbar.value?.ps
+    if (ps && typeof ps.update === 'function') {
+      ps.update()
+    }
+  })
+}
+
+watch(openGroups, () => {
+  updateScrollbar()
+  setTimeout(updateScrollbar, 280) // Trigger tras completar animación CSS
+}, { deep: true })
+
+onMounted(() => {
+  updateScrollbar()
+  if (window.ResizeObserver && refNav.value?.$el) {
+    const ro = new ResizeObserver(() => updateScrollbar())
+    ro.observe(refNav.value.$el)
+  }
+})
 </script>
 
 <template>
@@ -134,10 +160,11 @@ const hideTitleAndIcon = configStore.isVerticalNavMini(isHovered)
       :update-is-vertical-nav-scrolled="updateIsVerticalNavScrolled"
     >
       <PerfectScrollbar
+        ref="refScrollbar"
         :key="configStore.isAppRTL"
         tag="ul"
         class="nav-items"
-        :options="{ wheelPropagation: false }"
+        :options="{ wheelPropagation: true, suppressScrollX: true, swipeEasing: true }"
         @ps-scroll-y="handleNavScroll"
       >
         <Component
@@ -209,12 +236,11 @@ const hideTitleAndIcon = configStore.isVerticalNavMini(isHovered)
 
   .nav-items {
     block-size: 100%;
-
-    // ℹ️ We no loner needs this overflow styles as perfect scrollbar applies it
-    // overflow-x: hidden;
-
-    // // ℹ️ We used `overflow-y` instead of `overflow` to mitigate overflow x. Revert back if any issue found.
-    // overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
   }
 
   .nav-item-title {

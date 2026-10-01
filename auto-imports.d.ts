@@ -8,6 +8,7 @@ export {}
 declare global {
   const $api: typeof import('./resources/js/utils/api.js')['$api']
   const COOKIE_MAX_AGE_1_YEAR: typeof import('./resources/js/utils/constants.js')['COOKIE_MAX_AGE_1_YEAR']
+  const ECOMMERCE_PRESETS: typeof import('./resources/js/composables/useEcommercePresets.js')['ECOMMERCE_PRESETS']
   const EffectScope: typeof import('vue')['EffectScope']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const alphaDashValidator: typeof import('./resources/js/@core/utils/validators.js')['alphaDashValidator']
@@ -63,6 +64,9 @@ declare global {
   const formatNumber: typeof import('./resources/js/utils/formatters.js')['formatNumber']
   const formatOrderItemForFrontend: typeof import('./resources/js/composables/useTpvItemFormatter.js')['formatOrderItemForFrontend']
   const formatPrice: typeof import('./resources/js/utils/formatters.js')['formatPrice']
+  const generateBiCustomerExecutivePdf: typeof import('./resources/js/utils/pdfBiCustomerAnalyticsGenerator.js')['generateBiCustomerExecutivePdf']
+  const generateBiInventoryCyclicPdf: typeof import('./resources/js/utils/pdfBiInventoryCyclicGenerator.js')['generateBiInventoryCyclicPdf']
+  const generateBiProductExecutivePdf: typeof import('./resources/js/utils/pdfBiProductReportGenerator.js')['generateBiProductExecutivePdf']
   const generateDonationPDF: typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']
   const generateSingleLabPdfDoc: typeof import('./resources/js/utils/pdfSupplierReturnsGenerator.js')['generateSingleLabPdfDoc']
   const getActivePinia: typeof import('pinia')['getActivePinia']
@@ -210,6 +214,7 @@ declare global {
   const useBalance: typeof import('./resources/js/composables/useBalance.js')['useBalance']
   const useBase64: typeof import('@vueuse/core')['useBase64']
   const useBattery: typeof import('@vueuse/core')['useBattery']
+  const useBiThemeColors: typeof import('./resources/js/composables/useBiThemeColors.js')['useBiThemeColors']
   const useBluetooth: typeof import('@vueuse/core')['useBluetooth']
   const useBreakpoints: typeof import('@vueuse/core')['useBreakpoints']
   const useBroadcastChannel: typeof import('@vueuse/core')['useBroadcastChannel']
@@ -279,6 +284,7 @@ declare global {
   const useIntervalFn: typeof import('@vueuse/core')['useIntervalFn']
   const useInvoiceSettings: typeof import('./resources/js/composables/useInvoiceSettings.js')['useInvoiceSettings']
   const useKeyModifier: typeof import('@vueuse/core')['useKeyModifier']
+  const useLaboratoryReport: typeof import('./resources/js/composables/useLaboratoryReport.js')['useLaboratoryReport']
   const useLastChanged: typeof import('@vueuse/core')['useLastChanged']
   const useLocalStorage: typeof import('@vueuse/core')['useLocalStorage']
   const useMagicKeys: typeof import('@vueuse/core')['useMagicKeys']
@@ -308,6 +314,7 @@ declare global {
   const useParentElement: typeof import('@vueuse/core')['useParentElement']
   const usePerformanceObserver: typeof import('@vueuse/core')['usePerformanceObserver']
   const usePermission: typeof import('@vueuse/core')['usePermission']
+  const usePharmacySettingsForm: typeof import('./resources/js/composables/usePharmacySettingsForm.js')['usePharmacySettingsForm']
   const usePointer: typeof import('@vueuse/core')['usePointer']
   const usePointerLock: typeof import('@vueuse/core')['usePointerLock']
   const usePointerSwipe: typeof import('@vueuse/core')['usePointerSwipe']
@@ -346,6 +353,7 @@ declare global {
   const useSum: typeof import('@vueuse/math')['useSum']
   const useSupported: typeof import('@vueuse/core')['useSupported']
   const useSwipe: typeof import('@vueuse/core')['useSwipe']
+  const useTelegramCommands: typeof import('./resources/js/composables/useTelegramCommands.js')['useTelegramCommands']
   const useTemplateRef: typeof import('vue')['useTemplateRef']
   const useTemplateRefsList: typeof import('@vueuse/core')['useTemplateRefsList']
   const useTextDirection: typeof import('@vueuse/core')['useTextDirection']
@@ -429,6 +437,7 @@ declare module 'vue' {
   interface ComponentCustomProperties {
     readonly $api: UnwrapRef<typeof import('./resources/js/utils/api.js')['$api']>
     readonly COOKIE_MAX_AGE_1_YEAR: UnwrapRef<typeof import('./resources/js/utils/constants.js')['COOKIE_MAX_AGE_1_YEAR']>
+    readonly ECOMMERCE_PRESETS: UnwrapRef<typeof import('./resources/js/composables/useEcommercePresets.js')['ECOMMERCE_PRESETS']>
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
     readonly alphaDashValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['alphaDashValidator']>
@@ -484,6 +493,9 @@ declare module 'vue' {
     readonly formatNumber: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatNumber']>
     readonly formatOrderItemForFrontend: UnwrapRef<typeof import('./resources/js/composables/useTpvItemFormatter.js')['formatOrderItemForFrontend']>
     readonly formatPrice: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatPrice']>
+    readonly generateBiCustomerExecutivePdf: UnwrapRef<typeof import('./resources/js/utils/pdfBiCustomerAnalyticsGenerator.js')['generateBiCustomerExecutivePdf']>
+    readonly generateBiInventoryCyclicPdf: UnwrapRef<typeof import('./resources/js/utils/pdfBiInventoryCyclicGenerator.js')['generateBiInventoryCyclicPdf']>
+    readonly generateBiProductExecutivePdf: UnwrapRef<typeof import('./resources/js/utils/pdfBiProductReportGenerator.js')['generateBiProductExecutivePdf']>
     readonly generateDonationPDF: UnwrapRef<typeof import('./resources/js/utils/donationPdfGenerator.js')['generateDonationPDF']>
     readonly generateSingleLabPdfDoc: UnwrapRef<typeof import('./resources/js/utils/pdfSupplierReturnsGenerator.js')['generateSingleLabPdfDoc']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
@@ -631,6 +643,7 @@ declare module 'vue' {
     readonly useBalance: UnwrapRef<typeof import('./resources/js/composables/useBalance.js')['useBalance']>
     readonly useBase64: UnwrapRef<typeof import('@vueuse/core')['useBase64']>
     readonly useBattery: UnwrapRef<typeof import('@vueuse/core')['useBattery']>
+    readonly useBiThemeColors: UnwrapRef<typeof import('./resources/js/composables/useBiThemeColors.js')['useBiThemeColors']>
     readonly useBluetooth: UnwrapRef<typeof import('@vueuse/core')['useBluetooth']>
     readonly useBreakpoints: UnwrapRef<typeof import('@vueuse/core')['useBreakpoints']>
     readonly useBroadcastChannel: UnwrapRef<typeof import('@vueuse/core')['useBroadcastChannel']>
@@ -700,6 +713,7 @@ declare module 'vue' {
     readonly useIntervalFn: UnwrapRef<typeof import('@vueuse/core')['useIntervalFn']>
     readonly useInvoiceSettings: UnwrapRef<typeof import('./resources/js/composables/useInvoiceSettings.js')['useInvoiceSettings']>
     readonly useKeyModifier: UnwrapRef<typeof import('@vueuse/core')['useKeyModifier']>
+    readonly useLaboratoryReport: UnwrapRef<typeof import('./resources/js/composables/useLaboratoryReport.js')['useLaboratoryReport']>
     readonly useLastChanged: UnwrapRef<typeof import('@vueuse/core')['useLastChanged']>
     readonly useLocalStorage: UnwrapRef<typeof import('@vueuse/core')['useLocalStorage']>
     readonly useMagicKeys: UnwrapRef<typeof import('@vueuse/core')['useMagicKeys']>
@@ -729,6 +743,7 @@ declare module 'vue' {
     readonly useParentElement: UnwrapRef<typeof import('@vueuse/core')['useParentElement']>
     readonly usePerformanceObserver: UnwrapRef<typeof import('@vueuse/core')['usePerformanceObserver']>
     readonly usePermission: UnwrapRef<typeof import('@vueuse/core')['usePermission']>
+    readonly usePharmacySettingsForm: UnwrapRef<typeof import('./resources/js/composables/usePharmacySettingsForm.js')['usePharmacySettingsForm']>
     readonly usePointer: UnwrapRef<typeof import('@vueuse/core')['usePointer']>
     readonly usePointerLock: UnwrapRef<typeof import('@vueuse/core')['usePointerLock']>
     readonly usePointerSwipe: UnwrapRef<typeof import('@vueuse/core')['usePointerSwipe']>
@@ -767,6 +782,7 @@ declare module 'vue' {
     readonly useSum: UnwrapRef<typeof import('@vueuse/math')['useSum']>
     readonly useSupported: UnwrapRef<typeof import('@vueuse/core')['useSupported']>
     readonly useSwipe: UnwrapRef<typeof import('@vueuse/core')['useSwipe']>
+    readonly useTelegramCommands: UnwrapRef<typeof import('./resources/js/composables/useTelegramCommands.js')['useTelegramCommands']>
     readonly useTemplateRef: UnwrapRef<typeof import('vue')['useTemplateRef']>
     readonly useTemplateRefsList: UnwrapRef<typeof import('@vueuse/core')['useTemplateRefsList']>
     readonly useTextDirection: UnwrapRef<typeof import('@vueuse/core')['useTextDirection']>

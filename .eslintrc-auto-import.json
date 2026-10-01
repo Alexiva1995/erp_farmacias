@@ -421,6 +421,14 @@
     "useRetentionDates": true,
     "useExpiryCharts": true,
     "pdfSupplierReturnsGenerator": true,
-    "generateSingleLabPdfDoc": true
+    "generateSingleLabPdfDoc": true,
+    "ECOMMERCE_PRESETS": true,
+    "generateBiCustomerExecutivePdf": true,
+    "generateBiInventoryCyclicPdf": true,
+    "generateBiProductExecutivePdf": true,
+    "useBiThemeColors": true,
+    "useLaboratoryReport": true,
+    "usePharmacySettingsForm": true,
+    "useTelegramCommands": true
   }
 }
