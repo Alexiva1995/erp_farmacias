@@ -1140,134 +1140,32 @@ class IaAssistantReportService
                 $totalTierWeighted = $tierProdsColl->sum(function($gp) {
                     return (float)($gp->promedio_calculado ?? (($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0)));
                 });
-                
-                $totalTierSales90 = 0;
-                foreach ($pIds as $pId) {
-                    $totalTierSales90 += ($totalSalesByProduct[$pId] ?? 0);
-                }
 
-                $productsSellingOnDate = [];
-                foreach ($pIds as $pId) {
-                    foreach (($salesByProductAndDate[$pId] ?? []) as $dateStr => $data) {
-                        if ($data['qty'] > 0) $productsSellingOnDate[$dateStr][] = $pId;
+                $tierValidPrices = $tierProdsColl->map(fn($gp) => (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0)))->filter(fn($val) => $val > 0);
+                $avgStaticPrice = $tierValidPrices->isNotEmpty() ? $tierValidPrices->avg() : 0;
+
+                foreach ($tierProdsColl as $gp) {
+                    $pId = $gp->id;
+                    $itemWeight = (float)($gp->promedio_calculado ?? (($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0)));
+                    
+                    if ($totalTierWeighted > 0) {
+                        $baseIpo = $itemWeight / $totalTierWeighted;
+                    } else {
+                        $baseIpo = 1.0 / max(1, $tierProdsColl->count());
                     }
-                }
+                    $preferenceShareByProduct[$pId] = $baseIpo;
 
-                $concurrentDates = [];
-                foreach ($productsSellingOnDate as $dateStr => $sellingPIds) {
-                    if (count(array_unique($sellingPIds)) >= 2) $concurrentDates[] = $dateStr;
-                }
-
-                if (count($concurrentDates) >= 3) {
-                    $concurrentVelocities = [];
-                    $concurrentAvgPrices = [];
-                    $dailyPriceGaps = [];
-
-                    $tierDailyAvgPrices = [];
-                    foreach ($concurrentDates as $cDate) {
-                        $dayRevenue = 0;
-                        $dayQty = 0;
-                        foreach ($pIds as $pId) {
-                            if (isset($salesByProductAndDate[$pId][$cDate])) {
-                                $dayRevenue += $salesByProductAndDate[$pId][$cDate]['revenue'];
-                                $dayQty += $salesByProductAndDate[$pId][$cDate]['qty'];
-                            }
-                        }
-                        $tierDailyAvgPrices[$cDate] = $dayQty > 0 ? ($dayRevenue / $dayQty) : 0;
-                    }
-
-                    foreach ($tierProdsColl as $gp) {
-                        $pId = $gp->id;
-                        $soldInConcurrent = 0;
-                        $revInConcurrent = 0;
-                        $daysActive = 0;
-                        $accumulatedGap = 0;
-                        $gapDays = 0;
-
-                        foreach ($concurrentDates as $cDate) {
-                            if (isset($salesByProductAndDate[$pId][$cDate])) {
-                                $itemDayQty = $salesByProductAndDate[$pId][$cDate]['qty'];
-                                $itemDayPrice = $itemDayQty > 0 ? ($salesByProductAndDate[$pId][$cDate]['revenue'] / $itemDayQty) : 0;
-                                $soldInConcurrent += $itemDayQty;
-                                $daysActive++;
-
-                                $tierDayPrice = $tierDailyAvgPrices[$cDate] ?? 0;
-                                if ($itemDayPrice > 0 && $tierDayPrice > 0) {
-                                    $accumulatedGap += ($itemDayPrice / $tierDayPrice);
-                                    $gapDays++;
-                                }
-                            }
-                        }
-                        $concurrentVelocities[$pId] = $daysActive > 0 ? ($soldInConcurrent / $daysActive) : 0;
-                        $dailyPriceGaps[$pId] = $gapDays > 0 ? ($accumulatedGap / $gapDays) : 1.0;
-                    }
-
-                    $totalConcurrentVelocity = array_sum($concurrentVelocities);
-
-                    foreach ($tierProdsColl as $gp) {
-                        $pId = $gp->id;
-                        $baseIpo = 1.0 / $tierProdsColl->count();
-                        if ($totalConcurrentVelocity > 0 && $concurrentVelocities[$pId] > 0) {
-                            $baseIpo = max(0.05, $concurrentVelocities[$pId] / $totalConcurrentVelocity);
-                        } elseif ($totalTierWeighted > 0) {
-                            $itemWeight = (float)(($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0));
-                            $baseIpo = max(0.05, $itemWeight / $totalTierWeighted);
-                        }
-                        $preferenceShareByProduct[$pId] = $baseIpo;
-
-                        $salesShare = $totalTierSales90 > 0 ? (($totalSalesByProduct[$pId] ?? 0) / $totalTierSales90) : 0;
-                        $pGap = $dailyPriceGaps[$pId] ?? 1.0;
-
-                        if ($salesShare >= 0.50 || $baseIpo >= 0.50) {
-                            $priceElasticityFactorByProduct[$pId] = 1.0;
+                    // Elasticidad de precio relativa (solo para SKUs secundarios con cuota < 50%)
+                    $itemPrice = (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
+                    if ($itemPrice > 0 && $avgStaticPrice > 0 && $baseIpo < 0.50) {
+                        $priceRatio = $itemPrice / $avgStaticPrice;
+                        if ($priceRatio > 1.0) {
+                            $priceElasticityFactorByProduct[$pId] = max(0.60, 1.0 - (0.40 * ($priceRatio - 1.0)));
                         } else {
-                            if ($pGap > 1.0) {
-                                $priceElasticityFactorByProduct[$pId] = max(0.40, 1.0 - (0.60 * ($pGap - 1.0)));
-                            } elseif ($pGap < 1.0 && $pGap > 0) {
-                                if (($totalSalesByProduct[$pId] ?? 0) > 0) {
-                                    $priceElasticityFactorByProduct[$pId] = min(1.40, 1.0 + (0.50 * (1.0 - $pGap)));
-                                } else {
-                                    $priceElasticityFactorByProduct[$pId] = 1.0;
-                                }
-                            } else {
-                                $priceElasticityFactorByProduct[$pId] = 1.0;
-                            }
+                            $priceElasticityFactorByProduct[$pId] = min(1.20, 1.0 + (0.20 * (1.0 - $priceRatio)));
                         }
-                    }
-                } else {
-                    $tierValidPrices = $tierProdsColl->map(fn($gp) => (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0)))->filter(fn($val) => $val > 0);
-                    $avgStaticPrice = $tierValidPrices->isNotEmpty() ? $tierValidPrices->avg() : 0;
-
-                    foreach ($tierProdsColl as $gp) {
-                        $pId = $gp->id;
-                        $baseIpo = 1.0 / $tierProdsColl->count();
-                        if ($totalTierWeighted > 0) {
-                            $itemWeight = (float)($gp->promedio_calculado ?? (($gp->sales_average_weighted ?? 0) > 0 ? $gp->sales_average_weighted : ($gp->sales_average ?? 0)));
-                            $baseIpo = max(0.05, $itemWeight / $totalTierWeighted);
-                        }
-                        $preferenceShareByProduct[$pId] = $baseIpo;
-
-                        $salesShare = $totalTierSales90 > 0 ? (($totalSalesByProduct[$pId] ?? 0) / $totalTierSales90) : 0;
-                        
-                        if ($salesShare >= 0.50 || $baseIpo >= 0.50) {
-                            $priceElasticityFactorByProduct[$pId] = 1.0;
-                        } else {
-                            $itemPrice = (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
-                            if ($itemPrice > 0 && $avgStaticPrice > 0) {
-                                $priceRatio = $itemPrice / $avgStaticPrice;
-                                if ($priceRatio > 1.0) {
-                                    $priceElasticityFactorByProduct[$pId] = max(0.50, 1.0 - (0.50 * ($priceRatio - 1.0)));
-                                } else {
-                                    if (($totalSalesByProduct[$pId] ?? 0) > 0) {
-                                        $priceElasticityFactorByProduct[$pId] = min(1.30, 1.0 + (0.30 * (1.0 - $priceRatio)));
-                                    } else {
-                                        $priceElasticityFactorByProduct[$pId] = 1.0;
-                                    }
-                                }
-                            } else {
-                                $priceElasticityFactorByProduct[$pId] = 1.0;
-                            }
-                        }
+                    } else {
+                        $priceElasticityFactorByProduct[$pId] = 1.0;
                     }
                 }
             }
