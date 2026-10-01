@@ -352,21 +352,53 @@ class OrderActionService
                     ->first();
             }
 
-            // Determine Best Base Discount (Individual vs Category)
-            $baseDiscountPct = 0;
-            $baseDiscountType = null;
-            $baseDiscountSource = null;
+            // Determine Best Base Discount configuration
+            $baseDiscountPromo = ['pct' => 0, 'type' => null, 'source' => null];
+            $baseDiscountRegular = ['pct' => 0, 'type' => null, 'source' => null];
 
-            if ($individualOffer) {
-                $baseDiscountPct = $individualOffer->discount_percent;
-                $baseDiscountType = 'individual';
-                $baseDiscountSource = $individualOffer->id;
+            if ($categoryOffer) {
+                $baseDiscountRegular = [
+                    'pct' => $categoryOffer->discount_percentage,
+                    'type' => 'category',
+                    'source' => $categoryOffer->id
+                ];
+                $baseDiscountPromo = $baseDiscountRegular;
             }
 
-            if ($categoryOffer && $categoryOffer->discount_percentage > $baseDiscountPct) {
-                $baseDiscountPct = $categoryOffer->discount_percentage;
-                $baseDiscountType = 'category';
-                $baseDiscountSource = $categoryOffer->id;
+            $promoUnitsRemaining = null; // null means unlimited
+            
+            if ($individualOffer) {
+                if ($individualOffer->one_per_customer) {
+                    $hasBought = false;
+                    if ($order->client_id) {
+                        $hasBought = \App\Models\Order::where('client_id', $order->client_id)
+                            ->where('id', '!=', $order->id)
+                            ->where('created_at', '>=', \Carbon\Carbon::now()->subDays(7))
+                            ->whereNotIn('status', ['Abandoned', 'Cancelled'])
+                            ->whereHas('details', function($q) use ($product, $individualOffer) {
+                                $q->where('product_id', $product->id)
+                                  ->where('discount_type', 'individual')
+                                  ->where('discount_source_id', $individualOffer->id);
+                            })->exists();
+                    }
+                    $promoUnitsRemaining = $hasBought ? 0 : 1;
+                }
+
+                if ($individualOffer->discount_percent > $baseDiscountPromo['pct']) {
+                    $baseDiscountPromo = [
+                        'pct' => $individualOffer->discount_percent,
+                        'type' => 'individual',
+                        'source' => $individualOffer->id
+                    ];
+                }
+                
+                if ($promoUnitsRemaining === null && $individualOffer->discount_percent > $baseDiscountRegular['pct']) {
+                    $baseDiscountRegular = [
+                        'pct' => $individualOffer->discount_percent,
+                        'type' => 'individual',
+                        'source' => $individualOffer->id
+                    ];
+                }
             }
 
             // 2. Fetch Rules and Lots
@@ -400,20 +432,53 @@ class OrderActionService
                     }
                 }
 
-                $key = $matchedRule ? 'offer_' . $matchedRule->id : 'normal';
-                if (!isset($buckets[$key])) {
-                    $buckets[$key] = [
-                        'qty' => 0,
-                        'rule' => $matchedRule
-                    ];
+                $qtyToPromo = $take;
+                $qtyToRegular = 0;
+
+                if ($promoUnitsRemaining !== null) {
+                    $qtyToPromo = min($take, $promoUnitsRemaining);
+                    $qtyToRegular = $take - $qtyToPromo;
+                    $promoUnitsRemaining -= $qtyToPromo;
                 }
-                $buckets[$key]['qty'] += $take;
+
+                if ($qtyToPromo > 0) {
+                    $key = ($matchedRule ? 'offer_' . $matchedRule->id : 'normal') . '_promo';
+                    if (!isset($buckets[$key])) {
+                        $buckets[$key] = ['qty' => 0, 'rule' => $matchedRule, 'is_promo' => true];
+                    }
+                    $buckets[$key]['qty'] += $qtyToPromo;
+                }
+
+                if ($qtyToRegular > 0) {
+                    $key = ($matchedRule ? 'offer_' . $matchedRule->id : 'normal') . '_regular';
+                    if (!isset($buckets[$key])) {
+                        $buckets[$key] = ['qty' => 0, 'rule' => $matchedRule, 'is_promo' => false];
+                    }
+                    $buckets[$key]['qty'] += $qtyToRegular;
+                }
             }
 
             if ($remainingQty > 0) {
-                if (!isset($buckets['normal']))
-                    $buckets['normal'] = ['qty' => 0, 'rule' => null];
-                $buckets['normal']['qty'] += $remainingQty;
+                $qtyToPromo = $remainingQty;
+                $qtyToRegular = 0;
+
+                if ($promoUnitsRemaining !== null) {
+                    $qtyToPromo = min($remainingQty, $promoUnitsRemaining);
+                    $qtyToRegular = $remainingQty - $qtyToPromo;
+                }
+
+                if ($qtyToPromo > 0) {
+                    if (!isset($buckets['normal_promo'])) {
+                        $buckets['normal_promo'] = ['qty' => 0, 'rule' => null, 'is_promo' => true];
+                    }
+                    $buckets['normal_promo']['qty'] += $qtyToPromo;
+                }
+                if ($qtyToRegular > 0) {
+                    if (!isset($buckets['normal_regular'])) {
+                        $buckets['normal_regular'] = ['qty' => 0, 'rule' => null, 'is_promo' => false];
+                    }
+                    $buckets['normal_regular']['qty'] += $qtyToRegular;
+                }
             }
 
             // 4. Create Lines
@@ -422,6 +487,7 @@ class OrderActionService
             foreach ($buckets as $key => $data) {
                 $qty = $data['qty'];
                 $rule = $data['rule'];
+                $isPromo = $data['is_promo'] ?? true;
 
                 if ($qty <= 0)
                     continue;
@@ -429,9 +495,10 @@ class OrderActionService
                 $finalUnitPrice = $unitPriceAtOrder;
 
                 // Start with Base Discount
-                $discountPct = $baseDiscountPct;
-                $discountType = $baseDiscountType;
-                $discountSource = $baseDiscountSource;
+                $baseConfig = $isPromo ? $baseDiscountPromo : $baseDiscountRegular;
+                $discountPct = $baseConfig['pct'];
+                $discountType = $baseConfig['type'];
+                $discountSource = $baseConfig['source'];
 
                 // If Expiration Rule exists, compare and take Max
                 if ($rule) {

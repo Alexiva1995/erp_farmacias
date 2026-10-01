@@ -162,7 +162,7 @@ export function useTpvCart({
       const availableQuantity = parseInt(productDetails.valid_stock_sum ?? productDetails.lots_sum_quantity ?? 0)
 
       const currentItemInOrder = orderItems.value.find((item) => item.product_id === productId)
-      const currentQuantityInOrder = currentItemInOrder ? currentItemInOrder.selectedQuantity : 0
+      const currentQuantityInOrder = orderItems.value.filter(i => i.product_id === productId && !i.pack_id).reduce((sum, i) => sum + i.selectedQuantity, 0)
       const newTotalQuantity = currentQuantityInOrder + quantity
 
       if (quantity > availableQuantity) {
