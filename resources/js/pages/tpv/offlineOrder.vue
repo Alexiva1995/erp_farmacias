@@ -1,33 +1,43 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 
 const router = useRouter()
 const emit = defineEmits(['synced'])
 
-// ─── Estado de la Aplicación y Tasas ─────────────────────────────────────────
+// ─── Estado de Tasas ─────────────────────────────────────────────────────────
 const cachedRates = ref({
   USD: 1,
-  BS: 45.50,
-  COP: 4100,
+  BS: Number(localStorage.getItem('tpv_offline_rate_bs')) || 45.50,
+  COP: Number(localStorage.getItem('tpv_offline_rate_cop')) || 4100,
 })
 
+// ─── Estado de Productos y Carrito ───────────────────────────────────────────
 const searchQuery = ref('')
 const cart = ref([])
-const isProcessing = ref(false)
-const syncPendingCount = ref(0)
 const localProducts = ref([])
 const dbInstance = ref(null)
+const isProcessing = ref(false)
+const syncPendingCount = ref(0)
+const isSyncingCatalog = ref(false)
+const lastCatalogSync = ref(localStorage.getItem('tpv_offline_catalog_sync') || '')
+const notFoundMessage = ref('')
+const showNotFoundSnackbar = ref(false)
 
-// ─── Estado de Conexión y Sincronización ─────────────────────────────────────
+// ─── Estado de Conexión y Sincronización de Órdenes ───────────────────────────
 const isOnline = ref(navigator.onLine)
-const isSyncing = ref(false)
+const isSyncingOrders = ref(false)
 const syncProgress = ref({ current: 0, total: 0 })
 
 // ─── Eventos de Conexión ─────────────────────────────────────────────────────
-const handleOnline = () => { isOnline.value = true }
-const handleOffline = () => { isOnline.value = false }
+const handleOnline = () => {
+  isOnline.value = true
+  syncCatalogFromBackend()
+}
+const handleOffline = () => {
+  isOnline.value = false
+}
 
 // ─── Configuración de IndexedDB ──────────────────────────────────────────────
 const DB_NAME = 'ErpFarmaciasOfflineDB'
@@ -61,7 +71,74 @@ const initIndexedDB = () => {
   })
 }
 
-// ─── Carga del Catálogo Local ────────────────────────────────────────────────
+// ─── Sincronización del Catálogo Real desde el Backend ───────────────────────
+const syncCatalogFromBackend = async () => {
+  if (!navigator.onLine || isSyncingCatalog.value) return
+  isSyncingCatalog.value = true
+
+  try {
+    // 1. Obtener tasas de cambio reales
+    try {
+      const ratesRes = await axios.get('/public/exchange-rates')
+      const ratesData = ratesRes.data?.data || ratesRes.data || []
+      const rateBsObj = ratesData.find(r => r.currency_to === 'BS' || r.code === 'BS' || r.currency === 'BS')
+      const rateCopObj = ratesData.find(r => r.currency_to === 'COP' || r.code === 'COP' || r.currency === 'COP')
+
+      if (rateBsObj?.rate || rateBsObj?.effective_rate) {
+        cachedRates.value.BS = Number(rateBsObj.effective_rate || rateBsObj.rate)
+        localStorage.setItem('tpv_offline_rate_bs', cachedRates.value.BS)
+      }
+      if (rateCopObj?.rate || rateCopObj?.effective_rate) {
+        cachedRates.value.COP = Number(rateCopObj.effective_rate || rateCopObj.rate)
+        localStorage.setItem('tpv_offline_rate_cop', cachedRates.value.COP)
+      }
+    } catch (e) {
+      console.warn('No se pudieron actualizar tasas en segundo plano:', e)
+    }
+
+    // 2. Obtener catálogo completo de productos del TPV
+    const response = await axios.get('/tpv/order', { params: { itemsPerPage: -1 } })
+    const rawProducts = response.data?.data || []
+
+    if (Array.isArray(rawProducts) && rawProducts.length > 0 && dbInstance.value) {
+      const tx = dbInstance.value.transaction([STORE_PRODUCTS], 'readwrite')
+      const store = tx.objectStore(STORE_PRODUCTS)
+      
+      // Limpiar catálogo previo para tener datos frescos
+      store.clear()
+
+      const normalizedList = rawProducts.map(p => {
+        const rawPrice = Number(p.sale_price ?? p.price ?? p.base_price ?? p.unit_price_usd ?? 0)
+        const rawOfferPrice = p.offer_price ?? p.offer_price_usd ?? p.individual_offer_price
+        return {
+          id: p.id,
+          barcode: String(p.barcode || p.code || '').trim(),
+          name: p.name || p.title || 'Producto sin nombre',
+          base_price_usd: rawPrice,
+          stock: Number(p.stock ?? p.total_stock ?? 999),
+          has_individual_offer: Boolean(p.has_individual_offer || p.is_offer_individual),
+          offer_price_usd: rawOfferPrice ? Number(rawOfferPrice) : null,
+          offer_expires_at: p.offer_expires_at || p.individual_offer_expires_at || null,
+        }
+      })
+
+      normalizedList.forEach(item => store.put(item))
+
+      tx.oncomplete = () => {
+        localProducts.value = normalizedList
+        const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        lastCatalogSync.value = nowStr
+        localStorage.setItem('tpv_offline_catalog_sync', nowStr)
+      }
+    }
+  } catch (error) {
+    console.error('Error al sincronizar catálogo desde backend:', error)
+  } finally {
+    isSyncingCatalog.value = false
+  }
+}
+
+// ─── Carga del Catálogo Local desde IndexedDB ────────────────────────────────
 const loadLocalCatalog = () => {
   if (!dbInstance.value) return
 
@@ -70,30 +147,13 @@ const loadLocalCatalog = () => {
   const request = store.getAll()
 
   request.onsuccess = () => {
-    if (request.result.length === 0) {
-      const mockCatalog = [
-        { 
-          id: 1, barcode: '12345', name: 'Paracetamol 500mg', 
-          base_price_usd: 2.50, stock: 100,
-          has_individual_offer: false, offer_price_usd: null, offer_expires_at: null,
-        },
-        { 
-          id: 2, barcode: '54321', name: 'Losartán 50mg (OFERTA)', 
-          base_price_usd: 6.00, stock: 50,
-          has_individual_offer: true, offer_price_usd: 4.50, offer_expires_at: '2026-12-31T23:59:59',
-        },
-        { 
-          id: 3, barcode: '11111', name: 'Vitamina C 1g', 
-          base_price_usd: 5.00, stock: 20,
-          has_individual_offer: true, offer_price_usd: 2.00, offer_expires_at: '2020-01-01T00:00:00',
-        },
-      ]
-      const writeTx = dbInstance.value.transaction([STORE_PRODUCTS], 'readwrite')
-      const writeStore = writeTx.objectStore(STORE_PRODUCTS)
-      mockCatalog.forEach(product => writeStore.put(product))
-      localProducts.value = mockCatalog
-    } else {
+    if (request.result && request.result.length > 0) {
       localProducts.value = request.result
+    } else {
+      // Si la DB está vacía y hay red, sincronizar de inmediato
+      if (navigator.onLine) {
+        syncCatalogFromBackend()
+      }
     }
   }
 }
@@ -102,28 +162,47 @@ const loadLocalCatalog = () => {
 const getActivePrice = (item) => {
   if (item.has_individual_offer && item.offer_expires_at) {
     const isNotExpired = new Date() < new Date(item.offer_expires_at)
-    if (isNotExpired) {
-      return item.offer_price_usd
+    if (isNotExpired && item.offer_price_usd) {
+      return Number(item.offer_price_usd)
     }
   }
-  return item.base_price_usd
+  return Number(item.base_price_usd || 0)
 }
 
-// ─── Lógica del Carrito ──────────────────────────────────────────────────────
-const searchProduct = () => {
+// ─── Búsqueda Predictiva y Filtrado en Vivo ──────────────────────────────────
+const searchResults = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query || query.length < 2) return []
+
+  return localProducts.value
+    .filter(p => p.barcode === query || p.name.toLowerCase().includes(query))
+    .slice(0, 8)
+})
+
+const handleSearchEnter = () => {
   const query = searchQuery.value.trim().toLowerCase()
   if (!query) return
 
-  const foundProduct = localProducts.value.find(p => 
-    p.barcode === query || p.name.toLowerCase().includes(query)
-  )
+  // 1. Coincidencia exacta por código de barras o ID
+  let found = localProducts.value.find(p => p.barcode === query || String(p.id) === query)
 
-  if (foundProduct) {
-    addToCart(foundProduct)
+  // 2. Si no es exacto, buscar primera coincidencia por nombre
+  if (!found) {
+    found = localProducts.value.find(p => p.name.toLowerCase().includes(query))
+  }
+
+  if (found) {
+    addToCart(found)
     searchQuery.value = ''
   } else {
-    alert('Producto no encontrado en caché local.')
+    notFoundMessage.value = `Producto o código "${searchQuery.value}" no encontrado en la caché local (${localProducts.value.length} productos cargados).`
+    showNotFoundSnackbar.value = true
   }
+}
+
+const addProductFromSearch = (product) => {
+  addToCart(product)
+  searchQuery.value = ''
 }
 
 const addToCart = (product) => {
@@ -191,7 +270,7 @@ const processOfflineOrder = () => {
       console.error('Error al guardar la orden:', error)
       isProcessing.value = false
     }
-  }, 500)
+  }, 400)
 }
 
 const updatePendingSyncCount = () => {
@@ -204,8 +283,8 @@ const updatePendingSyncCount = () => {
 
 // ─── Motor de Sincronización y Retorno (Outbox Pattern) ──────────────────────
 const syncAndReturn = async () => {
-  if (isSyncing.value) return
-  isSyncing.value = true
+  if (isSyncingOrders.value) return
+  isSyncingOrders.value = true
 
   const transaction = dbInstance.value.transaction([STORE_ORDERS], 'readonly')
   const store = transaction.objectStore(STORE_ORDERS)
@@ -217,6 +296,7 @@ const syncAndReturn = async () => {
     syncProgress.value.current = 0
 
     if (orders.length === 0) {
+      emit('synced')
       router.push('/tpv/orderUser').catch(() => {
         window.location.href = '/tpv/orderUser'
       })
@@ -235,7 +315,7 @@ const syncAndReturn = async () => {
       }
     }
 
-    isSyncing.value = false
+    isSyncingOrders.value = false
     updatePendingSyncCount()
     
     if (syncPendingCount.value === 0) {
@@ -243,8 +323,6 @@ const syncAndReturn = async () => {
       router.push('/tpv/orderUser').catch(() => {
         window.location.href = '/tpv/orderUser'
       })
-    } else {
-      alert('Se presentaron errores sincronizando algunas órdenes. Estas se mantendrán en contingencia para revisión.')
     }
   }
 }
@@ -258,6 +336,11 @@ onMounted(async () => {
     await initIndexedDB()
     loadLocalCatalog()
     updatePendingSyncCount()
+    
+    // Si hay conexión, sincronizar catálogo real automáticamente
+    if (navigator.onLine) {
+      syncCatalogFromBackend()
+    }
   } catch (error) {
     console.error('Error inicializando TPV Offline', error)
   }
@@ -293,11 +376,11 @@ onUnmounted(() => {
             variant="flat"
             size="large"
             class="text-success font-weight-bold"
-            :loading="isSyncing"
+            :loading="isSyncingOrders"
             prepend-icon="tabler-cloud-upload"
             @click="syncAndReturn"
           >
-            <template v-if="isSyncing">
+            <template v-if="isSyncingOrders">
               Sincronizando {{ syncProgress.current }} de {{ syncProgress.total }}...
             </template>
             <template v-else>
@@ -308,37 +391,98 @@ onUnmounted(() => {
       </VAlert>
     </VSlideYTransition>
 
-    <!-- Alerta visual de estado offline -->
-    <VAlert
-      v-if="!isOnline"
-      type="warning"
-      variant="tonal"
-      class="mb-6"
-      border="start"
-      icon="tabler-wifi-off"
-    >
-      <div class="text-h6">PUNTO DE VENTA OFFLINE (MODO CONTINGENCIA)</div>
-      <div class="text-body-2">
-        Las ventas se guardan localmente en el navegador. Al reconectar, aparecerá la opción para sincronizar al servidor central.
+    <!-- Barra de Estado y Sincronización del Catálogo Local -->
+    <VCard variant="outlined" class="mb-4 pa-3 bg-surface">
+      <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+        <div class="d-flex align-center">
+          <VIcon
+            :icon="isOnline ? 'tabler-wifi' : 'tabler-wifi-off'"
+            :color="isOnline ? 'success' : 'warning'"
+            class="me-2"
+          />
+          <span class="text-body-2 font-weight-medium">
+            Estado: <strong :class="isOnline ? 'text-success' : 'text-warning'">{{ isOnline ? 'Online (Conectado)' : 'Offline (Contingencia)' }}</strong>
+          </span>
+          <VDivider vertical class="mx-3" />
+          <VChip size="small" color="primary" variant="tonal" class="font-weight-bold">
+            <VIcon icon="tabler-database" start size="14" />
+            {{ localProducts.length }} productos en caché local
+          </VChip>
+          <span v-if="lastCatalogSync" class="text-caption text-disabled ms-2">
+            (Última sinc: {{ lastCatalogSync }})
+          </span>
+        </div>
+
+        <VBtn
+          v-if="isOnline"
+          size="small"
+          variant="tonal"
+          color="primary"
+          :loading="isSyncingCatalog"
+          prepend-icon="tabler-refresh"
+          @click="syncCatalogFromBackend"
+        >
+          Actualizar Catálogo Local
+        </VBtn>
       </div>
-    </VAlert>
+    </VCard>
 
     <VRow>
       <VCol cols="12" md="8">
+        <!-- Buscador con Búsqueda Predictiva -->
         <VCard class="mb-4">
           <VCardText class="pa-4">
             <VTextField
               v-model="searchQuery"
               placeholder="Escanear código de barras o escribir nombre del producto..."
               prepend-inner-icon="tabler-barcode"
-              @keyup.enter="searchProduct"
+              @keyup.enter="handleSearchEnter"
+              clearable
               hide-details
               autofocus
-              :disabled="isSyncing"
+              :disabled="isSyncingOrders"
             />
+
+            <!-- Resultados en Vivo (Autocomplete Predictivo) -->
+            <VList
+              v-if="searchResults.length > 0"
+              density="compact"
+              class="mt-2 rounded border"
+            >
+              <VListItem
+                v-for="product in searchResults"
+                :key="product.id"
+                class="cursor-pointer py-2"
+                @click="addProductFromSearch(product)"
+              >
+                <template #prepend>
+                  <VIcon icon="tabler-pill" class="me-2 text-primary" />
+                </template>
+
+                <VListItemTitle class="font-weight-medium">
+                  {{ product.name }}
+                  <span class="text-caption text-disabled ms-2">[{{ product.barcode }}]</span>
+                </VListItemTitle>
+
+                <template #append>
+                  <span class="font-weight-bold text-success me-3">
+                    ${{ getActivePrice(product).toFixed(2) }}
+                  </span>
+                  <VBtn
+                    size="x-small"
+                    color="primary"
+                    variant="flat"
+                    prepend-icon="tabler-plus"
+                  >
+                    Agregar
+                  </VBtn>
+                </template>
+              </VListItem>
+            </VList>
           </VCardText>
         </VCard>
 
+        <!-- Tabla del Carrito -->
         <VCard>
           <VTable>
             <thead>
@@ -382,16 +526,16 @@ onUnmounted(() => {
                 </td>
                 <td class="text-center">
                   <div class="d-inline-flex align-center">
-                    <VBtn icon="tabler-minus" size="x-small" variant="tonal" @click="item.quantity > 1 ? item.quantity-- : removeFromCart(index)" :disabled="isSyncing" />
+                    <VBtn icon="tabler-minus" size="x-small" variant="tonal" @click="item.quantity > 1 ? item.quantity-- : removeFromCart(index)" :disabled="isSyncingOrders" />
                     <span class="mx-2 font-weight-bold">{{ item.quantity }}</span>
-                    <VBtn icon="tabler-plus" size="x-small" variant="tonal" :disabled="item.quantity >= item.stock || isSyncing" @click="item.quantity++" />
+                    <VBtn icon="tabler-plus" size="x-small" variant="tonal" :disabled="item.quantity >= item.stock || isSyncingOrders" @click="item.quantity++" />
                   </div>
                 </td>
                 <td class="text-right font-weight-bold">
                   ${{ (getActivePrice(item) * item.quantity).toFixed(2) }}
                 </td>
                 <td class="text-center">
-                  <VBtn icon="tabler-trash" color="error" size="small" variant="text" @click="removeFromCart(index)" :disabled="isSyncing" />
+                  <VBtn icon="tabler-trash" color="error" size="small" variant="text" @click="removeFromCart(index)" :disabled="isSyncingOrders" />
                 </td>
               </tr>
             </tbody>
@@ -422,7 +566,7 @@ onUnmounted(() => {
             </div>
             
             <div class="mt-4 pa-3 rounded bg-var-theme-background text-caption text-medium-emphasis">
-              Tasas congeladas: 1 USD = {{ cachedRates.BS }} BS | {{ cachedRates.COP }} COP
+              Tasas aplicadas: 1 USD = {{ cachedRates.BS }} BS | {{ cachedRates.COP }} COP
             </div>
 
             <VSheet color="warning" variant="tonal" class="pa-3 mt-6 rounded d-flex align-center" v-if="syncPendingCount > 0 && !isOnline">
@@ -441,7 +585,7 @@ onUnmounted(() => {
               size="x-large" 
               class="font-weight-bold"
               prepend-icon="tabler-device-floppy"
-              :disabled="cart.length === 0 || isProcessing || isSyncing" 
+              :disabled="cart.length === 0 || isProcessing || isSyncingOrders" 
               :loading="isProcessing" 
               @click="processOfflineOrder"
             >
@@ -451,11 +595,27 @@ onUnmounted(() => {
         </VCard>
       </VCol>
     </VRow>
+
+    <!-- Notificación Snackbar para productos no encontrados -->
+    <VSnackbar
+      v-model="showNotFoundSnackbar"
+      color="error"
+      location="top"
+      :timeout="3500"
+    >
+      <div class="d-flex align-center">
+        <VIcon icon="tabler-alert-circle" class="me-2" />
+        {{ notFoundMessage }}
+      </div>
+    </VSnackbar>
   </VContainer>
 </template>
 
 <style scoped>
 .gap-2 {
   gap: 8px;
+}
+.cursor-pointer {
+  cursor: pointer;
 }
 </style>
