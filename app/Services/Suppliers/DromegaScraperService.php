@@ -17,6 +17,7 @@ class DromegaScraperService implements DromegaScraperServiceInterface
 {
     private const BASE_URL = 'https://www.drogueriamega.com/mydas';
     private const LOGIN_URL = 'https://www.drogueriamega.com/mydas/?admin_action=login';
+    private const CUENTAS_POR_PAGAR_URL = 'https://www.drogueriamega.com/mydas/clientes/cuentas-por-pagar?cliente=';
     private const ESTADO_CUENTA_URL = 'https://www.drogueriamega.com/mydas/clientes/estado-cuenta';
     private const DATOS_FACTURA_URL = 'https://www.drogueriamega.com/mydas/clientes/datos-factura';
 
@@ -208,7 +209,7 @@ class DromegaScraperService implements DromegaScraperServiceInterface
     }
 
     /**
-     * Extrae las facturas directamente del estado de cuenta de Droguería Mega.
+     * Extrae las facturas directamente de cuentas por pagar / estado de cuenta de Droguería Mega.
      */
     public function fetchInvoices(?string $cookie = null, ?string $user = null, ?string $pass = null, ?int $supplierId = null): array
     {
@@ -224,11 +225,17 @@ class DromegaScraperService implements DromegaScraperServiceInterface
         $cookieFile = $this->createAuthenticatedSession($username, $password);
 
         try {
-            $targetUrl = self::ESTADO_CUENTA_URL;
+            // Consultar cuentas por pagar (donde están todas las facturas y saldos indexados)
+            $targetUrl = self::CUENTAS_POR_PAGAR_URL;
             $res = $this->executeCurlWithCookie($targetUrl, $cookieFile);
 
             if ($res['status'] !== 200 || empty($res['body'])) {
-                throw new \RuntimeException("No se pudo obtener el estado de cuenta de Droguería Mega (HTTP {$res['status']}).");
+                // Fallback a estado de cuenta general si cuentas-por-pagar no respondiera
+                $res = $this->executeCurlWithCookie(self::ESTADO_CUENTA_URL, $cookieFile);
+            }
+
+            if ($res['status'] !== 200 || empty($res['body'])) {
+                throw new \RuntimeException("No se pudo obtener las facturas de Droguería Mega (HTTP {$res['status']}).");
             }
 
             if (str_contains($res['body'], 'admin_action=login') || str_contains($res['body'], 'Escribe tu usuario') || str_contains($res['url'], 'login')) {
@@ -244,12 +251,86 @@ class DromegaScraperService implements DromegaScraperServiceInterface
     }
 
     /**
-     * Parsea el HTML del estado de cuenta de mydas para extraer el detalle de cada factura.
+     * Parsea el HTML / JSON de cuentas por pagar de mydas para extraer el detalle de cada factura.
      */
     private function parseInvoicesFromHtml(string $html): array
     {
         $invoices = [];
+        $today = Carbon::today();
 
+        // 1. Intento primario: Parsear directamente rawMovements JSON (inyectado nativamente en Mydas cuentas-por-pagar)
+        if (preg_match('/rawMovements\s*=\s*(\[\{.*?\}\]);/s', $html, $m)) {
+            $rawMovements = json_decode($m[1], true);
+            if (is_array($rawMovements) && !empty($rawMovements)) {
+                foreach ($rawMovements as $mov) {
+                    $docNum = trim((string)($mov['nro_documento'] ?? ''));
+                    if (empty($docNum)) {
+                        continue;
+                    }
+
+                    $tipo = trim((string)($mov['tipo_documento'] ?? 'FACT'));
+                    $factorFactura = (float)($mov['factor_cambiario_factura'] ?? 1);
+                    $tasaAplicable = (float)($mov['tasa_aplicable'] ?? $factorFactura);
+                    $saldoBsHist = (float)($mov['saldo_bs'] ?? 0);
+                    $saldoUsd = (float)($mov['saldo'] ?? 0);
+
+                    // Cálculo idéntico al portal Mydas
+                    if ($tipo === 'FACT' && $factorFactura > 0) {
+                        $saldoBsCalc = round(($saldoBsHist / $factorFactura) * $tasaAplicable, 2);
+                    } else {
+                        $saldoBsCalc = round($saldoUsd * $tasaAplicable, 2);
+                    }
+
+                    $emision = $this->parseDate($mov['fecha_emision'] ?? null);
+                    $vencimiento = $this->parseDate($mov['fecha_vencimiento'] ?? null);
+                    $entrega = $this->parseDate($mov['fecha_entrega'] ?? null);
+                    $vencProteccion = $this->parseDate($mov['fecha_max_proteccion'] ?? null);
+
+                    $diasCredito = (int)($mov['dias_credito'] ?? 0);
+                    $diasProteccion = (int)($mov['proteccion_tasa'] ?? 0);
+
+                    $expDate = $vencimiento ?: ($vencProteccion ?: $today->format('Y-m-d'));
+                    $isSameDayProtection = ($entrega && $vencProteccion && $entrega === $vencProteccion);
+
+                    if ($isSameDayProtection) {
+                        $paymentDate = $vencimiento ?: $expDate;
+                        $isIndexed = true;
+                    } else {
+                        $paymentDate = $vencProteccion ?: $expDate;
+                        // Es indexada si la tasa aplicable actual supera la tasa de origen de la factura
+                        // o si la fecha de protección ya venció
+                        $isIndexed = ($tasaAplicable > $factorFactura) || ($vencProteccion ? $today->gt(Carbon::parse($vencProteccion)) : false);
+                    }
+
+                    $invoices[] = [
+                        'num_factura' => $docNum,
+                        'control_number' => $mov['nro_control'] ?? null,
+                        'emision' => $emision,
+                        'entrega' => $entrega,
+                        'vencimiento' => $vencimiento,
+                        'vencimiento_proteccion' => $vencProteccion,
+                        'dias_credito' => $diasCredito,
+                        'dias_proteccion' => $diasProteccion,
+                        'tipo' => $tipo,
+                        'monto_bruto' => (float)($mov['monto_bruto'] ?? 0),
+                        'monto_neto' => (float)($mov['monto_neto'] ?? 0),
+                        'saldo_usd' => $saldoUsd,
+                        'saldo_bs' => $saldoBsCalc,
+                        'exchange_rate' => $tasaAplicable,
+                        'factor_factura' => $factorFactura,
+                        'payment_date' => $paymentDate,
+                        'exp_date' => $expDate,
+                        'is_indexed' => $isIndexed,
+                    ];
+                }
+
+                if (!empty($invoices)) {
+                    return $invoices;
+                }
+            }
+        }
+
+        // 2. Fallback: Parseo DOM de tablas HTML
         libxml_use_internal_errors(true);
         $dom = new DOMDocument();
         $dom->loadHTML('<?xml encoding="utf-8" ?>' . $html);
@@ -264,7 +345,6 @@ class DromegaScraperService implements DromegaScraperServiceInterface
 
         $targetTable = $tables->item(0);
         $rows = $xpath->query('.//tr', $targetTable);
-        $today = Carbon::today();
 
         foreach ($rows as $index => $row) {
             $cells = $xpath->query('.//td', $row);
@@ -346,7 +426,7 @@ class DromegaScraperService implements DromegaScraperServiceInterface
                 $saldoBsRaw = $m[1];
             }
 
-            $isIndexedExplicit = (stripos($c4Text, 'Indexada') !== false);
+            $isIndexedExplicit = (stripos($c4Text, 'Indexada') !== false || stripos($row->textContent, 'Indexada') !== false);
 
             // Parsear fechas (formato d/m/Y)
             $emision = $this->parseDate($emisionRaw);
@@ -360,11 +440,7 @@ class DromegaScraperService implements DromegaScraperServiceInterface
             $saldoUsd = $this->parseAmount($saldoUsdRaw);
             $saldoBs = $this->parseAmount($saldoBsRaw);
 
-            // Reglas de negocio de Droguería Mega:
-            // 1. Fecha de vencimiento: La indicada en el portal
             $expDate = $vencimiento ?: ($vencimientoProteccion ?: $today->format('Y-m-d'));
-
-            // 2. Fecha de pago: Es la fecha de protección de tasa, EXCEPTO si fecha de protección == fecha de entrega
             $isSameDayProtection = ($entrega && $vencimientoProteccion && $entrega === $vencimientoProteccion);
 
             if ($isSameDayProtection) {
@@ -652,8 +728,10 @@ class DromegaScraperService implements DromegaScraperServiceInterface
         ];
     }
 
+    private const PAGO_URL = 'https://www.drogueriamega.com/mydas/clientes/pago';
+
     /**
-     * Reporta y procesa un pago directamente en el portal web de Droguería Mega.
+     * Reporta y procesa un pago directamente en el portal web de Droguería Mega (Mydas).
      */
     public function submitPayment(
         array $invoiceNumbers,
@@ -665,141 +743,195 @@ class DromegaScraperService implements DromegaScraperServiceInterface
     ): array {
         Log::info('[DROMEGA PAYMENT] Iniciando reporte de pago para facturas: ' . implode(', ', $invoiceNumbers));
 
-        $cookieString = env('DROMEGA_COOKIE', 'wordpress_test_cookie=WP%20Cookie%20check; wp_lang=es_ES; wordpress_logged_in_39574764368bb892fdea55c61228e833=Farmacia_Barrio_Sucre%7C1789522005%7CYWx0d9WkwLcNilkn5JDCcVxXwC4xCWiXdW5dXvzvmCb%7Cd8a89bfde4906ecd86eabc0061b580cce09bb1b71de7a7f85fe54ec1657bed9d; _ga=GA1.1.786654209.1780670257; _ga_J50XJCL6NJ=GS2.1.s1780670257$o1$g0$t1780670272$j45$l0$h0; PHPSESSID=394ae3b6804e7d2b6e052a44b2cdd93d');
+        $creds = $this->getCredentials();
+        $cookieFile = $this->createAuthenticatedSession($creds['username'], $creds['password']);
 
-        // 1. Obtener estado de cuenta para extraer montos exactos de las facturas
-        $extractedInvoices = $this->fetchInvoices($cookieString);
-        $targetInvoices = [];
-        $cleanTargets = array_map(fn($n) => ltrim((string) $n, '0'), $invoiceNumbers);
+        try {
+            // 1. Obtener cuentas por pagar para extraer montos exactos y tasas de las facturas
+            $resCxp = $this->executeCurlWithCookie(self::CUENTAS_POR_PAGAR_URL, $cookieFile);
+            $extractedInvoices = $this->parseInvoicesFromHtml($resCxp['body'] ?? '');
 
-        foreach ($extractedInvoices as $inv) {
-            $cleanNum = ltrim((string) $inv['num_factura'], '0');
-            if (in_array($cleanNum, $cleanTargets) || in_array($inv['num_factura'], $invoiceNumbers)) {
-                $targetInvoices[] = $inv;
+            // Extraer token CSRF de la página de cuentas por pagar
+            $csrf = '';
+            if (preg_match('/name=["\']fwl_csrf["\']\s+value=["\']([^"\']+)["\']/i', $resCxp['body'] ?? '', $mCsrf)) {
+                $csrf = $mCsrf[1];
+            } elseif (preg_match('/window\.CSRF_TOKEN\s*=\s*["\']([^"\']+)["\']/i', $resCxp['body'] ?? '', $mCsrf2)) {
+                $csrf = $mCsrf2[1];
             }
-        }
 
-        if (empty($targetInvoices)) {
-            // Si no se encontraron por scraping, usar los números provistos
-            foreach ($invoiceNumbers as $num) {
-                $targetInvoices[] = [
-                    'num_factura' => (string) $num,
-                    'saldo_usd' => 0,
-                    'saldo_bs' => $paymentAmount,
+            $targetInvoices = [];
+            $cleanTargets = array_map(fn($n) => ltrim((string) $n, '0'), $invoiceNumbers);
+
+            foreach ($extractedInvoices as $inv) {
+                $cleanNum = ltrim((string) $inv['num_factura'], '0');
+                if (in_array($cleanNum, $cleanTargets) || in_array($inv['num_factura'], $invoiceNumbers)) {
+                    $targetInvoices[] = $inv;
+                }
+            }
+
+            if (empty($targetInvoices)) {
+                foreach ($invoiceNumbers as $num) {
+                    $targetInvoices[] = [
+                        'num_factura' => (string) $num,
+                        'saldo_usd' => 0,
+                        'saldo_bs' => $paymentAmount,
+                        'exchange_rate' => 0,
+                    ];
+                }
+            }
+
+            // 2. Paso 1: Seleccionar facturas y enviar POST a /clientes/pago
+            $payloadInvoices = [];
+            $totalBs = 0;
+            $postStep1 = [
+                'fwl_csrf' => $csrf,
+                'cliente' => '7586',
+                'facturas' => [],
+            ];
+
+            foreach ($targetInvoices as $inv) {
+                $docNum = (string) $inv['num_factura'];
+                $postStep1['facturas'][] = $docNum;
+                $postStep1["montopagar{$docNum}"] = number_format((float) ($inv['saldo_usd'] ?? 0), 2, '.', '');
+                $postStep1["montopagarbs{$docNum}"] = number_format((float) ($inv['saldo_bs'] ?? 0), 2, '.', '');
+                $totalBs += (float) ($inv['saldo_bs'] ?? 0);
+
+                $payloadInvoices[] = [
+                    'nro' => $docNum,
+                    'monto_usd' => number_format((float) ($inv['saldo_usd'] ?? 0), 6, '.', ''),
+                    'monto_bs' => number_format((float) ($inv['saldo_bs'] ?? 0), 2, '.', ''),
+                    'tasa' => (float) ($inv['exchange_rate'] ?? 0),
+                    'tipo' => 'Total',
                 ];
             }
-        }
 
-        // 2. Paso 1: Seleccionar facturas y enviar a /ventas/pago
-        $totalBs = 0;
-        $postStep1 = [
-            'cliente' => '7586',
-            'facturas' => [],
-        ];
+            $postStep1['payment_data'] = json_encode($payloadInvoices);
 
-        foreach ($targetInvoices as $inv) {
-            $docNum = (string) $inv['num_factura'];
-            $postStep1['facturas'][] = $docNum;
-            $postStep1["montopagar{$docNum}"] = number_format((float) ($inv['saldo_usd'] ?? 0), 2, ',', '.');
-            $postStep1["montopagarbs{$docNum}"] = number_format((float) ($inv['saldo_bs'] ?? 0), 2, ',', '.');
-            $totalBs += (float) ($inv['saldo_bs'] ?? 0);
-        }
+            $step1Res = $this->executeCurlWithCookie(self::PAGO_URL, $cookieFile, [
+                'post' => $postStep1,
+                'headers' => [
+                    'Origin: https://www.drogueriamega.com',
+                    'Referer: ' . self::CUENTAS_POR_PAGAR_URL,
+                    'Content-Type: application/x-www-form-urlencoded',
+                ],
+            ]);
 
-        $postStep1['total_por_pagar'] = number_format($totalBs > 0 ? $totalBs : $paymentAmount, 2, '.', '');
-
-        $step1Res = $this->executeCurl(self::BASE_URL . '/ventas/pago', $cookieString, [
-            'post' => $postStep1,
-            'headers' => [
-                'Content-Type: application/x-www-form-urlencoded',
-                'Referer: ' . self::BASE_URL . '/ventas/cuentas-por-pagar/?sucursal=merida&cliente=7586',
-            ],
-        ]);
-
-        if ($step1Res['status'] !== 200) {
-            throw new \RuntimeException("Error en el paso 1 de pago en Droguería Mega (HTTP {$step1Res['status']}).");
-        }
-
-        // 3. Extraer el campo oculto 'facts' de la respuesta
-        $factsVal = '';
-        if (preg_match('/<input[^>]*name=["\']facts["\'][^>]*value=["\']([^"\']*)["\']/i', $step1Res['body'], $m)) {
-            $factsVal = $m[1];
-        }
-
-        if (empty($factsVal)) {
-            Log::warning('[DROMEGA PAYMENT] No se pudo extraer el campo "facts" del formulario de pago.');
-        }
-
-        // 4. Formatear los últimos 9 dígitos del número de operación
-        $cleanRef = preg_replace('/\D/', '', $reference);
-        $nroOperacion = strlen($cleanRef) >= 9 ? substr($cleanRef, -9) : $reference;
-
-        // 5. Preparar comprobante adjunto si existe
-        $curlFile = null;
-        if (!empty($photoUrl)) {
-            $relativePath = ltrim(str_replace(['/storage/', 'storage/'], '', $photoUrl), '/\\');
-            $fullPath = storage_path('app/public/' . $relativePath);
-
-            if (!file_exists($fullPath)) {
-                $fullPath = public_path('storage/' . $relativePath);
+            if ($step1Res['status'] !== 200) {
+                throw new \RuntimeException("Error en el paso 1 de pago en Droguería Mega (HTTP {$step1Res['status']}).");
             }
 
-            if (file_exists($fullPath)) {
-                $mimeType = mime_content_type($fullPath) ?: 'image/jpeg';
-                $curlFile = new \CURLFile($fullPath, $mimeType, basename($fullPath));
+            // 3. Extraer CSRF y estructura de invoices procesada por Mydas en el paso 1
+            $step1Html = $step1Res['body'] ?? '';
+            $csrfStep2 = $csrf;
+            if (preg_match('/name=["\']fwl_csrf["\']\s+value=["\']([^"\']+)["\']/i', $step1Html, $mCsrfStep1)) {
+                $csrfStep2 = $mCsrfStep1[1];
+            } elseif (preg_match('/window\.CSRF_TOKEN\s*=\s*["\']([^"\']+)["\']/i', $step1Html, $mCsrfStep1_2)) {
+                $csrfStep2 = $mCsrfStep1_2[1];
+            }
+
+            $invoicesForPayload = $payloadInvoices;
+            if (preg_match('/paymentForm\((.*?)\)/s', $step1Html, $mFormData)) {
+                $decodedForm = html_entity_decode($mFormData[1] ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $parsedData = json_decode($decodedForm, true);
+                if (!empty($parsedData['invoices'])) {
+                    $invoicesForPayload = $parsedData['invoices'];
+                }
+            }
+
+            // 4. Formatear los últimos 9 dígitos del número de operación / referencia
+            $cleanRef = preg_replace('/\D/', '', $reference);
+            $nroOperacion = strlen($cleanRef) >= 9 ? substr($cleanRef, -9) : $reference;
+            $formattedPayDate = $paymentDate ?: Carbon::today()->format('Y-m-d');
+            if (str_contains($formattedPayDate, '/')) {
+                $formattedPayDate = Carbon::createFromFormat('d/m/Y', $formattedPayDate)->format('Y-m-d');
+            }
+
+            // 5. Preparar comprobante adjunto si existe
+            $curlFile = null;
+            if (!empty($photoUrl)) {
+                $relativePath = ltrim(str_replace(['/storage/', 'storage/'], '', $photoUrl), '/\\');
+                $fullPath = storage_path('app/public/' . $relativePath);
+
+                if (!file_exists($fullPath)) {
+                    $fullPath = public_path('storage/' . $relativePath);
+                }
+
+                if (file_exists($fullPath)) {
+                    $mimeType = mime_content_type($fullPath) ?: 'image/jpeg';
+                    $curlFile = new \CURLFile($fullPath, $mimeType, basename($fullPath));
+                }
+            }
+
+            // 6. Paso 2: Enviar Formas de Pago a /clientes/pago
+            $paymentMethods = [
+                [
+                    'date' => $formattedPayDate,
+                    'type' => 'transferencia',
+                    'bank' => $destinationBank ?: 'C1051',
+                    'reference' => $nroOperacion,
+                    'amount' => number_format($paymentAmount, 2, '.', ''),
+                    'fileValid' => ($curlFile !== null),
+                    'fileError' => '',
+                ]
+            ];
+
+            $paymentPayload = [
+                'invoices' => $invoicesForPayload,
+                'paymentMethods' => $paymentMethods,
+                'retentions' => [],
+                'selectedNC' => [],
+            ];
+
+            $postStep2 = [
+                'fwl_csrf' => $csrfStep2,
+                'payment_submit' => '1',
+                'payment_payload' => json_encode($paymentPayload),
+            ];
+
+            if ($curlFile) {
+                $postStep2['comprobante_0'] = $curlFile;
+            }
+
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => self::PAGO_URL,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $postStep2,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HEADER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_COOKIEFILE => $cookieFile,
+                CURLOPT_COOKIEJAR => $cookieFile,
+                CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                CURLOPT_HTTPHEADER => [
+                    'Origin: https://www.drogueriamega.com',
+                    'Referer: ' . self::PAGO_URL,
+                ],
+            ]);
+            $step2Output = curl_exec($ch);
+            $step2Status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $step2EffUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+            curl_close($ch);
+
+            $isSuccess = ($step2Status === 200 || $step2Status === 302);
+
+            Log::info("[DROMEGA PAYMENT] Reporte de pago finalizado con status HTTP {$step2Status}. Referencia: {$nroOperacion}, Facturas: " . implode(', ', $invoiceNumbers));
+
+            return [
+                'success' => $isSuccess,
+                'status' => $step2Status,
+                'reference' => $nroOperacion,
+                'invoices' => $invoiceNumbers,
+                'amount_paid' => $paymentAmount,
+                'bank_code' => $destinationBank,
+            ];
+        } finally {
+            if (file_exists($cookieFile)) {
+                @unlink($cookieFile);
             }
         }
-
-        // 6. Paso 2: Enviar reporte de pago con multipart/form-data
-        $postStep2 = [
-            'datos_pago' => '1',
-            'cliente' => '7586',
-            'facts' => $factsVal,
-            'fecha1' => $paymentDate ?: Carbon::today()->format('Y-m-d'),
-            'tipo1' => 'transferencia',
-            'monto1' => number_format($paymentAmount, 2, ',', '.'),
-            'banco1' => $destinationBank ?: 'C1051',
-            'nro_operacion1' => $nroOperacion,
-            'nro_pagos' => '1',
-            'cantidad_retenciones' => '0',
-        ];
-
-        if ($curlFile) {
-            $postStep2['comprobante_pago1'] = $curlFile;
-        }
-
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL => self::BASE_URL . '/ventas/pago',
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $postStep2,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => 0,
-            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36',
-            CURLOPT_HTTPHEADER => [
-                "Cookie: {$cookieString}",
-                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Referer: ' . self::BASE_URL . '/ventas/pago',
-            ],
-        ]);
-        $step2Output = curl_exec($ch);
-        $step2Status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $isSuccess = ($step2Status === 200 || $step2Status === 302);
-
-        Log::info("[DROMEGA PAYMENT] Reporte de pago finalizado con status HTTP {$step2Status}. Referencia: {$nroOperacion}, Facturas: " . implode(', ', $invoiceNumbers));
-
-        return [
-            'success' => $isSuccess,
-            'status' => $step2Status,
-            'reference' => $nroOperacion,
-            'invoices' => $invoiceNumbers,
-            'amount_paid' => $paymentAmount,
-            'bank_code' => $destinationBank,
-        ];
     }
 
     /**

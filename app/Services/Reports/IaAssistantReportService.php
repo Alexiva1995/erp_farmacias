@@ -1226,11 +1226,11 @@ class IaAssistantReportService
                 $rop = $vpd * ($effectiveLeadTime + $bufferDays);
                 
                 // Regla de Stock Mínimo de Exposición (Display Floor) para productos activos únicos de su liga o líderes:
-                // Si la demanda mensual es >= 2.0 y el tiempo de reposición es >= 14 días (LeadTime + Buffer),
-                // para evitar quiebre de anaquel al llegar a 1 unidad en percha, el punto de reorden operativo dispara reorden preventivo.
+                // Si la demanda mensual es >= 1.2 y es único SKU o líder dominante (IPO >= 80%),
+                // para evitar quiebre de anaquel al llegar a 1 unidad en percha, el punto de reorden operativo dispara reorden preventivo (ROP = 1.1).
                 $totalSkusEnTier = count($ligasPorGrupo[$gId][$miLiga] ?? []);
                 $esUnicoOLider = ($totalSkusEnTier === 1 || $ipo >= 0.80);
-                if ($demandaTrueIntent >= 2.0 && $esUnicoOLider) {
+                if ($demandaTrueIntent >= 1.2 && $esUnicoOLider) {
                     $rop = max(1.1, $rop); // Asegura ROP > 1.0 para disparar compra cuando stock físico <= 1
                 } elseif ($demandaTrueIntent >= 1.0) {
                     $rop = max(1.0, $rop);
