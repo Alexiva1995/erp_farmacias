@@ -1413,7 +1413,7 @@ class IaAssistantReportService
                     // FASE 4.3: DISTRIBUCIÓN DEL PRESUPUESTO SOBRANTE
                     foreach ($tierItems as $sku) {
                         $sku->presupuesto_disponible_liga = round($presupuestoObjetivoLiga, 2);
-                        $sku->ventas_totales_liga = round($tierTotalDemand, 2);
+                        $sku->ventas_totales_liga = round((float)($objLiga ?? collect($tierItems)->sum('demanda_ponderada')), 2);
 
                         if ($puntuacionTotalLiga > 0 && $sku->puntuacionCompra > 0) {
                             $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;

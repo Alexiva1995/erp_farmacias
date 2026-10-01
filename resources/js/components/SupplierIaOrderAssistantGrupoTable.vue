@@ -324,7 +324,8 @@ const innerHeaders = computed(() => {
     { title: "COSTO", key: "unit_cost", sortable: true, align: 'end', width: '75px' },
     { title: "VTA. 30D", key: "total_sold_completed", sortable: true, align: 'center', width: '75px' },
     { title: "QUIEBRE", key: "dias_quiebre", sortable: true, align: 'center', width: '75px' },
-    { title: "ROP", key: "promedio_calculado", sortable: true, align: 'center', width: '70px' },
+    { title: "DEMANDA", key: "promedio_calculado", sortable: true, align: 'center', width: '75px' },
+    { title: "ROP", key: "rop_calculado", sortable: true, align: 'center', width: '70px' },
     { title: "FÍSICO", key: "lote_quantity", sortable: true, align: 'center', width: '70px' },
     { title: "TRÁNS.", key: "totalQuantityInAutoOrder", sortable: true, align: 'center', width: '70px' },
     { title: "ÚTIL", key: "stock_util", sortable: true, align: 'center', width: '70px' },
@@ -540,9 +541,14 @@ function rowClass(item) {
                 </span>
               </template>
 
-              <!-- PROM. (ROP) -->
+              <!-- DEMANDA (30D) -->
               <template #item.promedio_calculado="{ item }">
-                <span class="font-weight-bold">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '0.0' }}</span>
+                <span class="font-weight-medium text-medium-emphasis">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '0.0' }}</span>
+              </template>
+
+              <!-- ROP REAL (14D / 21D) -->
+              <template #item.rop_calculado="{ item }">
+                <span class="font-weight-bold text-primary font-mono">{{ (item.rop_calculado !== undefined ? parseFloat(item.rop_calculado) : (parseFloat(item.rop ?? 0))).toFixed(1) }}</span>
               </template>
 
               <!-- STOCK FÍSICO -->
@@ -738,8 +744,12 @@ function rowClass(item) {
                       </span>
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
-                      <span class="text-disabled">Prom. (ROP):</span>
-                      <span class="font-weight-bold">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '0.0' }}</span>
+                      <span class="text-disabled">Demanda (30d):</span>
+                      <span class="font-weight-medium text-medium-emphasis">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '0.0' }}</span>
+                    </div>
+                    <div class="d-flex justify-space-between text-xs my-1">
+                      <span class="text-disabled">ROP Real:</span>
+                      <span class="font-weight-bold text-primary font-mono">{{ (item.rop_calculado !== undefined ? parseFloat(item.rop_calculado) : (parseFloat(item.rop ?? 0))).toFixed(1) }}</span>
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
                       <span class="text-disabled">Stock Físico:</span>
