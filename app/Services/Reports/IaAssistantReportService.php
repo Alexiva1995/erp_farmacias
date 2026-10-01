@@ -1082,17 +1082,23 @@ class IaAssistantReportService
             $minPrice = $validPrices->isNotEmpty() ? $validPrices->min() : 0;
             $maxPrice = $validPrices->isNotEmpty() ? $validPrices->max() : 0;
             $rango = $maxPrice - $minPrice;
-            
+
+            // Umbral de liga única: brecha relativa <= 40% del mínimo O brecha absoluta <= $0.50
+            // Esto evita separar sustitutos directos con precios muy cercanos (ej. $0.73 vs $0.94)
+            $rangoRelativo = $minPrice > 0 ? ($rango / $minPrice) : 0;
+            $esRangoEstrecho = ($minPrice == 0 || $rango <= ($minPrice * 0.40) || $rango <= 0.50);
+
             $ligas = [];
             foreach ($groupProds as $gp) {
                 $price = (float)(($gp->sale_price ?? 0) > 0 ? $gp->sale_price : ($gp->unit_cost ?? 0));
-                
-                if ($minPrice == 0 || $rango <= ($minPrice * 0.15)) {
-                    $tier = 1; // Margen muy estrecho, compiten directo
+
+                if ($esRangoEstrecho) {
+                    // Rango estrecho: todos compiten en la misma liga económica
+                    $tier = 1;
                 } else {
                     $limiteTercio1 = $minPrice + ($rango * 0.33);
                     $limiteTercio2 = $minPrice + ($rango * 0.66);
-                    
+
                     if ($price <= $limiteTercio1) {
                         $tier = 1; // Económica (Rosada)
                     } elseif ($price <= $limiteTercio2) {

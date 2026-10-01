@@ -220,7 +220,7 @@ const grupoKpi = (productos) => {
   let falta = 0, exceso = 0, ok = 0;
   productos.forEach(p => {
     const v = roundIaAnalysis(p.solicitar);
-    if (v > 0 || (v === 0 && (p.lote_quantity ?? p.stock ?? 0) <= 0)) falta++;
+    if (v > 0) falta++;
     else if (v < 0) exceso++;
     else ok++;
   });
