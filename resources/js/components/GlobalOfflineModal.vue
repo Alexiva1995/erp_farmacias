@@ -50,16 +50,35 @@ const closeOfflineView = () => {
   isFullscreenOffline.value = false
 }
 
+import { syncCatalogInBackground } from '@/composables/useOfflineCatalogSync'
+
+let backgroundSyncInterval = null
+
 // ─── Ciclo de Vida ───────────────────────────────────────────────────────────
 onMounted(() => {
   window.addEventListener('offline', handleOffline)
   window.addEventListener('online', handleOnline)
   setupAxiosInterceptor()
+
+  // Sincronización automática silenciosa del catálogo al iniciar la app
+  if (navigator.onLine) {
+    syncCatalogInBackground()
+  }
+
+  // Repetir sincronización silenciosa cada 15 minutos mientras haya conexión
+  backgroundSyncInterval = setInterval(() => {
+    if (navigator.onLine) {
+      syncCatalogInBackground()
+    }
+  }, 15 * 60 * 1000)
 })
 
 onUnmounted(() => {
   window.removeEventListener('offline', handleOffline)
   window.removeEventListener('online', handleOnline)
+  if (backgroundSyncInterval) {
+    clearInterval(backgroundSyncInterval)
+  }
 })
 </script>
 
