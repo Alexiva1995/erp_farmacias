@@ -548,7 +548,9 @@ class DromegaScraperService implements DromegaScraperServiceInterface
                 ];
             } else {
                 $userId = auth()->id() ?? \App\Models\User::first()?->id ?? 1;
-                $newInvoice = Invoice::create([
+                $newInvoice = Invoice::updateOrCreate(
+                    ['supplier_id' => $supplierId, 'invoice_number' => $rawDocNum],
+                    [
                     'supplier_id' => $supplierId,
                     'uploaded_by' => $userId,
                     'registered_by' => $userId,
@@ -570,7 +572,8 @@ class DromegaScraperService implements DromegaScraperServiceInterface
                     'is_indexed' => $isIndexed,
                     'status' => 'pending',
                     'status_payment' => 0,
-                ]);
+                ]
+                );
                 $createdCount++;
 
                 $processed[] = [

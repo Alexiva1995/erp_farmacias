@@ -127,7 +127,7 @@ class GeminiService
                 . "Extrae exclusivamente el número de referencia, número de operación, número de transacción, número de aprobación o identificador numérico único de la transacción. "
                 . "Si encuentras 'Operación: XXXXXXXXXX' o 'Referencia: XXXXXXXXXX', extrae exactamente esa secuencia de dígitos numéricos.";
 
-            $models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro'];
+            $models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.1-pro-preview'];
             $response = null;
 
             foreach ($models as $model) {

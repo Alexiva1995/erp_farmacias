@@ -547,7 +547,9 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
                 // Registrar nueva factura pendiente desde el portal
                 $totalUsd = ($currentExchangeRate > 0) ? round($totalAmount / $currentExchangeRate, 2) : 0.00;
 
-                $newInvoice = Invoice::create([
+                $newInvoice = Invoice::updateOrCreate(
+                    ['supplier_id' => $supplierId, 'invoice_number' => $rawDocNum],
+                    [
                     'supplier_id' => $supplierId,
                     'invoice_number' => $rawDocNum,
                     'control_number' => null,
@@ -568,7 +570,8 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
                     'loaded_by' => $userId,
                     'registered_by' => $userId,
                     'uploaded_by' => $userId,
-                ]);
+                ]
+                );
 
                 $createdCount++;
 

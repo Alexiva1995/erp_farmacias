@@ -268,7 +268,9 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             } else {
                 // Si la factura o NC no existe en el ERP, crearla automáticamente
                 $calcUsd = $totalUsd;
-                $newInvoice = Invoice::create([
+                $newInvoice = Invoice::updateOrCreate(
+                    ['supplier_id' => $supplierId, 'invoice_number' => $erpDocNumber],
+                    [
                     'supplier_id' => $supplierId,
                     'invoice_number' => $erpDocNumber,
                     'control_number' => $controlNumber,
@@ -288,7 +290,8 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     'status_payment' => 0,
                     'uploaded_by' => $userId,
                     'registered_by' => $userId,
-                ]);
+                ]
+                );
 
                 $createdCount++;
 

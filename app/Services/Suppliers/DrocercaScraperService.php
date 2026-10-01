@@ -297,7 +297,9 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                 $userId = \Illuminate\Support\Facades\Auth::id() ?? \App\Models\User::first()?->id ?? 1;
 
                 // Crear factura si no existía en el ERP
-                $newInvoice = Invoice::create([
+                $newInvoice = Invoice::updateOrCreate(
+                    ['supplier_id' => $supplierId, 'invoice_number' => $officialInvoiceNumber],
+                    [
                     'supplier_id' => $supplierId,
                     'invoice_number' => $officialInvoiceNumber,
                     'control_number' => $finalControlNumber,
@@ -317,7 +319,8 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                     'uploaded_by' => $userId,
                     'registered_by' => $userId,
                     'invoice_photo' => $invoicePhoto,
-                ]);
+                ]
+                );
 
                 $createdCount++;
                 $processed[] = [

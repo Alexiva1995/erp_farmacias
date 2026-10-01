@@ -255,7 +255,9 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                 $targetInvoiceNumber = $isND ? $erpDocNumber : ($pdfData['invoice_number'] ?? $erpDocNumber);
 
                 try {
-                    $newInvoice = Invoice::create([
+                    $newInvoice = Invoice::updateOrCreate(
+                    ['supplier_id' => $supplierId, 'invoice_number' => $targetInvoiceNumber],
+                    [
                         'supplier_id' => $supplierId,
                         'invoice_number' => $targetInvoiceNumber,
                         'control_number' => $pdfData['control_number'] ?? 'N/A',
@@ -280,7 +282,8 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                         'registered_by' => 1,
                         'loaded_by' => 1,
                         'ordered_by' => 1,
-                    ]);
+                    ]
+                );
 
                     $createdCount++;
                     $processed[] = [

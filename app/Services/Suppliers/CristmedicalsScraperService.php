@@ -437,7 +437,9 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
                     'total_bs' => $totalBs,
                 ];
             } else {
-                $newInvoice = Invoice::create([
+                $newInvoice = Invoice::updateOrCreate(
+                    ['supplier_id' => $supplierId, 'invoice_number' => $rawDocNum],
+                    [
                     'supplier_id' => $supplierId,
                     'invoice_number' => $rawDocNum,
                     'control_number' => null,
@@ -458,7 +460,8 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
                     'status_payment' => 0,
                     'uploaded_by' => $userId,
                     'registered_by' => $userId,
-                ]);
+                ]
+                );
 
                 $createdCount++;
 
