@@ -1177,6 +1177,18 @@ class IaAssistantReportService
 
         $ropYStockPorLiga = [];
         $itemsPorLiga = [];
+        $itemsPorGrupo = [];
+        $stockTotalPorGrupo = [];
+
+        // Precalcular stock total por grupo genérico completo para evaluar cobertura de categoría
+        foreach ($items as $it) {
+            if ($it->group_id) {
+                $grpId = $it->group_id;
+                $stk = (float)($it->lote_quantity ?? $it->stock ?? 0) + (float)($it->totalQuantityInAutoOrder ?? 0);
+                $stockTotalPorGrupo[$grpId] = ($stockTotalPorGrupo[$grpId] ?? 0) + $stk;
+                $itemsPorGrupo[$grpId][] = $it;
+            }
+        }
 
         $items->each(function($item) use ($preferenceShareByProduct, $groupDemandSum, $priceElasticityFactorByProduct, $coverageDays, $leadTimeDays, $bufferDays, $ligasPorGrupo, &$ropYStockPorLiga, &$itemsPorLiga) {
             if (!$item->group_id || !isset($preferenceShareByProduct[$item->id])) return;
@@ -1212,8 +1224,15 @@ class IaAssistantReportService
                 $demandaTrueIntent = $baseDemand * $ipo * $elasticityFactor;
                 $vpd = $demandaTrueIntent / 30;
                 $rop = $vpd * ($effectiveLeadTime + $bufferDays);
-                // Regla del ROP Mínimo = 1.0 (Lote mínimo) solo para demandas mensuales >= 1.0
-                if ($demandaTrueIntent >= 1.0) {
+                
+                // Regla de Stock Mínimo de Exposición (Display Floor) para productos activos únicos de su liga o líderes:
+                // Si la demanda mensual es >= 2.0 y el tiempo de reposición es >= 14 días (LeadTime + Buffer),
+                // para evitar quiebre de anaquel al llegar a 1 unidad en percha, el punto de reorden operativo dispara reorden preventivo.
+                $totalSkusEnTier = count($ligasPorGrupo[$gId][$miLiga] ?? []);
+                $esUnicoOLider = ($totalSkusEnTier === 1 || $ipo >= 0.80);
+                if ($demandaTrueIntent >= 2.0 && $esUnicoOLider) {
+                    $rop = max(1.1, $rop); // Asegura ROP > 1.0 para disparar compra cuando stock físico <= 1
+                } elseif ($demandaTrueIntent >= 1.0) {
                     $rop = max(1.0, $rop);
                 }
                 $stockObjetivo = $vpd * $coverageDays;
@@ -1263,6 +1282,9 @@ class IaAssistantReportService
 
         // Cascada de Decisión por Liga
         foreach ($itemsPorLiga as $gId => $ligas) {
+            $grupoTotalStock = $stockTotalPorGrupo[$gId] ?? 0;
+            $grupoDesabastecido = ($grupoTotalStock <= 0);
+
             foreach ($ligas as $miLiga => $tierItems) {
                 $datosLiga = $ropYStockPorLiga[$gId][$miLiga];
                 $ropLiga = $datosLiga['rop'];
@@ -1292,18 +1314,17 @@ class IaAssistantReportService
                         $isBestSeller = $ipoDecimal >= 0.35 || (bool)($sku->es_best_seller_liga ?? false);
 
                         // Regla de Rescate de Catálogo Condicionado:
-                        // Si la liga ya está cubierta, NO rescatar SKUs secundarios con 0 ventas.
-                        // Solo se rescata si es el único SKU de la liga y toda la liga está sin stock.
+                        // Solo se rescata si el GRUPO COMPLETO está en quiebre total (sin stock en ninguna liga)
                         if ($sku->is_quiebre_extremo_sin_historial ?? false) {
-                            $esUnicoSku = ($totalSkusLiga === 1) || ($ipoValor >= 99.0);
-                            if ($esUnicoSku && $stockEfectivoTotalLiga <= 0) {
+                            $esUnicoSkuEnGrupo = (count($itemsPorGrupo[$gId] ?? []) === 1);
+                            if ($stockEfectivo <= 0 && ($esUnicoSkuEnGrupo || $grupoDesabastecido)) {
                                 $sku->solicitar = 1;
                                 $sku->pre_asignado_bs = 1.0;
-                                $sku->motivo_sugerido = 'Lote de Exposición (Único SKU de liga)';
+                                $sku->motivo_sugerido = 'Lote de Exposición (Grupo desabastecido)';
                             } else {
                                 $sku->solicitar = 0;
                                 $sku->pre_asignado_bs = 0.0;
-                                $sku->motivo_sugerido = 'Rescate omitido (Liga cubierta con producto líder)';
+                                $sku->motivo_sugerido = 'Rescate omitido (Grupo abastecido por sustitutos en otra liga)';
                             }
                             $sku->rescate_best_seller = 0;
                         } elseif ($isBestSeller && $ropIndividual > $stockEfectivo) {
@@ -1340,17 +1361,17 @@ class IaAssistantReportService
                         $faltanteIndividual = max(0.0, $ropIndividual - $stockEfectivo);
 
                         if ($sku->is_quiebre_extremo_sin_historial ?? false) {
-                            $esUnicoSku = ($totalSkusLiga === 1) || (((float)($sku->ipo ?? 0)) >= 99.0);
-                            // Rescate condicionado: SOLO si es único SKU o si toda la liga tiene stock 0
-                            if ($stockEfectivo <= 0 && ($esUnicoSku || $stockEfectivoTotalLiga <= 0)) {
+                            $esUnicoSkuEnGrupo = (count($itemsPorGrupo[$gId] ?? []) === 1);
+                            // Rescate condicionado: SOLO si es único SKU en grupo o si todo el grupo tiene stock 0
+                            if ($stockEfectivo <= 0 && ($esUnicoSkuEnGrupo || $grupoDesabastecido)) {
                                 $sku->pre_asignado_bs = 1.0;
                                 $sku->solicitar = 1;
-                                $sku->motivo_sugerido = 'Lote de Exposición (Liga desabastecida)';
+                                $sku->motivo_sugerido = 'Lote de Exposición (Grupo desabastecido)';
                                 $presupuestoObjetivoLiga = max(0.0, $presupuestoObjetivoLiga - 1.0);
                             } else {
                                 $sku->pre_asignado_bs = 0.0;
                                 $sku->solicitar = 0;
-                                $sku->motivo_sugerido = 'Rescate omitido (Liga abastecida por sustitutos)';
+                                $sku->motivo_sugerido = 'Rescate omitido (Grupo abastecido por sustitutos en otra liga)';
                             }
                         } elseif ($faltanteIndividual > 0 && $ropIndividual > 0) {
                             $ipoValor = (float)($sku->ipo ?? 0);
@@ -1412,14 +1433,21 @@ class IaAssistantReportService
                             $cuotaParticipacion = $sku->puntuacionCompra / $puntuacionTotalLiga;
                             $objetivoAsignado = $presupuestoObjetivoLiga * $cuotaParticipacion;
                             $sku->cuota_participacion_ipo = round($cuotaParticipacion * 100, 1);
-                            $sku->asignacion_cascada = round($objetivoAsignado, 2);
-                            
-                            // Topar siempre a la necesidad real de demanda mensual no cubierta
+                            $ropIndividual = (float)($sku->rop_calculado ?? $sku->rop ?? 0);
+                            $ropFaltante = max(0.0, $ropIndividual - $stockEfectivo);
+
+                            // Topar siempre a la necesidad real de demanda no cubierta
                             if ($sku->pre_asignado_bs > 0) {
                                 $totalDemandTarget = min($necesidadIndividual, (float)$sku->pre_asignado_bs + $objetivoAsignado);
                             } else {
                                 $totalDemandTarget = min($necesidadIndividual, max(0.0, $objetivoAsignado - $stockEfectivo));
                             }
+
+                            // Si el ROP es <= 1.0 y la demanda mensual es < 2.0 (ej. demanda 1.7), cubrir estrictamente el ROP del ciclo (1 unidad)
+                            if ($ropIndividual <= 1.0 && $demandaIndividual < 2.0 && $totalDemandTarget > 0) {
+                                $totalDemandTarget = min(1.0, $totalDemandTarget);
+                            }
+
                             $sku->solicitar = $totalDemandTarget > 0 ? (int)ceil($totalDemandTarget) : ($demandaIndividual < $stockEfectivo ? (int)floor($demandaIndividual - $stockEfectivo) : 0);
                         } else {
                             $sku->cuota_participacion_ipo = 0;
