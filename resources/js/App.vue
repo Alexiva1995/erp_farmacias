@@ -8,6 +8,7 @@ import {
 import { useBrandingStore } from '@/stores/useBrandingStore'
 import { useRoute } from 'vue-router'
 import { onMounted, watch } from 'vue'
+import GlobalOfflineModal from '@/components/GlobalOfflineModal.vue'
 
 // Rutas públicas que no requieren autenticación
 const PUBLIC_PATHS = ['/tova-store', '/reservar', '/login', '/p/suppliers/upload']
@@ -62,6 +63,9 @@ watch(() => brandingStore.settings.app_name, (newName) => {
 <template>
   <VLocaleProvider :rtl="configStore.isAppRTL">
     <VApp>
+      <!-- Modal Global de Detección Offline -->
+      <GlobalOfflineModal />
+      
       <RouterView />
 
       <ScrollToTop />
