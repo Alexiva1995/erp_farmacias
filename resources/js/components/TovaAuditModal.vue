@@ -29,7 +29,7 @@
           <div class="mb-4">
             <div class="font-weight-bold text-white mb-1">📌 FASE 2: SANACIÓN DE DEMANDA Y ROP INDIVIDUAL</div>
             <div class="pl-3">
-              • Ventas Totales: {{ (Number(item?.ventas_30d || 0) + Number(item?.ventas_m2 || 0) + Number(item?.ventas_m3 || 0)) }} un | Días con Stock Totales: {{ (Number(item?.dias_con_stock_m1 || 30) + Number(item?.dias_con_stock_m2 || 30) + Number(item?.dias_con_stock_m3 || 30)) }}d (M1: {{ item?.dias_con_stock_m1 || 30 }}d, M2: {{ item?.dias_con_stock_m2 || 30 }}d, M3: {{ item?.dias_con_stock_m3 || 30 }}d)<br>
+              • Ventas Totales: {{ (Number(item?.ventas_30d ?? 0) + Number(item?.ventas_m2 ?? 0) + Number(item?.ventas_m3 ?? 0)) }} un | Días con Stock Totales: {{ (Number(item?.dias_con_stock_m1 ?? 30) + Number(item?.dias_con_stock_m2 ?? 30) + Number(item?.dias_con_stock_m3 ?? 30)) }}d (M1: {{ item?.dias_con_stock_m1 ?? 30 }}d, M2: {{ item?.dias_con_stock_m2 ?? 30 }}d, M3: {{ item?.dias_con_stock_m3 ?? 30 }}d)<br>
               <template v-if="Number(item?.dias_quiebre || 0) > 0">
                 <span class="text-warning">• ALERTA DE QUIEBRE CRÓNICO: Registra {{ item?.dias_quiebre }} días de quiebre recientes.</span><br>
               </template>
