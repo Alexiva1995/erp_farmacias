@@ -1561,10 +1561,22 @@ class IaAssistantReportService
             $stockEfectivo = $currentStock + $autoOrder;
 
             $isCachedQuiebre = isset($item->dias_quiebre_90d_cache) && $item->dias_quiebre_90d_cache !== null;
+            $hasMonthlyCache = isset($item->dias_quiebre_m1) && $item->dias_quiebre_m1 !== null;
 
-            // Estimación de quiebre basado en última fecha de venta o trazabilidad (cache)
-            if ($isCachedQuiebre) {
+            if ($hasMonthlyCache) {
+                $qM1 = (int)$item->dias_quiebre_m1;
+                $qM2 = (int)$item->dias_quiebre_m2;
+                $qM3 = (int)$item->dias_quiebre_m3;
+                $diasQuiebre90d = (int)($item->dias_quiebre_90d_cache ?? ($qM1 + $qM2 + $qM3));
+
+                $d1 = max(0, 30 - $qM1);
+                $d2 = max(0, 30 - $qM2);
+                $d3 = max(0, 30 - $qM3);
+            } elseif ($isCachedQuiebre) {
                 $diasQuiebre90d = (int) $item->dias_quiebre_90d_cache;
+                $d1 = max(0, 30 - min(30, $diasQuiebre90d));
+                $d2 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 30)));
+                $d3 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 60)));
             } else {
                 if ($currentStock <= 0) {
                     if ($lastSaleDate) {
@@ -1576,12 +1588,10 @@ class IaAssistantReportService
                 } else {
                     $diasQuiebre90d = 0;
                 }
+                $d1 = max(0, 30 - min(30, $diasQuiebre90d));
+                $d2 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 30)));
+                $d3 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 60)));
             }
-
-            // Días de presencia de stock (Inverso al quiebre)
-            $d1 = max(0, 30 - min(30, $diasQuiebre90d));
-            $d2 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 30)));
-            $d3 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 60)));
 
             // Si hubo ventas en el mes, por definición física tuvo stock al menos los días de esas ventas
             if ($v1 > 0 && $d1 == 0) {
@@ -1597,7 +1607,7 @@ class IaAssistantReportService
             $firstLot = $lotRow ? \Carbon\Carbon::parse($lotRow->first_lot_date) : null;
             $ageDays = $firstLot ? max(1, $firstLot->diffInDays($now)) : 90;
 
-            if ($ageDays < 90) {
+            if ($ageDays < 90 && !$hasMonthlyCache) {
                 $d3 = min($d3, max(0, $ageDays - 60));
                 $d2 = min($d2, max(0, $ageDays - 30));
                 $d1 = min($d1, $ageDays);
