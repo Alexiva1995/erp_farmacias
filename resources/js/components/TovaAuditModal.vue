@@ -69,6 +69,25 @@
             </div>
           </div>
 
+          <!-- FASE 4.4 -->
+          <template v-if="Number(item?.ajuste_financiero || 0) < 0 || Number(item?.rescate_best_seller || 0) > 0">
+            <div class="mb-4">
+              <div class="font-weight-bold text-white mb-1">📌 FASE 4.4: EFICIENCIA FINANCIERA</div>
+              <div class="pl-3">
+                <template v-if="Number(item?.ajuste_financiero || 0) < 0">
+                  <span class="text-error font-weight-bold">• PENALIZACIÓN DE RENTABILIDAD APLICADA:</span><br>
+                  • Motivo: ROP &lt; 1.0 e IPO &lt; 20%. No se puede sobrestockear un producto lento.<br>
+                  • Ajuste: Sugerido topado a 1 unidad. Se restaron {{ Math.abs(item.ajuste_financiero) }} unidades y se liberaron para el líder de liga.
+                </template>
+                <template v-if="Number(item?.rescate_best_seller || 0) > 0">
+                  <span class="text-success font-weight-bold">• BONIFICACIÓN DE LÍDER APLICADA:</span><br>
+                  • Motivo: Es el producto de mayor IPO en la liga.<br>
+                  • Ajuste: Recibe +{{ item.rescate_best_seller }} unidad(es) expropiada(s) del presupuesto sobrante de productos lentos de bajo IPO.
+                </template>
+              </div>
+            </div>
+          </template>
+
           <!-- FASE 5 -->
           <div class="mb-4">
             <div class="font-weight-bold text-white mb-1">📌 FASE 5: SUGERIDO FINAL</div>

@@ -1428,6 +1428,44 @@ class IaAssistantReportService
                             }
                         }
                     }
+
+                    // FASE 4.4: REGLA DE EFICIENCIA FINANCIERA (PENALIZACIÓN DE LENTOS Y RESCATE DE LÍDERES)
+                    $remanenteBestSeller = 0;
+                    $bestSellerSku = null;
+                    $highestIpo = -1;
+
+                    // Encontrar el Best Seller real de la liga
+                    foreach ($tierItems as $sku) {
+                        $sku->ajuste_financiero = 0;
+                        $sku->rescate_best_seller = 0;
+                        $ipoValor = (float)($sku->ipo ?? 0);
+                        if ($ipoValor > $highestIpo) {
+                            $highestIpo = $ipoValor;
+                            $bestSellerSku = $sku;
+                        }
+                    }
+
+                    // Aplicar restricción estricta de sobrestock para productos lentos
+                    foreach ($tierItems as $sku) {
+                        $ipoValor = (float)($sku->ipo ?? 0);
+                        $ipoDecimal = $ipoValor > 1.0 ? ($ipoValor / 100) : $ipoValor;
+                        $ropIndividual = (float)($sku->rop_calculado ?? $sku->rop ?? 0);
+                        
+                        if ($ropIndividual < 1.0 && $ipoDecimal < 0.20) {
+                            if ($sku->solicitar > 1) {
+                                $reducido = $sku->solicitar - 1;
+                                $remanenteBestSeller += $reducido;
+                                $sku->solicitar = 1;
+                                $sku->ajuste_financiero = -$reducido;
+                            }
+                        }
+                    }
+
+                    // Asignar remanente financiero recuperado al Best Seller
+                    if ($remanenteBestSeller > 0 && $bestSellerSku) {
+                        $bestSellerSku->solicitar += $remanenteBestSeller;
+                        $bestSellerSku->rescate_best_seller = $remanenteBestSeller;
+                    }
                 }
             }
         }
