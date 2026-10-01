@@ -42,7 +42,6 @@ const form = ref({
   username: '',
   password: '',
   has_password: false,
-  cookie: '',
   is_active: true,
   sync_frequency: 'daily',
 })
@@ -55,7 +54,6 @@ const isDirty = computed(() => {
     username: form.value.username,
     host: form.value.host,
     password: form.value.password,
-    cookie: form.value.cookie,
   }) !== initialSnapshot.value
 })
 
@@ -99,7 +97,6 @@ const fetchSupplierData = async () => {
       username: form.value.username,
       host: form.value.host,
       password: '',
-      cookie: '',
     })
   } catch (error) {
     console.error('Error al cargar configuración de Droguería Mega:', error)
@@ -136,7 +133,6 @@ const saveConfig = async () => {
 
     toast.success('Configuración del Bot Droguería Mega guardada correctamente.')
     form.value.password = ''
-    form.value.cookie = ''
     await fetchSupplierData()
   } catch (error) {
     console.error('Error al guardar credenciales de Droguería Mega:', error)
@@ -173,7 +169,6 @@ const runSync = async () => {
     }
     if (form.value.username) payload.username = form.value.username
     if (form.value.password) payload.password = form.value.password
-    if (form.value.cookie) payload.cookie = form.value.cookie
 
     const res = await axios.post('/invoices/sync-dromega', payload).catch(() =>
       axios.post('/sync-dromega', payload)
@@ -324,19 +319,7 @@ onMounted(() => {
                   />
                 </VCol>
 
-                <VCol cols="12" md="6">
-                  <VTextField
-                    v-model="form.cookie"
-                    label="Cookie de Sesión Manual (Opcional)"
-                    placeholder="Dejar vacío para login automático"
-                    prepend-inner-icon="tabler-cookie"
-                    hint="Opcional: Solo si se requiere sobreescribir la sesión activa"
-                    persistent-hint
-                    variant="outlined"
-                    density="comfortable"
-                    hide-details="auto"
-                  />
-                </VCol>
+
 
                 <VCol cols="12" class="mt-2">
                   <VRow>

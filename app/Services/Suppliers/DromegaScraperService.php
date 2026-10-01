@@ -543,7 +543,7 @@ class DromegaScraperService implements DromegaScraperServiceInterface
             $activeCookie = $conn->path;
         }
 
-        $extractedInvoices = $this->fetchInvoices($activeCookie);
+        $extractedInvoices = $this->fetchInvoices($activeCookie, $username, $password, $supplierId);
 
         if (empty($extractedInvoices)) {
             return [
