@@ -31,6 +31,7 @@ class CalculateProductSalesAverage extends Command
         $this->info('Iniciando cálculo del promedio mensual de ventas de productos...');
 
         $now = Carbon::now();
+        $progressBar = null;
 
         try {
             DB::beginTransaction();
@@ -219,7 +220,7 @@ class CalculateProductSalesAverage extends Command
 
         } catch (\Exception $e) {
             DB::rollBack();
-            $progressBar->finish();
+            $progressBar?->finish();
             $this->newLine();
             $this->error('Ocurrió un error durante el cálculo: ' . $e->getMessage());
             $this->error('Transacción revertida. No se hicieron cambios.');

@@ -434,7 +434,20 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
         $user = $user ?: env('DROSYMCA_USERNAME');
         $pass = $pass ?: env('DROSYMCA_PASSWORD');
 
-        $documents = $this->fetchPendingInvoices($user, $pass);
+        if (empty($user) || empty($pass)) {
+            \Illuminate\Support\Facades\Log::warning('[DrosymcaScraper] No se encontraron credenciales configuradas para el bot de Drosymca (BD o .env). Sincronización omitida.');
+            return [
+                'total_extracted' => 0,
+                'created' => 0,
+                'updated' => 0,
+                'skipped' => 0,
+                'supplier_id' => $supplierId,
+                'details' => [],
+                'error' => 'Credenciales no configuradas',
+            ];
+        }
+
+        $documents = $this->fetchPendingInvoices((string) $user, (string) $pass);
 
         if (empty($documents)) {
             return [

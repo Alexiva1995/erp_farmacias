@@ -353,76 +353,81 @@ class Product extends Model
      */
     public function getBestProductDiscount(): ?array
     {
-        $now = now();
+        try {
+            $now = now();
 
-        // 1. Individual Offer
-        $individualOffer = $this->individualOffers()
-            ->where('start_date', '<=', $now)
-            ->where('end_date', '>=', $now)
-            ->orderByDesc('discount_percent')
-            ->first();
-
-        $indPercent = $individualOffer ? (float) $individualOffer->discount_percent : 0;
-
-        // 2. Expiration Offer (Dynamic)
-        $expPercent = 0;
-        $expirationOffer = null;
-        $nextLot = $this->next_expiring_lot;
-
-        if ($nextLot) {
-            $monthsToExpiration = $nextLot->months_to_expiration;
-
-            // Find active offers that cover this expiration time (Offer Months >= Lot Months)
-            $expirationOffer = \App\Models\ExpirationOffer::where('is_active', true)
-                ->where('months_to_expiration', '>=', $monthsToExpiration)
-                ->whereDoesntHave('excludedProducts', function ($q) {
-                    $q->where('product_id', $this->id);
-                })
-                ->orderByDesc('discount_percentage')
-                ->first();
-
-            $expPercent = $expirationOffer ? (float) $expirationOffer->discount_percentage : 0;
-        }
-
-        // 3. Category Offer
-        $catPercent = 0;
-        $categoryOffer = null;
-
-        if ($this->category) {
-            $categoryOffer = $this->category->offers()
-                ->where('is_active', true)
+            // 1. Individual Offer
+            $individualOffer = $this->individualOffers()
                 ->where('start_date', '<=', $now)
                 ->where('end_date', '>=', $now)
-                ->orderByDesc('discount_percentage')
+                ->orderByDesc('discount_percent')
                 ->first();
-            $catPercent = $categoryOffer ? (float) $categoryOffer->discount_percentage : 0;
-        }
 
-        // Compare logic: Return the highest discount
-        $maxPercent = max($indPercent, $expPercent, $catPercent);
+            $indPercent = $individualOffer ? (float) $individualOffer->discount_percent : 0;
 
-        if ($maxPercent <= 0) {
+            // 2. Expiration Offer (Dynamic)
+            $expPercent = 0;
+            $expirationOffer = null;
+            $nextLot = $this->next_expiring_lot;
+
+            if ($nextLot) {
+                $monthsToExpiration = $nextLot->months_to_expiration;
+
+                // Find active offers that cover this expiration time (Offer Months >= Lot Months)
+                $expirationOffer = \App\Models\ExpirationOffer::where('is_active', true)
+                    ->where('months_to_expiration', '>=', $monthsToExpiration)
+                    ->whereDoesntHave('excludedProducts', function ($q) {
+                        $q->where('product_id', $this->id);
+                    })
+                    ->orderByDesc('discount_percentage')
+                    ->first();
+
+                $expPercent = $expirationOffer ? (float) $expirationOffer->discount_percentage : 0;
+            }
+
+            // 3. Category Offer
+            $catPercent = 0;
+            $categoryOffer = null;
+
+            if ($this->category) {
+                $categoryOffer = $this->category->offers()
+                    ->where('is_active', true)
+                    ->where('start_date', '<=', $now)
+                    ->where('end_date', '>=', $now)
+                    ->orderByDesc('discount_percentage')
+                    ->first();
+                $catPercent = $categoryOffer ? (float) $categoryOffer->discount_percentage : 0;
+            }
+
+            // Compare logic: Return the highest discount
+            $maxPercent = max($indPercent, $expPercent, $catPercent);
+
+            if ($maxPercent <= 0) {
+                return null;
+            }
+
+            if ($maxPercent === $indPercent) {
+                return [
+                    'percentage' => $indPercent,
+                    'type' => 'Individual',
+                    'source_id' => $individualOffer->id
+                ];
+            } elseif ($maxPercent === $expPercent) {
+                return [
+                    'percentage' => $expPercent,
+                    'type' => 'Expiration',
+                    'source_id' => $expirationOffer->id
+                ];
+            } else {
+                return [
+                    'percentage' => $catPercent,
+                    'type' => 'Category',
+                    'source_id' => $categoryOffer->id
+                ];
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("[ProductDiscount] Error al calcular mejor descuento para producto {$this->id}: {$e->getMessage()}");
             return null;
-        }
-
-        if ($maxPercent === $indPercent) {
-            return [
-                'percentage' => $indPercent,
-                'type' => 'Individual',
-                'source_id' => $individualOffer->id
-            ];
-        } elseif ($maxPercent === $expPercent) {
-            return [
-                'percentage' => $expPercent,
-                'type' => 'Expiration',
-                'source_id' => $expirationOffer->id
-            ];
-        } else {
-            return [
-                'percentage' => $catPercent,
-                'type' => 'Category',
-                'source_id' => $categoryOffer->id
-            ];
         }
     }
 

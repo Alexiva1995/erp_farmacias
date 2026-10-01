@@ -54,7 +54,19 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         $user = $user ?: env('DRONENA_USERNAME');
         $pass = $pass ?: env('DRONENA_PASSWORD');
 
-        $documents = $this->fetchDocuments($user, $pass);
+        if (empty($user) || empty($pass)) {
+            \Illuminate\Support\Facades\Log::warning('[DronenaScraper] No se encontraron credenciales configuradas para el bot de Dronena (BD o .env). Sincronización omitida.');
+            return [
+                'total_extracted' => 0,
+                'updated' => 0,
+                'skipped' => 0,
+                'supplier_id' => $supplierId,
+                'details' => [],
+                'error' => 'Credenciales no configuradas',
+            ];
+        }
+
+        $documents = $this->fetchDocuments((string) $user, (string) $pass);
 
         if (empty($documents)) {
             return [
