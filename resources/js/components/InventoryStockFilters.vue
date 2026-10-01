@@ -199,6 +199,7 @@ const handleClear = () => {
           :model-value="props.tipoFiltracion"
           placeholder="Cálculo Por"
           :items="tipoFiltracionOpcion"
+          item-props="true"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-calculator"

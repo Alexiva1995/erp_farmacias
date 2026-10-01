@@ -51,13 +51,41 @@ const hasActiveAdvancedFilters = computed(() => {
 });
 
 const tipoFiltracionOpcion = [
-  { title: "Ponderado Hiperplus (Inteligencia Predictiva por Ligas)", value: "stockout_adjusted_rop_hiperplus" },
-  { title: "Stockout-Adjusted ROP PLUS (Inteligencia de Demanda)", value: "stockout_adjusted_rop_plus" },
-  { title: "Stockout-Adjusted ROP (Predeterminado)",               value: "stockout_adjusted_rop"      },
-  { title: "Ponderado (Óptimo ROP)",                              value: "weighted"                   },
-  { title: "Promedio",                                           value: "average"                    },
-  { title: "Ventas",                                             value: "sales"                      },
-  { title: "Combinado",                                          value: "combinado"                  },
+  {
+    title: 'Tova DDM Core (Demand-Driven Matrix Engine)',
+    value: 'stockout_adjusted_rop_hiperplus',
+    props: { subtitle: 'Inteligencia Comercial Predictiva por Ligas y Protección de Líderes' }
+  },
+  {
+    title: 'Tova Demand-Rebuild PRO (Stockout-Adjusted Engine)',
+    value: 'stockout_adjusted_rop_plus',
+    props: { subtitle: 'Optimización de Demanda Sanada por Quiebre (Nivel Categoría)' }
+  },
+  {
+    title: 'Tova ROP Smart (Restock Point Standard)',
+    value: 'stockout_adjusted_rop',
+    props: { subtitle: 'Punto de Reorden Logístico Corregido por Agotados' }
+  },
+  {
+    title: 'Tova Weighted Trend (Statistical ROP)',
+    value: 'weighted',
+    props: { subtitle: 'Ponderación Estadística de Tendencias' }
+  },
+  {
+    title: 'Tova Linear Average (Media Aritmética)',
+    value: 'average',
+    props: { subtitle: 'Proyección de Demanda por Media Aritmética Lineal' }
+  },
+  {
+    title: 'Tova Replenish 1-to-1 (Reactivo)',
+    value: 'sales',
+    props: { subtitle: 'Reposición Reactiva 1 a 1 (Reemplazo Directo de Salidas)' }
+  },
+  {
+    title: 'Tova Max-Safety Buffer (Heurístico)',
+    value: 'combinado',
+    props: { subtitle: 'Reposición Heurística por Cobertura Máxima de Protección' }
+  },
 ];
 
 const lapsoDeTiempoOpciones = [
@@ -226,6 +254,7 @@ const supplierMatchOptions = [
               <VSelect
                 :model-value="props.tipo_de_filtracion"
                 :items="tipoFiltracionOpcion"
+          item-props="true"
                 placeholder="Calcular por"
                 hide-details
                 density="compact"
