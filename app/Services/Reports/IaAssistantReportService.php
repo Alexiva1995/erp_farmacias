@@ -1293,9 +1293,10 @@ class IaAssistantReportService
             $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
             $stockEfectivo = $stockActual + $autoOrder;
 
-            // --- REGLA 1: Tope de Stock Útil al ROP por Producto (Capping Rule) ---
-            $stockUtil = min((float)$stockEfectivo, (float)$rop);
-            $excesoPasivo = max(0.0, (float)$stockEfectivo - (float)$rop);
+            // --- REGLA 1: Tope de Stock Útil a la Demanda Objetivo (Demanda ROP mostrada) ---
+            $maxStockUtil = max((float)$stockObjetivo, (float)$demandaTrueIntent);
+            $stockUtil = min((float)$stockEfectivo, $maxStockUtil);
+            $excesoPasivo = max(0.0, (float)$stockEfectivo - $maxStockUtil);
 
             $item->dias_quiebre = $item->dias_quiebre ?? 0;
             $item->promedio_calculado = round($demandaTrueIntent, 2);
@@ -1335,11 +1336,11 @@ class IaAssistantReportService
                 $ropLiga = $datosLiga['rop'];
                 $objLiga = $datosLiga['objetivo'];
 
-                // Calculo de Stock Util de Liga con precisión decimal (capado al ROP individual de cada SKU)
+                // Calculo de Stock Util de Liga con precisión decimal (capado a la demanda objetivo individual de cada SKU)
                 $stockUtilLiga = 0;
                 foreach ($tierItems as $sku) {
-                    $ropSku = (float)($sku->rop_calculado ?? $sku->rop ?? 0);
-                    $stockUtilLiga += min((float)$sku->stock_efectivo, $ropSku);
+                    $maxSku = (float)($sku->demanda_ponderada ?? $sku->promedio_calculado ?? 0);
+                    $stockUtilLiga += min((float)$sku->stock_efectivo, $maxSku);
                 }
 
                 if ($stockUtilLiga >= $ropLiga || $stockUtilLiga >= $objLiga) {

@@ -8,6 +8,7 @@ export function useTpvDishes() {
   const isSportsRental = ref(false)
   const isSpecialTaxpayer = ref(false)
   const allForeignSalesSpe = ref(false)
+  const fiscalMode = ref('demo')
   const dishes = ref([])
   const dishesLoading = ref(false)
   const dishFilterQuery = ref('')
@@ -27,6 +28,7 @@ export function useTpvDishes() {
       }
       const data = response.data
       const settings = data.data || data
+      fiscalMode.value = settings.fiscal_mode ?? 'demo'
       enableDishes.value = settings.enable_dishes !== undefined ? !!settings.enable_dishes : true
       isSpecialTaxpayer.value = Boolean(settings.enable_ce || settings.special_taxpayer_status === 'activa')
       allForeignSalesSpe.value = Boolean(settings.enable_ce || settings.all_foreign_sales_spe)
@@ -83,6 +85,7 @@ export function useTpvDishes() {
     isSportsRental,
     isSpecialTaxpayer,
     allForeignSalesSpe,
+    fiscalMode,
     dishes,
     dishesLoading,
     dishFilterQuery,

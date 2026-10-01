@@ -36,7 +36,7 @@
               • Venta Diaria Sanada (VPD): {{ Number(item?.promedio_calculado || 0) > 0 ? (Number(item?.promedio_calculado) / 30).toFixed(3) : '0.000' }} un/día.<br>
               • ROP Calculado ({{ Number(item?.lead_time_days || 7) + Number(item?.buffer_days || 7) }} días): {{ Number(item?.rop_calculado ?? item?.rop ?? 0).toFixed(2) }} unidades.<br>
               • Stock Efectivo: {{ Number(item?.stock_efectivo || 0).toFixed(1) }} un (Físico: {{ item?.stock_fisico || item?.lote_quantity || 0 }}, Tránsito: {{ item?.stock_transito || item?.totalQuantityInAutoOrder || 0 }}).<br>
-              • Stock Útil (Capado al ROP): min({{ Number(item?.stock_efectivo || 0).toFixed(1) }}, {{ Number(item?.rop_calculado ?? item?.rop ?? 0).toFixed(2) }}) = {{ Number(item?.stock_util || 0).toFixed(1) }} unidades.
+              • Stock Útil (Capado a la Demanda Objetivo): min({{ Number(item?.stock_efectivo || 0).toFixed(1) }}, {{ Number(item?.demanda_ponderada ?? item?.promedio_calculado ?? 0).toFixed(2) }}) = {{ Number(item?.stock_util || 0).toFixed(1) }} unidades.
             </div>
           </div>
 
