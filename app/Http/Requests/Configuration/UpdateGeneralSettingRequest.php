@@ -15,6 +15,45 @@ class UpdateGeneralSettingRequest extends FormRequest
     }
 
     /**
+     * Preparar los datos para la validación.
+     */
+    protected function prepareForValidation(): void
+    {
+        $jsonFields = [
+            'ecommerce_menu',
+            'ecommerce_shipping_methods',
+            'tpv_payment_methods',
+            'enabled_product_types',
+            'product_form_fields',
+            'enabled_offer_types',
+            'enabled_crm_views',
+            'enabled_rrhh_views',
+            'enabled_supplier_views',
+            'enabled_supplier_types',
+            'supplier_form_fields',
+            'expense_supplier_form_fields',
+            'enabled_finance_views',
+            'enabled_ia_assistant_views',
+            'enabled_telegram_views',
+            'enabled_bi_views',
+        ];
+
+        $mergeData = [];
+        foreach ($jsonFields as $field) {
+            if ($this->has($field) && is_string($this->input($field))) {
+                $decoded = json_decode($this->input($field), true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $mergeData[$field] = $decoded;
+                }
+            }
+        }
+
+        if (!empty($mergeData)) {
+            $this->merge($mergeData);
+        }
+    }
+
+    /**
      * Obtener las reglas de validación que se aplican a la solicitud.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
@@ -40,7 +79,8 @@ class UpdateGeneralSettingRequest extends FormRequest
             'blind_cash_closure' => 'nullable|boolean',
             'business_type' => 'nullable|string|in:pharmacy,restaurant,sports_rental,minimarket',
             'default_currency' => 'nullable|string|in:COP,USD,BS',
-            'ecommerce_menu' => 'nullable|array',
+            'ecommerce_menu' => 'nullable',
+            'ecommerce_shipping_methods' => 'nullable',
             'hero_title' => 'nullable|string|max:255',
             'hero_subtitle' => 'nullable|string',
             'hero_tagline' => 'nullable|string|max:255',

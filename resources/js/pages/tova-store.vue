@@ -78,15 +78,60 @@ const orderForm = ref({
   customer_email: '',
   customer_phone: '',
   shipping_address: '',
+  shipping_method: 'pickup', // Id del método seleccionado
   notes: '',
   payment_method: '', // Métodos: 'pago_movil', 'zelle', 'contraentrega', 'binance', 'transferencia'
   customer_document_type: 'V-',
   customer_document_number: '',
 })
+
+// ——— Métodos de Envío Dinámicos de la Tienda ———
+const storeShippingMethods = computed(() => {
+  let configured = brandingStore.settings?.ecommerce_shipping_methods
+  if (typeof configured === 'string') {
+    try { configured = JSON.parse(configured) } catch (e) {}
+  }
+  const defaultLocal = {
+    pickup: { id: 'pickup', title: 'Recogida en Tienda', enabled: true, cost: 0, estimated_time: 'Inmediato / Horario comercial', description: 'Retira tu pedido directamente en nuestra sucursal principal sin costo adicional.' },
+    delivery: { id: 'delivery', title: 'Envío a Domicilio / Delivery Local', enabled: true, cost: 2.0, estimated_time: '1 a 3 horas', description: 'Servicio de entrega local motorizado directo a tu ubicación.' },
+  }
+  const defaultNational = {
+    mrw: { id: 'mrw', title: 'MRW (Nacional)', enabled: true, cost: 0, is_cod: true, estimated_time: '24 a 48 horas hábiles', description: 'Envío nacional a través de agencia MRW con cobro en destino.' },
+    tealca: { id: 'tealca', title: 'Tealca (Nacional)', enabled: true, cost: 0, is_cod: true, estimated_time: '24 a 48 horas hábiles', description: 'Envío nacional a través de agencia Tealca con cobro en destino.' },
+    zoom: { id: 'zoom', title: 'ZOOM (Nacional)', enabled: true, cost: 0, is_cod: true, estimated_time: '24 a 48 horas hábiles', description: 'Envío nacional asegurado a través de encomiendas ZOOM.' },
+  }
+
+  const local = configured?.local ? { ...defaultLocal, ...configured.local } : defaultLocal
+  const national = configured?.national ? { ...defaultNational, ...configured.national } : defaultNational
+
+  return {
+    local: Object.values(local).filter(m => m.enabled !== false),
+    national: Object.values(national).filter(m => m.enabled !== false),
+  }
+})
+
+// Objeto del método de envío seleccionado actualmente
+const selectedShippingObj = computed(() => {
+  const allMethods = [...storeShippingMethods.value.local, ...storeShippingMethods.value.national]
+  return allMethods.find(m => m.id === orderForm.value.shipping_method) || storeShippingMethods.value.local[0] || null
+})
+
+// Costo de envío en USD
+const shippingCostUSD = computed(() => {
+  if (!selectedShippingObj.value) return 0
+  return Number(selectedShippingObj.value.cost) || 0
+})
+
+// Total final (Productos + Envío) en USD
+const finalOrderTotalUSD = computed(() => {
+  return cartTotalPrice.value + shippingCostUSD.value
+})
+
 const orderFormValid = computed(() =>
   orderForm.value.customer_name.trim() &&
   orderForm.value.customer_phone.trim() &&
   orderForm.value.customer_document_number.trim() &&
+  orderForm.value.shipping_method &&
   selectedCurrency.value &&
   orderForm.value.payment_method
 )
@@ -511,6 +556,7 @@ const submitOrder = async () => {
           fd.append(k, v ?? '')
         }
       })
+      fd.append('shipping_cost', shippingCostUSD.value)
       fd.append('payment_currency', cleanCurrency)
       cart.value.forEach((i, idx) => {
         fd.append(`items[${idx}][product_id]`, i.product.id)
@@ -522,6 +568,7 @@ const submitOrder = async () => {
     } else {
       const payload = {
         ...orderForm.value,
+        shipping_cost: shippingCostUSD.value,
         customer_email: cleanEmail,
         payment_currency: cleanCurrency,
         items: cart.value.map(i => ({
@@ -539,7 +586,7 @@ const submitOrder = async () => {
       clearCart()
       orderDialog.value = false
       cartDrawer.value = false
-      orderForm.value = { customer_name: '', customer_email: '', customer_phone: '', shipping_address: '', notes: '', payment_method: '', customer_document_type: 'V-', customer_document_number: '' }
+      orderForm.value = { customer_name: '', customer_email: '', customer_phone: '', shipping_address: '', shipping_method: 'pickup', notes: '', payment_method: '', customer_document_type: 'V-', customer_document_number: '' }
       selectedCurrency.value = getInitialCurrency()
       paymentProof.value = null
       clientLookupState.value = 'idle'
@@ -1160,9 +1207,26 @@ onMounted(async () => {
               <span class="item-qty">x{{ item.quantity }}</span>
               <span class="item-price">{{ formatPrice(productPrice(item.product, item.variant) * item.quantity) }}</span>
             </div>
-            <div class="checkout-total-row">
-              <span>TOTAL</span>
-              <span>{{ formatPrice(cartTotalPrice) }}</span>
+            
+            <div class="checkout-summary-row" style="margin-top: 6px; color: #64748B;">
+              <span class="item-name">Subtotal Productos</span>
+              <span></span>
+              <span class="item-price">{{ formatPrice(cartTotalPrice) }}</span>
+            </div>
+
+            <div class="checkout-summary-row" style="color: #64748B;">
+              <span class="item-name">
+                Método de Envío: <strong style="color: var(--editorial-black);">{{ selectedShippingObj ? selectedShippingObj.title : 'No seleccionado' }}</strong>
+              </span>
+              <span></span>
+              <span class="item-price font-weight-bold" :style="{ color: shippingCostUSD > 0 ? 'var(--editorial-black)' : '#16a34a' }">
+                {{ shippingCostUSD > 0 ? formatPrice(shippingCostUSD) : (selectedShippingObj?.is_cod ? 'Cobro en Destino' : 'Gratis') }}
+              </span>
+            </div>
+
+            <div class="checkout-total-row" style="border-top: 2px solid #E2E8F0; margin-top: 10px; padding-top: 12px;">
+              <span>TOTAL A PAGAR</span>
+              <span style="font-size: 18px; color: var(--editorial-black);">{{ formatPrice(finalOrderTotalUSD) }}</span>
             </div>
           </div>
 
@@ -1213,11 +1277,70 @@ onMounted(async () => {
               </div>
               <div class="form-input-group">
                 <label>DIRECCIÓN DE ENTREGA</label>
-                <input v-model="orderForm.shipping_address" type="text" placeholder="Calle, edificio, ciudad..." />
+                <input v-model="orderForm.shipping_address" type="text" placeholder="Calle, edificio, ciudad o agencia..." />
               </div>
               <div class="form-input-group full-width-input">
                 <label>NOTAS ADICIONALES</label>
-                <textarea v-model="orderForm.notes" placeholder="Instrucciones especiales para la entrega..." rows="2"></textarea>
+                <textarea v-model="orderForm.notes" placeholder="Instrucciones especiales para la entrega o agencia de encomienda..." rows="2"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECCIÓN: MÉTODO DE ENVÍO ORGANIZADO (LOCALES Y NACIONALES) -->
+          <div class="checkout-shipping-section" style="margin-top: 30px;">
+            <h3 class="checkout-section-title">MÉTODO DE ENVÍO *</h3>
+
+            <!-- 1. Envíos Locales -->
+            <div v-if="storeShippingMethods.local.length" class="shipping-group-box mb-4">
+              <div class="d-flex align-center gap-2 mb-2" style="font-size: 11px; font-weight: 800; letter-spacing: 1px; color: #475569;">
+                <span>📍</span> ENVÍOS LOCALES Y RETIRO EN TIENDA
+              </div>
+              <div class="shipping-methods-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                <label
+                  v-for="method in storeShippingMethods.local"
+                  :key="method.id"
+                  class="payment-method-card"
+                  :class="{ 'method-selected': orderForm.shipping_method === method.id }"
+                  style="border: 1px solid var(--editorial-border); padding: 14px; cursor: pointer; display: flex; flex-direction: column; text-align: left; transition: all 0.3s ease; border-radius: 4px;"
+                >
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-weight: 800; font-size: 12px; color: var(--editorial-black);">{{ method.title }}</span>
+                    <input type="radio" v-model="orderForm.shipping_method" :value="method.id" style="accent-color: var(--editorial-black);" />
+                  </div>
+                  <div style="font-size: 11px; font-weight: 700; color: #0284c7; margin-bottom: 4px;">
+                    {{ Number(method.cost) > 0 ? `+${formatPrice(method.cost)}` : 'Gratis' }} · <span style="color: #64748B; font-weight: 500;">{{ method.estimated_time || 'Inmediato' }}</span>
+                  </div>
+                  <p v-if="method.description" style="font-size: 11px; color: #64748B; line-height: 1.4; margin: 0;">
+                    {{ method.description }}
+                  </p>
+                </label>
+              </div>
+            </div>
+
+            <!-- 2. Envíos Nacionales -->
+            <div v-if="storeShippingMethods.national.length" class="shipping-group-box">
+              <div class="d-flex align-center gap-2 mb-2" style="font-size: 11px; font-weight: 800; letter-spacing: 1px; color: #475569;">
+                <span>🚚</span> ENVÍOS NACIONALES (ENCOMIENDAS)
+              </div>
+              <div class="shipping-methods-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                <label
+                  v-for="method in storeShippingMethods.national"
+                  :key="method.id"
+                  class="payment-method-card"
+                  :class="{ 'method-selected': orderForm.shipping_method === method.id }"
+                  style="border: 1px solid var(--editorial-border); padding: 14px; cursor: pointer; display: flex; flex-direction: column; text-align: left; transition: all 0.3s ease; border-radius: 4px;"
+                >
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-weight: 800; font-size: 12px; color: var(--editorial-black);">{{ method.title }}</span>
+                    <input type="radio" v-model="orderForm.shipping_method" :value="method.id" style="accent-color: var(--editorial-black);" />
+                  </div>
+                  <div style="font-size: 11px; font-weight: 700; color: #d97706; margin-bottom: 4px;">
+                    {{ Number(method.cost) > 0 ? `+${formatPrice(method.cost)}` : (method.is_cod ? 'Cobro en Destino' : 'Gratis') }} · <span style="color: #64748B; font-weight: 500;">{{ method.estimated_time || '24-48 hrs' }}</span>
+                  </div>
+                  <p v-if="method.description" style="font-size: 11px; color: #64748B; line-height: 1.4; margin: 0;">
+                    {{ method.description }}
+                  </p>
+                </label>
               </div>
             </div>
           </div>
@@ -1263,18 +1386,18 @@ onMounted(async () => {
                   {{ selectedMethodObj.description }}
                 </div>
 
-                <!-- Monto Total a Pagar calculado según la moneda -->
+                <!-- Monto Total a Pagar calculado según la moneda (Productos + Envío) -->
                 <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #E2E8F0;">
                   <template v-if="selectedCurrency === 'VES' || selectedCurrency === 'Bs' || selectedCurrency === 'BS'">
                     <p style="font-size: 11px; color: #64748B; margin-bottom: 4px;"><strong>Tasa de cambio:</strong> {{ binanceRate.toFixed(2) }} Bs/USD</p>
-                    <p style="font-size: 15px; color: #0F172A; margin: 0;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 800; color: var(--editorial-black);">Bs. {{ (cartTotalPrice * binanceRate).toFixed(2) }}</span></p>
+                    <p style="font-size: 15px; color: #0F172A; margin: 0;"><strong>Monto Total a Pagar (Incluye Envío):</strong> <span style="font-weight: 800; color: var(--editorial-black);">Bs. {{ (finalOrderTotalUSD * binanceRate).toFixed(2) }}</span></p>
                   </template>
                   <template v-else-if="selectedCurrency === 'COP'">
                     <p style="font-size: 11px; color: #64748B; margin-bottom: 4px;"><strong>Tasa de cambio:</strong> {{ copRate.toFixed(2) }} COP/USD</p>
-                    <p style="font-size: 15px; color: #0F172A; margin: 0;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 800; color: var(--editorial-black);">COP {{ (cartTotalPrice * copRate).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span></p>
+                    <p style="font-size: 15px; color: #0F172A; margin: 0;"><strong>Monto Total a Pagar (Incluye Envío):</strong> <span style="font-weight: 800; color: var(--editorial-black);">COP {{ (finalOrderTotalUSD * copRate).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span></p>
                   </template>
                   <template v-else>
-                    <p style="font-size: 15px; color: #0F172A; margin: 0;"><strong>Monto Total a Pagar:</strong> <span style="font-weight: 800; color: var(--editorial-black);">$ {{ cartTotalPrice.toFixed(2) }} USD</span></p>
+                    <p style="font-size: 15px; color: #0F172A; margin: 0;"><strong>Monto Total a Pagar (Incluye Envío):</strong> <span style="font-weight: 800; color: var(--editorial-black);">$ {{ finalOrderTotalUSD.toFixed(2) }} USD</span></p>
                   </template>
                 </div>
 
@@ -1297,7 +1420,7 @@ onMounted(async () => {
             @click="submitOrder"
           >
             <span v-if="orderSubmitting">PROCESANDO...</span>
-            <span v-else>CONFIRMAR COMPRA · {{ formatPrice(cartTotalPrice) }}</span>
+            <span v-else>CONFIRMAR COMPRA · {{ formatPrice(finalOrderTotalUSD) }}</span>
           </button>
         </div>
       </div>

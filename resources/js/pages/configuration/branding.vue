@@ -34,6 +34,55 @@ const form = reactive({
   section3_subtitle: '',
   section3_tagline: '',
   section3_button_text: '',
+  shipping_methods: {
+    local: {
+      pickup: {
+        id: 'pickup',
+        title: 'Recogida en Tienda',
+        enabled: true,
+        cost: 0,
+        estimated_time: 'Inmediato / Horario comercial',
+        description: 'Retira tu pedido directamente en nuestra sucursal principal sin costo adicional.'
+      },
+      delivery: {
+        id: 'delivery',
+        title: 'Envío a Domicilio / Delivery Local',
+        enabled: true,
+        cost: 2.0,
+        estimated_time: '1 a 3 horas',
+        description: 'Servicio de entrega local motorizado directo a tu ubicación.'
+      }
+    },
+    national: {
+      mrw: {
+        id: 'mrw',
+        title: 'MRW (Nacional)',
+        enabled: true,
+        cost: 0,
+        is_cod: true,
+        estimated_time: '24 a 48 horas hábiles',
+        description: 'Envío nacional a través de agencia MRW con cobro en destino.'
+      },
+      tealca: {
+        id: 'tealca',
+        title: 'Tealca (Nacional)',
+        enabled: true,
+        cost: 0,
+        is_cod: true,
+        estimated_time: '24 a 48 horas hábiles',
+        description: 'Envío nacional a través de agencia Tealca con cobro en destino.'
+      },
+      zoom: {
+        id: 'zoom',
+        title: 'ZOOM (Nacional)',
+        enabled: true,
+        cost: 0,
+        is_cod: true,
+        estimated_time: '24 a 48 horas hábiles',
+        description: 'Envío nacional asegurado a través de encomiendas ZOOM.'
+      }
+    }
+  }
 })
 
 const heroImageFile = ref(null)
@@ -102,6 +151,7 @@ const saveEcommerceSettings = async () => {
   formData.append('section3_subtitle', form.section3_subtitle || '')
   formData.append('section3_tagline', form.section3_tagline || '')
   formData.append('section3_button_text', form.section3_button_text || '')
+  formData.append('ecommerce_shipping_methods', JSON.stringify(form.shipping_methods))
   
   if (heroImageFile.value) {
     formData.append('hero_image', heroImageFile.value)
@@ -154,6 +204,22 @@ onMounted(async () => {
       section3_tagline: brandingStore.settings.section3_tagline || '',
       section3_button_text: brandingStore.settings.section3_button_text || '',
     })
+
+    if (brandingStore.settings.ecommerce_shipping_methods) {
+      let loadedShipping = brandingStore.settings.ecommerce_shipping_methods
+      if (typeof loadedShipping === 'string') {
+        try { loadedShipping = JSON.parse(loadedShipping) } catch (e) {}
+      }
+      if (loadedShipping && typeof loadedShipping === 'object') {
+        if (loadedShipping.local) {
+          form.shipping_methods.local = { ...form.shipping_methods.local, ...loadedShipping.local }
+        }
+        if (loadedShipping.national) {
+          form.shipping_methods.national = { ...form.shipping_methods.national, ...loadedShipping.national }
+        }
+      }
+    }
+
     heroImagePreview.value = brandingStore.settings.hero_image || ''
     section2ImagePreview.value = brandingStore.settings.section2_image || ''
     section3ImagePreview.value = brandingStore.settings.section3_image || ''
@@ -238,6 +304,10 @@ onMounted(async () => {
               <VTab value="sections">
                 <VIcon icon="tabler-layout-grid" class="me-2" />
                 Secciones Promocionales (2 y 3)
+              </VTab>
+              <VTab value="shipping">
+                <VIcon icon="tabler-truck-delivery" class="me-2" />
+                Métodos de Envío
               </VTab>
             </VTabs>
 
@@ -592,6 +662,412 @@ onMounted(async () => {
                         density="comfortable"
                         hide-details="auto"
                         :disabled="isLoading"
+                      />
+                    </VCard>
+                  </VCol>
+                </VRow>
+              </VWindowItem>
+
+              <!-- TAB 4: Métodos de Envío (Locales y Nacionales) -->
+              <VWindowItem value="shipping">
+                <VRow>
+                  <!-- BLOQUE 1: ENVÍOS LOCALES -->
+                  <VCol cols="12">
+                    <div class="d-flex align-center gap-2 mb-3">
+                      <VAvatar color="info" variant="tonal" size="32" class="rounded">
+                        <VIcon icon="tabler-map-pin" size="20" />
+                      </VAvatar>
+                      <div>
+                        <div class="text-subtitle-1 font-weight-bold text-info">
+                          Envíos Locales / Retiro
+                        </div>
+                        <div class="text-caption text-medium-emphasis">
+                          Opciones de entrega física inmediata o delivery en tu zona o ciudad.
+                        </div>
+                      </div>
+                    </div>
+                  </VCol>
+
+                  <!-- 1.1 Recogida en Tienda -->
+                  <VCol cols="12" md="6">
+                    <VCard variant="outlined" class="pa-5 rounded-lg border h-100">
+                      <div class="d-flex align-center justify-space-between mb-4">
+                        <div class="d-flex align-center gap-2">
+                          <VIcon icon="tabler-building-store" size="24" color="primary" />
+                          <span class="text-subtitle-1 font-weight-bold">Recogida en Tienda</span>
+                        </div>
+                        <VSwitch
+                          v-model="form.shipping_methods.local.pickup.enabled"
+                          color="success"
+                          hide-details
+                          inset
+                          :disabled="isLoading"
+                        />
+                      </div>
+
+                      <VTextField
+                        v-model="form.shipping_methods.local.pickup.title"
+                        label="Nombre del Método"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        class="mb-3"
+                        :disabled="isLoading || !form.shipping_methods.local.pickup.enabled"
+                      />
+
+                      <VRow class="mb-1">
+                        <VCol cols="6">
+                          <VTextField
+                            v-model.number="form.shipping_methods.local.pickup.cost"
+                            label="Costo ($ USD)"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            prepend-inner-icon="tabler-currency-dollar"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.local.pickup.enabled"
+                          />
+                        </VCol>
+                        <VCol cols="6">
+                          <VTextField
+                            v-model="form.shipping_methods.local.pickup.estimated_time"
+                            label="Tiempo Estimado"
+                            placeholder="Inmediato"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.local.pickup.enabled"
+                          />
+                        </VCol>
+                      </VRow>
+
+                      <VTextarea
+                        v-model="form.shipping_methods.local.pickup.description"
+                        label="Instrucciones para el Cliente"
+                        rows="2"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        class="mt-2"
+                        :disabled="isLoading || !form.shipping_methods.local.pickup.enabled"
+                      />
+                    </VCard>
+                  </VCol>
+
+                  <!-- 1.2 Envío a Domicilio / Delivery Local -->
+                  <VCol cols="12" md="6">
+                    <VCard variant="outlined" class="pa-5 rounded-lg border h-100">
+                      <div class="d-flex align-center justify-space-between mb-4">
+                        <div class="d-flex align-center gap-2">
+                          <VIcon icon="tabler-moped" size="24" color="info" />
+                          <span class="text-subtitle-1 font-weight-bold">Delivery Local</span>
+                        </div>
+                        <VSwitch
+                          v-model="form.shipping_methods.local.delivery.enabled"
+                          color="success"
+                          hide-details
+                          inset
+                          :disabled="isLoading"
+                        />
+                      </div>
+
+                      <VTextField
+                        v-model="form.shipping_methods.local.delivery.title"
+                        label="Nombre del Método"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        class="mb-3"
+                        :disabled="isLoading || !form.shipping_methods.local.delivery.enabled"
+                      />
+
+                      <VRow class="mb-1">
+                        <VCol cols="6">
+                          <VTextField
+                            v-model.number="form.shipping_methods.local.delivery.cost"
+                            label="Costo ($ USD)"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            prepend-inner-icon="tabler-currency-dollar"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.local.delivery.enabled"
+                          />
+                        </VCol>
+                        <VCol cols="6">
+                          <VTextField
+                            v-model="form.shipping_methods.local.delivery.estimated_time"
+                            label="Tiempo Estimado"
+                            placeholder="1 a 3 horas"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.local.delivery.enabled"
+                          />
+                        </VCol>
+                      </VRow>
+
+                      <VTextarea
+                        v-model="form.shipping_methods.local.delivery.description"
+                        label="Instrucciones para el Cliente"
+                        rows="2"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        class="mt-2"
+                        :disabled="isLoading || !form.shipping_methods.local.delivery.enabled"
+                      />
+                    </VCard>
+                  </VCol>
+
+                  <!-- BLOQUE 2: ENVÍOS NACIONALES -->
+                  <VCol cols="12" class="mt-4">
+                    <div class="d-flex align-center gap-2 mb-3">
+                      <VAvatar color="warning" variant="tonal" size="32" class="rounded">
+                        <VIcon icon="tabler-truck" size="20" />
+                      </VAvatar>
+                      <div>
+                        <div class="text-subtitle-1 font-weight-bold text-warning">
+                          Envíos Nacionales (Empresas de Encomienda)
+                        </div>
+                        <div class="text-caption text-medium-emphasis">
+                          Empresas de transporte nacional para envíos a cualquier estado o ciudad.
+                        </div>
+                      </div>
+                    </div>
+                  </VCol>
+
+                  <!-- 2.1 MRW -->
+                  <VCol cols="12" md="4">
+                    <VCard variant="outlined" class="pa-5 rounded-lg border h-100">
+                      <div class="d-flex align-center justify-space-between mb-4">
+                        <div class="d-flex align-center gap-2">
+                          <VIcon icon="tabler-package" size="24" color="warning" />
+                          <span class="text-subtitle-1 font-weight-bold">MRW</span>
+                        </div>
+                        <VSwitch
+                          v-model="form.shipping_methods.national.mrw.enabled"
+                          color="success"
+                          hide-details
+                          inset
+                          :disabled="isLoading"
+                        />
+                      </div>
+
+                      <VTextField
+                        v-model="form.shipping_methods.national.mrw.title"
+                        label="Nombre del Método"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        class="mb-3"
+                        :disabled="isLoading || !form.shipping_methods.national.mrw.enabled"
+                      />
+
+                      <VRow class="mb-1">
+                        <VCol cols="6">
+                          <VTextField
+                            v-model.number="form.shipping_methods.national.mrw.cost"
+                            label="Costo Adicional ($)"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            prepend-inner-icon="tabler-currency-dollar"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.national.mrw.enabled"
+                          />
+                        </VCol>
+                        <VCol cols="6">
+                          <VTextField
+                            v-model="form.shipping_methods.national.mrw.estimated_time"
+                            label="Tiempo Estimado"
+                            placeholder="24-48 horas"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.national.mrw.enabled"
+                          />
+                        </VCol>
+                      </VRow>
+
+                      <VCheckbox
+                        v-model="form.shipping_methods.national.mrw.is_cod"
+                        label="Cobro en Destino (Flete Pagado por Cliente)"
+                        density="compact"
+                        color="warning"
+                        hide-details
+                        class="mb-2"
+                        :disabled="isLoading || !form.shipping_methods.national.mrw.enabled"
+                      />
+
+                      <VTextarea
+                        v-model="form.shipping_methods.national.mrw.description"
+                        label="Instrucciones de Envío"
+                        rows="2"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        :disabled="isLoading || !form.shipping_methods.national.mrw.enabled"
+                      />
+                    </VCard>
+                  </VCol>
+
+                  <!-- 2.2 Tealca -->
+                  <VCol cols="12" md="4">
+                    <VCard variant="outlined" class="pa-5 rounded-lg border h-100">
+                      <div class="d-flex align-center justify-space-between mb-4">
+                        <div class="d-flex align-center gap-2">
+                          <VIcon icon="tabler-truck-loading" size="24" color="info" />
+                          <span class="text-subtitle-1 font-weight-bold">Tealca</span>
+                        </div>
+                        <VSwitch
+                          v-model="form.shipping_methods.national.tealca.enabled"
+                          color="success"
+                          hide-details
+                          inset
+                          :disabled="isLoading"
+                        />
+                      </div>
+
+                      <VTextField
+                        v-model="form.shipping_methods.national.tealca.title"
+                        label="Nombre del Método"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        class="mb-3"
+                        :disabled="isLoading || !form.shipping_methods.national.tealca.enabled"
+                      />
+
+                      <VRow class="mb-1">
+                        <VCol cols="6">
+                          <VTextField
+                            v-model.number="form.shipping_methods.national.tealca.cost"
+                            label="Costo Adicional ($)"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            prepend-inner-icon="tabler-currency-dollar"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.national.tealca.enabled"
+                          />
+                        </VCol>
+                        <VCol cols="6">
+                          <VTextField
+                            v-model="form.shipping_methods.national.tealca.estimated_time"
+                            label="Tiempo Estimado"
+                            placeholder="24-48 horas"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.national.tealca.enabled"
+                          />
+                        </VCol>
+                      </VRow>
+
+                      <VCheckbox
+                        v-model="form.shipping_methods.national.tealca.is_cod"
+                        label="Cobro en Destino (Flete Pagado por Cliente)"
+                        density="compact"
+                        color="info"
+                        hide-details
+                        class="mb-2"
+                        :disabled="isLoading || !form.shipping_methods.national.tealca.enabled"
+                      />
+
+                      <VTextarea
+                        v-model="form.shipping_methods.national.tealca.description"
+                        label="Instrucciones de Envío"
+                        rows="2"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        :disabled="isLoading || !form.shipping_methods.national.tealca.enabled"
+                      />
+                    </VCard>
+                  </VCol>
+
+                  <!-- 2.3 ZOOM -->
+                  <VCol cols="12" md="4">
+                    <VCard variant="outlined" class="pa-5 rounded-lg border h-100">
+                      <div class="d-flex align-center justify-space-between mb-4">
+                        <div class="d-flex align-center gap-2">
+                          <VIcon icon="tabler-cube-send" size="24" color="primary" />
+                          <span class="text-subtitle-1 font-weight-bold">ZOOM</span>
+                        </div>
+                        <VSwitch
+                          v-model="form.shipping_methods.national.zoom.enabled"
+                          color="success"
+                          hide-details
+                          inset
+                          :disabled="isLoading"
+                        />
+                      </div>
+
+                      <VTextField
+                        v-model="form.shipping_methods.national.zoom.title"
+                        label="Nombre del Método"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        class="mb-3"
+                        :disabled="isLoading || !form.shipping_methods.national.zoom.enabled"
+                      />
+
+                      <VRow class="mb-1">
+                        <VCol cols="6">
+                          <VTextField
+                            v-model.number="form.shipping_methods.national.zoom.cost"
+                            label="Costo Adicional ($)"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            prepend-inner-icon="tabler-currency-dollar"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.national.zoom.enabled"
+                          />
+                        </VCol>
+                        <VCol cols="6">
+                          <VTextField
+                            v-model="form.shipping_methods.national.zoom.estimated_time"
+                            label="Tiempo Estimado"
+                            placeholder="24-48 horas"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.national.zoom.enabled"
+                          />
+                        </VCol>
+                      </VRow>
+
+                      <VCheckbox
+                        v-model="form.shipping_methods.national.zoom.is_cod"
+                        label="Cobro en Destino (Flete Pagado por Cliente)"
+                        density="compact"
+                        color="primary"
+                        hide-details
+                        class="mb-2"
+                        :disabled="isLoading || !form.shipping_methods.national.zoom.enabled"
+                      />
+
+                      <VTextarea
+                        v-model="form.shipping_methods.national.zoom.description"
+                        label="Instrucciones de Envío"
+                        rows="2"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        :disabled="isLoading || !form.shipping_methods.national.zoom.enabled"
                       />
                     </VCard>
                   </VCol>

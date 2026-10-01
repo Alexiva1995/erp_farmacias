@@ -104,11 +104,16 @@ class EcommerceOrderService
                 }
             }
 
-            // 2. Calcular total en la moneda del cliente usando tasas de cambio actuales
+            // 2. Sumar costo de envío si viene especificado
+            $shippingCost = (float) ($orderData['shipping_cost'] ?? 0);
+            $shippingMethod = !empty($orderData['shipping_method']) ? (string) $orderData['shipping_method'] : null;
+            $totalAmount += $shippingCost;
+
+            // 3. Calcular total en la moneda del cliente usando tasas de cambio actuales
             $currency          = strtoupper($orderData['payment_currency'] ?? 'USD');
             $totalInCurrency   = $this->convertToClientCurrency($totalAmount, $currency);
 
-            // 3. Registrar o buscar cliente en BD si no existe
+            // 4. Registrar o buscar cliente en BD si no existe
             if (!empty($orderData['customer_document_number'])) {
                 $docType  = $orderData['customer_document_type'] ?? 'V-';
                 $docNum   = trim($orderData['customer_document_number']);
@@ -152,11 +157,11 @@ class EcommerceOrderService
                 }
             }
 
-            // 4. Resolver el usuario 'tienda' para asociar el pedido
+            // 5. Resolver el usuario 'tienda' para asociar el pedido
             $tiendaUser   = DB::table('users')->where('username', 'tienda')->first();
             $tiendaUserId = $tiendaUser ? $tiendaUser->id : null;
 
-            // 5. Crear la orden de e-commerce con moneda del cliente
+            // 6. Crear la orden de e-commerce con moneda del cliente
             $orderId = DB::table('ecommerce_orders')->insertGetId([
                 'user_id'                  => $tiendaUserId,
                 'customer_name'            => $orderData['customer_name'],
@@ -165,7 +170,9 @@ class EcommerceOrderService
                 'customer_document_type'   => $orderData['customer_document_type'] ?? 'V-',
                 'customer_document_number' => !empty($orderData['customer_document_number']) ? trim((string) $orderData['customer_document_number']) : null,
                 'shipping_address'         => !empty($orderData['shipping_address']) ? trim((string) $orderData['shipping_address']) : null,
-                'total_amount'             => $totalAmount,           // En USD (precio base)
+                'shipping_method'          => $shippingMethod,
+                'shipping_cost'            => $shippingCost,
+                'total_amount'             => $totalAmount,           // En USD (precio base con envío)
                 'currency'                 => $currency,              // Moneda del cliente
                 'total_in_currency'        => $totalInCurrency,       // Monto en moneda del cliente
                 'status'                   => 'Pending',

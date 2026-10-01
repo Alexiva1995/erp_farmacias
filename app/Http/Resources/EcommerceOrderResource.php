@@ -28,6 +28,8 @@ class EcommerceOrderResource extends JsonResource
             'customer_document_type'   => data_get($res, 'customer_document_type'),
             'customer_document_number' => data_get($res, 'customer_document_number'),
             'shipping_address'         => data_get($res, 'shipping_address'),
+            'shipping_method'          => data_get($res, 'shipping_method'),
+            'shipping_cost'            => (float) (data_get($res, 'shipping_cost') ?? 0),
             'total_amount'             => (float) (data_get($res, 'total_amount') ?? 0),
             'currency'                 => data_get($res, 'currency') ?? 'USD',
             'total_in_currency'        => (float) (data_get($res, 'total_in_currency') ?? data_get($res, 'total_amount') ?? 0),

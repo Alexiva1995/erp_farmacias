@@ -46,12 +46,73 @@ class GeneralSettingResource extends JsonResource
             ]
         ];
 
+        $defaultShippingMethods = [
+            'local' => [
+                'pickup' => [
+                    'id' => 'pickup',
+                    'title' => 'Recogida en Tienda',
+                    'enabled' => true,
+                    'cost' => 0.00,
+                    'estimated_time' => 'Inmediato / Horario comercial',
+                    'description' => 'Retira tu pedido directamente en nuestra sucursal principal sin costo adicional.'
+                ],
+                'delivery' => [
+                    'id' => 'delivery',
+                    'title' => 'Envío a Domicilio / Delivery Local',
+                    'enabled' => true,
+                    'cost' => 2.00,
+                    'estimated_time' => '1 a 3 horas',
+                    'description' => 'Servicio de entrega local motorizado directo a tu ubicación.'
+                ]
+            ],
+            'national' => [
+                'mrw' => [
+                    'id' => 'mrw',
+                    'title' => 'MRW (Nacional)',
+                    'enabled' => true,
+                    'cost' => 0.00,
+                    'is_cod' => true, // Cobro en destino
+                    'estimated_time' => '24 a 48 horas hábiles',
+                    'description' => 'Envío nacional a través de agencia MRW con cobro en destino.'
+                ],
+                'tealca' => [
+                    'id' => 'tealca',
+                    'title' => 'Tealca (Nacional)',
+                    'enabled' => true,
+                    'cost' => 0.00,
+                    'is_cod' => true,
+                    'estimated_time' => '24 a 48 horas hábiles',
+                    'description' => 'Envío nacional a través de agencia Tealca con cobro en destino.'
+                ],
+                'zoom' => [
+                    'id' => 'zoom',
+                    'title' => 'ZOOM (Nacional)',
+                    'enabled' => true,
+                    'cost' => 0.00,
+                    'is_cod' => true,
+                    'estimated_time' => '24 a 48 horas hábiles',
+                    'description' => 'Envío nacional asegurado a través de encomiendas ZOOM.'
+                ]
+            ]
+        ];
+
         $paymentMethods = $this->tpv_payment_methods;
         if (is_string($paymentMethods)) {
             $paymentMethods = json_decode($paymentMethods, true);
         }
         if (empty($paymentMethods)) {
             $paymentMethods = $defaultPaymentMethods;
+        }
+
+        $shippingMethods = $this->ecommerce_shipping_methods;
+        if (is_string($shippingMethods)) {
+            $shippingMethods = json_decode($shippingMethods, true);
+        }
+        if (empty($shippingMethods)) {
+            $shippingMethods = $defaultShippingMethods;
+        } else {
+            // Asegurar que contenga las claves esperadas fusionando con defaults
+            $shippingMethods = array_replace_recursive($defaultShippingMethods, $shippingMethods);
         }
 
         $data = [
@@ -75,6 +136,7 @@ class GeneralSettingResource extends JsonResource
             'business_type' => $this->business_type ?? 'pharmacy',
             'default_currency' => $this->default_currency ?? 'COP',
             'ecommerce_menu' => $this->ecommerce_menu ?? [],
+            'ecommerce_shipping_methods' => $shippingMethods,
             'hero_title' => $this->hero_title ?? 'YOUR NEW BOMB NUDES',
             'hero_subtitle' => $this->hero_subtitle ?? 'Tonos sofisticados, texturas sedosas y fórmulas de alta gama diseñadas para realzar tu belleza natural con un acabado impecable de pasarela.',
             'hero_tagline' => $this->hero_tagline ?? 'NUEVA COLECCIÓN',
