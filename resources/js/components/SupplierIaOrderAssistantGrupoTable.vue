@@ -322,13 +322,12 @@ const innerHeaders = computed(() => {
 
   base.push(
     { title: "COSTO", key: "unit_cost", sortable: true, align: 'end', width: '75px' },
-    { title: "VTA. 30D", key: "total_sold_completed", sortable: true, align: 'center', width: '75px' },
-    { title: "QUIEBRE", key: "dias_quiebre", sortable: true, align: 'center', width: '75px' },
+    { title: "VENT.", key: "total_sold_completed", sortable: true, align: 'center', width: '70px' },
+    { title: "Q STO.", key: "dias_quiebre", sortable: true, align: 'center', width: '70px' },
     { title: "DEMANDA", key: "promedio_calculado", sortable: true, align: 'center', width: '75px' },
     { title: "ROP", key: "rop_calculado", sortable: true, align: 'center', width: '70px' },
     { title: "FÍSICO", key: "lote_quantity", sortable: true, align: 'center', width: '70px' },
     { title: "TRÁNS.", key: "totalQuantityInAutoOrder", sortable: true, align: 'center', width: '70px' },
-    { title: "ÚTIL", key: "stock_util", sortable: true, align: 'center', width: '70px' },
     { title: "IPO", key: "ipo", sortable: true, align: 'center', width: '65px' },
     { title: "SUG.", key: "solicitar", sortable: true, align: 'center', width: '75px' },
     { title: "ACCIÓN", key: "actions", sortable: false, align: 'end', width: '80px' }
@@ -566,12 +565,6 @@ function rowClass(item) {
                 <span v-else class="text-disabled">0</span>
               </template>
 
-              <!-- STOCK ÚTIL -->
-              <template #item.stock_util="{ item }">
-                <span class="font-weight-medium">
-                  {{ (item.stock_util !== undefined ? parseFloat(item.stock_util) : Math.min(parseFloat(item.lote_quantity ?? item.stock ?? 0), Math.ceil(parseFloat(item.demanda_ponderada ?? item.promedio_calculado ?? 0)))).toFixed(1) }}
-                </span>
-              </template>
 
               <!-- IPO % (Semáforo de Posición de Inventario) -->
               <template #item.ipo="{ item }">
@@ -731,11 +724,11 @@ function rowClass(item) {
                       </div>
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
-                      <span class="text-disabled">Venta 30d:</span>
+                      <span class="text-disabled">Vent. (30d):</span>
                       <span class="font-weight-bold">{{ item.total_sold_completed ? Math.round(item.total_sold_completed) : 0 }}</span>
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
-                      <span class="text-disabled">Días Quiebre (90d):</span>
+                      <span class="text-disabled">Q Sto. (90d):</span>
                       <span
                         class="font-weight-bold"
                         :class="Number(item.dias_quiebre || 0) > 30 ? 'text-error font-weight-black' : (Number(item.dias_quiebre || 0) >= 11 ? 'text-warning font-weight-bold' : (Number(item.dias_quiebre || 0) >= 1 ? 'text-medium-emphasis font-weight-medium' : 'text-disabled'))"
@@ -748,7 +741,7 @@ function rowClass(item) {
                       <span class="font-weight-medium text-medium-emphasis">{{ item.promedio_calculado ? parseFloat(item.promedio_calculado).toFixed(1) : '0.0' }}</span>
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
-                      <span class="text-disabled">ROP Real:</span>
+                      <span class="text-disabled">ROP:</span>
                       <span class="font-weight-bold text-primary font-mono">{{ (item.rop_calculado !== undefined ? parseFloat(item.rop_calculado) : (parseFloat(item.rop ?? 0))).toFixed(1) }}</span>
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
@@ -756,10 +749,6 @@ function rowClass(item) {
                       <span class="font-weight-bold" :class="Number(item.lote_quantity ?? item.stock) <= 0 ? 'text-error' : ''">
                         {{ (item.lote_quantity ?? item.stock) ? Math.round(item.lote_quantity ?? item.stock) : 0 }}
                       </span>
-                    </div>
-                    <div class="d-flex justify-space-between text-xs my-1">
-                      <span class="text-disabled">Stock Útil:</span>
-                      <span class="font-weight-bold">{{ (item.stock_util !== undefined ? parseFloat(item.stock_util) : Math.min(parseFloat(item.lote_quantity ?? item.stock ?? 0), Math.ceil(parseFloat(item.demanda_ponderada ?? item.promedio_calculado ?? 0)))).toFixed(1) }}</span>
                     </div>
                     <div class="d-flex justify-space-between text-xs my-1">
                       <span class="text-disabled">IPO:</span>
