@@ -1647,12 +1647,16 @@ class IaAssistantReportService
                 $cap2 = min($demandaAjustada2, $capLimit);
                 $cap3 = min($demandaAjustada3, $capLimit);
 
-                // Ponderación dinámica según días con stock
-                $totalDiasStock = $d1 + $d2 + $d3;
-                if ($totalDiasStock > 0) {
-                    $w1 = $d1 / $totalDiasStock;
-                    $w2 = $d2 / $totalDiasStock;
-                    $w3 = $d3 / $totalDiasStock;
+                // Ponderación dinámica bayesiana (Base Temporal 50% / 30% / 20% modulada por días con presencia de stock)
+                $rawW1 = 0.50 * ($d1 / 30);
+                $rawW2 = 0.30 * ($d2 / 30);
+                $rawW3 = 0.20 * ($d3 / 30);
+                $totalRawWeight = $rawW1 + $rawW2 + $rawW3;
+
+                if ($totalRawWeight > 0) {
+                    $w1 = $rawW1 / $totalRawWeight;
+                    $w2 = $rawW2 / $totalRawWeight;
+                    $w3 = $rawW3 / $totalRawWeight;
                 } else {
                     $w1 = 0.50;
                     $w2 = 0.30;
