@@ -229,7 +229,7 @@ class EcommerceController extends Controller
             $tpvOrderId = $this->consolidateOrder($ecommerceOrder);
 
             // 4. Vincular la orden TPV al registro e-commerce
-            if ($tpvOrderId) {
+            if ($tpvOrderId && \Illuminate\Support\Facades\Schema::hasColumn('ecommerce_orders', 'tpv_order_id')) {
                 \Illuminate\Support\Facades\DB::table('ecommerce_orders')
                     ->where('id', $ecommerceOrderId)
                     ->update(['tpv_order_id' => $tpvOrderId]);
@@ -386,8 +386,9 @@ class EcommerceController extends Controller
         $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
 
         // Evitar duplicar si ya fue consolidada previamente
-        if (!empty($ecommerceOrder->tpv_order_id)) {
-            return (int) $ecommerceOrder->tpv_order_id;
+        $existingTpvId = data_get($ecommerceOrder, 'tpv_order_id');
+        if (!empty($existingTpvId)) {
+            return (int) $existingTpvId;
         }
 
         // Fallback: buscar por referencia ECO- por si la columna aún no existía

@@ -260,8 +260,9 @@ class EcommerceOrderService
                 ->where('id', $id)
                 ->update(['status' => 'Paid', 'updated_at' => now()]);
 
-            if (!empty($ecommerceOrder->tpv_order_id)) {
-                \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
+            $tpvOrderId = data_get($ecommerceOrder, 'tpv_order_id');
+            if (!empty($tpvOrderId)) {
+                \App\Models\Order::where('id', $tpvOrderId)
                     ->update(['status' => 'Completed']);
             }
 
@@ -301,8 +302,9 @@ class EcommerceOrderService
                 ->where('id', $id)
                 ->update(['status' => 'Cancelled', 'updated_at' => now()]);
 
-            if (!empty($ecommerceOrder->tpv_order_id)) {
-                \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
+            $tpvOrderId = data_get($ecommerceOrder, 'tpv_order_id');
+            if (!empty($tpvOrderId)) {
+                \App\Models\Order::where('id', $tpvOrderId)
                     ->update(['status' => 'cancelled']);
             }
 
@@ -354,13 +356,14 @@ class EcommerceOrderService
                 ->where('id', $id)
                 ->update(['status' => 'Completed', 'updated_at' => now()]);
 
-            if (!empty($ecommerceOrder->tpv_order_id)) {
-                \App\Models\Order::where('id', $ecommerceOrder->tpv_order_id)
+            $tpvOrderId = data_get($ecommerceOrder, 'tpv_order_id');
+            if (!empty($tpvOrderId)) {
+                \App\Models\Order::where('id', $tpvOrderId)
                     ->whereNotIn('status', ['Completed', 'cancelled'])
                     ->update(['status' => 'Completed']);
             }
 
-            return (int) ($ecommerceOrder->tpv_order_id ?? 0);
+            return (int) ($tpvOrderId ?? 0);
         });
     }
 
