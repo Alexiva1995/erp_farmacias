@@ -14,13 +14,24 @@ const props = defineProps({
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => false);
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits(["update:modelValue", "saved"]);
 
 const products = ref([]);
 const totalProduct = ref(0);
 const loading = ref(false);
 
 const selectedProducts = ref(new Set());
+
+const initializeSelectedProducts = () => {
+  selectedProducts.value.clear();
+  if (props.selectedGroup?.products && Array.isArray(props.selectedGroup.products)) {
+    props.selectedGroup.products.forEach((p) => {
+      if (p && p.id) {
+        selectedProducts.value.add(p.id);
+      }
+    });
+  }
+};
 
 const page = ref(1);
 const itemsPerPage = ref(5);
@@ -57,6 +68,7 @@ const fetchSelectOptions = async () => {
 };
 
 const fetchProducts = async () => {
+  if (!props.selectedGroup?.id) return;
   loading.value = true;
   const params = {
     q: filterSearchQuery.value,
@@ -156,13 +168,11 @@ const handleClearForm = () => {
   page.value = 1;
   itemsPerPage.value = 5;
 
-  fetchProducts();
   handleClearFilters();
 };
 
 const handleAddProduct = async (product) => {
   selectedProducts.value.add(product.id);
-  // No mostramos toast repetitivo en cards moviles para no saturar
 };
 
 const handleRemoveProduct = async (product) => {
@@ -170,6 +180,7 @@ const handleRemoveProduct = async (product) => {
 };
 
 const submitForm = async () => {
+  if (!props.selectedGroup?.id) return;
   try {
     await axios.post(`/groups/${props.selectedGroup.id}/associate-products`, {
       productIds: [...selectedProducts.value],
@@ -179,6 +190,7 @@ const submitForm = async () => {
       `Se actualizó el grupo "${props.selectedGroup.name}" con ${selectedProducts.value.size} productos asociados`
     );
 
+    emit("saved");
     closeDialog();
   } catch (error) {
     console.log("Hubo un error al añadir los productos al grupo: ", error);
@@ -216,14 +228,29 @@ watch(
   () => props.modelValue,
   (isVisible) => {
     if (isVisible) {
+      initializeSelectedProducts();
       fetchProducts();
     }
   }
 );
 
+watch(
+  () => props.selectedGroup,
+  () => {
+    if (props.modelValue) {
+      initializeSelectedProducts();
+      fetchProducts();
+    }
+  },
+  { deep: true }
+);
+
 onMounted(() => {
   fetchSelectOptions();
-  fetchProducts();
+  if (props.modelValue) {
+    initializeSelectedProducts();
+    fetchProducts();
+  }
 });
 </script>
 

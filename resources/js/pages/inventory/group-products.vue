@@ -182,6 +182,7 @@ const clearFormErrors = () => {
       <AddProductsToGroupDialog
         v-model="isAddProductsDialogVisible"
         :selected-group="currentGroup"
+        @saved="fetchGroups"
       />
 
       <GroupEditDialog
