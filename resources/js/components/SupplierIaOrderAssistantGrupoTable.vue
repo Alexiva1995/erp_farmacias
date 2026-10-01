@@ -1,5 +1,6 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import TovaAuditModal from "@/components/TovaAuditModal.vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { useDisplay } from 'vuetify';
 import { useDebounceFn } from '@vueuse/core';
@@ -29,6 +30,14 @@ const emit = defineEmits(['page-change', 'product-scarce-toggled', 'open-compara
 
 // Grupo expandido (uno a la vez)
 const expandedGroupId = ref(null);
+
+const auditModalOpen = ref(false);
+const selectedAuditItem = ref(null);
+
+const openAuditModal = (item) => {
+  selectedAuditItem.value = item;
+  auditModalOpen.value = true;
+};
 
 const toggleGroup = (groupId) => {
   if (expandedGroupId.value === groupId) {
@@ -602,6 +611,16 @@ function rowClass(item) {
                   </div>
                   <template v-else>
                     <VBtn
+                      variant="tonal"
+                      color="primary"
+                      size="30"
+                      icon
+                      @click.stop="openAuditModal(item)"
+                    >
+                      <VIcon size="18">tabler-terminal-2</VIcon>
+                      <VTooltip activator="parent" location="top">Ver Log de Decisión</VTooltip>
+                    </VBtn>
+                    <VBtn
                       v-if="!isRestaurant"
                       variant="tonal"
                       color="error"
@@ -767,6 +786,15 @@ function rowClass(item) {
                     </div>
                     <div class="d-flex ga-1">
                       <VBtn
+                        variant="tonal"
+                        color="primary"
+                        size="28"
+                        icon
+                        @click.stop="openAuditModal(item)"
+                      >
+                        <VIcon size="16">tabler-terminal-2</VIcon>
+                      </VBtn>
+                      <VBtn
                         v-if="!isRestaurant"
                         variant="tonal"
                         color="error"
@@ -847,6 +875,7 @@ function rowClass(item) {
       />
     </div>
 
+    <TovaAuditModal v-model="auditModalOpen" :item="selectedAuditItem" />
   </VCard>
 </template>
 
