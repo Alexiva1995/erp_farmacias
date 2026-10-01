@@ -45,7 +45,6 @@ class Product extends Model
         'description',
         'active_ingredient',
         'laboratory_id',
-        'supplier_id',
         'origin_id',
         'category_id',
         'group_id',
