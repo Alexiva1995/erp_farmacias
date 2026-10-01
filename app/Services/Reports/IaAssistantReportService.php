@@ -1583,6 +1583,17 @@ class IaAssistantReportService
             $d2 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 30)));
             $d3 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 60)));
 
+            // Si hubo ventas en el mes, por definición física tuvo stock al menos los días de esas ventas
+            if ($v1 > 0 && $d1 == 0) {
+                $d1 = max(1, min(30, (int)ceil($v1)));
+            }
+            if ($v2 > 0 && $d2 == 0) {
+                $d2 = max(1, min(30, (int)ceil($v2)));
+            }
+            if ($v3 > 0 && $d3 == 0) {
+                $d3 = max(1, min(30, (int)ceil($v3)));
+            }
+
             $firstLot = $lotRow ? \Carbon\Carbon::parse($lotRow->first_lot_date) : null;
             $ageDays = $firstLot ? max(1, $firstLot->diffInDays($now)) : 90;
 
