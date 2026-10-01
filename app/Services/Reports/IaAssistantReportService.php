@@ -1305,6 +1305,7 @@ class IaAssistantReportService
             $item->dias_quiebre = $item->dias_quiebre ?? 0;
             $item->promedio_calculado = round($demandaTrueIntent, 2);
             $item->demanda_ponderada = round($stockObjetivo, 2);
+            $item->vdr_sanada = round($vpd, 3);
             $item->rop_calculado = round($rop, 2);
             $item->rop = round($rop, 2);
             $item->stock_efectivo = $stockEfectivo;
