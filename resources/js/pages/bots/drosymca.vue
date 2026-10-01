@@ -10,8 +10,6 @@ import { useAbility } from '@casl/vue'
 const ability = useAbility()
 const canManageBot = computed(() => ability.can('manage', 'bots') || ability.can('update', 'Supplier') || ability.can('manage', 'all'))
 
-// Pestaña activa
-const currentTab = ref('credentials')
 
 // Estados reactivos de carga y visibilidad
 const isLoading = ref(false)
@@ -277,19 +275,15 @@ onMounted(() => {
     </VCard>
 
     <VRow>
-      <!-- Contenedor Principal con Tabs -->
+      <!-- Contenedor Principal con Credenciales -->
       <VCol cols="12" md="8">
         <VCard border flat rounded="lg">
-          <VTabs v-model="currentTab" color="primary">
-            <VTab value="credentials">
-              <VIcon icon="tabler-key" class="me-2" size="20" />
+          <VCardItem class="pb-2">
+            <VCardTitle class="text-h6 font-weight-bold d-flex align-center gap-2">
+              <VIcon icon="tabler-key" color="primary" size="22" />
               Credenciales Drosymca
-            </VTab>
-            <VTab value="automation">
-              <VIcon icon="tabler-settings-automation" class="me-2" size="20" />
-              Automatización & Filtros
-            </VTab>
-          </VTabs>
+            </VCardTitle>
+          </VCardItem>
 
           <VDivider />
 
@@ -301,162 +295,114 @@ onMounted(() => {
               class="mb-4"
             />
 
-            <VWindow v-model="currentTab">
-              <!-- Tab 1: Credenciales -->
-              <VWindowItem value="credentials">
-                <VAlert
-                  type="info"
-                  variant="tonal"
-                  density="compact"
-                  icon="tabler-shield-lock"
-                  class="mb-6 rounded-lg"
-                >
-                  Las credenciales se encriptan en el backend y se utilizan exclusivamente en las sesiones seguras del scraper.
-                </VAlert>
+            <VAlert
+              type="info"
+              variant="tonal"
+              density="compact"
+              icon="tabler-shield-lock"
+              class="mb-6 rounded-lg"
+            >
+              Las credenciales se encriptan en el backend y se utilizan exclusivamente en las sesiones seguras del scraper.
+            </VAlert>
 
-                <VForm @submit.prevent="saveConfig">
-                  <VRow>
-                    <VCol cols="12" md="6">
-                      <VTextField
-                        v-model="form.username"
-                        label="Usuario / Código de Cliente"
-                        placeholder="Ej: usuario Drosymca"
-                        prepend-inner-icon="tabler-user"
-                        variant="outlined"
-                        density="comfortable"
-                        hide-details="auto"
-                        hint="Usuario asignado en el portal de Drosymca"
-                        persistent-hint
-                      />
-                    </VCol>
+            <VForm @submit.prevent="saveConfig">
+              <VRow>
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="form.username"
+                    label="Usuario / Código de Cliente"
+                    placeholder="Ej: usuario Drosymca"
+                    prepend-inner-icon="tabler-user"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
+                    hint="Usuario asignado en el portal de Drosymca"
+                    persistent-hint
+                  />
+                </VCol>
 
-                    <VCol cols="12" md="6">
-                      <VTextField
-                        v-model="form.password"
-                        :type="showPassword ? 'text' : 'password'"
-                        label="Contraseña de Acceso"
-                        :placeholder="form.has_password ? '•••••••••••• (Configurada)' : 'Ingresa la contraseña'"
-                        prepend-inner-icon="tabler-lock"
-                        :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                        variant="outlined"
-                        density="comfortable"
-                        hide-details="auto"
-                        hint="Se almacena encriptada de forma segura"
-                        persistent-hint
-                        @click:append-inner="showPassword = !showPassword"
-                      />
-                    </VCol>
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="form.password"
+                    :type="showPassword ? 'text' : 'password'"
+                    label="Contraseña de Acceso"
+                    :placeholder="form.has_password ? '•••••••••••• (Configurada)' : 'Ingresa la contraseña'"
+                    prepend-inner-icon="tabler-lock"
+                    :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
+                    hint="Se almacena encriptada de forma segura"
+                    persistent-hint
+                    @click:append-inner="showPassword = !showPassword"
+                  />
+                </VCol>
 
-                    <VCol cols="12" md="6">
-                      <VTextField
-                        v-model="form.host"
-                        label="URL del Portal Drosymca"
-                        placeholder="https://app.drosymca.com"
-                        prepend-inner-icon="tabler-world"
-                        variant="outlined"
-                        density="comfortable"
-                        hide-details="auto"
-                        hint="URL base de la plataforma web de Drosymca"
-                        persistent-hint
-                      />
-                    </VCol>
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="form.host"
+                    label="URL del Portal Drosymca"
+                    placeholder="https://app.drosymca.com"
+                    prepend-inner-icon="tabler-world"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
+                    hint="URL base de la plataforma web de Drosymca"
+                    persistent-hint
+                  />
+                </VCol>
 
-                    <VCol cols="12" md="6">
-                      <VTextField
-                        v-model="form.invoice_number"
-                        label="Factura Específica (Opcional)"
-                        placeholder="Ej: FACT-98765"
-                        prepend-inner-icon="tabler-file-invoice"
-                        variant="outlined"
-                        density="comfortable"
-                        hide-details="auto"
-                        hint="Dejar vacío para sincronizar todas las pendientes"
-                        persistent-hint
-                      />
-                    </VCol>
+                <VCol cols="12" md="6">
+                  <VTextField
+                    v-model="form.invoice_number"
+                    label="Factura Específica (Opcional)"
+                    placeholder="Ej: FACT-98765"
+                    prepend-inner-icon="tabler-file-invoice"
+                    variant="outlined"
+                    density="comfortable"
+                    hide-details="auto"
+                    hint="Dejar vacío para sincronizar todas las pendientes"
+                    persistent-hint
+                  />
+                </VCol>
 
-                    <VCol cols="12" class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4 pt-4 border-t">
-                      <VBtn
-                        color="info"
-                        variant="outlined"
-                        prepend-icon="tabler-plug-connected"
-                        :loading="isTesting"
-                        :disabled="!form.username || isSyncing || isSaving"
-                        @click="testConnection"
-                      >
-                        Probar Conexión
-                      </VBtn>
+                <VCol cols="12" class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4 pt-4 border-t">
+                  <VBtn
+                    color="info"
+                    variant="outlined"
+                    prepend-icon="tabler-plug-connected"
+                    :loading="isTesting"
+                    :disabled="!form.username || isSyncing || isSaving"
+                    @click="testConnection"
+                  >
+                    Probar Conexión
+                  </VBtn>
 
-                      <div class="d-flex align-center gap-3">
-                        <VBtn
-                          type="submit"
-                          color="primary"
-                          prepend-icon="tabler-device-floppy"
-                          :loading="isSaving"
-                          :disabled="!isDirty || !canManageBot"
-                        >
-                          Guardar Cambios
-                        </VBtn>
-
-                        <VBtn
-                          color="success"
-                          variant="elevated"
-                          prepend-icon="tabler-player-play"
-                          :loading="isSyncing"
-                          :disabled="!canManageBot"
-                          @click="runSync"
-                        >
-                          Sincronizar Ahora
-                        </VBtn>
-                      </div>
-                    </VCol>
-                  </VRow>
-                </VForm>
-              </VWindowItem>
-
-              <!-- Tab 2: Automatización -->
-              <VWindowItem value="automation">
-                <VRow>
-                  <VCol cols="12" md="6">
-                    <VSwitch
-                      v-model="form.is_active"
-                      label="Activar Bot en Cron Automático"
-                      color="primary"
-                      hint="Habilita la sincronización diaria desatendida"
-                      persistent-hint
-                      hide-details="auto"
-                    />
-                  </VCol>
-
-                  <VCol cols="12" md="6">
-                    <VSelect
-                      v-model="form.sync_frequency"
-                      label="Frecuencia de Extracción"
-                      :items="[
-                        { title: 'Diario (04:45 AM)', value: 'daily' },
-                        { title: 'Cada 12 horas', value: 'twice_daily' },
-                        { title: 'Bajo Demanda', value: 'manual' }
-                      ]"
-                      variant="outlined"
-                      density="comfortable"
-                      hide-details="auto"
-                    />
-                  </VCol>
-
-                  <VCol cols="12" class="d-flex justify-end mt-4">
+                  <div class="d-flex align-center gap-3">
                     <VBtn
+                      type="submit"
                       color="primary"
                       prepend-icon="tabler-device-floppy"
                       :loading="isSaving"
                       :disabled="!isDirty || !canManageBot"
-                      @click="saveConfig"
                     >
-                      Guardar Parámetros
+                      Guardar Cambios
                     </VBtn>
-                  </VCol>
-                </VRow>
-              </VWindowItem>
-            </VWindow>
+
+                    <VBtn
+                      color="success"
+                      variant="elevated"
+                      prepend-icon="tabler-player-play"
+                      :loading="isSyncing"
+                      :disabled="!canManageBot"
+                      @click="runSync"
+                    >
+                      Sincronizar Ahora
+                    </VBtn>
+                  </div>
+                </VCol>
+              </VRow>
+            </VForm>
           </VCardText>
         </VCard>
       </VCol>
