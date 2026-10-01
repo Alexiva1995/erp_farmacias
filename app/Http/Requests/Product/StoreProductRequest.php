@@ -149,22 +149,6 @@ class StoreProductRequest extends FormRequest
     }
 
     /**
-     * Prepare the data for validation.
-     */
-    protected function prepareForValidation(): void
-    {
-        $this->merge([
-            'is_colombian_origin' => filter_var($this->input('is_colombian_origin'), FILTER_VALIDATE_BOOLEAN),
-            'is_novaventa' => filter_var($this->input('is_novaventa'), FILTER_VALIDATE_BOOLEAN),
-            'psychotropic' => filter_var($this->input('psychotropic'), FILTER_VALIDATE_BOOLEAN),
-            'iva' => filter_var($this->input('iva'), FILTER_VALIDATE_BOOLEAN),
-            'is_scarce' => filter_var($this->input('is_scarce'), FILTER_VALIDATE_BOOLEAN),
-            'is_unified_group' => filter_var($this->input('is_unified_group'), FILTER_VALIDATE_BOOLEAN),
-            'no_pvp' => filter_var($this->input('no_pvp'), FILTER_VALIDATE_BOOLEAN),
-        ]);
-    }
-
-    /**
      * Get custom messages for validator errors.
      *
      * @return array
