@@ -1213,12 +1213,18 @@ class IaAssistantReportService
             $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
             $effectiveLeadTime = $isColombian ? 14 : $leadTimeDays;
             $isExtremo = (bool)($item->is_quiebre_extremo_sin_historial ?? false);
+            $isLotePrueba = (bool)($item->is_lote_prueba ?? false);
 
             if ($isExtremo) {
                 $demandaTrueIntent = 0.0;
                 $vpd = 0.0;
                 $rop = 0.0;
                 $stockObjetivo = 0.0;
+            } elseif ($isLotePrueba) {
+                $demandaTrueIntent = min(1.0, (float)($item->promedio_calculado ?? 1.0));
+                $vpd = $demandaTrueIntent / 30;
+                $rop = 1.0;
+                $stockObjetivo = 1.0;
             } else {
                 $baseDemand = $tierTotalDemand > 0 ? $tierTotalDemand : ($item->promedio_calculado ?? 0);
                 $demandaTrueIntent = $baseDemand * $ipo * $elasticityFactor;
@@ -1327,6 +1333,18 @@ class IaAssistantReportService
                                 $sku->motivo_sugerido = 'Rescate omitido (Grupo abastecido por sustitutos en otra liga)';
                             }
                             $sku->rescate_best_seller = 0;
+                        } elseif ($sku->is_lote_prueba ?? false) {
+                            $esUnicoSkuEnGrupo = (count($itemsPorGrupo[$gId] ?? []) === 1);
+                            if ($stockEfectivo <= 0 && ($esUnicoSkuEnGrupo || $grupoDesabastecido)) {
+                                $sku->solicitar = 1;
+                                $sku->pre_asignado_bs = 1.0;
+                                $sku->motivo_sugerido = 'Lote de Prueba / Reintroducción Controlada';
+                            } else {
+                                $sku->solicitar = 0;
+                                $sku->pre_asignado_bs = 0.0;
+                                $sku->motivo_sugerido = 'Lote de prueba omitido (Grupo abastecido por sustitutos)';
+                            }
+                            $sku->rescate_best_seller = 0;
                         } elseif ($isBestSeller && $ropIndividual > $stockEfectivo) {
                             $deficitIndividual = $ropIndividual - $stockEfectivo;
                             $sugeridoRescate = (int)ceil($deficitIndividual);
@@ -1372,6 +1390,18 @@ class IaAssistantReportService
                                 $sku->pre_asignado_bs = 0.0;
                                 $sku->solicitar = 0;
                                 $sku->motivo_sugerido = 'Rescate omitido (Grupo abastecido por sustitutos en otra liga)';
+                            }
+                        } elseif ($sku->is_lote_prueba ?? false) {
+                            $esUnicoSkuEnGrupo = (count($itemsPorGrupo[$gId] ?? []) === 1);
+                            if ($stockEfectivo <= 0 && ($esUnicoSkuEnGrupo || $grupoDesabastecido)) {
+                                $sku->pre_asignado_bs = 1.0;
+                                $sku->solicitar = 1;
+                                $sku->motivo_sugerido = 'Lote de Prueba / Reintroducción Controlada';
+                                $presupuestoObjetivoLiga = max(0.0, $presupuestoObjetivoLiga - 1.0);
+                            } else {
+                                $sku->pre_asignado_bs = 0.0;
+                                $sku->solicitar = 0;
+                                $sku->motivo_sugerido = 'Lote de prueba omitido (Grupo abastecido por sustitutos)';
                             }
                         } elseif ($faltanteIndividual > 0 && $ropIndividual > 0) {
                             $ipoValor = (float)($sku->ipo ?? 0);
@@ -1425,7 +1455,7 @@ class IaAssistantReportService
                         $stockEfectivo = (float)($sku->stock_efectivo ?? 0);
                         $necesidadIndividual = max(0.0, $demandaIndividual - $stockEfectivo);
 
-                        if ($sku->is_quiebre_extremo_sin_historial ?? false) {
+                        if (($sku->is_quiebre_extremo_sin_historial ?? false) || ($sku->is_lote_prueba ?? false)) {
                             $sku->cuota_participacion_ipo = 0;
                             $sku->asignacion_cascada = 0;
                             $sku->solicitar = (int)($sku->pre_asignado_bs ?? 0);
@@ -1642,16 +1672,47 @@ class IaAssistantReportService
                 }
             }
 
-            // Sanación de Demanda por Quiebre Crónico en M1:
-            // Si d1 < 5 días y existen ventas en M2 o M3, reconstruir VDR estrictamente con los días con stock real
+            $totalVentas90d = $v1 + $v2 + $v3;
+            $totalDiasStock90d = $d1 + $d2 + $d3;
+
+            // Regla 4: Protocolo de "Lote de Prueba / Reintroducción"
+            // Si el producto estuvo prácticamente sin stock en todo el trimestre (días stock <= 3 o quiebre >= 85d) y ventas mínimas (<= 2)
+            $esLotePrueba = ($totalDiasStock90d <= 3 || $diasQuiebre90d >= 85) && ($totalVentas90d <= 2) && ($totalVentas90d > 0);
+            $esQuiebreExtremo = ($totalVentas90d <= 0) && ($totalDiasStock90d <= 0 || $diasQuiebre90d >= 60);
+
+            // Reglas 1 y 2: Sanación de Demanda por Quiebre Crónico en M1 con degradación temporal y muestra mínima
             if ($d1 < 5 && ($v2 + $v3) > 0) {
-                $diasStockHistorico = max(1, $d2 + $d3);
-                $vdrSanada = ($v2 + $v3) / $diasStockHistorico;
+                // Filtro de muestra mínima histórica (Días de stock en M2 y M3)
+                $diasStockHistorico = $d2 + $d3;
+
+                // VDR calculada para M2 y M3 con corte de muestra mínima de 3 días
+                $vdr2 = $d2 >= 3 ? ($v2 / $d2) : ($v2 / 30);
+                $vdr3 = $d3 >= 3 ? ($v3 / $d3) : ($v3 / 30);
+
+                // Regla 1: Si la muestra histórica total es insuficiente (< 5 días), no permitir extrapolación agresiva
+                if ($diasStockHistorico < 5) {
+                    $vdrSanada = ($v2 + $v3) / max(30, $diasStockHistorico * 6);
+                } else {
+                    // Regla 2: Ponderación por Degradación Temporal (Time Decay: M2 70%, M3 30%)
+                    $pesoM2 = $d2 > 0 ? (0.70 * ($d2 / 30)) : 0;
+                    $pesoM3 = $d3 > 0 ? (0.30 * ($d3 / 30)) : 0;
+                    $totalPesoHist = $pesoM2 + $pesoM3;
+                    if ($totalPesoHist > 0) {
+                        $vdrSanada = (($pesoM2 * $vdr2) + ($pesoM3 * $vdr3)) / $totalPesoHist;
+                    } else {
+                        $vdrSanada = ($v2 + $v3) / 60;
+                    }
+                }
+
                 $demandaMensualAjustada = $vdrSanada * 30;
+
+                // Regla 3: Límite de Multiplicador de Sanación (Sanitization Cap / Safety Guard)
+                $maxDemandaMultiplicador = max(1.0, $totalVentas90d * 2.5);
+                $demandaMensualAjustada = min($demandaMensualAjustada, $maxDemandaMultiplicador);
 
                 // Techo antiespeculativo basado en la tasa máxima histórica observada
                 $maxHistVdr = max($v2 / max(1, $d2), $v3 / max(1, $d3), ((float)($item->sales_average ?? 0)) / 30, 0.033);
-                $capLimit = max(1.0, $maxHistVdr * 30 * 1.5);
+                $capLimit = max(1.0, min($maxDemandaMultiplicador, $maxHistVdr * 30 * 1.5));
                 $demandaMensualAjustada = min($demandaMensualAjustada, $capLimit);
             } else {
                 // Venta Diaria Real (VDR) estándar con corte de mínimo 3 días
@@ -1672,10 +1733,10 @@ class IaAssistantReportService
                 $cap2 = min($demandaAjustada2, $capLimit);
                 $cap3 = min($demandaAjustada3, $capLimit);
 
-                // Ponderación dinámica bayesiana (Base Temporal 50% / 30% / 20% modulada por días con presencia de stock)
-                $rawW1 = 0.50 * ($d1 / 30);
+                // Ponderación dinámica bayesiana con Degradación Temporal (M1 = 60%, M2 = 30%, M3 = 10%)
+                $rawW1 = 0.60 * ($d1 / 30);
                 $rawW2 = 0.30 * ($d2 / 30);
-                $rawW3 = 0.20 * ($d3 / 30);
+                $rawW3 = 0.10 * ($d3 / 30);
                 $totalRawWeight = $rawW1 + $rawW2 + $rawW3;
 
                 if ($totalRawWeight > 0) {
@@ -1683,26 +1744,39 @@ class IaAssistantReportService
                     $w2 = $rawW2 / $totalRawWeight;
                     $w3 = $rawW3 / $totalRawWeight;
                 } else {
-                    $w1 = 0.50;
+                    $w1 = 0.60;
                     $w2 = 0.30;
-                    $w3 = 0.20;
+                    $w3 = 0.10;
                 }
 
                 $demandaMensualAjustada = ($w1 * $cap1) + ($w2 * $cap2) + ($w3 * $cap3);
-            }
 
-            $esQuiebreExtremo = ($v1 + $v2 + $v3 <= 0) && ($d1 + $d2 + $d3 <= 0 || $diasQuiebre90d >= 60);
+                // Regla 3: Límite de multiplicador de seguridad
+                if ($totalVentas90d > 0) {
+                    $maxDemandaMultiplicador = max(1.0, $totalVentas90d * 2.5);
+                    $demandaMensualAjustada = min($demandaMensualAjustada, $maxDemandaMultiplicador);
+                }
+            }
 
             if ($esQuiebreExtremo) {
                 // Protocolo de Rescate por Quiebre Extremo (>60d/90d sin stock ni ventas)
-                // No inventar una demanda matemática ficticia: la demanda histórica observable reciente es 0.0
                 $demandaMensualAjustada = 0.0;
                 $vpd = 0.0;
                 $rop = 0.0;
                 $stockObjetivo = 0.0;
                 $item->is_quiebre_extremo_sin_historial = true;
+                $item->is_lote_prueba = false;
+            } elseif ($esLotePrueba) {
+                // Protocolo de Lote de Prueba / Reintroducción (Muestra mínima <= 3 días en 90d y ventas <= 2)
+                $demandaMensualAjustada = min(1.0, max(0.5, $totalVentas90d / 3));
+                $vpd = $demandaMensualAjustada / 30;
+                $rop = 1.0;
+                $stockObjetivo = 1.0;
+                $item->is_quiebre_extremo_sin_historial = false;
+                $item->is_lote_prueba = true;
             } else {
                 $item->is_quiebre_extremo_sin_historial = false;
+                $item->is_lote_prueba = false;
                 // Si no hay ventas en los 3 meses pero sí tuvo stock:
                 if ($demandaMensualAjustada <= 0) {
                     $demandaMensualAjustada = (float)(($item->sales_average_weighted ?? 0) > 0 ? $item->sales_average_weighted : ($item->sales_average ?? 0));
@@ -1732,7 +1806,7 @@ class IaAssistantReportService
             $item->peso_m1 = isset($w1) ? round($w1 * 100, 1) : 0;
             $item->peso_m2 = isset($w2) ? round($w2 * 100, 1) : 0;
             $item->peso_m3 = isset($w3) ? round($w3 * 100, 1) : 0;
-            $item->is_quiebre_cronico_sanado = (!$esQuiebreExtremo && $d1 < 5 && ($v2 + $v3) > 0);
+            $item->is_quiebre_cronico_sanado = (!$esQuiebreExtremo && !$esLotePrueba && $d1 < 5 && ($v2 + $v3) > 0);
             $item->vdr_sanada = round($vpd, 3);
             $item->vdr_sanada_individual = round($vpd, 3);
             $item->demanda_sanada_individual = round($demandaMensualAjustada, 2);
@@ -1745,6 +1819,9 @@ class IaAssistantReportService
             if ($esQuiebreExtremo) {
                 $item->solicitar = $stockEfectivo <= 0 ? 1 : 0;
                 $item->motivo_sugerido = 'Lote Mínimo de Exposición / Rescate de Catálogo';
+            } elseif ($esLotePrueba) {
+                $item->solicitar = $stockEfectivo <= 0 ? 1 : 0;
+                $item->motivo_sugerido = 'Lote de Prueba / Reintroducción Controlada';
             } elseif ($stockEfectivo <= $rop) {
                 $sugerido = $stockObjetivo - $stockEfectivo;
                 $item->solicitar = $sugerido > 0 ? ceil($sugerido) : 0;

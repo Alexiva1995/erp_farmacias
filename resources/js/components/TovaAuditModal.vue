@@ -71,6 +71,9 @@
                 <VChip v-if="isQuiebreExtremo" color="warning" size="small" variant="flat" class="font-weight-bold text-white px-2">
                   QUIEBRE (>90D)
                 </VChip>
+                <VChip v-else-if="item?.is_lote_prueba" color="info" size="small" variant="flat" class="font-weight-bold text-white px-2">
+                  LOTE DE PRUEBA
+                </VChip>
                 <VChip v-else-if="hasQuiebreAlert" color="warning" size="small" variant="tonal" class="font-weight-bold">
                   SANACIÓN APLICADA
                 </VChip>
@@ -111,6 +114,10 @@
               <div v-if="isQuiebreExtremo" class="pa-2 bg-amber-lighten-5 border border-amber rounded-lg mb-3 d-flex align-center ga-2 text-caption text-amber-darken-4 font-weight-medium">
                 <VIcon icon="tabler-alert-triangle" size="16" color="warning" />
                 <span>Sin historial en 90 días (Demanda: 0.0 un/mes). Activado Protocolo de Rescate / Lote de Exposición.</span>
+              </div>
+              <div v-else-if="item?.is_lote_prueba" class="pa-2 bg-blue-lighten-5 border border-blue rounded-lg mb-3 d-flex align-center ga-2 text-caption text-blue-darken-4 font-weight-medium">
+                <VIcon icon="tabler-info-circle" size="16" color="info" />
+                <span>Muestra histórica mínima detectada (Días stock ≤ 3d). Modo Lote de Prueba activo (Demanda y sugerido controlados).</span>
               </div>
               <div v-else-if="hasQuiebreAlert" class="pa-2 bg-amber-lighten-5 border border-amber rounded-lg mb-3 d-flex align-center ga-2 text-caption text-amber-darken-4 font-weight-medium">
                 <VIcon icon="tabler-alert-triangle" size="16" color="warning" />
