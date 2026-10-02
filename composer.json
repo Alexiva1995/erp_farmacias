@@ -21,6 +21,7 @@
         "react/http": "^1.11",
         "smalot/pdfparser": "^2.12",
         "spatie/laravel-data": "^4.16",
+        "stancl/tenancy": "^3.10",
         "thecodingmachine/safe": "^3.4"
     },
     "require-dev": {

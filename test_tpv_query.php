@@ -11,32 +11,15 @@ use Illuminate\Support\Facades\DB;
 use App\Services\Order\OrderQueryService;
 use Illuminate\Http\Request;
 
-$svc = app(OrderQueryService::class);
+$p = App\Models\Product::find(12358);
+echo "PRODUCT 12358:" . PHP_EOL;
+echo json_encode($p ? $p->toArray() : 'not found', JSON_PRETTY_PRINT) . PHP_EOL;
 
-$request = Request::create('/api/tpv/order', 'GET', [
-    'page' => '1',
-    'itemsPerPage' => '10',
-    'sortBy' => 'valid_stock',
-    'orderBy' => 'desc',
-    'isStrictSearch' => 'false',
-]);
+$rates = DB::table('exchange_rates')->get();
+echo "EXCHANGE RATES:" . PHP_EOL;
+echo json_encode($rates, JSON_PRETTY_PRINT) . PHP_EOL;
 
-try {
-    // Query para datos (con ORDER BY)
-    $dataQuery = $svc->getFilteredQueryProduct($request);
-    
-    // Query para conteo (sin ORDER BY - tal como lo hace el controlador actualizado)
-    $countQuery = $svc->getCountQueryProduct($request);
-    $total = $countQuery->count();
+$generalSettings = DB::table('general_settings')->first();
+echo "GENERAL SETTINGS:" . PHP_EOL;
+echo json_encode($generalSettings, JSON_PRETTY_PRINT) . PHP_EOL;
 
-    $items = $dataQuery->skip(0)->take(3)->get();
-
-    echo "total: $total" . PHP_EOL;
-    echo "items: " . count($items) . PHP_EOL;
-    foreach ($items as $item) {
-        echo "  [{$item->item_type}] {$item->name} stock={$item->valid_stock_sum}" . PHP_EOL;
-    }
-    echo PHP_EOL . "OK - El endpoint funciona" . PHP_EOL;
-} catch (Exception $e) {
-    echo "ERROR: " . $e->getMessage() . PHP_EOL;
-}
