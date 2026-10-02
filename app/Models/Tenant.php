@@ -13,6 +13,9 @@ class Tenant extends BaseTenant implements TenantWithDatabase
 {
     use HasDatabase, HasDomains;
 
+    protected $keyType = 'string';
+    public $incrementing = false;
+
     /**
      * Define custom columns for the tenant table.
      *
