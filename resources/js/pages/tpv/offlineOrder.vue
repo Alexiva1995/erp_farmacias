@@ -628,6 +628,22 @@ onUnmounted(() => {
           <div class="d-flex align-center gap-1 gap-sm-2 flex-shrink-0 ms-auto">
             <VChip
               size="x-small"
+              color="primary"
+              variant="tonal"
+              class="font-weight-bold d-none d-sm-inline-flex"
+            >
+              Tasa COP: {{ formatCurrency(cachedRates.COP, 'COP') }}
+            </VChip>
+            <VChip
+              size="x-small"
+              color="primary"
+              variant="tonal"
+              class="font-weight-bold d-none d-sm-inline-flex"
+            >
+              Tasa Bs: {{ formatCurrency(cachedRates.BS, 'BS') }}
+            </VChip>
+            <VChip
+              size="x-small"
               :color="isOnline ? 'success' : 'warning'"
               variant="tonal"
               class="font-weight-black text-uppercase me-2"

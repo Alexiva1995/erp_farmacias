@@ -4,8 +4,16 @@ import { toast } from '@/plugins/sweetalert'
 import { roundUpToNearestHundred } from '@/utils/roundUpToNearesHundred.js'
 
 export function useTpvCheckoutCalculations(props, payments, brandingStore) {
-  const exchangeRates = ref({})
-  const ratesLoaded = ref(false)
+  const storedBs = Number(localStorage.getItem('tpv_offline_rate_bs')) || 45.50
+  const storedCop = Number(localStorage.getItem('tpv_offline_rate_cop')) || 4100
+  const fallbackRates = {
+    USD: { BS: storedBs, COP: storedCop },
+    BS: { USD: 1 / storedBs, COP: storedCop / storedBs },
+    COP: { USD: 1 / storedCop, BS: storedBs / storedCop },
+  }
+
+  const exchangeRates = ref(fallbackRates)
+  const ratesLoaded = ref(true)
 
   const isCredit = (value) => value === 'credit'
   const isCashMethod = (method) => !!method && (method === 'cash' || method.startsWith('cash_'))
@@ -66,7 +74,18 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
   })
 
   const fetchExchangeRates = async () => {
-    ratesLoaded.value = false
+    if (!navigator.onLine || props.isOffline) {
+      const sBs = Number(localStorage.getItem('tpv_offline_rate_bs')) || 45.50
+      const sCop = Number(localStorage.getItem('tpv_offline_rate_cop')) || 4100
+      exchangeRates.value = {
+        USD: { BS: sBs, COP: sCop },
+        BS: { USD: 1 / sBs, COP: sCop / sBs },
+        COP: { USD: 1 / sCop, BS: sBs / sCop },
+      }
+      ratesLoaded.value = true
+      return
+    }
+
     try {
       const response = await axios.get('/public/exchange-rates')
       if (response.status !== 200) {
@@ -123,19 +142,15 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
 
       exchangeRates.value = formattedRates
       ratesLoaded.value = true
-      console.warn('[TPV DEBUG TASAS CARGADAS EN MEMORIA]', formattedRates)
     } catch (error) {
-      // Fallback a tasas cacheadas en localStorage si no hay red
-      const storedBs = Number(localStorage.getItem('tpv_offline_rate_bs')) || 45.50
-      const storedCop = Number(localStorage.getItem('tpv_offline_rate_cop')) || 4100
-      const fallbackRates = {
-        USD: { BS: storedBs, COP: storedCop },
-        BS: { USD: 1 / storedBs, COP: storedCop / storedBs },
-        COP: { USD: 1 / storedCop, BS: storedBs / storedCop },
+      const sBs = Number(localStorage.getItem('tpv_offline_rate_bs')) || 45.50
+      const sCop = Number(localStorage.getItem('tpv_offline_rate_cop')) || 4100
+      exchangeRates.value = {
+        USD: { BS: sBs, COP: sCop },
+        BS: { USD: 1 / sBs, COP: sCop / sBs },
+        COP: { USD: 1 / sCop, BS: sBs / sCop },
       }
-      exchangeRates.value = fallbackRates
       ratesLoaded.value = true
-      console.warn('[TPV] Usando tasas offline desde caché local:', fallbackRates)
     }
   }
 

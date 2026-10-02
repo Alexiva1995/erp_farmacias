@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from '@/plugins/axios'
 import OfflineOrder from '@/pages/tpv/offlineOrder.vue'
@@ -9,6 +9,16 @@ const router = useRouter()
 const route = useRoute()
 const showOfflineModal = ref(false)
 const isFullscreenOffline = ref(false)
+
+const rateBs = computed(() => {
+  const val = Number(localStorage.getItem('tpv_offline_rate_bs')) || 45.50
+  return val.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+})
+
+const rateCop = computed(() => {
+  const val = Number(localStorage.getItem('tpv_offline_rate_cop')) || 4100
+  return val.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+})
 
 // ─── 1. Detección por Eventos Nativos del DOM (Corte de Red Real) ────────────
 const handleOffline = () => {
@@ -153,7 +163,7 @@ onUnmounted(() => {
       v-model="isFullscreenOffline"
       fullscreen
       transition="dialog-bottom-transition"
-      style="z-index: 10000;"
+      :z-index="10000"
     >
       <VCard class="d-flex flex-column h-100 bg-background">
         <!-- Barra Superior de Contingencia -->
@@ -162,6 +172,30 @@ onUnmounted(() => {
           <VToolbarTitle class="font-weight-bold text-body-1">
             MODO CONTINGENCIA OFFLINE — ERP FARMACIAS
           </VToolbarTitle>
+
+          <!-- Indicadores de Tasas Usadas en Contingencia -->
+          <div class="d-none d-sm-flex align-center gap-2 me-3">
+            <VChip
+              size="small"
+              color="white"
+              variant="flat"
+              class="font-weight-black text-warning elevation-1 px-3"
+            >
+              <VIcon icon="tabler-coin" size="14" class="me-1 text-warning" />
+              Tasa COP: {{ rateCop }}
+            </VChip>
+
+            <VChip
+              size="small"
+              color="white"
+              variant="flat"
+              class="font-weight-black text-warning elevation-1 px-3"
+            >
+              <VIcon icon="tabler-coin" size="14" class="me-1 text-warning" />
+              Tasa Bs: {{ rateBs }}
+            </VChip>
+          </div>
+
           <VSpacer />
           <VBtn
             icon="tabler-x"

@@ -266,6 +266,8 @@ const activeDiscountDisplay = computed(() => {
     transition="dialog-bottom-transition"
     class="buys-modal-dialog"
     scrollable
+    :z-index="20000"
+    style="z-index: 20000 !important;"
   >
     <VCard class="rounded-xl glass-card elevation-4 max-h-90vh overflow-hidden d-flex flex-column">
       <VCardTitle class="d-flex align-center pa-4 border-b bg-surface">
