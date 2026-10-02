@@ -54,18 +54,36 @@ export async function syncCatalogInBackground() {
     // 1. Sincronizar tasas de cambio
     try {
       const ratesRes = await axios.get('/public/exchange-rates')
-      const ratesData = ratesRes.data?.data || ratesRes.data || []
-      const rateBsObj = ratesData.find(r => r.currency_to === 'BS' || r.code === 'BS' || r.currency === 'BS')
-      const rateCopObj = ratesData.find(r => r.currency_to === 'COP' || r.code === 'COP' || r.currency === 'COP')
+      const apiRates = Array.isArray(ratesRes.data) ? ratesRes.data : (ratesRes.data?.data || [])
+      
+      let rateBs = null
+      let rateCop = null
+      let rateEur = null
+      let rateBcv = null
+      let rateBinance = null
 
-      if (rateBsObj?.rate || rateBsObj?.effective_rate) {
-        localStorage.setItem('tpv_offline_rate_bs', String(rateBsObj.effective_rate || rateBsObj.rate))
+      apiRates.forEach(r => {
+        const code = String(r.currency_code || r.code || r.currency || '').toUpperCase()
+        const val = parseFloat(r.rate)
+        if (code === 'BS') rateBs = val
+        if (code === 'COP') rateCop = val
+        if (code === 'EUR') rateEur = val
+        if (code === 'BCV') rateBcv = val
+        if (code === 'BINANCE') rateBinance = val
+      })
+
+      // Para farmacia la tasa de Bs estándar es EUR o BS o BCV
+      const activeBsRate = rateEur || rateBs || rateBcv || rateBinance
+      const activeCopRate = rateCop
+
+      if (activeBsRate && !isNaN(activeBsRate) && activeBsRate > 0) {
+        localStorage.setItem('tpv_offline_rate_bs', String(activeBsRate))
       }
-      if (rateCopObj?.rate || rateCopObj?.effective_rate) {
-        localStorage.setItem('tpv_offline_rate_cop', String(rateCopObj.effective_rate || rateCopObj.rate))
+      if (activeCopRate && !isNaN(activeCopRate) && activeCopRate > 0) {
+        localStorage.setItem('tpv_offline_rate_cop', String(activeCopRate))
       }
     } catch (e) {
-      // Silenciar error secundario de tasas
+      console.warn('[Offline Sync] Error sincronizando tasas:', e)
     }
 
     // 2. Descargar catálogo completo de productos del TPV

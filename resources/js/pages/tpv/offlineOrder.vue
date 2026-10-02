@@ -61,8 +61,47 @@ const formatCurrency = (val, currency = selectedDisplayCurrency.value) => {
 }
 
 // ─── Eventos de Conexión ─────────────────────────────────────────────────────
+const fetchRatesFromApi = async () => {
+  if (!navigator.onLine) return
+  try {
+    const ratesRes = await axios.get('/public/exchange-rates')
+    const apiRates = Array.isArray(ratesRes.data) ? ratesRes.data : (ratesRes.data?.data || [])
+    
+    let rateBs = null
+    let rateCop = null
+    let rateEur = null
+    let rateBcv = null
+    let rateBinance = null
+
+    apiRates.forEach(r => {
+      const code = String(r.currency_code || r.code || r.currency || '').toUpperCase()
+      const val = parseFloat(r.rate)
+      if (code === 'BS') rateBs = val
+      if (code === 'COP') rateCop = val
+      if (code === 'EUR') rateEur = val
+      if (code === 'BCV') rateBcv = val
+      if (code === 'BINANCE') rateBinance = val
+    })
+
+    const activeBsRate = rateEur || rateBs || rateBcv || rateBinance
+    const activeCopRate = rateCop
+
+    if (activeBsRate && !isNaN(activeBsRate) && activeBsRate > 0) {
+      cachedRates.value.BS = activeBsRate
+      localStorage.setItem('tpv_offline_rate_bs', String(activeBsRate))
+    }
+    if (activeCopRate && !isNaN(activeCopRate) && activeCopRate > 0) {
+      cachedRates.value.COP = activeCopRate
+      localStorage.setItem('tpv_offline_rate_cop', String(activeCopRate))
+    }
+  } catch (e) {
+    console.warn('[Offline TPV] Error obteniendo tasas en tiempo real:', e)
+  }
+}
+
 const handleOnline = () => {
   isOnline.value = true
+  fetchRatesFromApi()
   syncCatalogInBackground().then(() => loadLocalCatalog())
 }
 
@@ -87,6 +126,7 @@ const loadLocalCatalog = async () => {
           }
         })
       } else if (navigator.onLine) {
+        fetchRatesFromApi()
         syncCatalogInBackground().then(() => loadLocalCatalog())
       }
     }
@@ -99,12 +139,26 @@ const loadLocalCatalog = async () => {
 const getProductPriceWithoutTax = (product, currency = selectedDisplayCurrency.value) => {
   const baseUsd = parseFloat(product.base_price_usd || product.sale_price || 0)
   const prodPct = parseFloat(product.discount_percentage || 0)
-  const discountedUsd = prodPct > 0 ? baseUsd * (1 - prodPct / 100) : baseUsd
 
-  if (currency === 'USD') return discountedUsd
-  if (currency === 'BS') return discountedUsd * cachedRates.value.BS
-  if (currency === 'COP') return discountedUsd * cachedRates.value.COP
-  return discountedUsd
+  if (currency === 'USD') {
+    return prodPct > 0 ? baseUsd * (1 - prodPct / 100) : baseUsd
+  }
+
+  if (currency === 'BS') {
+    const baseBs = (product.price_bs && Number(product.price_bs) > 0)
+      ? Number(product.price_bs)
+      : (baseUsd * cachedRates.value.BS)
+    return prodPct > 0 ? baseBs * (1 - prodPct / 100) : baseBs
+  }
+
+  if (currency === 'COP') {
+    const baseCop = (product.price_cop && Number(product.price_cop) > 0)
+      ? Number(product.price_cop)
+      : (baseUsd * cachedRates.value.COP)
+    return prodPct > 0 ? baseCop * (1 - prodPct / 100) : baseCop
+  }
+
+  return baseUsd
 }
 
 const getProductPriceWithTax = (product, currency = selectedDisplayCurrency.value) => {
@@ -113,6 +167,8 @@ const getProductPriceWithTax = (product, currency = selectedDisplayCurrency.valu
   const finalPrice = taxRate > 0 ? priceSinIva * (1 + taxRate) : priceSinIva
 
   if (currency === 'COP') return roundUpToNearestHundred(finalPrice)
+  return finalPrice
+}
   return finalPrice
 }
 
@@ -355,6 +411,7 @@ const syncAndReturn = async () => {
 }
 
 const manualSyncCatalog = async () => {
+  await fetchRatesFromApi()
   await syncCatalogInBackground()
   await loadLocalCatalog()
 }
@@ -372,6 +429,7 @@ onMounted(async () => {
   window.addEventListener('online', handleOnline)
   window.addEventListener('offline', handleOffline)
 
+  await fetchRatesFromApi()
   await loadLocalCatalog()
   await updatePendingSyncCount()
 })
@@ -687,52 +745,37 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Botones de Acción Inferiores: Cancelar + Reservar (50%) | Cobrar (50%) -->
+          <!-- Botones de Acción Inferiores: Cancelar | Cobrar -->
           <div>
             <VRow dense class="align-center">
-              <!-- 50%: Cancelar (Gris neutro) y Reservar (Naranja outlined) -->
-              <VCol cols="12" sm="6">
-                <div class="d-flex align-center gap-2">
-                  <VBtn
-                    color="secondary"
-                    variant="outlined"
-                    height="44"
-                    class="flex-grow-1 rounded-lg font-weight-bold text-none btn-neutral-cancel"
-                    :disabled="cart.length === 0"
-                    @click="clearCart"
-                  >
-                    <VIcon icon="tabler-trash" size="18" class="me-1" />
-                    <span>Cancelar</span>
-                  </VBtn>
-
-                  <VBtn
-                    color="warning"
-                    variant="outlined"
-                    height="44"
-                    class="flex-grow-1 rounded-lg font-weight-bold text-none"
-                    :disabled="cart.length === 0"
-                  >
-                    <VIcon icon="tabler-hourglass" size="18" class="me-1" />
-                    <span>Reservar</span>
-                  </VBtn>
-                </div>
+              <VCol cols="12" sm="4">
+                <VBtn
+                  color="secondary"
+                  variant="outlined"
+                  height="44"
+                  block
+                  class="rounded-lg font-weight-bold text-none btn-neutral-cancel"
+                  :disabled="cart.length === 0"
+                  @click="clearCart"
+                >
+                  <VIcon icon="tabler-trash" size="18" class="me-1" />
+                  <span>Cancelar</span>
+                </VBtn>
               </VCol>
 
-              <!-- 50%: Cobrar Ahora destacado con color primario -->
-              <VCol cols="12" sm="6">
-                <div class="d-flex align-center gap-2">
-                  <VBtn
-                    color="primary"
-                    variant="flat"
-                    height="44"
-                    class="flex-grow-1 rounded-lg font-weight-bold text-none elevation-2 text-subtitle-2"
-                    :disabled="cart.length === 0 || isProcessing"
-                    @click="handleOpenCheckoutModal"
-                  >
-                    <VIcon icon="tabler-circle-check" size="20" class="me-1" />
-                    <span>COBRAR AHORA</span>
-                  </VBtn>
-                </div>
+              <VCol cols="12" sm="8">
+                <VBtn
+                  color="primary"
+                  variant="flat"
+                  height="44"
+                  block
+                  class="rounded-lg font-weight-bold text-none elevation-2 text-subtitle-2"
+                  :disabled="cart.length === 0 || isProcessing"
+                  @click="handleOpenCheckoutModal"
+                >
+                  <VIcon icon="tabler-circle-check" size="20" class="me-1" />
+                  <span>COBRAR AHORA</span>
+                </VBtn>
               </VCol>
             </VRow>
           </div>
