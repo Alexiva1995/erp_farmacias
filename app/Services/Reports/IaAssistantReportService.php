@@ -1790,10 +1790,10 @@ class IaAssistantReportService
                 $cap2 = min($demandaAjustada2, $capLimit);
                 $cap3 = min($demandaAjustada3, $capLimit);
 
-                // Ponderación dinámica bayesiana con Degradación Temporal (M1 = 60%, M2 = 30%, M3 = 10%)
-                $rawW1 = 0.60 * ($d1 / 30);
+                // Ponderación dinámica bayesiana estándar (M1 = 50%, M2 = 30%, M3 = 20%)
+                $rawW1 = 0.50 * ($d1 / 30);
                 $rawW2 = 0.30 * ($d2 / 30);
-                $rawW3 = 0.10 * ($d3 / 30);
+                $rawW3 = 0.20 * ($d3 / 30);
                 $totalRawWeight = $rawW1 + $rawW2 + $rawW3;
 
                 if ($totalRawWeight > 0) {
@@ -1801,9 +1801,9 @@ class IaAssistantReportService
                     $w2 = $rawW2 / $totalRawWeight;
                     $w3 = $rawW3 / $totalRawWeight;
                 } else {
-                    $w1 = 0.60;
+                    $w1 = 0.50;
                     $w2 = 0.30;
-                    $w3 = 0.10;
+                    $w3 = 0.20;
                 }
 
                 $demandaMensualAjustada = ($w1 * $cap1) + ($w2 * $cap2) + ($w3 * $cap3);
