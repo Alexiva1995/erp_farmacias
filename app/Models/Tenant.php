@@ -16,15 +16,22 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     protected $keyType = 'string';
     public $incrementing = false;
 
-    /**
-     * Define custom columns for the tenant table.
-     *
-     * @return array<int, string>
-     */
+    public function getIncrementing(): bool
+    {
+        return false;
+    }
+
+    public function getKeyType(): string
+    {
+        return 'string';
+    }
+
     public static function getCustomColumns(): array
     {
         return [
             'id',
+            'created_at',
+            'updated_at',
         ];
     }
 }
