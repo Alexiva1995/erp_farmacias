@@ -3,15 +3,17 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from '@/plugins/axios'
 import OfflineOrder from '@/pages/tpv/offlineOrder.vue'
+import { syncCatalogInBackground } from '@/composables/useOfflineCatalogSync'
 
 const router = useRouter()
 const route = useRoute()
 const showOfflineModal = ref(false)
 const isFullscreenOffline = ref(false)
 
-// ─── 1. Detección por Eventos Nativos del DOM ────────────────────────────────
+// ─── 1. Detección por Eventos Nativos del DOM (Corte de Red Real) ────────────
 const handleOffline = () => {
-  if (route.path !== '/tpv/offlineOrder' && !isFullscreenOffline.value) {
+  // Solo abrir si REALMENTE el navegador perdió la conexión a internet
+  if (!navigator.onLine && route.path !== '/tpv/offlineOrder' && !isFullscreenOffline.value) {
     showOfflineModal.value = true
   }
 }
@@ -20,12 +22,19 @@ const handleOnline = () => {
   showOfflineModal.value = false
 }
 
-// ─── 2. Detección por Interceptor Global de Axios ────────────────────────────
+// ─── 2. Interceptor de Axios Estricto (Sin falsos positivos por timeouts) ────
 const setupAxiosInterceptor = () => {
   axios.interceptors.response.use(
     (response) => response,
     (error) => {
-      if (!error.response || error.code === 'ECONNABORTED' || error.message === 'Network Error') {
+      // Ignorar cancelaciones voluntarias de peticiones (debounce, navegación, etc.)
+      if (axios.isCancel(error) || error.code === 'ERR_CANCELED' || error.name === 'CanceledError') {
+        return Promise.reject(error)
+      }
+
+      // Solo activar el modal de desconexión si navigator.onLine es false
+      // Esto evita que errores 404, 500, validaciones o timeouts con internet abran el modal
+      if (!navigator.onLine) {
         if (route.path !== '/tpv/offlineOrder' && !isFullscreenOffline.value) {
           showOfflineModal.value = true
         }
@@ -38,7 +47,6 @@ const setupAxiosInterceptor = () => {
 // ─── 3. Acciones del Modal ───────────────────────────────────────────────────
 const goToContingency = () => {
   showOfflineModal.value = false
-  // Al estar empaquetado directamente en memoria, se abre instantáneamente a 0ms sin peticiones de red
   isFullscreenOffline.value = true
 }
 
@@ -49,8 +57,6 @@ const ignoreWarning = () => {
 const closeOfflineView = () => {
   isFullscreenOffline.value = false
 }
-
-import { syncCatalogInBackground } from '@/composables/useOfflineCatalogSync'
 
 let backgroundSyncInterval = null
 
@@ -84,7 +90,7 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <!-- Modal de Advertencia de Desconexión -->
+    <!-- Modal de Advertencia de Desconexión (Solo cuando realmente no hay internet) -->
     <VDialog
       v-model="showOfflineModal"
       persistent
