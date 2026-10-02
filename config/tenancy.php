@@ -22,6 +22,7 @@ return [
         'erp_farmacias.test',
         'tovaerp.com',
         'www.tovaerp.com',
+        'zorcasalud.tovaerp.com',
     ],
 
     /**
