@@ -13,7 +13,10 @@ import {
 const router = useRouter()
 const emit = defineEmits(['synced'])
 
-// ─── Estado de Tasas ─────────────────────────────────────────────────────────
+// ─── Estado de Tasas y Moneda Activa ──────────────────────────────────────────
+const selectedDisplayCurrency = ref('COP') // 'COP' | 'USD' | 'BS'
+const availableCurrencies = ['COP', 'USD', 'BS']
+
 const cachedRates = ref({
   USD: 1,
   BS: Number(localStorage.getItem('tpv_offline_rate_bs')) || 45.50,
@@ -21,21 +24,23 @@ const cachedRates = ref({
 })
 
 // ─── Estado de Productos y Carrito ───────────────────────────────────────────
-const searchQuery = ref('')
+const barcodeSearchQuery = ref('')
 const cart = ref([])
 const localProducts = ref([])
 const isProcessing = ref(false)
 const syncPendingCount = ref(0)
 const notFoundMessage = ref('')
 const showNotFoundSnackbar = ref(false)
-const activeTab = ref('catalog') // 'catalog' | 'scanner'
+const showCheckoutModal = ref(false)
+const selectedPaymentMethod = ref('cash_cop')
+const isStrictSearch = ref(false)
 
 // Cantidades de entrada para añadir (Map productId -> quantity)
 const inputQuantities = ref(new Map())
 
 // Paginación y búsqueda del catálogo local
 const catalogPage = ref(1)
-const catalogItemsPerPage = ref(10)
+const catalogItemsPerPage = ref(15)
 const catalogSearchFilter = ref('')
 
 // ─── Estado de Conexión y Sincronización de Órdenes ───────────────────────────
@@ -43,20 +48,16 @@ const isOnline = ref(navigator.onLine)
 const isSyncingOrders = ref(false)
 const syncProgress = ref({ current: 0, total: 0 })
 
-// ─── Formateadores Numéricos ────────────────────────────────────────────────
-const formatUsd = (val) => {
+// ─── Formateadores de Moneda ────────────────────────────────────────────────
+const formatCurrency = (val, currency = selectedDisplayCurrency.value) => {
   const num = Number(val) || 0
+  if (currency === 'COP') {
+    return `${num.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} COP`
+  }
+  if (currency === 'BS') {
+    return `${num.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`
+  }
   return num.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-const formatBs = (val) => {
-  const num = Number(val) || 0
-  return num.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-const formatCop = (val) => {
-  const num = Number(val) || 0
-  return num.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 // ─── Eventos de Conexión ─────────────────────────────────────────────────────
@@ -94,21 +95,31 @@ const loadLocalCatalog = async () => {
   }
 }
 
-// ─── Lógica de Precios y Ofertas ─────────────────────────────────────────────
-const calculatePriceWithDiscount = (basePrice, product = null) => {
-  const price = parseFloat(basePrice) || 0
-  const prodPct = parseFloat(product?.discount_percentage || 0)
-  return prodPct > 0 ? price * (1 - prodPct / 100) : price
+// ─── Lógica de Precios y Monedas ─────────────────────────────────────────────
+const getProductPriceWithoutTax = (product, currency = selectedDisplayCurrency.value) => {
+  const baseUsd = parseFloat(product.base_price_usd || product.sale_price || 0)
+  const prodPct = parseFloat(product.discount_percentage || 0)
+  const discountedUsd = prodPct > 0 ? baseUsd * (1 - prodPct / 100) : baseUsd
+
+  if (currency === 'USD') return discountedUsd
+  if (currency === 'BS') return discountedUsd * cachedRates.value.BS
+  if (currency === 'COP') return discountedUsd * cachedRates.value.COP
+  return discountedUsd
 }
 
-const getActivePrice = (item) => {
-  if (item.has_individual_offer && item.offer_expires_at) {
-    const isNotExpired = new Date() < new Date(item.offer_expires_at)
-    if (isNotExpired && item.offer_price_usd) {
-      return Number(item.offer_price_usd)
-    }
-  }
-  return calculatePriceWithDiscount(item.base_price_usd, item)
+const getProductPriceWithTax = (product, currency = selectedDisplayCurrency.value) => {
+  const priceSinIva = getProductPriceWithoutTax(product, currency)
+  const taxRate = product.iva == 1 ? 0.16 : 0
+  const finalPrice = taxRate > 0 ? priceSinIva * (1 + taxRate) : priceSinIva
+
+  if (currency === 'COP') return roundUpToNearestHundred(finalPrice)
+  return finalPrice
+}
+
+const getProductIvaAmount = (product, currency = selectedDisplayCurrency.value) => {
+  if (product.iva != 1) return 0
+  const priceSinIva = getProductPriceWithoutTax(product, currency)
+  return priceSinIva * 0.16
 }
 
 // ─── Filtrado del Catálogo Completo ──────────────────────────────────────────
@@ -116,13 +127,22 @@ const filteredCatalog = computed(() => {
   const query = catalogSearchFilter.value.trim().toLowerCase()
   if (!query) return localProducts.value
 
-  return localProducts.value.filter(p => 
-    (p.barcode && p.barcode.toLowerCase().includes(query)) || 
-    (p.name && p.name.toLowerCase().includes(query)) ||
-    (p.active_ingredient && p.active_ingredient.toLowerCase().includes(query)) ||
-    (p.laboratory_name && p.laboratory_name.toLowerCase().includes(query)) ||
-    String(p.id) === query
-  )
+  return localProducts.value.filter(p => {
+    if (isStrictSearch.value) {
+      return (
+        (p.barcode && p.barcode.toLowerCase() === query) ||
+        (p.name && p.name.toLowerCase().startsWith(query)) ||
+        String(p.id) === query
+      )
+    }
+    return (
+      (p.barcode && p.barcode.toLowerCase().includes(query)) || 
+      (p.name && p.name.toLowerCase().includes(query)) ||
+      (p.active_ingredient && p.active_ingredient.toLowerCase().includes(query)) ||
+      (p.laboratory_name && p.laboratory_name.toLowerCase().includes(query)) ||
+      String(p.id) === query
+    )
+  })
 })
 
 const paginatedCatalog = computed(() => {
@@ -134,9 +154,9 @@ const totalCatalogPages = computed(() => {
   return Math.ceil(filteredCatalog.value.length / catalogItemsPerPage.value) || 1
 })
 
-// ─── Escáner de Código de Barras ─────────────────────────────────────────────
+// ─── Escáner de Código de Barras / Búsqueda Rápida de Orden ─────────────────
 const handleBarcodeScan = () => {
-  const query = searchQuery.value.trim().toLowerCase()
+  const query = barcodeSearchQuery.value.trim().toLowerCase()
   if (!query) return
 
   let found = localProducts.value.find(p => p.barcode === query || String(p.id) === query)
@@ -147,9 +167,9 @@ const handleBarcodeScan = () => {
 
   if (found) {
     addToCart(found, 1)
-    searchQuery.value = ''
+    barcodeSearchQuery.value = ''
   } else {
-    notFoundMessage.value = `Código o producto "${searchQuery.value}" no encontrado en la caché (${localProducts.value.length} productos cargados).`
+    notFoundMessage.value = `Código o producto "${barcodeSearchQuery.value}" no encontrado en la memoria local (${localProducts.value.length} productos).`
     showNotFoundSnackbar.value = true
   }
 }
@@ -182,21 +202,49 @@ const handleQuantityInput = (productId, val) => {
   inputQuantities.value.set(productId, cleanVal)
 }
 
+const incrementCartItem = (product) => {
+  product.quantity += 1
+}
+
+const decrementCartItem = (product) => {
+  if (product.quantity > 1) {
+    product.quantity -= 1
+  }
+}
+
 const removeFromCart = (index) => {
   cart.value.splice(index, 1)
 }
 
-// ─── Cálculos Multimoneda ────────────────────────────────────────────────────
-const cartTotalUSD = computed(() => {
-  return cart.value.reduce((total, item) => total + (getActivePrice(item) * item.quantity), 0)
+const clearCart = () => {
+  cart.value = []
+}
+
+// ─── Cálculos Totales del Carrito ────────────────────────────────────────────
+const cartSubtotal = computed(() => {
+  return cart.value.reduce((sum, item) => {
+    return sum + (getProductPriceWithoutTax(item, selectedDisplayCurrency.value) * item.quantity)
+  }, 0)
 })
 
-const totals = computed(() => {
-  return {
-    USD: cartTotalUSD.value.toFixed(2),
-    BS: (cartTotalUSD.value * cachedRates.value.BS).toFixed(2),
-    COP: (cartTotalUSD.value * cachedRates.value.COP).toFixed(0),
+const cartIva = computed(() => {
+  return cart.value.reduce((sum, item) => {
+    return sum + (getProductIvaAmount(item, selectedDisplayCurrency.value) * item.quantity)
+  }, 0)
+})
+
+const cartTotal = computed(() => {
+  const total = cartSubtotal.value + cartIva.value
+  if (selectedDisplayCurrency.value === 'COP') {
+    return roundUpToNearestHundred(total)
   }
+  return total
+})
+
+const cartTotalUsd = computed(() => {
+  return cart.value.reduce((sum, item) => {
+    return sum + (getProductPriceWithTax(item, 'USD') * item.quantity)
+  }, 0)
 })
 
 // ─── Operaciones de Venta Offline ────────────────────────────────────────────
@@ -206,6 +254,11 @@ const generateUUID = () => {
     const v = c === 'x' ? r : (r & 0x3 | 0x8)
     return v.toString(16)
   })
+}
+
+const handleOpenCheckoutModal = () => {
+  if (cart.value.length === 0) return
+  showCheckoutModal.value = true
 }
 
 const processOfflineOrder = async () => {
@@ -218,7 +271,10 @@ const processOfflineOrder = async () => {
       uuid: generateUUID(),
       timestamp: new Date().toISOString(),
       items: JSON.parse(JSON.stringify(cart.value)),
-      total_usd: cartTotalUSD.value,
+      total_usd: cartTotalUsd.value,
+      total_amount: cartTotal.value,
+      currency: selectedDisplayCurrency.value,
+      payment_method: selectedPaymentMethod.value,
       rates_used: { ...cachedRates.value },
       status: 'pending_sync',
     }
@@ -229,6 +285,7 @@ const processOfflineOrder = async () => {
 
     tx.oncomplete = () => {
       cart.value = []
+      showCheckoutModal.value = false
       isProcessing.value = false
       updatePendingSyncCount()
     }
@@ -302,6 +359,14 @@ const manualSyncCatalog = async () => {
   await loadLocalCatalog()
 }
 
+// ─── Helpers de Ubicación y Estilos ──────────────────────────────────────────
+const getProductLocations = (product) => {
+  if (product.lot_locations && Array.isArray(product.lot_locations) && product.lot_locations.length > 0) {
+    return product.lot_locations.filter(Boolean)
+  }
+  return product.location ? [product.location] : []
+}
+
 // ─── Ciclo de Vida ───────────────────────────────────────────────────────────
 onMounted(async () => {
   window.addEventListener('online', handleOnline)
@@ -318,21 +383,21 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <VContainer fluid class="pa-0">
+  <VContainer fluid class="pa-2">
     <!-- Alerta dinámica cuando vuelve el Internet -->
     <VSlideYTransition>
       <VAlert
         v-if="isOnline && syncPendingCount > 0"
         type="success"
         variant="elevated"
-        class="mb-4"
+        class="mb-3"
         elevation="3"
       >
         <div class="d-flex align-center justify-space-between w-100 flex-wrap gap-2">
           <div>
-            <span class="text-h6 font-weight-bold d-block mb-1">¡Conexión Restablecida!</span>
+            <span class="text-subtitle-1 font-weight-bold d-block mb-1">¡Conexión Restablecida!</span>
             <span class="text-body-2">
-              Tienes {{ syncPendingCount }} venta(s) de contingencia listas para subir a la base de datos principal.
+              Tienes {{ syncPendingCount }} venta(s) de contingencia guardadas localmente listas para sincronizar con el servidor.
             </span>
           </div>
           
@@ -356,527 +421,744 @@ onUnmounted(() => {
       </VAlert>
     </VSlideYTransition>
 
-    <!-- Barra de Estado del Catálogo Offline -->
-    <VCard variant="outlined" class="mb-4 pa-3 bg-surface">
-      <div class="d-flex align-center justify-space-between flex-wrap gap-2">
-        <div class="d-flex align-center flex-wrap gap-2">
-          <VIcon
-            :icon="isOnline ? 'tabler-wifi' : 'tabler-wifi-off'"
-            :color="isOnline ? 'success' : 'warning'"
-            class="me-1"
-          />
-          <span class="text-body-2 font-weight-medium">
-            Estado: <strong :class="isOnline ? 'text-success' : 'text-warning'">{{ isOnline ? 'Conectado (Online)' : 'Modo Contingencia (Offline)' }}</strong>
-          </span>
-          <VDivider vertical class="mx-2" />
-          <VChip size="small" color="primary" variant="tonal" class="font-weight-bold">
-            <VIcon icon="tabler-database" start size="14" />
-            {{ localProducts.length }} productos precargados
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- CARD SUPERIOR: ORDEN (Diseño Pixel-Perfect de OpenOrderCard)          -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <VCard class="mb-4 rounded-xl border bg-surface elevation-1">
+      <!-- Encabezado de la Orden -->
+      <VCardItem class="py-2.5 px-4 border-b">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+          <div class="d-flex align-center gap-2">
+            <VIcon icon="tabler-file-description" color="primary" size="24" />
+            <span class="text-subtitle-1 font-weight-950 text-uppercase tracking-wider">ORDEN</span>
+            <span class="text-caption font-weight-bold text-primary ms-2 d-flex align-center gap-1">
+              Alexis Jose Valera Valbuena
+              <VIcon icon="tabler-pencil" size="14" class="opacity-70" />
+              <span class="text-disabled font-weight-medium ms-1">V- 24150980</span>
+            </span>
+          </div>
+
+          <div class="d-flex align-center gap-2">
+            <VChip
+              size="x-small"
+              :color="isOnline ? 'success' : 'warning'"
+              variant="tonal"
+              class="font-weight-black text-uppercase"
+            >
+              {{ isOnline ? 'Online' : 'Contingencia Offline' }}
+            </VChip>
+            <VBtn
+              icon="tabler-x"
+              variant="text"
+              color="secondary"
+              size="small"
+              @click="clearCart"
+              title="Cerrar / Vaciar orden"
+            />
+          </div>
+        </div>
+      </VCardItem>
+
+      <!-- Barra de Acciones de la Orden: Items, Input Barcode, Ofertas, Moneda -->
+      <div class="px-4 pt-3 pb-2">
+        <div class="d-flex align-center gap-2 flex-wrap">
+          <!-- Badge Items -->
+          <VChip color="primary" variant="flat" size="small" class="font-weight-black px-3 rounded-lg">
+            <VIcon start icon="tabler-list" size="16" class="me-1" />
+            <span>Items {{ cart.length }}</span>
           </VChip>
-          <span v-if="lastGlobalCatalogSync" class="text-caption text-disabled">
-            (Actualizado: {{ lastGlobalCatalogSync }})
-          </span>
+
+          <!-- Input Escanear Código / Buscar en Orden -->
+          <div class="flex-grow-1" style="min-width: 260px;">
+            <VTextField
+              v-model="barcodeSearchQuery"
+              placeholder="Escanear código o ingresar cotización..."
+              prepend-inner-icon="tabler-scan"
+              append-inner-icon="tabler-arrow-right"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="rounded-lg font-weight-medium custom-barcode-input"
+              @keydown.enter="handleBarcodeScan"
+              @click:append-inner="handleBarcodeScan"
+            />
+          </div>
+
+          <!-- Botón Ofertas -->
+          <VBtn
+            variant="outlined"
+            color="primary"
+            size="small"
+            class="rounded-lg font-weight-bold px-3 text-none"
+            height="40"
+          >
+            <span>OFERTAS</span>
+            <VIcon end icon="tabler-chevron-down" size="14" />
+          </VBtn>
+
+          <!-- Selector de Moneda Dropdown -->
+          <VMenu location="bottom end">
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                variant="flat"
+                color="primary"
+                size="small"
+                class="rounded-lg font-weight-bold px-3 text-none"
+                height="40"
+              >
+                <VIcon start icon="tabler-currency-dollar" size="16" />
+                <span>{{ selectedDisplayCurrency }}</span>
+                <VIcon end icon="tabler-chevron-down" size="14" />
+              </VBtn>
+            </template>
+            <VList density="compact" class="rounded-lg shadow-lg">
+              <VListItem
+                v-for="curr in availableCurrencies"
+                :key="curr"
+                :value="curr"
+                :active="selectedDisplayCurrency === curr"
+                color="primary"
+                @click="selectedDisplayCurrency = curr"
+              >
+                <VListItemTitle class="font-weight-bold text-caption">{{ curr }}</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
+        </div>
+      </div>
+
+      <!-- Lista de Productos en la Orden -->
+      <VCardText class="px-4 py-2">
+        <div v-if="cart.length === 0" class="text-center py-8 text-disabled bg-grey-lighten-5 rounded-xl border border-dashed my-2">
+          <VIcon icon="tabler-shopping-cart-off" size="48" class="mb-2 opacity-30" />
+          <p class="text-subtitle-2 font-weight-950 uppercase opacity-60 mb-0">La orden está vacía</p>
+          <p class="text-super-xs text-disabled mb-0">Use el buscador inferior o el lector de código de barras para agregar productos</p>
         </div>
 
-        <VBtn
-          v-if="isOnline"
-          size="small"
-          variant="tonal"
-          color="primary"
-          :loading="isSyncingGlobalCatalog"
-          prepend-icon="tabler-refresh"
-          @click="manualSyncCatalog"
-        >
-          Forzar Recarga de Catálogo
-        </VBtn>
+        <div v-else class="d-flex flex-column gap-2 overflow-y-auto my-2" style="max-block-size: 320px;">
+          <div 
+            v-for="(item, index) in cart" 
+            :key="item.id" 
+            class="product-row pa-2.5 rounded-lg border bg-surface d-flex align-center gap-3"
+          >
+            <!-- Selector de Cantidad Stepper -->
+            <div class="d-flex align-center gap-1 bg-grey-lighten-4 rounded-lg px-1 border" style="block-size: 36px;">
+              <VBtn 
+                icon="tabler-minus" 
+                size="24" 
+                variant="text" 
+                color="primary" 
+                :disabled="item.quantity <= 1"
+                @click="decrementCartItem(item)" 
+              />
+              
+              <div class="px-2 font-weight-950 text-primary text-body-2 min-width-24 text-center">
+                {{ item.quantity }}
+              </div>
+
+              <VBtn 
+                icon="tabler-plus" 
+                size="24" 
+                variant="text" 
+                color="primary" 
+                @click="incrementCartItem(item)" 
+              />
+            </div>
+
+            <!-- Información del Producto y Desglose de Precios Inline -->
+            <div class="flex-grow-1 overflow-hidden">
+              <div class="d-flex align-center gap-2 flex-wrap">
+                <h3 class="text-caption font-weight-950 text-high-emphasis text-uppercase leading-tight mb-0">
+                  {{ item.name }}
+                </h3>
+                <div class="d-flex align-center gap-1 text-super-xs flex-wrap">
+                  <span class="text-disabled">{{ item.active_ingredient || '—' }}</span>
+                  <span class="text-disabled">|</span>
+                  <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 130px; color: #9c27b0 !important;">
+                    {{ item.laboratory_name || 'GENÉRICO' }}
+                  </span>
+                </div>
+
+                <!-- Desglose de Precios Inline: U (Unitario) | S (Subtotal) | I (IVA) -->
+                <div class="d-none d-sm-flex align-center gap-1 flex-wrap w-100 mt-1">
+                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1.5 py-0.5 rounded border">
+                    <span class="text-super-xs text-disabled font-weight-black uppercase">U:</span>
+                    <span class="text-super-xs font-weight-black text-primary">
+                      {{ formatCurrency(getProductPriceWithTax(item, selectedDisplayCurrency)) }}
+                    </span>
+                  </div>
+                  
+                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1.5 py-0.5 rounded border">
+                    <span class="text-super-xs text-disabled font-weight-black uppercase">S:</span>
+                    <span class="text-super-xs font-weight-black text-high-emphasis">
+                      {{ formatCurrency(getProductPriceWithoutTax(item, selectedDisplayCurrency) * item.quantity) }}
+                    </span>
+                  </div>
+
+                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1.5 py-0.5 rounded border">
+                    <span class="text-super-xs text-disabled font-weight-black uppercase">I:</span>
+                    <span class="text-super-xs font-weight-black text-success">
+                      {{ formatCurrency(getProductIvaAmount(item, selectedDisplayCurrency) * item.quantity) }}
+                    </span>
+                  </div>
+
+                  <VChip v-if="item.discount_percentage > 0" color="success" size="x-small" variant="flat" class="text-super-xs px-1">
+                    -{{ item.discount_percentage }}%
+                  </VChip>
+                </div>
+              </div>
+            </div>
+
+            <!-- Precio Total Ítem -->
+            <div class="text-right d-flex flex-column align-end" style="min-inline-size: 110px;">
+              <span class="text-subtitle-2 font-weight-950 text-primary leading-tight">
+                {{ formatCurrency(getProductPriceWithTax(item, selectedDisplayCurrency) * item.quantity) }}
+              </span>
+            </div>
+
+            <!-- Botón Eliminar Ítem -->
+            <VBtn 
+              icon="tabler-x" 
+              variant="text" 
+              color="error" 
+              size="x-small" 
+              class="opacity-60"
+              @click="removeFromCart(index)"
+            />
+          </div>
+        </div>
+      </VCardText>
+
+      <!-- Footer Unificado: Totales y Acciones -->
+      <VCardText class="pa-4 bg-grey-lighten-5 border-t">
+        <div class="d-flex flex-column gap-3">
+          <!-- Fila de Totales: Subtotal, IVA y Total a Cobrar -->
+          <div class="d-flex align-center justify-space-between flex-wrap gap-3 px-1 pt-1">
+            <div class="d-flex align-center gap-4 flex-wrap">
+              <!-- Subtotal -->
+              <div class="d-flex flex-column">
+                <span class="total-label mb-1">SUBTOTAL</span>
+                <span class="total-value">
+                  {{ formatCurrency(cartSubtotal, selectedDisplayCurrency) }}
+                </span>
+              </div>
+
+              <!-- IVA -->
+              <div class="d-flex flex-column">
+                <span class="total-label mb-1">IVA (16%)</span>
+                <span class="total-value text-success font-weight-bold">
+                  + {{ formatCurrency(cartIva, selectedDisplayCurrency) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Monto Total a Cobrar Grande -->
+            <div class="d-flex flex-column align-end">
+              <span class="total-label mb-1">TOTAL A COBRAR</span>
+              <div class="text-h5 font-weight-950 text-primary leading-none" style="font-size: 1.35rem !important;">
+                {{ formatCurrency(cartTotal, selectedDisplayCurrency) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones de Acción Inferiores: Cancelar | Reservar | COBRAR AHORA -->
+          <VRow dense class="align-center mt-1">
+            <VCol cols="12" sm="3">
+              <VBtn
+                color="secondary"
+                variant="outlined"
+                height="44"
+                block
+                class="rounded-lg font-weight-bold text-none btn-neutral-cancel"
+                :disabled="cart.length === 0"
+                @click="clearCart"
+              >
+                <VIcon icon="tabler-trash" size="18" class="me-1" />
+                <span>Cancelar</span>
+              </VBtn>
+            </VCol>
+
+            <VCol cols="12" sm="3">
+              <VBtn
+                color="warning"
+                variant="outlined"
+                height="44"
+                block
+                class="rounded-lg font-weight-bold text-none"
+                :disabled="cart.length === 0"
+              >
+                <VIcon icon="tabler-hourglass" size="18" class="me-1" />
+                <span>Reservar</span>
+              </VBtn>
+            </VCol>
+
+            <VCol cols="12" sm="6">
+              <VBtn
+                color="primary"
+                variant="flat"
+                height="44"
+                block
+                class="rounded-lg font-weight-bold text-none elevation-2 text-subtitle-2"
+                :disabled="cart.length === 0 || isProcessing"
+                @click="handleOpenCheckoutModal"
+              >
+                <VIcon icon="tabler-circle-check" size="20" class="me-1" />
+                <span>COBRAR AHORA</span>
+              </VBtn>
+            </VCol>
+          </VRow>
+        </div>
+      </VCardText>
+    </VCard>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- BARRA DE BÚSQUEDA Y FILTROS DEL CATÁLOGO (Estilo TpvCatalogSection)   -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <VCard class="mb-3 rounded-xl border bg-surface pa-3 elevation-1">
+      <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+        <div class="d-flex align-center flex-grow-1 gap-3" style="max-width: 600px;">
+          <VTextField
+            v-model="catalogSearchFilter"
+            placeholder="Buscar por Producto, Cód. Barra, C. Activo..."
+            prepend-inner-icon="tabler-search"
+            density="compact"
+            variant="outlined"
+            hide-details
+            clearable
+            class="rounded-lg"
+          />
+
+          <VCheckbox
+            v-model="isStrictSearch"
+            label="Estricta"
+            density="compact"
+            hide-details
+            class="font-weight-medium text-caption"
+          />
+        </div>
+
+        <div class="d-flex align-center gap-2">
+          <!-- Iconos de Acción estilo TPV -->
+          <VBtn icon size="small" variant="tonal" color="purple" class="rounded-lg">
+            <VIcon icon="tabler-filter" size="18" />
+          </VBtn>
+          <VBtn icon size="small" variant="tonal" color="cyan" class="rounded-lg">
+            <VIcon icon="tabler-arrows-sort" size="18" />
+          </VBtn>
+          <VBtn icon size="small" variant="tonal" color="primary" class="rounded-lg" @click="selectedDisplayCurrency = (selectedDisplayCurrency === 'COP' ? 'USD' : (selectedDisplayCurrency === 'USD' ? 'BS' : 'COP'))">
+            <VIcon icon="tabler-arrows-left-right" size="18" />
+          </VBtn>
+          <VBtn icon size="small" variant="tonal" color="purple" class="rounded-lg" @click="catalogSearchFilter = ''">
+            <VIcon icon="tabler-eraser" size="18" />
+          </VBtn>
+          <VBtn
+            v-if="isOnline"
+            size="small"
+            variant="tonal"
+            color="primary"
+            class="rounded-lg ms-2"
+            :loading="isSyncingGlobalCatalog"
+            prepend-icon="tabler-refresh"
+            @click="manualSyncCatalog"
+          >
+            Recargar
+          </VBtn>
+        </div>
       </div>
     </VCard>
 
-    <VRow>
-      <!-- Panel Izquierdo: Catálogo y Escáner (Diseño Exacto del TPV) -->
-      <VCol cols="12" md="8">
-        <VCard class="mb-4">
-          <VCardItem class="py-2 px-4 border-b">
-            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
-              <VTabs v-model="activeTab" density="compact" color="primary">
-                <VTab value="catalog">
-                  <VIcon icon="tabler-layout-grid" start size="18" />
-                  Catálogo de Productos
-                </VTab>
-                <VTab value="scanner">
-                  <VIcon icon="tabler-barcode" start size="18" />
-                  Lector de Código de Barras
-                </VTab>
-              </VTabs>
-
-              <!-- Buscador Rápido del Catálogo -->
-              <div v-if="activeTab === 'catalog'" style="min-width: 280px;">
-                <VTextField
-                  v-model="catalogSearchFilter"
-                  placeholder="Buscar por producto, cód. barra, activo..."
-                  prepend-inner-icon="tabler-search"
-                  density="compact"
-                  hide-details
-                  clearable
-                />
-              </div>
-            </div>
-          </VCardItem>
-
-          <VCardText class="pa-2">
-            <!-- Vista 1: Catálogo Estilo TPV Normal -->
-            <div v-if="activeTab === 'catalog'">
-              <VTable density="compact" class="rounded border text-no-wrap tpv-custom-table">
-                <thead>
-                  <tr>
-                    <th class="text-left" style="width: 75px;">ID</th>
-                    <th class="text-center" style="width: 65px;">STOCK</th>
-                    <th class="text-left">PRODUCTO</th>
-                    <th class="text-right" style="width: 90px;">USD</th>
-                    <th class="text-right" style="width: 110px;">BS</th>
-                    <th class="text-right" style="width: 115px;">COP</th>
-                    <th class="text-center" style="width: 110px;">AÑADIR</th>
-                    <th class="text-center" style="width: 80px;">ACCIÓN</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="paginatedCatalog.length === 0">
-                    <td colspan="8" class="text-center py-8 text-disabled">
-                      <VIcon icon="tabler-search-off" size="36" class="mb-1 opacity-50" />
-                      <p class="text-body-2 mb-0">No se encontraron productos coincidentes en la memoria local</p>
-                    </td>
-                  </tr>
-                  <tr v-for="product in paginatedCatalog" :key="product.id">
-                    <!-- ID Badge Verde -->
-                    <td>
-                      <span class="custom-id-badge">
-                        {{ product.id }}
-                      </span>
-                    </td>
-
-                    <!-- Stock Chip -->
-                    <td class="text-center">
-                      <span :class="product.stock > 0 ? 'custom-stock-badge' : 'custom-stock-badge-empty'">
-                        {{ Math.floor(product.stock) }}
-                      </span>
-                    </td>
-
-                    <!-- Producto con Nombre, Badges, Principio Activo, Laboratorio Rosa y Ubicación Verde -->
-                    <td>
-                      <div class="d-flex flex-column py-1.5">
-                        <div class="d-flex align-center flex-wrap gap-1">
-                          <span 
-                            class="text-subtitle-2 font-weight-black text-high-emphasis text-uppercase"
-                            :class="{ 'text-primary': product.psychotropic == 1 }"
-                          >
-                            {{ product.name }}
-                          </span>
-
-                          <!-- Badge IVA -->
-                          <span v-if="product.iva == 1" class="custom-badge-iva">G</span>
-                          
-                          <!-- Badge Origen Colombiano -->
-                          <span v-if="product.is_colombian_origin == 1" class="custom-badge-col">COL</span>
-                          
-                          <!-- Badge Descuento -->
-                          <span v-if="product.discount_percentage > 0" class="custom-badge-discount">
-                            -{{ product.discount_percentage }}%
-                          </span>
-                        </div>
-
-                        <!-- Sublínea: Principio Activo | Laboratorio Magenta | Ubicación Verde -->
-                        <div class="d-flex align-center flex-wrap text-super-xs mt-0.5">
-                          <span class="text-disabled font-weight-medium text-uppercase">
-                            {{ product.active_ingredient || '—' }}
-                          </span>
-                          <span class="text-disabled mx-1">|</span>
-                          <span class="custom-lab-name text-uppercase">
-                            {{ product.laboratory_name || 'GENÉRICO' }}
-                          </span>
-                          <template v-if="product.location">
-                            <span class="text-disabled mx-1">|</span>
-                            <span class="custom-location text-uppercase">
-                              📍 {{ product.location }}
-                            </span>
-                          </template>
-                        </div>
-                      </div>
-                    </td>
-
-                    <!-- Precio USD -->
-                    <td class="text-right">
-                      <div class="d-flex flex-column align-end">
-                        <del v-if="product.discount_percentage > 0" class="text-caption text-disabled text-decoration-line-through">
-                          {{ formatUsd(product.base_price_usd) }}
-                        </del>
-                        <span class="text-body-2 font-weight-bold text-high-emphasis">
-                          {{ formatUsd(getActivePrice(product)) }}
-                        </span>
-                      </div>
-                    </td>
-
-                    <!-- Precio BS -->
-                    <td class="text-right">
-                      <div class="d-flex flex-column align-end">
-                        <del v-if="product.discount_percentage > 0" class="text-caption text-disabled text-decoration-line-through">
-                          {{ formatBs(product.price_bs) }} Bs
-                        </del>
-                        <span class="text-body-2 font-weight-medium text-high-emphasis">
-                          {{ formatBs(getActivePrice(product) * cachedRates.BS) }} Bs
-                        </span>
-                      </div>
-                    </td>
-
-                    <!-- Precio COP en Rosa/Magenta -->
-                    <td class="text-right">
-                      <div class="d-flex flex-column align-end">
-                        <del v-if="product.discount_percentage > 0" class="text-caption text-disabled text-decoration-line-through">
-                          {{ formatCop(roundUpToNearestHundred(product.price_cop)) }} COP
-                        </del>
-                        <span class="custom-cop-price text-body-2">
-                          {{ formatCop(roundUpToNearestHundred(getActivePrice(product) * cachedRates.COP)) }} COP
-                        </span>
-                      </div>
-                    </td>
-
-                    <!-- Selector de Cantidad + Botón Añadir Magenta -->
-                    <td class="text-center">
-                      <div class="d-inline-flex align-center gap-1">
-                        <input
-                          type="number"
-                          min="1"
-                          :value="inputQuantities.get(product.id) || 1"
-                          @input="handleQuantityInput(product.id, $event.target.value)"
-                          class="custom-qty-input"
-                          :disabled="product.stock === 0"
-                        />
-                        <button
-                          type="button"
-                          class="custom-btn-add"
-                          :disabled="product.stock === 0"
-                          @click="handleAddProductWithQuantity(product)"
-                        >
-                          <VIcon icon="tabler-plus" size="16" />
-                        </button>
-                      </div>
-                    </td>
-
-                    <!-- Botones de Acción (Ver Alternativas / Reportar Falla) -->
-                    <td class="text-center">
-                      <div class="d-inline-flex align-center gap-1">
-                        <button type="button" class="custom-action-eye" title="Ver Alternativas">
-                          <VIcon icon="tabler-eye" size="16" />
-                        </button>
-                        <button type="button" class="custom-action-alert" title="Reportar Falla">
-                          <VIcon icon="tabler-alert-triangle" size="16" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </VTable>
-
-              <!-- Paginador del Catálogo -->
-              <div class="d-flex justify-space-between align-center mt-3 px-2 flex-wrap">
-                <span class="text-caption text-disabled">
-                  Mostrando {{ paginatedCatalog.length }} de {{ filteredCatalog.length }} productos
-                </span>
-                <VPagination
-                  v-model="catalogPage"
-                  :length="totalCatalogPages"
-                  density="compact"
-                  total-visible="5"
-                />
-              </div>
-            </div>
-
-            <!-- Vista 2: Modo Escáner de Código de Barras -->
-            <div v-else class="pa-4">
-              <VTextField
-                v-model="searchQuery"
-                label="Escanear con lector o escribir código y presionar Enter"
-                placeholder="Ejemplo: 810028133655"
-                prepend-inner-icon="tabler-barcode"
-                @keyup.enter="handleBarcodeScan"
-                autofocus
-                clearable
-                hide-details
-                class="mb-4"
-              />
-              <p class="text-caption text-disabled mb-0">
-                <VIcon icon="tabler-info-circle" size="14" class="me-1" />
-                Al escanear un código de barras físico, se agregará inmediatamente al carrito de la derecha.
-              </p>
-            </div>
-          </VCardText>
-        </VCard>
-      </VCol>
-
-      <!-- Panel Derecho: Carrito y Totalizador Multimoneda -->
-      <VCol cols="12" md="4">
-        <VCard class="mb-4">
-          <VCardItem class="custom-cart-header text-white py-2.5 px-4">
-            <div class="d-flex justify-space-between align-center">
-              <span class="font-weight-bold text-body-1 text-white">Orden Actual ({{ cart.reduce((s, i) => s + i.quantity, 0) }} ítems)</span>
-              <VBtn v-if="cart.length > 0" size="x-small" variant="text" color="white" @click="cart = []">
-                Vaciar
-              </VBtn>
-            </div>
-          </VCardItem>
-
-          <VTable density="compact" class="border-b">
-            <thead>
-              <tr>
-                <th class="text-left">Producto</th>
-                <th class="text-right">Precio</th>
-                <th class="text-center">Cant.</th>
-                <th class="text-right">Subtotal</th>
-                <th class="text-center"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="cart.length === 0">
-                <td colspan="5" class="text-center py-8 text-disabled">
-                  <VIcon icon="tabler-shopping-cart-x" size="40" class="mb-2 opacity-50" />
-                  <p class="text-body-2 mb-0">No hay productos en la orden</p>
-                </td>
-              </tr>
-              <tr v-for="(item, index) in cart" :key="item.id">
-                <td>
-                  <span class="font-weight-medium text-body-2 d-block">{{ item.name }}</span>
-                  <span class="text-caption text-disabled font-monospace">{{ item.barcode || `#${item.id}` }}</span>
-                </td>
-                <td class="text-right font-weight-medium text-caption">
-                  ${{ formatUsd(getActivePrice(item)) }}
-                </td>
-                <td class="text-center">
-                  <div class="d-inline-flex align-center">
-                    <VBtn icon="tabler-minus" size="x-small" variant="tonal" @click="item.quantity > 1 ? item.quantity-- : removeFromCart(index)" />
-                    <span class="mx-2 font-weight-bold text-body-2">{{ item.quantity }}</span>
-                    <VBtn icon="tabler-plus" size="x-small" variant="tonal" :disabled="item.quantity >= item.stock" @click="item.quantity++" />
-                  </div>
-                </td>
-                <td class="text-right font-weight-bold text-body-2">
-                  ${{ formatUsd(getActivePrice(item) * item.quantity) }}
-                </td>
-                <td class="text-center">
-                  <VBtn icon="tabler-trash" color="error" size="x-small" variant="text" @click="removeFromCart(index)" />
-                </td>
-              </tr>
-            </tbody>
-          </VTable>
-
-          <!-- Resumen de Pagos Multimoneda -->
-          <VCardText class="pa-4 bg-var-theme-background">
-            <div class="d-flex justify-space-between align-center mb-3">
-              <span class="text-h6 text-medium-emphasis">TOTAL USD:</span>
-              <span class="text-h4 font-weight-black text-primary">${{ totals.USD }}</span>
-            </div>
-            <VDivider class="mb-3" />
-            <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-body-2 text-medium-emphasis">TOTAL BS:</span>
-              <span class="text-h6 font-weight-bold">Bs {{ totals.BS }}</span>
-            </div>
-            <div class="d-flex justify-space-between align-center mb-2">
-              <span class="text-body-2 text-medium-emphasis">TOTAL COP:</span>
-              <span class="text-h6 font-weight-bold">$ {{ totals.COP }}</span>
-            </div>
-            <div class="text-caption text-disabled mt-2">
-              Tasas: 1 USD = {{ cachedRates.BS }} BS | {{ cachedRates.COP }} COP
-            </div>
-
-            <VSheet color="warning" variant="tonal" class="pa-3 mt-4 rounded d-flex align-center" v-if="syncPendingCount > 0 && !isOnline">
-              <VIcon icon="tabler-cloud-upload" size="20" class="me-2 text-warning" />
-              <span class="text-caption font-weight-medium">
-                {{ syncPendingCount }} orden(es) en cola esperando sincronización.
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- TABLA DEL CATÁLOGO DE PRODUCTOS (Estilo OrderProductsTable)           -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <VCard class="rounded-xl border bg-surface elevation-1 overflow-hidden">
+      <VTable density="compact" class="text-no-wrap tpv-custom-table">
+        <thead>
+          <tr>
+            <th class="text-left" style="width: 80px;">ID</th>
+            <th class="text-center" style="width: 70px;">STOCK</th>
+            <th class="text-left">PRODUCTO</th>
+            <th class="text-right" style="width: 100px;">USD</th>
+            <th class="text-right" style="width: 120px;">BS</th>
+            <th class="text-right" style="width: 125px;">COP</th>
+            <th class="text-center" style="width: 110px;">AÑADIR</th>
+            <th class="text-center" style="width: 90px;">ACCIÓN</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="paginatedCatalog.length === 0">
+            <td colspan="8" class="text-center py-8 text-disabled">
+              <VIcon icon="tabler-search-off" size="36" class="mb-1 opacity-50" />
+              <p class="text-body-2 mb-0">No se encontraron productos coincidentes en la memoria local</p>
+            </td>
+          </tr>
+          <tr v-for="product in paginatedCatalog" :key="product.id">
+            <!-- ID Badge Verde -->
+            <td>
+              <span class="custom-id-badge">
+                {{ product.id }}
               </span>
-            </VSheet>
+            </td>
 
-            <VBtn 
-              color="success" 
-              variant="flat" 
-              block 
-              size="large" 
-              class="font-weight-bold mt-4"
-              prepend-icon="tabler-device-floppy"
-              :disabled="cart.length === 0 || isProcessing || isSyncingOrders" 
-              :loading="isProcessing" 
-              @click="processOfflineOrder"
-            >
-              Registrar Venta Offline
-            </VBtn>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+            <!-- Stock Badge Verde -->
+            <td class="text-center">
+              <span :class="product.stock > 0 ? 'custom-stock-badge' : 'custom-stock-badge-empty'">
+                {{ Math.floor(product.stock) }}
+              </span>
+            </td>
 
-    <!-- Notificación Snackbar para productos no encontrados -->
-    <VSnackbar
-      v-model="showNotFoundSnackbar"
-      color="error"
-      location="top"
-      :timeout="3500"
-    >
-      <div class="d-flex align-center">
-        <VIcon icon="tabler-alert-circle" class="me-2" />
-        {{ notFoundMessage }}
+            <!-- Columna Producto: Nombre + G chip + Principio Activo | Lab Rosa | 📍 Ubicación Verde -->
+            <td>
+              <div class="d-flex flex-column py-1.5">
+                <div class="d-flex align-center flex-wrap gap-1">
+                  <span class="text-subtitle-2 font-weight-black text-high-emphasis text-uppercase">
+                    {{ product.name }}
+                  </span>
+
+                  <!-- Chip Gravado (G) -->
+                  <span v-if="product.iva == 1" class="custom-badge-iva">G</span>
+                  
+                  <!-- Chip Colombiano (COL) -->
+                  <span v-if="product.is_colombian_origin == 1" class="custom-badge-col">COL</span>
+
+                  <!-- Chip Descuento -->
+                  <span v-if="product.discount_percentage > 0" class="custom-badge-discount">
+                    -{{ product.discount_percentage }}%
+                  </span>
+                </div>
+
+                <!-- Subtítulo: Principio activo | Lab (Rosa) | Ubicación (Verde) -->
+                <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0.5">
+                  <span class="text-disabled text-uppercase">{{ product.active_ingredient || '—' }}</span>
+                  <span class="text-disabled">|</span>
+                  <span class="custom-lab-text text-uppercase truncate" style="max-inline-size: 140px;">
+                    {{ product.laboratory_name || 'GENÉRICO' }}
+                  </span>
+                  <template v-if="getProductLocations(product).length > 0">
+                    <span class="text-disabled">|</span>
+                    <span class="custom-location-text text-uppercase">
+                      📍 {{ getProductLocations(product).join(', ') }}
+                    </span>
+                  </template>
+                </div>
+              </div>
+            </td>
+
+            <!-- Precio USD -->
+            <td class="text-right font-weight-bold text-body-2">
+              {{ formatCurrency(getProductPriceWithTax(product, 'USD'), 'USD') }}
+            </td>
+
+            <!-- Precio BS -->
+            <td class="text-right font-weight-bold text-body-2">
+              {{ formatCurrency(getProductPriceWithTax(product, 'BS'), 'BS') }}
+            </td>
+
+            <!-- Precio COP Destacado en Magenta -->
+            <td class="text-right font-weight-black text-body-2 text-primary">
+              {{ formatCurrency(getProductPriceWithTax(product, 'COP'), 'COP') }}
+            </td>
+
+            <!-- Input Cantidad + Botón Añadir -->
+            <td class="text-center">
+              <div class="d-flex align-center justify-center gap-1">
+                <input
+                  type="number"
+                  min="1"
+                  :value="inputQuantities.get(product.id) || 1"
+                  class="custom-quantity-input"
+                  @input="(e) => handleQuantityInput(product.id, e.target.value)"
+                  @keydown.enter="handleAddProductWithQuantity(product)"
+                />
+                <VBtn
+                  color="primary"
+                  size="small"
+                  variant="flat"
+                  class="rounded-lg px-2 custom-add-btn"
+                  @click="handleAddProductWithQuantity(product)"
+                  title="Añadir a la orden"
+                >
+                  <VIcon icon="tabler-plus" size="18" />
+                </VBtn>
+              </div>
+            </td>
+
+            <!-- Acciones: Alternativas y Falla -->
+            <td class="text-center">
+              <div class="d-flex align-center justify-center gap-1">
+                <VBtn
+                  icon="tabler-eye"
+                  size="x-small"
+                  variant="tonal"
+                  color="primary"
+                  class="rounded-lg"
+                  title="Alternativas"
+                />
+                <VBtn
+                  icon="tabler-alert-triangle"
+                  size="x-small"
+                  variant="tonal"
+                  color="error"
+                  class="rounded-lg"
+                  title="Reportar Falla"
+                />
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </VTable>
+
+      <!-- Paginación Centrada al Pie -->
+      <div class="d-flex justify-center py-3 border-t">
+        <VPagination
+          v-model="catalogPage"
+          :length="totalCatalogPages"
+          :total-visible="5"
+          density="compact"
+          size="small"
+          active-color="primary"
+        />
       </div>
+    </VCard>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- MODAL DE COBRO EN CONTINGENCIA OFFLINE                                -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <VDialog v-model="showCheckoutModal" max-width="500px">
+      <VCard class="rounded-xl">
+        <VCardItem class="py-3 px-4 border-b bg-surface">
+          <div class="d-flex align-center justify-space-between">
+            <div class="d-flex align-center gap-2">
+              <VIcon icon="tabler-cash-register" color="primary" size="24" />
+              <span class="text-subtitle-1 font-weight-950 text-uppercase">Cobrar Venta (Contingencia)</span>
+            </div>
+            <VBtn icon="tabler-x" variant="text" size="small" @click="showCheckoutModal = false" />
+          </div>
+        </VCardItem>
+
+        <VCardText class="pa-4">
+          <div class="d-flex flex-column gap-3">
+            <div class="d-flex justify-space-between align-center pa-3 bg-grey-lighten-4 rounded-lg">
+              <span class="text-subtitle-2 font-weight-bold">Total a Cobrar ({{ selectedDisplayCurrency }}):</span>
+              <span class="text-h6 font-weight-950 text-primary">
+                {{ formatCurrency(cartTotal, selectedDisplayCurrency) }}
+              </span>
+            </div>
+
+            <VRadioGroup v-model="selectedPaymentMethod" label="Método de Pago Recibido:" class="mt-2">
+              <VRadio label="Efectivo COP" value="cash_cop" color="primary" />
+              <VRadio label="Efectivo USD" value="cash_usd" color="primary" />
+              <VRadio label="Efectivo Bolívares (Bs)" value="cash_bs" color="primary" />
+              <VRadio label="Transferencia / Otro" value="transfer" color="primary" />
+            </VRadioGroup>
+          </div>
+        </VCardText>
+
+        <VCardActions class="pa-4 border-t bg-grey-lighten-5">
+          <VSpacer />
+          <VBtn variant="outlined" color="secondary" @click="showCheckoutModal = false">
+            Regresar
+          </VBtn>
+          <VBtn 
+            color="primary" 
+            variant="flat" 
+            :loading="isProcessing"
+            class="px-5 font-weight-bold"
+            @click="processOfflineOrder"
+          >
+            Confirmar y Guardar Venta
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Snackbar de Producto No Encontrado -->
+    <VSnackbar v-model="showNotFoundSnackbar" color="warning" timeout="3500" location="top center">
+      {{ notFoundMessage }}
     </VSnackbar>
   </VContainer>
 </template>
 
 <style scoped>
-.gap-1 {
-  gap: 4px;
-}
-.gap-2 {
-  gap: 8px;
-}
+/* ─── Estilos Generales y Badges ─────────────────────────────────────────────── */
 .text-super-xs {
-  font-size: 0.72rem;
-  line-height: 0.95rem;
+  font-size: 0.65rem !important;
+  line-height: normal;
 }
 
-/* Badges y Estilos visuales exactos del TPV */
+.leading-tight {
+  line-height: 1.25 !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.font-weight-950 {
+  font-weight: 950 !important;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Badges de ID y Stock (Verde Esmeralda idéntico al TPV Normal) ──────────── */
 .custom-id-badge {
-  background-color: #00c853;
-  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 3px 8px;
   border-radius: 6px;
-  font-weight: 800;
-  font-size: 0.76rem;
-  display: inline-block;
+  background-color: #10b981 !important;
+  color: #ffffff !important;
+  font-size: 0.8125rem;
+  font-weight: 900;
   letter-spacing: 0.5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .custom-stock-badge {
-  background-color: #00c853;
-  color: #ffffff;
-  padding: 2px 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 2px 6px;
   border-radius: 6px;
-  font-weight: 800;
-  font-size: 0.76rem;
-  display: inline-block;
-  min-width: 24px;
-  text-align: center;
+  background-color: #10b981 !important;
+  color: #ffffff !important;
+  font-size: 0.8125rem;
+  font-weight: 900;
 }
 
 .custom-stock-badge-empty {
-  background-color: #ea5455;
-  color: #ffffff;
-  padding: 2px 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 2px 6px;
   border-radius: 6px;
-  font-weight: 800;
-  font-size: 0.76rem;
-  display: inline-block;
-  min-width: 24px;
-  text-align: center;
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  font-size: 0.8125rem;
+  font-weight: 900;
 }
 
+/* ─── Chips de Producto: G (IVA) y COL (Origen) ─────────────────────────────── */
 .custom-badge-iva {
-  background-color: #e2e8f0;
-  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.65rem;
-  font-weight: 800;
+  font-weight: 900;
   padding: 1px 5px;
   border-radius: 4px;
-  margin-left: 4px;
+  background-color: #cbd5e1;
+  color: #334155;
 }
 
 .custom-badge-col {
-  background-color: #dbeafe;
-  color: #1d4ed8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.65rem;
-  font-weight: 800;
+  font-weight: 900;
   padding: 1px 5px;
   border-radius: 4px;
-  margin-left: 4px;
+  background-color: #dbeafe;
+  color: #1d4ed8;
 }
 
 .custom-badge-discount {
-  background-color: #dcfce7;
-  color: #15803d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.65rem;
-  font-weight: 800;
+  font-weight: 900;
   padding: 1px 5px;
   border-radius: 4px;
-  margin-left: 4px;
+  background-color: #dcfce7;
+  color: #15803d;
 }
 
-.custom-lab-name {
-  color: #d81b60 !important;
-  font-weight: 800;
+/* ─── Laboratorio (Rosa/Magenta) y Ubicación (Verde) ────────────────────────── */
+.custom-lab-text {
+  color: #9c27b0 !important; /* Magenta fuerte */
+  font-weight: 900 !important;
 }
 
-.custom-location {
-  color: #00b862 !important;
-  font-weight: 600;
+.custom-location-text {
+  color: #10b981 !important; /* Verde esmeralda */
+  font-weight: 600 !important;
 }
 
-.custom-cop-price {
-  color: #d81b60 !important;
-  font-weight: 700;
-}
-
-.custom-qty-input {
-  width: 48px;
+/* ─── Input Cantidad y Botón Añadir en la Tabla ──────────────────────────────── */
+.custom-quantity-input {
+  width: 52px;
   height: 32px;
-  border: 1px solid #dcdfe6;
+  padding: 2px 4px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.22);
   border-radius: 6px;
   text-align: center;
+  font-size: 0.875rem;
   font-weight: 700;
-  font-size: 0.85rem;
-  background-color: #ffffff;
+  color: rgb(var(--v-theme-on-surface));
+  background: white;
+  outline: none;
 }
 
-.custom-btn-add {
-  background-color: #d81b60;
-  color: #ffffff;
-  border: none;
-  border-radius: 6px;
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-.custom-btn-add:hover {
-  opacity: 0.9;
-}
-.custom-btn-add:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.custom-quantity-input:focus {
+  border-color: rgb(var(--v-theme-primary));
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.15);
 }
 
-.custom-action-eye {
-  background-color: #fce4ec;
-  color: #d81b60;
-  border: none;
-  border-radius: 6px;
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+.custom-add-btn {
+  min-width: 32px !important;
+  height: 32px !important;
 }
 
-.custom-action-alert {
-  background-color: #ffebee;
-  color: #ef5350;
-  border: none;
-  border-radius: 6px;
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+/* ─── Tabla Customizada del TPV ─────────────────────────────────────────────── */
+.tpv-custom-table :deep(thead th) {
+  font-size: 0.75rem !important;
+  font-weight: 800 !important;
+  color: rgba(var(--v-theme-on-surface), 0.6) !important;
+  text-transform: uppercase;
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
 }
 
-.custom-cart-header {
-  background-color: #d81b60 !important;
+.tpv-custom-table :deep(tbody tr:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.02) !important;
+}
+
+/* ─── Totales y Botón Cancelar ──────────────────────────────────────────────── */
+.total-label {
+  color: #4b5563 !important;
+  font-size: 0.8125rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.total-value {
+  color: #111827 !important;
+  font-size: 0.9375rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
+
+.btn-neutral-cancel {
+  border-color: rgba(var(--v-theme-on-surface), 0.22) !important;
+  color: rgba(var(--v-theme-on-surface), 0.7) !important;
+}
+
+.btn-neutral-cancel:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.04) !important;
+  border-color: rgba(var(--v-theme-on-surface), 0.38) !important;
+  color: rgba(var(--v-theme-on-surface), 0.9) !important;
 }
 </style>
