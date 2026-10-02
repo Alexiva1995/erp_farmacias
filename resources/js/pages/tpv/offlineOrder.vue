@@ -9,6 +9,7 @@ import {
   isSyncingGlobalCatalog, 
   lastGlobalCatalogSync 
 } from '@/composables/useOfflineCatalogSync'
+import BuysModal from '@/components/dialogs/BuysModal.vue'
 
 const router = useRouter()
 const emit = defineEmits(['synced'])
@@ -169,8 +170,6 @@ const getProductPriceWithTax = (product, currency = selectedDisplayCurrency.valu
   if (currency === 'COP') return roundUpToNearestHundred(finalPrice)
   return finalPrice
 }
-  return finalPrice
-}
 
 const getProductIvaAmount = (product, currency = selectedDisplayCurrency.value) => {
   if (product.iva != 1) return 0
@@ -178,27 +177,104 @@ const getProductIvaAmount = (product, currency = selectedDisplayCurrency.value) 
   return priceSinIva * 0.16
 }
 
-// ─── Filtrado del Catálogo Completo ──────────────────────────────────────────
+// ─── Opciones de Ordenamiento ────────────────────────────────────────────────
+const currentSortOption = ref(null)
+
+const sortOptions = [
+  { title: "Precio Mayor a Menor", icon: "tabler-arrow-up", key: "sale_price", order: "desc" },
+  { title: "Precio Menor a Mayor", icon: "tabler-arrow-down", key: "sale_price", order: "asc" },
+  { title: "Más Unidades (Stock)", icon: "tabler-plus", key: "stock", order: "desc" },
+  { title: "Menos Unidades (Stock)", icon: "tabler-minus", key: "stock", order: "asc" },
+  { title: "Nombre A-Z", icon: "tabler-sort-ascending-letters", key: "name", order: "asc" },
+  { title: "Nombre Z-A", icon: "tabler-sort-descending-letters", key: "name", order: "desc" },
+]
+
+const setSortOption = (opt) => {
+  currentSortOption.value = opt
+  catalogPage.value = 1
+}
+
+const clearSort = () => {
+  currentSortOption.value = null
+  catalogPage.value = 1
+}
+
+// ─── Filtrado y Ordenado del Catálogo Completo (Misma lógica de Laravel OrderQueryService) ───
 const filteredCatalog = computed(() => {
   const query = catalogSearchFilter.value.trim().toLowerCase()
-  if (!query) return localProducts.value
+  let list = localProducts.value
 
-  return localProducts.value.filter(p => {
-    if (isStrictSearch.value) {
-      return (
-        (p.barcode && p.barcode.toLowerCase() === query) ||
-        (p.name && p.name.toLowerCase().startsWith(query)) ||
-        String(p.id) === query
-      )
+  if (query) {
+    // 1. Detectar búsquedas especiales por origen colombiano o IVA
+    const isColombianSearch = ['col', '(col)', 'colombiano', 'colombianos'].includes(query)
+    const isIvaSearch = ['g', '(g)', 'iva', 'gravado'].includes(query)
+
+    if (isColombianSearch) {
+      list = list.filter(p => Number(p.is_colombian_origin) === 1)
+    } else if (isIvaSearch) {
+      list = list.filter(p => Number(p.iva) === 1)
+    } else if (isStrictSearch.value) {
+      // Búsqueda estricta por límite de palabras (idéntica al REGEXP de MySQL)
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const regex = new RegExp(`(^|[^a-zA-Z0-9])${escaped}([^a-zA-Z0-9]|$)`, 'i')
+      list = list.filter(p => {
+        return (
+          String(p.id) === query ||
+          (p.barcode && p.barcode.toLowerCase() === query) ||
+          regex.test(p.name || '') ||
+          regex.test(p.active_ingredient || '')
+        )
+      })
+    } else {
+      // Búsqueda multi-palabra (AND): todas las palabras deben coincidir en algún campo
+      const words = query.split(/\s+/).filter(Boolean)
+      list = list.filter(p => {
+        const idStr = String(p.id)
+        const barcodeStr = (p.barcode || '').toLowerCase()
+        const nameStr = (p.name || '').toLowerCase()
+        const activeStr = (p.active_ingredient || '').toLowerCase()
+        const labStr = (p.laboratory_name || '').toLowerCase()
+
+        // Coincidencia exacta de ID o código de barras
+        if (idStr === query || barcodeStr === query) return true
+
+        // Todas las palabras ingresadas deben estar presentes en el producto
+        return words.every(word => {
+          return (
+            nameStr.includes(word) ||
+            activeStr.includes(word) ||
+            labStr.includes(word) ||
+            barcodeStr.includes(word) ||
+            idStr.includes(word)
+          )
+        })
+      })
     }
-    return (
-      (p.barcode && p.barcode.toLowerCase().includes(query)) || 
-      (p.name && p.name.toLowerCase().includes(query)) ||
-      (p.active_ingredient && p.active_ingredient.toLowerCase().includes(query)) ||
-      (p.laboratory_name && p.laboratory_name.toLowerCase().includes(query)) ||
-      String(p.id) === query
-    )
-  })
+  }
+
+  if (currentSortOption.value) {
+    const { key, order } = currentSortOption.value
+    list = [...list].sort((a, b) => {
+      if (key === 'sale_price') {
+        const pA = getProductPriceWithTax(a, selectedDisplayCurrency.value)
+        const pB = getProductPriceWithTax(b, selectedDisplayCurrency.value)
+        return order === 'desc' ? pB - pA : pA - pB
+      }
+      if (key === 'stock') {
+        const sA = Number(a.stock || 0)
+        const sB = Number(b.stock || 0)
+        return order === 'desc' ? sB - sA : sA - sB
+      }
+      if (key === 'name') {
+        const nA = (a.name || '').toLowerCase()
+        const nB = (b.name || '').toLowerCase()
+        return order === 'desc' ? nB.localeCompare(nA) : nA.localeCompare(nB)
+      }
+      return 0
+    })
+  }
+
+  return list
 })
 
 const paginatedCatalog = computed(() => {
@@ -312,25 +388,66 @@ const generateUUID = () => {
   })
 }
 
+const offlineOrderUUID = ref(generateUUID())
+
+const offlineOrderData = computed(() => {
+  return {
+    id: offlineOrderUUID.value.substring(0, 8).toUpperCase(),
+    uuid: offlineOrderUUID.value,
+    created_at: new Date().toISOString(),
+    seller: {
+      username: 'Cajero Local',
+    },
+    client: {
+      name: 'Cliente',
+      last_name: 'General',
+      phone: 'N/A',
+      is_spe: false,
+    },
+    total: cartTotal.value,
+    total_amount: cartTotal.value,
+    currency: selectedDisplayCurrency.value,
+  }
+})
+
+const offlineOrderProducts = computed(() => {
+  return cart.value.map(item => ({
+    id: item.id,
+    title: item.name || item.title,
+    name: item.name || item.title,
+    selectedQuantity: item.quantity,
+    quantity: item.quantity,
+    price: getProductPriceWithoutTax(item, selectedDisplayCurrency.value),
+    pivot_price_cop: getProductPriceWithoutTax(item, 'COP'),
+    pivot_price_usd: getProductPriceWithoutTax(item, 'USD'),
+    pivot_price_bs: getProductPriceWithoutTax(item, 'BS'),
+    laboratory: item.laboratory_name || item.laboratory || 'N/A',
+    iva_percentage: item.iva_percentage || 0,
+    discount_percentage: item.discount_percentage || 0,
+    notes: item.notes || null,
+  }))
+})
+
 const handleOpenCheckoutModal = () => {
   if (cart.value.length === 0) return
+  offlineOrderUUID.value = generateUUID()
   showCheckoutModal.value = true
 }
 
-const processOfflineOrder = async () => {
-  if (cart.value.length === 0) return
-  isProcessing.value = true
-
+const handlePurchaseCompleted = async (payload) => {
   try {
     const db = await getOfflineDB()
     const newOfflineOrder = {
-      uuid: generateUUID(),
+      uuid: offlineOrderUUID.value,
       timestamp: new Date().toISOString(),
       items: JSON.parse(JSON.stringify(cart.value)),
+      payments: payload?.payments || [],
       total_usd: cartTotalUsd.value,
-      total_amount: cartTotal.value,
+      total_amount: payload?.total_amount || cartTotal.value,
+      change_amount: payload?.changeAmount || 0,
+      change_amount_cop: payload?.changeAmountInCop || 0,
+      change_amount_usd: payload?.changeAmountUSD || 0,
       currency: selectedDisplayCurrency.value,
-      payment_method: selectedPaymentMethod.value,
       rates_used: { ...cachedRates.value },
       status: 'pending_sync',
     }
@@ -340,17 +457,25 @@ const processOfflineOrder = async () => {
     store.put(newOfflineOrder)
 
     tx.oncomplete = () => {
-      cart.value = []
-      showCheckoutModal.value = false
-      isProcessing.value = false
       updatePendingSyncCount()
     }
-    tx.onerror = () => {
-      isProcessing.value = false
-    }
   } catch (e) {
-    isProcessing.value = false
+    console.error('Error guardando orden offline en IndexedDB:', e)
   }
+}
+
+const handleModalClosed = () => {
+  showCheckoutModal.value = false
+}
+
+const handleFinishAndReload = () => {
+  cart.value = []
+  showCheckoutModal.value = false
+  offlineOrderUUID.value = generateUUID()
+}
+
+const handlePrintTicket = () => {
+  window.print()
 }
 
 const updatePendingSyncCount = async () => {
@@ -810,17 +935,48 @@ onUnmounted(() => {
         </div>
 
         <div class="d-flex align-center gap-2 ms-auto">
-          <!-- Iconos de Acción estilo TPV -->
-          <VBtn icon size="small" variant="tonal" color="purple" class="rounded-lg">
-            <VIcon icon="tabler-filter" size="18" />
-          </VBtn>
-          <VBtn icon size="small" variant="tonal" color="cyan" class="rounded-lg">
-            <VIcon icon="tabler-arrows-sort" size="18" />
-          </VBtn>
-          <VBtn icon size="small" variant="tonal" color="primary" class="rounded-lg" @click="selectedDisplayCurrency = (selectedDisplayCurrency === 'COP' ? 'USD' : (selectedDisplayCurrency === 'USD' ? 'BS' : 'COP'))">
+          <!-- Selector de Ordenamiento por Mayor / Menor -->
+          <VMenu location="bottom end">
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                icon
+                size="small"
+                variant="tonal"
+                :color="currentSortOption ? 'primary' : 'cyan'"
+                class="rounded-lg"
+                title="Ordenar por mayor/menor precio o stock"
+              >
+                <VIcon icon="tabler-arrows-sort" size="18" />
+              </VBtn>
+            </template>
+            <VList density="compact" class="rounded-lg shadow-lg">
+              <VListItem
+                v-for="opt in sortOptions"
+                :key="opt.title"
+                :active="currentSortOption?.key === opt.key && currentSortOption?.order === opt.order"
+                color="primary"
+                @click="setSortOption(opt)"
+              >
+                <template #prepend>
+                  <VIcon :icon="opt.icon" size="18" class="me-2" />
+                </template>
+                <VListItemTitle class="font-weight-medium text-caption">{{ opt.title }}</VListItemTitle>
+              </VListItem>
+              <VDivider v-if="currentSortOption" />
+              <VListItem v-if="currentSortOption" color="error" @click="clearSort">
+                <template #prepend>
+                  <VIcon icon="tabler-x" size="18" class="me-2 text-error" />
+                </template>
+                <VListItemTitle class="font-weight-medium text-caption text-error">Quitar orden</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
+
+          <VBtn icon size="small" variant="tonal" color="primary" class="rounded-lg" title="Cambiar moneda" @click="selectedDisplayCurrency = (selectedDisplayCurrency === 'COP' ? 'USD' : (selectedDisplayCurrency === 'USD' ? 'BS' : 'COP'))">
             <VIcon icon="tabler-arrows-left-right" size="18" />
           </VBtn>
-          <VBtn icon size="small" variant="tonal" color="purple" class="rounded-lg" @click="catalogSearchFilter = ''">
+          <VBtn icon size="small" variant="tonal" color="purple" class="rounded-lg" title="Limpiar búsqueda" @click="catalogSearchFilter = ''">
             <VIcon icon="tabler-eraser" size="18" />
           </VBtn>
           <VBtn
@@ -993,55 +1149,21 @@ onUnmounted(() => {
     </VCard>
 
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- MODAL DE COBRO EN CONTINGENCIA OFFLINE                                -->
+    <!-- MODAL DE PAGO EXACTO DEL TPV (COMPLETO / CONTINGENCIA)                -->
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <VDialog v-model="showCheckoutModal" max-width="500px">
-      <VCard class="rounded-xl">
-        <VCardItem class="py-3 px-4 border-b bg-surface">
-          <div class="d-flex align-center justify-space-between">
-            <div class="d-flex align-center gap-2">
-              <VIcon icon="tabler-cash-register" color="primary" size="24" />
-              <span class="text-subtitle-1 font-weight-950 text-uppercase">Cobrar Venta (Contingencia)</span>
-            </div>
-            <VBtn icon="tabler-x" variant="text" size="small" @click="showCheckoutModal = false" />
-          </div>
-        </VCardItem>
-
-        <VCardText class="pa-4">
-          <div class="d-flex flex-column gap-3">
-            <div class="d-flex justify-space-between align-center pa-3 bg-grey-lighten-4 rounded-lg">
-              <span class="text-subtitle-2 font-weight-bold">Total a Cobrar ({{ selectedDisplayCurrency }}):</span>
-              <span class="text-h6 font-weight-950 text-primary">
-                {{ formatCurrency(cartTotal, selectedDisplayCurrency) }}
-              </span>
-            </div>
-
-            <VRadioGroup v-model="selectedPaymentMethod" label="Método de Pago Recibido:" class="mt-2">
-              <VRadio label="Efectivo COP" value="cash_cop" color="primary" />
-              <VRadio label="Efectivo USD" value="cash_usd" color="primary" />
-              <VRadio label="Efectivo Bolívares (Bs)" value="cash_bs" color="primary" />
-              <VRadio label="Transferencia / Otro" value="transfer" color="primary" />
-            </VRadioGroup>
-          </div>
-        </VCardText>
-
-        <VCardActions class="pa-4 border-t bg-grey-lighten-5">
-          <VSpacer />
-          <VBtn variant="outlined" color="secondary" @click="showCheckoutModal = false">
-            Regresar
-          </VBtn>
-          <VBtn 
-            color="primary" 
-            variant="flat" 
-            :loading="isProcessing"
-            class="px-5 font-weight-bold"
-            @click="processOfflineOrder"
-          >
-            Confirmar y Guardar Venta
-          </VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+    <BuysModal
+      v-model:isDialogVisible="showCheckoutModal"
+      :orderData="offlineOrderData"
+      :totalAmount="cartTotal"
+      :selectedCurrency="selectedDisplayCurrency"
+      :orderProducts="offlineOrderProducts"
+      :selectedDisplayCurrency="selectedDisplayCurrency"
+      :isOffline="true"
+      @purchase-completed="handlePurchaseCompleted"
+      @modal-closed="handleModalClosed"
+      @finish-and-reload="handleFinishAndReload"
+      @printTicke-completed="handlePrintTicket"
+    />
 
     <!-- Snackbar de Producto No Encontrado -->
     <VSnackbar v-model="showNotFoundSnackbar" color="warning" timeout="3500" location="top center">

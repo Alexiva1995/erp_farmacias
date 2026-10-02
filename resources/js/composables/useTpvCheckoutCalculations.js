@@ -125,9 +125,17 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
       ratesLoaded.value = true
       console.warn('[TPV DEBUG TASAS CARGADAS EN MEMORIA]', formattedRates)
     } catch (error) {
-      toast.error('No se pudieron cargar las tasas de cambio.')
-      console.error('Error fetching exchange rates:', error)
-      ratesLoaded.value = false
+      // Fallback a tasas cacheadas en localStorage si no hay red
+      const storedBs = Number(localStorage.getItem('tpv_offline_rate_bs')) || 45.50
+      const storedCop = Number(localStorage.getItem('tpv_offline_rate_cop')) || 4100
+      const fallbackRates = {
+        USD: { BS: storedBs, COP: storedCop },
+        BS: { USD: 1 / storedBs, COP: storedCop / storedBs },
+        COP: { USD: 1 / storedCop, BS: storedBs / storedCop },
+      }
+      exchangeRates.value = fallbackRates
+      ratesLoaded.value = true
+      console.warn('[TPV] Usando tasas offline desde caché local:', fallbackRates)
     }
   }
 

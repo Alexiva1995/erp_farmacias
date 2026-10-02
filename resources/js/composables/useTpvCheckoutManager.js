@@ -34,11 +34,14 @@ export function useTpvCheckoutManager({
     if (product[priceKey] !== undefined) {
       return Number(product[priceKey])
     }
+    if (product.price_cop && targetCurrency === 'COP') return Number(product.price_cop)
+    if (product.price_bs && targetCurrency === 'BS') return Number(product.price_bs)
+    if (product.base_price_usd && targetCurrency === 'USD') return Number(product.base_price_usd)
     const rate = getEffectiveRate(props.selectedCurrency, targetCurrency)
     if (rate > 0) {
-      return Number(product.pivot?.price || product.price || 0) * rate
+      return Number(product.pivot?.price || product.sale_price || product.price || 0) * rate
     }
-    return Number(product.pivot?.price || product.price || 0)
+    return Number(product.pivot?.price || product.sale_price || product.price || 0)
   }
 
   const selectPaymentMethod = (methodValue, currency = null) => {
@@ -278,6 +281,25 @@ export function useTpvCheckoutManager({
 
       if (validPayments.length === 0) {
         toast.warning('Debe ingresar y confirmar al menos un método de pago con un monto mayor a 0.')
+        issubmitting.value = false
+        return
+      }
+
+      if (props.isOffline) {
+        toast.success('Venta offline completada exitosamente.')
+        receiptOrderData.value = props.orderData
+        receiptOrderProducts.value = props.orderProducts
+        receiptPayments.value = validPayments
+        currentProgress.value = 100
+        emit('purchase-completed', {
+          order: props.orderData,
+          payments: validPayments,
+          total_amount: roundedTotalAmountToPay.value,
+          changeAmount: changeAmount.value,
+          changeAmountInCop: changeAmountInCop?.value || 0,
+          changeAmountUSD: changeAmountInUsd?.value || 0,
+          currency: props.selectedCurrency,
+        })
         issubmitting.value = false
         return
       }

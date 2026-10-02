@@ -31,6 +31,7 @@ const props = defineProps({
   isExternalLoading: { type: Boolean, default: false },
   foreignOrdersCount: { type: Number, default: 0 },
   allForeignSalesSpe: { type: Boolean, default: false },
+  isOffline: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
