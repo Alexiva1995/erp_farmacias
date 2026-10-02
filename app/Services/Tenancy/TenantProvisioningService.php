@@ -18,12 +18,9 @@ class TenantProvisioningService
      */
     public function createTenant(array $data): Tenant
     {
-        // 0. Si existía un registro incompleto previo, limpiarlo
-        $existing = Tenant::find($data['tenant_id']);
-        if ($existing) {
-            $existing->domains()->delete();
-            $existing->delete();
-        }
+        // 0. Si existía un registro incompleto previo, limpiarlo sin disparar eventos de base de datos
+        \Stancl\Tenancy\Database\Models\Domain::where('tenant_id', $data['tenant_id'])->delete();
+        Tenant::where('id', $data['tenant_id'])->delete();
 
         // 1. Crear el registro del Tenant (gatilla la creación y migración automática de la BD)
         /** @var Tenant $tenant */
