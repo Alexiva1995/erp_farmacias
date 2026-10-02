@@ -49,9 +49,14 @@ class TenantProvisioningService
             'domain' => $domain,
         ]);
 
-        // 3. Crear el usuario Administrador dentro del contexto de la base de datos del Tenant
-        if (!empty($data['admin_email']) && !empty($data['password'])) {
-            $tenant->run(function () use ($data) {
+        // 3. Inicializar roles y crear el usuario Administrador dentro del contexto de la BD del Tenant
+        $tenant->run(function () use ($data) {
+            // Sembrar roles base indispensables
+            if (class_exists(\Database\Seeders\RolesSeeder::class)) {
+                (new \Database\Seeders\RolesSeeder())->run();
+            }
+
+            if (!empty($data['admin_email']) && !empty($data['password'])) {
                 User::create([
                     'username' => $data['admin_name'] ?? 'Admin',
                     'email' => $data['admin_email'],
@@ -59,8 +64,8 @@ class TenantProvisioningService
                     'role_id' => 1,
                     'is_active' => true,
                 ]);
-            });
-        }
+            }
+        });
 
         return $tenant;
     }
