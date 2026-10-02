@@ -3,8 +3,10 @@ import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed, ref } from "vue";
+import { useBrandingStore } from "@/stores/branding";
 
 export function useCheckout(props) {
+  const brandingStore = useBrandingStore();
   const ratesLoaded = ref(false);
   const exchangeRates = ref({});
   const payments = ref([]);
@@ -108,7 +110,8 @@ export function useCheckout(props) {
   });
 
   const appliesSpecialTax = computed(() => {
-    return props.isSpecialTaxpayer && (props.selectedCurrency === "USD" || props.selectedCurrency === "COP");
+    const isFiscalActive = brandingStore.settings?.fiscal_mode === "activa";
+    return isFiscalActive && props.isSpecialTaxpayer && (props.selectedCurrency === "USD" || props.selectedCurrency === "COP");
   });
 
   const specialTaxAmount = computed(() => {

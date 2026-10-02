@@ -124,9 +124,34 @@ const calculatePriceWithDiscount = (basePrice, product = null) => {
   return bestPct > 0 ? price * (1 - bestPct / 100) : price;
 };
 
-const calculateAndFormatCopPrice = (basePrice, product) => {
-  const price = calculatePriceWithDiscount(basePrice, product);
-  return formatCurrency(roundUpToNearestHundred(price), "COP");
+const calculatePriceWithIVAAndDiscount = (basePrice, product, currency = 'USD') => {
+  let effectivePrice = calculatePriceWithDiscount(basePrice, product);
+  let taxRate = product.iva == 1 ? 0.16 : 0;
+  let priceWithTax = taxRate > 0 ? effectivePrice * (1 + taxRate) : effectivePrice;
+  if (isCeActiveInProduction.value && (currency === 'USD' || currency === 'COP')) {
+    priceWithTax *= 1.03;
+  }
+  return priceWithTax;
+};
+
+const calculatePriceWithIVA = (basePrice, product, currency = 'USD') => {
+  const price = parseFloat(basePrice) || 0;
+  let taxRate = product.iva == 1 ? 0.16 : 0;
+  let priceWithTax = taxRate > 0 ? price * (1 + taxRate) : price;
+  if (isCeActiveInProduction.value && (currency === 'USD' || currency === 'COP')) {
+    priceWithTax *= 1.03;
+  }
+  return priceWithTax;
+};
+
+const calculateAndFormatCopPriceWithIVAAndDiscount = (basePrice, product) => {
+  const priceWithIVA = calculatePriceWithIVAAndDiscount(basePrice, product, 'COP');
+  return formatCurrency(roundUpToNearestHundred(priceWithIVA), "COP");
+};
+
+const calculateAndFormatCopPriceWithIVA = (basePrice, product) => {
+  const priceWithIVA = calculatePriceWithIVA(basePrice, product, 'COP');
+  return formatCurrency(roundUpToNearestHundred(priceWithIVA), "COP");
 };
 
 const handleAddProduct = (productId) => {
@@ -388,13 +413,13 @@ const getRowClass = (item) => {
       <template #item.sale_price="{ item }">
         <div class="d-flex flex-column align-end">
           <del v-if="item.original_price && Number(item.original_price) > Number(item.sale_price)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
-            {{ formatCurrency(Number(item.original_price)) }}
+            {{ formatCurrency(calculatePriceWithIVA(item.original_price, item)) }}
           </del>
-          <del v-else-if="Number(item.sale_price) > calculatePriceWithDiscount(item.sale_price, item)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
-            {{ formatCurrency(Number(item.sale_price)) }}
+          <del v-else-if="calculatePriceWithIVA(item.sale_price, item) > calculatePriceWithIVAAndDiscount(item.sale_price, item)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
+            {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
           </del>
           <span :class="getPriceClass(item)" class="font-weight-bold text-high-emphasis text-body-2">
-            {{ formatCurrency(calculatePriceWithDiscount(item.sale_price, item)) }}
+            {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.sale_price, item)) }}
           </span>
         </div>
       </template>
@@ -402,13 +427,13 @@ const getRowClass = (item) => {
       <template #item.price_bs="{ item }">
         <div class="d-flex flex-column align-end">
           <del v-if="item.original_price_bs && Number(item.original_price_bs) > Number(item.price_bs)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
-            {{ formatCurrency(Number(item.original_price_bs), "BS") }}
+            {{ formatCurrency(calculatePriceWithIVA(item.original_price_bs, item, 'BS'), "BS") }}
           </del>
-          <del v-else-if="Number(item.price_bs) > calculatePriceWithDiscount(item.price_bs, item)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
-            {{ formatCurrency(Number(item.price_bs), "BS") }}
+          <del v-else-if="calculatePriceWithIVA(item.price_bs, item, 'BS') > calculatePriceWithIVAAndDiscount(item.price_bs, item, 'BS')" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
+            {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item, 'BS'), "BS") }}
           </del>
           <span :class="getPriceClass(item)" class="font-weight-bold text-high-emphasis text-body-2">
-            {{ formatCurrency(calculatePriceWithDiscount(item.price_bs, item), "BS") }}
+            {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.price_bs, item, 'BS'), "BS") }}
           </span>
         </div>
       </template>
@@ -416,13 +441,13 @@ const getRowClass = (item) => {
       <template #item.price_cop="{ item }">
         <div class="d-flex flex-column align-end">
           <del v-if="item.original_price_cop && Number(item.original_price_cop) > Number(item.price_cop)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
-            {{ formatCurrency(roundUpToNearestHundred(Number(item.original_price_cop)), "COP") }}
+            {{ calculateAndFormatCopPriceWithIVA(item.original_price_cop, item) }}
           </del>
-          <del v-else-if="Number(item.price_cop) > calculatePriceWithDiscount(item.price_cop, item)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
-            {{ formatCurrency(roundUpToNearestHundred(Number(item.price_cop)), "COP") }}
+          <del v-else-if="calculatePriceWithIVA(item.price_cop, item) > calculatePriceWithIVAAndDiscount(item.price_cop, item)" class="precio-tachado font-weight-medium text-caption text-disabled text-decoration-line-through">
+            {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
           </del>
           <span :class="getPriceClass(item)" class="font-weight-black text-primary text-body-2">
-            {{ calculateAndFormatCopPrice(item.price_cop, item) }}
+            {{ calculateAndFormatCopPriceWithIVAAndDiscount(item.price_cop, item) }}
           </span>
         </div>
       </template>
@@ -582,33 +607,33 @@ const getRowClass = (item) => {
               <div class="price-box">
                 <span class="label">USD</span>
                 <div class="d-flex flex-column">
-                  <del v-if="Number(item.sale_price) > calculatePriceWithDiscount(item.sale_price, item)" class="font-weight-medium text-caption text-disabled text-decoration-line-through">
-                    {{ formatCurrency(Number(item.sale_price)) }}
+                  <del v-if="calculatePriceWithIVA(item.sale_price, item) > calculatePriceWithIVAAndDiscount(item.sale_price, item)" class="font-weight-medium text-caption text-disabled text-decoration-line-through">
+                    {{ formatCurrency(calculatePriceWithIVA(item.sale_price, item)) }}
                   </del>
                   <span class="value font-weight-bold text-high-emphasis text-body-2" :class="getPriceClass(item)">
-                    {{ formatCurrency(calculatePriceWithDiscount(item.sale_price, item)) }}
+                    {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.sale_price, item)) }}
                   </span>
                 </div>
               </div>
               <div class="price-box">
                 <span class="label">Bs</span>
                 <div class="d-flex flex-column">
-                  <del v-if="Number(item.price_bs) > calculatePriceWithDiscount(item.price_bs, item)" class="font-weight-medium text-caption text-disabled text-decoration-line-through">
-                    {{ formatCurrency(Number(item.price_bs), "BS") }}
+                  <del v-if="calculatePriceWithIVA(item.price_bs, item, 'BS') > calculatePriceWithIVAAndDiscount(item.price_bs, item, 'BS')" class="font-weight-medium text-caption text-disabled text-decoration-line-through">
+                    {{ formatCurrency(calculatePriceWithIVA(item.price_bs, item, 'BS'), "BS") }}
                   </del>
                   <span class="value font-weight-bold text-high-emphasis text-body-2" :class="getPriceClass(item)">
-                    {{ formatCurrency(calculatePriceWithDiscount(item.price_bs, item), "BS") }}
+                    {{ formatCurrency(calculatePriceWithIVAAndDiscount(item.price_bs, item, 'BS'), "BS") }}
                   </span>
                 </div>
               </div>
               <div class="price-box">
                 <span class="label">COP</span>
                 <div class="d-flex flex-column">
-                  <del v-if="Number(item.price_cop) > calculatePriceWithDiscount(item.price_cop, item)" class="font-weight-medium text-caption text-disabled text-decoration-line-through">
-                    {{ formatCurrency(roundUpToNearestHundred(Number(item.price_cop)), "COP") }}
+                  <del v-if="calculatePriceWithIVA(item.price_cop, item) > calculatePriceWithIVAAndDiscount(item.price_cop, item)" class="font-weight-medium text-caption text-disabled text-decoration-line-through">
+                    {{ calculateAndFormatCopPriceWithIVA(item.price_cop, item) }}
                   </del>
                   <span class="value font-weight-black text-primary text-body-2" :class="getPriceClass(item)">
-                    {{ calculateAndFormatCopPrice(item.price_cop, item) }}
+                    {{ calculateAndFormatCopPriceWithIVAAndDiscount(item.price_cop, item) }}
                   </span>
                 </div>
               </div>

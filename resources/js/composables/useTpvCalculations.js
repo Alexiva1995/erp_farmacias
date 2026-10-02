@@ -115,7 +115,7 @@ export function useTpvCalculations({
     }
 
     // Impuesto IGTF / Especial
-    const isSpecialTax = isSpecialTaxpayer.value && (currency === 'USD' || currency === 'COP') && fiscalMode?.value !== 'demo'
+    const isSpecialTax = isSpecialTaxpayer.value && (currency === 'USD' || currency === 'COP') && fiscalMode?.value === 'activa'
     let specialTax = 0
     if (isSpecialTax) {
       specialTax = finalOrderTotal * 0.03

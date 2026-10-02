@@ -23,7 +23,9 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
   }
 
   const appliesSpecialTax = computed(() => {
+    const isFiscalActive = brandingStore?.settings?.fiscal_mode === 'activa'
     return (
+      isFiscalActive &&
       props.isSpecialTaxpayer &&
       (props.selectedCurrency === 'USD' || props.selectedCurrency === 'COP')
     )

@@ -740,7 +740,9 @@ const handleDecrement = (product) => {
 };
 
 const appliesSpecialTax = computed(() => {
+  const isFiscalActive = brandingStore.settings?.fiscal_mode === "activa";
   return (
+    isFiscalActive &&
     props.isSpecialTaxpayer &&
     (props.selectedDisplayCurrency === "USD" ||
       props.selectedDisplayCurrency === "COP")
