@@ -1317,6 +1317,7 @@ class IaAssistantReportService
                         $stockEfectivo = (float)($sku->stock_efectivo ?? 0);
                         $ipoValor = (float)($sku->ipo ?? 0);
                         $ipoDecimal = $ipoValor > 1.0 ? ($ipoValor / 100) : $ipoValor;
+                        $isBestSeller = $ipoDecimal >= 0.35 || (bool)($sku->es_best_seller_liga ?? false);
                         $esUnicoEnTier = (count($tierItems) === 1);
                         $ligaDesabastecida = ($stockEfectivoTotalLiga <= 0);
 
