@@ -383,7 +383,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <VContainer fluid class="pa-2">
+  <div class="w-100">
     <!-- Alerta dinámica cuando vuelve el Internet -->
     <VSlideYTransition>
       <VAlert
@@ -422,28 +422,32 @@ onUnmounted(() => {
     </VSlideYTransition>
 
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- CARD SUPERIOR: ORDEN (Diseño Pixel-Perfect de OpenOrderCard)          -->
+    <!-- CARD SUPERIOR: ORDEN (Réplica Exacta de OpenOrderCard)                 -->
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <VCard class="mb-4 rounded-xl border bg-surface elevation-1">
+    <VCard class="open-order-card shadow-sm border rounded-xl overflow-hidden mb-4 w-100">
       <!-- Encabezado de la Orden -->
-      <VCardItem class="py-2.5 px-4 border-b">
-        <div class="d-flex align-center justify-space-between flex-wrap gap-2">
-          <div class="d-flex align-center gap-2">
-            <VIcon icon="tabler-file-description" color="primary" size="24" />
-            <span class="text-subtitle-1 font-weight-950 text-uppercase tracking-wider">ORDEN</span>
-            <span class="text-caption font-weight-bold text-primary ms-2 d-flex align-center gap-1">
-              Alexis Jose Valera Valbuena
-              <VIcon icon="tabler-pencil" size="14" class="opacity-70" />
-              <span class="text-disabled font-weight-medium ms-1">V- 24150980</span>
-            </span>
+      <VCardItem class="pa-3 pb-2 bg-surface border-b">
+        <div class="d-flex align-center justify-space-between flex-nowrap">
+          <div class="d-flex align-center gap-2 overflow-hidden">
+            <VIcon icon="tabler-file-description" color="primary" size="24" class="opacity-80 flex-shrink-0" />
+            <div class="d-flex flex-column overflow-hidden">
+              <h2 class="text-subtitle-1 font-weight-950 text-high-emphasis uppercase letter-spacing-1 leading-none mb-1">
+                ORDEN
+              </h2>
+              <div class="d-flex align-center gap-2">
+                <span class="text-caption font-weight-bold text-primary truncate">Alexis Jose Valera Valbuena</span>
+                <VIcon size="14" color="primary" class="opacity-70">tabler-edit</VIcon>
+                <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">V- 24150980</span>
+              </div>
+            </div>
           </div>
 
-          <div class="d-flex align-center gap-2">
+          <div class="d-flex align-center gap-1 gap-sm-2 flex-shrink-0 ms-auto">
             <VChip
               size="x-small"
               :color="isOnline ? 'success' : 'warning'"
               variant="tonal"
-              class="font-weight-black text-uppercase"
+              class="font-weight-black text-uppercase me-2"
             >
               {{ isOnline ? 'Online' : 'Contingencia Offline' }}
             </VChip>
@@ -452,193 +456,214 @@ onUnmounted(() => {
               variant="text"
               color="secondary"
               size="small"
+              density="comfortable"
+              class="rounded-circle"
               @click="clearCart"
-              title="Cerrar / Vaciar orden"
+              title="Cancelar / Vaciar orden"
             />
           </div>
         </div>
       </VCardItem>
 
       <!-- Barra de Acciones de la Orden: Items, Input Barcode, Ofertas, Moneda -->
-      <div class="px-4 pt-3 pb-2">
-        <div class="d-flex align-center gap-2 flex-wrap">
-          <!-- Badge Items -->
-          <VChip color="primary" variant="flat" size="small" class="font-weight-black px-3 rounded-lg">
-            <VIcon start icon="tabler-list" size="16" class="me-1" />
-            <span>Items {{ cart.length }}</span>
-          </VChip>
+      <VCardText class="pa-3">
+        <div class="d-flex align-center justify-space-between mb-3 flex-wrap gap-2 px-1">
+          <!-- Contador de Ítems -->
+          <div class="d-flex align-center gap-1.5 shrink-0 py-1">
+            <VIcon icon="tabler-list-details" color="primary" size="18" class="opacity-80" />
+            <span class="text-caption font-weight-bold text-primary uppercase letter-spacing-1">Ítems</span>
+            <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-2">{{ cart.length }}</VChip>
+          </div>
 
-          <!-- Input Escanear Código / Buscar en Orden -->
-          <div class="flex-grow-1" style="min-width: 260px;">
+          <!-- Buscador Refinado con Mejor Espaciado -->
+          <div class="d-flex align-center flex-grow-1 mx-sm-1" style="min-inline-size: 220px;">
             <VTextField
               v-model="barcodeSearchQuery"
               placeholder="Escanear código o ingresar cotización..."
-              prepend-inner-icon="tabler-scan"
-              append-inner-icon="tabler-arrow-right"
               density="compact"
-              variant="outlined"
+              variant="flat"
+              bg-color="grey-lighten-4"
               hide-details
-              class="rounded-lg font-weight-medium custom-barcode-input"
+              prepend-inner-icon="tabler-scan"
+              class="rounded-lg custom-search-slim shadow-sm border flex-grow-1"
               @keydown.enter="handleBarcodeScan"
-              @click:append-inner="handleBarcodeScan"
-            />
+            >
+              <template #append-inner>
+                <VBtn
+                  icon="tabler-arrow-right"
+                  variant="text"
+                  color="primary"
+                  size="x-small"
+                  class="me-n1"
+                  :disabled="!barcodeSearchQuery"
+                  @click="handleBarcodeScan"
+                />
+              </template>
+            </VTextField>
           </div>
 
-          <!-- Botón Ofertas -->
-          <VBtn
-            variant="outlined"
-            color="primary"
-            size="small"
-            class="rounded-lg font-weight-bold px-3 text-none"
-            height="40"
-          >
-            <span>OFERTAS</span>
-            <VIcon end icon="tabler-chevron-down" size="14" />
-          </VBtn>
+          <!-- Selectores a la Derecha: Ofertas / Descuentos + Moneda -->
+          <div class="d-flex align-center gap-2 flex-wrap ms-auto">
+            <!-- Botón Ofertas -->
+            <VBtn
+              variant="outlined"
+              color="primary"
+              size="small"
+              class="rounded-lg font-weight-bold text-uppercase"
+              height="38"
+            >
+              <span>OFERTAS</span>
+              <VIcon end icon="tabler-chevron-down" size="14" />
+            </VBtn>
 
-          <!-- Selector de Moneda Dropdown -->
-          <VMenu location="bottom end">
-            <template #activator="{ props: menuProps }">
-              <VBtn
-                v-bind="menuProps"
-                variant="flat"
-                color="primary"
-                size="small"
-                class="rounded-lg font-weight-bold px-3 text-none"
-                height="40"
-              >
-                <VIcon start icon="tabler-currency-dollar" size="16" />
-                <span>{{ selectedDisplayCurrency }}</span>
-                <VIcon end icon="tabler-chevron-down" size="14" />
-              </VBtn>
-            </template>
-            <VList density="compact" class="rounded-lg shadow-lg">
-              <VListItem
-                v-for="curr in availableCurrencies"
-                :key="curr"
-                :value="curr"
-                :active="selectedDisplayCurrency === curr"
-                color="primary"
-                @click="selectedDisplayCurrency = curr"
-              >
-                <VListItemTitle class="font-weight-bold text-caption">{{ curr }}</VListItemTitle>
-              </VListItem>
-            </VList>
-          </VMenu>
-        </div>
-      </div>
-
-      <!-- Lista de Productos en la Orden -->
-      <VCardText class="px-4 py-2">
-        <div v-if="cart.length === 0" class="text-center py-8 text-disabled bg-grey-lighten-5 rounded-xl border border-dashed my-2">
-          <VIcon icon="tabler-shopping-cart-off" size="48" class="mb-2 opacity-30" />
-          <p class="text-subtitle-2 font-weight-950 uppercase opacity-60 mb-0">La orden está vacía</p>
-          <p class="text-super-xs text-disabled mb-0">Use el buscador inferior o el lector de código de barras para agregar productos</p>
+            <!-- Selector de Moneda -->
+            <VMenu location="bottom end">
+              <template #activator="{ props: menuProps }">
+                <VBtn
+                  v-bind="menuProps"
+                  variant="flat"
+                  color="primary"
+                  size="small"
+                  class="rounded-lg font-weight-bold px-3"
+                  height="38"
+                >
+                  <VIcon start icon="tabler-currency-dollar" size="16" />
+                  <span>{{ selectedDisplayCurrency }}</span>
+                  <VIcon end icon="tabler-chevron-down" size="14" />
+                </VBtn>
+              </template>
+              <VList density="compact" class="rounded-lg shadow-lg">
+                <VListItem
+                  v-for="currencyOption in availableCurrencies"
+                  :key="currencyOption"
+                  :value="currencyOption"
+                  :active="selectedDisplayCurrency === currencyOption"
+                  color="primary"
+                  @click="selectedDisplayCurrency = currencyOption"
+                >
+                  <VListItemTitle class="font-weight-bold text-caption">{{ currencyOption }}</VListItemTitle>
+                </VListItem>
+              </VList>
+            </VMenu>
+          </div>
         </div>
 
-        <div v-else class="d-flex flex-column gap-2 overflow-y-auto my-2" style="max-block-size: 320px;">
-          <div 
-            v-for="(item, index) in cart" 
-            :key="item.id" 
-            class="product-row pa-2.5 rounded-lg border bg-surface d-flex align-center gap-3"
-          >
-            <!-- Selector de Cantidad Stepper -->
-            <div class="d-flex align-center gap-1 bg-grey-lighten-4 rounded-lg px-1 border" style="block-size: 36px;">
-              <VBtn 
-                icon="tabler-minus" 
-                size="24" 
-                variant="text" 
-                color="primary" 
-                :disabled="item.quantity <= 1"
-                @click="decrementCartItem(item)" 
-              />
-              
-              <div class="px-2 font-weight-950 text-primary text-body-2 min-width-24 text-center">
-                {{ item.quantity }}
-              </div>
+        <!-- Lista de Productos en la Orden -->
+        <div v-if="cart.length === 0" class="text-center py-8 text-disabled bg-grey-lighten-5 rounded-xl border border-dashed mx-3">
+          <VIcon icon="tabler-shopping-cart-off" size="48" class="mb-3 opacity-20" />
+          <p class="text-subtitle-2 font-weight-950 uppercase opacity-60">La orden está vacía</p>
+          <p class="text-super-xs">Use el buscador de productos o el escáner para comenzar su venta</p>
+        </div>
 
-              <VBtn 
-                icon="tabler-plus" 
-                size="24" 
-                variant="text" 
-                color="primary" 
-                @click="incrementCartItem(item)" 
-              />
-            </div>
-
-            <!-- Información del Producto y Desglose de Precios Inline -->
-            <div class="flex-grow-1 overflow-hidden">
-              <div class="d-flex align-center gap-2 flex-wrap">
-                <h3 class="text-caption font-weight-950 text-high-emphasis text-uppercase leading-tight mb-0">
-                  {{ item.name }}
-                </h3>
-                <div class="d-flex align-center gap-1 text-super-xs flex-wrap">
-                  <span class="text-disabled">{{ item.active_ingredient || '—' }}</span>
-                  <span class="text-disabled">|</span>
-                  <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 130px; color: #9c27b0 !important;">
-                    {{ item.laboratory_name || 'GENÉRICO' }}
-                  </span>
+        <div v-else class="mt-2">
+          <div class="d-flex flex-column gap-2 overflow-y-auto" style="max-block-size: 380px; padding-inline-end: 4px;">
+            <div 
+              v-for="(product, index) in cart" 
+              :key="product.id" 
+              class="product-row pa-2 rounded-lg border bg-surface d-flex align-center gap-3"
+            >
+              <!-- Cantidad Selector Estilo Premium -->
+              <div class="d-flex align-center gap-1 bg-grey-lighten-4 rounded-lg px-1 border" style="block-size: 36px;">
+                <VBtn 
+                  icon="tabler-minus" 
+                  size="24" 
+                  variant="text" 
+                  color="primary" 
+                  @click="decrementCartItem(product)" 
+                  :disabled="product.quantity <= 1" 
+                />
+                
+                <div class="px-2 font-weight-950 text-primary text-body-2 min-width-24 text-center">
+                  {{ product.quantity }}
                 </div>
 
-                <!-- Desglose de Precios Inline: U (Unitario) | S (Subtotal) | I (IVA) -->
-                <div class="d-none d-sm-flex align-center gap-1 flex-wrap w-100 mt-1">
-                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1.5 py-0.5 rounded border">
-                    <span class="text-super-xs text-disabled font-weight-black uppercase">U:</span>
-                    <span class="text-super-xs font-weight-black text-primary">
-                      {{ formatCurrency(getProductPriceWithTax(item, selectedDisplayCurrency)) }}
-                    </span>
-                  </div>
-                  
-                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1.5 py-0.5 rounded border">
-                    <span class="text-super-xs text-disabled font-weight-black uppercase">S:</span>
-                    <span class="text-super-xs font-weight-black text-high-emphasis">
-                      {{ formatCurrency(getProductPriceWithoutTax(item, selectedDisplayCurrency) * item.quantity) }}
+                <VBtn 
+                  icon="tabler-plus" 
+                  size="24" 
+                  variant="text" 
+                  color="primary" 
+                  @click="incrementCartItem(product)" 
+                />
+              </div>
+
+              <!-- Información del Producto y Desglose Inline -->
+              <div class="flex-grow-1 overflow-hidden">
+                <div class="d-flex align-center gap-2 flex-wrap">
+                  <h3 class="text-caption font-weight-950 text-high-emphasis text-uppercase leading-tight mb-0">
+                    {{ (product.name || '').toUpperCase() }}
+                  </h3>
+                  <div 
+                    class="d-flex align-center gap-1 text-super-xs flex-wrap"
+                    style="white-space: pre-wrap;"
+                  >
+                    <span class="text-disabled">{{ product.active_ingredient || '—' }}</span>
+                    <span class="text-disabled">|</span>
+                    <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 120px; color: #e91e63 !important;">
+                      {{ product.laboratory_name || 'GENÉRICO' }}
                     </span>
                   </div>
 
-                  <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1.5 py-0.5 rounded border">
-                    <span class="text-super-xs text-disabled font-weight-black uppercase">I:</span>
-                    <span class="text-super-xs font-weight-black text-success">
-                      {{ formatCurrency(getProductIvaAmount(item, selectedDisplayCurrency) * item.quantity) }}
-                    </span>
-                  </div>
+                  <!-- Desglose de Precios Inline (Inmediatamente después del título) -->
+                  <div class="d-none d-sm-flex align-center gap-1 flex-wrap w-100">
+                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border">
+                       <span class="text-super-xs text-disabled font-weight-black uppercase">U:</span>
+                       <span class="text-super-xs font-weight-black text-secondary">
+                         {{ formatCurrency(getProductPriceWithTax(product, selectedDisplayCurrency), selectedDisplayCurrency) }}
+                       </span>
+                    </div>
+                    
+                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border">
+                       <span class="text-super-xs text-disabled font-weight-black uppercase">S:</span>
+                       <span class="text-super-xs font-weight-black text-high-emphasis">
+                         {{ formatCurrency(getProductPriceWithoutTax(product, selectedDisplayCurrency) * product.quantity, selectedDisplayCurrency) }}
+                       </span>
+                    </div>
 
-                  <VChip v-if="item.discount_percentage > 0" color="success" size="x-small" variant="flat" class="text-super-xs px-1">
-                    -{{ item.discount_percentage }}%
-                  </VChip>
+                    <div class="d-flex align-center gap-1 bg-grey-lighten-4 px-1 rounded border">
+                       <span class="text-super-xs text-disabled font-weight-black uppercase">I:</span>
+                       <span class="text-super-xs font-weight-black text-success">
+                         {{ formatCurrency(getProductIvaAmount(product, selectedDisplayCurrency) * product.quantity, selectedDisplayCurrency) }}
+                       </span>
+                    </div>
+
+                    <VChip v-if="product.discount_percentage > 0" color="success" size="x-small" variant="flat" class="text-super-xs px-1">
+                      -{{ product.discount_percentage }}%
+                    </VChip>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Precio Total Ítem -->
-            <div class="text-right d-flex flex-column align-end" style="min-inline-size: 110px;">
-              <span class="text-subtitle-2 font-weight-950 text-primary leading-tight">
-                {{ formatCurrency(getProductPriceWithTax(item, selectedDisplayCurrency) * item.quantity) }}
-              </span>
-            </div>
+              <!-- Precio Total Ítem -->
+              <div class="text-right d-flex flex-column align-end" style="min-inline-size: 100px;">
+                <span class="text-subtitle-2 font-weight-950 text-primary leading-tight">
+                  {{ formatCurrency(getProductPriceWithTax(product, selectedDisplayCurrency) * product.quantity, selectedDisplayCurrency) }}
+                </span>
+              </div>
 
-            <!-- Botón Eliminar Ítem -->
-            <VBtn 
-              icon="tabler-x" 
-              variant="text" 
-              color="error" 
-              size="x-small" 
-              class="opacity-60"
-              @click="removeFromCart(index)"
-            />
+              <!-- Acción Eliminar -->
+              <VBtn 
+                icon="tabler-x" 
+                variant="text" 
+                color="error" 
+                size="x-small" 
+                class="opacity-60"
+                @click="removeFromCart(index)"
+              />
+            </div>
           </div>
         </div>
       </VCardText>
 
       <!-- Footer Unificado: Totales y Acciones -->
-      <VCardText class="pa-4 bg-grey-lighten-5 border-t">
+      <VCardText class="pa-4 bg-grey-lighten-5 border-t mt-3">
         <div class="d-flex flex-column gap-3">
-          <!-- Fila de Totales: Subtotal, IVA y Total a Cobrar -->
+          <!-- Fila de Totales: Subtotal/IVA y Total Final ultra destacado con espaciado amplio -->
           <div class="d-flex align-center justify-space-between flex-wrap gap-3 px-1 pt-1">
+            <!-- Subtotal e IVA agrupados con alto contraste -->
             <div class="d-flex align-center gap-4 flex-wrap">
               <!-- Subtotal -->
               <div class="d-flex flex-column">
-                <span class="total-label mb-1">SUBTOTAL</span>
+                <span class="total-label mb-1">Subtotal</span>
                 <span class="total-value">
                   {{ formatCurrency(cartSubtotal, selectedDisplayCurrency) }}
                 </span>
@@ -653,69 +678,72 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Monto Total a Cobrar Grande -->
+            <!-- Monto Total Grande y Visible -->
             <div class="d-flex flex-column align-end">
-              <span class="total-label mb-1">TOTAL A COBRAR</span>
-              <div class="text-h5 font-weight-950 text-primary leading-none" style="font-size: 1.35rem !important;">
+              <span class="total-label mb-1">Total a Cobrar</span>
+              <div class="text-h5 font-weight-950 text-primary leading-none d-flex align-center gap-1" style="font-size: 1.25rem !important;">
                 {{ formatCurrency(cartTotal, selectedDisplayCurrency) }}
               </div>
             </div>
           </div>
 
-          <!-- Botones de Acción Inferiores: Cancelar | Reservar | COBRAR AHORA -->
-          <VRow dense class="align-center mt-1">
-            <VCol cols="12" sm="3">
-              <VBtn
-                color="secondary"
-                variant="outlined"
-                height="44"
-                block
-                class="rounded-lg font-weight-bold text-none btn-neutral-cancel"
-                :disabled="cart.length === 0"
-                @click="clearCart"
-              >
-                <VIcon icon="tabler-trash" size="18" class="me-1" />
-                <span>Cancelar</span>
-              </VBtn>
-            </VCol>
+          <!-- Botones de Acción Inferiores: Cancelar + Reservar (50%) | Cobrar (50%) -->
+          <div>
+            <VRow dense class="align-center">
+              <!-- 50%: Cancelar (Gris neutro) y Reservar (Naranja outlined) -->
+              <VCol cols="12" sm="6">
+                <div class="d-flex align-center gap-2">
+                  <VBtn
+                    color="secondary"
+                    variant="outlined"
+                    height="44"
+                    class="flex-grow-1 rounded-lg font-weight-bold text-none btn-neutral-cancel"
+                    :disabled="cart.length === 0"
+                    @click="clearCart"
+                  >
+                    <VIcon icon="tabler-trash" size="18" class="me-1" />
+                    <span>Cancelar</span>
+                  </VBtn>
 
-            <VCol cols="12" sm="3">
-              <VBtn
-                color="warning"
-                variant="outlined"
-                height="44"
-                block
-                class="rounded-lg font-weight-bold text-none"
-                :disabled="cart.length === 0"
-              >
-                <VIcon icon="tabler-hourglass" size="18" class="me-1" />
-                <span>Reservar</span>
-              </VBtn>
-            </VCol>
+                  <VBtn
+                    color="warning"
+                    variant="outlined"
+                    height="44"
+                    class="flex-grow-1 rounded-lg font-weight-bold text-none"
+                    :disabled="cart.length === 0"
+                  >
+                    <VIcon icon="tabler-hourglass" size="18" class="me-1" />
+                    <span>Reservar</span>
+                  </VBtn>
+                </div>
+              </VCol>
 
-            <VCol cols="12" sm="6">
-              <VBtn
-                color="primary"
-                variant="flat"
-                height="44"
-                block
-                class="rounded-lg font-weight-bold text-none elevation-2 text-subtitle-2"
-                :disabled="cart.length === 0 || isProcessing"
-                @click="handleOpenCheckoutModal"
-              >
-                <VIcon icon="tabler-circle-check" size="20" class="me-1" />
-                <span>COBRAR AHORA</span>
-              </VBtn>
-            </VCol>
-          </VRow>
+              <!-- 50%: Cobrar Ahora destacado con color primario -->
+              <VCol cols="12" sm="6">
+                <div class="d-flex align-center gap-2">
+                  <VBtn
+                    color="primary"
+                    variant="flat"
+                    height="44"
+                    class="flex-grow-1 rounded-lg font-weight-bold text-none elevation-2 text-subtitle-2"
+                    :disabled="cart.length === 0 || isProcessing"
+                    @click="handleOpenCheckoutModal"
+                  >
+                    <VIcon icon="tabler-circle-check" size="20" class="me-1" />
+                    <span>COBRAR AHORA</span>
+                  </VBtn>
+                </div>
+              </VCol>
+            </VRow>
+          </div>
         </div>
       </VCardText>
     </VCard>
 
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- BARRA DE BÚSQUEDA Y FILTROS DEL CATÁLOGO (Estilo TpvCatalogSection)   -->
+    <!-- BARRA DE BÚSQUEDA Y FILTROS DEL CATÁLOGO (Estilo AppFilterBase)       -->
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <VCard class="mb-3 rounded-xl border bg-surface pa-3 elevation-1">
+    <VCard class="mb-3 rounded-xl border bg-surface pa-3 elevation-1 w-100">
       <div class="d-flex align-center justify-space-between flex-wrap gap-2">
         <div class="d-flex align-center flex-grow-1 gap-3" style="max-width: 600px;">
           <VTextField
@@ -726,7 +754,7 @@ onUnmounted(() => {
             variant="outlined"
             hide-details
             clearable
-            class="rounded-lg"
+            class="rounded-lg flex-grow-1"
           />
 
           <VCheckbox
@@ -738,7 +766,7 @@ onUnmounted(() => {
           />
         </div>
 
-        <div class="d-flex align-center gap-2">
+        <div class="d-flex align-center gap-2 ms-auto">
           <!-- Iconos de Acción estilo TPV -->
           <VBtn icon size="small" variant="tonal" color="purple" class="rounded-lg">
             <VIcon icon="tabler-filter" size="18" />
@@ -771,7 +799,7 @@ onUnmounted(() => {
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
     <!-- TABLA DEL CATÁLOGO DE PRODUCTOS (Estilo OrderProductsTable)           -->
     <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <VCard class="rounded-xl border bg-surface elevation-1 overflow-hidden">
+    <VCard class="rounded-xl border bg-surface elevation-1 overflow-hidden w-100 mb-6">
       <VTable density="compact" class="text-no-wrap tpv-custom-table">
         <thead>
           <tr>
@@ -976,7 +1004,7 @@ onUnmounted(() => {
     <VSnackbar v-model="showNotFoundSnackbar" color="warning" timeout="3500" location="top center">
       {{ notFoundMessage }}
     </VSnackbar>
-  </VContainer>
+  </div>
 </template>
 
 <style scoped>
@@ -984,6 +1012,10 @@ onUnmounted(() => {
 .text-super-xs {
   font-size: 0.65rem !important;
   line-height: normal;
+}
+
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
 }
 
 .leading-tight {
@@ -1086,12 +1118,12 @@ onUnmounted(() => {
 
 /* ─── Laboratorio (Rosa/Magenta) y Ubicación (Verde) ────────────────────────── */
 .custom-lab-text {
-  color: #9c27b0 !important; /* Magenta fuerte */
+  color: #9c27b0 !important;
   font-weight: 900 !important;
 }
 
 .custom-location-text {
-  color: #10b981 !important; /* Verde esmeralda */
+  color: #10b981 !important;
   font-weight: 600 !important;
 }
 
