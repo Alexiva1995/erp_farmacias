@@ -84,7 +84,8 @@ const fetchRatesFromApi = async () => {
       if (code === 'BINANCE') rateBinance = val
     })
 
-    const activeBsRate = rateEur || rateBs || rateBcv || rateBinance
+    // Priorizar la tasa oficial BCV del TPV
+    const activeBsRate = rateBcv || rateBs || rateEur || rateBinance
     const activeCopRate = rateCop
 
     if (activeBsRate && !isNaN(activeBsRate) && activeBsRate > 0) {

@@ -12,6 +12,7 @@ use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Requests\Order\UpdateOrderTotalsRequest;
 use App\Http\Requests\Order\AddOrderItemRequest;
 use App\Http\Requests\Order\CompleteOrderRequest;
+use App\Http\Requests\Order\SyncContingencyOrderRequest;
 use App\Http\Requests\Order\GetFiscalReportRequest;
 use App\Http\Requests\Order\GetFiscalHistoryRequest;
 use App\Models\Order;
@@ -698,6 +699,25 @@ class OrderController extends Controller
         $user = Auth::user();
         if ($user && (int) $user->role_id === 3) {
             $request->merge(['seller_id' => $user->id]);
+        }
+    }
+
+    /**
+     * Procesa y sincroniza una orden de contingencia offline emitida por el TPV.
+     */
+    public function syncContingencyOrder(SyncContingencyOrderRequest $request): JsonResponse
+    {
+        try {
+            $sellerId = Auth::id() ?: 1;
+            $order = $this->orderActionService->syncContingencyOrder($request->validated(), $sellerId);
+
+            return ApiResponse::success($order, 'Orden de contingencia sincronizada exitosamente.');
+        } catch (\Throwable $e) {
+            Log::error('Error sincronizando orden de contingencia:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return ApiResponse::error('Error al sincronizar orden de contingencia: ' . $e->getMessage(), 500);
         }
     }
 }

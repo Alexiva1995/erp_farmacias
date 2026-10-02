@@ -401,6 +401,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get("/order", [OrderController::class, "index"]);
         Route::get("/order/client/{Identification}", [OrderController::class, "consultByIdentification"]);
         Route::post('/orders', [OrderController::class, 'store']);
+        Route::post('/orders/sync-contingency', [OrderController::class, 'syncContingencyOrder']);
         Route::get('/order/seller/my-open-order', [OrderController::class, 'getMyOpenOrder']);
         Route::get('/orders/reserved-list', [OrderController::class, 'getReservedOrders']);
         Route::post('/orders/{order}/activate', [OrderController::class, 'activateOrder']);

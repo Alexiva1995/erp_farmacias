@@ -2168,4 +2168,92 @@ class OrderActionService
             $object->$key = $value;
         }
     }
+
+    /**
+     * Sincroniza y guarda una orden procesada en modo contingencia offline.
+     */
+    public function syncContingencyOrder(array $data, int $sellerId): Order
+    {
+        return DB::transaction(function () use ($data, $sellerId) {
+            $openCashRegisterClosing = CashClosing::where('seller_id', $sellerId)
+                ->where('status', CashClosing::OPEN)
+                ->first();
+
+            if (!$openCashRegisterClosing) {
+                $openCashRegisterClosing = CashClosing::create([
+                    'seller_id'    => $sellerId,
+                    'status'       => CashClosing::OPEN,
+                    'opening_date' => Carbon::now(),
+                ]);
+            }
+
+            $orderCurrency = $data['currency'] ?? 'COP';
+            $totalAmount = (float) ($data['total_amount'] ?? 0);
+            $totalUsd = (float) ($data['total_usd'] ?? 0);
+            $moneyReturns = (float) ($data['change_amount'] ?? $data['change_amount_cop'] ?? 0);
+
+            $order = Order::create([
+                'seller_id'        => $sellerId,
+                'client_id'        => $data['client_id'] ?? null,
+                'cash_closing_id'  => $openCashRegisterClosing->id,
+                'total_amount'     => $totalAmount,
+                'total_amount_usd' => $totalUsd,
+                'money_returns'    => $moneyReturns,
+                'currency'         => $orderCurrency,
+                'status'           => Order::COMPLETED,
+                'payment_methods'  => $data['payments'] ?? [],
+                'order_date'       => Carbon::now(),
+            ]);
+
+            $totalCost = 0;
+
+            foreach ($data['items'] as $item) {
+                $productId = $item['id'] ?? null;
+                $quantity = (int) ($item['quantity'] ?? 1);
+                if (!$productId || $quantity <= 0) {
+                    continue;
+                }
+
+                $product = Product::find($productId);
+                if (!$product) {
+                    continue;
+                }
+
+                $unitPrice = $orderCurrency === 'COP'
+                    ? ((float) ($product->price_cop ?: ($product->base_price_usd * 4100)))
+                    : ($orderCurrency === 'BS' ? ((float) ($product->price_bs ?: ($product->base_price_usd * 54.5))) : (float) $product->base_price_usd);
+
+                $unitCost = (float) ($product->unit_cost ?? 0);
+                $totalCost += $unitCost * $quantity;
+
+                $order->details()->create([
+                    'product_id'     => $product->id,
+                    'quantity'       => $quantity,
+                    'price'          => $unitPrice,
+                    'unit_cost'      => $unitCost,
+                    'unit_price_usd' => (float) ($product->base_price_usd ?? 0),
+                    'product_type'   => 'normal',
+                ]);
+
+                // Descontar inventario de lotes FIFO si hay lotes disponibles
+                $lots = ProductLot::where('product_id', $product->id)
+                    ->where('quantity', '>', 0)
+                    ->orderBy('expiration_date', 'asc')
+                    ->get();
+
+                $remainingToDeduct = $quantity;
+                foreach ($lots as $lot) {
+                    if ($remainingToDeduct <= 0) break;
+                    $deduct = min($lot->quantity, $remainingToDeduct);
+                    $lot->decrement('quantity', $deduct);
+                    $remainingToDeduct -= $deduct;
+                }
+            }
+
+            $order->total_cost = $totalCost;
+            $order->save();
+
+            return $order->load(['seller', 'client', 'details.product']);
+        });
+    }
 }

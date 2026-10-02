@@ -72,8 +72,8 @@ export async function syncCatalogInBackground() {
         if (code === 'BINANCE') rateBinance = val
       })
 
-      // Para farmacia la tasa de Bs estándar es EUR o BS o BCV
-      const activeBsRate = rateEur || rateBs || rateBcv || rateBinance
+      // Para farmacia la tasa de Bs estándar es BCV
+      const activeBsRate = rateBcv || rateBs || rateEur || rateBinance
       const activeCopRate = rateCop
 
       if (activeBsRate && !isNaN(activeBsRate) && activeBsRate > 0) {
