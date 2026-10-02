@@ -874,12 +874,32 @@ function rowClass(item) {
       </div>
     </div>
 
-    <!-- Paginación Móvil -->
-    <div v-if="!mdAndUp && grupos.length > 0" class="pa-3 border-t">
-      <AppMobilePagination
-        :current-page="currentPage"
-        :last-page="lastPage"
-        @page-change="(p) => emit('page-change', p)"
+    <!-- Paginación Footer Desktop & Móvil -->
+    <div v-if="grupos.length > 0" class="d-flex flex-column flex-sm-row align-center justify-space-between pa-4 border-t gap-4">
+      <div class="d-flex align-center flex-wrap gap-4">
+        <span class="text-xs text-disabled font-weight-bold text-uppercase">
+          Mostrando {{ (currentPage - 1) * perPage + 1 }}–{{ Math.min(currentPage * perPage, totalGrupos) }} de {{ totalGrupos }} grupos
+        </span>
+        <div class="d-flex align-center gap-2">
+          <span class="text-xs text-disabled">Filas:</span>
+          <VSelect
+            :model-value="perPage"
+            :items="[10, 25, 50, 100]"
+            density="compact"
+            variant="outlined"
+            hide-details
+            style="max-inline-size: 85px;"
+            @update:model-value="(val) => emit('page-change', { page: 1, itemsPerPage: Number(val) })"
+          />
+        </div>
+      </div>
+
+      <VPagination
+        :model-value="currentPage"
+        :length="lastPage"
+        :total-visible="$vuetify.display.xs ? 3 : 5"
+        density="compact"
+        @update:model-value="(val) => emit('page-change', { page: Number(val), itemsPerPage: perPage })"
       />
     </div>
 
