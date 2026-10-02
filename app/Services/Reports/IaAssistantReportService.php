@@ -570,14 +570,67 @@ class IaAssistantReportService
                     $bestSupplier->setAttribute('matched_name', $supplierData['productSupplier']->name ?? '');
                 }
 
+                $supplierPrice = (float)($supplierData['precio_final_supplier'] ?? 0);
+                $percentageInc = (float)($supplierData['percentageIncrease'] ?? 0);
+
                 if ($producto instanceof \Illuminate\Database\Eloquent\Model) {
                     $producto->setAttribute('best_supplier', $bestSupplier);
-                    $producto->setAttribute('best_supplier_price', $supplierData['precio_final_supplier'] ?? 0);
-                    $producto->setAttribute('best_supplier_percentage', $supplierData['percentageIncrease'] ?? 0);
+                    $producto->setAttribute('best_supplier_price', $supplierPrice);
+                    $producto->setAttribute('best_supplier_percentage', $percentageInc);
                 } else {
                     $producto->best_supplier = $bestSupplier;
-                    $producto->best_supplier_price = $supplierData['precio_final_supplier'] ?? 0;
-                    $producto->best_supplier_percentage = $supplierData['percentageIncrease'] ?? 0;
+                    $producto->best_supplier_price = $supplierPrice;
+                    $producto->best_supplier_percentage = $percentageInc;
+                }
+
+                // PROTOCOLO DE SHOCK DE PRECIO (Incremento de Costo >= 20%)
+                $unitCost = (float)($producto->unit_cost ?? 0);
+                if ($unitCost > 0 && $supplierPrice > 0 && $percentageInc >= 20.0) {
+                    $factorImpacto = $supplierPrice / $unitCost;
+                    
+                    // 1. Elasticidad Ponderada a la Demanda
+                    $factorElasticidadShock = 1.0 / sqrt($factorImpacto);
+                    if ($percentageInc >= 50.0) {
+                        $factorElasticidadShock = min($factorElasticidadShock, 0.50);
+                    }
+
+                    $demandaOriginal = (float)($producto->promedio_calculado ?? 0);
+                    $demandaAjustada = round($demandaOriginal * $factorElasticidadShock, 2);
+                    $demandaAjustada = max(0.5, $demandaAjustada);
+
+                    $vpd = $demandaAjustada / 30;
+                    $leadTime = (int)($producto->lead_time_days ?? 7);
+                    $buffer = (int)($producto->buffer_days ?? 7);
+                    $ropAjustado = round($vpd * ($leadTime + $buffer), 2);
+                    $objAjustado = round($vpd * 30, 2);
+
+                    $producto->promedio_calculado = $demandaAjustada;
+                    $producto->vdr_sanada = round($vpd, 3);
+                    $producto->rop_calculado = $ropAjustado;
+                    $producto->rop = $ropAjustado;
+                    $producto->demanda_ponderada = $objAjustado;
+
+                    $stockActual = (float)($producto->lote_quantity ?? $producto->stock ?? 0);
+                    $autoOrder = (float)($producto->totalQuantityInAutoOrder ?? 0);
+                    $stockEfectivo = $stockActual + $autoOrder;
+
+                    // 2. Protocolo de Ajuste Prudente de Lote (Tope Preventivo de Cobertura)
+                    $sugeridoActual = (int)($producto->solicitar ?? 0);
+                    if ($sugeridoActual > 0) {
+                        $deficit = max(0.0, $objAjustado - $stockEfectivo);
+                        $ropDeficit = max(0.0, $ropAjustado - $stockEfectivo);
+                        
+                        if ($percentageInc >= 50.0) {
+                            $nuevoSugerido = (int)ceil(min($deficit, max($ropDeficit, $sugeridoActual * 0.50)));
+                        } else {
+                            $nuevoSugerido = (int)ceil($deficit);
+                        }
+
+                        $producto->solicitar = max(1, $nuevoSugerido);
+                        $producto->is_price_shock = true;
+                        $producto->price_shock_pct = round($percentageInc, 1);
+                        $producto->motivo_sugerido = 'Sugerido Ajustado por Shock de Precio (' . ($percentageInc > 0 ? '+' : '') . round($percentageInc, 1) . '%)';
+                    }
                 }
             }
         }
