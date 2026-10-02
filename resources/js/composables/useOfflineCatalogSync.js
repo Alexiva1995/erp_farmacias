@@ -41,8 +41,8 @@ export const isSyncingGlobalCatalog = ref(false)
 export const lastGlobalCatalogSync = ref(localStorage.getItem('tpv_offline_catalog_sync') || '')
 
 /**
- * Sincroniza silenciosamente el catálogo de productos y tasas de cambio en IndexedDB
- * sin interrumpir la navegación ni la experiencia del usuario.
+ * Sincroniza silenciosamente el catálogo completo de productos con ID, laboratorio,
+ * principio activo, ubicación, impuestos y tasas de cambio en IndexedDB.
  */
 export async function syncCatalogInBackground() {
   if (!navigator.onLine || isSyncingGlobalCatalog.value) return false
@@ -68,7 +68,7 @@ export async function syncCatalogInBackground() {
       // Silenciar error secundario de tasas
     }
 
-    // 2. Descargar catálogo completo de productos
+    // 2. Descargar catálogo completo de productos del TPV
     const response = await axios.get('/tpv/order', { params: { itemsPerPage: -1 } })
     const rawProducts = response.data?.data || []
 
@@ -81,15 +81,29 @@ export async function syncCatalogInBackground() {
       const normalizedList = rawProducts.map(p => {
         const rawPrice = Number(p.sale_price ?? p.price ?? p.base_price ?? p.unit_price_usd ?? 0)
         const rawOfferPrice = p.offer_price ?? p.offer_price_usd ?? p.individual_offer_price
+        const rawStock = Number(p.valid_stock_sum ?? p.stock ?? p.total_stock ?? 0)
+
         return {
           id: p.id,
           barcode: String(p.barcode || p.code || '').trim(),
           name: p.name || p.title || 'Producto sin nombre',
+          active_ingredient: p.active_ingredient || '',
+          laboratory_name: p.laboratory_name || (p.laboratory ? p.laboratory.name : 'Genérico'),
+          laboratory_id: p.laboratory_id || null,
+          location: p.location || '',
+          iva: Number(p.iva || 0),
+          is_colombian_origin: Number(p.is_colombian_origin || 0),
+          psychotropic: Number(p.psychotropic || 0),
           base_price_usd: rawPrice,
-          stock: Number(p.stock ?? p.total_stock ?? 999),
-          has_individual_offer: Boolean(p.has_individual_offer || p.is_offer_individual),
+          price_bs: Number(p.price_bs || 0),
+          price_cop: Number(p.price_cop || 0),
+          stock: rawStock,
+          valid_stock_sum: rawStock,
+          has_individual_offer: Boolean(p.has_individual_offer || p.is_offer_individual || p.discount_percentage > 0),
           offer_price_usd: rawOfferPrice ? Number(rawOfferPrice) : null,
           offer_expires_at: p.offer_expires_at || p.individual_offer_expires_at || null,
+          discount_percentage: Number(p.discount_percentage || 0),
+          discount_type: p.discount_type || null,
         }
       })
 

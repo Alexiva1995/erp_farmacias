@@ -2,6 +2,8 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
+import { formatCurrency } from '@/utils/currencyFormatter'
+import { roundUpToNearestHundred } from '@/utils/roundUpToNearesHundred.js'
 import { 
   getOfflineDB, 
   syncCatalogInBackground, 
@@ -29,9 +31,12 @@ const notFoundMessage = ref('')
 const showNotFoundSnackbar = ref(false)
 const activeTab = ref('catalog') // 'catalog' | 'scanner'
 
-// Paginación del catálogo local
+// Cantidades de entrada para añadir (Map productId -> quantity)
+const inputQuantities = ref(new Map())
+
+// Paginación y búsqueda del catálogo local
 const catalogPage = ref(1)
-const catalogItemsPerPage = ref(8)
+const catalogItemsPerPage = ref(10)
 const catalogSearchFilter = ref('')
 
 // ─── Estado de Conexión y Sincronización de Órdenes ───────────────────────────
@@ -60,6 +65,12 @@ const loadLocalCatalog = async () => {
     request.onsuccess = () => {
       if (request.result && request.result.length > 0) {
         localProducts.value = request.result
+        // Inicializar mapa de cantidades
+        request.result.forEach(p => {
+          if (!inputQuantities.value.has(p.id)) {
+            inputQuantities.value.set(p.id, 1)
+          }
+        })
       } else if (navigator.onLine) {
         syncCatalogInBackground().then(() => loadLocalCatalog())
       }
@@ -70,6 +81,12 @@ const loadLocalCatalog = async () => {
 }
 
 // ─── Lógica de Precios y Ofertas ─────────────────────────────────────────────
+const calculatePriceWithDiscount = (basePrice, product = null) => {
+  const price = parseFloat(basePrice) || 0
+  const prodPct = parseFloat(product?.discount_percentage || 0)
+  return prodPct > 0 ? price * (1 - prodPct / 100) : price
+}
+
 const getActivePrice = (item) => {
   if (item.has_individual_offer && item.offer_expires_at) {
     const isNotExpired = new Date() < new Date(item.offer_expires_at)
@@ -77,7 +94,12 @@ const getActivePrice = (item) => {
       return Number(item.offer_price_usd)
     }
   }
-  return Number(item.base_price_usd || 0)
+  return calculatePriceWithDiscount(item.base_price_usd, item)
+}
+
+const getPriceClass = (item) => {
+  const prodPct = parseFloat(item.discount_percentage || 0)
+  return prodPct > 0 ? 'text-success font-weight-black' : 'font-weight-bold text-high-emphasis'
 }
 
 // ─── Filtrado del Catálogo Completo (Tipo TPV) ──────────────────────────────
@@ -86,8 +108,10 @@ const filteredCatalog = computed(() => {
   if (!query) return localProducts.value
 
   return localProducts.value.filter(p => 
-    p.barcode.toLowerCase().includes(query) || 
-    p.name.toLowerCase().includes(query) ||
+    (p.barcode && p.barcode.toLowerCase().includes(query)) || 
+    (p.name && p.name.toLowerCase().includes(query)) ||
+    (p.active_ingredient && p.active_ingredient.toLowerCase().includes(query)) ||
+    (p.laboratory_name && p.laboratory_name.toLowerCase().includes(query)) ||
     String(p.id) === query
   )
 })
@@ -106,33 +130,47 @@ const handleBarcodeScan = () => {
   const query = searchQuery.value.trim().toLowerCase()
   if (!query) return
 
-  // 1. Coincidencia exacta por código de barras o ID
   let found = localProducts.value.find(p => p.barcode === query || String(p.id) === query)
 
-  // 2. Si no es exacto, buscar primera coincidencia por nombre
   if (!found) {
     found = localProducts.value.find(p => p.name.toLowerCase().includes(query))
   }
 
   if (found) {
-    addToCart(found)
+    addToCart(found, 1)
     searchQuery.value = ''
   } else {
-    notFoundMessage.value = `Código o producto "${searchQuery.value}" no encontrado en la caché (${localProducts.value.length} disponibles).`
+    notFoundMessage.value = `Código o producto "${searchQuery.value}" no encontrado en la caché (${localProducts.value.length} productos cargados).`
     showNotFoundSnackbar.value = true
   }
 }
 
 // ─── Lógica del Carrito ──────────────────────────────────────────────────────
-const addToCart = (product) => {
+const addToCart = (product, qtyToAdd = 1) => {
+  const qty = parseInt(qtyToAdd) || 1
+  if (qty <= 0) return
+
   const existingItem = cart.value.find(item => item.id === product.id)
   if (existingItem) {
-    if (existingItem.quantity < product.stock) {
-      existingItem.quantity++
-    }
+    existingItem.quantity += qty
   } else {
-    cart.value.push({ ...product, quantity: 1 })
+    cart.value.push({ 
+      ...product, 
+      quantity: qty 
+    })
   }
+}
+
+const handleAddProductWithQuantity = (product) => {
+  const qty = inputQuantities.value.get(product.id) || 1
+  addToCart(product, qty)
+  inputQuantities.value.set(product.id, 1)
+}
+
+const handleQuantityInput = (productId, val) => {
+  let cleanVal = parseInt(val)
+  if (isNaN(cleanVal) || cleanVal < 1) cleanVal = 1
+  inputQuantities.value.set(productId, cleanVal)
 }
 
 const removeFromCart = (index) => {
@@ -312,21 +350,21 @@ onUnmounted(() => {
     <!-- Barra de Estado del Catálogo Offline -->
     <VCard variant="outlined" class="mb-4 pa-3 bg-surface">
       <div class="d-flex align-center justify-space-between flex-wrap gap-2">
-        <div class="d-flex align-center">
+        <div class="d-flex align-center flex-wrap gap-2">
           <VIcon
             :icon="isOnline ? 'tabler-wifi' : 'tabler-wifi-off'"
             :color="isOnline ? 'success' : 'warning'"
-            class="me-2"
+            class="me-1"
           />
           <span class="text-body-2 font-weight-medium">
             Estado: <strong :class="isOnline ? 'text-success' : 'text-warning'">{{ isOnline ? 'Conectado (Online)' : 'Modo Contingencia (Offline)' }}</strong>
           </span>
-          <VDivider vertical class="mx-3" />
+          <VDivider vertical class="mx-2" />
           <VChip size="small" color="primary" variant="tonal" class="font-weight-bold">
             <VIcon icon="tabler-database" start size="14" />
             {{ localProducts.length }} productos precargados
           </VChip>
-          <span v-if="lastGlobalCatalogSync" class="text-caption text-disabled ms-2">
+          <span v-if="lastGlobalCatalogSync" class="text-caption text-disabled">
             (Actualizado: {{ lastGlobalCatalogSync }})
           </span>
         </div>
@@ -346,8 +384,8 @@ onUnmounted(() => {
     </VCard>
 
     <VRow>
-      <!-- Panel Izquierdo: Catálogo y Escáner estilo TPV -->
-      <VCol cols="12" md="7">
+      <!-- Panel Izquierdo: Catálogo y Escáner con Diseño Idéntico al TPV Normal -->
+      <VCol cols="12" md="8">
         <VCard class="mb-4">
           <VCardItem class="py-2 px-4 border-b">
             <div class="d-flex align-center justify-space-between flex-wrap gap-2">
@@ -363,10 +401,10 @@ onUnmounted(() => {
               </VTabs>
 
               <!-- Buscador Rápido del Catálogo -->
-              <div v-if="activeTab === 'catalog'" style="min-width: 260px;">
+              <div v-if="activeTab === 'catalog'" style="min-width: 280px;">
                 <VTextField
                   v-model="catalogSearchFilter"
-                  placeholder="Filtrar por nombre o código..."
+                  placeholder="Buscar por producto, cód. barra, activo..."
                   prepend-inner-icon="tabler-search"
                   density="compact"
                   hide-details
@@ -376,76 +414,164 @@ onUnmounted(() => {
             </div>
           </VCardItem>
 
-          <VCardText class="pa-4">
-            <!-- Vista 1: Catálogo Estilo TPV -->
+          <VCardText class="pa-2">
+            <!-- Vista 1: Catálogo Estilo TPV Normal con ID, Stock, Laboratorio y Principio Activo -->
             <div v-if="activeTab === 'catalog'">
-              <VTable density="compact" class="rounded border">
+              <VTable density="compact" class="rounded border text-no-wrap">
                 <thead>
                   <tr>
-                    <th class="text-left">Producto</th>
-                    <th class="text-left">Código</th>
-                    <th class="text-right">Precio USD</th>
-                    <th class="text-right">Precio BS</th>
-                    <th class="text-center">Stock</th>
-                    <th class="text-center">Acción</th>
+                    <th class="text-left" style="width: 70px;">ID</th>
+                    <th class="text-center" style="width: 70px;">STOCK</th>
+                    <th class="text-left">PRODUCTO</th>
+                    <th class="text-right" style="width: 100px;">USD</th>
+                    <th class="text-right" style="width: 110px;">BS</th>
+                    <th class="text-right" style="width: 110px;">COP</th>
+                    <th class="text-center" style="width: 140px;">AÑADIR</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-if="paginatedCatalog.length === 0">
-                    <td colspan="6" class="text-center py-6 text-disabled">
-                      <VIcon icon="tabler-search-off" size="32" class="mb-1 opacity-50" />
+                    <td colspan="7" class="text-center py-8 text-disabled">
+                      <VIcon icon="tabler-search-off" size="36" class="mb-1 opacity-50" />
                       <p class="text-body-2 mb-0">No se encontraron productos coincidentes en la memoria local</p>
                     </td>
                   </tr>
                   <tr v-for="product in paginatedCatalog" :key="product.id">
+                    <!-- ID con Badge Estilo TPV -->
                     <td>
-                      <span class="font-weight-medium text-body-2">{{ product.name }}</span>
-                      <VChip 
-                        v-if="product.has_individual_offer && new Date() < new Date(product.offer_expires_at)"
-                        color="success" 
-                        size="x-small" 
-                        class="ms-2 font-weight-bold"
-                      >
-                        OFERTA
-                      </VChip>
+                      <span class="product-id-badge text-caption font-weight-bold">
+                        {{ product.id }}
+                      </span>
                     </td>
-                    <td>
-                      <span class="text-caption text-disabled font-monospace">{{ product.barcode || 'N/A' }}</span>
-                    </td>
-                    <td class="text-right font-weight-bold">
-                      <div v-if="product.has_individual_offer && new Date() < new Date(product.offer_expires_at)">
-                        <span class="text-decoration-line-through text-disabled text-caption me-1">${{ product.base_price_usd.toFixed(2) }}</span>
-                        <span class="text-success">${{ getActivePrice(product).toFixed(2) }}</span>
-                      </div>
-                      <div v-else>
-                        ${{ getActivePrice(product).toFixed(2) }}
-                      </div>
-                    </td>
-                    <td class="text-right text-caption font-weight-medium">
-                      Bs {{ (getActivePrice(product) * cachedRates.BS).toFixed(2) }}
-                    </td>
+
+                    <!-- Stock con Chip -->
                     <td class="text-center">
-                      <VChip size="x-small" :color="product.stock > 5 ? 'default' : 'error'" variant="tonal">
-                        {{ product.stock }}
-                      </VChip>
-                    </td>
-                    <td class="text-center">
-                      <VBtn
-                        size="x-small"
-                        color="primary"
+                      <VChip
+                        :color="product.stock > 0 ? 'success' : 'error'"
+                        size="small"
                         variant="flat"
-                        prepend-icon="tabler-plus"
-                        @click="addToCart(product)"
+                        class="font-weight-black px-2"
                       >
-                        Agregar
-                      </VBtn>
+                        {{ Math.floor(product.stock) }}
+                      </VChip>
+                    </td>
+
+                    <!-- Producto con Nombre, Badges, Principio Activo y Laboratorio -->
+                    <td>
+                      <div class="d-flex flex-column py-2">
+                        <div class="d-flex align-center flex-wrap gap-1">
+                          <span 
+                            class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight text-uppercase"
+                            :class="{ 'text-primary': product.psychotropic == 1 }"
+                          >
+                            {{ product.name }}
+                          </span>
+
+                          <!-- Badge IVA -->
+                          <VChip v-if="product.iva == 1" size="x-small" color="secondary" variant="tonal" class="font-weight-bold px-1 text-caption">G</VChip>
+                          
+                          <!-- Badge Origen Colombiano -->
+                          <VChip v-if="product.is_colombian_origin == 1" size="x-small" color="info" variant="tonal" class="font-weight-bold">COL</VChip>
+                          
+                          <!-- Badge Descuento -->
+                          <VChip
+                            v-if="product.discount_percentage > 0"
+                            color="success"
+                            size="x-small"
+                            variant="tonal"
+                            class="font-weight-bold"
+                          >
+                            -{{ product.discount_percentage }}%
+                          </VChip>
+                        </div>
+
+                        <!-- Sublínea: Principio Activo | Laboratorio | Ubicación -->
+                        <div class="text-super-xs mt-1 d-flex align-center flex-wrap">
+                          <span class="text-disabled font-weight-medium text-uppercase">
+                            {{ product.active_ingredient || '—' }}
+                          </span>
+                          <span class="text-disabled mx-1">|</span>
+                          <span class="font-weight-black text-uppercase text-primary">
+                            {{ product.laboratory_name || 'GENÉRICO' }}
+                          </span>
+                          <template v-if="product.location">
+                            <span class="text-disabled mx-1">|</span>
+                            <span class="text-success font-weight-medium text-uppercase">
+                              📍 {{ product.location }}
+                            </span>
+                          </template>
+                        </div>
+                      </div>
+                    </td>
+
+                    <!-- Precio USD -->
+                    <td class="text-right">
+                      <div class="d-flex flex-column align-end">
+                        <del v-if="product.discount_percentage > 0" class="text-caption text-disabled text-decoration-line-through">
+                          {{ formatCurrency(product.base_price_usd) }}
+                        </del>
+                        <span :class="getPriceClass(product)" class="text-body-2">
+                          {{ formatCurrency(getActivePrice(product)) }}
+                        </span>
+                      </div>
+                    </td>
+
+                    <!-- Precio BS -->
+                    <td class="text-right">
+                      <div class="d-flex flex-column align-end">
+                        <del v-if="product.discount_percentage > 0" class="text-caption text-disabled text-decoration-line-through">
+                          {{ formatCurrency(product.price_bs, 'BS') }}
+                        </del>
+                        <span :class="getPriceClass(product)" class="text-body-2">
+                          {{ formatCurrency(getActivePrice(product) * cachedRates.BS, 'BS') }}
+                        </span>
+                      </div>
+                    </td>
+
+                    <!-- Precio COP -->
+                    <td class="text-right">
+                      <div class="d-flex flex-column align-end">
+                        <del v-if="product.discount_percentage > 0" class="text-caption text-disabled text-decoration-line-through">
+                          {{ formatCurrency(roundUpToNearestHundred(product.price_cop), 'COP') }}
+                        </del>
+                        <span :class="getPriceClass(product)" class="text-primary font-weight-black text-body-2">
+                          {{ formatCurrency(roundUpToNearestHundred(getActivePrice(product) * cachedRates.COP), 'COP') }}
+                        </span>
+                      </div>
+                    </td>
+
+                    <!-- Input Cantidad + Botón Añadir Estilo TPV -->
+                    <td class="text-center">
+                      <div class="d-flex align-center justify-center gap-1">
+                        <VTextField
+                          :model-value="inputQuantities.get(product.id) || 1"
+                          @update:model-value="(val) => handleQuantityInput(product.id, val)"
+                          type="number"
+                          density="compact"
+                          variant="outlined"
+                          hide-details
+                          style="max-width: 60px;"
+                          class="font-weight-black text-center"
+                          :disabled="product.stock === 0"
+                        />
+                        <VBtn
+                          color="primary"
+                          size="small"
+                          height="36"
+                          class="rounded font-weight-black px-2"
+                          :disabled="product.stock === 0"
+                          @click="handleAddProductWithQuantity(product)"
+                        >
+                          <VIcon icon="tabler-plus" size="18" />
+                        </VBtn>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
               </VTable>
 
               <!-- Paginador del Catálogo -->
-              <div class="d-flex justify-space-between align-center mt-3 flex-wrap">
+              <div class="d-flex justify-space-between align-center mt-3 px-2 flex-wrap">
                 <span class="text-caption text-disabled">
                   Mostrando {{ paginatedCatalog.length }} de {{ filteredCatalog.length }} productos
                 </span>
@@ -459,7 +585,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Vista 2: Modo Escáner de Código de Barras -->
-            <div v-else>
+            <div v-else class="pa-4">
               <VTextField
                 v-model="searchQuery"
                 label="Escanear con lector o escribir código y presionar Enter"
@@ -481,7 +607,7 @@ onUnmounted(() => {
       </VCol>
 
       <!-- Panel Derecho: Carrito y Totalizador Multimoneda -->
-      <VCol cols="12" md="5">
+      <VCol cols="12" md="4">
         <VCard class="mb-4">
           <VCardItem class="bg-primary text-white py-2 px-4">
             <div class="d-flex justify-space-between align-center">
@@ -512,7 +638,7 @@ onUnmounted(() => {
               <tr v-for="(item, index) in cart" :key="item.id">
                 <td>
                   <span class="font-weight-medium text-body-2 d-block">{{ item.name }}</span>
-                  <span class="text-caption text-disabled font-monospace">{{ item.barcode }}</span>
+                  <span class="text-caption text-disabled font-monospace">{{ item.barcode || `#${item.id}` }}</span>
                 </td>
                 <td class="text-right font-weight-medium text-caption">
                   ${{ getActivePrice(item).toFixed(2) }}
@@ -594,7 +720,21 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.gap-1 {
+  gap: 4px;
+}
 .gap-2 {
   gap: 8px;
+}
+.text-super-xs {
+  font-size: 0.72rem;
+  line-height: 1rem;
+}
+.product-id-badge {
+  background-color: #28c76f;
+  color: #fff;
+  padding: 3px 7px;
+  border-radius: 6px;
+  display: inline-block;
 }
 </style>
