@@ -99,6 +99,10 @@ class TenancyServiceProvider extends ServiceProvider
 
     public function boot()
     {
+        if (!class_exists(\Stancl\JobPipeline\JobPipeline::class)) {
+            return;
+        }
+
         $this->bootEvents();
         $this->mapRoutes();
 
