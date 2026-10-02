@@ -45,10 +45,11 @@ class TenantProvisioningService
         if (!empty($data['admin_email']) && !empty($data['password'])) {
             $tenant->run(function () use ($data) {
                 User::create([
-                    'name' => $data['admin_name'] ?? 'Administrador',
+                    'username' => $data['admin_name'] ?? 'Admin',
                     'email' => $data['admin_email'],
-                    'password' => Hash::make($data['password']),
-                    'role' => 'admin',
+                    'password_hash' => Hash::make($data['password']),
+                    'role_id' => 1,
+                    'is_active' => true,
                 ]);
             });
         }
