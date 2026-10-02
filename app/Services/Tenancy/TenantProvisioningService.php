@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Tenancy;
 
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Stancl\Tenancy\Database\Models\Tenant;
 
 class TenantProvisioningService
 {
