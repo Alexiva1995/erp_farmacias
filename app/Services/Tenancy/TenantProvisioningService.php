@@ -22,6 +22,14 @@ class TenantProvisioningService
         \Stancl\Tenancy\Database\Models\Domain::whereIn('tenant_id', [$data['tenant_id'], '0'])->delete();
         Tenant::whereIn('id', [$data['tenant_id'], '0'])->delete();
 
+        // 0.1 Limpiar base de datos huérfana previa si existía
+        $dbPrefix = config('tenancy.database.prefix', 'tovaerp_tenant_');
+        $dbName = $dbPrefix . $data['tenant_id'];
+        try {
+            \Illuminate\Support\Facades\DB::statement("DROP DATABASE IF EXISTS `{$dbName}`");
+        } catch (\Throwable) {
+        }
+
         // 1. Crear el registro del Tenant (gatilla la creación y migración automática de la BD)
         /** @var Tenant $tenant */
         $tenant = Tenant::create([
