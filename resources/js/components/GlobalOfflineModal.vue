@@ -27,8 +27,8 @@ const setupAxiosInterceptor = () => {
   axios.interceptors.response.use(
     (response) => response,
     (error) => {
-      // Ignorar cancelaciones voluntarias de peticiones (debounce, navegación, etc.)
-      if (axios.isCancel(error) || error.code === 'ERR_CANCELED' || error.name === 'CanceledError') {
+      // Ignorar cancelaciones voluntarias de peticiones (debounce, paginación, navegación, etc.)
+      if (axios?.isCancel?.(error) || error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError' || error?.name === 'AbortError') {
         return Promise.reject(error)
       }
 

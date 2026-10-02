@@ -90,7 +90,7 @@ const fetchProducts = async () => {
     });
     return { ...apiResponse.data.data };
   } catch (error) {
-    if (axios.isCancel(error) || error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+    if (axios?.isCancel?.(error) || error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError' || error?.name === 'AbortError') {
       return null;
     }
     console.error("Error al consultar el stock:", error);

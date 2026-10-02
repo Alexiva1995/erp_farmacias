@@ -11,6 +11,11 @@ const axiosInstance = axios.create({
   },
 })
 
+// Vincular métodos estáticos de Axios a la instancia exportada
+axiosInstance.isCancel = axios.isCancel;
+axiosInstance.CancelToken = axios.CancelToken;
+axiosInstance.isAxiosError = axios.isAxiosError;
+
 // Interceptor para autenticación por sesión
 // Laravel Sanctum usa cookies de sesión, no tokens Bearer
 axiosInstance.interceptors.request.use(

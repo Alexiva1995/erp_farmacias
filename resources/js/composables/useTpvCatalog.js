@@ -57,7 +57,7 @@ export function useTpvCatalog({
       products.value = response.data.data
       totalProduct.value = response.data.total
     } catch (error) {
-      if (axios.isCancel(error) || error.name === 'CanceledError' || error.name === 'AbortError') {
+      if (axios?.isCancel?.(error) || error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError' || error?.name === 'AbortError') {
         return
       }
       if (error.response?.status === 401) {
