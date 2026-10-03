@@ -35,6 +35,12 @@ class InitializeTenancyIfTenantDomain
         $domainRecord = Domain::where('domain', $host)->first();
         if ($domainRecord && $domainRecord->tenant) {
             tenancy()->initialize($domainRecord->tenant);
+
+            // Garantizar que Sanctum reconozca este dominio/subdominio como stateful para cookies de sesión
+            $currentStateful = config('sanctum.stateful', []);
+            if (!in_array($host, $currentStateful, true)) {
+                config(['sanctum.stateful' => array_merge($currentStateful, [$host, "{$host}:*"])]);
+            }
         }
 
         return $next($request);

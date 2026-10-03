@@ -132,7 +132,11 @@ class LoginController extends Controller
             $request->session()->regenerate();
             $request->session()->forget('2fa_user_id');
 
-            return response()->noContent();
+            return response()->json([
+                'success' => true,
+                'two_factor' => false,
+                'user' => $user,
+            ]);
         }
 
         // CAMBIO 4: Lanzar un error de validación estándar si el código es incorrecto.
