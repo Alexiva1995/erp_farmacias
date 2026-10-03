@@ -58,7 +58,7 @@ const handleSubmit = async () => {
   error.value = "";
 
   try {
-    await axios.post("/api/two-factor-challenge", {
+    await axios.post("/two-factor-challenge", {
       code: code.value,
     });
 
