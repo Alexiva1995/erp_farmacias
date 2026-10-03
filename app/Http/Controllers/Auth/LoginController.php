@@ -74,39 +74,53 @@ class LoginController extends Controller
             $urlQR = $this->createUserUrlQR($user->email, $tempSecret);
         }
 
-        // CAMBIO 1: Devolver datos JSON en lugar de HTML
-        // Esto es lo que el componente de Vue espera recibir.
+        // Retornar datos JSON con session_token cifrado para máxima resiliencia
+        $sessionToken = encrypt([
+            'user_id' => $user->id,
+            'temp_secret' => $tempSecret ?? null,
+            'time' => time(),
+        ]);
+
         return response()->json([
             'two_factor' => true,
             'needs_qr_setup' => $needsQrSetup,
             'qr_code_url' => $urlQR,
             'qr_code_secret' => $needsQrSetup ? $tempSecret : null,
+            'session_token' => $sessionToken,
         ]);
-        // --- FIN DE CAMBIO IMPORTANTE ---
     }
 
     public function verify2FA(Request $request)
     {
-        // CAMBIO 2: Usar validación estándar de Laravel para errores
         $request->validate([
-            // Laravel Fortify usa 'code' en lugar de 'code_verification'
-            // Ajustamos a 'code' para coincidir con el componente Vue que te di.
             'code' => 'required|numeric',
         ]);
 
         $userId = $request->session()->get('2fa_user_id');
+        $tempSecret = $request->session()->get('2fa_temp_secret');
+
+        // Respaldo robusto: si la sesión de cookies se perdió, desencriptar el session_token firmado
+        if (!$userId && $request->filled('session_token')) {
+            try {
+                $payload = decrypt($request->session_token);
+                if (isset($payload['user_id'], $payload['time']) && (time() - $payload['time']) < 600) {
+                    $userId = $payload['user_id'];
+                    $tempSecret = $payload['temp_secret'] ?? null;
+                }
+            } catch (\Throwable) {
+            }
+        }
+
         if (!$userId || !$user = User::find($userId)) {
-            // Este error es de sesión, no de validación. Un 401/403 es apropiado.
             return response()->json(['message' => 'Sesión inválida. Por favor, inicia sesión de nuevo.'], 401);
         }
 
         $google2fa = new Google2FA();
-        // El secreto es el temporal (si es la primera vez) o el guardado en el usuario
-        $secretKey = $request->session()->get('2fa_temp_secret', $user->token_login);
+        $secretKey = $tempSecret ?: $user->token_login;
 
-        if ($google2fa->verifyKey($secretKey, $request->code)) {
+        if ($secretKey && $google2fa->verifyKey($secretKey, (string) $request->code)) {
             // Si es la primera vez, guardamos el secreto en el usuario
-            if ($request->session()->has('2fa_temp_secret')) {
+            if ($tempSecret || empty($user->token_login)) {
                 $user->token_login = $secretKey;
                 $user->save();
                 $request->session()->forget('2fa_temp_secret');
@@ -118,9 +132,6 @@ class LoginController extends Controller
             $request->session()->regenerate();
             $request->session()->forget('2fa_user_id');
 
-            // CAMBIO 3: Devolver una respuesta de éxito simple.
-            // Vue sabe qué hacer (redirigir). No es necesario que el backend le diga a dónde ir.
-            // Un 204 "No Content" es perfecto para indicar "Todo salió bien, no hay nada más que decir".
             return response()->noContent();
         }
 

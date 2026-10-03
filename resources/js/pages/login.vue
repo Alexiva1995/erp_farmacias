@@ -48,6 +48,7 @@ const twoFactorData = ref({
   needsQrSetup: false,
   qrCodeUrl: null,
   qrCodeSecret: null,
+  sessionToken: null,
 });
 
 const isLoading = ref(false);
@@ -69,6 +70,7 @@ const handleLogin = async () => {
       twoFactorData.value.needsQrSetup = data.needs_qr_setup;
       twoFactorData.value.qrCodeUrl = data.qr_code_url;
       twoFactorData.value.qrCodeSecret = data.qr_code_secret;
+      twoFactorData.value.sessionToken = data.session_token;
       is2FAModalVisible.value = true;
     } else if (data.redirect) {
       window.location.href = data.redirect;
@@ -200,6 +202,7 @@ const on2FAVerified = () => {
       :needs-qr-setup="twoFactorData.needsQrSetup"
       :qr-code-url="twoFactorData.qrCodeUrl"
       :qr-code-secret="twoFactorData.qrCodeSecret"
+      :session-token="twoFactorData.sessionToken"
       @verified="on2FAVerified"
     />
   </div>

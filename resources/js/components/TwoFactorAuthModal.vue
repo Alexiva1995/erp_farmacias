@@ -19,6 +19,10 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  sessionToken: {
+    type: String,
+    default: null,
+  },
 });
 
 const emit = defineEmits(["update:modelValue", "verified"]);
@@ -60,6 +64,7 @@ const handleSubmit = async () => {
   try {
     await axios.post("/two-factor-challenge", {
       code: code.value,
+      session_token: props.sessionToken,
     });
 
     emit("verified");
