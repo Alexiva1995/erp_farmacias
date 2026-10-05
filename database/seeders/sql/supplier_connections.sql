@@ -27,8 +27,8 @@ SET time_zone = "+00:00";
 -- Estructura de tabla para la tabla `supplier_connections`
 --
 
-CREATE TABLE `supplier_connections` (
-  `id` bigint UNSIGNED NOT NULL,
+CREATE TABLE IF NOT EXISTS `supplier_connections` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
   `supplier_id` bigint UNSIGNED NOT NULL,
   `type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ftp',
   `host` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -46,7 +46,9 @@ CREATE TABLE `supplier_connections` (
   `parse_using` json DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `last_connection` date DEFAULT NULL
+  `last_connection` date DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `supplier_connections_supplier_id_foreign` (`supplier_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --

@@ -27,8 +27,8 @@ SET time_zone = "+00:00";
 -- Estructura de tabla para la tabla `suppliers`
 --
 
-CREATE TABLE `suppliers` (
-  `id` bigint UNSIGNED NOT NULL,
+CREATE TABLE IF NOT EXISTS `suppliers` (
+  `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT,
   `public_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `social_reason` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -55,7 +55,12 @@ CREATE TABLE `suppliers` (
   `invoice_date_reference` enum('receipt_date','expiration_date','issue_date') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `suppliers_public_token_unique` (`public_token`),
+  KEY `idx_supplier_active` (`is_deleted`),
+  KEY `idx_supplier_rating` (`rating`),
+  KEY `suppliers_is_active_index` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -107,25 +112,6 @@ INSERT INTO `suppliers` (`id`, `public_token`, `name`, `social_reason`, `type`, 
 -- Índices para tablas volcadas
 --
 
---
--- Indices de la tabla `suppliers`
---
-ALTER TABLE `suppliers`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `suppliers_public_token_unique` (`public_token`),
-  ADD KEY `idx_supplier_active` (`is_deleted`),
-  ADD KEY `idx_supplier_rating` (`rating`),
-  ADD KEY `suppliers_is_active_index` (`is_active`);
-
---
--- AUTO_INCREMENT de las tablas volcadas
---
-
---
--- AUTO_INCREMENT de la tabla `suppliers`
---
-ALTER TABLE `suppliers`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1040;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

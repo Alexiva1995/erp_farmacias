@@ -18,6 +18,7 @@ return new class extends Migration
             return;
         }
 
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         Schema::disableForeignKeyConstraints();
 
         $sqlContent = file_get_contents($sqlPath);
@@ -25,6 +26,7 @@ return new class extends Migration
         // Si la tabla no existe físicamente (ej. fue borrada a mano), ejecutar el dump completo con CREATE TABLE
         if (!Schema::hasTable('supplier_connections')) {
             DB::unprepared($sqlContent);
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             Schema::enableForeignKeyConstraints();
             return;
         }
@@ -36,6 +38,7 @@ return new class extends Migration
             }
         }
 
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
         Schema::enableForeignKeyConstraints();
     }
 
