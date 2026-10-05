@@ -26,20 +26,21 @@ class SuppliersSqlImportSeeder extends Seeder
 
         $sqlContent = file_get_contents($sqlPath);
 
-        // Extraer la sentencia INSERT INTO `suppliers`
-        if (preg_match('/INSERT INTO `suppliers`\s*\((.*?)\)\s*VALUES\s*(.*?);/s', $sqlContent, $matches)) {
+        if (!Schema::hasTable('suppliers')) {
+            $this->command?->info('La tabla suppliers no existe. Creándola desde el volcado SQL...');
+            DB::unprepared($sqlContent);
+            $this->command?->info('✅ Tabla suppliers creada y poblada exitosamente.');
+        } else {
             $this->command?->info('Limpiando tabla suppliers existente...');
             DB::table('suppliers')->truncate();
 
-            $insertQuery = $matches[0];
-            DB::unprepared($insertQuery);
-
-            $this->command?->info('✅ Proveedores importados exitosamente desde suppliers.sql.');
-        } else {
-            // Si no coincide con regex, intentar ejecutar DB::unprepared con el contenido SQL
-            $this->command?->warn('Ejecutando volcado SQL directamente...');
-            DB::unprepared($sqlContent);
-            $this->command?->info('✅ Script SQL ejecutado.');
+            if (preg_match('/INSERT INTO `suppliers`\s*\((.*?)\)\s*VALUES\s*(.*?);/s', $sqlContent, $matches)) {
+                DB::unprepared($matches[0]);
+                $this->command?->info('✅ Proveedores importados exitosamente desde suppliers.sql.');
+            } else {
+                DB::unprepared($sqlContent);
+                $this->command?->info('✅ Script SQL ejecutado.');
+            }
         }
 
         Schema::enableForeignKeyConstraints();

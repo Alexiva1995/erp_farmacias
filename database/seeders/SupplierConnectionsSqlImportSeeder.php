@@ -26,19 +26,21 @@ class SupplierConnectionsSqlImportSeeder extends Seeder
 
         $sqlContent = file_get_contents($sqlPath);
 
-        // Extraer la sentencia INSERT INTO `supplier_connections`
-        if (preg_match('/INSERT INTO `supplier_connections`\s*\((.*?)\)\s*VALUES\s*(.*?);/s', $sqlContent, $matches)) {
+        if (!Schema::hasTable('supplier_connections')) {
+            $this->command?->info('La tabla supplier_connections no existe. Creándola desde el volcado SQL...');
+            DB::unprepared($sqlContent);
+            $this->command?->info('✅ Tabla supplier_connections creada y poblada exitosamente.');
+        } else {
             $this->command?->info('Limpiando tabla supplier_connections existente...');
             DB::table('supplier_connections')->truncate();
 
-            $insertQuery = $matches[0];
-            DB::unprepared($insertQuery);
-
-            $this->command?->info('✅ Conexiones de proveedores importadas exitosamente desde supplier_connections.sql.');
-        } else {
-            $this->command?->warn('Ejecutando volcado SQL directamente...');
-            DB::unprepared($sqlContent);
-            $this->command?->info('✅ Script SQL ejecutado.');
+            if (preg_match('/INSERT INTO `supplier_connections`\s*\((.*?)\)\s*VALUES\s*(.*?);/s', $sqlContent, $matches)) {
+                DB::unprepared($matches[0]);
+                $this->command?->info('✅ Conexiones de proveedores importadas exitosamente desde supplier_connections.sql.');
+            } else {
+                DB::unprepared($sqlContent);
+                $this->command?->info('✅ Script SQL ejecutado.');
+            }
         }
 
         Schema::enableForeignKeyConstraints();

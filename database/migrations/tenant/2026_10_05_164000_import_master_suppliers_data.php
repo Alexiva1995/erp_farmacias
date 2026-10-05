@@ -18,18 +18,25 @@ return new class extends Migration
             return;
         }
 
-        // Si la tabla ya tiene datos, no sobreescribir automáticamente
-        if (Schema::hasTable('suppliers') && DB::table('suppliers')->count() > 0) {
-            return;
-        }
+        Schema::disableForeignKeyConstraints();
 
         $sqlContent = file_get_contents($sqlPath);
 
-        if (preg_match('/INSERT INTO `suppliers`\s*\((.*?)\)\s*VALUES\s*(.*?);/s', $sqlContent, $matches)) {
-            Schema::disableForeignKeyConstraints();
-            DB::unprepared($matches[0]);
+        // Si la tabla no existe físicamente (ej. fue borrada a mano), ejecutar el dump completo con CREATE TABLE
+        if (!Schema::hasTable('suppliers')) {
+            DB::unprepared($sqlContent);
             Schema::enableForeignKeyConstraints();
+            return;
         }
+
+        // Si la tabla existe pero está vacía, insertar solo la data
+        if (DB::table('suppliers')->count() === 0) {
+            if (preg_match('/INSERT INTO `suppliers`\s*\((.*?)\)\s*VALUES\s*(.*?);/s', $sqlContent, $matches)) {
+                DB::unprepared($matches[0]);
+            }
+        }
+
+        Schema::enableForeignKeyConstraints();
     }
 
     /**
