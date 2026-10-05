@@ -86,36 +86,6 @@ INSERT INTO `supplier_connections` (`id`, `supplier_id`, `type`, `host`, `port`,
 (28, 1001, 'drocerca_bot', 'http://drocerca.proteoerp.org:8082/proteoerp/portalcli', NULL, 'W008B3', 'eyJpdiI6Imd5bTI0dGhyLzJ3dDVjUVhnQjMwR1E9PSIsInZhbHVlIjoiSkg2Zi9UYUNNU0o5amo5ejlFY1Y1dz09IiwibWFjIjoiODM0NWZkYTc2MTFiZThiZmZiZTA2M2RmMzFiOTc4YzIyNWRmZTEyMTkxYjhlYmJlNTYyYzBhMDBkM2Y2YzMyNCIsInRhZyI6IiJ9', NULL, 1, 1, NULL, NULL, '[]', NULL, NULL, NULL, '2026-09-30 16:24:05', '2026-09-30 16:27:23', '2026-10-05'),
 (29, 1005, 'dromega_bot', 'https://www.drogueriamega.com/mydas/', NULL, 'Farmacia_Barrio_Sucre', 'eyJpdiI6IjJmdDJWbnYvUmJZS3MvVXRYdGdVSWc9PSIsInZhbHVlIjoiVytGOC9ZNzZqY1drZXQ5UXl5WGVvQT09IiwibWFjIjoiNmU3ODU5NDY5MmFiMjllMWJlZjE5NWQ3MjY1ZDY2M2YxYWQ3MDZlZjA2NzAyOWQ0OTBjN2Q4MjE2NzU3M2U5NCIsInRhZyI6IiJ9', NULL, 1, 1, NULL, '{\"lines\": {\"0\": {\"type\": \"string\", \"field\": \"tipo\"}, \"1\": {\"type\": \"integer\", \"field\": \"fact_num\"}, \"2\": {\"type\": \"string\", \"field\": \"numcon\"}, \"3\": {\"type\": \"string\", \"field\": \"codigo_producto\"}, \"4\": {\"type\": \"string\", \"field\": \"barcode\"}, \"5\": {\"type\": \"string\", \"field\": \"descripcion_producto\"}, \"6\": {\"type\": \"integer\", \"field\": \"quantity\"}, \"8\": {\"type\": \"decimal\", \"field\": \"total_amount\"}, \"10\": {\"type\": \"decimal\", \"field\": \"unit_cost\"}, \"11\": {\"type\": \"string\", \"field\": \"lot_number\"}, \"12\": {\"type\": \"date\", \"field\": \"expiration_date\", \"format\": \"d/m/Y\"}, \"13\": {\"type\": \"decimal\", \"field\": \"porcentaje_iva\"}}, \"header\": {\"0\": {\"type\": \"string\", \"field\": \"tipo\"}, \"1\": {\"type\": \"integer\", \"field\": \"invoice_number\"}, \"2\": {\"type\": \"string\", \"field\": \"control_number\"}, \"3\": {\"type\": \"date\", \"field\": \"created_invoice_date\", \"format\": \"d/m/Y\"}, \"8\": {\"type\": \"decimal\", \"field\": \"total_amount\"}, \"13\": {\"type\": \"decimal\", \"field\": \"tax_amount\"}}, \"decimals\": 2, \"separator\": \";\", \"decimal_separator\": \".\"}', '[{\"type\": \"string\", \"target\": \"cod_supplier\", \"file_field\": \"codigo_producto\"}, {\"type\": \"string\", \"target\": \"barcode_match\", \"file_field\": \"codigo_barras\"}, {\"type\": \"string\", \"target\": \"name\", \"file_field\": \"descripcion_producto\"}, {\"type\": \"date\", \"target\": \"expiration\", \"file_field\": \"fecha_lote\"}, {\"type\": \"decimal\", \"file_field\": \"precio_unitario\"}, {\"type\": \"decimal\", \"file_field\": \"porcentaje_oferta_vigente\"}, {\"type\": \"decimal\", \"target\": \"unit_cost\", \"file_field\": \"precio_unitario_final\"}, {\"type\": \"integer\", \"target\": \"quantity\", \"file_field\": \"stock_disponible\"}]', NULL, NULL, NULL, '2026-10-01 16:56:02', '2026-10-01 16:56:02', '2026-10-05');
 
---
--- Índices para tablas volcadas
---
-
---
--- Indices de la tabla `supplier_connections`
---
-ALTER TABLE `supplier_connections`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `supplier_connections_supplier_id_foreign` (`supplier_id`);
-
---
--- AUTO_INCREMENT de las tablas volcadas
---
-
---
--- AUTO_INCREMENT de la tabla `supplier_connections`
---
-ALTER TABLE `supplier_connections`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
-
---
--- Restricciones para tablas volcadas
---
-
---
--- Filtros para la tabla `supplier_connections`
---
-ALTER TABLE `supplier_connections`
-  ADD CONSTRAINT `supplier_connections_supplier_id_foreign` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

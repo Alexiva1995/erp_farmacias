@@ -15,34 +15,26 @@ class SuppliersSqlImportSeeder extends Seeder
      */
     public function run(): void
     {
-        Schema::disableForeignKeyConstraints();
-
         $sqlPath = database_path('seeders/sql/suppliers.sql');
         if (!file_exists($sqlPath)) {
             $this->command?->error("Archivo SQL no encontrado: {$sqlPath}");
-            Schema::enableForeignKeyConstraints();
             return;
         }
 
-        $sqlContent = file_get_contents($sqlPath);
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
 
-        if (!Schema::hasTable('suppliers')) {
-            $this->command?->info('La tabla suppliers no existe. Creándola desde el volcado SQL...');
-            DB::unprepared($sqlContent);
-            $this->command?->info('✅ Tabla suppliers creada y poblada exitosamente.');
-        } else {
+        if (Schema::hasTable('suppliers')) {
             $this->command?->info('Limpiando tabla suppliers existente...');
             DB::table('suppliers')->truncate();
-
-            if (preg_match('/INSERT INTO `suppliers`\s*\((.*?)\)\s*VALUES\s*(.*?);/s', $sqlContent, $matches)) {
-                DB::unprepared($matches[0]);
-                $this->command?->info('✅ Proveedores importados exitosamente desde suppliers.sql.');
-            } else {
-                DB::unprepared($sqlContent);
-                $this->command?->info('✅ Script SQL ejecutado.');
-            }
         }
 
+        $sqlContent = file_get_contents($sqlPath);
+        DB::unprepared($sqlContent);
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
         Schema::enableForeignKeyConstraints();
+
+        $this->command?->info('✅ Proveedores importados exitosamente desde suppliers.sql.');
     }
 }
