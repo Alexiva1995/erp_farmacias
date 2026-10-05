@@ -34,12 +34,27 @@ class ProcessSupplierConnectionJob implements ShouldQueue
     }
 
     /**
+     * Escribe un mensaje de depuración asegurando que el directorio de logs del tenant exista.
+     */
+    private function writeDebugLog(string $message): void
+    {
+        try {
+            $logDir = storage_path('logs');
+            if (!is_dir($logDir)) {
+                @mkdir($logDir, 0755, true);
+            }
+            $logFile = $logDir . DIRECTORY_SEPARATOR . 'supplier_debug_' . date('Y-m-d') . '.log';
+            @file_put_contents($logFile, $message, FILE_APPEND);
+        } catch (\Throwable) {
+        }
+    }
+
+    /**
      * Execute the job.
      */
     public function handle(SupplierConnectionService $connectionService, SupplierQueryService $queryService): void
     {
         // Log INMEDIATO al inicio del Job
-        $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
         $hasFiles = !empty($this->filePath);
         $tipo = $hasFiles ? 'EXCEL' : 'FTP/API';
         $logMessage = "[" . date('Y-m-d H:i:s') . "] 🔧 [JOB] INICIO handle() - Tipo: {$tipo}\n";
@@ -47,8 +62,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         $logMessage .= "[" . date('Y-m-d H:i:s') . "] 👤 User ID: " . ($this->userId ?? 'NULL') . "\n";
         $logMessage .= "[" . date('Y-m-d H:i:s') . "] 📁 File Path: " . json_encode($this->filePath) . "\n";
         $logMessage .= "[" . date('Y-m-d H:i:s') . "] 🗺️ Column Map: " . json_encode($this->columnMap) . "\n";
-        file_put_contents($logFile, $logMessage, FILE_APPEND);
-        error_log($logMessage);
+        $this->writeDebugLog($logMessage);
         Log::info("🔧 [JOB] INICIO handle()", [
             'supplier_id' => $this->supplier->id,
             'supplier_name' => $this->supplier->name,
@@ -94,7 +108,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         }
         
         $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [JOB] Status activo - ID: {$status->id}, Status: processing\n";
-        file_put_contents($logFile, $logMessage, FILE_APPEND);
+        $this->writeDebugLog($logMessage);
 
         $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
         if (is_null($supplierConnection) && !$hasFiles) {
@@ -175,9 +189,8 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                         currencyCol: $this->exchangeRate ?? ($map["currency"] ?? null),
                     );
 
-                    $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
                     $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] ANTES Excel::import - Path: {$absolutePath}, Mapeo: " . json_encode($map) . "\n";
-                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+                    $this->writeDebugLog($logMessage);
                     
                     Excel::import($import, $absolutePath);
 
@@ -192,7 +205,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 $productsCount = count($allProducts);
                 
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] DESPUÉS Excel::import - Total productos combinados: {$productsCount}\n";
-                file_put_contents($logFile, $logMessage, FILE_APPEND);
+                $this->writeDebugLog($logMessage);
                 Log::info("🚨 [JOB] Productos importados combinados", ['count' => $productsCount]);
                 
                 $results = [
@@ -201,23 +214,21 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 ];
             } else {
                 // Procesando conexión FTP/API
-                $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 🌐 [JOB] Procesando conexión FTP/API\n";
-                file_put_contents($logFile, $logMessage, FILE_APPEND);
-                error_log($logMessage);
+                $this->writeDebugLog($logMessage);
                 
                 $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
                 if (!$supplierConnection) {
                     $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ [JOB] No se encontró conexión configurada para {$this->supplier->name}\n";
-                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+                    $this->writeDebugLog($logMessage);
                     throw new \Exception("El proveedor {$this->supplier->name} no tiene una conexión FTP/API configurada.");
                 }
 
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 🔗 [JOB] Conexión encontrada - Host: {$supplierConnection->host}\n";
-                file_put_contents($logFile, $logMessage, FILE_APPEND);
+                $this->writeDebugLog($logMessage);
                 
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 📡 [JOB] Ejecutando fetchData()...\n";
-                file_put_contents($logFile, $logMessage, FILE_APPEND);
+                $this->writeDebugLog($logMessage);
                 
                 $results = $connectionService->fetchData($supplierConnection);
 
@@ -226,13 +237,12 @@ class ProcessSupplierConnectionJob implements ShouldQueue
 
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [JOB] fetchData() completado\n";
                 $logMessage .= "[" . date('Y-m-d H:i:s') . "] 📊 Resultados: {$invoiceCount} facturas, {$productCount} productos\n";
-                file_put_contents($logFile, $logMessage, FILE_APPEND);
-                error_log($logMessage);
+                $this->writeDebugLog($logMessage);
                 
 
                 if ($invoiceCount === 0) {
                     $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ [JOB] ADVERTENCIA: API retornó 0 facturas\n";
-                    file_put_contents($logFile, $logMessage, FILE_APPEND);
+                    $this->writeDebugLog($logMessage);
                     Log::warning("⚠️ API retornó 0 facturas para proveedor {$this->supplier->id}. Posible problema con la respuesta de la API o no hay facturas pendientes.");
                 }
             }
@@ -251,9 +261,8 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 'invoices_count' => count($results["invoices"] ?? []),
             ]);
             
-            $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] ANTES de llamar storeSupplierConnectionData - Supplier ID: {$this->supplier->id}, Products: " . count($results["products"] ?? []) . "\n";
-            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            $this->writeDebugLog($logMessage);
             
             $saveResult = $queryService->storeSupplierConnectionData($this->supplier, $results);
             
@@ -264,7 +273,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             ]);
             
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData - Supplier ID: {$this->supplier->id}, Insertados: " . ($saveResult['inserted_products'] ?? 0) . "\n";
-            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            $this->writeDebugLog($logMessage);
 
             $queryService->addDiscountsToProducts($this->supplier);
 

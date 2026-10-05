@@ -214,12 +214,27 @@ class SupplierQueryService
         return $supplier->discounts()->get();
     }
 
+    /**
+     * Escribe un mensaje de depuración asegurando que el directorio de logs del tenant exista.
+     */
+    private function writeDebugLog(string $message): void
+    {
+        try {
+            $logDir = storage_path('logs');
+            if (!is_dir($logDir)) {
+                @mkdir($logDir, 0755, true);
+            }
+            $logFile = $logDir . DIRECTORY_SEPARATOR . 'supplier_debug_' . date('Y-m-d') . '.log';
+            @file_put_contents($logFile, $message, FILE_APPEND);
+        } catch (\Throwable) {
+        }
+    }
+
     public function storeSupplierConnectionData(Supplier $supplier, array $data)
     {
         // Logs DIRECTO a archivo para asegurar que se escriban SIEMPRE
-        $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
         $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 storeSupplierConnectionData INICIADO - Supplier ID: {$supplier->id}, Name: {$supplier->name}, Products: " . count($data["products"] ?? []) . ", Invoices: " . count($data["invoices"] ?? []) . "\n";
-        file_put_contents($logFile, $logMessage, FILE_APPEND);
+        $this->writeDebugLog($logMessage);
         error_log($logMessage);
 
         try {
@@ -228,22 +243,21 @@ class SupplierQueryService
 
             // Borrado automático de productos previos del proveedor que NO estén en auto-orden
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🧹 Iniciando limpieza automática de productos para el proveedor: {$supplier->id}\n";
-            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            $this->writeDebugLog($logMessage);
             
             $deletedCount = $supplier->productSuppliers()
                 ->whereDoesntHave('autoOrderDetails')
                 ->delete();
             
             $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Limpieza completada. Productos eliminados: {$deletedCount}\n";
-            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            $this->writeDebugLog($logMessage);
 
 
             // No filtramos por grupo para permitir que suban todos los registros (duplicados incluidos si no tienen ID)
             $uniqueProducts = $products;
 
-            $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 Productos después de asignación - Total: " . count($uniqueProducts) . "\n";
-            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            $this->writeDebugLog($logMessage);
             error_log($logMessage);
 
 
@@ -353,9 +367,8 @@ class SupplierQueryService
             $insertados = 0;
             $errores = 0;
 
-            $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 Iniciando inserción de productos - Total: {$totalProductos}\n";
-            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            $this->writeDebugLog($logMessage);
 
             $nowStr = now()->toDateTimeString();
             $todayStr = now()->toDateString();
@@ -433,9 +446,8 @@ class SupplierQueryService
                 }
             }
 
-            $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🟢 Finalizada inserción - Total: {$totalProductos}, Insertados: {$insertados}, Errores: {$errores}\n";
-            file_put_contents($logFile, $logMessage, FILE_APPEND);
+            $this->writeDebugLog($logMessage);
             error_log($logMessage);
 
 

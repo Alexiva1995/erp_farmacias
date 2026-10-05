@@ -982,9 +982,16 @@ class SupplierConnectionService
                 );
 
                 if ($isLacrifort) {
-                    $logFile = storage_path('logs/supplier_debug_' . date('Y-m-d') . '.log');
-                    $logMsg = "[" . date('Y-m-d H:i:s') . "] 🎯 LACRIFORT DETECTED: Original BS: {$oldBs}, Discount: {$discount}%, Final BS: {$entry['unit_cost']}, Final USD: {$entry['unit_cost_usd']}, Rate: {$usdCurrency->rate}\n";
-                    file_put_contents($logFile, $logMsg, FILE_APPEND);
+                    try {
+                        $logDir = storage_path('logs');
+                        if (!is_dir($logDir)) {
+                            @mkdir($logDir, 0755, true);
+                        }
+                        $logFile = $logDir . DIRECTORY_SEPARATOR . 'supplier_debug_' . date('Y-m-d') . '.log';
+                        $logMsg = "[" . date('Y-m-d H:i:s') . "] 🎯 LACRIFORT DETECTED: Original BS: {$oldBs}, Discount: {$discount}%, Final BS: {$entry['unit_cost']}, Final USD: {$entry['unit_cost_usd']}, Rate: {$usdCurrency->rate}\n";
+                        @file_put_contents($logFile, $logMsg, FILE_APPEND);
+                    } catch (\Throwable) {
+                    }
                 }
             }
 
