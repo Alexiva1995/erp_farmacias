@@ -28,6 +28,7 @@ class InitializeTenancyIfTenantDomain
 
         // Buscar el tenant asociado al dominio/subdominio o tenant_id
         $subdomain = explode('.', $host)[0];
+        $tenant = null;
 
         $domainRecord = Domain::where('domain', $host)
             ->orWhere('domain', $subdomain)
@@ -36,7 +37,16 @@ class InitializeTenancyIfTenantDomain
             ->first();
 
         if ($domainRecord && $domainRecord->tenant) {
-            tenancy()->initialize($domainRecord->tenant);
+            $tenant = $domainRecord->tenant;
+        }
+
+        // Respaldo directo por identificador de tenant
+        if (!$tenant) {
+            $tenant = \App\Models\Tenant::find($subdomain) ?? \App\Models\Tenant::find($host);
+        }
+
+        if ($tenant) {
+            tenancy()->initialize($tenant);
 
             // Garantizar que Sanctum reconozca este dominio/subdominio como stateful para cookies de sesión
             $currentStateful = config('sanctum.stateful', []);

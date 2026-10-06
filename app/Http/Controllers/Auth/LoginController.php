@@ -50,10 +50,30 @@ class LoginController extends Controller
             ->orWhere('username', $request->login)
             ->first();
 
-        if (!$user || !Hash::check($request->password, $user->password_hash)) {
+        $currentDb = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
+        $isTenancy = tenancy()->initialized;
+        $tenantId = $isTenancy ? tenant('id') : 'central';
+
+        \Illuminate\Support\Facades\Log::info("[Auth Login Attempt] Host: {$request->getHost()} | DB: {$currentDb} | Tenant: {$tenantId} | Login: {$request->login} | UserFound: " . ($user ? "Yes (ID: {$user->id}, Role: {$user->role_id}, Active: {$user->is_active})" : "No"));
+
+        if (!$user) {
             RateLimiter::hit($this->throttleKey($request));
             throw ValidationException::withMessages([
-                'login' => ['Las credenciales proporcionadas son incorrectas.'],
+                'login' => ["El usuario o correo '{$request->login}' no existe en esta farmacia (DB: {$currentDb})."],
+            ]);
+        }
+
+        if (!Hash::check($request->password, $user->password_hash)) {
+            RateLimiter::hit($this->throttleKey($request));
+            throw ValidationException::withMessages([
+                'password' => ['La contraseña ingresada es incorrecta.'],
+            ]);
+        }
+
+        if (!$user->is_active) {
+            RateLimiter::hit($this->throttleKey($request));
+            throw ValidationException::withMessages([
+                'login' => ['Este usuario se encuentra inactivo. Contacte al administrador.'],
             ]);
         }
 
