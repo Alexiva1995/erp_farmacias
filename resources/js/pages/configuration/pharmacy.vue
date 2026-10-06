@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import { usePharmacySettingsForm } from '@/composables/usePharmacySettingsForm'
 import { useAbility } from '@casl/vue'
+import axios from '@/plugins/axios'
+import { toast } from '@/plugins/sweetalert'
 
 const { can } = useAbility()
 const logoInputRef = ref(null)
@@ -57,8 +59,11 @@ const onDropFavicon = (e) => {
   if (file) handleFaviconSelect(file)
 }
 
-import axios from '@/plugins/axios'
-import { toast } from '@/plugins/sweetalert'
+const onDropSignature = (e) => {
+  isDraggingSignature.value = false
+  const file = e.dataTransfer?.files?.[0]
+  if (file) handleSignatureStampSelect(file)
+}
 
 const testingFactory = ref(false)
 const factoryTestResult = ref(null)
