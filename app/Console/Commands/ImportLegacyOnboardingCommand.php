@@ -46,7 +46,7 @@ class ImportLegacyOnboardingCommand extends Command
         $this->info('=== INICIANDO IMPORTACIÓN DE ONBOARDING LEGADO ===');
         $this->line("Archivo Productos : <comment>{$productsFile}</comment>");
         $this->line("Archivo Lotes     : <comment>{$lotsFile}</comment>");
-        $this->line("Sincronizar Master: <comment>" . ($syncWithMaster ? 'SÍ (farmacias.com)' : 'NO') . "</comment>\n");
+        $this->line("Sincronizar Master: <comment>" . ($syncWithMaster ? 'SÍ' : 'NO') . "</comment>\n");
 
         if (!file_exists($productsFile)) {
             $this->error("El archivo de productos no fue encontrado: {$productsFile}");

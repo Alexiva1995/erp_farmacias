@@ -59,11 +59,11 @@ class OnboardingLegacyImportService
         $totalItems = count($consolidated);
         $barcodes = array_keys($consolidated);
 
-        // 4. Homologación con Catálogo Maestro (farmacias.com)
+        // 4. Homologación con Catálogo Maestro
         $masterMap = [];
         if ($syncWithMaster) {
             if ($progressCallback) {
-                $progressCallback('master_lookup', 0, count($barcodes), 'Consultando Catálogo Maestro en farmacias.com...');
+                $progressCallback('master_lookup', 0, count($barcodes), 'Consultando Catálogo Maestro...');
             }
             $masterMap = $this->masterClient->lookupBulk($barcodes);
         }

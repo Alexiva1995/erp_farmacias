@@ -113,7 +113,7 @@ const confirmAndProcess = async () => {
       <div style="text-align:left; font-size:0.95rem; line-height:1.6;">
         <p class="mb-1"><strong>Archivo Productos:</strong> ${productsFile.value.name}</p>
         <p class="mb-1"><strong>Archivo Lotes:</strong> ${lotsFile.value.name}</p>
-        <p class="mb-1 text-primary"><strong>Sincronizar Master:</strong> ${syncMaster.value ? 'SÍ (farmacias.com)' : 'NO'}</p>
+        <p class="mb-1 text-primary"><strong>Sincronizar Master:</strong> ${syncMaster.value ? 'SÍ' : 'NO'}</p>
         <p class="mt-2 text-caption text-medium-emphasis">
           Se aplicará la regla estricta de tope de stock: el total de existencias en lotes se limitará automáticamente al stock del listado general.
         </p>
@@ -202,7 +202,7 @@ const executeImport = async () => {
             Onboarding e Importación Híbrida (Productos + Lotes)
           </VCardTitle>
           <VCardSubtitle class="text-body-2">
-            Migración e integración unificada desde el sistema legado hacia el ERP con homologación en Catálogo Maestro (farmacias.com).
+            Migración e integración unificada desde el sistema legado hacia el ERP con homologación en Catálogo Maestro.
           </VCardSubtitle>
         </VCardItem>
 
@@ -218,7 +218,7 @@ const executeImport = async () => {
               <span class="font-weight-bold">Reglas de Integración y Tope de Stock:</span>
               <ul class="ms-4 text-caption">
                 <li><strong>Tope de Stock:</strong> La existencia del <em>Listado de Productos</em> es la cantidad máxima autorizada. Si los lotes suman más, el sistema reduce automáticamente las cantidades excedentes.</li>
-                <li><strong>Catálogo Maestro (farmacias.com):</strong> Si el código de barra existe en el Master, se asigna su ID oficial y relaciones. Si no existe, se registra automáticamente en el Master para unificarlo sin afectar las tiendas matriz.</li>
+                <li><strong>Catálogo Maestro:</strong> Si el código de barra existe en el Master, se asigna su ID oficial y relaciones. Si no existe, se registra automáticamente en el Master para unificarlo sin afectar las tiendas matriz.</li>
                 <li><strong>Trazabilidad:</strong> Se procesan fechas de vencimiento reales (`DD/MM/YYYY`) y números de lote de cada producto.</li>
               </ul>
             </div>
@@ -250,7 +250,7 @@ const executeImport = async () => {
                   <VSwitch
                     v-model="syncMaster"
                     color="primary"
-                    label="Homologar y Registrar en Catálogo Maestro (farmacias.com)"
+                    label="Homologar y Registrar en Catálogo Maestro"
                     density="comfortable"
                     hide-details="auto"
                     persistent-hint
