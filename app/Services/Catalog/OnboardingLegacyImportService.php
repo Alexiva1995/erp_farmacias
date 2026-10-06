@@ -96,34 +96,32 @@ class OnboardingLegacyImportService
             'total_consolidated_stock'       => 0.0,
         ];
 
-        // 6. Procesar en bloques de 150 registros dentro de transacciones
-        $chunks = array_chunk($consolidated, 150, true);
+        // 6. Procesar cada producto dentro de transacciones atómicas individuales con reintentos automáticos
         $processedCount = 0;
 
-        foreach ($chunks as $chunk) {
+        foreach ($consolidated as $barcode => $item) {
             DB::transaction(function () use (
-                $chunk,
+                $barcode,
+                $item,
                 $syncWithMaster,
                 &$masterMap,
                 $existingProducts,
                 &$existingIds,
                 &$stats
             ) {
-                foreach ($chunk as $barcode => $item) {
-                    $this->processProductItem(
-                        (string) $barcode,
-                        $item,
-                        $syncWithMaster,
-                        $masterMap,
-                        $existingProducts,
-                        $existingIds,
-                        $stats
-                    );
-                }
-            });
+                $this->processProductItem(
+                    (string) $barcode,
+                    $item,
+                    $syncWithMaster,
+                    $masterMap,
+                    $existingProducts,
+                    $existingIds,
+                    $stats
+                );
+            }, 5);
 
-            $processedCount += count($chunk);
-            if ($progressCallback) {
+            $processedCount++;
+            if ($progressCallback && ($processedCount % 25 === 0 || $processedCount === $totalItems)) {
                 $progressCallback('importing', $processedCount, $totalItems, "Importando productos ({$processedCount}/{$totalItems})...");
             }
         }
