@@ -68,6 +68,7 @@ use App\Http\Controllers\Api\PrescriptionOfferController;
 use App\Http\Controllers\Api\CashClosureController;
 use App\Http\Controllers\Api\FinancialStatementController;
 use App\Http\Controllers\Api\GeneralSettingController;
+use App\Http\Controllers\Api\EmailSyncConfigController;
 use App\Http\Controllers\Api\ProductFailureController;
 use App\Http\Controllers\Api\SpecialtyController;
 use App\Http\Controllers\Api\DashboardController;
@@ -499,6 +500,14 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
 
     //ruta de configuracion
     Route::post('/general-settings', [GeneralSettingController::class, 'store']);
+
+    // Rutas de Configuración de Sincronización Gmail
+    Route::prefix('configuration/email-sync')->group(function () {
+        Route::get('/', [EmailSyncConfigController::class, 'show']);
+        Route::post('/', [EmailSyncConfigController::class, 'update']);
+        Route::post('/test', [EmailSyncConfigController::class, 'test']);
+        Route::post('/run', [EmailSyncConfigController::class, 'runSync']);
+    });
 
     // Rutas del Dashboard
     Route::prefix('dashboard')->group(function () {

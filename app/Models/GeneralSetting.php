@@ -93,6 +93,14 @@ class GeneralSetting extends Model
         'enable_invoices',
         'enable_invoice_locations',
         'enabled_bi_views',
+        'gmail_sync_email',
+        'gmail_sync_password',
+        'gmail_sync_host',
+        'gmail_sync_port',
+        'gmail_sync_folder',
+        'gmail_sync_enabled',
+        'gmail_sync_last_tested_at',
+        'gmail_sync_last_status',
     ];
 
     protected $casts = [
@@ -146,5 +154,8 @@ class GeneralSetting extends Model
         'enable_invoice_locations' => 'boolean',
         'enabled_bi_views' => 'array',
         'factory_printer_port' => 'integer',
+        'gmail_sync_enabled' => 'boolean',
+        'gmail_sync_port' => 'integer',
+        'gmail_sync_last_tested_at' => 'datetime',
     ];
 }

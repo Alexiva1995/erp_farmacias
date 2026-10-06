@@ -76,6 +76,10 @@ export default [
         to: 'configuration-suppliers',
       },
       {
+        title: 'Sincronizaciones (Gmail)',
+        to: 'configuration-sync',
+      },
+      {
         title: 'Importar Datos',
         children: [
           {

@@ -34,15 +34,27 @@ class SupplierEmailCatalogService
     {
         @ini_set('memory_limit', '512M');
 
-        $email = config('mail_sync.email');
-        $password = config('mail_sync.password');
-        $host = config('mail_sync.host', 'imap.gmail.com');
-        $port = (int) config('mail_sync.port', 993);
-        $folder = config('mail_sync.folder', 'INBOX');
+        $settings = \App\Models\GeneralSetting::first();
+        
+        $email = $settings?->gmail_sync_email ?: config('mail_sync.email');
+        $rawPassword = $settings?->gmail_sync_password;
+        if (!empty($rawPassword)) {
+            try {
+                $password = \App\Helpers\FtpCrypt::decrypt($rawPassword);
+            } catch (\Throwable $e) {
+                $password = $rawPassword;
+            }
+        } else {
+            $password = config('mail_sync.password');
+        }
+
+        $host = $settings?->gmail_sync_host ?: config('mail_sync.host', 'imap.gmail.com');
+        $port = (int) ($settings?->gmail_sync_port ?: config('mail_sync.port', 993));
+        $folder = $settings?->gmail_sync_folder ?: config('mail_sync.folder', 'INBOX');
         $allowedExtensions = config('mail_sync.allowed_extensions', ['xlsx', 'xls', 'csv']);
 
         if (empty($email) || empty($password)) {
-            throw new Exception("Las credenciales de Gmail (GMAIL_SYNC_EMAIL y GMAIL_SYNC_PASSWORD) no están configuradas en el archivo .env.");
+            throw new Exception("Las credenciales de Gmail no están configuradas en la sección de Sincronizaciones ni en el archivo .env.");
         }
 
         $this->imapService->connect($host, $port, $email, $password);
