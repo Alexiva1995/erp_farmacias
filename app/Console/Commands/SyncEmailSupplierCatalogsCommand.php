@@ -51,13 +51,6 @@ class SyncEmailSupplierCatalogsCommand extends Command
             $this->info("🎯 Proveedor seleccionado: {$targetSupplier->name} (ID: {$targetSupplier->id})");
         }
 
-        $email = config('mail_sync.email');
-        $password = config('mail_sync.password');
-        if (empty($email) || empty($password)) {
-            $this->warn('⚠️ Sincronización omitida: Las credenciales de Gmail (GMAIL_SYNC_EMAIL y GMAIL_SYNC_PASSWORD) no están configuradas en el archivo .env.');
-            return self::SUCCESS;
-        }
-
         try {
             $result = $emailCatalogService->syncEmailCatalogs($dryRun, $targetSupplier);
 
