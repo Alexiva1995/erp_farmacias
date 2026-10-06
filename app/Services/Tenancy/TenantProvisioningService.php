@@ -49,21 +49,24 @@ class TenantProvisioningService
             'domain' => $domain,
         ]);
 
-        // 3. Inicializar roles y crear el usuario Administrador dentro del contexto de la BD del Tenant
+        // 3. Sembrar datos maestros y configurar usuario administrador dentro del contexto del Tenant
         $tenant->run(function () use ($data) {
-            // Sembrar roles base indispensables
-            if (class_exists(\Database\Seeders\RolesSeeder::class)) {
-                (new \Database\Seeders\RolesSeeder())->run();
+            // Ejecutar el DatabaseSeeder consolidado (roles, catálogo de proveedores, conexiones, telegram)
+            if (class_exists(\Database\Seeders\DatabaseSeeder::class)) {
+                (new \Database\Seeders\DatabaseSeeder())->run();
             }
 
+            // Si se suministraron credenciales personalizadas para el Administrador, crearlo o actualizarlo
             if (!empty($data['admin_email']) && !empty($data['password'])) {
-                User::create([
-                    'username' => $data['admin_name'] ?? 'Admin',
-                    'email' => $data['admin_email'],
-                    'password_hash' => $data['password'],
-                    'role_id' => 1,
-                    'is_active' => true,
-                ]);
+                User::updateOrCreate(
+                    ['role_id' => 1],
+                    [
+                        'username' => $data['admin_name'] ?? 'admin',
+                        'email' => $data['admin_email'],
+                        'password_hash' => $data['password'],
+                        'is_active' => true,
+                    ]
+                );
             }
         });
 

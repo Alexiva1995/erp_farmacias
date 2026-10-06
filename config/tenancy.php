@@ -20,9 +20,10 @@ return [
         '127.0.0.1',
         'localhost',
         'erp_farmacias.test',
+        'farmaciabs.com',
+        'www.farmaciabs.com',
         'tovaerp.com',
         'www.tovaerp.com',
-        'zorcasalud.tovaerp.com',
     ],
 
     /**

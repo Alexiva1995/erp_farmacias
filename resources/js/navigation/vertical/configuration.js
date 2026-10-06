@@ -79,6 +79,10 @@ export default [
         title: 'Importar Datos',
         to: 'configuration-import',
       },
+      {
+        title: 'Farmacias (SaaS)',
+        to: 'configuration-tenants',
+      },
     ],
   }, 
 ]

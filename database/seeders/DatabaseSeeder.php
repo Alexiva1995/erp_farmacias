@@ -17,6 +17,9 @@ class DatabaseSeeder extends Seeder
             RolesSeeder::class,
             UserSeeder::class,
             CourtSeeder::class,
+            SuppliersSqlImportSeeder::class,
+            SupplierConnectionsSqlImportSeeder::class,
+            TelegramCommandSeeder::class,
         ]);
     }
 }
