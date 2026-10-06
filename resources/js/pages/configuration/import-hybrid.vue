@@ -170,6 +170,7 @@ const executeImport = async () => {
           <p class="mb-1 text-purple"><strong>Registrados Nuevos en Master:</strong> ${Number(stats.registered_master ?? 0).toLocaleString('es-VE')}</p>
           <p class="mb-1 text-secondary"><strong>Lotes Creados:</strong> ${Number(stats.total_lots_created ?? 0).toLocaleString('es-VE')}</p>
           <p class="mb-1 text-warning"><strong>Lotes Reducidos por Tope de Stock:</strong> ${Number(stats.lots_reduced_for_cap ?? 0).toLocaleString('es-VE')}</p>
+          <p class="mb-1 text-info"><strong>Movimientos de Trazabilidad:</strong> ${Number(stats.traceability_movements_created ?? 0).toLocaleString('es-VE')}</p>
           <p class="mb-0 text-success"><strong>Stock Total Consolidado:</strong> ${Number(stats.total_consolidated_stock ?? 0).toLocaleString('es-VE')} uds.</p>
         </div>
       `,
@@ -556,6 +557,17 @@ const executeImport = async () => {
                   <div class="pa-2 bg-surface rounded text-center border">
                     <div class="text-caption text-info">Lotes Completados</div>
                     <div class="text-body-1 font-weight-bold text-info">{{ Number(lastResult.lots_extended_for_shortage ?? 0).toLocaleString('es-VE') }}</div>
+                  </div>
+                </VCol>
+
+                <VCol
+                  cols="6"
+                  sm="4"
+                  md="3"
+                >
+                  <div class="pa-2 bg-surface rounded text-center border">
+                    <div class="text-caption text-primary">Trazabilidad</div>
+                    <div class="text-body-1 font-weight-bold text-primary">{{ Number(lastResult.traceability_movements_created ?? 0).toLocaleString('es-VE') }}</div>
                   </div>
                 </VCol>
 

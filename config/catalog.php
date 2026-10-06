@@ -17,7 +17,7 @@ return [
     | Configuración del Servidor Master (Para Farmacias Esclavas)
     |--------------------------------------------------------------------------
     */
-    'master_url' => rtrim(env('MASTER_API_URL', 'https://principal.tovaerp.com/api/v1/master-catalog'), '/'),
+    'master_url' => rtrim(env('MASTER_API_URL', 'https://farmaciabs.com/api/v1/master-catalog'), '/'),
     'master_key' => env('MASTER_API_KEY', ''),
 
     /*

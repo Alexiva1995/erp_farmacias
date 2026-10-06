@@ -96,6 +96,7 @@ class ImportLegacyOnboardingCommand extends Command
                     ['Total Lotes Creados', number_format($stats['total_lots_created'])],
                     ['Lotes Reducidos por Tope de Stock', number_format($stats['lots_reduced_for_cap'])],
                     ['Lotes Ajustados por Faltante de Stock', number_format($stats['lots_extended_for_shortage'])],
+                    ['Movimientos de Trazabilidad Creados', number_format($stats['traceability_movements_created'] ?? 0)],
                     ['Stock Total Consolidado', number_format($stats['total_consolidated_stock'], 2)],
                 ]
             );

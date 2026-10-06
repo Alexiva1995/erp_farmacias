@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Catalog;
 
 use App\Models\Category;
+use App\Models\InventoryMovement;
 use App\Models\Laboratory;
 use App\Models\Product;
 use App\Models\ProductLot;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -57,7 +59,7 @@ class OnboardingLegacyImportService
         $consolidated = $this->consolidateDataAndAdjustLots($productsData, $lotsData);
 
         $totalItems = count($consolidated);
-        $barcodes = array_keys($consolidated);
+        $barcodes = array_values(array_map('strval', array_keys($consolidated)));
 
         // 4. Homologación con Catálogo Maestro
         $masterMap = [];
@@ -82,15 +84,16 @@ class OnboardingLegacyImportService
             ->toArray();
 
         $stats = [
-            'total_products'           => $totalItems,
-            'created'                  => 0,
-            'updated'                  => 0,
-            'matched_master'           => 0,
-            'registered_master'        => 0,
-            'total_lots_created'       => 0,
-            'lots_reduced_for_cap'     => 0,
-            'lots_extended_for_shortage' => 0,
-            'total_consolidated_stock' => 0.0,
+            'total_products'                 => $totalItems,
+            'created'                        => 0,
+            'updated'                        => 0,
+            'matched_master'                 => 0,
+            'registered_master'              => 0,
+            'total_lots_created'             => 0,
+            'lots_reduced_for_cap'           => 0,
+            'lots_extended_for_shortage'     => 0,
+            'traceability_movements_created' => 0,
+            'total_consolidated_stock'       => 0.0,
         ];
 
         // 6. Procesar en bloques de 150 registros dentro de transacciones
@@ -108,7 +111,7 @@ class OnboardingLegacyImportService
             ) {
                 foreach ($chunk as $barcode => $item) {
                     $this->processProductItem(
-                        $barcode,
+                        (string) $barcode,
                         $item,
                         $syncWithMaster,
                         $masterMap,
@@ -388,7 +391,7 @@ class OnboardingLegacyImportService
      * Procesa la inserción o actualización de un producto y sus lotes en la base de datos.
      */
     protected function processProductItem(
-        string $barcode,
+        string|int $barcode,
         array $item,
         bool $syncWithMaster,
         array &$masterMap,
@@ -396,6 +399,7 @@ class OnboardingLegacyImportService
         array &$existingIds,
         array &$stats
     ): void {
+        $barcode = trim((string) $barcode);
         $targetStock = (float) $item['target_stock'];
         $unitCost = (float) $item['unit_cost'];
         $wholesalePrice = (float) $item['wholesale_price'];
@@ -509,11 +513,14 @@ class OnboardingLegacyImportService
         // 6. Eliminar lotes existentes de este producto e insertar los lotes ajustados
         ProductLot::where('product_id', $product->id)->delete();
 
+        $runningStock = 0.0;
+        $currentUserId = Auth::id();
+
         foreach ($item['lots'] as $lot) {
             $qty = (float) $lot['quantity'];
             $cost = (float) $lot['unit_cost'];
 
-            ProductLot::create([
+            $createdLot = ProductLot::create([
                 'product_id'      => $product->id,
                 'lot_number'      => $lot['lot_number'],
                 'expiration_date' => $lot['expiration_date'],
@@ -523,6 +530,26 @@ class OnboardingLegacyImportService
             ]);
 
             $stats['total_lots_created']++;
+
+            // Registrar movimiento de trazabilidad de ingreso/onboarding inicial si hay cantidad
+            if ($qty > 0) {
+                InventoryMovement::create([
+                    'product_id'     => $product->id,
+                    'product_lot_id' => $createdLot->id,
+                    'movement_type'  => 'adjustment',
+                    'quantity'       => $qty,
+                    'invoice_id'     => null,
+                    'supplier_id'    => null,
+                    'order_id'       => null,
+                    'user_id'        => $currentUserId,
+                    'stock_before'   => $runningStock,
+                    'stock_after'    => $runningStock + $qty,
+                    'movement_date'  => now(),
+                ]);
+
+                $runningStock += $qty;
+                $stats['traceability_movements_created']++;
+            }
         }
 
         if (!empty($item['had_reduction'])) {
