@@ -580,26 +580,26 @@ class SupplierController extends Controller
         try {
             $validated = $request->validated();
 
+            // Buscar si ya existe una conexión del mismo tipo para este proveedor
+            $existingConn = $supplier->connections()->where('type', $validated['type'])->first();
+
             // Construir el payload que se persiste
             $data = [
                 'supplier_id'  => $supplier->id,
                 'type'         => $validated['type'],
-                'host'         => $validated['host'] ?? null,
-                'port'         => !empty($validated['port']) ? (int) $validated['port'] : null,
-                'username'     => $validated['username'] ?? null,
-                'path'         => $validated['path'] ?? null,
-                'pasv'         => (bool) ($validated['pasv'] ?? false),
-                'has_header'   => (bool) ($validated['has_header'] ?? false),
-                'invoice_path' => $validated['invoice_path'] ?? null,
+                'host'         => $validated['host'] ?? $existingConn?->host,
+                'port'         => !empty($validated['port']) ? (int) $validated['port'] : $existingConn?->port,
+                'username'     => !empty($validated['username']) ? $validated['username'] : $existingConn?->username,
+                'path'         => $validated['path'] ?? $existingConn?->path,
+                'pasv'         => isset($validated['pasv']) ? (bool) $validated['pasv'] : (bool) ($existingConn?->pasv ?? true),
+                'has_header'   => isset($validated['has_header']) ? (bool) $validated['has_header'] : (bool) ($existingConn?->has_header ?? false),
+                'invoice_path' => $validated['invoice_path'] ?? $existingConn?->invoice_path,
             ];
 
             // Solo actualizar la contraseña si el usuario envió una nueva
             if (!empty($validated['password'])) {
                 $data['password'] = \App\Helpers\FtpCrypt::encrypt($validated['password']);
             }
-
-            // Buscar si ya existe una conexión del mismo tipo para este proveedor
-            $existingConn = $supplier->connections()->where('type', $validated['type'])->first();
 
             // Preservar o asignar estructura por defecto para evitar errores de BD
             if ($existingConn && !empty($existingConn->structure)) {

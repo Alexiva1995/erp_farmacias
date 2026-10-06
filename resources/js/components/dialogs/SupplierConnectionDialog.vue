@@ -139,6 +139,13 @@ const fetchConfig = async () => {
 
 const saveConfig = async () => {
   errors.value = {};
+
+  if (!form.value.username && form.value.type !== "file") {
+    errors.value = { username: ["El usuario o token de cliente es obligatorio."] };
+    toast.error("Por favor ingresa tu usuario o código de cliente.");
+    return;
+  }
+
   saving.value = true;
   try {
     const payload = { ...form.value };
@@ -166,6 +173,7 @@ const saveConfig = async () => {
         ...connectionsMap.value[data.connection.type],
         ...data.connection,
       };
+      form.value.username = data.connection.username ?? form.value.username;
       hasExistingPassword.value = data.connection.has_password ?? hasExistingPassword.value;
     }
 
@@ -378,7 +386,7 @@ watch(
                   <AppTextField
                     v-model="form.username"
                     label="Usuario / Token Cliente *"
-                    placeholder="usuario_conexion"
+                    placeholder="Ingresa tu usuario o código de cliente"
                     prepend-inner-icon="tabler-user"
                     :error-messages="errors.username"
                   />
