@@ -26,33 +26,52 @@ class InitializeTenancyIfTenantDomain
             return $next($request);
         }
 
-        // Buscar el tenant asociado al dominio/subdominio o tenant_id
-        $subdomain = explode('.', $host)[0];
-        $tenant = null;
+        try {
+            $subdomain = explode('.', $host)[0];
+            $subdomainUnderscore = str_replace('-', '_', $subdomain);
+            $subdomainDash = str_replace('_', '-', $subdomain);
+            $tenant = null;
 
-        $domainRecord = Domain::where('domain', $host)
-            ->orWhere('domain', $subdomain)
-            ->orWhere('tenant_id', $subdomain)
-            ->orWhere('tenant_id', $host)
-            ->first();
+            // 1. Buscar en tabla Domain
+            $domainRecord = Domain::where('domain', $host)
+                ->orWhere('domain', $subdomain)
+                ->orWhere('tenant_id', $subdomain)
+                ->orWhere('tenant_id', $subdomainUnderscore)
+                ->orWhere('tenant_id', $subdomainDash)
+                ->first();
 
-        if ($domainRecord && $domainRecord->tenant) {
-            $tenant = $domainRecord->tenant;
-        }
-
-        // Respaldo directo por identificador de tenant
-        if (!$tenant) {
-            $tenant = \App\Models\Tenant::find($subdomain) ?? \App\Models\Tenant::find($host);
-        }
-
-        if ($tenant) {
-            tenancy()->initialize($tenant);
-
-            // Garantizar que Sanctum reconozca este dominio/subdominio como stateful para cookies de sesión
-            $currentStateful = config('sanctum.stateful', []);
-            if (!in_array($host, $currentStateful, true)) {
-                config(['sanctum.stateful' => array_merge($currentStateful, [$host, "{$host}:*"])]);
+            if ($domainRecord && $domainRecord->tenant) {
+                $tenant = $domainRecord->tenant;
             }
+
+            // 2. Buscar directamente en tabla Tenant
+            if (!$tenant) {
+                $tenant = \App\Models\Tenant::find($subdomain)
+                    ?? \App\Models\Tenant::find($subdomainUnderscore)
+                    ?? \App\Models\Tenant::find($subdomainDash)
+                    ?? \App\Models\Tenant::find($host);
+            }
+
+            // 3. Si no existe registro pero es un subdominio de tenant, auto-conciliarlo
+            if (!$tenant && $subdomain !== 'www' && !empty($subdomain)) {
+                $tenant = \App\Models\Tenant::firstOrCreate(
+                    ['id' => $subdomain],
+                    ['company_name' => ucwords(str_replace(['-', '_'], ' ', $subdomain))]
+                );
+                Domain::firstOrCreate(['domain' => $host], ['tenant_id' => $tenant->id]);
+            }
+
+            if ($tenant) {
+                tenancy()->initialize($tenant);
+
+                // Garantizar que Sanctum reconozca este dominio/subdominio como stateful para cookies de sesión
+                $currentStateful = config('sanctum.stateful', []);
+                if (!in_array($host, $currentStateful, true)) {
+                    config(['sanctum.stateful' => array_merge($currentStateful, [$host, "{$host}:*"])]);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("[InitializeTenancyIfTenantDomain] Error: " . $e->getMessage());
         }
 
         return $next($request);
