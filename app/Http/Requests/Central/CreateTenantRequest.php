@@ -30,7 +30,6 @@ class CreateTenantRequest extends FormRequest
                 'min:3',
                 'max:50',
                 'regex:/^[a-z0-9_-]+$/',
-                'unique:tenants,id',
             ],
             'company_name' => ['required', 'string', 'max:255'],
             'admin_name' => ['nullable', 'string', 'max:100'],
