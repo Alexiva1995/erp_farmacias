@@ -116,6 +116,7 @@ jobs:
             git pull origin ${{ github.ref_name }}
             composer install --no-dev --optimize-autoloader --no-interaction
             php artisan migrate --force
+            php artisan tenants:migrate --force
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
@@ -164,6 +165,7 @@ jobs:
             git pull origin ${{ github.ref_name }}
             composer install --no-dev --optimize-autoloader --no-interaction
             php artisan migrate --force
+            php artisan tenants:migrate --force
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache

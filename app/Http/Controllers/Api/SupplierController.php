@@ -606,6 +606,53 @@ class SupplierController extends Controller
                 $data['structure'] = $existingConn->structure;
                 $data['invoice_structure'] = $existingConn->invoice_structure;
                 $data['parse_using'] = $existingConn->parse_using;
+            } elseif (stripos($supplier->name, 'DROCERCA') !== false || $supplier->id === 1001 || $supplier->id === 1) {
+                $data['structure'] = [
+                    [ "type" => "string", "target" => "cod_supplier", "file_field" => "Codigo" ],
+                    [ "type" => "string", "target" => "barcode_match", "file_field" => "CodBarras" ],
+                    [ "type" => "string", "target" => "name", "file_field" => "Descripcion" ],
+                    [ "type" => "decimal", "target" => "exisMerida", "file_field" => "exisMerida" ],
+                    [ "type" => "decimal", "target" => "exisCaracas", "file_field" => "exisCaracas" ],
+                    [ "type" => "decimal", "target" => "exisOriente", "file_field" => "exisOriente" ],
+                    [ "type" => "string", "file_field" => "Marca" ],
+                    [ "type" => "decimal", "file_field" => "Precio" ],
+                    [ "type" => "decimal", "target" => "unit_cost", "file_field" => "Oferta" ],
+                    [ "type" => "string", "file_field" => "Grupo" ],
+                    [ "type" => "date", "target" => "expiration", "file_field" => "VenceMerida" ],
+                    [ "type" => "date", "file_field" => "VenceCentro" ],
+                    [ "type" => "date", "file_field" => "VenceOriente" ],
+                    [ "type" => "string", "target" => "active_ingredient", "file_field" => "Principio" ],
+                    [ "type" => "decimal", "file_field" => "Escala" ],
+                    [ "type" => "decimal", "file_field" => "DescXEscala" ],
+                    [ "type" => "decimal", "file_field" => "Bonifica" ],
+                    [ "type" => "decimal", "file_field" => "CantBonifica" ],
+                    [ "type" => "decimal", "file_field" => "DifPorcentaje" ]
+                ];
+                $data['invoice_structure'] = [
+                    "mode" => "flat",
+                    "separator" => ";",
+                    "filter" => [ "starts_with" => "F", "ends_with" => ".txt" ],
+                    "header" => [
+                        "0" => [ "type" => "string", "field" => "invoice_number" ],
+                        "1" => [ "type" => "date", "field" => "created_invoice_date" ],
+                        "2" => [ "type" => "date", "field" => "exp_date" ],
+                        "3" => [ "type" => "decimal", "field" => "exempt_amount" ],
+                        "5" => [ "type" => "decimal", "field" => "tax_amount" ],
+                        "6" => [ "type" => "decimal", "field" => "total_amount" ],
+                        "18" => [ "type" => "decimal", "field" => "exchange_rate" ]
+                    ],
+                    "lines" => [
+                        "7" => [ "type" => "string", "field" => "codigo_producto" ],
+                        "8" => [ "type" => "string", "field" => "barcode" ],
+                        "9" => [ "type" => "string", "field" => "descripcion_producto" ],
+                        "10" => [ "type" => "decimal", "field" => "quantity" ],
+                        "12" => [ "type" => "decimal", "field" => "unit_cost" ],
+                        "13" => [ "type" => "decimal", "field" => "total_cost" ],
+                        "14" => [ "type" => "decimal", "field" => "porcentaje_iva" ],
+                        "16" => [ "type" => "string", "field" => "lot_number" ],
+                        "17" => [ "type" => "date", "field" => "expiration_date" ]
+                    ]
+                ];
             } elseif (stripos($supplier->name, 'CRIST') !== false || $supplier->id === 1002 || $supplier->id === 3) {
                 $data['structure'] = [
                     [ "target" => "name", "file_field" => "des_art", "type" => "string" ],
