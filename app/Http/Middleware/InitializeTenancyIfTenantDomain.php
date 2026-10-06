@@ -26,13 +26,15 @@ class InitializeTenancyIfTenantDomain
             return $next($request);
         }
 
-        // Si ya está inicializado, continuar
-        if (tenancy()->initialized) {
-            return $next($request);
-        }
+        // Buscar el tenant asociado al dominio/subdominio o tenant_id
+        $subdomain = explode('.', $host)[0];
 
-        // Buscar el tenant asociado al dominio/subdominio
-        $domainRecord = Domain::where('domain', $host)->first();
+        $domainRecord = Domain::where('domain', $host)
+            ->orWhere('domain', $subdomain)
+            ->orWhere('tenant_id', $subdomain)
+            ->orWhere('tenant_id', $host)
+            ->first();
+
         if ($domainRecord && $domainRecord->tenant) {
             tenancy()->initialize($domainRecord->tenant);
 

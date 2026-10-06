@@ -47,7 +47,7 @@ class LoginController extends Controller
         $this->ensureIsNotRateLimited($request);
 
         $user = User::where('email', $request->login)
-            // ->orWhere('username', $request->login)
+            ->orWhere('username', $request->login)
             ->first();
 
         if (!$user || !Hash::check($request->password, $user->password_hash)) {
