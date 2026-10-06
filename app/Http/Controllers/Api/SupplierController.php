@@ -810,10 +810,17 @@ class SupplierController extends Controller
             return response()->json([
                 'message'    => 'Configuración guardada correctamente.',
                 'connection' => [
-                    'id'           => $connection->id,
-                    'type'         => $connection->type,
-                    'host'         => $connection->host,
-                    'has_password' => !empty($connection->password),
+                    'id'              => $connection->id,
+                    'type'            => $connection->type,
+                    'host'            => $connection->host,
+                    'port'            => $connection->port,
+                    'username'        => $connection->username,
+                    'path'            => $connection->path,
+                    'pasv'            => (bool) $connection->pasv,
+                    'has_header'      => (bool) $connection->has_header,
+                    'invoice_path'    => $connection->invoice_path,
+                    'last_connection' => $connection->last_connection,
+                    'has_password'    => !empty($connection->password),
                 ],
             ]);
         } catch (\Throwable $e) {
