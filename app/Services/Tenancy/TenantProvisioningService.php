@@ -41,8 +41,7 @@ class TenantProvisioningService
         // 2. Asociar el dominio / subdominio
         $domain = $data['domain'];
         if (!str_contains($domain, '.')) {
-            $baseDomain = config('tenancy.central_domains')[3] ?? 'tovaerp.com';
-            $domain = "{$data['domain']}.{$baseDomain}";
+            $domain = "{$data['domain']}.tovaerp.com";
         }
 
         $tenant->domains()->create([
