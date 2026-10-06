@@ -781,8 +781,8 @@ class SupplierController extends Controller
                 $data
             );
 
-            // Gestionar conexión FTP secundaria para órdenes si fue enviada (ej. Mafarta API + Pedidos FTP o Dronena Bot + Pedidos FTP)
-            if ($request->has('ftp_orders_enabled')) {
+            // Gestionar conexión FTP secundaria para órdenes SOLO si la conexión principal NO es FTP/SFTP (ej. Mafarta API + Pedidos FTP o Dronena Bot + Pedidos FTP)
+            if ($validated['type'] !== 'ftp' && $validated['type'] !== 'sftp' && $request->has('ftp_orders_enabled')) {
                 if ($request->boolean('ftp_orders_enabled') && !empty($validated['ftp_orders_host'])) {
                     $ftpData = [
                         'supplier_id' => $supplier->id,
@@ -801,7 +801,7 @@ class SupplierController extends Controller
                         ['supplier_id' => $supplier->id, 'type' => 'ftp'],
                         $ftpData
                     );
-                } elseif (!$request->boolean('ftp_orders_enabled') && $validated['type'] !== 'ftp' && $validated['type'] !== 'sftp') {
+                } elseif (!$request->boolean('ftp_orders_enabled')) {
                     // Si se desmarca explícitamente y la principal no es FTP, eliminar la conexión FTP secundaria
                     $supplier->connections()->where('type', 'ftp')->delete();
                 }
