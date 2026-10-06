@@ -201,6 +201,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::get('/general-settings', [GeneralSettingController::class, 'index']);
     Route::post('/import-csv', [\App\Http\Controllers\Api\DataImportController::class, 'importCsv']);
     Route::post('/import-external-catalog', [\App\Http\Controllers\Api\DataImportController::class, 'importExternalCatalog']);
+    Route::post('/import-hybrid-onboarding', [\App\Http\Controllers\Api\DataImportController::class, 'importHybridOnboarding']);
     // Rutas de Finanzas (Estado de Resultados) - Protegidas por autenticación
     Route::prefix("finances")->group(function () {
         Route::get("/income-statement", [FinancialStatementController::class, "index"]);

@@ -16,7 +16,9 @@ use App\Models\DailyClosure;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\Configuration\ImportCsvRequest;
 use App\Http\Requests\Configuration\ImportExternalCatalogRequest;
+use App\Http\Requests\Configuration\ImportHybridOnboardingRequest;
 use App\Services\Catalog\ExternalCatalogImportService;
+use App\Services\Catalog\OnboardingLegacyImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,6 +28,41 @@ class DataImportController extends Controller
     public function __construct(
         protected ?ExternalCatalogImportService $externalCatalogService = null
     ) {}
+
+    /**
+     * Importa y unifica productos y lotes del sistema híbrido/legado con tope de stock.
+     */
+    public function importHybridOnboarding(
+        ImportHybridOnboardingRequest $request,
+        OnboardingLegacyImportService $service
+    ): JsonResponse {
+        try {
+            $productsFile = $request->file('products_file');
+            $lotsFile = $request->file('lots_file');
+            $syncWithMaster = $request->boolean('sync_master', true);
+
+            $stats = $service->import(
+                $productsFile->getRealPath(),
+                $lotsFile->getRealPath(),
+                $syncWithMaster
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => "Importación híbrida completada. Procesados: {$stats['total_products']}, Creados: {$stats['created']}, Actualizados: {$stats['updated']}, Lotes creados: {$stats['total_lots_created']}, Stock consolidado: {$stats['total_consolidated_stock']}.",
+                'data'    => $stats,
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en DataImportController@importHybridOnboarding: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar los archivos de importación híbrida: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
 
     /**
      * Importa catálogo, existencias y ventas externas desde archivo Excel/CSV.

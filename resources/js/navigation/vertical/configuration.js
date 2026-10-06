@@ -77,7 +77,16 @@ export default [
       },
       {
         title: 'Importar Datos',
-        to: 'configuration-import',
+        children: [
+          {
+            title: 'Generales',
+            to: 'configuration-import',
+          },
+          {
+            title: 'Hybrid',
+            to: 'configuration-import-hybrid',
+          },
+        ],
       },
       {
         title: 'Farmacias (SaaS)',
