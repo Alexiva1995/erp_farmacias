@@ -64,9 +64,12 @@ const fetchTenants = async () => {
   isLoading.value = true
   try {
     const response = await axios.get('/api/central/tenants')
-    tenants.value = response.data.data || response.data || []
+    const data = response.data?.data ?? response.data
+    tenants.value = Array.isArray(data) ? data : []
   } catch (error) {
-    showAlert('error', error.response?.data?.message || 'Error al cargar la lista de farmacias')
+    console.error('Error al cargar farmacias:', error)
+    tenants.value = []
+    showAlert('error', error.response?.data?.message || 'Error al conectar con el servidor central')
   } finally {
     isLoading.value = false
   }
@@ -225,10 +228,10 @@ onMounted(() => {
             </VAvatar>
             <div>
               <div class="font-weight-semibold text-high-emphasis">
-                {{ item.company_name }}
+                {{ item.company_name ?? item.raw?.company_name }}
               </div>
               <span class="text-caption text-medium-emphasis">
-                BD: tovaerp_tenant_{{ item.id }}
+                BD: tovaerp_tenant_{{ item.id ?? item.raw?.id }}
               </span>
             </div>
           </div>
@@ -237,14 +240,14 @@ onMounted(() => {
         <!-- Columna Identificador -->
         <template #item.id="{ item }">
           <VChip size="small" variant="outlined" color="primary" class="font-weight-medium">
-            {{ item.id }}
+            {{ item.id ?? item.raw?.id }}
           </VChip>
         </template>
 
         <!-- Columna Dominios -->
         <template #item.domains="{ item }">
-          <div v-if="item.domains && item.domains.length > 0">
-            <div v-for="d in item.domains" :key="d.id" class="d-flex align-center ga-1 my-1">
+          <div v-if="(item.domains ?? item.raw?.domains)?.length > 0">
+            <div v-for="d in (item.domains ?? item.raw?.domains)" :key="d.id" class="d-flex align-center ga-1 my-1">
               <a
                 :href="'https://' + d.domain"
                 target="_blank"
@@ -257,14 +260,14 @@ onMounted(() => {
             </div>
           </div>
           <span v-else class="text-caption text-medium-emphasis">
-            {{ item.id }}.tovaerp.com
+            {{ item.id ?? item.raw?.id }}.tovaerp.com
           </span>
         </template>
 
         <!-- Columna Fecha -->
         <template #item.created_at="{ item }">
           <span class="text-body-2 text-medium-emphasis">
-            {{ item.created_at ? new Date(item.created_at).toLocaleDateString('es-ES') : '—' }}
+            {{ (item.created_at ?? item.raw?.created_at) ? new Date(item.created_at ?? item.raw?.created_at).toLocaleDateString('es-ES') : '—' }}
           </span>
         </template>
 
@@ -272,8 +275,8 @@ onMounted(() => {
         <template #item.actions="{ item }">
           <div class="d-flex justify-end ga-1">
             <VBtn
-              v-if="item.domains && item.domains.length > 0"
-              :href="'https://' + item.domains[0].domain"
+              v-if="(item.domains ?? item.raw?.domains)?.length > 0"
+              :href="'https://' + (item.domains ?? item.raw?.domains)[0].domain"
               target="_blank"
               variant="text"
               color="primary"

@@ -21,13 +21,22 @@ class TenantManagementController extends Controller
     /**
      * Listado de tenants registrados con sus dominios asociados.
      */
-    public function index(): AnonymousResourceCollection
+    public function index(): JsonResponse|AnonymousResourceCollection
     {
-        $tenants = Tenant::with('domains')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('tenants')) {
+                return response()->json(['data' => []]);
+            }
 
-        return TenantResource::collection($tenants);
+            $tenants = Tenant::with('domains')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return TenantResource::collection($tenants);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Tenant fetch error: ' . $e->getMessage());
+            return response()->json(['data' => []]);
+        }
     }
 
     /**
