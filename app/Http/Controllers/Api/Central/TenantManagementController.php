@@ -44,16 +44,63 @@ class TenantManagementController extends Controller
      */
     public function store(CreateTenantRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-        $validated['domain'] = $validated['domain'] ?? $validated['tenant_id'];
+        try {
+            $validated = $request->validated();
+            $validated['domain'] = $validated['domain'] ?? $validated['tenant_id'];
 
-        $tenant = $this->provisioningService->createTenant($validated);
-        $tenant->load('domains');
+            $tenant = $this->provisioningService->createTenant($validated);
+            $tenant->load('domains');
 
-        return response()->json([
-            'message' => 'Farmacia aprovisionada exitosamente con todos los catálogos y formatos maestros.',
-            'tenant'  => new TenantResource($tenant),
-            'login_url' => 'https://' . ($tenant->domains->first()?->domain ?? "{$tenant->id}.tovaerp.com"),
-        ], 201);
+            return response()->json([
+                'message' => 'Farmacia aprovisionada exitosamente con todos los catálogos y formatos maestros.',
+                'tenant'  => new TenantResource($tenant),
+                'login_url' => 'https://' . ($tenant->domains->first()?->domain ?? "{$tenant->id}.tovaerp.com"),
+            ], 201);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error aprovisionando tenant: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => 'Error al aprovisionar la farmacia: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Eliminar un Tenant, sus dominios y su base de datos asociada.
+     */
+    public function destroy(string $id): JsonResponse
+    {
+        try {
+            $tenant = Tenant::find($id);
+
+            // 1. Eliminar dominios asociados
+            \Stancl\Tenancy\Database\Models\Domain::where('tenant_id', $id)->delete();
+
+            // 2. Eliminar base de datos física si existe
+            $dbPrefix = config('tenancy.database.prefix', 'tovaerp_tenant_');
+            $dbName = $dbPrefix . $id;
+            try {
+                \Illuminate\Support\Facades\DB::statement("DROP DATABASE IF EXISTS `{$dbName}`");
+            } catch (\Throwable) {}
+
+            // 3. Eliminar registro del tenant
+            if ($tenant) {
+                $tenant->delete();
+            } else {
+                Tenant::where('id', $id)->delete();
+            }
+
+            return response()->json([
+                'message' => "Farmacia '{$id}' y su base de datos fueron eliminadas correctamente.",
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error eliminando tenant {$id}: " . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Error al eliminar la farmacia: ' . $e->getMessage(),
+            ], 422);
+        }
     }
 }

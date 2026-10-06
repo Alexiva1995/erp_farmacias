@@ -144,6 +144,34 @@ const handleCreateTenant = async () => {
   }
 }
 
+// Estado para modal de eliminación
+const isDeleteDialogOpen = ref(false)
+const isDeleting = ref(false)
+const tenantToDelete = ref(null)
+
+const confirmDeleteTenant = (tenant) => {
+  tenantToDelete.value = tenant
+  isDeleteDialogOpen.value = true
+}
+
+const handleDeleteTenant = async () => {
+  if (!tenantToDelete.value) return
+  
+  const id = tenantToDelete.value.id ?? tenantToDelete.value.raw?.id
+  isDeleting.value = true
+  try {
+    const response = await axios.delete(`/central/tenants/${id}`)
+    showAlert('success', response.data.message || 'Farmacia eliminada exitosamente')
+    isDeleteDialogOpen.value = false
+    tenantToDelete.value = null
+    await fetchTenants()
+  } catch (error) {
+    showAlert('error', error.response?.data?.message || 'Error al eliminar la farmacia')
+  } finally {
+    isDeleting.value = false
+  }
+}
+
 onMounted(() => {
   fetchTenants()
 })
@@ -285,10 +313,58 @@ onMounted(() => {
             >
               Ingresar
             </VBtn>
+
+            <VBtn
+              icon="tabler-trash"
+              variant="text"
+              color="error"
+              size="small"
+              @click="confirmDeleteTenant(item)"
+            />
           </div>
         </template>
       </VDataTable>
     </VCard>
+
+    <!-- Modal de Confirmación de Eliminación -->
+    <VDialog v-model="isDeleteDialogOpen" max-width="480" persistent>
+      <VCard class="pa-2">
+        <VCardTitle class="d-flex align-center ga-2 text-error pa-4">
+          <VIcon icon="tabler-alert-triangle" size="26" />
+          <span class="text-h6 font-weight-bold">¿Eliminar Farmacia?</span>
+        </VCardTitle>
+
+        <VCardText class="pa-4 pt-0">
+          <p class="text-body-1 mb-2">
+            ¿Estás seguro de que deseas eliminar permanentemente a
+            <strong>{{ tenantToDelete?.company_name ?? tenantToDelete?.raw?.company_name ?? tenantToDelete?.id ?? tenantToDelete?.raw?.id }}</strong>?
+          </p>
+          <p class="text-caption text-medium-emphasis mb-0">
+            Esta acción eliminará el subdominio, sus configuraciones y destruirá su base de datos aislada. Esta operación no se puede deshacer.
+          </p>
+        </VCardText>
+
+        <VCardActions class="pa-4 justify-end ga-2">
+          <VBtn
+            variant="outlined"
+            color="secondary"
+            :disabled="isDeleting"
+            @click="isDeleteDialogOpen = false"
+          >
+            Cancelar
+          </VBtn>
+          <VBtn
+            color="error"
+            variant="elevated"
+            :loading="isDeleting"
+            prepend-icon="tabler-trash"
+            @click="handleDeleteTenant"
+          >
+            {{ isDeleting ? 'Eliminando...' : 'Eliminar Farmacia' }}
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
 
     <!-- Modal de Creación / Aprovisionamiento de Farmacia -->
     <VDialog v-model="isDialogOpen" max-width="600" persistent>
