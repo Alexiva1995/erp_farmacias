@@ -63,7 +63,7 @@ const headers = [
 const fetchTenants = async () => {
   isLoading.value = true
   try {
-    const response = await axios.get('/api/central/tenants')
+    const response = await axios.get('/central/tenants')
     const data = response.data?.data ?? response.data
     tenants.value = Array.isArray(data) ? data : []
   } catch (error) {
@@ -117,7 +117,7 @@ const handleCreateTenant = async () => {
 
   isSubmitting.value = true
   try {
-    const response = await axios.post('/api/central/tenants', {
+    const response = await axios.post('/central/tenants', {
       company_name: form.company_name,
       tenant_id: form.tenant_id,
       admin_name: form.admin_name,
