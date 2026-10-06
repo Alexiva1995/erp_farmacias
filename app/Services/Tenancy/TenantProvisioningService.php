@@ -50,23 +50,59 @@ class TenantProvisioningService
 
         // 3. Sembrar datos maestros y configurar usuario administrador dentro del contexto del Tenant
         $tenant->run(function () use ($data) {
-            // Ejecutar el DatabaseSeeder consolidado (roles, catálogo de proveedores, conexiones, telegram)
-            if (class_exists(\Database\Seeders\DatabaseSeeder::class)) {
-                (new \Database\Seeders\DatabaseSeeder())->run();
+            // 3.1 Sembrar roles primero
+            try {
+                if (class_exists(\Database\Seeders\RolesSeeder::class)) {
+                    app(\Database\Seeders\RolesSeeder::class)->run();
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Error sembrando roles en tenant {$data['tenant_id']}: " . $e->getMessage());
             }
 
-            // Si se suministraron credenciales personalizadas para el Administrador, crearlo o actualizarlo
-            if (!empty($data['admin_email']) && !empty($data['password'])) {
-                User::updateOrCreate(
-                    ['role_id' => 1],
+            // 3.2 Crear o actualizar usuario Administrador principal
+            $adminUsername = !empty($data['admin_name']) ? $data['admin_name'] : 'admin';
+            $adminEmail = !empty($data['admin_email']) ? $data['admin_email'] : 'admin@tovaerp.com';
+            $password = !empty($data['password']) ? $data['password'] : '12345678';
+
+            User::updateOrCreate(
+                ['username' => $adminUsername],
+                [
+                    'email'         => $adminEmail,
+                    'password_hash' => $password,
+                    'role_id'       => 1, // Rol Admin
+                    'is_active'     => true,
+                    'token_login'   => null,
+                ]
+            );
+
+            // 3.3 Crear usuario por defecto de tienda / cliente
+            try {
+                User::firstOrCreate(
+                    ['username' => 'tienda'],
                     [
-                        'username' => $data['admin_name'] ?? 'admin',
-                        'email' => $data['admin_email'],
-                        'password_hash' => $data['password'],
-                        'is_active' => true,
+                        'email'         => "tienda@{$data['tenant_id']}.com",
+                        'password_hash' => 'tienda123',
+                        'role_id'       => 2,
+                        'is_active'     => true,
+                        'token_login'   => null,
                     ]
                 );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Error creando usuario tienda en tenant {$data['tenant_id']}: " . $e->getMessage());
             }
+
+            // 3.4 Ejecutar seeders adicionales opcionales
+            try {
+                if (class_exists(\Database\Seeders\CourtSeeder::class)) {
+                    app(\Database\Seeders\CourtSeeder::class)->run();
+                }
+            } catch (\Throwable $e) {}
+
+            try {
+                if (class_exists(\Database\Seeders\TelegramCommandSeeder::class)) {
+                    app(\Database\Seeders\TelegramCommandSeeder::class)->run();
+                }
+            } catch (\Throwable $e) {}
         });
 
         return $tenant;
