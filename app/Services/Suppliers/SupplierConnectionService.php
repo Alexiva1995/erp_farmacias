@@ -1514,14 +1514,22 @@ class SupplierConnectionService
         $structure = $connection->invoice_structure;
         $header = [];
         foreach ($structure['header'] as $index => $meta) {
-            $header[$meta['field']] = $this->castValue($invoice[$meta['original_field']] ?? null, $meta);
+            $fieldName = is_array($meta) ? ($meta['field'] ?? $meta['target'] ?? $meta['name'] ?? null) : null;
+            $origField = is_array($meta) ? ($meta['original_field'] ?? $meta['field'] ?? null) : null;
+            if ($fieldName) {
+                $header[$fieldName] = $this->castValue($invoice[$origField] ?? null, $meta);
+            }
         }
 
         $lines = [];
         foreach ($invoice['articulos'] as $article) {
             $lineData = [];
             foreach ($structure['lines'] as $index => $meta) {
-                $lineData[$meta['field']] = $this->castValue($article[$meta['original_field']] ?? null, $meta);
+                $fieldName = is_array($meta) ? ($meta['field'] ?? $meta['target'] ?? $meta['name'] ?? null) : null;
+                $origField = is_array($meta) ? ($meta['original_field'] ?? $meta['field'] ?? null) : null;
+                if ($fieldName) {
+                    $lineData[$fieldName] = $this->castValue($article[$origField] ?? null, $meta);
+                }
             }
             // Cálculos básicos de línea
             $unitCost = floatval($lineData["unit_cost"] ?? 0);
