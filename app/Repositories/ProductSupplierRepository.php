@@ -16,9 +16,19 @@ class ProductSupplierRepository
         $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
         $minExpirationDate = now()->addMonths(6)->toDateString();
 
-        // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 30 días de antigüedad o actualizado y activo)
+        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 30 días)
+        $latestSupplierDatesSubquery = DB::table('product_suppliers')
+            ->select('supplier_id', DB::raw('MAX(DATE(created_at)) as max_date'))
+            ->where('created_at', '>=', now()->subDays(30))
+            ->groupBy('supplier_id');
+
+        // Obtener solo el ID más reciente por cada proveedor para este producto dentro de su último catálogo activo
         $latestIdsQuery = DB::table('product_suppliers')
             ->join('suppliers', 'suppliers.id', '=', 'product_suppliers.supplier_id')
+            ->joinSub($latestSupplierDatesSubquery, 'latest_supp', function ($join) {
+                $join->on('latest_supp.supplier_id', '=', 'product_suppliers.supplier_id')
+                     ->whereRaw('DATE(product_suppliers.created_at) = latest_supp.max_date');
+            })
             ->select(DB::raw('MAX(product_suppliers.id) as id'))
             ->where('suppliers.is_active', true)
             ->where("product_suppliers.product_id", "=", $product_id)
@@ -58,9 +68,19 @@ class ProductSupplierRepository
     {
         $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
 
-        // Obtener solo el ID más reciente por cada proveedor para este producto (máximo 30 días de antigüedad y activo)
+        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 30 días)
+        $latestSupplierDatesSubquery = DB::table('product_suppliers')
+            ->select('supplier_id', DB::raw('MAX(DATE(created_at)) as max_date'))
+            ->where('created_at', '>=', now()->subDays(30))
+            ->groupBy('supplier_id');
+
+        // Obtener solo el ID más reciente por cada proveedor para este producto dentro de su último catálogo activo
         $latestIdsQuery = DB::table('product_suppliers')
             ->join('suppliers', 'suppliers.id', '=', 'product_suppliers.supplier_id')
+            ->joinSub($latestSupplierDatesSubquery, 'latest_supp', function ($join) {
+                $join->on('latest_supp.supplier_id', '=', 'product_suppliers.supplier_id')
+                     ->whereRaw('DATE(product_suppliers.created_at) = latest_supp.max_date');
+            })
             ->select(DB::raw('MAX(product_suppliers.id) as id'))
             ->where('suppliers.is_active', true)
             ->where("product_suppliers.product_id", "=", $product_id)
@@ -91,10 +111,24 @@ class ProductSupplierRepository
         $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
         $minExpirationDate = now()->addMonths(6)->toDateString();
         
-        // 1. Obtener solo los IDs más recientes por combinación de product_id y supplier_id (máximo 30 días y activo)
+        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 30 días)
+        $latestSupplierDatesSubquery = DB::table('product_suppliers')
+            ->select('supplier_id', DB::raw('MAX(DATE(created_at)) as max_date'))
+            ->where('created_at', '>=', now()->subDays(30))
+            ->groupBy('supplier_id');
+
+        if ($supplierId) {
+            $latestSupplierDatesSubquery->where('supplier_id', $supplierId);
+        }
+
+        // 1. Obtener solo los IDs más recientes por combinación de product_id y supplier_id dentro del catálogo más reciente del proveedor
         // Descartando ofertas que venzan en los próximos 6 meses (si tienen dato de expiración)
         $latestIdsQuery = DB::table('product_suppliers')
             ->join('suppliers', 'suppliers.id', '=', 'product_suppliers.supplier_id')
+            ->joinSub($latestSupplierDatesSubquery, 'latest_supp', function ($join) {
+                $join->on('latest_supp.supplier_id', '=', 'product_suppliers.supplier_id')
+                     ->whereRaw('DATE(product_suppliers.created_at) = latest_supp.max_date');
+            })
             ->select(DB::raw('MAX(product_suppliers.id) as id'))
             ->where('suppliers.is_active', true)
             ->whereIn('product_suppliers.product_id', $productIds)
@@ -157,32 +191,37 @@ class ProductSupplierRepository
             $productBarcode = is_array($product) ? ($product['barcode'] ?? null) : ($product->barcode ?? null);
             $bestOffer = $allOffers->where('product_id', $productId)->first();
 
-            // Si no tiene oferta asociada, intentar asociar por código de barras de manera automática y permanente (máximo 30 días)
+            // Si no tiene oferta asociada, intentar asociar por código de barras de manera automática y permanente (máximo 30 días en el catálogo más reciente)
             if (!$bestOffer && $productBarcode) {
                 $barcodeQuery = ProductSupplier::whereHas('supplier', fn($q) => $q->where('is_active', true))
+                    ->joinSub($latestSupplierDatesSubquery, 'latest_supp', function ($join) {
+                        $join->on('latest_supp.supplier_id', '=', 'product_suppliers.supplier_id')
+                             ->whereRaw('DATE(product_suppliers.created_at) = latest_supp.max_date');
+                    })
                     ->where(function ($q) {
-                        $q->where('created_at', '>=', now()->subDays(30))
-                          ->orWhere('updated_at', '>=', now()->subDays(30));
+                        $q->where('product_suppliers.created_at', '>=', now()->subDays(30))
+                          ->orWhere('product_suppliers.updated_at', '>=', now()->subDays(30));
                     })
                     ->where(function ($q) use ($minExpirationDate) {
-                        $q->whereNull('expiration')
-                          ->orWhere('expiration', '>', $minExpirationDate);
-                    });
+                        $q->whereNull('product_suppliers.expiration')
+                          ->orWhere('product_suppliers.expiration', '>', $minExpirationDate);
+                    })
+                    ->select('product_suppliers.*');
 
                 if ($hasIsActive) {
-                    $barcodeQuery->where('is_active', true);
+                    $barcodeQuery->where('product_suppliers.is_active', true);
                 }
 
                 $barcodeOffer = $barcodeQuery->with('supplier')
                     ->where(function ($q) use ($productBarcode) {
-                        $q->where('barcode_match', $productBarcode)
-                          ->orWhere('cod_supplier', $productBarcode);
+                        $q->where('product_suppliers.barcode_match', $productBarcode)
+                          ->orWhere('product_suppliers.cod_supplier', $productBarcode);
                     })
                     ->where(function ($query) {
-                        $query->where('unit_cost_usd', '>', 0)
-                            ->orWhere('unit_cost_usd_with_discount', '>', 0);
+                        $query->where('product_suppliers.unit_cost_usd', '>', 0)
+                            ->orWhere('product_suppliers.unit_cost_usd_with_discount', '>', 0);
                     })
-                    ->orderBy(DB::raw("CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END"), "ASC")
+                    ->orderBy(DB::raw("CASE WHEN product_suppliers.unit_cost_usd_with_discount > 0 THEN product_suppliers.unit_cost_usd_with_discount ELSE product_suppliers.unit_cost_usd END"), "ASC")
                     ->first();
 
                 if ($barcodeOffer && $productId) {

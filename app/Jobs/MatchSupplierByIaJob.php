@@ -132,14 +132,25 @@ class MatchSupplierByIaJob implements ShouldQueue
      */
     private function buscarCandidatosMultiEstrategia(Product $product, array $rechazadosIds): \Illuminate\Support\Collection
     {
-        // Base: solo productos SIN vincular, con precio válido, creados hace 7 días o menos, excluyendo rechazados previos
-        $base = ProductSupplier::whereNull('product_id')
-            ->whereNotIn('id', $rechazadosIds)
-            ->where('created_at', '>=', now()->subDays(7))
+        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 30 días)
+        $latestSupplierDatesSubquery = DB::table('product_suppliers')
+            ->select('supplier_id', DB::raw('MAX(DATE(created_at)) as max_date'))
+            ->where('created_at', '>=', now()->subDays(30))
+            ->groupBy('supplier_id');
+
+        // Base: solo productos SIN vincular, con precio válido, dentro de la fecha de catálogo más reciente por proveedor
+        $base = ProductSupplier::whereNull('product_suppliers.product_id')
+            ->joinSub($latestSupplierDatesSubquery, 'latest_supp', function ($join) {
+                $join->on('latest_supp.supplier_id', '=', 'product_suppliers.supplier_id')
+                     ->whereRaw('DATE(product_suppliers.created_at) = latest_supp.max_date');
+            })
+            ->whereNotIn('product_suppliers.id', $rechazadosIds)
+            ->where('product_suppliers.created_at', '>=', now()->subDays(30))
             ->where(function ($q) {
-                $q->where('unit_cost_usd', '>', 0)
-                  ->orWhere('unit_cost_usd_with_discount', '>', 0);
-            });
+                $q->where('product_suppliers.unit_cost_usd', '>', 0)
+                  ->orWhere('product_suppliers.unit_cost_usd_with_discount', '>', 0);
+            })
+            ->select('product_suppliers.*');
 
         $tieneIngrediente = !empty($product->active_ingredient) && strlen($product->active_ingredient) > 3;
         $tieneMarca       = !empty($product->laboratory?->name) && strlen($product->laboratory->name) > 2;

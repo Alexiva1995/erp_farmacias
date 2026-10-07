@@ -1021,7 +1021,14 @@ class SupplierConnectionService
         $invoices = [];
         $bufferLines = [];
 
-        $barcodeField = collect($structure["lines"])->pluck("field")->search("barcode");
+        $barcodeField = false;
+        foreach ($structure["lines"] as $idx => $meta) {
+            $fName = is_array($meta) ? ($meta['field'] ?? $meta['target'] ?? $meta['name'] ?? null) : null;
+            if ($fName === 'barcode' || $fName === 'barcode_match') {
+                $barcodeField = $idx;
+                break;
+            }
+        }
         $barcodes = [];
         $mode = $structure['mode'] ?? 'grouped';
 
@@ -1033,17 +1040,15 @@ class SupplierConnectionService
 
             $tipo = trim($cols[0] ?? "");
 
-            if ($tipo === "R" || $tipo === '01' && $barcodeField !== false) {
+            if (($tipo === "R" || $tipo === '01') && $barcodeField !== false) {
                 $barcode = trim($cols[$barcodeField] ?? "");
                 if ($barcode !== "") {
                     $barcodes[] = $barcode;
                 }
             }
 
-            $barcodeIndexFlat = array_search('barcode', array_column($structure['lines'], 'field'));
-            if ($mode === 'flat' && $barcodeIndexFlat !== false) {
-                $originalIndex = array_keys($structure['lines'])[$barcodeIndexFlat];
-                $barcode = trim($cols[$originalIndex] ?? "");
+            if ($mode === 'flat' && $barcodeField !== false) {
+                $barcode = trim($cols[$barcodeField] ?? "");
                 if ($barcode !== "") {
                     $barcodes[] = $barcode;
                 }
@@ -1062,7 +1067,10 @@ class SupplierConnectionService
                 $header = [];
                 foreach ($structure['header'] as $index => $meta) {
                     $raw = $cols[$index] ?? '';
-                    $header[$meta['field']] = $this->castValue($raw, $meta);
+                    $fieldName = is_array($meta) ? ($meta['field'] ?? $meta['target'] ?? $meta['name'] ?? null) : null;
+                    if ($fieldName) {
+                        $header[$fieldName] = $this->castValue($raw, $meta);
+                    }
                 }
 
                 if (in_array($connection->supplier_id, [23])) {
@@ -1101,12 +1109,14 @@ class SupplierConnectionService
 
                 foreach ($structure['lines'] as $index => $meta) {
                     $raw = $cols[$index] ?? '';
-                    //                    //$lineData[$meta['field']] = $this->castValue($raw, $meta);
-                    $value = $this->castValue($raw, $meta);
-                    $lineData[$meta['field']] = $value;
+                    $fieldName = is_array($meta) ? ($meta['field'] ?? $meta['target'] ?? $meta['name'] ?? null) : null;
+                    if ($fieldName) {
+                        $value = $this->castValue($raw, $meta);
+                        $lineData[$fieldName] = $value;
 
-                    if ($meta["field"] === "porcentaje_iva" && is_numeric($value)) {
-                        $ivaTaxValue = floatval($value);
+                        if ($fieldName === "porcentaje_iva" && is_numeric($value)) {
+                            $ivaTaxValue = floatval($value);
+                        }
                     }
                 }
 
@@ -1197,7 +1207,10 @@ class SupplierConnectionService
                     foreach ($structure["header"] as $index => $meta) {
                         $raw = $cols[$index] ?? "";
                         $value = $this->castValue($raw, $meta);
-                        $currentHeader[$meta["field"]] = $value;
+                        $fieldName = is_array($meta) ? ($meta["field"] ?? $meta["target"] ?? $meta["name"] ?? null) : null;
+                        if ($fieldName) {
+                            $currentHeader[$fieldName] = $value;
+                        }
                     }
 
                     if ($isDronena) {
@@ -1279,10 +1292,13 @@ class SupplierConnectionService
                     foreach ($structure["lines"] as $index => $meta) {
                         $raw = $cols[$index] ?? "";
                         $value = $this->castValue($raw, $meta);
-                        $lineData[$meta["field"]] = $value;
+                        $fieldName = is_array($meta) ? ($meta["field"] ?? $meta["target"] ?? $meta["name"] ?? null) : null;
+                        if ($fieldName) {
+                            $lineData[$fieldName] = $value;
 
-                        if ($meta["field"] === "porcentaje_iva" && is_numeric($value) && $value == 16) {
-                            $hasIvaTax = true;
+                            if ($fieldName === "porcentaje_iva" && is_numeric($value) && $value == 16) {
+                                $hasIvaTax = true;
+                            }
                         }
                     }
 

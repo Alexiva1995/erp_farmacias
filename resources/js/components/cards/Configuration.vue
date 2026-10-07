@@ -162,6 +162,7 @@ onMounted(() => {
                 <VSelect
                   v-model="form.fiscal_machine_type"
                   :items="[
+                    { title: 'Factory (The Factory HKA / Bixolon SRP-812 - Recomendada)', value: 'factory' },
                     { title: 'Protocolo PNP (Impresora Fiscal Estándar)', value: 'pnp' },
                     { title: 'Bixolon / HKA Fiscal', value: 'bixolon' },
                     { title: 'Hasar Fiscal', value: 'hasar' },
@@ -175,7 +176,7 @@ onMounted(() => {
                   :disabled="isSaving"
                 />
                 <p class="text-caption text-medium-emphasis mt-2 mb-0">
-                  Seleccione <strong>PNP</strong> para utilizar el puente y protocolo fiscal estándar configurado actualmente.
+                  Seleccione <strong>Factory</strong> para su impresora Bixolon SRP-812 con protocolo The Factory HKA.
                 </p>
               </div>
             </VCard>
