@@ -52,7 +52,7 @@ class OnboardingSupplierPayablesImportService
         @ini_set('max_execution_time', '600');
 
         return DB::transaction(function () use ($suppliersPayload) {
-            $currentUserId = Auth::id();
+            $currentUserId = Auth::id() ?: 1;
             $stats = [
                 'suppliers_created'          => 0,
                 'suppliers_updated'          => 0,
@@ -78,16 +78,22 @@ class OnboardingSupplierPayablesImportService
                         : 'drogueria';
 
                     $supplier = Supplier::create([
-                        'name'              => $name,
-                        'social_reason'     => $name,
-                        'rif'               => $rifFormatted ?: null,
-                        'sales_phone'       => $cleanPhone,
-                        'address'           => $cleanAddress,
-                        'type'              => $supplierType,
-                        'credit_days'       => 15,
-                        'payment_method'    => 'Bs',
-                        'is_active'         => true,
-                        'is_indexed'        => true,
+                        'name'                   => $name,
+                        'social_reason'          => $name,
+                        'rif'                    => $rifFormatted ?: null,
+                        'sales_phone'            => $cleanPhone,
+                        'address'                => $cleanAddress,
+                        'type'                   => $supplierType,
+                        'credit_days'            => 15,
+                        'dispatch_days'          => [1, 2, 3, 4, 5, 6],
+                        'order_days'             => [1, 2, 3, 4, 5, 6],
+                        'payment_due_type'       => 'invoice_date',
+                        'payment_method'         => 'Bs',
+                        'cash_payment'           => 0,
+                        'charges_igtf'           => 0,
+                        'min_order_amount'       => 0.00,
+                        'is_active'              => true,
+                        'is_indexed'             => true,
                     ]);
 
                     $supplierId = $supplier->id;
