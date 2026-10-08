@@ -764,7 +764,8 @@ const executeSalesImport = async () => {
           <p class="mb-1 text-primary"><strong>Órdenes Creadas:</strong> ${Number(stats.orders_created ?? 0).toLocaleString('es-VE')}</p>
           <p class="mb-1 text-info"><strong>Detalles de Productos Registrados:</strong> ${Number(stats.order_details_created ?? 0).toLocaleString('es-VE')}</p>
           <p class="mb-1 text-success"><strong>Clientes Creados Automáticamente:</strong> ${Number(stats.clients_auto_created ?? 0).toLocaleString('es-VE')}</p>
-          <p class="mb-0 text-secondary"><strong>Monto Total Ventas:</strong> Bs. ${Number(stats.total_amount_bs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</p>
+          <p class="mb-1 text-warning"><strong>Monto Total Ventas VES:</strong> Bs. ${Number(stats.total_amount_bs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</p>
+          <p class="mb-0 text-success"><strong>Monto Total Ventas USD (BCV):</strong> $${Number(stats.total_amount_usd ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</p>
         </div>
       `,
       confirmButtonText: 'Aceptar',
@@ -1823,41 +1824,56 @@ const executeSalesImport = async () => {
                   <VRow dense>
                     <VCol
                       cols="6"
-                      sm="3"
+                      sm="4"
+                      md="2"
                     >
                       <div class="pa-2 bg-surface rounded text-center border">
-                        <div class="text-caption text-primary">Órdenes Creadas</div>
+                        <div class="text-caption text-primary">Órdenes</div>
                         <div class="text-body-1 font-weight-bold text-primary">{{ Number(lastSalesResult.orders_created ?? 0).toLocaleString('es-VE') }}</div>
                       </div>
                     </VCol>
 
                     <VCol
                       cols="6"
-                      sm="3"
+                      sm="4"
+                      md="3"
                     >
                       <div class="pa-2 bg-surface rounded text-center border">
-                        <div class="text-caption text-info">Ítems de Productos</div>
+                        <div class="text-caption text-info">Ítems Registrados</div>
                         <div class="text-body-1 font-weight-bold text-info">{{ Number(lastSalesResult.order_details_created ?? 0).toLocaleString('es-VE') }}</div>
                       </div>
                     </VCol>
 
                     <VCol
                       cols="6"
-                      sm="3"
+                      sm="4"
+                      md="2"
                     >
                       <div class="pa-2 bg-surface rounded text-center border">
-                        <div class="text-caption text-success">Clientes Creados</div>
+                        <div class="text-caption text-success">Clientes</div>
                         <div class="text-body-1 font-weight-bold text-success">{{ Number(lastSalesResult.clients_auto_created ?? 0).toLocaleString('es-VE') }}</div>
                       </div>
                     </VCol>
 
                     <VCol
                       cols="6"
-                      sm="3"
+                      sm="6"
+                      md="3"
                     >
                       <div class="pa-2 bg-surface rounded text-center border">
-                        <div class="text-caption text-secondary">Total Ventas VES</div>
-                        <div class="text-body-1 font-weight-bold text-secondary">Bs. {{ Number(lastSalesResult.total_amount_bs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</div>
+                        <div class="text-caption text-warning">Total Ventas VES</div>
+                        <div class="text-body-1 font-weight-bold text-warning">Bs. {{ Number(lastSalesResult.total_amount_bs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</div>
+                      </div>
+                    </VCol>
+
+                    <VCol
+                      cols="12"
+                      sm="6"
+                      md="2"
+                    >
+                      <div class="pa-2 bg-surface rounded text-center border">
+                        <div class="text-caption text-success">Total USD (BCV)</div>
+                        <div class="text-body-1 font-weight-bold text-success">${{ Number(lastSalesResult.total_amount_usd ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</div>
                       </div>
                     </VCol>
                   </VRow>
@@ -2709,12 +2725,12 @@ const executeSalesImport = async () => {
             >
               <VCard
                 variant="tonal"
-                color="success"
+                color="warning"
                 class="pa-2 text-center"
               >
-                <div class="text-caption">Ítems Homologados</div>
-                <div class="text-h6 font-weight-bold text-success">
-                  {{ salesAnalysis.summary?.matched_products_count ?? 0 }}
+                <div class="text-caption">Total Ventas VES</div>
+                <div class="text-h6 font-weight-bold text-warning">
+                  Bs. {{ Number(salesAnalysis.summary?.total_sales_bs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
                 </div>
               </VCard>
             </VCol>
@@ -2725,12 +2741,12 @@ const executeSalesImport = async () => {
             >
               <VCard
                 variant="tonal"
-                color="warning"
+                color="success"
                 class="pa-2 text-center"
               >
-                <div class="text-caption">Total Ventas VES</div>
-                <div class="text-h6 font-weight-bold text-warning">
-                  Bs. {{ Number(salesAnalysis.summary?.total_sales_bs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
+                <div class="text-caption">Total Ventas USD (BCV)</div>
+                <div class="text-h6 font-weight-bold text-success">
+                  $ {{ Number(salesAnalysis.summary?.total_sales_usd ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
                 </div>
               </VCard>
             </VCol>
@@ -2747,7 +2763,7 @@ const executeSalesImport = async () => {
               class="pa-3"
             >
               <div class="d-flex flex-wrap align-center justify-space-between gap-2 mb-2">
-                <div class="d-flex align-center gap-2">
+                <div class="d-flex align-center gap-2 flex-wrap">
                   <VChip
                     size="small"
                     :color="order.section_type === 'NCR' ? 'error' : 'primary'"
@@ -2756,9 +2772,17 @@ const executeSalesImport = async () => {
                     {{ order.section_type }} #{{ order.document_number }}
                   </VChip>
                   <span class="text-caption text-medium-emphasis">Fecha: {{ order.order_date }}</span>
+                  <VChip
+                    v-if="order.bcv_rate"
+                    size="x-small"
+                    color="secondary"
+                    variant="tonal"
+                  >
+                    Tasa BCV: Bs. {{ Number(order.bcv_rate).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
+                  </VChip>
                 </div>
 
-                <div class="d-flex align-center gap-2">
+                <div class="d-flex align-center gap-2 flex-wrap">
                   <VChip
                     size="small"
                     :color="order.client_matched ? 'success' : 'info'"
@@ -2774,6 +2798,9 @@ const executeSalesImport = async () => {
 
                   <span class="text-body-2 font-weight-bold text-primary">
                     Total: Bs. {{ Number(order.total_amount ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
+                    <span v-if="order.total_amount_usd" class="text-success ms-1">
+                      (≈ ${{ Number(order.total_amount_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }) }} USD)
+                    </span>
                   </span>
                 </div>
               </div>
@@ -2787,8 +2814,8 @@ const executeSalesImport = async () => {
                     <th class="text-left text-caption">Código de Barra</th>
                     <th class="text-left text-caption">Descripción Producto</th>
                     <th class="text-center text-caption">Cant.</th>
-                    <th class="text-right text-caption">Precio Bs.</th>
-                    <th class="text-right text-caption">Total Bs.</th>
+                    <th class="text-right text-caption">Precio Bs. / USD</th>
+                    <th class="text-right text-caption">Total Bs. / USD</th>
                     <th class="text-center text-caption">Catálogo</th>
                   </tr>
                 </thead>
@@ -2800,8 +2827,18 @@ const executeSalesImport = async () => {
                     <td class="text-caption font-weight-medium">{{ item.barcode }}</td>
                     <td class="text-caption">{{ item.description }}</td>
                     <td class="text-center text-caption font-weight-bold">{{ item.quantity }} {{ item.unit }}</td>
-                    <td class="text-right text-caption">Bs. {{ Number(item.price || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</td>
-                    <td class="text-right text-caption font-weight-bold text-primary">Bs. {{ Number(item.total || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</td>
+                    <td class="text-right text-caption">
+                      <div>Bs. {{ Number(item.price || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</div>
+                      <div v-if="item.price_usd" class="text-caption text-success">
+                        ${{ Number(item.price_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+                      </div>
+                    </td>
+                    <td class="text-right text-caption font-weight-bold text-primary">
+                      <div>Bs. {{ Number(item.total || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</div>
+                      <div v-if="item.total_usd" class="text-caption text-success font-weight-regular">
+                        ${{ Number(item.total_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+                      </div>
+                    </td>
                     <td class="text-center">
                       <VChip
                         size="x-small"
@@ -2831,26 +2868,36 @@ const executeSalesImport = async () => {
           </div>
         </VCardText>
 
-        <VCardActions class="border-t bg-surface px-4 py-3 d-flex justify-space-between">
-          <VBtn
-            variant="outlined"
-            color="secondary"
-            :disabled="processingSales"
-            @click="isSalesModalOpen = false"
-          >
-            Cancelar
-          </VBtn>
+        <VCardActions class="border-t bg-surface px-4 py-3">
+          <VRow no-gutters class="w-100 ga-3">
+            <VCol cols="12" sm="6" class="flex-grow-1">
+              <VBtn
+                block
+                variant="outlined"
+                color="secondary"
+                size="large"
+                :disabled="processingSales"
+                @click="isSalesModalOpen = false"
+              >
+                Cancelar
+              </VBtn>
+            </VCol>
 
-          <VBtn
-            color="primary"
-            variant="elevated"
-            prepend-icon="tabler-check"
-            :loading="processingSales"
-            :disabled="processingSales"
-            @click="executeSalesImport"
-          >
-            Confirmar e Importar Órdenes de Venta ({{ salesAnalysis?.summary?.total_orders ?? 0 }} Órdenes)
-          </VBtn>
+            <VCol cols="12" sm="6" class="flex-grow-1">
+              <VBtn
+                block
+                color="primary"
+                variant="elevated"
+                size="large"
+                prepend-icon="tabler-check"
+                :loading="processingSales"
+                :disabled="processingSales"
+                @click="executeSalesImport"
+              >
+                Confirmar e Importar ({{ salesAnalysis?.summary?.total_orders ?? 0 }} Órdenes)
+              </VBtn>
+            </VCol>
+          </VRow>
         </VCardActions>
       </VCard>
     </VDialog>

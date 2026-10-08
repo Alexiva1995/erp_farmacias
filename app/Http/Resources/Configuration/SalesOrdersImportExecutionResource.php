@@ -17,6 +17,7 @@ class SalesOrdersImportExecutionResource extends JsonResource
             'clients_auto_created'  => (int) ($this['clients_auto_created'] ?? 0),
             'orders_skipped'        => (int) ($this['orders_skipped'] ?? 0),
             'total_amount_bs'       => (float) ($this['total_amount_bs'] ?? 0.0),
+            'total_amount_usd'      => (float) ($this['total_amount_usd'] ?? 0.0),
         ];
     }
 }

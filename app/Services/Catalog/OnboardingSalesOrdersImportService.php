@@ -51,6 +51,7 @@ class OnboardingSalesOrdersImportService
                 'clients_auto_created'   => 0,
                 'orders_skipped'         => 0,
                 'total_amount_bs'        => 0.0,
+                'total_amount_usd'       => 0.0,
             ];
 
             // Pre-cargar productos en memoria
@@ -84,6 +85,10 @@ class OnboardingSalesOrdersImportService
                 $neto = (float) ($orderItem['net_amount'] ?? $totalAmount);
                 $exento = (float) ($orderItem['exempt_amount'] ?? 0.0);
                 $taxableBase = max(0.0, $neto - $exento);
+
+                // Obtener tasa BCV para la fecha de la venta
+                $bcvRate = $this->getBcvRateForDate($orderDate);
+                $totalAmountUsd = ($bcvRate > 0) ? round(abs($totalAmount) / $bcvRate, 2) : 0.0;
 
                 // 1. Resolver o crear cliente
                 $clientId = null;
@@ -133,9 +138,11 @@ class OnboardingSalesOrdersImportService
                     'client_id'               => $clientId,
                     'seller_id'               => $sellerId,
                     'total_amount'            => abs($totalAmount),
+                    'money_returns'           => 0.0,
+                    'usd_conversion'          => $bcvRate > 0 ? $bcvRate : 0.0,
                     'total_cost'              => 0.0,
                     'taxable_base'            => abs($taxableBase),
-                    'currency'                => 'VES',
+                    'currency'                => 'Bs',
                     'order_date'              => $orderDate,
                     'status'                  => $orderStatus,
                     'has_multiple_currencies' => false,
@@ -145,7 +152,7 @@ class OnboardingSalesOrdersImportService
                             'amount' => abs($totalAmount),
                         ],
                     ],
-                    'total_amount_usd'        => 0.0,
+                    'total_amount_usd'        => $totalAmountUsd,
                 ]);
 
                 // Historial fiscal con número de factura
@@ -165,8 +172,9 @@ class OnboardingSalesOrdersImportService
                 foreach ($items as $item) {
                     $barcode = trim((string) ($item['barcode'] ?? ''));
                     $qty = abs((float) ($item['quantity'] ?? 1.0));
-                    $price = abs((float) ($item['price'] ?? 0.0));
-                    $itemTotal = abs((float) ($item['total'] ?? ($qty * $price)));
+                    $priceBs = abs((float) ($item['price'] ?? 0.0));
+                    $priceUsd = ($bcvRate > 0) ? round($priceBs / $bcvRate, 2) : 0.0;
+                    $itemTotal = abs((float) ($item['total'] ?? ($qty * $priceBs)));
                     $description = trim((string) ($item['description'] ?? ''));
 
                     $productId = null;
@@ -186,10 +194,10 @@ class OnboardingSalesOrdersImportService
                         'product_type'             => 'product',
                         'quantity'                 => $qty,
                         'quantity_expiration'      => 0.0,
-                        'price'                    => $price,
-                        'price_bs'                 => $price,
-                        'price_before_discount'    => $price,
-                        'price_before_discount_bs' => $price,
+                        'price'                    => $priceUsd > 0 ? $priceUsd : $priceBs,
+                        'price_bs'                 => $priceBs,
+                        'price_before_discount'    => $priceUsd > 0 ? $priceUsd : $priceBs,
+                        'price_before_discount_bs' => $priceBs,
                         'unit_cost'                => $unitCost,
                         'discount_percentage'      => 0.0,
                         'notes'                    => $description,
@@ -203,9 +211,11 @@ class OnboardingSalesOrdersImportService
 
                 $stats['orders_created']++;
                 $stats['total_amount_bs'] += abs($totalAmount);
+                $stats['total_amount_usd'] += $totalAmountUsd;
             }
 
             $stats['total_amount_bs'] = round($stats['total_amount_bs'], 2);
+            $stats['total_amount_usd'] = round($stats['total_amount_usd'], 2);
 
             Log::info('[OnboardingSalesOrdersImport] Importación de ventas completada', $stats);
 
@@ -498,10 +508,16 @@ class OnboardingSalesOrdersImportService
         $ordersList = [];
         $totalItemsCount = 0;
         $totalSalesBs = 0.0;
+        $totalSalesUsd = 0.0;
         $matchedProductsCount = 0;
         $missingProductsCount = 0;
 
         foreach ($parsedOrders as $order) {
+            $orderDateCarbon = !empty($order['order_date']) ? Carbon::parse($order['order_date']) : Carbon::now();
+            $bcvRate = $this->getBcvRateForDate($orderDateCarbon);
+            $orderTotalBs = (float) ($order['total_amount'] ?? 0.0);
+            $orderTotalUsd = ($bcvRate > 0) ? round($orderTotalBs / $bcvRate, 2) : 0.0;
+
             $clientIdent = $order['client_ident'];
             $clientMatch = null;
 
@@ -525,35 +541,43 @@ class OnboardingSalesOrdersImportService
                     $missingProductsCount++;
                 }
 
+                $priceBs = (float) ($item['price'] ?? 0.0);
+                $priceUsd = ($bcvRate > 0) ? round($priceBs / $bcvRate, 2) : 0.0;
+
                 $orderItems[] = [
                     'barcode'         => $barcode,
                     'description'     => $item['description'],
                     'quantity'        => $item['quantity'],
                     'unit'            => $item['unit'],
-                    'price'           => $item['price'],
+                    'price'           => $priceBs,
+                    'price_usd'       => $priceUsd,
                     'total'           => $item['total'],
+                    'total_usd'       => ($bcvRate > 0) ? round(((float) $item['total']) / $bcvRate, 2) : 0.0,
                     'product_matched' => $productMatch !== null,
                     'product_name'    => $productMatch?->name ?? null,
                 ];
                 $totalItemsCount++;
             }
 
-            $totalSalesBs += $order['total_amount'];
+            $totalSalesBs += $orderTotalBs;
+            $totalSalesUsd += $orderTotalUsd;
 
             $ordersList[] = [
-                'section_type'    => $order['section_type'],
-                'order_date'      => $order['order_date'],
-                'document_number' => $order['document_number'],
-                'client_ident'    => $order['client_ident'],
-                'client_name'     => $order['client_name'],
-                'client_matched'  => $clientMatch !== null,
-                'matched_client'  => $clientMatch ? ($clientMatch->name . ' ' . ($clientMatch->last_name ?? '')) : null,
-                'net_amount'      => round($order['net_amount'], 2),
-                'exempt_amount'   => round($order['exempt_amount'], 2),
-                'tax_amount'      => round($order['tax_amount'], 2),
-                'total_amount'    => round($order['total_amount'], 2),
-                'items_count'     => count($orderItems),
-                'items'           => $orderItems,
+                'section_type'      => $order['section_type'],
+                'order_date'        => $order['order_date'],
+                'document_number'   => $order['document_number'],
+                'client_ident'      => $order['client_ident'],
+                'client_name'       => $order['client_name'],
+                'client_matched'    => $clientMatch !== null,
+                'matched_client'    => $clientMatch ? ($clientMatch->name . ' ' . ($clientMatch->last_name ?? '')) : null,
+                'net_amount'        => round($order['net_amount'], 2),
+                'exempt_amount'     => round($order['exempt_amount'], 2),
+                'tax_amount'        => round($order['tax_amount'], 2),
+                'total_amount'      => round($orderTotalBs, 2),
+                'total_amount_usd'  => $orderTotalUsd,
+                'bcv_rate'          => $bcvRate,
+                'items_count'       => count($orderItems),
+                'items'             => $orderItems,
             ];
         }
 
@@ -562,11 +586,62 @@ class OnboardingSalesOrdersImportService
                 'total_orders'           => count($ordersList),
                 'total_items'            => $totalItemsCount,
                 'total_sales_bs'         => round($totalSalesBs, 2),
+                'total_sales_usd'        => round($totalSalesUsd, 2),
                 'matched_products_count' => $matchedProductsCount,
                 'missing_products_count' => $missingProductsCount,
             ],
             'orders' => $ordersList,
         ];
+    }
+
+    /**
+     * Cache de tasas BCV indexadas por fecha.
+     * @var array<string, float>
+     */
+    protected array $bcvRateCache = [];
+
+    /**
+     * Obtiene la tasa BCV oficial más representativa para la fecha de la orden de venta.
+     */
+    public function getBcvRateForDate(Carbon $date): float
+    {
+        $dateKey = $date->toDateString();
+        if (isset($this->bcvRateCache[$dateKey])) {
+            return $this->bcvRateCache[$dateKey];
+        }
+
+        // 1. Buscar en ExchangeRate en esa fecha exacta
+        $rate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'BCV', 'USD_VES'])
+            ->whereDate('created_at', $dateKey)
+            ->orderByDesc('id')
+            ->value('rate');
+
+        // 2. Si no hay en esa fecha exacta, buscar la más cercana anterior o igual
+        if (!$rate || (float) $rate <= 0) {
+            $rate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'BCV', 'USD_VES'])
+                ->where('created_at', '<=', $date->endOfDay())
+                ->orderByDesc('created_at')
+                ->value('rate');
+        }
+
+        // 3. Si sigue sin existir (ej. fechas anteriores al primer registro), buscar la primera histórica
+        if (!$rate || (float) $rate <= 0) {
+            $rate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'BCV', 'USD_VES'])
+                ->orderBy('created_at', 'asc')
+                ->value('rate');
+        }
+
+        // 4. Fallback a la última tasa registrada
+        if (!$rate || (float) $rate <= 0) {
+            $rate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'BCV', 'USD_VES'])
+                ->orderByDesc('id')
+                ->value('rate');
+        }
+
+        $finalRate = ($rate && (float) $rate > 0) ? (float) $rate : 1.0;
+        $this->bcvRateCache[$dateKey] = $finalRate;
+
+        return $finalRate;
     }
 
     /**
