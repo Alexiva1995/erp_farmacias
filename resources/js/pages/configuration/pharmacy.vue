@@ -32,9 +32,15 @@ const {
   saveSettings,
 } = usePharmacySettingsForm()
 
+const logoHasError = ref(false)
+const signatureHasError = ref(false)
+
 const onLogoChange = (e) => {
   const file = e.target.files?.[0]
-  if (file) handleLogoSelect(file)
+  if (file) {
+    logoHasError.value = false
+    handleLogoSelect(file)
+  }
 }
 
 const onFaviconChange = (e) => {
@@ -44,13 +50,19 @@ const onFaviconChange = (e) => {
 
 const onSignatureChange = (e) => {
   const file = e.target.files?.[0]
-  if (file) handleSignatureStampSelect(file)
+  if (file) {
+    signatureHasError.value = false
+    handleSignatureStampSelect(file)
+  }
 }
 
 const onDropLogo = (e) => {
   isDraggingLogo.value = false
   const file = e.dataTransfer?.files?.[0]
-  if (file) handleLogoSelect(file)
+  if (file) {
+    logoHasError.value = false
+    handleLogoSelect(file)
+  }
 }
 
 const onDropFavicon = (e) => {
@@ -62,7 +74,10 @@ const onDropFavicon = (e) => {
 const onDropSignature = (e) => {
   isDraggingSignature.value = false
   const file = e.dataTransfer?.files?.[0]
-  if (file) handleSignatureStampSelect(file)
+  if (file) {
+    signatureHasError.value = false
+    handleSignatureStampSelect(file)
+  }
 }
 
 const testingFactory = ref(false)
@@ -571,10 +586,11 @@ const testFactoryConnection = async () => {
                       <div class="d-flex align-start justify-space-between pb-3 border-b-sheet">
                         <div class="pdf-mock-logo-container d-flex align-center justify-center">
                           <img
-                            v-if="logoPreview"
+                            v-if="logoPreview && !logoHasError"
                             :src="logoPreview"
                             alt="Logo"
                             class="pdf-mock-img"
+                            @error="logoHasError = true"
                           >
                           <div
                             v-else
@@ -632,10 +648,11 @@ const testFactoryConnection = async () => {
                       </div>
                       <div class="text-center">
                         <img
-                          v-if="signatureStampPreview"
+                          v-if="signatureStampPreview && !signatureHasError"
                           :src="signatureStampPreview"
                           alt="Firma y Sello"
                           style="max-height: 48px; max-width: 100px; object-fit: contain;"
+                          @error="signatureHasError = true"
                         >
                         <div v-else class="text-caption text-medium-emphasis font-italic">
                           [Sin firma y sello]

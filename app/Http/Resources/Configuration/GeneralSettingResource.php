@@ -248,20 +248,33 @@ class GeneralSettingResource extends JsonResource
             return null;
         }
 
-        // Si ya es una URL completa (http/https), devolverla tal cual
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+        // Si contiene /storage/, extraer la ruta relativa limpia
+        $cleanPath = $path;
+        if (str_contains($cleanPath, '/storage/')) {
+            $parts = explode('/storage/', $cleanPath);
+            $cleanPath = end($parts);
+        }
+
+        $cleanPath = ltrim($cleanPath, '/');
+        if (str_starts_with($cleanPath, 'storage/')) {
+            $cleanPath = substr($cleanPath, 8);
+        }
+
+        // Si era una URL externa y no era de almacenamiento local/tenant
+        if ((str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) && !str_contains($path, '/storage/')) {
             return $path;
         }
 
-        $cleanPath = ltrim($path, '/');
-        if (str_starts_with($cleanPath, 'storage/')) {
-            $cleanPath = substr($cleanPath, 8);
+        // Verificar si el archivo existe físicamente en el disco público
+        $exists = \Illuminate\Support\Facades\Storage::disk('public')->exists($cleanPath);
+        if (!$exists) {
+            return null;
         }
 
         if (function_exists('tenancy') && tenancy()->initialized && function_exists('tenant_asset')) {
             return tenant_asset($cleanPath);
         }
 
-        return \Illuminate\Support\Facades\Storage::url($cleanPath);
+        return \Illuminate\Support\Facades\Storage::disk('public')->url($cleanPath);
     }
 }

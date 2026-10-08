@@ -14,11 +14,16 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\DailyClosure;
 use Illuminate\Http\JsonResponse;
+use App\Http\Requests\Configuration\AnalyzeSupplierPayablesRequest;
+use App\Http\Requests\Configuration\ExecuteSupplierPayablesImportRequest;
 use App\Http\Requests\Configuration\ImportCsvRequest;
 use App\Http\Requests\Configuration\ImportExternalCatalogRequest;
 use App\Http\Requests\Configuration\ImportHybridOnboardingRequest;
+use App\Http\Resources\Configuration\SupplierPayablesExecutionResource;
+use App\Http\Resources\Configuration\SupplierPayablesPreviewResource;
 use App\Services\Catalog\ExternalCatalogImportService;
 use App\Services\Catalog\OnboardingLegacyImportService;
+use App\Services\Catalog\OnboardingSupplierPayablesImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -28,6 +33,62 @@ class DataImportController extends Controller
     public function __construct(
         protected ?ExternalCatalogImportService $externalCatalogService = null
     ) {}
+
+    /**
+     * Analiza el archivo de Cuentas por Pagar y Proveedores generando una pre-visualización de coincidencias.
+     */
+    public function analyzeSupplierPayables(
+        AnalyzeSupplierPayablesRequest $request,
+        OnboardingSupplierPayablesImportService $service
+    ): JsonResponse {
+        try {
+            $file = $request->file('payables_file');
+            $analysis = $service->parseAndAnalyze($file->getRealPath());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Análisis de proveedores y cuentas por pagar completado con éxito.',
+                'data'    => new SupplierPayablesPreviewResource($analysis),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en DataImportController@analyzeSupplierPayables: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al analizar el archivo de cuentas por pagar: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Persiste los proveedores seleccionados y genera sus facturas pendientes en base de datos.
+     */
+    public function processSupplierPayables(
+        ExecuteSupplierPayablesImportRequest $request,
+        OnboardingSupplierPayablesImportService $service
+    ): JsonResponse {
+        try {
+            $suppliersPayload = $request->validated()['suppliers'];
+            $stats = $service->executeImport($suppliersPayload);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Importación de proveedores y CXP completada. Proveedores creados: {$stats['suppliers_created']}, actualizados: {$stats['suppliers_updated']}, facturas creadas: {$stats['invoices_created']}.",
+                'data'    => new SupplierPayablesExecutionResource($stats),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en DataImportController@processSupplierPayables: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar la importación de proveedores y facturas: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
 
     /**
      * Importa y unifica productos y lotes del sistema híbrido/legado con tope de stock.
