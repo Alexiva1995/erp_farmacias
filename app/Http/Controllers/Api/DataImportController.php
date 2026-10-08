@@ -15,19 +15,24 @@ use App\Models\ExpenseCategory;
 use App\Models\DailyClosure;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\Configuration\AnalyzeClientsImportRequest;
+use App\Http\Requests\Configuration\AnalyzeSalesOrdersImportRequest;
 use App\Http\Requests\Configuration\AnalyzeSupplierPayablesRequest;
 use App\Http\Requests\Configuration\ExecuteClientsImportRequest;
+use App\Http\Requests\Configuration\ExecuteSalesOrdersImportRequest;
 use App\Http\Requests\Configuration\ExecuteSupplierPayablesImportRequest;
 use App\Http\Requests\Configuration\ImportCsvRequest;
 use App\Http\Requests\Configuration\ImportExternalCatalogRequest;
 use App\Http\Requests\Configuration\ImportHybridOnboardingRequest;
 use App\Http\Resources\Configuration\ClientImportExecutionResource;
 use App\Http\Resources\Configuration\ClientImportPreviewResource;
+use App\Http\Resources\Configuration\SalesOrdersImportExecutionResource;
+use App\Http\Resources\Configuration\SalesOrdersImportPreviewResource;
 use App\Http\Resources\Configuration\SupplierPayablesExecutionResource;
 use App\Http\Resources\Configuration\SupplierPayablesPreviewResource;
 use App\Services\Catalog\ExternalCatalogImportService;
 use App\Services\Catalog\OnboardingClientImportService;
 use App\Services\Catalog\OnboardingLegacyImportService;
+use App\Services\Catalog\OnboardingSalesOrdersImportService;
 use App\Services\Catalog\OnboardingSupplierPayablesImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +43,62 @@ class DataImportController extends Controller
     public function __construct(
         protected ?ExternalCatalogImportService $externalCatalogService = null
     ) {}
+
+    /**
+     * Analiza el archivo de Transacciones de Ventas generando una pre-visualización de órdenes y detalles.
+     */
+    public function analyzeSalesOrders(
+        AnalyzeSalesOrdersImportRequest $request,
+        OnboardingSalesOrdersImportService $service
+    ): JsonResponse {
+        try {
+            $file = $request->file('sales_file');
+            $analysis = $service->parseAndAnalyze($file->getRealPath());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Análisis de transacciones de ventas completado con éxito.',
+                'data'    => new SalesOrdersImportPreviewResource($analysis),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en DataImportController@analyzeSalesOrders: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al analizar el archivo de ventas: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Persiste las órdenes de venta y sus detalles vinculados a clientes y productos.
+     */
+    public function processSalesOrders(
+        ExecuteSalesOrdersImportRequest $request,
+        OnboardingSalesOrdersImportService $service
+    ): JsonResponse {
+        try {
+            $ordersPayload = $request->validated()['orders'];
+            $stats = $service->executeImport($ordersPayload);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Importación de ventas completada. Órdenes creadas: {$stats['orders_created']}, detalles de productos: {$stats['order_details_created']}, clientes creados: {$stats['clients_auto_created']}.",
+                'data'    => new SalesOrdersImportExecutionResource($stats),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en DataImportController@processSalesOrders: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar la importación de órdenes de venta: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
 
     /**
      * Analiza el archivo de Listado de Clientes generando una pre-visualización de coincidencias y nuevos.

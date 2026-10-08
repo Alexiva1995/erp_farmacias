@@ -471,7 +471,6 @@ const executeClientsImport = async () => {
 
   const clientsPayload = []
 
-  // 1. Clientes nuevos
   newClientsList.value.forEach(c => {
     clientsPayload.push({
       identification_type: c.identification_type,
@@ -486,7 +485,6 @@ const executeClientsImport = async () => {
     })
   })
 
-  // 2. Clientes coincidentes (para actualizar teléfono o dirección si faltaban)
   matchedClientsList.value.forEach(c => {
     clientsPayload.push({
       identification_type: c.identification_type,
@@ -537,6 +535,132 @@ const executeClientsImport = async () => {
     processingClients.value = false
   }
 }
+
+// ==========================================================================
+// SECCIÓN 4: TRANSACCIONES Y VENTAS (HISTÓRICO DE VENTAS)
+// ==========================================================================
+const salesFile = ref(null)
+const salesInputRef = ref(null)
+const isDraggingSales = ref(false)
+const analyzingSales = ref(false)
+const processingSales = ref(false)
+const isSalesModalOpen = ref(false)
+
+const salesAnalysis = ref(null)
+const salesOrdersList = ref([])
+
+let initialSalesStats = null
+try {
+  const rawSales = localStorage.getItem('last_sales_import_result')
+  if (rawSales) initialSalesStats = JSON.parse(rawSales)
+} catch {
+  initialSalesStats = null
+}
+const lastSalesResult = ref(initialSalesStats)
+
+const salesFileSize = computed(() => {
+  return salesFile.value ? (salesFile.value.size / 1024).toFixed(2) : '0'
+})
+
+const clearSalesFile = () => {
+  salesFile.value = null
+  if (salesInputRef.value) salesInputRef.value.value = ''
+}
+
+const clearSalesReport = () => {
+  lastSalesResult.value = null
+  try {
+    localStorage.removeItem('last_sales_import_result')
+  } catch {}
+}
+
+const onSalesFileSelected = event => {
+  const file = event.target.files?.[0]
+  if (file) salesFile.value = file
+}
+
+const onDropSales = event => {
+  isDraggingSales.value = false
+  const file = event.dataTransfer?.files?.[0]
+  if (file) {
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
+      salesFile.value = file
+    } else {
+      toast.error('Formato no válido. Solo se admiten archivos Excel (.xlsx, .xls) o CSV.')
+    }
+  }
+}
+
+const analyzeSalesFile = async () => {
+  if (!salesFile.value) {
+    toast.error('Por favor selecciona el archivo de Transacciones de Ventas.')
+    return
+  }
+
+  analyzingSales.value = true
+
+  const formData = new FormData()
+  formData.append('sales_file', salesFile.value)
+
+  try {
+    const response = await axios.post('/import-hybrid/analyze-sales', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+    const data = response.data?.data ?? {}
+    salesAnalysis.value = data
+    salesOrdersList.value = data.orders ?? []
+
+    isSalesModalOpen.value = true
+    toast.success('Análisis de transacciones de ventas completado.')
+  } catch (err) {
+    const message = err.response?.data?.message ?? 'Ocurrió un error al analizar el archivo de ventas.'
+    toast.error(message)
+  } finally {
+    analyzingSales.value = false
+  }
+}
+
+const executeSalesImport = async () => {
+  processingSales.value = true
+
+  try {
+    const response = await axios.post('/import-hybrid/process-sales', {
+      orders: salesOrdersList.value,
+    })
+
+    const stats = response.data?.data ?? {}
+    lastSalesResult.value = stats
+    try {
+      localStorage.setItem('last_sales_import_result', JSON.stringify(stats))
+    } catch {}
+
+    isSalesModalOpen.value = false
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Transacciones de Ventas Importadas con Éxito',
+      html: `
+        <div style="text-align:left;font-size:0.92rem;line-height:1.7;">
+          <p class="mb-1 text-primary"><strong>Órdenes Creadas:</strong> ${Number(stats.orders_created ?? 0).toLocaleString('es-VE')}</p>
+          <p class="mb-1 text-info"><strong>Detalles de Productos Registrados:</strong> ${Number(stats.order_details_created ?? 0).toLocaleString('es-VE')}</p>
+          <p class="mb-1 text-success"><strong>Clientes Creados Automáticamente:</strong> ${Number(stats.clients_auto_created ?? 0).toLocaleString('es-VE')}</p>
+          <p class="mb-0 text-secondary"><strong>Monto Total Ventas:</strong> Bs. ${Number(stats.total_amount_bs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</p>
+        </div>
+      `,
+      confirmButtonText: 'Aceptar',
+      confirmButtonColor: '#E20074',
+    })
+
+    toast.success('Transacciones de ventas procesadas exitosamente.')
+    clearSalesFile()
+  } catch (err) {
+    const message = err.response?.data?.message ?? 'Ocurrió un error al importar las órdenes de venta.'
+    toast.error(message)
+  } finally {
+    processingSales.value = false
+  }
+}
 </script>
 
 <template>
@@ -552,12 +676,11 @@ const executeClientsImport = async () => {
             Centro de Importación y Onboarding Híbrido
           </VCardTitle>
           <VCardSubtitle class="text-body-2">
-            Migración e integración unificada desde el sistema legado: Catálogo de Productos con Lotes, Cuentas por Pagar a Proveedores y Clientes.
+            Migración e integración unificada desde el sistema legado: Catálogo de Productos con Lotes, Cuentas por Pagar a Proveedores, Clientes y Transacciones de Ventas.
           </VCardSubtitle>
         </VCardItem>
 
         <VCardText class="pt-0">
-          <!-- Pestañas de Módulos de Importación -->
           <VTabs
             v-model="activeTab"
             color="primary"
@@ -584,6 +707,13 @@ const executeClientsImport = async () => {
               />
               3. Clientes (Directorio y Cédulas)
             </VTab>
+            <VTab value="sales_tab">
+              <VIcon
+                icon="tabler-shopping-cart"
+                class="me-2"
+              />
+              4. Ventas y Transacciones
+            </VTab>
           </VTabs>
 
           <VWindow v-model="activeTab">
@@ -607,7 +737,6 @@ const executeClientsImport = async () => {
                 </div>
               </VAlert>
 
-              <!-- Parámetros de Sincronización -->
               <VCard
                 variant="outlined"
                 class="mb-6"
@@ -644,9 +773,7 @@ const executeClientsImport = async () => {
                 </VCardText>
               </VCard>
 
-              <!-- Zona de Subida de Ambos Archivos -->
               <VRow>
-                <!-- Archivo 1: Listado General de Productos -->
                 <VCol
                   cols="12"
                   md="6"
@@ -725,7 +852,6 @@ const executeClientsImport = async () => {
                   </div>
                 </VCol>
 
-                <!-- Archivo 2: Listado Detallado de Lotes -->
                 <VCol
                   cols="12"
                   md="6"
@@ -805,7 +931,6 @@ const executeClientsImport = async () => {
                 </VCol>
               </VRow>
 
-              <!-- Botón de Ejecución y Barra de Progreso -->
               <div class="d-flex flex-column align-center justify-center mt-6">
                 <VBtn
                   color="primary"
@@ -836,7 +961,6 @@ const executeClientsImport = async () => {
                 </div>
               </div>
 
-              <!-- Resumen de Última Ejecución de Catálogo -->
               <VCard
                 v-if="lastResult"
                 variant="tonal"
@@ -989,7 +1113,6 @@ const executeClientsImport = async () => {
                 </div>
               </VAlert>
 
-              <!-- Zona de Carga de Cuentas por Pagar -->
               <VRow justify="center">
                 <VCol
                   cols="12"
@@ -1068,7 +1191,6 @@ const executeClientsImport = async () => {
                     </div>
                   </div>
 
-                  <!-- Botón de Análisis -->
                   <div class="d-flex justify-center mt-6">
                     <VBtn
                       color="primary"
@@ -1084,7 +1206,6 @@ const executeClientsImport = async () => {
                 </VCol>
               </VRow>
 
-              <!-- Resumen de Última Ejecución de CXP -->
               <VCard
                 v-if="lastPayablesResult"
                 variant="tonal"
@@ -1203,7 +1324,6 @@ const executeClientsImport = async () => {
                 </div>
               </VAlert>
 
-              <!-- Zona de Carga de Clientes -->
               <VRow justify="center">
                 <VCol
                   cols="12"
@@ -1282,7 +1402,6 @@ const executeClientsImport = async () => {
                     </div>
                   </div>
 
-                  <!-- Botón de Análisis -->
                   <div class="d-flex justify-center mt-6">
                     <VBtn
                       color="primary"
@@ -1298,7 +1417,6 @@ const executeClientsImport = async () => {
                 </VCol>
               </VRow>
 
-              <!-- Resumen de Última Ejecución de Clientes -->
               <VCard
                 v-if="lastClientsResult"
                 variant="tonal"
@@ -1354,6 +1472,191 @@ const executeClientsImport = async () => {
                       <div class="pa-2 bg-surface rounded text-center border">
                         <div class="text-caption text-success">Total Procesados</div>
                         <div class="text-body-1 font-weight-bold text-success">{{ Number(lastClientsResult.total_processed ?? 0).toLocaleString('es-VE') }}</div>
+                      </div>
+                    </VCol>
+                  </VRow>
+                </VCardText>
+              </VCard>
+            </VWindowItem>
+
+            <!-- =================================================================== -->
+            <!-- PESTAÑA 4: VENTAS Y TRANSACCIONES -->
+            <!-- =================================================================== -->
+            <VWindowItem value="sales_tab">
+              <VAlert
+                type="info"
+                variant="tonal"
+                density="comfortable"
+                class="mb-6"
+              >
+                <div class="d-flex flex-column gap-1">
+                  <span class="font-weight-bold">Importación de Transacciones y Órdenes de Venta:</span>
+                  <ul class="ms-4 text-caption">
+                    <li><strong>Órdenes con Detalles:</strong> Se generan las órdenes de venta con cada uno de sus ítems (código de barra, descripción, cantidad y precio).</li>
+                    <li><strong>Vinculación de Clientes:</strong> Se asocian a clientes existentes según su cédula/RIF. Si el cliente no existe, se crea automáticamente o se asigna al Cliente Genérico.</li>
+                    <li><strong>Integración con Catálogo:</strong> Los ítems se homologan con los productos ya registrados en el catálogo para registrar sus costos y trazabilidad.</li>
+                  </ul>
+                </div>
+              </VAlert>
+
+              <VRow justify="center">
+                <VCol
+                  cols="12"
+                  md="8"
+                >
+                  <div class="text-subtitle-2 font-weight-medium mb-2 d-flex align-center gap-1">
+                    <VIcon
+                      icon="tabler-receipt"
+                      size="18"
+                      color="primary"
+                    />
+                    Archivo de Transacciones de Ventas (Detalle de Productos)
+                  </div>
+
+                  <div
+                    class="d-flex flex-column align-center justify-center rounded pa-8 border-dashed"
+                    :style="{
+                      borderWidth: '2px',
+                      borderColor: isDraggingSales ? 'rgb(var(--v-theme-primary))' : 'rgba(var(--v-border-color), 0.35)',
+                      backgroundColor: isDraggingSales ? 'rgba(var(--v-theme-primary), 0.05)' : 'transparent',
+                      minHeight: '210px'
+                    }"
+                    @dragover.prevent="isDraggingSales = true"
+                    @dragleave.prevent="isDraggingSales = false"
+                    @drop.prevent="onDropSales"
+                  >
+                    <VIcon
+                      :icon="salesFile ? 'tabler-file-check' : 'tabler-upload'"
+                      size="48"
+                      :color="salesFile ? 'success' : 'primary'"
+                      class="mb-2"
+                    />
+
+                    <template v-if="!salesFile">
+                      <span class="text-body-1 font-weight-medium mb-1">
+                        Arrastra el archivo de Ventas y Transacciones
+                      </span>
+                      <span class="text-caption text-disabled mb-4">
+                        Formatos admitidos: Excel (.xlsx, .xls) o CSV (.csv, .txt)
+                      </span>
+                    </template>
+                    <template v-else>
+                      <span class="text-body-1 font-weight-bold mb-1 text-center">{{ salesFile.name }}</span>
+                      <span class="text-caption text-medium-emphasis mb-3">{{ salesFileSize }} KB</span>
+                    </template>
+
+                    <input
+                      ref="salesInputRef"
+                      type="file"
+                      accept=".xlsx, .xls, .csv, .txt"
+                      class="d-none"
+                      @change="onSalesFileSelected"
+                    >
+
+                    <div class="d-flex gap-2">
+                      <VBtn
+                        color="secondary"
+                        variant="outlined"
+                        size="small"
+                        prepend-icon="tabler-upload"
+                        :disabled="analyzingSales || processingSales"
+                        @click="salesInputRef?.click()"
+                      >
+                        {{ salesFile ? 'Cambiar Archivo' : 'Seleccionar Archivo' }}
+                      </VBtn>
+
+                      <VBtn
+                        v-if="salesFile"
+                        color="error"
+                        variant="text"
+                        icon="tabler-trash"
+                        size="small"
+                        :disabled="analyzingSales || processingSales"
+                        @click="clearSalesFile"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="d-flex justify-center mt-6">
+                    <VBtn
+                      color="primary"
+                      size="large"
+                      prepend-icon="tabler-scan-eye"
+                      :disabled="!salesFile || analyzingSales || processingSales"
+                      :loading="analyzingSales"
+                      @click="analyzeSalesFile"
+                    >
+                      Analizar Transacciones de Ventas
+                    </VBtn>
+                  </div>
+                </VCol>
+              </VRow>
+
+              <VCard
+                v-if="lastSalesResult"
+                variant="tonal"
+                color="success"
+                class="mt-8 border"
+              >
+                <VCardItem class="pb-2">
+                  <VCardTitle class="d-flex align-center justify-space-between text-subtitle-1 text-success">
+                    <div class="d-flex align-center gap-2">
+                      <VIcon
+                        icon="tabler-circle-check"
+                        size="22"
+                        color="success"
+                      />
+                      <span>Resultado de la Última Importación de Ventas</span>
+                    </div>
+                    <VBtn
+                      size="x-small"
+                      variant="text"
+                      color="success"
+                      icon="tabler-x"
+                      @click="clearSalesReport"
+                    />
+                  </VCardTitle>
+                </VCardItem>
+
+                <VCardText>
+                  <VRow dense>
+                    <VCol
+                      cols="6"
+                      sm="3"
+                    >
+                      <div class="pa-2 bg-surface rounded text-center border">
+                        <div class="text-caption text-primary">Órdenes Creadas</div>
+                        <div class="text-body-1 font-weight-bold text-primary">{{ Number(lastSalesResult.orders_created ?? 0).toLocaleString('es-VE') }}</div>
+                      </div>
+                    </VCol>
+
+                    <VCol
+                      cols="6"
+                      sm="3"
+                    >
+                      <div class="pa-2 bg-surface rounded text-center border">
+                        <div class="text-caption text-info">Ítems de Productos</div>
+                        <div class="text-body-1 font-weight-bold text-info">{{ Number(lastSalesResult.order_details_created ?? 0).toLocaleString('es-VE') }}</div>
+                      </div>
+                    </VCol>
+
+                    <VCol
+                      cols="6"
+                      sm="3"
+                    >
+                      <div class="pa-2 bg-surface rounded text-center border">
+                        <div class="text-caption text-success">Clientes Creados</div>
+                        <div class="text-body-1 font-weight-bold text-success">{{ Number(lastSalesResult.clients_auto_created ?? 0).toLocaleString('es-VE') }}</div>
+                      </div>
+                    </VCol>
+
+                    <VCol
+                      cols="6"
+                      sm="3"
+                    >
+                      <div class="pa-2 bg-surface rounded text-center border">
+                        <div class="text-caption text-secondary">Total Ventas VES</div>
+                        <div class="text-body-1 font-weight-bold text-secondary">Bs. {{ Number(lastSalesResult.total_amount_bs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</div>
                       </div>
                     </VCol>
                   </VRow>
@@ -1862,7 +2165,6 @@ const executeClientsImport = async () => {
           </VTabs>
 
           <VWindow v-model="clientsModalTab">
-            <!-- Pestaña Clientes Nuevos -->
             <VWindowItem value="new_clients">
               <div
                 v-if="newClientsList.length > 0"
@@ -1922,7 +2224,6 @@ const executeClientsImport = async () => {
               </div>
             </VWindowItem>
 
-            <!-- Pestaña Clientes Coincidentes -->
             <VWindowItem value="matched_clients">
               <div
                 v-if="matchedClientsList.length > 0"
@@ -2026,6 +2327,235 @@ const executeClientsImport = async () => {
             @click="executeClientsImport"
           >
             Confirmar e Importar Clientes ({{ clientsAnalysis?.summary?.total_clients_found ?? 0 }})
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- =================================================================== -->
+    <!-- MODAL DE VISUALIZACIÓN Y CONFIRMACIÓN DE VENTAS Y TRANSACCIONES -->
+    <!-- =================================================================== -->
+    <VDialog
+      v-model="isSalesModalOpen"
+      max-width="1100px"
+      persistent
+      scrollable
+    >
+      <VCard>
+        <VCardItem class="border-b bg-surface pb-3">
+          <VCardTitle class="d-flex align-center justify-space-between text-h6">
+            <div class="d-flex align-center gap-2">
+              <VIcon
+                icon="tabler-shopping-cart"
+                color="primary"
+                size="26"
+              />
+              <span>Previsualización de Transacciones de Ventas</span>
+            </div>
+            <VBtn
+              variant="text"
+              color="secondary"
+              icon="tabler-x"
+              size="small"
+              :disabled="processingSales"
+              @click="isSalesModalOpen = false"
+            />
+          </VCardTitle>
+          <VCardSubtitle class="text-caption">
+            Revisa las órdenes de venta, su desglose por productos y la vinculación automática con los clientes del ERP.
+          </VCardSubtitle>
+        </VCardItem>
+
+        <VCardText
+          class="pa-4"
+          style="max-height: 65vh"
+        >
+          <VRow
+            v-if="salesAnalysis"
+            dense
+            class="mb-4"
+          >
+            <VCol
+              cols="6"
+              sm="3"
+            >
+              <VCard
+                variant="tonal"
+                color="primary"
+                class="pa-2 text-center"
+              >
+                <div class="text-caption">Total Órdenes</div>
+                <div class="text-h6 font-weight-bold text-primary">
+                  {{ salesAnalysis.summary?.total_orders ?? 0 }}
+                </div>
+              </VCard>
+            </VCol>
+
+            <VCol
+              cols="6"
+              sm="3"
+            >
+              <VCard
+                variant="tonal"
+                color="info"
+                class="pa-2 text-center"
+              >
+                <div class="text-caption">Total Ítems</div>
+                <div class="text-h6 font-weight-bold text-info">
+                  {{ salesAnalysis.summary?.total_items ?? 0 }}
+                </div>
+              </VCard>
+            </VCol>
+
+            <VCol
+              cols="6"
+              sm="3"
+            >
+              <VCard
+                variant="tonal"
+                color="success"
+                class="pa-2 text-center"
+              >
+                <div class="text-caption">Ítems Homologados</div>
+                <div class="text-h6 font-weight-bold text-success">
+                  {{ salesAnalysis.summary?.matched_products_count ?? 0 }}
+                </div>
+              </VCard>
+            </VCol>
+
+            <VCol
+              cols="6"
+              sm="3"
+            >
+              <VCard
+                variant="tonal"
+                color="warning"
+                class="pa-2 text-center"
+              >
+                <div class="text-caption">Total Ventas VES</div>
+                <div class="text-h6 font-weight-bold text-warning">
+                  Bs. {{ Number(salesAnalysis.summary?.total_sales_bs ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
+                </div>
+              </VCard>
+            </VCol>
+          </VRow>
+
+          <!-- Listado de Órdenes con Detalle -->
+          <div
+            v-if="salesOrdersList.length > 0"
+            class="d-flex flex-column gap-3"
+          >
+            <VCard
+              v-for="(order, idx) in salesOrdersList"
+              :key="idx"
+              variant="outlined"
+              class="pa-3"
+            >
+              <div class="d-flex flex-wrap align-center justify-space-between gap-2 mb-2">
+                <div class="d-flex align-center gap-2">
+                  <VChip
+                    size="small"
+                    :color="order.section_type === 'NCR' ? 'error' : 'primary'"
+                    variant="tonal"
+                  >
+                    {{ order.section_type }} #{{ order.document_number }}
+                  </VChip>
+                  <span class="text-caption text-medium-emphasis">Fecha: {{ order.order_date }}</span>
+                </div>
+
+                <div class="d-flex align-center gap-2">
+                  <VChip
+                    size="small"
+                    :color="order.client_matched ? 'success' : 'info'"
+                    variant="outlined"
+                  >
+                    <VIcon
+                      :icon="order.client_matched ? 'tabler-user-check' : 'tabler-user-plus'"
+                      size="14"
+                      class="me-1"
+                    />
+                    {{ order.client_ident || 'Genérico' }} - {{ order.client_name }}
+                  </VChip>
+
+                  <span class="text-body-2 font-weight-bold text-primary">
+                    Total: Bs. {{ Number(order.total_amount ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Detalle de productos de la orden -->
+              <VTable
+                density="compact"
+                class="bg-surface rounded border"
+              >
+                <thead>
+                  <tr>
+                    <th class="text-left text-caption">Código de Barra</th>
+                    <th class="text-left text-caption">Descripción Producto</th>
+                    <th class="text-center text-caption">Cant.</th>
+                    <th class="text-right text-caption">Precio Bs.</th>
+                    <th class="text-right text-caption">Total Bs.</th>
+                    <th class="text-center text-caption">Catálogo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(item, itemIdx) in order.items"
+                    :key="itemIdx"
+                  >
+                    <td class="text-caption font-weight-medium">{{ item.barcode }}</td>
+                    <td class="text-caption">{{ item.description }}</td>
+                    <td class="text-center text-caption font-weight-bold">{{ item.quantity }} {{ item.unit }}</td>
+                    <td class="text-right text-caption">Bs. {{ Number(item.price || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</td>
+                    <td class="text-right text-caption font-weight-bold text-primary">Bs. {{ Number(item.total || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}</td>
+                    <td class="text-center">
+                      <VChip
+                        size="x-small"
+                        :color="item.product_matched ? 'success' : 'warning'"
+                        variant="tonal"
+                      >
+                        {{ item.product_matched ? 'En Catálogo' : 'Sin Referencia' }}
+                      </VChip>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
+            </VCard>
+          </div>
+
+          <div
+            v-else
+            class="text-center py-8 text-medium-emphasis"
+          >
+            <VIcon
+              icon="tabler-circle-check"
+              size="36"
+              color="success"
+              class="mb-2"
+            />
+            <div class="text-body-2">No se encontraron transacciones en el archivo.</div>
+          </div>
+        </VCardText>
+
+        <VCardActions class="border-t bg-surface px-4 py-3 d-flex justify-space-between">
+          <VBtn
+            variant="outlined"
+            color="secondary"
+            :disabled="processingSales"
+            @click="isSalesModalOpen = false"
+          >
+            Cancelar
+          </VBtn>
+
+          <VBtn
+            color="primary"
+            variant="elevated"
+            prepend-icon="tabler-check"
+            :loading="processingSales"
+            :disabled="processingSales"
+            @click="executeSalesImport"
+          >
+            Confirmar e Importar Órdenes de Venta ({{ salesAnalysis?.summary?.total_orders ?? 0 }} Órdenes)
           </VBtn>
         </VCardActions>
       </VCard>

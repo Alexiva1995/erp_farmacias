@@ -207,6 +207,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::post('/import-hybrid/process-payables', [\App\Http\Controllers\Api\DataImportController::class, 'processSupplierPayables']);
     Route::post('/import-hybrid/analyze-clients', [\App\Http\Controllers\Api\DataImportController::class, 'analyzeClients']);
     Route::post('/import-hybrid/process-clients', [\App\Http\Controllers\Api\DataImportController::class, 'processClients']);
+    Route::post('/import-hybrid/analyze-sales', [\App\Http\Controllers\Api\DataImportController::class, 'analyzeSalesOrders']);
+    Route::post('/import-hybrid/process-sales', [\App\Http\Controllers\Api\DataImportController::class, 'processSalesOrders']);
     // Rutas de Finanzas (Estado de Resultados) - Protegidas por autenticación
     Route::prefix("finances")->group(function () {
         Route::get("/income-statement", [FinancialStatementController::class, "index"]);
