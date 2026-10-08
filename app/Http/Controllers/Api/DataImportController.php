@@ -14,14 +14,19 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\DailyClosure;
 use Illuminate\Http\JsonResponse;
+use App\Http\Requests\Configuration\AnalyzeClientsImportRequest;
 use App\Http\Requests\Configuration\AnalyzeSupplierPayablesRequest;
+use App\Http\Requests\Configuration\ExecuteClientsImportRequest;
 use App\Http\Requests\Configuration\ExecuteSupplierPayablesImportRequest;
 use App\Http\Requests\Configuration\ImportCsvRequest;
 use App\Http\Requests\Configuration\ImportExternalCatalogRequest;
 use App\Http\Requests\Configuration\ImportHybridOnboardingRequest;
+use App\Http\Resources\Configuration\ClientImportExecutionResource;
+use App\Http\Resources\Configuration\ClientImportPreviewResource;
 use App\Http\Resources\Configuration\SupplierPayablesExecutionResource;
 use App\Http\Resources\Configuration\SupplierPayablesPreviewResource;
 use App\Services\Catalog\ExternalCatalogImportService;
+use App\Services\Catalog\OnboardingClientImportService;
 use App\Services\Catalog\OnboardingLegacyImportService;
 use App\Services\Catalog\OnboardingSupplierPayablesImportService;
 use Illuminate\Http\Request;
@@ -33,6 +38,62 @@ class DataImportController extends Controller
     public function __construct(
         protected ?ExternalCatalogImportService $externalCatalogService = null
     ) {}
+
+    /**
+     * Analiza el archivo de Listado de Clientes generando una pre-visualización de coincidencias y nuevos.
+     */
+    public function analyzeClients(
+        AnalyzeClientsImportRequest $request,
+        OnboardingClientImportService $service
+    ): JsonResponse {
+        try {
+            $file = $request->file('clients_file');
+            $analysis = $service->parseAndAnalyze($file->getRealPath());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Análisis de listado de clientes completado con éxito.',
+                'data'    => new ClientImportPreviewResource($analysis),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en DataImportController@analyzeClients: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al analizar el archivo de clientes: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Persiste los clientes (creación de nuevos y enriquecimiento de existentes).
+     */
+    public function processClients(
+        ExecuteClientsImportRequest $request,
+        OnboardingClientImportService $service
+    ): JsonResponse {
+        try {
+            $clientsPayload = $request->validated()['clients'];
+            $stats = $service->executeImport($clientsPayload);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Importación de clientes completada. Creados: {$stats['clients_created']}, actualizados: {$stats['clients_updated']}.",
+                'data'    => new ClientImportExecutionResource($stats),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error en DataImportController@processClients: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar la importación de clientes: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
 
     /**
      * Analiza el archivo de Cuentas por Pagar y Proveedores generando una pre-visualización de coincidencias.

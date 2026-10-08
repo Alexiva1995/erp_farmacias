@@ -25,7 +25,6 @@ const lotsInputRef = ref(null)
 const isDraggingProducts = ref(false)
 const isDraggingLots = ref(false)
 
-// Persistencia del último resultado de productos
 let initialStats = null
 try {
   const raw = localStorage.getItem('last_hybrid_import_result')
@@ -202,12 +201,10 @@ const processingPayables = ref(false)
 const isPayablesModalOpen = ref(false)
 const modalActiveTab = ref('new_suppliers')
 
-// Estado del análisis de proveedores
 const payablesAnalysis = ref(null)
 const newSuppliersList = ref([])
 const matchedSuppliersList = ref([])
 
-// Persistencia del último resultado de CXP
 let initialPayablesStats = null
 try {
   const rawPayables = localStorage.getItem('last_payables_import_result')
@@ -255,7 +252,6 @@ const onDropPayables = event => {
   }
 }
 
-// Analizar archivo de proveedores y CXP
 const analyzePayablesFile = async () => {
   if (!payablesFile.value) {
     toast.error('Por favor selecciona el archivo de Cuentas por Pagar a Proveedores.')
@@ -275,16 +271,13 @@ const analyzePayablesFile = async () => {
     const data = response.data?.data ?? {}
     payablesAnalysis.value = data
 
-    // Copiar lista de nuevos proveedores permitiendo al usuario configurar el tipo
     newSuppliersList.value = (data.new_suppliers ?? []).map(s => ({
       ...s,
       selected_type: s.suggested_type || 'drogueria',
     }))
 
-    // Copiar lista de coincidentes
     matchedSuppliersList.value = data.matched_suppliers ?? []
 
-    // Determinar pestaña inicial según si hay nuevos o coincidentes
     if (newSuppliersList.value.length > 0) {
       modalActiveTab.value = 'new_suppliers'
     } else {
@@ -292,7 +285,7 @@ const analyzePayablesFile = async () => {
     }
 
     isPayablesModalOpen.value = true
-    toast.success('Análisis completado. Por favor revisa las coincidencias y tipos de proveedores.')
+    toast.success('Análisis completado. Revisa las coincidencias y tipos de proveedores.')
   } catch (err) {
     const message = err.response?.data?.message ?? 'Ocurrió un error al analizar el archivo de Cuentas por Pagar.'
     toast.error(message)
@@ -301,7 +294,6 @@ const analyzePayablesFile = async () => {
   }
 }
 
-// Asignación masiva de tipo para proveedores nuevos
 const setAllNewSuppliersType = type => {
   newSuppliersList.value.forEach(s => {
     s.selected_type = type
@@ -309,14 +301,11 @@ const setAllNewSuppliersType = type => {
   toast.info(`Todos los proveedores nuevos fueron marcados como ${type === 'drogueria' ? 'Droguería (Inventario)' : 'Gasto / Externo'}.`)
 }
 
-// Ejecutar importación definitiva de proveedores y facturas
 const executePayablesImport = async () => {
   processingPayables.value = true
 
-  // Estructurar payload unificado
   const suppliersPayload = []
 
-  // 1. Agregar proveedores nuevos
   newSuppliersList.value.forEach(s => {
     suppliersPayload.push({
       name: s.name,
@@ -330,7 +319,6 @@ const executePayablesImport = async () => {
     })
   })
 
-  // 2. Agregar proveedores coincidentes
   matchedSuppliersList.value.forEach(s => {
     suppliersPayload.push({
       name: s.existing_name,
@@ -383,6 +371,172 @@ const executePayablesImport = async () => {
     processingPayables.value = false
   }
 }
+
+// ==========================================================================
+// SECCIÓN 3: CLIENTES (LISTADO DE CLIENTES)
+// ==========================================================================
+const clientsFile = ref(null)
+const clientsInputRef = ref(null)
+const isDraggingClients = ref(false)
+const analyzingClients = ref(false)
+const processingClients = ref(false)
+const isClientsModalOpen = ref(false)
+const clientsModalTab = ref('new_clients')
+
+const clientsAnalysis = ref(null)
+const newClientsList = ref([])
+const matchedClientsList = ref([])
+
+let initialClientsStats = null
+try {
+  const rawClients = localStorage.getItem('last_clients_import_result')
+  if (rawClients) initialClientsStats = JSON.parse(rawClients)
+} catch {
+  initialClientsStats = null
+}
+const lastClientsResult = ref(initialClientsStats)
+
+const clientsFileSize = computed(() => {
+  return clientsFile.value ? (clientsFile.value.size / 1024).toFixed(2) : '0'
+})
+
+const clearClientsFile = () => {
+  clientsFile.value = null
+  if (clientsInputRef.value) clientsInputRef.value.value = ''
+}
+
+const clearClientsReport = () => {
+  lastClientsResult.value = null
+  try {
+    localStorage.removeItem('last_clients_import_result')
+  } catch {}
+}
+
+const onClientsFileSelected = event => {
+  const file = event.target.files?.[0]
+  if (file) clientsFile.value = file
+}
+
+const onDropClients = event => {
+  isDraggingClients.value = false
+  const file = event.dataTransfer?.files?.[0]
+  if (file) {
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
+      clientsFile.value = file
+    } else {
+      toast.error('Formato no válido. Solo se admiten archivos Excel (.xlsx, .xls) o CSV.')
+    }
+  }
+}
+
+const analyzeClientsFile = async () => {
+  if (!clientsFile.value) {
+    toast.error('Por favor selecciona el archivo de Listado de Clientes.')
+    return
+  }
+
+  analyzingClients.value = true
+
+  const formData = new FormData()
+  formData.append('clients_file', clientsFile.value)
+
+  try {
+    const response = await axios.post('/import-hybrid/analyze-clients', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+    const data = response.data?.data ?? {}
+    clientsAnalysis.value = data
+    newClientsList.value = data.new_clients ?? []
+    matchedClientsList.value = data.matched_clients ?? []
+
+    if (newClientsList.value.length > 0) {
+      clientsModalTab.value = 'new_clients'
+    } else {
+      clientsModalTab.value = 'matched_clients'
+    }
+
+    isClientsModalOpen.value = true
+    toast.success('Análisis de clientes completado.')
+  } catch (err) {
+    const message = err.response?.data?.message ?? 'Ocurrió un error al analizar el archivo de clientes.'
+    toast.error(message)
+  } finally {
+    analyzingClients.value = false
+  }
+}
+
+const executeClientsImport = async () => {
+  processingClients.value = true
+
+  const clientsPayload = []
+
+  // 1. Clientes nuevos
+  newClientsList.value.forEach(c => {
+    clientsPayload.push({
+      identification_type: c.identification_type,
+      identification: c.identification,
+      name: c.name,
+      last_name: c.last_name || null,
+      phone: c.phone || null,
+      address: c.address || null,
+      is_new: true,
+      existing_id: null,
+      update_data: null,
+    })
+  })
+
+  // 2. Clientes coincidentes (para actualizar teléfono o dirección si faltaban)
+  matchedClientsList.value.forEach(c => {
+    clientsPayload.push({
+      identification_type: c.identification_type,
+      identification: c.identification,
+      name: c.existing_name,
+      last_name: null,
+      phone: c.extracted_phone || c.existing_phone || null,
+      address: c.extracted_address || c.existing_address || null,
+      is_new: false,
+      existing_id: c.existing_id,
+      update_data: c.updates_to_apply || null,
+    })
+  })
+
+  try {
+    const response = await axios.post('/import-hybrid/process-clients', {
+      clients: clientsPayload,
+    })
+
+    const stats = response.data?.data ?? {}
+    lastClientsResult.value = stats
+    try {
+      localStorage.setItem('last_clients_import_result', JSON.stringify(stats))
+    } catch {}
+
+    isClientsModalOpen.value = false
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Clientes Importados con Éxito',
+      html: `
+        <div style="text-align:left;font-size:0.92rem;line-height:1.7;">
+          <p class="mb-1 text-primary"><strong>Clientes Nuevos Creados:</strong> ${Number(stats.clients_created ?? 0).toLocaleString('es-VE')}</p>
+          <p class="mb-1 text-info"><strong>Clientes Actualizados/Enriquecidos:</strong> ${Number(stats.clients_updated ?? 0).toLocaleString('es-VE')}</p>
+          <p class="mb-0 text-secondary"><strong>Total Procesados:</strong> ${Number(stats.total_processed ?? 0).toLocaleString('es-VE')}</p>
+        </div>
+      `,
+      confirmButtonText: 'Aceptar',
+      confirmButtonColor: '#E20074',
+    })
+
+    toast.success('Listado de clientes importado exitosamente.')
+    clearClientsFile()
+  } catch (err) {
+    const message = err.response?.data?.message ?? 'Ocurrió un error al importar los clientes.'
+    toast.error(message)
+  } finally {
+    processingClients.value = false
+  }
+}
 </script>
 
 <template>
@@ -398,7 +552,7 @@ const executePayablesImport = async () => {
             Centro de Importación y Onboarding Híbrido
           </VCardTitle>
           <VCardSubtitle class="text-body-2">
-            Migración e integración unificada desde el sistema legado: Catálogo de Productos con Lotes y Cuentas por Pagar a Proveedores con Correlación Inteligente.
+            Migración e integración unificada desde el sistema legado: Catálogo de Productos con Lotes, Cuentas por Pagar a Proveedores y Clientes.
           </VCardSubtitle>
         </VCardItem>
 
@@ -423,6 +577,13 @@ const executePayablesImport = async () => {
               />
               2. Proveedores y Cuentas por Pagar (CXP)
             </VTab>
+            <VTab value="clients_tab">
+              <VIcon
+                icon="tabler-users"
+                class="me-2"
+              />
+              3. Clientes (Directorio y Cédulas)
+            </VTab>
           </VTabs>
 
           <VWindow v-model="activeTab">
@@ -430,7 +591,6 @@ const executePayablesImport = async () => {
             <!-- PESTAÑA 1: PRODUCTOS Y LOTES -->
             <!-- =================================================================== -->
             <VWindowItem value="products_lots">
-              <!-- Alerta informativa de reglas del sistema híbrido -->
               <VAlert
                 type="info"
                 variant="tonal"
@@ -1022,6 +1182,184 @@ const executePayablesImport = async () => {
                 </VCardText>
               </VCard>
             </VWindowItem>
+
+            <!-- =================================================================== -->
+            <!-- PESTAÑA 3: CLIENTES -->
+            <!-- =================================================================== -->
+            <VWindowItem value="clients_tab">
+              <VAlert
+                type="info"
+                variant="tonal"
+                density="comfortable"
+                class="mb-6"
+              >
+                <div class="d-flex flex-column gap-1">
+                  <span class="font-weight-bold">Normalización e Importación de Clientes:</span>
+                  <ul class="ms-4 text-caption">
+                    <li><strong>Unicidad por Cédula/RIF:</strong> Se detecta y normaliza el documento fiscal venezolano (`V-`, `E-`, `J-`, `G-`) evitando clientes duplicados.</li>
+                    <li><strong>Enriquecimiento de Fichas:</strong> Si el cliente ya existe en el ERP pero carece de teléfono o dirección, se actualiza automáticamente con los datos del listado.</li>
+                    <li><strong>Registro de Nuevos:</strong> Los clientes no encontrados se guardan como nuevos clientes activos para facturación inmediata.</li>
+                  </ul>
+                </div>
+              </VAlert>
+
+              <!-- Zona de Carga de Clientes -->
+              <VRow justify="center">
+                <VCol
+                  cols="12"
+                  md="8"
+                >
+                  <div class="text-subtitle-2 font-weight-medium mb-2 d-flex align-center gap-1">
+                    <VIcon
+                      icon="tabler-address-book"
+                      size="18"
+                      color="primary"
+                    />
+                    Archivo de Listado de Clientes
+                  </div>
+
+                  <div
+                    class="d-flex flex-column align-center justify-center rounded pa-8 border-dashed"
+                    :style="{
+                      borderWidth: '2px',
+                      borderColor: isDraggingClients ? 'rgb(var(--v-theme-primary))' : 'rgba(var(--v-border-color), 0.35)',
+                      backgroundColor: isDraggingClients ? 'rgba(var(--v-theme-primary), 0.05)' : 'transparent',
+                      minHeight: '210px'
+                    }"
+                    @dragover.prevent="isDraggingClients = true"
+                    @dragleave.prevent="isDraggingClients = false"
+                    @drop.prevent="onDropClients"
+                  >
+                    <VIcon
+                      :icon="clientsFile ? 'tabler-file-check' : 'tabler-upload'"
+                      size="48"
+                      :color="clientsFile ? 'success' : 'primary'"
+                      class="mb-2"
+                    />
+
+                    <template v-if="!clientsFile">
+                      <span class="text-body-1 font-weight-medium mb-1">
+                        Arrastra el archivo de Listado de Clientes
+                      </span>
+                      <span class="text-caption text-disabled mb-4">
+                        Formatos admitidos: Excel (.xlsx, .xls) o CSV (.csv, .txt)
+                      </span>
+                    </template>
+                    <template v-else>
+                      <span class="text-body-1 font-weight-bold mb-1 text-center">{{ clientsFile.name }}</span>
+                      <span class="text-caption text-medium-emphasis mb-3">{{ clientsFileSize }} KB</span>
+                    </template>
+
+                    <input
+                      ref="clientsInputRef"
+                      type="file"
+                      accept=".xlsx, .xls, .csv, .txt"
+                      class="d-none"
+                      @change="onClientsFileSelected"
+                    >
+
+                    <div class="d-flex gap-2">
+                      <VBtn
+                        color="secondary"
+                        variant="outlined"
+                        size="small"
+                        prepend-icon="tabler-upload"
+                        :disabled="analyzingClients || processingClients"
+                        @click="clientsInputRef?.click()"
+                      >
+                        {{ clientsFile ? 'Cambiar Archivo' : 'Seleccionar Archivo' }}
+                      </VBtn>
+
+                      <VBtn
+                        v-if="clientsFile"
+                        color="error"
+                        variant="text"
+                        icon="tabler-trash"
+                        size="small"
+                        :disabled="analyzingClients || processingClients"
+                        @click="clearClientsFile"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Botón de Análisis -->
+                  <div class="d-flex justify-center mt-6">
+                    <VBtn
+                      color="primary"
+                      size="large"
+                      prepend-icon="tabler-scan-eye"
+                      :disabled="!clientsFile || analyzingClients || processingClients"
+                      :loading="analyzingClients"
+                      @click="analyzeClientsFile"
+                    >
+                      Analizar Listado de Clientes
+                    </VBtn>
+                  </div>
+                </VCol>
+              </VRow>
+
+              <!-- Resumen de Última Ejecución de Clientes -->
+              <VCard
+                v-if="lastClientsResult"
+                variant="tonal"
+                color="success"
+                class="mt-8 border"
+              >
+                <VCardItem class="pb-2">
+                  <VCardTitle class="d-flex align-center justify-space-between text-subtitle-1 text-success">
+                    <div class="d-flex align-center gap-2">
+                      <VIcon
+                        icon="tabler-circle-check"
+                        size="22"
+                        color="success"
+                      />
+                      <span>Resultado de la Última Importación de Clientes</span>
+                    </div>
+                    <VBtn
+                      size="x-small"
+                      variant="text"
+                      color="success"
+                      icon="tabler-x"
+                      @click="clearClientsReport"
+                    />
+                  </VCardTitle>
+                </VCardItem>
+
+                <VCardText>
+                  <VRow dense>
+                    <VCol
+                      cols="6"
+                      sm="4"
+                    >
+                      <div class="pa-2 bg-surface rounded text-center border">
+                        <div class="text-caption text-primary">Clientes Nuevos Creados</div>
+                        <div class="text-body-1 font-weight-bold text-primary">{{ Number(lastClientsResult.clients_created ?? 0).toLocaleString('es-VE') }}</div>
+                      </div>
+                    </VCol>
+
+                    <VCol
+                      cols="6"
+                      sm="4"
+                    >
+                      <div class="pa-2 bg-surface rounded text-center border">
+                        <div class="text-caption text-info">Clientes Actualizados</div>
+                        <div class="text-body-1 font-weight-bold text-info">{{ Number(lastClientsResult.clients_updated ?? 0).toLocaleString('es-VE') }}</div>
+                      </div>
+                    </VCol>
+
+                    <VCol
+                      cols="12"
+                      sm="4"
+                    >
+                      <div class="pa-2 bg-surface rounded text-center border">
+                        <div class="text-caption text-success">Total Procesados</div>
+                        <div class="text-body-1 font-weight-bold text-success">{{ Number(lastClientsResult.total_processed ?? 0).toLocaleString('es-VE') }}</div>
+                      </div>
+                    </VCol>
+                  </VRow>
+                </VCardText>
+              </VCard>
+            </VWindowItem>
           </VWindow>
         </VCardText>
       </VCard>
@@ -1037,7 +1375,6 @@ const executePayablesImport = async () => {
       scrollable
     >
       <VCard>
-        <!-- Encabezado del Modal -->
         <VCardItem class="border-b bg-surface pb-3">
           <VCardTitle class="d-flex align-center justify-space-between text-h6">
             <div class="d-flex align-center gap-2">
@@ -1062,12 +1399,10 @@ const executePayablesImport = async () => {
           </VCardSubtitle>
         </VCardItem>
 
-        <!-- Cuerpo del Modal -->
         <VCardText
           class="pa-4"
           style="max-height: 65vh"
         >
-          <!-- Tarjetas de Resumen General -->
           <VRow
             v-if="payablesAnalysis"
             dense
@@ -1138,7 +1473,6 @@ const executePayablesImport = async () => {
             </VCol>
           </VRow>
 
-          <!-- Pestañas internas del Modal -->
           <VTabs
             v-model="modalActiveTab"
             color="primary"
@@ -1165,13 +1499,11 @@ const executePayablesImport = async () => {
           </VTabs>
 
           <VWindow v-model="modalActiveTab">
-            <!-- Sub-pestaña 1: Proveedores Nuevos -->
             <VWindowItem value="new_suppliers">
               <div
                 v-if="newSuppliersList.length > 0"
                 class="d-flex flex-column gap-3"
               >
-                <!-- Barra de acciones masivas -->
                 <div class="d-flex flex-wrap align-center justify-space-between gap-2 pa-2 rounded bg-surface border">
                   <span class="text-caption font-weight-medium">
                     Asignación masiva para los {{ newSuppliersList.length }} proveedores nuevos:
@@ -1198,7 +1530,6 @@ const executePayablesImport = async () => {
                   </div>
                 </div>
 
-                <!-- Tabla de Nuevos Proveedores -->
                 <VTable
                   density="compact"
                   class="border rounded"
@@ -1279,7 +1610,6 @@ const executePayablesImport = async () => {
               </div>
             </VWindowItem>
 
-            <!-- Sub-pestaña 2: Proveedores Coincidentes -->
             <VWindowItem value="matched_suppliers">
               <div
                 v-if="matchedSuppliersList.length > 0"
@@ -1390,7 +1720,6 @@ const executePayablesImport = async () => {
           </VWindow>
         </VCardText>
 
-        <!-- Pie del Modal con Acciones -->
         <VCardActions class="border-t bg-surface px-4 py-3 d-flex justify-space-between">
           <VBtn
             variant="outlined"
@@ -1410,6 +1739,293 @@ const executePayablesImport = async () => {
             @click="executePayablesImport"
           >
             Confirmar e Importar Proveedores y Facturas ({{ payablesAnalysis?.summary?.total_invoices ?? 0 }} Facturas)
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- =================================================================== -->
+    <!-- MODAL DE CONFIRMACIÓN Y CORRELACIÓN DE CLIENTES -->
+    <!-- =================================================================== -->
+    <VDialog
+      v-model="isClientsModalOpen"
+      max-width="1000px"
+      persistent
+      scrollable
+    >
+      <VCard>
+        <VCardItem class="border-b bg-surface pb-3">
+          <VCardTitle class="d-flex align-center justify-space-between text-h6">
+            <div class="d-flex align-center gap-2">
+              <VIcon
+                icon="tabler-users-group"
+                color="primary"
+                size="26"
+              />
+              <span>Correlación y Registro de Clientes</span>
+            </div>
+            <VBtn
+              variant="text"
+              color="secondary"
+              icon="tabler-x"
+              size="small"
+              :disabled="processingClients"
+              @click="isClientsModalOpen = false"
+            />
+          </VCardTitle>
+          <VCardSubtitle class="text-caption">
+            Revisa los clientes detectados en el archivo. Las cédulas y RIFs son únicos para evitar duplicidad.
+          </VCardSubtitle>
+        </VCardItem>
+
+        <VCardText
+          class="pa-4"
+          style="max-height: 65vh"
+        >
+          <VRow
+            v-if="clientsAnalysis"
+            dense
+            class="mb-4"
+          >
+            <VCol
+              cols="12"
+              sm="4"
+            >
+              <VCard
+                variant="tonal"
+                color="primary"
+                class="pa-2 text-center"
+              >
+                <div class="text-caption">Clientes Nuevos a Crear</div>
+                <div class="text-h6 font-weight-bold text-primary">
+                  {{ newClientsList.length }}
+                </div>
+              </VCard>
+            </VCol>
+
+            <VCol
+              cols="12"
+              sm="4"
+            >
+              <VCard
+                variant="tonal"
+                color="success"
+                class="pa-2 text-center"
+              >
+                <div class="text-caption">Coincidentes en ERP</div>
+                <div class="text-h6 font-weight-bold text-success">
+                  {{ matchedClientsList.length }}
+                </div>
+              </VCard>
+            </VCol>
+
+            <VCol
+              cols="12"
+              sm="4"
+            >
+              <VCard
+                variant="tonal"
+                color="info"
+                class="pa-2 text-center"
+              >
+                <div class="text-caption">Total en Archivo</div>
+                <div class="text-h6 font-weight-bold text-info">
+                  {{ clientsAnalysis.summary?.total_clients_found ?? 0 }}
+                </div>
+              </VCard>
+            </VCol>
+          </VRow>
+
+          <VTabs
+            v-model="clientsModalTab"
+            color="primary"
+            density="comfortable"
+            class="mb-4 border-b"
+          >
+            <VTab value="new_clients">
+              <VIcon
+                icon="tabler-user-plus"
+                class="me-2"
+                color="primary"
+              />
+              Clientes Nuevos ({{ newClientsList.length }})
+            </VTab>
+
+            <VTab value="matched_clients">
+              <VIcon
+                icon="tabler-user-check"
+                class="me-2"
+                color="success"
+              />
+              Coincidentes en ERP ({{ matchedClientsList.length }})
+            </VTab>
+          </VTabs>
+
+          <VWindow v-model="clientsModalTab">
+            <!-- Pestaña Clientes Nuevos -->
+            <VWindowItem value="new_clients">
+              <div
+                v-if="newClientsList.length > 0"
+                class="d-flex flex-column gap-3"
+              >
+                <VTable
+                  density="compact"
+                  class="border rounded"
+                >
+                  <thead>
+                    <tr class="bg-surface">
+                      <th class="text-left">Cédula / RIF</th>
+                      <th class="text-left">Nombre Completo</th>
+                      <th class="text-left">Teléfono</th>
+                      <th class="text-left">Dirección</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(item, idx) in newClientsList"
+                      :key="idx"
+                    >
+                      <td class="font-weight-medium text-caption">
+                        <VChip
+                          size="x-small"
+                          color="primary"
+                          variant="tonal"
+                        >
+                          {{ item.formatted_ident }}
+                        </VChip>
+                      </td>
+                      <td class="text-body-2 font-weight-bold">
+                        {{ item.full_name }}
+                      </td>
+                      <td class="text-caption text-medium-emphasis">
+                        {{ item.phone || 'S/N' }}
+                      </td>
+                      <td class="text-caption text-medium-emphasis">
+                        {{ item.address || 'S/D' }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </VTable>
+              </div>
+
+              <div
+                v-else
+                class="text-center py-8 text-medium-emphasis"
+              >
+                <VIcon
+                  icon="tabler-circle-check"
+                  size="36"
+                  color="success"
+                  class="mb-2"
+                />
+                <div class="text-body-2">Todos los clientes del archivo ya existen en el sistema.</div>
+              </div>
+            </VWindowItem>
+
+            <!-- Pestaña Clientes Coincidentes -->
+            <VWindowItem value="matched_clients">
+              <div
+                v-if="matchedClientsList.length > 0"
+                class="d-flex flex-column gap-3"
+              >
+                <VTable
+                  density="compact"
+                  class="border rounded"
+                >
+                  <thead>
+                    <tr class="bg-surface">
+                      <th class="text-left">Cédula / RIF</th>
+                      <th class="text-left">Cliente en ERP</th>
+                      <th class="text-left">Datos a Enriquecer</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(item, idx) in matchedClientsList"
+                      :key="idx"
+                    >
+                      <td class="font-weight-medium text-caption">
+                        <VChip
+                          size="x-small"
+                          color="success"
+                          variant="tonal"
+                        >
+                          {{ item.existing_ident }}
+                        </VChip>
+                      </td>
+                      <td>
+                        <div class="text-body-2 font-weight-bold">{{ item.existing_name }}</div>
+                        <div class="text-caption text-disabled">Tel: {{ item.existing_phone || 'S/T' }} | Dir: {{ item.existing_address || 'S/D' }}</div>
+                      </td>
+                      <td>
+                        <div
+                          v-if="item.updates_to_apply && Object.keys(item.updates_to_apply).length > 0"
+                          class="d-flex flex-wrap gap-1"
+                        >
+                          <VChip
+                            v-if="item.updates_to_apply.phone"
+                            size="x-small"
+                            color="info"
+                            variant="outlined"
+                          >
+                            + Tel: {{ item.updates_to_apply.phone }}
+                          </VChip>
+                          <VChip
+                            v-if="item.updates_to_apply.address"
+                            size="x-small"
+                            color="success"
+                            variant="outlined"
+                          >
+                            + Dir: {{ item.updates_to_apply.address }}
+                          </VChip>
+                        </div>
+                        <span
+                          v-else
+                          class="text-caption text-disabled"
+                        >
+                          Ficha completa (sin cambios)
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </VTable>
+              </div>
+
+              <div
+                v-else
+                class="text-center py-8 text-medium-emphasis"
+              >
+                <VIcon
+                  icon="tabler-alert-circle"
+                  size="36"
+                  color="warning"
+                  class="mb-2"
+                />
+                <div class="text-body-2">No se encontraron clientes coincidentes en el ERP.</div>
+              </div>
+            </VWindowItem>
+          </VWindow>
+        </VCardText>
+
+        <VCardActions class="border-t bg-surface px-4 py-3 d-flex justify-space-between">
+          <VBtn
+            variant="outlined"
+            color="secondary"
+            :disabled="processingClients"
+            @click="isClientsModalOpen = false"
+          >
+            Cancelar
+          </VBtn>
+
+          <VBtn
+            color="primary"
+            variant="elevated"
+            prepend-icon="tabler-check"
+            :loading="processingClients"
+            :disabled="processingClients"
+            @click="executeClientsImport"
+          >
+            Confirmar e Importar Clientes ({{ clientsAnalysis?.summary?.total_clients_found ?? 0 }})
           </VBtn>
         </VCardActions>
       </VCard>
