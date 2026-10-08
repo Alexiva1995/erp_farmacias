@@ -210,6 +210,7 @@ const modalActiveTab = ref('new_suppliers')
 const payablesAnalysis = ref(null)
 const newSuppliersList = ref([])
 const matchedSuppliersList = ref([])
+const existingSuppliersDirectory = ref([])
 
 let initialPayablesStats = null
 try {
@@ -233,9 +234,15 @@ const canAnalyzeSuppliers = computed(() => {
 })
 
 const supplierTypeOptions = [
-  { title: 'Inventario (Droguería)', value: 'drogueria' },
-  { title: 'Gasto / Servicio (Externo)', value: 'externo' },
+  { title: 'Inventario', value: 'drogueria' },
+  { title: 'Gasto / Servicio', value: 'externo' },
 ]
+
+const totalInvoicesInModal = computed(() => {
+  const newCount = newSuppliersList.value.reduce((acc, s) => acc + (s.invoices?.length || s.invoices_count || 0), 0)
+  const matchCount = matchedSuppliersList.value.reduce((acc, s) => acc + (s.invoices?.length || s.invoices_count || 0), 0)
+  return newCount + matchCount
+})
 
 const clearSuppliersFile = () => {
   suppliersFile.value = null
@@ -316,10 +323,12 @@ const analyzePayablesFile = async () => {
 
     const data = response.data?.data ?? {}
     payablesAnalysis.value = data
+    existingSuppliersDirectory.value = data.existing_suppliers_directory ?? []
 
     newSuppliersList.value = (data.new_suppliers ?? []).map(s => ({
       ...s,
       selected_type: s.suggested_type || 'drogueria',
+      manual_match_id: null,
     }))
 
     matchedSuppliersList.value = data.matched_suppliers ?? []
@@ -344,7 +353,69 @@ const setAllNewSuppliersType = type => {
   newSuppliersList.value.forEach(s => {
     s.selected_type = type
   })
-  toast.info(`Todos los proveedores nuevos fueron marcados como ${type === 'drogueria' ? 'Droguería (Inventario)' : 'Gasto / Externo'}.`)
+  toast.info(`Todos los proveedores nuevos fueron marcados como ${type === 'drogueria' ? 'Inventario' : 'Gasto / Servicio'}.`)
+}
+
+const unlinkMatchedSupplier = index => {
+  const matchedItem = matchedSuppliersList.value[index]
+  if (!matchedItem) return
+
+  matchedSuppliersList.value.splice(index, 1)
+  newSuppliersList.value.unshift({
+    rif: matchedItem.extracted_rif || '',
+    clean_rif: (matchedItem.extracted_rif || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase(),
+    name: matchedItem.extracted_name,
+    sales_phone: matchedItem.extracted_phone || null,
+    address: matchedItem.extracted_address || null,
+    suggested_type: matchedItem.existing_type || 'drogueria',
+    selected_type: matchedItem.existing_type || 'drogueria',
+    manual_match_id: null,
+    invoices_count: matchedItem.invoices_count || 0,
+    total_usd: matchedItem.total_usd || 0,
+    total_amount: matchedItem.total_amount || 0,
+    invoices: matchedItem.invoices || [],
+  })
+  toast.info(`"${matchedItem.extracted_name}" desvinculado. Se creará como proveedor nuevo.`)
+}
+
+const linkNewSupplierToExisting = (newItem, index, existingSupplierId) => {
+  if (!existingSupplierId) return
+  const existingSup = existingSuppliersDirectory.value.find(s => s.id === existingSupplierId)
+  if (!existingSup) return
+
+  newSuppliersList.value.splice(index, 1)
+
+  const updates = {}
+  if (!existingSup.rif && newItem.rif) {
+    updates.rif = newItem.rif
+  }
+  if (newItem.sales_phone && (!existingSup.sales_phone || newItem.sales_phone.length > existingSup.sales_phone.length)) {
+    updates.sales_phone = newItem.sales_phone
+  }
+  if (newItem.address && (!existingSup.address || newItem.address.length > existingSup.address.length)) {
+    updates.address = newItem.address
+  }
+
+  matchedSuppliersList.value.unshift({
+    extracted_rif: newItem.rif || '',
+    extracted_name: newItem.name,
+    extracted_phone: newItem.sales_phone || null,
+    extracted_address: newItem.address || null,
+    existing_id: existingSup.id,
+    existing_name: existingSup.name,
+    existing_rif: existingSup.rif || '',
+    existing_phone: existingSup.sales_phone || '',
+    existing_address: existingSup.address || '',
+    existing_type: existingSup.type || 'drogueria',
+    match_reason: 'manual',
+    updates_to_apply: updates,
+    invoices_count: newItem.invoices_count || 0,
+    total_usd: newItem.total_usd || 0,
+    total_amount: newItem.total_amount || 0,
+    invoices: newItem.invoices || [],
+  })
+
+  toast.success(`"${newItem.name}" enlazado manualmente con "${existingSup.name}".`)
 }
 
 const executePayablesImport = async () => {
@@ -1803,20 +1874,33 @@ const executeSalesImport = async () => {
     <!-- =================================================================== -->
     <VDialog
       v-model="isPayablesModalOpen"
-      max-width="1100px"
+      max-width="1200px"
       persistent
       scrollable
     >
-      <VCard>
-        <VCardItem class="border-b bg-surface pb-3">
-          <VCardTitle class="d-flex align-center justify-space-between text-h6">
-            <div class="d-flex align-center gap-2">
-              <VIcon
-                icon="tabler-git-merge"
+      <VCard class="rounded-lg">
+        <VCardItem class="pb-3 border-b bg-surface">
+          <div class="d-flex align-center justify-space-between w-100">
+            <div class="d-flex align-center gap-3">
+              <VAvatar
                 color="primary"
-                size="26"
-              />
-              <span>Correlación y Clasificación de Proveedores & CXP</span>
+                variant="tonal"
+                size="42"
+                class="rounded"
+              >
+                <VIcon
+                  icon="tabler-git-merge"
+                  size="24"
+                />
+              </VAvatar>
+              <div>
+                <VCardTitle class="text-h6 font-weight-bold pb-0">
+                  Correlación y Clasificación de Proveedores & CXP
+                </VCardTitle>
+                <VCardSubtitle class="text-caption text-medium-emphasis">
+                  Revisa las coincidencias detectadas por RIF y clasifica el tipo de cada proveedor nuevo antes de persistir las facturas pendientes.
+                </VCardSubtitle>
+              </div>
             </div>
             <VBtn
               variant="text"
@@ -1826,10 +1910,7 @@ const executeSalesImport = async () => {
               :disabled="processingPayables"
               @click="isPayablesModalOpen = false"
             />
-          </VCardTitle>
-          <VCardSubtitle class="text-caption">
-            Revisa las coincidencias detectadas por RIF y clasifica el tipo de cada proveedor nuevo antes de persistir las facturas pendientes.
-          </VCardSubtitle>
+          </div>
         </VCardItem>
 
         <VCardText
@@ -1884,7 +1965,7 @@ const executeSalesImport = async () => {
               >
                 <div class="text-caption">Facturas a Generar</div>
                 <div class="text-h6 font-weight-bold text-info">
-                  {{ payablesAnalysis.summary?.total_invoices ?? 0 }}
+                  {{ totalInvoicesInModal }}
                 </div>
               </VCard>
             </VCol>
@@ -1949,7 +2030,7 @@ const executeSalesImport = async () => {
                       prepend-icon="tabler-packages"
                       @click="setAllNewSuppliersType('drogueria')"
                     >
-                      Marcar Todos como Droguería (Inventario)
+                      Marcar Todos como Inventario
                     </VBtn>
                     <VBtn
                       size="x-small"
@@ -1958,7 +2039,7 @@ const executeSalesImport = async () => {
                       prepend-icon="tabler-receipt-2"
                       @click="setAllNewSuppliersType('externo')"
                     >
-                      Marcar Todos como Gasto / Externo
+                      Marcar Todos como Gasto / Servicio
                     </VBtn>
                   </div>
                 </div>
@@ -1977,9 +2058,15 @@ const executeSalesImport = async () => {
                       <th class="text-right">Total USD</th>
                       <th
                         class="text-left"
-                        style="min-width: 220px;"
+                        style="min-width: 170px;"
                       >
                         Tipo de Proveedor
+                      </th>
+                      <th
+                        class="text-left"
+                        style="min-width: 260px;"
+                      >
+                        Enlazar a Existente
                       </th>
                     </tr>
                   </thead>
@@ -2028,6 +2115,30 @@ const executeSalesImport = async () => {
                           class="my-1"
                         />
                       </td>
+                      <td>
+                        <VAutocomplete
+                          v-model="item.manual_match_id"
+                          :items="existingSuppliersDirectory"
+                          item-title="name"
+                          item-value="id"
+                          placeholder="Escoger coincidencia..."
+                          density="compact"
+                          variant="outlined"
+                          hide-details
+                          clearable
+                          class="my-1"
+                          prepend-inner-icon="tabler-link"
+                          @update:model-value="val => linkNewSupplierToExisting(item, idx, val)"
+                        >
+                          <template #item="{ props: autoProps, item: supItem }">
+                            <VListItem
+                              v-bind="autoProps"
+                              :title="supItem.raw.name"
+                              :subtitle="supItem.raw.rif ? `RIF: ${supItem.raw.rif}` : 'Sin RIF previo'"
+                            />
+                          </template>
+                        </VAutocomplete>
+                      </td>
                     </tr>
                   </tbody>
                 </VTable>
@@ -2043,7 +2154,7 @@ const executeSalesImport = async () => {
                   color="success"
                   class="mb-2"
                 />
-                <div class="text-body-2">No hay proveedores nuevos en el archivo. Todos los proveedores ya existen en el ERP.</div>
+                <div class="text-body-2">No hay proveedores nuevos en el archivo. Todos los proveedores ya existen o fueron enlazados.</div>
               </div>
             </VWindowItem>
 
@@ -2064,6 +2175,7 @@ const executeSalesImport = async () => {
                       <th class="text-left">Datos a Enriquecer</th>
                       <th class="text-center">Facturas</th>
                       <th class="text-right">Total USD</th>
+                      <th class="text-center">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2090,15 +2202,15 @@ const executeSalesImport = async () => {
                       <td class="text-center">
                         <VChip
                           size="x-small"
-                          :color="item.match_reason === 'rif' ? 'success' : 'info'"
+                          :color="item.match_reason === 'rif' ? 'success' : (item.match_reason === 'manual' ? 'secondary' : 'info')"
                           variant="tonal"
                         >
                           <VIcon
-                            :icon="item.match_reason === 'rif' ? 'tabler-id' : 'tabler-file-search'"
+                            :icon="item.match_reason === 'rif' ? 'tabler-id' : (item.match_reason === 'manual' ? 'tabler-hand-click' : 'tabler-file-search')"
                             size="14"
                             class="me-1"
                           />
-                          {{ item.match_reason === 'rif' ? 'Por RIF' : 'Por Nombre' }}
+                          {{ item.match_reason === 'rif' ? 'Por RIF' : (item.match_reason === 'manual' ? 'Manual' : 'Por Nombre') }}
                         </VChip>
                       </td>
                       <td>
@@ -2150,6 +2262,23 @@ const executeSalesImport = async () => {
                       <td class="text-right text-body-2 font-weight-bold text-success">
                         ${{ Number(item.total_usd || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }}
                       </td>
+                      <td class="text-center">
+                        <VTooltip
+                          text="Desvincular (Tratar como proveedor nuevo)"
+                          location="top"
+                        >
+                          <template #activator="{ props: tooltipProps }">
+                            <VBtn
+                              v-bind="tooltipProps"
+                              size="small"
+                              variant="tonal"
+                              color="warning"
+                              icon="tabler-link-off"
+                              @click="unlinkMatchedSupplier(idx)"
+                            />
+                          </template>
+                        </VTooltip>
+                      </td>
                     </tr>
                   </tbody>
                 </VTable>
@@ -2165,32 +2294,51 @@ const executeSalesImport = async () => {
                   color="warning"
                   class="mb-2"
                 />
-                <div class="text-body-2">No se encontraron coincidencias directas con proveedores existentes.</div>
+                <div class="text-body-2">No hay proveedores enlazados actualmente.</div>
               </div>
             </VWindowItem>
           </VWindow>
         </VCardText>
 
-        <VCardActions class="border-t bg-surface px-4 py-3 d-flex justify-space-between">
-          <VBtn
-            variant="outlined"
-            color="secondary"
-            :disabled="processingPayables"
-            @click="isPayablesModalOpen = false"
+        <VCardActions class="border-t bg-surface px-4 py-3">
+          <VRow
+            dense
+            class="w-100 ma-0"
           >
-            Cancelar
-          </VBtn>
+            <VCol
+              cols="6"
+              class="ps-0 pe-2"
+            >
+              <VBtn
+                block
+                variant="outlined"
+                color="secondary"
+                size="large"
+                :disabled="processingPayables"
+                @click="isPayablesModalOpen = false"
+              >
+                Cancelar
+              </VBtn>
+            </VCol>
 
-          <VBtn
-            color="primary"
-            variant="elevated"
-            prepend-icon="tabler-check"
-            :loading="processingPayables"
-            :disabled="processingPayables"
-            @click="executePayablesImport"
-          >
-            Confirmar e Importar Proveedores y Facturas ({{ payablesAnalysis?.summary?.total_invoices ?? 0 }} Facturas)
-          </VBtn>
+            <VCol
+              cols="6"
+              class="pe-0 ps-2"
+            >
+              <VBtn
+                block
+                color="primary"
+                variant="elevated"
+                size="large"
+                prepend-icon="tabler-check"
+                :loading="processingPayables"
+                :disabled="processingPayables"
+                @click="executePayablesImport"
+              >
+                Confirmar e Importar Proveedores y Facturas ({{ totalInvoicesInModal }} Facturas)
+              </VBtn>
+            </VCol>
+          </VRow>
         </VCardActions>
       </VCard>
     </VDialog>

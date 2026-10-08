@@ -85,7 +85,7 @@ class OnboardingSupplierPayablesImportService
                         'address'           => $cleanAddress,
                         'type'              => $supplierType,
                         'credit_days'       => 15,
-                        'payment_method'    => 'transferencia',
+                        'payment_method'    => 'Bs',
                         'is_active'         => true,
                         'is_indexed'        => true,
                     ]);
@@ -105,17 +105,19 @@ class OnboardingSupplierPayablesImportService
                             $needsUpdate = true;
                         }
 
-                        if (!empty($updateData['sales_phone']) && empty($supplier->sales_phone)) {
+                        if (!empty($updateData['sales_phone'])) {
                             $phone = $this->sanitizePhone($updateData['sales_phone']);
-                            if ($phone) {
+                            $existingPhone = trim((string) ($supplier->sales_phone ?? ''));
+                            if ($phone && (empty($existingPhone) || strlen($phone) > strlen($existingPhone))) {
                                 $supplier->sales_phone = $phone;
                                 $needsUpdate = true;
                             }
                         }
 
-                        if (!empty($updateData['address']) && empty($supplier->address)) {
+                        if (!empty($updateData['address'])) {
                             $addr = $this->sanitizeAddress($updateData['address']);
-                            if ($addr) {
+                            $existingAddr = trim((string) ($supplier->address ?? ''));
+                            if ($addr && (empty($existingAddr) || strlen($addr) > strlen($existingAddr) || in_array(strtoupper($existingAddr), ['LOCAL', 'S/N', 'S/D', 'GENERICO', '.'], true))) {
                                 $supplier->address = $addr;
                                 $needsUpdate = true;
                             }
@@ -581,8 +583,11 @@ class OnboardingSupplierPayablesImportService
                 if (empty($matchedSupplier->sales_phone) && !empty($cleanPhone)) {
                     $updates['sales_phone'] = $cleanPhone;
                 }
-                if (empty($matchedSupplier->address) && !empty($cleanAddress)) {
-                    $updates['address'] = $cleanAddress;
+                $existingAddr = trim((string) ($matchedSupplier->address ?? ''));
+                if (!empty($cleanAddress)) {
+                    if (empty($existingAddr) || strlen($cleanAddress) > strlen($existingAddr) || in_array(strtoupper($existingAddr), ['LOCAL', 'S/N', 'S/D', 'GENERICO', '.'], true)) {
+                        $updates['address'] = $cleanAddress;
+                    }
                 }
 
                 $matchedList[] = [
@@ -619,6 +624,17 @@ class OnboardingSupplierPayablesImportService
             }
         }
 
+        $existingDirectory = $existingSuppliers->map(function ($s) {
+            return [
+                'id'          => $s->id,
+                'name'        => $s->name,
+                'rif'         => $s->rif,
+                'sales_phone' => $s->sales_phone,
+                'address'     => $s->address,
+                'type'        => $s->type?->value ?? $s->type ?? 'drogueria',
+            ];
+        })->values()->all();
+
         return [
             'summary' => [
                 'total_suppliers_found' => count($parsedSuppliers),
@@ -628,8 +644,9 @@ class OnboardingSupplierPayablesImportService
                 'total_amount_usd'      => round($totalAccumUsd, 2),
                 'total_amount_ves'      => round($totalAccumVes, 2),
             ],
-            'matched_suppliers' => $matchedList,
-            'new_suppliers'     => $newList,
+            'matched_suppliers'            => $matchedList,
+            'new_suppliers'                => $newList,
+            'existing_suppliers_directory' => $existingDirectory,
         ];
     }
 

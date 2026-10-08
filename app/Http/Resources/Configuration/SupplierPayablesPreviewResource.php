@@ -17,9 +17,10 @@ class SupplierPayablesPreviewResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'summary'           => $this['summary'] ?? [],
-            'matched_suppliers' => $this['matched_suppliers'] ?? [],
-            'new_suppliers'     => $this['new_suppliers'] ?? [],
+            'summary'                      => $this['summary'] ?? [],
+            'matched_suppliers'            => $this['matched_suppliers'] ?? [],
+            'new_suppliers'                => $this['new_suppliers'] ?? [],
+            'existing_suppliers_directory' => $this['existing_suppliers_directory'] ?? [],
         ];
     }
 }
