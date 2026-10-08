@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Catalog;
 
 use App\Models\Client;
-use App\Models\FiscalHistory;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Models\Product;
@@ -154,16 +153,6 @@ class OnboardingSalesOrdersImportService
                     ],
                     'total_amount_usd'        => $totalAmountUsd,
                 ]);
-
-                // Historial fiscal con número de factura
-                if (!empty($docNumber)) {
-                    FiscalHistory::create([
-                        'order_id'       => $order->id,
-                        'invoice_number' => $docNumber,
-                        'created_at'     => $orderDate,
-                        'updated_at'     => $orderDate,
-                    ]);
-                }
 
                 $orderTotalCost = 0.0;
 
