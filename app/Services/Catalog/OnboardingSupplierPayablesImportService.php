@@ -348,9 +348,13 @@ class OnboardingSupplierPayablesImportService
             } else {
                 // Búsqueda difusa por nombre
                 foreach ($indexedByName as $existName => $idx) {
-                    if (str_contains($existName, $normName) || str_contains($normName, $existName) || (similar_text($existName, $normName, $perc) > 0 && $perc >= 75)) {
-                        $targetIdx = $idx;
-                        break;
+                    $existNameStr = (string) $existName;
+                    $normNameStr = (string) $normName;
+                    if ($existNameStr !== '' && $normNameStr !== '') {
+                        if (str_contains($existNameStr, $normNameStr) || str_contains($normNameStr, $existNameStr) || (similar_text($existNameStr, $normNameStr, $perc) > 0 && $perc >= 75)) {
+                            $targetIdx = $idx;
+                            break;
+                        }
                     }
                 }
             }
@@ -548,10 +552,14 @@ class OnboardingSupplierPayablesImportService
                     $matchReason = 'name_exact';
                 } else {
                     foreach ($existingByName as $existName => $supplier) {
-                        if (str_contains($existName, $normalizedName) || str_contains($normalizedName, $existName) || (similar_text($existName, $normalizedName, $perc) > 0 && $perc >= 75)) {
-                            $matchedSupplier = $supplier;
-                            $matchReason = 'name_fuzzy';
-                            break;
+                        $existNameStr = (string) $existName;
+                        $normNameStr = (string) $normalizedName;
+                        if ($existNameStr !== '' && $normNameStr !== '') {
+                            if (str_contains($existNameStr, $normNameStr) || str_contains($normNameStr, $existNameStr) || (similar_text($existNameStr, $normNameStr, $perc) > 0 && $perc >= 75)) {
+                                $matchedSupplier = $supplier;
+                                $matchReason = 'name_fuzzy';
+                                break;
+                            }
                         }
                     }
                 }
@@ -668,12 +676,12 @@ class OnboardingSupplierPayablesImportService
         return $rows;
     }
 
-    protected function cleanRif(string $rif): string
+    protected function cleanRif(mixed $rif): string
     {
-        return strtoupper(preg_replace('/[^a-zA-Z0-9]/', '', $rif));
+        return strtoupper(preg_replace('/[^a-zA-Z0-9]/', '', (string) ($rif ?? '')));
     }
 
-    protected function formatRifForDisplay(string $rif): string
+    protected function formatRifForDisplay(mixed $rif): string
     {
         $clean = $this->cleanRif($rif);
         if (empty($clean)) {
@@ -692,13 +700,13 @@ class OnboardingSupplierPayablesImportService
         return "{$prefix}-{$body}";
     }
 
-    protected function normalizeText(?string $text): string
+    protected function normalizeText(mixed $text): string
     {
         if (empty($text)) {
             return '';
         }
 
-        $str = mb_strtolower(trim($text), 'UTF-8');
+        $str = mb_strtolower(trim((string) $text), 'UTF-8');
         $str = str_replace(
             ['á', 'é', 'í', 'ó', 'ú', 'ñ', '.', ',', '-', '_', '/', '&'],
             ['a', 'e', 'i', 'o', 'u', 'n', '', '', '', '', '', 'y'],
@@ -708,9 +716,9 @@ class OnboardingSupplierPayablesImportService
         return preg_replace('/\s+/', ' ', $str);
     }
 
-    protected function guessSupplierType(string $name): string
+    protected function guessSupplierType(mixed $name): string
     {
-        $upper = strtoupper($name);
+        $upper = strtoupper((string) ($name ?? ''));
         if (str_contains($upper, 'DROGUERIA') || str_contains($upper, 'MEDICAL') || str_contains($upper, 'PHARMA') || str_contains($upper, 'FARMA') || str_contains($upper, 'LABORATORIO')) {
             return 'drogueria';
         }
@@ -722,27 +730,27 @@ class OnboardingSupplierPayablesImportService
         return 'drogueria';
     }
 
-    protected function sanitizePhone(?string $phone): ?string
+    protected function sanitizePhone(mixed $phone): ?string
     {
         if (empty($phone)) {
             return null;
         }
 
-        $cleaned = trim(preg_replace('/[^\d\/\-\s]/', '', $phone));
-        if ($cleaned === '' || $cleaned === '0000' || $cleaned === '0' || $cleaned === '00000000' || $phone === '.') {
+        $cleaned = trim(preg_replace('/[^\d\/\-\s]/', '', (string) $phone));
+        if ($cleaned === '' || $cleaned === '0000' || $cleaned === '0' || $cleaned === '00000000' || (string) $phone === '.') {
             return null;
         }
 
         return $cleaned;
     }
 
-    protected function sanitizeAddress(?string $address): ?string
+    protected function sanitizeAddress(mixed $address): ?string
     {
         if (empty($address)) {
             return null;
         }
 
-        $cleaned = trim($address);
+        $cleaned = trim((string) $address);
         if ($cleaned === '' || strtoupper($cleaned) === 'GENERICO' || strtoupper($cleaned) === 'S/N' || strtoupper($cleaned) === 'S/D' || $cleaned === '.') {
             return null;
         }
@@ -750,47 +758,47 @@ class OnboardingSupplierPayablesImportService
         return $cleaned;
     }
 
-    protected function isValidDate(string $str): bool
+    protected function isValidDate(mixed $str): bool
     {
-        $str = trim($str);
-        if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $str)) {
+        $strVal = trim((string) ($str ?? ''));
+        if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $strVal)) {
             return true;
         }
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $str)) {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $strVal)) {
             return true;
         }
         return false;
     }
 
-    protected function parseDateString(string $dateStr): string
+    protected function parseDateString(mixed $dateStr): string
     {
-        $dateStr = trim($dateStr);
+        $dateStrVal = trim((string) ($dateStr ?? ''));
         try {
-            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $dateStr, $m)) {
+            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $dateStrVal, $m)) {
                 return sprintf('%04d-%02d-%02d', (int) $m[3], (int) $m[2], (int) $m[1]);
             }
-            return Carbon::parse($dateStr)->format('Y-m-d');
+            return Carbon::parse($dateStrVal)->format('Y-m-d');
         } catch (\Throwable) {
             return Carbon::now()->format('Y-m-d');
         }
     }
 
-    protected function isNumericFormat(string $val): bool
+    protected function isNumericFormat(mixed $val): bool
     {
-        $val = trim($val);
-        return (bool) preg_match('/^-?\d{1,3}(?:\.\d{3})*(?:,\d+)?$/', $val) || (bool) preg_match('/^-?\d+(?:\.\d+)?$/', $val);
+        $strVal = trim((string) ($val ?? ''));
+        return (bool) preg_match('/^-?\d{1,3}(?:\.\d{3})*(?:,\d+)?$/', $strVal) || (bool) preg_match('/^-?\d+(?:\.\d+)?$/', $strVal);
     }
 
-    protected function parseNumericValue(string $val): float
+    protected function parseNumericValue(mixed $val): float
     {
-        $val = trim($val);
-        if (str_contains($val, ',') && str_contains($val, '.')) {
-            $val = str_replace('.', '', $val);
-            $val = str_replace(',', '.', $val);
-        } elseif (str_contains($val, ',')) {
-            $val = str_replace(',', '.', $val);
+        $strVal = trim((string) ($val ?? ''));
+        if (str_contains($strVal, ',') && str_contains($strVal, '.')) {
+            $strVal = str_replace('.', '', $strVal);
+            $strVal = str_replace(',', '.', $strVal);
+        } elseif (str_contains($strVal, ',')) {
+            $strVal = str_replace(',', '.', $strVal);
         }
 
-        return (float) preg_replace('/[^\d.-]/', '', $val);
+        return (float) preg_replace('/[^\d.-]/', '', $strVal);
     }
 }
