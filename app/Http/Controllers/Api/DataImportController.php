@@ -164,8 +164,10 @@ class DataImportController extends Controller
         OnboardingSupplierPayablesImportService $service
     ): JsonResponse {
         try {
-            $file = $request->file('payables_file');
-            $analysis = $service->parseAndAnalyze($file->getRealPath());
+            $suppliersFilePath = $request->hasFile('suppliers_file') ? $request->file('suppliers_file')->getRealPath() : null;
+            $payablesFilePath = $request->hasFile('payables_file') ? $request->file('payables_file')->getRealPath() : null;
+
+            $analysis = $service->parseAndAnalyze($suppliersFilePath, $payablesFilePath);
 
             return response()->json([
                 'success' => true,

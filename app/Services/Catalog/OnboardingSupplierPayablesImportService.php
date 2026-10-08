@@ -11,22 +11,36 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class OnboardingSupplierPayablesImportService
 {
     /**
-     * Parsea el archivo de Cuentas por Pagar / Proveedores y analiza las coincidencias con el ERP.
+     * Parsea el archivo de Listado de Proveedores y/o el archivo de Cuentas por Pagar (CXP).
      */
-    public function parseAndAnalyze(string $filePath): array
+    public function parseAndAnalyze(?string $suppliersFilePath = null, ?string $payablesFilePath = null): array
     {
         @ini_set('memory_limit', '512M');
         @ini_set('max_execution_time', '300');
 
-        $rows = $this->extractRawRows($filePath);
-        $parsedSuppliers = $this->structureSuppliersAndInvoices($rows);
+        if (!$suppliersFilePath && !$payablesFilePath) {
+            throw new \InvalidArgumentException('Debe proporcionar al menos un archivo de Proveedores o de Cuentas por Pagar.');
+        }
 
-        return $this->correlateWithExistingSuppliers($parsedSuppliers);
+        $directorySuppliers = [];
+        if ($suppliersFilePath && file_exists($suppliersFilePath)) {
+            $rawRows = $this->extractRawRows($suppliersFilePath);
+            $directorySuppliers = $this->structureSuppliersDirectory($rawRows);
+        }
+
+        $payablesSuppliers = [];
+        if ($payablesFilePath && file_exists($payablesFilePath)) {
+            $rawRows = $this->extractRawRows($payablesFilePath);
+            $payablesSuppliers = $this->structureSuppliersAndInvoices($rawRows);
+        }
+
+        $combinedSuppliers = $this->mergeDirectoryAndPayables($directorySuppliers, $payablesSuppliers);
+
+        return $this->correlateWithExistingSuppliers($combinedSuppliers);
     }
 
     /**
@@ -53,20 +67,22 @@ class OnboardingSupplierPayablesImportService
                 $existingId = !empty($supplierItem['existing_id']) ? (int) $supplierItem['existing_id'] : null;
                 $supplierId = null;
 
+                $name = trim((string) ($supplierItem['name'] ?? 'Proveedor Desconocido'));
+                $rifFormatted = $this->formatRifForDisplay($supplierItem['rif'] ?? '');
+                $cleanPhone = $this->sanitizePhone($supplierItem['sales_phone'] ?? null);
+                $cleanAddress = $this->sanitizeAddress($supplierItem['address'] ?? null);
+
                 if ($isNew || !$existingId) {
-                    // Crear nuevo proveedor
                     $supplierType = in_array($supplierItem['type'] ?? '', ['drogueria', 'externo'], true)
                         ? $supplierItem['type']
                         : 'drogueria';
 
-                    $rifFormatted = $this->formatRifForDisplay($supplierItem['rif'] ?? '');
-                    $cleanPhone = $this->sanitizePhone($supplierItem['sales_phone'] ?? null);
-
                     $supplier = Supplier::create([
-                        'name'              => trim((string) ($supplierItem['name'] ?? 'Proveedor Desconocido')),
-                        'social_reason'     => trim((string) ($supplierItem['name'] ?? 'Proveedor Desconocido')),
+                        'name'              => $name,
+                        'social_reason'     => $name,
                         'rif'               => $rifFormatted ?: null,
                         'sales_phone'       => $cleanPhone,
+                        'address'           => $cleanAddress,
                         'type'              => $supplierType,
                         'credit_days'       => 15,
                         'payment_method'    => 'transferencia',
@@ -77,7 +93,6 @@ class OnboardingSupplierPayablesImportService
                     $supplierId = $supplier->id;
                     $stats['suppliers_created']++;
                 } else {
-                    // Proveedor existente: verificar si se deben enriquecer datos
                     $supplierId = $existingId;
                     $supplier = Supplier::find($supplierId);
 
@@ -91,9 +106,17 @@ class OnboardingSupplierPayablesImportService
                         }
 
                         if (!empty($updateData['sales_phone']) && empty($supplier->sales_phone)) {
-                            $cleanPhone = $this->sanitizePhone($updateData['sales_phone']);
-                            if ($cleanPhone) {
-                                $supplier->sales_phone = $cleanPhone;
+                            $phone = $this->sanitizePhone($updateData['sales_phone']);
+                            if ($phone) {
+                                $supplier->sales_phone = $phone;
+                                $needsUpdate = true;
+                            }
+                        }
+
+                        if (!empty($updateData['address']) && empty($supplier->address)) {
+                            $addr = $this->sanitizeAddress($updateData['address']);
+                            if ($addr) {
+                                $supplier->address = $addr;
                                 $needsUpdate = true;
                             }
                         }
@@ -117,7 +140,6 @@ class OnboardingSupplierPayablesImportService
                         continue;
                     }
 
-                    // Verificar si ya existe la factura para este proveedor
                     $alreadyExists = Invoice::where('supplier_id', $supplierId)
                         ->where('invoice_number', $invoiceNumber)
                         ->exists();
@@ -134,7 +156,6 @@ class OnboardingSupplierPayablesImportService
                     $totalUsd = (float) ($inv['total_usd'] ?? 0.0);
                     $exchangeRate = (float) ($inv['exchange_rate'] ?? 0.0);
 
-                    // Si no viene exchange_rate pero tenemos totalAmount y totalUsd > 0
                     if ($exchangeRate <= 0 && $totalUsd > 0 && $totalAmount > 0) {
                         $exchangeRate = round($totalAmount / $totalUsd, 4);
                     }
@@ -179,57 +200,72 @@ class OnboardingSupplierPayablesImportService
     }
 
     /**
-     * Extrae las filas de texto plano / celdas desde el archivo soportado.
+     * Parsea el archivo de Listado de Proveedores (directorio maestro).
      */
-    protected function extractRawRows(string $filePath): array
+    protected function structureSuppliersDirectory(array $rows): array
     {
-        if (!file_exists($filePath)) {
-            throw new \InvalidArgumentException("El archivo de cuentas por pagar no existe en la ruta: {$filePath}");
+        $suppliers = [];
+
+        foreach ($rows as $row) {
+            $nonEmpty = array_values(array_filter(array_map('trim', $row), fn($c) => $c !== ''));
+            if (count($nonEmpty) < 2) {
+                continue;
+            }
+
+            $rowString = implode(' ', $nonEmpty);
+            if (
+                stripos($rowString, 'Listado de Proveedores') !== false ||
+                stripos($rowString, 'ENSALUD') !== false ||
+                stripos($rowString, 'Fecha Impresión') !== false ||
+                (stripos($rowString, 'Código') !== false && stripos($rowString, 'Nombre') !== false)
+            ) {
+                continue;
+            }
+
+            $rawCode = trim($row[1] ?? '');
+            $rawName = trim($row[4] ?? '');
+            $rawFiscalId = trim($row[5] ?? '');
+            $rawAddress = trim($row[6] ?? '');
+            $rawPhone = trim($row[9] ?? $row[8] ?? $row[7] ?? '');
+
+            // Fallback si las columnas están desplazadas
+            if (empty($rawName) && count($nonEmpty) >= 2) {
+                $rawCode = $nonEmpty[0];
+                $rawName = $nonEmpty[1];
+                $rawFiscalId = $nonEmpty[2] ?? $rawCode;
+                $rawAddress = $nonEmpty[3] ?? '';
+                $rawPhone = $nonEmpty[4] ?? '';
+            }
+
+            if (empty($rawName) || strlen($rawName) < 2 || str_starts_with($rawName, '/')) {
+                continue;
+            }
+
+            // Ignorar genérico de plantilla
+            if (strtoupper($rawName) === 'GENERICO' && strtoupper($rawCode) === '00') {
+                continue;
+            }
+
+            $rifToClean = !empty($rawFiscalId) ? $rawFiscalId : $rawCode;
+            $cleanRif = $this->cleanRif($rifToClean);
+
+            $suppliers[] = [
+                'raw_rif'      => $rifToClean,
+                'clean_rif'    => $cleanRif,
+                'name'         => $rawName,
+                'sales_phone'  => $this->sanitizePhone($rawPhone),
+                'address'      => $this->sanitizeAddress($rawAddress),
+                'invoices'     => [],
+                'total_usd'    => 0.0,
+                'total_amount' => 0.0,
+            ];
         }
 
-        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-
-        if ($extension === 'csv' || $extension === 'txt') {
-            return $this->parseCsvFile($filePath);
-        }
-
-        $spreadsheet = IOFactory::load($filePath);
-        $sheet = $spreadsheet->getActiveSheet();
-        $highestRow = $sheet->getHighestRow();
-        $highestCol = $sheet->getHighestColumn();
-
-        $rows = [];
-        for ($r = 1; $r <= $highestRow; $r++) {
-            $rowRange = $sheet->rangeToArray("A{$r}:{$highestCol}{$r}", null, true, true, false)[0];
-            $rows[] = array_map(function ($val) {
-                return $val !== null ? (string) $val : '';
-            }, $rowRange);
-        }
-
-        return $rows;
+        return $suppliers;
     }
 
     /**
-     * Parsea un archivo CSV preservando columnas con comas.
-     */
-    protected function parseCsvFile(string $filePath): array
-    {
-        $rows = [];
-        $handle = fopen($filePath, 'r');
-        if ($handle === false) {
-            return [];
-        }
-
-        while (($data = fgetcsv($handle, 4096, ',')) !== false) {
-            $rows[] = array_map('strval', $data);
-        }
-        fclose($handle);
-
-        return $rows;
-    }
-
-    /**
-     * Estructura los datos crudos extrayendo bloques de proveedores y sus facturas asociadas.
+     * Parsea el archivo de Cuentas por Pagar (CXP).
      */
     protected function structureSuppliersAndInvoices(array $rows): array
     {
@@ -237,10 +273,8 @@ class OnboardingSupplierPayablesImportService
         $currentSupplier = null;
 
         foreach ($rows as $row) {
-            // Unir celdas para detección de encabezados y depuración
             $rowString = implode(' ', array_filter($row));
 
-            // 1. Detectar si la fila es un encabezado de proveedor
             $supplierHeader = $this->extractSupplierHeader($row, $rowString);
             if ($supplierHeader !== null) {
                 if ($currentSupplier !== null) {
@@ -251,6 +285,7 @@ class OnboardingSupplierPayablesImportService
                     'clean_rif'    => $this->cleanRif($supplierHeader['rif']),
                     'name'         => $supplierHeader['name'],
                     'sales_phone'  => $supplierHeader['phone'],
+                    'address'      => null,
                     'invoices'     => [],
                     'total_usd'    => 0.0,
                     'total_amount' => 0.0,
@@ -258,7 +293,6 @@ class OnboardingSupplierPayablesImportService
                 continue;
             }
 
-            // 2. Si tenemos un proveedor activo, verificar si la fila es una factura
             if ($currentSupplier !== null) {
                 $invoice = $this->extractInvoiceRow($row);
                 if ($invoice !== null) {
@@ -277,26 +311,92 @@ class OnboardingSupplierPayablesImportService
     }
 
     /**
-     * Extrae información de proveedor si la fila contiene el formato RIF - NOMBRE - TELÉFONO.
+     * Combina los datos de Listado de Proveedores con los de Cuentas por Pagar (CXP).
+     */
+    protected function mergeDirectoryAndPayables(array $directorySuppliers, array $payablesSuppliers): array
+    {
+        $merged = [];
+        $indexedByRif = [];
+        $indexedByName = [];
+
+        // 1. Cargar directorio de proveedores como base
+        foreach ($directorySuppliers as $sup) {
+            $cleanRif = $sup['clean_rif'];
+            $normName = $this->normalizeText($sup['name']);
+
+            $idx = count($merged);
+            $merged[$idx] = $sup;
+
+            if (!empty($cleanRif)) {
+                $indexedByRif[$cleanRif] = $idx;
+            }
+            if (!empty($normName)) {
+                $indexedByName[$normName] = $idx;
+            }
+        }
+
+        // 2. Asociar facturas del archivo de Cuentas por Pagar
+        foreach ($payablesSuppliers as $paySup) {
+            $cleanRif = $paySup['clean_rif'];
+            $normName = $this->normalizeText($paySup['name']);
+
+            $targetIdx = null;
+            if (!empty($cleanRif) && isset($indexedByRif[$cleanRif])) {
+                $targetIdx = $indexedByRif[$cleanRif];
+            } elseif (!empty($normName) && isset($indexedByName[$normName])) {
+                $targetIdx = $indexedByName[$normName];
+            } else {
+                // Búsqueda difusa por nombre
+                foreach ($indexedByName as $existName => $idx) {
+                    if (str_contains($existName, $normName) || str_contains($normName, $existName) || (similar_text($existName, $normName, $perc) > 0 && $perc >= 75)) {
+                        $targetIdx = $idx;
+                        break;
+                    }
+                }
+            }
+
+            if ($targetIdx !== null) {
+                // Enriquecer proveedor con las facturas del reporte CXP
+                $merged[$targetIdx]['invoices'] = array_merge($merged[$targetIdx]['invoices'], $paySup['invoices']);
+                $merged[$targetIdx]['total_usd'] += $paySup['total_usd'];
+                $merged[$targetIdx]['total_amount'] += $paySup['total_amount'];
+
+                if (empty($merged[$targetIdx]['sales_phone']) && !empty($paySup['sales_phone'])) {
+                    $merged[$targetIdx]['sales_phone'] = $paySup['sales_phone'];
+                }
+            } else {
+                // No estaba en el directorio de proveedores: agregarlo como nuevo registro
+                $idx = count($merged);
+                $merged[$idx] = $paySup;
+
+                if (!empty($cleanRif)) {
+                    $indexedByRif[$cleanRif] = $idx;
+                }
+                if (!empty($normName)) {
+                    $indexedByName[$normName] = $idx;
+                }
+            }
+        }
+
+        return array_values($merged);
+    }
+
+    /**
+     * Extrae información de cabecera de proveedor desde el archivo de CXP.
      */
     protected function extractSupplierHeader(array $row, string $rowString): ?array
     {
-        // Buscar en cada celda o en la cadena completa
         foreach ($row as $cell) {
             $cellTrimmed = trim($cell);
             if (empty($cellTrimmed)) {
                 continue;
             }
 
-            // Patrón: J41223670-9 - CRIST MEDICALS, C.A - 02763460426/ 04247097428
-            // o J001021744 - ZOOM INTERNATIONAL SERVICES C.A. - 0000
-            // o J-407570170 - ALGO
             if (preg_match('/^([JVEGPjvegp]-?\d{7,10}(?:-\d)?)\s*-\s*([^-]+?)(?:\s*-\s*(.+))?$/u', $cellTrimmed, $matches)) {
                 $rif = trim($matches[1]);
                 $name = trim($matches[2]);
                 $phone = isset($matches[3]) ? trim($matches[3]) : null;
 
-                // Evitar falsos positivos con títulos de reporte
                 if (stripos($name, 'Relación de Cuentas') !== false || stripos($name, 'Listado') !== false) {
                     continue;
                 }
@@ -317,14 +417,11 @@ class OnboardingSupplierPayablesImportService
      */
     protected function extractInvoiceRow(array $row): ?array
     {
-        // Filtrar celdas no vacías
         $nonEmpty = array_values(array_filter(array_map('trim', $row), fn($c) => $c !== ''));
-
         if (count($nonEmpty) < 5) {
             return null;
         }
 
-        // Buscar celda que contenga una fecha DD/MM/YYYY
         $dateIndexes = [];
         foreach ($row as $idx => $cell) {
             if ($this->isValidDate($cell)) {
@@ -342,7 +439,6 @@ class OnboardingSupplierPayablesImportService
         $createdDate = $this->parseDateString($row[$createdDateIdx]);
         $expDate = $this->parseDateString($row[$expDateIdx]);
 
-        // Documento suele estar inmediatamente antes de la primera fecha
         $docCandidate = '';
         for ($i = $createdDateIdx - 1; $i >= 0; $i--) {
             $val = trim($row[$i] ?? '');
@@ -356,7 +452,6 @@ class OnboardingSupplierPayablesImportService
             return null;
         }
 
-        // Extraer montos numéricos después de la fecha de vencimiento
         $numericValues = [];
         for ($i = $expDateIdx + 1; $i < count($row); $i++) {
             $val = trim($row[$i] ?? '');
@@ -369,15 +464,12 @@ class OnboardingSupplierPayablesImportService
             return null;
         }
 
-        // Estructura esperada de montos: [dias_venc (opc), debito, credito/total, saldo, saldo_usd, tasa_cambio]
-        // Identificar débitos/créditos y saldo USD
         $totalAmount = 0.0;
         $netPayable = 0.0;
         $totalUsd = 0.0;
         $exchangeRate = 0.0;
 
         if (count($numericValues) >= 4) {
-            // Si el primer valor es un número entero pequeño (días vencidos, ej -1, 99)
             $offset = (count($numericValues) >= 5 && abs($numericValues[0]) <= 365 && floor($numericValues[0]) == $numericValues[0]) ? 1 : 0;
 
             $credit = $numericValues[$offset + 1] ?? 0.0;
@@ -413,7 +505,7 @@ class OnboardingSupplierPayablesImportService
     protected function correlateWithExistingSuppliers(array $parsedSuppliers): array
     {
         $existingSuppliers = Supplier::withoutGlobalScope('not_deleted')
-            ->select(['id', 'name', 'rif', 'sales_phone', 'type', 'is_active'])
+            ->select(['id', 'name', 'rif', 'sales_phone', 'address', 'type', 'is_active'])
             ->get();
 
         $existingByCleanRif = [];
@@ -449,15 +541,14 @@ class OnboardingSupplierPayablesImportService
                 $matchReason = 'rif';
             }
 
-            // 2. Coincidencia por Nombre si no hubo por RIF
+            // 2. Coincidencia por Nombre
             if (!$matchedSupplier && !empty($normalizedName)) {
                 if (isset($existingByName[$normalizedName])) {
                     $matchedSupplier = $existingByName[$normalizedName];
                     $matchReason = 'name_exact';
                 } else {
-                    // Búsqueda difusa de nombre
                     foreach ($existingByName as $existName => $supplier) {
-                        if (str_contains($existName, $normalizedName) || str_contains($normalizedName, $existName) || similar_text($existName, $normalizedName, $perc) > 0 && $perc >= 75) {
+                        if (str_contains($existName, $normalizedName) || str_contains($normalizedName, $existName) || (similar_text($existName, $normalizedName, $perc) > 0 && $perc >= 75)) {
                             $matchedSupplier = $supplier;
                             $matchReason = 'name_fuzzy';
                             break;
@@ -471,25 +562,31 @@ class OnboardingSupplierPayablesImportService
             $totalAccumUsd += $item['total_usd'];
             $totalAccumVes += $item['total_amount'];
 
+            $cleanPhone = $this->sanitizePhone($item['sales_phone'] ?? null);
+            $cleanAddress = $this->sanitizeAddress($item['address'] ?? null);
+
             if ($matchedSupplier) {
-                // Determinar qué datos faltan o se pueden enriquecer
                 $updates = [];
                 if (empty($matchedSupplier->rif) && !empty($item['raw_rif'])) {
                     $updates['rif'] = $item['raw_rif'];
                 }
-                $cleanPhone = $this->sanitizePhone($item['sales_phone']);
                 if (empty($matchedSupplier->sales_phone) && !empty($cleanPhone)) {
                     $updates['sales_phone'] = $cleanPhone;
+                }
+                if (empty($matchedSupplier->address) && !empty($cleanAddress)) {
+                    $updates['address'] = $cleanAddress;
                 }
 
                 $matchedList[] = [
                     'extracted_rif'       => $item['raw_rif'],
                     'extracted_name'      => $item['name'],
                     'extracted_phone'     => $cleanPhone,
+                    'extracted_address'   => $cleanAddress,
                     'existing_id'         => $matchedSupplier->id,
                     'existing_name'       => $matchedSupplier->name,
                     'existing_rif'        => $matchedSupplier->rif,
                     'existing_phone'      => $matchedSupplier->sales_phone,
+                    'existing_address'    => $matchedSupplier->address,
                     'existing_type'       => $matchedSupplier->type?->value ?? $matchedSupplier->type ?? 'drogueria',
                     'match_reason'        => $matchReason,
                     'updates_to_apply'    => $updates,
@@ -499,13 +596,12 @@ class OnboardingSupplierPayablesImportService
                     'invoices'            => $item['invoices'],
                 ];
             } else {
-                // Proveedor Nuevo
-                $cleanPhone = $this->sanitizePhone($item['sales_phone']);
                 $newList[] = [
                     'rif'            => $item['raw_rif'],
                     'clean_rif'      => $cleanRif,
                     'name'           => $item['name'],
                     'sales_phone'    => $cleanPhone,
+                    'address'        => $cleanAddress,
                     'suggested_type' => $this->guessSupplierType($item['name']),
                     'invoices_count' => $invoicesCount,
                     'total_usd'      => round($item['total_usd'], 2),
@@ -529,17 +625,54 @@ class OnboardingSupplierPayablesImportService
         ];
     }
 
-    /**
-     * Limpia un RIF dejando solo letras y números en mayúsculas (ej. 'J412236709').
-     */
+    protected function extractRawRows(string $filePath): array
+    {
+        if (!file_exists($filePath)) {
+            throw new \InvalidArgumentException("El archivo no existe en la ruta: {$filePath}");
+        }
+
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        if ($extension === 'csv' || $extension === 'txt') {
+            return $this->parseCsvFile($filePath);
+        }
+
+        $spreadsheet = IOFactory::load($filePath);
+        $sheet = $spreadsheet->getActiveSheet();
+        $highestRow = $sheet->getHighestRow();
+        $highestCol = $sheet->getHighestColumn();
+
+        $rows = [];
+        for ($r = 1; $r <= $highestRow; $r++) {
+            $rowRange = $sheet->rangeToArray("A{$r}:{$highestCol}{$r}", null, true, true, false)[0];
+            $rows[] = array_map(function ($val) {
+                return $val !== null ? (string) $val : '';
+            }, $rowRange);
+        }
+
+        return $rows;
+    }
+
+    protected function parseCsvFile(string $filePath): array
+    {
+        $rows = [];
+        $handle = fopen($filePath, 'r');
+        if ($handle === false) {
+            return [];
+        }
+
+        while (($data = fgetcsv($handle, 4096, ',')) !== false) {
+            $rows[] = array_map('strval', $data);
+        }
+        fclose($handle);
+
+        return $rows;
+    }
+
     protected function cleanRif(string $rif): string
     {
         return strtoupper(preg_replace('/[^a-zA-Z0-9]/', '', $rif));
     }
 
-    /**
-     * Formatea un RIF estándar venezolano para guardarlo amigablemente (ej. 'J-41223670-9').
-     */
     protected function formatRifForDisplay(string $rif): string
     {
         $clean = $this->cleanRif($rif);
@@ -559,9 +692,6 @@ class OnboardingSupplierPayablesImportService
         return "{$prefix}-{$body}";
     }
 
-    /**
-     * Normaliza un texto para comparación (minúsculas, sin acentos ni puntuaciones).
-     */
     protected function normalizeText(?string $text): string
     {
         if (empty($text)) {
@@ -578,9 +708,6 @@ class OnboardingSupplierPayablesImportService
         return preg_replace('/\s+/', ' ', $str);
     }
 
-    /**
-     * Infiere si el proveedor probablemente es Droguería o Proveedor de Gastos/Externo según su nombre.
-     */
     protected function guessSupplierType(string $name): string
     {
         $upper = strtoupper($name);
@@ -595,9 +722,6 @@ class OnboardingSupplierPayablesImportService
         return 'drogueria';
     }
 
-    /**
-     * Sanitiza un número de teléfono ignorando cadenas vacías o '0000'.
-     */
     protected function sanitizePhone(?string $phone): ?string
     {
         if (empty($phone)) {
@@ -605,16 +729,27 @@ class OnboardingSupplierPayablesImportService
         }
 
         $cleaned = trim(preg_replace('/[^\d\/\-\s]/', '', $phone));
-        if ($cleaned === '' || $cleaned === '0000' || $cleaned === '0' || $cleaned === '00000000') {
+        if ($cleaned === '' || $cleaned === '0000' || $cleaned === '0' || $cleaned === '00000000' || $phone === '.') {
             return null;
         }
 
         return $cleaned;
     }
 
-    /**
-     * Verifica si una cadena tiene formato de fecha DD/MM/YYYY o YYYY-MM-DD.
-     */
+    protected function sanitizeAddress(?string $address): ?string
+    {
+        if (empty($address)) {
+            return null;
+        }
+
+        $cleaned = trim($address);
+        if ($cleaned === '' || strtoupper($cleaned) === 'GENERICO' || strtoupper($cleaned) === 'S/N' || strtoupper($cleaned) === 'S/D' || $cleaned === '.') {
+            return null;
+        }
+
+        return $cleaned;
+    }
+
     protected function isValidDate(string $str): bool
     {
         $str = trim($str);
@@ -627,9 +762,6 @@ class OnboardingSupplierPayablesImportService
         return false;
     }
 
-    /**
-     * Convierte una cadena de fecha a formato ISO 'YYYY-MM-DD'.
-     */
     protected function parseDateString(string $dateStr): string
     {
         $dateStr = trim($dateStr);
@@ -643,27 +775,19 @@ class OnboardingSupplierPayablesImportService
         }
     }
 
-    /**
-     * Determina si una cadena representa un valor numérico con formato es-VE / en-US.
-     */
     protected function isNumericFormat(string $val): bool
     {
         $val = trim($val);
         return (bool) preg_match('/^-?\d{1,3}(?:\.\d{3})*(?:,\d+)?$/', $val) || (bool) preg_match('/^-?\d+(?:\.\d+)?$/', $val);
     }
 
-    /**
-     * Convierte cadenas numéricas venezolanas (ej. '7.221,30') o estándar a float.
-     */
     protected function parseNumericValue(string $val): float
     {
         $val = trim($val);
         if (str_contains($val, ',') && str_contains($val, '.')) {
-            // Formato '7.221,30'
             $val = str_replace('.', '', $val);
             $val = str_replace(',', '.', $val);
         } elseif (str_contains($val, ',')) {
-            // Formato '7221,30'
             $val = str_replace(',', '.', $val);
         }
 

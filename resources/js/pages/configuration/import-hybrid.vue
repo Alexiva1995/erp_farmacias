@@ -191,11 +191,17 @@ const executeImport = async () => {
 }
 
 // ==========================================================================
-// SECCIÓN 2: PROVEEDORES Y CUENTAS POR PAGAR (CXP)
+// SECCIÓN 2: PROVEEDORES Y CUENTAS POR PAGAR (CXP) - 2 ARCHIVOS
 // ==========================================================================
+const suppliersFile = ref(null)
 const payablesFile = ref(null)
+
+const suppliersInputRef = ref(null)
 const payablesInputRef = ref(null)
+
+const isDraggingSuppliers = ref(false)
 const isDraggingPayables = ref(false)
+
 const analyzingPayables = ref(false)
 const processingPayables = ref(false)
 const isPayablesModalOpen = ref(false)
@@ -214,8 +220,16 @@ try {
 }
 const lastPayablesResult = ref(initialPayablesStats)
 
+const suppliersFileSize = computed(() => {
+  return suppliersFile.value ? (suppliersFile.value.size / 1024).toFixed(2) : '0'
+})
+
 const payablesFileSize = computed(() => {
   return payablesFile.value ? (payablesFile.value.size / 1024).toFixed(2) : '0'
+})
+
+const canAnalyzeSuppliers = computed(() => {
+  return (suppliersFile.value !== null || payablesFile.value !== null) && !analyzingPayables.value && !processingPayables.value
 })
 
 const supplierTypeOptions = [
@@ -223,9 +237,19 @@ const supplierTypeOptions = [
   { title: 'Gasto / Servicio (Externo)', value: 'externo' },
 ]
 
+const clearSuppliersFile = () => {
+  suppliersFile.value = null
+  if (suppliersInputRef.value) suppliersInputRef.value.value = ''
+}
+
 const clearPayablesFile = () => {
   payablesFile.value = null
   if (payablesInputRef.value) payablesInputRef.value.value = ''
+}
+
+const clearAllSupplierFiles = () => {
+  clearSuppliersFile()
+  clearPayablesFile()
 }
 
 const clearPayablesReport = () => {
@@ -235,9 +259,26 @@ const clearPayablesReport = () => {
   } catch {}
 }
 
+const onSuppliersFileSelected = event => {
+  const file = event.target.files?.[0]
+  if (file) suppliersFile.value = file
+}
+
 const onPayablesFileSelected = event => {
   const file = event.target.files?.[0]
   if (file) payablesFile.value = file
+}
+
+const onDropSuppliers = event => {
+  isDraggingSuppliers.value = false
+  const file = event.dataTransfer?.files?.[0]
+  if (file) {
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
+      suppliersFile.value = file
+    } else {
+      toast.error('Formato no válido. Solo se admiten archivos Excel (.xlsx, .xls) o CSV.')
+    }
+  }
 }
 
 const onDropPayables = event => {
@@ -253,15 +294,20 @@ const onDropPayables = event => {
 }
 
 const analyzePayablesFile = async () => {
-  if (!payablesFile.value) {
-    toast.error('Por favor selecciona el archivo de Cuentas por Pagar a Proveedores.')
+  if (!suppliersFile.value && !payablesFile.value) {
+    toast.error('Por favor selecciona al menos el archivo de Listado de Proveedores o el de Cuentas por Pagar.')
     return
   }
 
   analyzingPayables.value = true
 
   const formData = new FormData()
-  formData.append('payables_file', payablesFile.value)
+  if (suppliersFile.value) {
+    formData.append('suppliers_file', suppliersFile.value)
+  }
+  if (payablesFile.value) {
+    formData.append('payables_file', payablesFile.value)
+  }
 
   try {
     const response = await axios.post('/import-hybrid/analyze-payables', formData, {
@@ -285,9 +331,9 @@ const analyzePayablesFile = async () => {
     }
 
     isPayablesModalOpen.value = true
-    toast.success('Análisis completado. Revisa las coincidencias y tipos de proveedores.')
+    toast.success('Análisis de proveedores y cuentas por pagar completado.')
   } catch (err) {
-    const message = err.response?.data?.message ?? 'Ocurrió un error al analizar el archivo de Cuentas por Pagar.'
+    const message = err.response?.data?.message ?? 'Ocurrió un error al analizar los archivos de proveedores y cuentas por pagar.'
     toast.error(message)
   } finally {
     analyzingPayables.value = false
@@ -311,6 +357,7 @@ const executePayablesImport = async () => {
       name: s.name,
       rif: s.rif,
       sales_phone: s.sales_phone,
+      address: s.address || null,
       type: s.selected_type || 'drogueria',
       is_new: true,
       existing_id: null,
@@ -324,6 +371,7 @@ const executePayablesImport = async () => {
       name: s.existing_name,
       rif: s.extracted_rif || s.existing_rif,
       sales_phone: s.extracted_phone || s.existing_phone,
+      address: s.extracted_address || s.existing_address || null,
       type: s.existing_type || 'drogueria',
       is_new: false,
       existing_id: s.existing_id,
@@ -363,7 +411,7 @@ const executePayablesImport = async () => {
     })
 
     toast.success('Proveedores y cuentas por pagar creados exitosamente.')
-    clearPayablesFile()
+    clearAllSupplierFiles()
   } catch (err) {
     const message = err.response?.data?.message ?? 'Ocurrió un error al importar los proveedores y facturas.'
     toast.error(message)
@@ -676,7 +724,7 @@ const executeSalesImport = async () => {
             Centro de Importación y Onboarding Híbrido
           </VCardTitle>
           <VCardSubtitle class="text-body-2">
-            Migración e integración unificada desde el sistema legado: Catálogo de Productos con Lotes, Cuentas por Pagar a Proveedores, Clientes y Transacciones de Ventas.
+            Migración e integración unificada desde el sistema legado: Catálogo de Productos con Lotes, Proveedores y Cuentas por Pagar (CXP), Clientes y Transacciones de Ventas.
           </VCardSubtitle>
         </VCardItem>
 
@@ -1093,7 +1141,7 @@ const executeSalesImport = async () => {
             </VWindowItem>
 
             <!-- =================================================================== -->
-            <!-- PESTAÑA 2: PROVEEDORES Y CUENTAS POR PAGAR (CXP) -->
+            <!-- PESTAÑA 2: PROVEEDORES Y CUENTAS POR PAGAR (CXP) - 2 ARCHIVOS -->
             <!-- =================================================================== -->
             <VWindowItem value="payables_suppliers">
               <VAlert
@@ -1105,58 +1153,138 @@ const executeSalesImport = async () => {
                 <div class="d-flex flex-column gap-1">
                   <span class="font-weight-bold">Correlación Inteligente y Creación de Facturas Pendientes (CXP):</span>
                   <ul class="ms-4 text-caption">
-                    <li><strong>Correlación por RIF:</strong> El sistema identifica automáticamente a los proveedores existentes comparando su RIF o razón social.</li>
-                    <li><strong>Enriquecimiento de Datos:</strong> Si el proveedor ya existe pero carece de RIF o teléfono, el sistema actualizará su ficha con la información del archivo.</li>
-                    <li><strong>Clasificación de Nuevos:</strong> Para los proveedores que no existan, podrás definir interactivamente si son de <strong>Inventario (Droguería)</strong> o de <strong>Gastos/Servicios (Externo)</strong>.</li>
-                    <li><strong>Facturas Pendientes:</strong> Se crearán automáticamente los registros de facturas por pagar (`invoices`) con sus montos en USD, Bs, fechas de emisión/vencimiento y factores de indexación.</li>
+                    <li><strong>Listado de Proveedores:</strong> Extrae la ficha completa (RIF, Nombre/Razón Social, Dirección exacta y Teléfonos).</li>
+                    <li><strong>Relación de Cuentas por Pagar:</strong> Extrae las facturas pendientes por pagar (`invoices`) con montos en USD, Bs, fechas y factores de indexación.</li>
+                    <li><strong>Carga Combinada:</strong> Puedes subir ambos archivos a la vez para cruzar las fichas con sus deudas, o subir solo el listado de proveedores.</li>
                   </ul>
                 </div>
               </VAlert>
 
-              <VRow justify="center">
+              <!-- Zona de Subida de Ambos Archivos de Proveedores -->
+              <VRow>
+                <!-- Archivo 1: Listado General de Proveedores -->
                 <VCol
                   cols="12"
-                  md="8"
+                  md="6"
+                >
+                  <div class="text-subtitle-2 font-weight-medium mb-2 d-flex align-center gap-1">
+                    <VIcon
+                      icon="tabler-address-book"
+                      size="18"
+                      color="primary"
+                    />
+                    1. Listado General de Proveedores (Directorio Maestro)
+                  </div>
+
+                  <div
+                    class="d-flex flex-column align-center justify-center rounded pa-6 border-dashed"
+                    :style="{
+                      borderWidth: '2px',
+                      borderColor: isDraggingSuppliers ? 'rgb(var(--v-theme-primary))' : 'rgba(var(--v-border-color), 0.35)',
+                      backgroundColor: isDraggingSuppliers ? 'rgba(var(--v-theme-primary), 0.05)' : 'transparent',
+                      minHeight: '190px'
+                    }"
+                    @dragover.prevent="isDraggingSuppliers = true"
+                    @dragleave.prevent="isDraggingSuppliers = false"
+                    @drop.prevent="onDropSuppliers"
+                  >
+                    <VIcon
+                      :icon="suppliersFile ? 'tabler-file-check' : 'tabler-building-store'"
+                      size="40"
+                      :color="suppliersFile ? 'success' : 'primary'"
+                      class="mb-2"
+                    />
+
+                    <template v-if="!suppliersFile">
+                      <span class="text-body-2 font-weight-medium mb-1">
+                        Arrastra el Listado de Proveedores
+                      </span>
+                      <span class="text-caption text-disabled mb-3">
+                        Ejemplo: Listado de Proveedores.xls
+                      </span>
+                    </template>
+                    <template v-else>
+                      <span class="text-body-2 font-weight-bold mb-1 text-center">{{ suppliersFile.name }}</span>
+                      <span class="text-caption text-medium-emphasis mb-2">{{ suppliersFileSize }} KB</span>
+                    </template>
+
+                    <input
+                      ref="suppliersInputRef"
+                      type="file"
+                      accept=".xlsx, .xls, .csv, .txt"
+                      class="d-none"
+                      @change="onSuppliersFileSelected"
+                    >
+
+                    <div class="d-flex gap-2">
+                      <VBtn
+                        color="secondary"
+                        variant="outlined"
+                        size="small"
+                        prepend-icon="tabler-upload"
+                        :disabled="analyzingPayables || processingPayables"
+                        @click="suppliersInputRef?.click()"
+                      >
+                        {{ suppliersFile ? 'Cambiar' : 'Seleccionar Archivo' }}
+                      </VBtn>
+
+                      <VBtn
+                        v-if="suppliersFile"
+                        color="error"
+                        variant="text"
+                        icon="tabler-trash"
+                        size="small"
+                        :disabled="analyzingPayables || processingPayables"
+                        @click="clearSuppliersFile"
+                      />
+                    </div>
+                  </div>
+                </VCol>
+
+                <!-- Archivo 2: Relación de Cuentas por Pagar (CXP) -->
+                <VCol
+                  cols="12"
+                  md="6"
                 >
                   <div class="text-subtitle-2 font-weight-medium mb-2 d-flex align-center gap-1">
                     <VIcon
                       icon="tabler-file-invoice"
                       size="18"
-                      color="primary"
+                      color="info"
                     />
-                    Archivo de Cuentas por Pagar a Proveedores (CXP)
+                    2. Relación de Cuentas por Pagar (CXP Facturas)
                   </div>
 
                   <div
-                    class="d-flex flex-column align-center justify-center rounded pa-8 border-dashed"
+                    class="d-flex flex-column align-center justify-center rounded pa-6 border-dashed"
                     :style="{
                       borderWidth: '2px',
-                      borderColor: isDraggingPayables ? 'rgb(var(--v-theme-primary))' : 'rgba(var(--v-border-color), 0.35)',
-                      backgroundColor: isDraggingPayables ? 'rgba(var(--v-theme-primary), 0.05)' : 'transparent',
-                      minHeight: '210px'
+                      borderColor: isDraggingPayables ? 'rgb(var(--v-theme-info))' : 'rgba(var(--v-border-color), 0.35)',
+                      backgroundColor: isDraggingPayables ? 'rgba(var(--v-theme-info), 0.05)' : 'transparent',
+                      minHeight: '190px'
                     }"
                     @dragover.prevent="isDraggingPayables = true"
                     @dragleave.prevent="isDraggingPayables = false"
                     @drop.prevent="onDropPayables"
                   >
                     <VIcon
-                      :icon="payablesFile ? 'tabler-file-check' : 'tabler-upload'"
-                      size="48"
-                      :color="payablesFile ? 'success' : 'primary'"
+                      :icon="payablesFile ? 'tabler-file-check' : 'tabler-file-dollar'"
+                      size="40"
+                      :color="payablesFile ? 'success' : 'info'"
                       class="mb-2"
                     />
 
                     <template v-if="!payablesFile">
-                      <span class="text-body-1 font-weight-medium mb-1">
+                      <span class="text-body-2 font-weight-medium mb-1">
                         Arrastra el archivo de Cuentas por Pagar
                       </span>
-                      <span class="text-caption text-disabled mb-4">
-                        Formatos admitidos: Excel (.xlsx, .xls) o CSV (.csv, .txt)
+                      <span class="text-caption text-disabled mb-3">
+                        Ejemplo: Relación de Cuentas por Pagar.xls
                       </span>
                     </template>
                     <template v-else>
-                      <span class="text-body-1 font-weight-bold mb-1 text-center">{{ payablesFile.name }}</span>
-                      <span class="text-caption text-medium-emphasis mb-3">{{ payablesFileSize }} KB</span>
+                      <span class="text-body-2 font-weight-bold mb-1 text-center">{{ payablesFile.name }}</span>
+                      <span class="text-caption text-medium-emphasis mb-2">{{ payablesFileSize }} KB</span>
                     </template>
 
                     <input
@@ -1176,7 +1304,7 @@ const executeSalesImport = async () => {
                         :disabled="analyzingPayables || processingPayables"
                         @click="payablesInputRef?.click()"
                       >
-                        {{ payablesFile ? 'Cambiar Archivo' : 'Seleccionar Archivo' }}
+                        {{ payablesFile ? 'Cambiar' : 'Seleccionar Archivo' }}
                       </VBtn>
 
                       <VBtn
@@ -1190,22 +1318,24 @@ const executeSalesImport = async () => {
                       />
                     </div>
                   </div>
-
-                  <div class="d-flex justify-center mt-6">
-                    <VBtn
-                      color="primary"
-                      size="large"
-                      prepend-icon="tabler-scan-eye"
-                      :disabled="!payablesFile || analyzingPayables || processingPayables"
-                      :loading="analyzingPayables"
-                      @click="analyzePayablesFile"
-                    >
-                      Analizar Proveedores y CXP
-                    </VBtn>
-                  </div>
                 </VCol>
               </VRow>
 
+              <!-- Botón de Análisis -->
+              <div class="d-flex justify-center mt-6">
+                <VBtn
+                  color="primary"
+                  size="large"
+                  prepend-icon="tabler-scan-eye"
+                  :disabled="!canAnalyzeSuppliers"
+                  :loading="analyzingPayables"
+                  @click="analyzePayablesFile"
+                >
+                  Analizar Proveedores y CXP
+                </VBtn>
+              </div>
+
+              <!-- Resumen de Última Ejecución de CXP -->
               <VCard
                 v-if="lastPayablesResult"
                 variant="tonal"
@@ -1841,6 +1971,7 @@ const executeSalesImport = async () => {
                     <tr class="bg-surface">
                       <th class="text-left">RIF Extraído</th>
                       <th class="text-left">Nombre / Razón Social</th>
+                      <th class="text-left">Dirección</th>
                       <th class="text-left">Teléfono</th>
                       <th class="text-center">Facturas</th>
                       <th class="text-right">Total USD</th>
@@ -1868,6 +1999,9 @@ const executeSalesImport = async () => {
                       </td>
                       <td class="text-body-2 font-weight-bold">
                         {{ item.name }}
+                      </td>
+                      <td class="text-caption text-medium-emphasis">
+                        {{ item.address || 'No especificada' }}
                       </td>
                       <td class="text-caption text-medium-emphasis">
                         {{ item.sales_phone || 'No especificado' }}
@@ -1940,6 +2074,12 @@ const executeSalesImport = async () => {
                       <td>
                         <div class="text-body-2 font-weight-bold">{{ item.extracted_name }}</div>
                         <div class="text-caption text-disabled">RIF: {{ item.extracted_rif || 'S/R' }} | Tel: {{ item.extracted_phone || 'S/T' }}</div>
+                        <div
+                          v-if="item.extracted_address"
+                          class="text-caption text-medium-emphasis"
+                        >
+                          Dir: {{ item.extracted_address }}
+                        </div>
                       </td>
                       <td>
                         <div class="text-body-2 font-weight-bold text-primary">{{ item.existing_name }}</div>
@@ -1981,6 +2121,14 @@ const executeSalesImport = async () => {
                             variant="outlined"
                           >
                             + Tel: {{ item.updates_to_apply.sales_phone }}
+                          </VChip>
+                          <VChip
+                            v-if="item.updates_to_apply.address"
+                            size="x-small"
+                            color="primary"
+                            variant="outlined"
+                          >
+                            + Dirección
                           </VChip>
                         </div>
                         <span
@@ -2440,7 +2588,6 @@ const executeSalesImport = async () => {
             </VCol>
           </VRow>
 
-          <!-- Listado de Órdenes con Detalle -->
           <div
             v-if="salesOrdersList.length > 0"
             class="d-flex flex-column gap-3"
@@ -2483,7 +2630,6 @@ const executeSalesImport = async () => {
                 </div>
               </div>
 
-              <!-- Detalle de productos de la orden -->
               <VTable
                 density="compact"
                 class="bg-surface rounded border"

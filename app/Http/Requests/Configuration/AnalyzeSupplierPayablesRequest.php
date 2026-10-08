@@ -16,16 +16,27 @@ class AnalyzeSupplierPayablesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'payables_file' => ['required', 'file', 'mimes:xlsx,xls,csv,txt'],
+            'suppliers_file' => ['nullable', 'file', 'mimes:xlsx,xls,csv,txt'],
+            'payables_file'  => ['nullable', 'file', 'mimes:xlsx,xls,csv,txt'],
         ];
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            if (!$this->hasFile('suppliers_file') && !$this->hasFile('payables_file')) {
+                $validator->errors()->add('files', 'Debe seleccionar al menos el Listado de Proveedores o la Relación de Cuentas por Pagar.');
+            }
+        });
     }
 
     public function messages(): array
     {
         return [
-            'payables_file.required' => 'El archivo de Cuentas por Pagar y Proveedores es obligatorio.',
-            'payables_file.file'     => 'El archivo de Cuentas por Pagar debe ser un archivo válido.',
-            'payables_file.mimes'    => 'El formato debe ser .xlsx, .xls, .csv o .txt.',
+            'suppliers_file.file'  => 'El archivo de listado de proveedores debe ser un archivo válido.',
+            'suppliers_file.mimes' => 'El formato del listado de proveedores debe ser .xlsx, .xls, .csv o .txt.',
+            'payables_file.file'   => 'El archivo de cuentas por pagar debe ser un archivo válido.',
+            'payables_file.mimes'  => 'El formato de cuentas por pagar debe ser .xlsx, .xls, .csv o .txt.',
         ];
     }
 }

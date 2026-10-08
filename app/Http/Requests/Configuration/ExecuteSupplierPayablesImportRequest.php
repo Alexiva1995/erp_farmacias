@@ -20,6 +20,7 @@ class ExecuteSupplierPayablesImportRequest extends FormRequest
             'suppliers.*.name'                   => ['required', 'string'],
             'suppliers.*.rif'                    => ['nullable', 'string'],
             'suppliers.*.sales_phone'            => ['nullable', 'string'],
+            'suppliers.*.address'                => ['nullable', 'string'],
             'suppliers.*.type'                   => ['required', 'string', 'in:drogueria,externo'],
             'suppliers.*.is_new'                 => ['required', 'boolean'],
             'suppliers.*.existing_id'            => ['nullable', 'integer'],

@@ -94,3 +94,5 @@ famco.sql
 
 # Scratch/Temporary AI scripts
 /scratch
+*.xls
+*.xlsx
