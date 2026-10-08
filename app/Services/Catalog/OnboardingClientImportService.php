@@ -59,48 +59,89 @@ class OnboardingClientImportService
                 }
 
                 if ($isNew || !$existingId) {
-                    $client = Client::where('identification_type', $identType)
-                        ->where('identification', $identNumber)
-                        ->first();
+                    $client = Client::where('identification', $identNumber)->first();
 
                     if (!$client) {
-                        Client::create([
-                            'identification_type' => $identType,
-                            'identification'      => $identNumber,
-                            'name'                => $name,
-                            'last_name'           => $lastName,
-                            'phone'               => $phone,
-                            'address'             => $address,
-                            'client_type'         => Client::CLIENT_TYPE_NUEVO,
-                            'status'              => 1,
-                            'user_id'             => $currentUserId,
-                            'balance'             => 0.0,
-                            'is_spe'              => false,
-                        ]);
-                        $stats['clients_created']++;
+                        try {
+                            Client::create([
+                                'identification_type' => $identType,
+                                'identification'      => $identNumber,
+                                'name'                => $name,
+                                'last_name'           => $lastName,
+                                'phone'               => $phone,
+                                'address'             => $address,
+                                'client_type'         => Client::CLIENT_TYPE_NUEVO,
+                                'status'              => 1,
+                                'user_id'             => $currentUserId,
+                                'balance'             => 0.0,
+                                'is_spe'              => false,
+                            ]);
+                            $stats['clients_created']++;
+                        } catch (\Illuminate\Database\QueryException $e) {
+                            if (isset($e->errorInfo[1]) && $e->errorInfo[1] == 1062) {
+                                $existingClient = Client::where('identification', $identNumber)->first();
+                                if ($existingClient) {
+                                    $needsUpdate = false;
+                                    if (empty($existingClient->phone) && !empty($phone)) {
+                                        $existingClient->phone = $phone;
+                                        $needsUpdate = true;
+                                    }
+                                    $existingAddr = trim((string) ($existingClient->address ?? ''));
+                                    if (!empty($address) && (empty($existingAddr) || in_array(strtoupper($existingAddr), ['LOCAL', 'S/N', 'S/D', 'GENERICO', '.'], true) || strlen($address) > strlen($existingAddr))) {
+                                        $existingClient->address = $address;
+                                        $needsUpdate = true;
+                                    }
+                                    if ($needsUpdate) {
+                                        $existingClient->updated_by = $currentUserId;
+                                        $existingClient->save();
+                                        $stats['clients_updated']++;
+                                    } else {
+                                        $stats['clients_unchanged']++;
+                                    }
+                                } else {
+                                    $stats['clients_unchanged']++;
+                                }
+                            } else {
+                                throw $e;
+                            }
+                        }
                     } else {
-                        $stats['clients_unchanged']++;
+                        $needsUpdate = false;
+                        if (empty($client->phone) && !empty($phone)) {
+                            $client->phone = $phone;
+                            $needsUpdate = true;
+                        }
+                        $existingAddr = trim((string) ($client->address ?? ''));
+                        if (!empty($address) && (empty($existingAddr) || in_array(strtoupper($existingAddr), ['LOCAL', 'S/N', 'S/D', 'GENERICO', '.'], true) || strlen($address) > strlen($existingAddr))) {
+                            $client->address = $address;
+                            $needsUpdate = true;
+                        }
+                        if ($needsUpdate) {
+                            $client->updated_by = $currentUserId;
+                            $client->save();
+                            $stats['clients_updated']++;
+                        } else {
+                            $stats['clients_unchanged']++;
+                        }
                     }
                 } else {
-                    $client = Client::find($existingId);
+                    $client = Client::find($existingId) ?? Client::where('identification', $identNumber)->first();
                     if ($client) {
                         $needsUpdate = false;
                         $updateData = $item['update_data'] ?? [];
 
-                        if (!empty($updateData['phone']) && empty($client->phone)) {
-                            $cleanPhone = $this->sanitizePhone($updateData['phone']);
-                            if ($cleanPhone) {
-                                $client->phone = $cleanPhone;
-                                $needsUpdate = true;
-                            }
+                        $phoneToUpdate = $this->sanitizePhone($updateData['phone'] ?? $phone);
+                        $existingPhone = trim((string) ($client->phone ?? ''));
+                        if (!empty($phoneToUpdate) && (empty($existingPhone) || strlen($phoneToUpdate) > strlen($existingPhone))) {
+                            $client->phone = $phoneToUpdate;
+                            $needsUpdate = true;
                         }
 
-                        if (!empty($updateData['address']) && (empty($client->address) || strtoupper($client->address) === 'LOCAL' || strtoupper($client->address) === 'S/N')) {
-                            $cleanAddr = $this->sanitizeAddress($updateData['address']);
-                            if ($cleanAddr) {
-                                $client->address = $cleanAddr;
-                                $needsUpdate = true;
-                            }
+                        $addrToUpdate = $this->sanitizeAddress($updateData['address'] ?? $address);
+                        $existingAddr = trim((string) ($client->address ?? ''));
+                        if (!empty($addrToUpdate) && (empty($existingAddr) || in_array(strtoupper($existingAddr), ['LOCAL', 'S/N', 'S/D', 'GENERICO', '.'], true) || strlen($addrToUpdate) > strlen($existingAddr))) {
+                            $client->address = $addrToUpdate;
+                            $needsUpdate = true;
                         }
 
                         if ($needsUpdate) {
@@ -367,27 +408,42 @@ class OnboardingClientImportService
 
         $existingByIdent = [];
         foreach ($existingClients as $client) {
-            $key = $client->identification_type . ltrim((string) $client->identification, '0');
-            $existingByIdent[$key] = $client;
-            $numKey = ltrim((string) $client->identification, '0');
+            $rawIdent = trim((string) $client->identification);
+            $numKey = ltrim($rawIdent, '0');
+            $existingByIdent[$rawIdent] = $client;
+            $existingByIdent[$numKey] = $client;
+            $existingByIdent['NUM_' . $rawIdent] = $client;
             $existingByIdent['NUM_' . $numKey] = $client;
+            if (!empty($client->identification_type)) {
+                $existingByIdent[$client->identification_type . $rawIdent] = $client;
+                $existingByIdent[$client->identification_type . $numKey] = $client;
+            }
         }
 
         $matchedList = [];
         $newList = [];
 
         foreach ($parsedClients as $item) {
-            $keyExact = $item['identification_type'] . ltrim($item['identification'], '0');
-            $keyNum = 'NUM_' . ltrim($item['identification'], '0');
+            $rawIdent = trim((string) $item['identification']);
+            $numKey = ltrim($rawIdent, '0');
+            $keyExact = ($item['identification_type'] ?? 'V-') . $rawIdent;
+            $keyNum = ($item['identification_type'] ?? 'V-') . $numKey;
 
-            $matchedClient = $existingByIdent[$keyExact] ?? $existingByIdent[$keyNum] ?? null;
+            $matchedClient = $existingByIdent[$rawIdent]
+                ?? $existingByIdent[$numKey]
+                ?? $existingByIdent[$keyExact]
+                ?? $existingByIdent[$keyNum]
+                ?? $existingByIdent['NUM_' . $rawIdent]
+                ?? $existingByIdent['NUM_' . $numKey]
+                ?? null;
 
             if ($matchedClient) {
                 $updates = [];
                 if (empty($matchedClient->phone) && !empty($item['phone'])) {
                     $updates['phone'] = $item['phone'];
                 }
-                if ((empty($matchedClient->address) || strtoupper($matchedClient->address) === 'LOCAL' || strtoupper($matchedClient->address) === 'S/N') && !empty($item['address'])) {
+                $existingAddr = trim((string) ($matchedClient->address ?? ''));
+                if (!empty($item['address']) && (empty($existingAddr) || in_array(strtoupper($existingAddr), ['LOCAL', 'S/N', 'S/D', 'GENERICO', '.'], true) || strlen($item['address']) > strlen($existingAddr))) {
                     $updates['address'] = $item['address'];
                 }
 
