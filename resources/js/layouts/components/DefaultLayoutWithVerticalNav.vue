@@ -389,6 +389,14 @@ const processedNavItems = computed(() => {
           if (childs.length === 0) return null;
         }
 
+        // Filtrar Farmacias (SaaS) para que solo aparezca en la Master / Central
+        if (copy.title === 'Configuración') {
+          const isTenant = brandingStore.settings.is_tenant ?? false;
+          if (isTenant) {
+            childs = childs.filter(c => c.to !== 'configuration-tenants' && c.title !== 'Farmacias (SaaS)');
+          }
+        }
+
         copy.children = childs;
       }
       return copy;

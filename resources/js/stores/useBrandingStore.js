@@ -52,6 +52,8 @@ export const useBrandingStore = defineStore('branding', () => {
     enable_invoice_locations: true,
     enable_reservations: true,
     enabled_telegram_views: ['configuration', 'generales', 'farmacia', 'restaurante', 'cosmeticos', 'alquileres'],
+    is_tenant: false,
+    is_master: true,
   })
 
   const isLoading = ref(false)
@@ -83,6 +85,8 @@ export const useBrandingStore = defineStore('branding', () => {
           if (bootstrapResponse.data?.data) {
             settings.value.business_type = bootstrapResponse.data.data.business_type
             settings.value.enabled_modules = bootstrapResponse.data.data.enabled_modules
+            settings.value.is_tenant = Boolean(bootstrapResponse.data.data.is_tenant)
+            settings.value.is_master = Boolean(bootstrapResponse.data.data.is_master)
             localStorage.setItem('business_type', bootstrapResponse.data.data.business_type)
           }
         } catch (e) {

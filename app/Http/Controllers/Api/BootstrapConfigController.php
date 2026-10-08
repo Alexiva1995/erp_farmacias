@@ -15,11 +15,15 @@ class BootstrapConfigController extends Controller
         $businessType = \App\Models\GeneralSetting::first()?->business_type ?? env('BUSINESS_TYPE', 'pharmacy');
         $enabledModules = \App\Providers\ModuleServiceProvider::getEnabledModules();
 
+        $isTenant = function_exists('tenancy') && tenancy()->initialized;
+
         return response()->json([
             'status' => 'success',
             'data' => [
                 'business_type' => $businessType,
                 'enabled_modules' => $enabledModules,
+                'is_tenant' => $isTenant,
+                'is_master' => !$isTenant,
             ]
         ]);
     }

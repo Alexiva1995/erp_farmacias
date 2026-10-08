@@ -1,6 +1,10 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import axios from '@axios'
+import { useBrandingStore } from '@/stores/useBrandingStore'
+
+const brandingStore = useBrandingStore()
+const isTenantInstance = computed(() => Boolean(brandingStore.settings.is_tenant))
 
 // Estados reactivos
 const isLoading = ref(false)
@@ -173,12 +177,25 @@ const handleDeleteTenant = async () => {
 }
 
 onMounted(() => {
-  fetchTenants()
+  if (!isTenantInstance.value) {
+    fetchTenants()
+  }
 })
 </script>
 
 <template>
-  <div>
+  <div v-if="isTenantInstance">
+    <VAlert
+      type="warning"
+      variant="tonal"
+      class="mb-6"
+      title="Módulo Exclusivo de la Instancia Central (Master)"
+    >
+      La gestión y aprovisionamiento de farmacias SaaS solo está habilitada desde el dominio maestro central del sistema.
+    </VAlert>
+  </div>
+
+  <div v-else>
     <!-- Encabezado de la Sección -->
     <div class="d-flex flex-column flex-sm-row align-sm-center justify-space-between mb-6 ga-3">
       <div>

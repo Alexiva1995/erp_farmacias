@@ -128,9 +128,9 @@ class GeneralSettingResource extends JsonResource
             'fiscal_machine_type' => $this->fiscal_machine_type ?? 'pnp',
             'factory_printer_ip' => $this->factory_printer_ip ?? '127.0.0.1',
             'factory_printer_port' => (int) ($this->factory_printer_port ?? 8090),
-            'app_logo' => $this->app_logo,
-            'app_favicon' => $this->app_favicon,
-            'app_signature_stamp' => $this->app_signature_stamp,
+            'app_logo' => $this->formatAssetUrl($this->app_logo),
+            'app_favicon' => $this->formatAssetUrl($this->app_favicon),
+            'app_signature_stamp' => $this->formatAssetUrl($this->app_signature_stamp),
             'primary_color' => $this->primary_color ?? '#E20074',
             'secondary_color' => $this->secondary_color ?? '#7A0099',
             'tertiary_color' => $this->tertiary_color ?? '#F5C842',
@@ -234,5 +234,34 @@ class GeneralSettingResource extends JsonResource
         }
 
         return $data;
+    }
+
+    /**
+     * Resuelve la URL pública o de tenant para un recurso estático / imagen.
+     *
+     * @param string|null $path
+     * @return string|null
+     */
+    protected function formatAssetUrl(?string $path): ?string
+    {
+        if (empty($path)) {
+            return null;
+        }
+
+        // Si ya es una URL completa (http/https), devolverla tal cual
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        $cleanPath = ltrim($path, '/');
+        if (str_starts_with($cleanPath, 'storage/')) {
+            $cleanPath = substr($cleanPath, 8);
+        }
+
+        if (function_exists('tenancy') && tenancy()->initialized && function_exists('tenant_asset')) {
+            return tenant_asset($cleanPath);
+        }
+
+        return \Illuminate\Support\Facades\Storage::url($cleanPath);
     }
 }

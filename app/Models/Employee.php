@@ -43,7 +43,17 @@ class Employee extends Model
         if (!$path || trim($path) === '' || strtolower(trim($path)) === 'null') {
             return null;
         }
-        return Storage::url($path);
+
+        $cleanPath = ltrim($path, '/');
+        if (str_starts_with($cleanPath, 'storage/')) {
+            $cleanPath = substr($cleanPath, 8);
+        }
+
+        if (function_exists('tenancy') && tenancy()->initialized && function_exists('tenant_asset')) {
+            return tenant_asset($cleanPath);
+        }
+
+        return Storage::url($cleanPath);
     }
 
     /**

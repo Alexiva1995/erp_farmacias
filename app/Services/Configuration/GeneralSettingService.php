@@ -96,6 +96,11 @@ class GeneralSettingService
     protected function uploadFile(UploadedFile $file, string $folder): string
     {
         $path = $file->store($folder, 'public');
+
+        if (function_exists('tenancy') && tenancy()->initialized && function_exists('tenant_asset')) {
+            return tenant_asset($path);
+        }
+
         return Storage::url($path);
     }
 }

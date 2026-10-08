@@ -162,6 +162,11 @@ class Product extends Model
                 } elseif (str_starts_with($url, 'storage/')) {
                     $url = substr($url, 8);
                 }
+
+                if (function_exists('tenancy') && tenancy()->initialized && function_exists('tenant_asset')) {
+                    return tenant_asset($url);
+                }
+
                 return \Illuminate\Support\Facades\Storage::url($url);
             }
         );
