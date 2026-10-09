@@ -11,6 +11,7 @@ use App\Models\Product;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -599,28 +600,38 @@ class OnboardingSalesOrdersImportService
             return $this->bcvRateCache[$dateKey];
         }
 
-        // 1. Buscar en ExchangeRate en esa fecha exacta
+        // 1. Buscar en BD local en esa fecha exacta
         $rate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'BCV', 'USD_VES'])
             ->whereDate('created_at', $dateKey)
             ->orderByDesc('id')
             ->value('rate');
 
-        // 2. Si no hay en esa fecha exacta, buscar la más cercana anterior o igual
-        if (!$rate || (float) $rate <= 0) {
-            $rate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'BCV', 'USD_VES'])
-                ->where('created_at', '<=', $date->endOfDay())
-                ->orderByDesc('created_at')
-                ->value('rate');
+        if ($rate && (float) $rate > 0) {
+            $this->bcvRateCache[$dateKey] = (float) $rate;
+            return (float) $rate;
         }
 
-        // 3. Si sigue sin existir (ej. fechas anteriores al primer registro), buscar la primera histórica
+        // 2. Consultar la API histórica oficial de DolarApi (ve.dolarapi.com/v1/historicos/dolares/oficial/{YYYY}/{MM}/{DD})
+        $apiRate = $this->fetchHistoricalBcvRateFromApi($date);
+        if ($apiRate && $apiRate > 0) {
+            $this->bcvRateCache[$dateKey] = $apiRate;
+            return $apiRate;
+        }
+
+        // 3. Si no hay en la API para esa fecha exacta, buscar en BD la más cercana anterior o igual
+        $rate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'BCV', 'USD_VES'])
+            ->where('created_at', '<=', $date->endOfDay())
+            ->orderByDesc('created_at')
+            ->value('rate');
+
+        // 4. Si sigue sin existir, buscar la primera histórica en BD
         if (!$rate || (float) $rate <= 0) {
             $rate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'BCV', 'USD_VES'])
                 ->orderBy('created_at', 'asc')
                 ->value('rate');
         }
 
-        // 4. Fallback a la última tasa registrada
+        // 5. Fallback a la última tasa registrada
         if (!$rate || (float) $rate <= 0) {
             $rate = \App\Models\ExchangeRate::whereIn('currency_code', ['BS', 'VES', 'BCV', 'USD_VES'])
                 ->orderByDesc('id')
@@ -631,6 +642,33 @@ class OnboardingSalesOrdersImportService
         $this->bcvRateCache[$dateKey] = $finalRate;
 
         return $finalRate;
+    }
+
+    /**
+     * Consulta la tasa BCV histórica en la API externa para una fecha específica.
+     */
+    protected function fetchHistoricalBcvRateFromApi(Carbon $date): ?float
+    {
+        try {
+            $year = $date->format('Y');
+            $month = $date->format('m');
+            $day = $date->format('d');
+
+            $url = "https://ve.dolarapi.com/v1/historicos/dolares/oficial/{$year}/{$month}/{$day}";
+            $response = Http::timeout(4)->retry(2, 500)->get($url);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $rate = $data['promedio'] ?? $data['monto'] ?? $data['precio'] ?? null;
+                if ($rate && (float) $rate > 0) {
+                    return (float) $rate;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("[OnboardingSalesOrdersImport] Error consultando API BCV histórica para {$date->toDateString()}: " . $e->getMessage());
+        }
+
+        return null;
     }
 
     /**
