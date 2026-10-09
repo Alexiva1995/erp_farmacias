@@ -142,7 +142,7 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
             ];
         }
 
-        // 4. Estadísticas a nivel de Órdenes Totales
+        // 4. Estadísticas a nivel de Órdenes Totales y Costos Totales de las Órdenes
         $orderStats = DB::table('orders')
             ->whereIn('id', $orderIds)
             ->selectRaw('
@@ -152,6 +152,19 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
                 COALESCE(AVG(total_amount_usd), 0) as average_ticket_usd
             ')
             ->first();
+
+        // Costos totales de toda la canasta por orden
+        $orderTotalCosts = DB::table('order_details')
+            ->whereIn('order_id', $orderIds)
+            ->select('order_id', DB::raw('SUM(quantity * unit_cost) as total_order_cost'))
+            ->groupBy('order_id')
+            ->pluck('total_order_cost', 'order_id')
+            ->toArray();
+
+        $totalOrdersAmountUsd = (float) ($orderStats->total_orders_amount_usd ?? 0);
+        $totalOrdersCostUsd = (float) array_sum($orderTotalCosts);
+        $totalOrdersProfitUsd = round($totalOrdersAmountUsd - $totalOrdersCostUsd, 2);
+        $totalOrdersMargin = $totalOrdersAmountUsd > 0 ? round(($totalOrdersProfitUsd / $totalOrdersAmountUsd) * 100, 2) : 0;
 
         // 5. Estadísticas del ítem en oferta
         $offerItemStats = DB::table('order_details')
@@ -240,14 +253,19 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
             ->groupBy('orders.seller_id', 'employees.name', 'employees.last_name', 'users.username')
             ->orderByDesc('units_sold')
             ->get()
-            ->map(function ($seller) use ($crossSellOrderIds, $orderIds) {
+            ->map(function ($seller) use ($crossSellOrderIds, $orderIds, $orderTotalCosts) {
                 $sellerOrders = DB::table('orders')
                     ->whereIn('id', $orderIds)
                     ->where('seller_id', $seller->seller_id)
-                    ->pluck('id')
-                    ->toArray();
+                    ->select('id', 'total_amount_usd')
+                    ->get();
 
-                $crossCount = count(array_intersect($sellerOrders, $crossSellOrderIds));
+                $sellerOrderIds = $sellerOrders->pluck('id')->toArray();
+                $sellerTotalAmount = (float) $sellerOrders->sum('total_amount_usd');
+                $sellerTotalCost = (float) array_sum(array_intersect_key($orderTotalCosts, array_flip($sellerOrderIds)));
+                $sellerTotalProfit = round($sellerTotalAmount - $sellerTotalCost, 2);
+
+                $crossCount = count(array_intersect($sellerOrderIds, $crossSellOrderIds));
                 $totalOrders = (int) $seller->orders_count;
                 $crossPercentage = $totalOrders > 0 ? round(($crossCount / $totalOrders) * 100, 2) : 0;
 
@@ -258,7 +276,8 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
                     'orders_count' => $totalOrders,
                     'cross_sell_orders_count' => $crossCount,
                     'cross_sell_percentage' => $crossPercentage,
-                    'total_usd' => (float) round($seller->total_usd, 2),
+                    'total_usd' => (float) round($sellerTotalAmount, 2),
+                    'total_profit_usd' => (float) $sellerTotalProfit,
                     'profit_usd' => (float) round($seller->profit_usd, 2),
                 ];
             })
@@ -297,12 +316,17 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
             ->orderByDesc('orders.order_date')
             ->orderByDesc('orders.id')
             ->get()
-            ->map(function ($order) use ($crossSellOrderIds) {
+            ->map(function ($order) use ($crossSellOrderIds, $orderTotalCosts) {
                 $offerRev = (float) $order->offer_revenue_usd;
                 $offerCost = (float) $order->offer_cost_usd;
                 $offerProfit = round($offerRev - $offerCost, 2);
                 $offerMargin = $offerRev > 0 ? round(($offerProfit / $offerRev) * 100, 2) : 0;
                 $isCrossSell = in_array($order->order_id, $crossSellOrderIds);
+
+                $orderTotalUsd = (float) round($order->total_amount_usd ?? 0, 2);
+                $orderTotalCost = (float) ($orderTotalCosts[$order->order_id] ?? 0);
+                $orderTotalProfit = round($orderTotalUsd - $orderTotalCost, 2);
+                $orderTotalMargin = $orderTotalUsd > 0 ? round(($orderTotalProfit / $orderTotalUsd) * 100, 2) : 0;
 
                 return [
                     'order_id' => $order->order_id,
@@ -314,7 +338,9 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
                     'offer_cost_usd' => (float) round($offerCost, 2),
                     'offer_profit_usd' => (float) $offerProfit,
                     'offer_margin' => $offerMargin,
-                    'order_total_usd' => (float) round($order->total_amount_usd ?? 0, 2),
+                    'order_total_usd' => $orderTotalUsd,
+                    'order_total_profit_usd' => $orderTotalProfit,
+                    'order_total_margin' => $orderTotalMargin,
                     'is_cross_sell' => $isCrossSell,
                 ];
             })
@@ -330,7 +356,9 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
                 'single_item_orders_count' => $singleItemCount,
                 'cross_sell_percentage' => $crossSellPercentage,
                 'average_ticket_usd' => (float) round($orderStats->average_ticket_usd ?? 0, 2),
-                'total_orders_amount_usd' => (float) round($orderStats->total_orders_amount_usd ?? 0, 2),
+                'total_orders_amount_usd' => $totalOrdersAmountUsd,
+                'total_orders_profit_usd' => $totalOrdersProfitUsd,
+                'total_orders_margin' => $totalOrdersMargin,
                 'offer_revenue_usd' => (float) round($offerRevenue, 2),
                 'offer_cost_usd' => (float) round($offerCost, 2),
                 'offer_profit_usd' => (float) round($offerProfit, 2),

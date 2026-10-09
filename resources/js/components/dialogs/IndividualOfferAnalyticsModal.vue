@@ -52,7 +52,9 @@ const formatDateTime = (dateStr) => {
 
 const formatCurrencyUSD = (amount) => {
   const val = parseFloat(amount) || 0;
-  return `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const sign = val < 0 ? "-" : "";
+  const absVal = Math.abs(val);
+  return `${sign}$${absVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const sellerOptions = computed(() => {
@@ -115,7 +117,7 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
 <template>
   <VDialog
     v-model="isVisible"
-    max-width="1050"
+    max-width="1120"
     scrollable
     :fullscreen="mobile"
     transition="dialog-bottom-transition"
@@ -292,12 +294,12 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
               </VCard>
             </VCol>
 
-            <!-- KPI 4: Ganancia Neta -->
+            <!-- KPI 4: Ganancia Global vs Oferta -->
             <VCol cols="12" sm="6" md="3">
               <VCard variant="outlined" class="pa-3 h-100 kpi-card border-warning-subtle">
                 <div class="d-flex justify-space-between align-center mb-1">
                   <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase">
-                    Ganancia Oferta
+                    Ganancia Total Órdenes
                   </span>
                   <VAvatar color="warning" variant="tonal" size="28" rounded>
                     <VIcon icon="tabler-chart-pie" size="16" />
@@ -305,13 +307,18 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
                 </div>
                 <div
                   class="text-h5 font-weight-black"
-                  :class="kpis.offer_profit_usd >= 0 ? 'text-warning' : 'text-error'"
+                  :class="kpis.total_orders_profit_usd >= 0 ? 'text-success' : 'text-error'"
                 >
-                  {{ formatCurrencyUSD(kpis.offer_profit_usd) }}
+                  {{ formatCurrencyUSD(kpis.total_orders_profit_usd) }}
                 </div>
-                <div class="text-caption text-medium-emphasis mt-1 d-flex justify-space-between">
-                  <span>Margen: <strong>{{ kpis.offer_profit_margin || 0 }}%</strong></span>
-                  <span>Ahorro Clte: <strong>{{ formatCurrencyUSD(kpis.discount_savings_usd) }}</strong></span>
+                <div class="text-caption text-medium-emphasis mt-1 d-flex flex-column gap-0-5">
+                  <div class="d-flex justify-space-between">
+                    <span>Margen Global: <strong>{{ kpis.total_orders_margin || 0 }}%</strong></span>
+                    <span>Ahorro Clte: <strong>{{ formatCurrencyUSD(kpis.discount_savings_usd) }}</strong></span>
+                  </div>
+                  <div class="text-super-xs text-disabled">
+                    Ítem Oferta solo: <span :class="kpis.offer_profit_usd >= 0 ? 'text-success font-weight-bold' : 'text-error font-weight-bold'">{{ formatCurrencyUSD(kpis.offer_profit_usd) }} ({{ kpis.offer_profit_margin || 0 }}%)</span>
+                  </div>
                 </div>
               </VCard>
             </VCol>
@@ -398,12 +405,13 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
                       <th class="text-center font-weight-bold text-uppercase text-caption">Órdenes</th>
                       <th class="text-center font-weight-bold text-uppercase text-caption">% Venta Cruzada</th>
                       <th class="text-end font-weight-bold text-uppercase text-caption">Total Facturado USD</th>
-                      <th class="text-end font-weight-bold text-uppercase text-caption">Ganancia Oferta USD</th>
+                      <th class="text-end font-weight-bold text-uppercase text-caption">Ganancia Total Órdenes</th>
+                      <th class="text-end font-weight-bold text-uppercase text-caption">Ítem Oferta USD</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-if="sellersBreakdown.length === 0">
-                      <td colspan="6" class="text-center py-6 text-medium-emphasis">
+                      <td colspan="7" class="text-center py-6 text-medium-emphasis">
                         No hay datos de vendedoras para esta oferta.
                       </td>
                     </tr>
@@ -439,6 +447,12 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
                       </td>
                       <td
                         class="text-end font-weight-black"
+                        :class="seller.total_profit_usd >= 0 ? 'text-success' : 'text-error'"
+                      >
+                        {{ formatCurrencyUSD(seller.total_profit_usd) }}
+                      </td>
+                      <td
+                        class="text-end font-weight-bold"
                         :class="seller.profit_usd >= 0 ? 'text-success' : 'text-error'"
                       >
                         {{ formatCurrencyUSD(seller.profit_usd) }}
@@ -458,10 +472,10 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
                       <th class="text-left font-weight-bold text-uppercase text-caption">Vendedora</th>
                       <th class="text-left font-weight-bold text-uppercase text-caption">Cliente</th>
                       <th class="text-center font-weight-bold text-uppercase text-caption">Cant. Oferta</th>
-                      <th class="text-center font-weight-bold text-uppercase text-caption">Venta Cruzada</th>
+                      <th class="text-center font-weight-bold text-uppercase text-caption">Tipo Venta</th>
                       <th class="text-end font-weight-bold text-uppercase text-caption">Total Orden USD</th>
-                      <th class="text-end font-weight-bold text-uppercase text-caption">Ganancia Oferta USD</th>
-                      <th class="text-center font-weight-bold text-uppercase text-caption">Margen</th>
+                      <th class="text-end font-weight-bold text-uppercase text-caption">Ganancia Total Orden</th>
+                      <th class="text-end font-weight-bold text-uppercase text-caption">Ítem Oferta</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -487,12 +501,12 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
                         </span>
                       </td>
                       <td>
-                        <span class="text-xs font-weight-bold text-uppercase">
+                        <span class="text-xs font-weight-bold text-uppercase truncate" style="max-inline-size: 150px;">
                           {{ order.seller_name }}
                         </span>
                       </td>
                       <td>
-                        <span class="text-xs text-medium-emphasis text-uppercase">
+                        <span class="text-xs text-medium-emphasis text-uppercase truncate" style="max-inline-size: 140px;">
                           {{ order.client_name }}
                         </span>
                       </td>
@@ -512,21 +526,37 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
                       <td class="text-end font-weight-bold">
                         {{ formatCurrencyUSD(order.order_total_usd) }}
                       </td>
-                      <td
-                        class="text-end font-weight-black"
-                        :class="order.offer_profit_usd >= 0 ? 'text-success' : 'text-error'"
-                      >
-                        {{ formatCurrencyUSD(order.offer_profit_usd) }}
+                      <td class="text-end">
+                        <div class="d-flex flex-column align-end">
+                          <span
+                            class="font-weight-black text-xs"
+                            :class="order.order_total_profit_usd >= 0 ? 'text-success' : 'text-error'"
+                          >
+                            {{ formatCurrencyUSD(order.order_total_profit_usd) }}
+                          </span>
+                          <span
+                            class="text-super-xs font-weight-bold"
+                            :class="order.order_total_margin >= 0 ? 'text-success' : 'text-error'"
+                          >
+                            {{ order.order_total_margin }}% margen
+                          </span>
+                        </div>
                       </td>
-                      <td class="text-center">
-                        <VChip
-                          size="x-small"
-                          :color="order.offer_margin >= 0 ? 'success' : 'error'"
-                          variant="tonal"
-                          class="font-weight-bold"
-                        >
-                          {{ order.offer_margin }}%
-                        </VChip>
+                      <td class="text-end">
+                        <div class="d-flex flex-column align-end">
+                          <span
+                            class="font-weight-bold text-xs"
+                            :class="order.offer_profit_usd >= 0 ? 'text-success' : 'text-error'"
+                          >
+                            {{ formatCurrencyUSD(order.offer_profit_usd) }}
+                          </span>
+                          <span
+                            class="text-super-xs"
+                            :class="order.offer_margin >= 0 ? 'text-success' : 'text-error'"
+                          >
+                            {{ order.offer_margin }}%
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   </tbody>
@@ -560,6 +590,10 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
 
 .text-xs {
   font-size: 0.75rem !important;
+}
+
+.gap-0-5 {
+  gap: 2px !important;
 }
 
 .my-1-5 {

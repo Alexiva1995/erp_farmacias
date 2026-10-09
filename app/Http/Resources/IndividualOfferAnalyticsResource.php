@@ -42,6 +42,8 @@ class IndividualOfferAnalyticsResource extends JsonResource
                 'cross_sell_percentage' => (float) ($kpis['cross_sell_percentage'] ?? 0),
                 'average_ticket_usd' => (float) ($kpis['average_ticket_usd'] ?? 0),
                 'total_orders_amount_usd' => (float) ($kpis['total_orders_amount_usd'] ?? 0),
+                'total_orders_profit_usd' => (float) ($kpis['total_orders_profit_usd'] ?? 0),
+                'total_orders_margin' => (float) ($kpis['total_orders_margin'] ?? 0),
                 'offer_revenue_usd' => (float) ($kpis['offer_revenue_usd'] ?? 0),
                 'offer_cost_usd' => (float) ($kpis['offer_cost_usd'] ?? 0),
                 'offer_profit_usd' => (float) ($kpis['offer_profit_usd'] ?? 0),
