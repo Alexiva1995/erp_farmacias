@@ -99,25 +99,29 @@ const hasAdvancedFilters = computed(() =>
 
     <template #advanced-filters>
       <!-- Filtro Teléfono -->
-      <VCol cols="12" sm="6" md="3" lg="2">
+      <VCol cols="12" sm="6" md="4" lg="2">
         <VSelect
           :model-value="has_phone_filtro"
-          label="TELÉFONO"
+          label="Teléfono"
+          placeholder="Todos"
           :items="phoneOptions"
           density="compact"
           variant="outlined"
+          hide-details
           prepend-inner-icon="tabler-phone"
           @update:model-value="emit('update:has_phone_filtro', $event)"
         />
       </VCol>
 
       <!-- Tipo de Identificación -->
-      <VCol cols="12" sm="6" md="3" lg="2">
+      <VCol cols="12" sm="6" md="4" lg="2">
         <VSelect
           :model-value="props.tipo_identificacion_filtro"
+          label="Tipo ID"
+          placeholder="Todos"
           :items="['V-', 'J-', 'G-', 'E-']"
-          placeholder="Tipo ID"
           density="compact"
+          variant="outlined"
           hide-details
           clearable
           prepend-inner-icon="tabler-id"
@@ -126,15 +130,16 @@ const hasAdvancedFilters = computed(() =>
       </VCol>
 
       <!-- Empresa -->
-      <VCol cols="12" sm="6" md="3" lg="2">
+      <VCol cols="12" sm="6" md="4" lg="2">
         <VSelect
           :model-value="props.company_id_filtro"
+          label="Empresa"
+          placeholder="Todas"
           :items="props.companies"
           item-title="name"
           item-value="id"
-          placeholder="BUSCAR EMPRESA..."
-          persistent-placeholder
           density="compact"
+          variant="outlined"
           hide-details
           clearable
           prepend-inner-icon="tabler-building"
@@ -143,12 +148,14 @@ const hasAdvancedFilters = computed(() =>
       </VCol>
 
       <!-- Categoría de cliente -->
-      <VCol cols="12" sm="6" md="3" lg="2">
+      <VCol cols="12" sm="6" md="4" lg="2">
         <VSelect
           :model-value="props.client_type_filtro"
+          label="Categoría"
+          placeholder="Todas"
           :items="clientTypeOptions"
-          placeholder="Categoría"
           density="compact"
+          variant="outlined"
           hide-details
           clearable
           prepend-inner-icon="tabler-user-check"
@@ -156,16 +163,17 @@ const hasAdvancedFilters = computed(() =>
         />
       </VCol>
 
-      <!-- Vendedor / Usuario Creador -->
-      <VCol cols="12" sm="6" md="3" lg="2">
+      <!-- Vendedor / Registrado por -->
+      <VCol cols="12" sm="6" md="4" lg="2">
         <VSelect
           :model-value="props.user_id_filtro"
+          label="Vendedor"
+          placeholder="Todos"
           :items="props.users"
           :item-title="item => item.username || item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim()"
           item-value="id"
-          placeholder="Vendedor..."
-          persistent-placeholder
           density="compact"
+          variant="outlined"
           hide-details
           clearable
           prepend-inner-icon="tabler-user"
@@ -173,10 +181,11 @@ const hasAdvancedFilters = computed(() =>
         />
       </VCol>
 
-      <!-- Fecha desde -->
-      <VCol cols="12" sm="6" md="3" lg="1">
+      <!-- Rango de Fechas -->
+      <VCol cols="12" sm="6" md="4" lg="1">
         <AppDateTimePicker
           :model-value="props.fechaDesde_filtro"
+          label="Desde"
           placeholder="Desde"
           clearable
           density="compact"
@@ -187,10 +196,10 @@ const hasAdvancedFilters = computed(() =>
         />
       </VCol>
 
-      <!-- Fecha hasta -->
-      <VCol cols="12" sm="6" md="3" lg="1">
+      <VCol cols="12" sm="6" md="4" lg="1">
         <AppDateTimePicker
           :model-value="props.fechaHasta_filtro"
+          label="Hasta"
           placeholder="Hasta"
           clearable
           density="compact"
