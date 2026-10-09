@@ -12,7 +12,7 @@ const props = defineProps({
   title:         { type: String, default: "" },
 });
 
-const emit = defineEmits(["update:options", "edit-offer", "delete-offer"]);
+const emit = defineEmits(["update:options", "edit-offer", "delete-offer", "view-analytics"]);
 
 const headers = [
   {
@@ -30,7 +30,7 @@ const headers = [
   { title: "P. Oferta",     key: "discount_price",  sortable: false, align: "end",   width: "105px" },
   { title: "Ventas",        key: "sales_count",     sortable: false, align: "end",   width: "90px" },
   { title: "Vigencia",      key: "validity",        sortable: false, align: "center", width: "160px" },
-  { title: "Acciones",      key: "actions",         sortable: false, align: "center", width: "90px" },
+  { title: "Acciones",      key: "actions",         sortable: false, align: "center", width: "125px" },
 ];
 
 const formatDate = (dateString) => {
@@ -182,6 +182,14 @@ const calculateDiscountPrice = (price, discount) => {
         <template #item.actions="{ item }">
           <div class="d-flex justify-center gap-1">
             <IconBtn
+              @click="emit('view-analytics', item)"
+              color="info"
+              size="small"
+            >
+              <VIcon icon="tabler-eye" size="18" />
+              <VTooltip activator="parent">Ver Analítica de Oferta</VTooltip>
+            </IconBtn>
+            <IconBtn
               @click="emit('edit-offer', item)"
               color="warning"
               size="small"
@@ -288,6 +296,16 @@ const calculateDiscountPrice = (price, discount) => {
 
           <!-- Acciones Rectangulares en Móvil -->
           <div class="d-flex align-center border-t border-opacity-10 mobile-actions-bar">
+            <VBtn
+              color="info"
+              variant="text"
+              class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center"
+              height="38"
+              @click="emit('view-analytics', item)"
+            >
+              <VIcon icon="tabler-eye" size="18" />
+            </VBtn>
+            <VDivider vertical class="border-opacity-10" />
             <VBtn
               color="warning"
               variant="text"

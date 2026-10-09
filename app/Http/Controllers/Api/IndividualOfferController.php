@@ -68,6 +68,16 @@ class IndividualOfferController extends Controller
     }
 
     /**
+     * Muestra las métricas y analíticas de una oferta individual.
+     */
+    public function analytics(\App\Http\Requests\Offers\IndividualOfferAnalyticsRequest $request, IndividualOffer $individual): \App\Http\Resources\IndividualOfferAnalyticsResource
+    {
+        $analytics = $this->offerService->getAnalytics($individual, $request->validated());
+
+        return new \App\Http\Resources\IndividualOfferAnalyticsResource($analytics);
+    }
+
+    /**
      * Elimina una oferta individual.
      */
     public function destroy(IndividualOffer $individual): JsonResponse

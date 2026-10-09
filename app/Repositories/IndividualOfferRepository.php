@@ -85,6 +85,207 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
         return $individualOffer;
     }
 
+    public function getOfferAnalytics(IndividualOffer $individualOffer, array $filters = []): array
+    {
+        $individualOffer->loadMissing(['product.laboratory']);
+
+        // 1. Obtener todas las órdenes que califican para la oferta en su rango de fechas
+        $baseOrdersQuery = DB::table('orders')
+            ->join('order_details', 'orders.id', '=', 'order_details.order_id')
+            ->where('order_details.product_id', $individualOffer->product_id)
+            ->where('orders.status', Order::COMPLETED)
+            ->where('orders.order_date', '>=', $individualOffer->start_date)
+            ->whereRaw("orders.order_date <= CONCAT(?, ' 23:59:59')", [$individualOffer->end_date]);
+
+        // 2. Vendedoras disponibles (para el filtro del frontend)
+        $availableSellers = (clone $baseOrdersQuery)
+            ->leftJoin('users', 'orders.seller_id', '=', 'users.id')
+            ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
+            ->whereNotNull('orders.seller_id')
+            ->select(
+                'orders.seller_id as id',
+                DB::raw('COALESCE(CONCAT(employees.name, " ", employees.last_name), users.username, CONCAT("Vendedor #", orders.seller_id)) as name')
+            )
+            ->distinct()
+            ->orderBy('name')
+            ->get()
+            ->toArray();
+
+        // 3. Aplicar filtro opcional por vendedora si se especificó
+        if (!empty($filters['seller_id'])) {
+            $baseOrdersQuery->where('orders.seller_id', $filters['seller_id']);
+        }
+
+        $orderIds = $baseOrdersQuery->pluck('orders.id')->unique()->values()->toArray();
+
+        if (empty($orderIds)) {
+            return [
+                'offer' => $individualOffer,
+                'kpis' => [
+                    'total_units_sold' => 0,
+                    'unique_clients_count' => 0,
+                    'total_orders_count' => 0,
+                    'cross_sell_orders_count' => 0,
+                    'single_item_orders_count' => 0,
+                    'cross_sell_percentage' => 0,
+                    'average_ticket_usd' => 0,
+                    'total_orders_amount_usd' => 0,
+                    'offer_revenue_usd' => 0,
+                    'offer_cost_usd' => 0,
+                    'offer_profit_usd' => 0,
+                    'offer_profit_margin' => 0,
+                    'discount_savings_usd' => 0,
+                ],
+                'cross_selling_products' => [],
+                'sellers_breakdown' => [],
+                'available_sellers' => $availableSellers,
+            ];
+        }
+
+        // 4. Estadísticas a nivel de Órdenes Totales
+        $orderStats = DB::table('orders')
+            ->whereIn('id', $orderIds)
+            ->selectRaw('
+                COUNT(id) as total_orders_count,
+                COUNT(DISTINCT COALESCE(client_id, CONCAT("anon_", id))) as unique_clients_count,
+                COALESCE(SUM(total_amount_usd), 0) as total_orders_amount_usd,
+                COALESCE(AVG(total_amount_usd), 0) as average_ticket_usd
+            ')
+            ->first();
+
+        // 5. Estadísticas del ítem en oferta
+        $offerItemStats = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->whereIn('order_details.order_id', $orderIds)
+            ->where('order_details.product_id', $individualOffer->product_id)
+            ->selectRaw('
+                COALESCE(SUM(order_details.quantity), 0) as total_units_sold,
+                COALESCE(SUM(order_details.quantity * order_details.unit_price_usd), 0) as offer_revenue_usd,
+                COALESCE(SUM(order_details.quantity * (order_details.unit_cost / CASE WHEN orders.currency = "USD" THEN 1 WHEN orders.usd_conversion > 0 THEN orders.usd_conversion ELSE 1 END)), 0) as offer_cost_usd,
+                COALESCE(SUM(order_details.quantity * ((CASE WHEN order_details.price_before_discount > 0 THEN order_details.price_before_discount ELSE order_details.price END / CASE WHEN orders.currency = "USD" THEN 1 WHEN orders.usd_conversion > 0 THEN orders.usd_conversion ELSE 1 END) - order_details.unit_price_usd)), 0) as discount_savings_usd
+            ')
+            ->first();
+
+        // 6. Cálculo de venta cruzada (órdenes que contienen otros productos además de la oferta)
+        $crossSellOrderIds = DB::table('order_details')
+            ->whereIn('order_id', $orderIds)
+            ->where(function ($q) use ($individualOffer) {
+                $q->where('product_id', '!=', $individualOffer->product_id)
+                  ->orWhereNull('product_id');
+            })
+            ->distinct()
+            ->pluck('order_id')
+            ->toArray();
+
+        $totalOrdersCount = (int) ($orderStats->total_orders_count ?? 0);
+        $crossSellCount = count($crossSellOrderIds);
+        $singleItemCount = max(0, $totalOrdersCount - $crossSellCount);
+        $crossSellPercentage = $totalOrdersCount > 0 ? round(($crossSellCount / $totalOrdersCount) * 100, 2) : 0;
+
+        $offerRevenue = (float) ($offerItemStats->offer_revenue_usd ?? 0);
+        $offerCost = (float) ($offerItemStats->offer_cost_usd ?? 0);
+        $offerProfit = round($offerRevenue - $offerCost, 2);
+        $offerProfitMargin = $offerRevenue > 0 ? round(($offerProfit / $offerRevenue) * 100, 2) : 0;
+
+        // 7. Top Productos Cruzados (Cross-Selling)
+        $crossSellingProducts = DB::table('order_details')
+            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
+            ->leftJoin('laboratories', 'products.laboratory_id', '=', 'laboratories.id')
+            ->whereIn('order_details.order_id', $orderIds)
+            ->where('order_details.product_id', '!=', $individualOffer->product_id)
+            ->selectRaw('
+                products.id as product_id,
+                products.name as product_name,
+                COALESCE(laboratories.name, "S/L") as laboratory_name,
+                SUM(order_details.quantity) as total_quantity,
+                COUNT(DISTINCT order_details.order_id) as times_bought_together,
+                SUM(order_details.quantity * order_details.unit_price_usd) as total_amount_usd
+            ')
+            ->groupBy('products.id', 'products.name', 'laboratories.name')
+            ->orderByDesc('times_bought_together')
+            ->orderByDesc('total_quantity')
+            ->limit(15)
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product_name,
+                    'laboratory_name' => $item->laboratory_name,
+                    'total_quantity' => (float) $item->total_quantity,
+                    'times_bought_together' => (int) $item->times_bought_together,
+                    'total_amount_usd' => (float) round($item->total_amount_usd, 2),
+                ];
+            })
+            ->toArray();
+
+        // 8. Rendimiento por Vendedora
+        $sellersBreakdown = DB::table('orders')
+            ->leftJoin('users', 'orders.seller_id', '=', 'users.id')
+            ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
+            ->join('order_details', function ($join) use ($individualOffer) {
+                $join->on('orders.id', '=', 'order_details.order_id')
+                     ->where('order_details.product_id', '=', $individualOffer->product_id);
+            })
+            ->whereIn('orders.id', $orderIds)
+            ->selectRaw('
+                orders.seller_id,
+                COALESCE(CONCAT(employees.name, " ", employees.last_name), users.username, "Sin Vendedor") as seller_name,
+                SUM(order_details.quantity) as units_sold,
+                COUNT(DISTINCT orders.id) as orders_count,
+                SUM(order_details.quantity * order_details.unit_price_usd) as total_usd,
+                SUM(order_details.quantity * (order_details.unit_price_usd - (order_details.unit_cost / CASE WHEN orders.currency = "USD" THEN 1 WHEN orders.usd_conversion > 0 THEN orders.usd_conversion ELSE 1 END))) as profit_usd
+            ')
+            ->groupBy('orders.seller_id', 'employees.name', 'employees.last_name', 'users.username')
+            ->orderByDesc('units_sold')
+            ->get()
+            ->map(function ($seller) use ($crossSellOrderIds, $orderIds) {
+                $sellerOrders = DB::table('orders')
+                    ->whereIn('id', $orderIds)
+                    ->where('seller_id', $seller->seller_id)
+                    ->pluck('id')
+                    ->toArray();
+
+                $crossCount = count(array_intersect($sellerOrders, $crossSellOrderIds));
+                $totalOrders = (int) $seller->orders_count;
+                $crossPercentage = $totalOrders > 0 ? round(($crossCount / $totalOrders) * 100, 2) : 0;
+
+                return [
+                    'seller_id' => $seller->seller_id,
+                    'seller_name' => $seller->seller_name,
+                    'units_sold' => (float) $seller->units_sold,
+                    'orders_count' => $totalOrders,
+                    'cross_sell_orders_count' => $crossCount,
+                    'cross_sell_percentage' => $crossPercentage,
+                    'total_usd' => (float) round($seller->total_usd, 2),
+                    'profit_usd' => (float) round($seller->profit_usd, 2),
+                ];
+            })
+            ->toArray();
+
+        return [
+            'offer' => $individualOffer,
+            'kpis' => [
+                'total_units_sold' => (float) ($offerItemStats->total_units_sold ?? 0),
+                'unique_clients_count' => (int) ($orderStats->unique_clients_count ?? 0),
+                'total_orders_count' => $totalOrdersCount,
+                'cross_sell_orders_count' => $crossSellCount,
+                'single_item_orders_count' => $singleItemCount,
+                'cross_sell_percentage' => $crossSellPercentage,
+                'average_ticket_usd' => (float) round($orderStats->average_ticket_usd ?? 0, 2),
+                'total_orders_amount_usd' => (float) round($orderStats->total_orders_amount_usd ?? 0, 2),
+                'offer_revenue_usd' => (float) round($offerRevenue, 2),
+                'offer_cost_usd' => (float) round($offerCost, 2),
+                'offer_profit_usd' => (float) round($offerProfit, 2),
+                'offer_profit_margin' => $offerProfitMargin,
+                'discount_savings_usd' => (float) round($offerItemStats->discount_savings_usd ?? 0, 2),
+            ],
+            'cross_selling_products' => $crossSellingProducts,
+            'sellers_breakdown' => $sellersBreakdown,
+            'available_sellers' => $availableSellers,
+        ];
+    }
+
     public function delete(IndividualOffer $individualOffer): bool
     {
         return (bool) $individualOffer->delete();

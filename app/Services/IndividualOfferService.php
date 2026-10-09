@@ -53,6 +53,11 @@ class IndividualOfferService
         return $this->repository->update($offer, $data);
     }
 
+    public function getAnalytics(IndividualOffer $offer, array $filters = []): array
+    {
+        return $this->repository->getOfferAnalytics($offer, $filters);
+    }
+
     public function deleteOffer(IndividualOffer $offer): bool
     {
         return $this->repository->delete($offer);

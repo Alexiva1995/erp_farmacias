@@ -9,6 +9,7 @@ interface IndividualOfferRepositoryInterface
 {
     public function getPaginated(array $filters = []): LengthAwarePaginator;
     public function findConflictingOffer(int $productId, string $startDate, string $endDate, ?int $ignoreId = null): ?IndividualOffer;
+    public function getOfferAnalytics(IndividualOffer $individualOffer, array $filters = []): array;
     public function create(array $data): IndividualOffer;
     public function update(IndividualOffer $individualOffer, array $data): IndividualOffer;
     public function delete(IndividualOffer $individualOffer): bool;

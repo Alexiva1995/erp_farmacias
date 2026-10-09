@@ -447,6 +447,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::prefix("individual")->group(function () {
                 Route::get('/', [IndividualOfferController::class, "index"]);
                 Route::post('/', [IndividualOfferController::class, "store"]);
+                Route::get('/{individual}/analytics', [IndividualOfferController::class, "analytics"]);
                 Route::put('/{individual}', [IndividualOfferController::class, "update"]);
                 Route::delete('/{individual}', [IndividualOfferController::class, 'destroy']);
             });

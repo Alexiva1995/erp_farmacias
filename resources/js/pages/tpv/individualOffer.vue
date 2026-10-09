@@ -2,6 +2,7 @@
 import IndividualOfferFilters from "@/components/IndividualOfferFilters.vue";
 import IndividualOfferTable from "@/components/IndividualOfferTable.vue";
 import IndividualCreateOffer from "@/components/dialogs/IndividualOfferModal.vue";
+import IndividualOfferAnalyticsModal from "@/components/dialogs/IndividualOfferAnalyticsModal.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -22,6 +23,8 @@ const sortByProduct = ref();
 const orderByProduct = ref();
 const isOfferDialogVisible = ref(false);
 const currentOfferToEdit = ref(null);
+const isAnalyticsDialogVisible = ref(false);
+const currentOfferForAnalytics = ref(null);
 
 // Filtros
 const filterSearchQueryIdIndivOffer = ref("");
@@ -57,6 +60,12 @@ const formularioError = reactive({
   start_date: "",
   end_date: "",
 });
+
+// Ver analítica de oferta
+const handleViewAnalytics = (indvOffer) => {
+  currentOfferForAnalytics.value = { ...indvOffer };
+  isAnalyticsDialogVisible.value = true;
+};
 
 // Editar oferta
 const handleEditOffer = (indvOffer) => {
@@ -265,6 +274,7 @@ onMounted(async () => {
       :items-per-page="productDataOffer.per_page"
       :page="productDataOffer.current_page"
       @update:options="updateTableOptionsOffer"
+      @view-analytics="handleViewAnalytics"
       @edit-offer="handleEditOffer"
       @delete-offer="handleDeleteOffer"
     />
@@ -277,6 +287,11 @@ onMounted(async () => {
       :product-offer-to-edit="currentOfferToEdit"
       @save="enviar"
       @modal-closed="closeIndividualOfferModal"
+    />
+
+    <IndividualOfferAnalyticsModal
+      v-model="isAnalyticsDialogVisible"
+      :offer="currentOfferForAnalytics"
     />
   </div>
 </template>
