@@ -217,10 +217,13 @@ function formatearFechaCompleta(fechaInput) {
                     label="Teléfono *"
                     placeholder="Ej: 04141234567, 04121234567"
                     prepend-inner-icon="tabler-phone"
+                    :counter="11"
+                    :maxlength="11"
                     :error-messages="formError.phone"
                     variant="outlined"
                     density="comfortable"
                     class="shadow-sm"
+                    @input="formData.phone = formData.phone ? formData.phone.replace(/\D/g, '').slice(0, 11) : ''"
                   />
                 </VCol>
 
