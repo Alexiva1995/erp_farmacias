@@ -21,6 +21,7 @@ const statuModule= reactive({
   itemsClientes:[],
   totalClientes:0,
   comapanies:[],
+  users:[],
 })
 
 const modal= reactive({
@@ -66,6 +67,7 @@ const buscardor_filtro= ref("");
 const tipo_identificacion_filtro= ref(null);
 const company_id_filtro= ref("");
 const client_type_filtro= ref(null);
+const user_id_filtro= ref(null);
 const fechaDesde_filtro= ref("");
 const fechaHasta_filtro= ref("");
 const has_phone_filtro= ref("");
@@ -145,6 +147,17 @@ async function consultAll(){
   }
   return [...res.data.data]
 
+}
+
+async function consultAllUsers(){
+  try {
+    let res = await axios.get("/users")
+    if(res.status!=200) return []
+    return [...(res.data.data || res.data || [])]
+  } catch (e) {
+    console.error("error users => ", e)
+    return []
+  }
 }
 
 async function consultAllcomapanies(){
@@ -242,6 +255,7 @@ async function actualizarTabla(){
       fechaDesde_filtro: fechaDesde_filtro.value,
       fechaHasta_filtro: fechaHasta_filtro.value,
       has_phone: has_phone_filtro.value,
+      user_id: user_id_filtro.value,
     }
     let respuestaApiNaturles = await filtrar(filtroNaturales)
     statuModule.itemsClientes = respuestaApiNaturles.data || []
@@ -444,6 +458,7 @@ watch(
       has_phone_filtro,
       company_id_filtro,
       client_type_filtro,
+      user_id_filtro,
       page,
       itemsPerPage,
       orderBy,
@@ -470,6 +485,7 @@ function limpiarFiltros(){
   tipo_identificacion_filtro.value=""
   company_id_filtro.value=""
   client_type_filtro.value=null
+  user_id_filtro.value=null
   fechaDesde_filtro.value=""
   fechaHasta_filtro.value=""
   has_phone_filtro.value=""
@@ -512,6 +528,7 @@ async function exportarPdf(){
       fechaDesde_filtro:fechaDesde_filtro.value,
       fechaHasta_filtro:fechaHasta_filtro.value,
       has_phone: has_phone_filtro.value,
+      user_id: user_id_filtro.value,
   }
   let respuestaApi= await filtrarSinPaginar(filtros)
   console.log("respuesta => ",respuestaApi)
@@ -536,6 +553,7 @@ async function exportarExcel(formato){
       fechaDesde_filtro:fechaDesde_filtro.value,
       fechaHasta_filtro:fechaHasta_filtro.value,
       has_phone: has_phone_filtro.value,
+      user_id: user_id_filtro.value,
       formato,
     }
 
@@ -580,6 +598,9 @@ onMounted(async () => {
 
   let responseComponies = await consultAllcomapanies()
   statuModule.comapanies=[...responseComponies]
+
+  let responseUsers = await consultAllUsers()
+  statuModule.users=[...responseUsers]
 })
 </script>
 <template>
@@ -592,7 +613,9 @@ onMounted(async () => {
       v-model:fechaDesde_filtro="fechaDesde_filtro"
       v-model:fechaHasta_filtro="fechaHasta_filtro"
       v-model:has_phone_filtro="has_phone_filtro"
+      v-model:user_id_filtro="user_id_filtro"
       :companies="statuModule.comapanies"
+      :users="statuModule.users"
       @clear="limpiarFiltros"
       @add-client="mostarModal"
       @export-pdf="exportarPdf"

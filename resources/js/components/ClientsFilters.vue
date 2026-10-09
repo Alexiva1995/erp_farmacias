@@ -8,10 +8,12 @@ const props = defineProps({
   tipo_identificacion_filtro:[String, null],
   company_id_filtro:         [String, null],
   client_type_filtro:        [String, null],
+  user_id_filtro:            [Number, String, null],
   fechaDesde_filtro:         { type: String, default: "" },
   fechaHasta_filtro:         { type: String, default: "" },
   has_phone_filtro:          { type: String, default: "" },
   companies:                 { type: Array, default: () => [] },
+  users:                     { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
@@ -19,6 +21,7 @@ const emit = defineEmits([
   "update:tipo_identificacion_filtro",
   "update:company_id_filtro",
   "update:client_type_filtro",
+  "update:user_id_filtro",
   "update:fechaDesde_filtro",
   "update:fechaHasta_filtro",
   "update:has_phone_filtro",
@@ -48,7 +51,7 @@ const phoneOptions = [
 // Indicador de filtros avanzados activos
 const hasAdvancedFilters = computed(() =>
   !!(props.tipo_identificacion_filtro || props.company_id_filtro ||
-     props.client_type_filtro || props.fechaDesde_filtro || props.fechaHasta_filtro || props.has_phone_filtro)
+     props.client_type_filtro || props.user_id_filtro || props.fechaDesde_filtro || props.fechaHasta_filtro || props.has_phone_filtro)
 );
 </script>
 
@@ -96,7 +99,7 @@ const hasAdvancedFilters = computed(() =>
 
     <template #advanced-filters>
       <!-- Filtro Teléfono -->
-      <VCol cols="12" sm="6" md="2">
+      <VCol cols="12" sm="6" md="3" lg="2">
         <VSelect
           :model-value="has_phone_filtro"
           label="TELÉFONO"
@@ -109,7 +112,7 @@ const hasAdvancedFilters = computed(() =>
       </VCol>
 
       <!-- Tipo de Identificación -->
-      <VCol cols="12" sm="6" md="2">
+      <VCol cols="12" sm="6" md="3" lg="2">
         <VSelect
           :model-value="props.tipo_identificacion_filtro"
           :items="['V-', 'J-', 'G-', 'E-']"
@@ -123,7 +126,7 @@ const hasAdvancedFilters = computed(() =>
       </VCol>
 
       <!-- Empresa -->
-      <VCol cols="12" sm="6" md="2">
+      <VCol cols="12" sm="6" md="3" lg="2">
         <VSelect
           :model-value="props.company_id_filtro"
           :items="props.companies"
@@ -140,7 +143,7 @@ const hasAdvancedFilters = computed(() =>
       </VCol>
 
       <!-- Categoría de cliente -->
-      <VCol cols="12" sm="6" md="2">
+      <VCol cols="12" sm="6" md="3" lg="2">
         <VSelect
           :model-value="props.client_type_filtro"
           :items="clientTypeOptions"
@@ -153,8 +156,25 @@ const hasAdvancedFilters = computed(() =>
         />
       </VCol>
 
+      <!-- Vendedor / Usuario Creador -->
+      <VCol cols="12" sm="6" md="3" lg="2">
+        <VSelect
+          :model-value="props.user_id_filtro"
+          :items="props.users"
+          :item-title="item => item.username || item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim()"
+          item-value="id"
+          placeholder="Vendedor..."
+          persistent-placeholder
+          density="compact"
+          hide-details
+          clearable
+          prepend-inner-icon="tabler-user"
+          @update:model-value="emit('update:user_id_filtro', $event)"
+        />
+      </VCol>
+
       <!-- Fecha desde -->
-      <VCol cols="12" sm="6" md="2">
+      <VCol cols="12" sm="6" md="3" lg="1">
         <AppDateTimePicker
           :model-value="props.fechaDesde_filtro"
           placeholder="Desde"
@@ -168,7 +188,7 @@ const hasAdvancedFilters = computed(() =>
       </VCol>
 
       <!-- Fecha hasta -->
-      <VCol cols="12" sm="6" md="2">
+      <VCol cols="12" sm="6" md="3" lg="1">
         <AppDateTimePicker
           :model-value="props.fechaHasta_filtro"
           placeholder="Hasta"

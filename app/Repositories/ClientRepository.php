@@ -157,6 +157,10 @@ class ClientRepository implements \App\Contracts\Client
             }
         }
 
+        if (array_key_exists("user_id", $filtros) && $filtros["user_id"] !== null && $filtros["user_id"] !== "") {
+            $consulta->where("clients.user_id", "=", $filtros["user_id"]);
+        }
+
         return $consulta;
     }
 

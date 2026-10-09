@@ -137,6 +137,10 @@ class ClientController extends Controller
             $filtros["has_phone"] = $request->has_phone;
         }
 
+        if ($request->filled("user_id")) {
+            $filtros["user_id"] = $request->user_id;
+        }
+
         if ($request->filled("orderBy") && $request->filled("sortBy")) {
             $filtros["orderBy"] = $request->orderBy;
             $filtros["sortBy"] = $request->sortBy;
@@ -184,6 +188,10 @@ class ClientController extends Controller
             $filtros["has_phone"] = $request->has_phone;
         }
 
+        if ($request->filled("user_id")) {
+            $filtros["user_id"] = $request->user_id;
+        }
+
         $repuesta = $this->client->filterWithoutPaginate($filtros);
 
         return ApiResponse::success($repuesta, "OK", 200);
@@ -216,6 +224,10 @@ class ClientController extends Controller
 
         if ($request->filled("company_id")) {
             $filtros["company_id"] = $request->company_id;
+        }
+
+        if ($request->filled("user_id")) {
+            $filtros["user_id"] = $request->user_id;
         }
 
         $excel = $this->client->exportExcel($filtros);
