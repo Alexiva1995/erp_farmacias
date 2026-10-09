@@ -52,39 +52,39 @@ const hasActiveAdvancedFilters = computed(() => {
 
 const tipoFiltracionOpcion = [
   {
-    title: 'Tova DDM Core (Demand-Driven Matrix Engine)',
+    title: 'Tova DDM Core (Predictivo por Ligas y Líderes)',
     value: 'stockout_adjusted_rop_hiperplus',
-    props: { subtitle: 'Inteligencia Comercial Predictiva por Ligas y Protección de Líderes' }
+    props: { subtitle: 'Inteligencia predictiva que protege productos líderes y clasifica por ligas de rotación' }
   },
   {
-    title: 'Tova Demand-Rebuild PRO (Stockout-Adjusted Engine)',
+    title: 'Tova Reconstrucción PRO (Ajustado por Quiebre)',
     value: 'stockout_adjusted_rop_plus',
-    props: { subtitle: 'Optimización de Demanda Sanada por Quiebre (Nivel Categoría)' }
+    props: { subtitle: 'Reconstruye la demanda perdida por días de agotamiento a nivel de categoría' }
   },
   {
-    title: 'Tova ROP Smart (Restock Point Standard)',
+    title: 'Tova ROP Smart (Punto de Reorden Estándar)',
     value: 'stockout_adjusted_rop',
-    props: { subtitle: 'Punto de Reorden Logístico Corregido por Agotados' }
+    props: { subtitle: 'Punto de reposición óptimo corregido por días sin stock' }
   },
   {
-    title: 'Tova Weighted Trend (Statistical ROP)',
+    title: 'Tova Ponderado (Tendencia Estadística)',
     value: 'weighted',
-    props: { subtitle: 'Ponderación Estadística de Tendencias' }
+    props: { subtitle: 'Promedio ponderado dando mayor peso a las ventas recientes' }
   },
   {
-    title: 'Tova Linear Average (Media Aritmética)',
+    title: 'Tova Promedio (Media Aritmética)',
     value: 'average',
-    props: { subtitle: 'Proyección de Demanda por Media Aritmética Lineal' }
+    props: { subtitle: 'Cálculo de reposición basado en el promedio lineal histórico' }
   },
   {
-    title: 'Tova Replenish 1-to-1 (Reactivo)',
+    title: 'Tova Reposición 1 a 1 (Ventas Directas)',
     value: 'sales',
-    props: { subtitle: 'Reposición Reactiva 1 a 1 (Reemplazo Directo de Salidas)' }
+    props: { subtitle: 'Reposición directa basada exactamente en las unidades vendidas' }
   },
   {
-    title: 'Tova Max-Safety Buffer (Heurístico)',
+    title: 'Tova Cobertura Máxima (Combinado / Seguridad)',
     value: 'combinado',
-    props: { subtitle: 'Reposición Heurística por Cobertura Máxima de Protección' }
+    props: { subtitle: 'Combina promedio histórico y ventas recientes para máxima protección de inventario' }
   },
 ];
 
