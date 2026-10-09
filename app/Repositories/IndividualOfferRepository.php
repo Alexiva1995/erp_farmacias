@@ -156,13 +156,14 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
         // 5. Estadísticas del ítem en oferta
         $offerItemStats = DB::table('order_details')
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
+            ->join('products', 'order_details.product_id', '=', 'products.id')
             ->whereIn('order_details.order_id', $orderIds)
             ->where('order_details.product_id', $individualOffer->product_id)
             ->selectRaw('
                 COALESCE(SUM(order_details.quantity), 0) as total_units_sold,
                 COALESCE(SUM(order_details.quantity * order_details.unit_price_usd), 0) as offer_revenue_usd,
-                COALESCE(SUM(order_details.quantity * (order_details.unit_cost / CASE WHEN orders.currency = "USD" THEN 1 WHEN orders.usd_conversion > 0 THEN orders.usd_conversion ELSE 1 END)), 0) as offer_cost_usd,
-                COALESCE(SUM(order_details.quantity * ((CASE WHEN order_details.price_before_discount > 0 THEN order_details.price_before_discount ELSE order_details.price END / CASE WHEN orders.currency = "USD" THEN 1 WHEN orders.usd_conversion > 0 THEN orders.usd_conversion ELSE 1 END) - order_details.unit_price_usd)), 0) as discount_savings_usd
+                COALESCE(SUM(order_details.quantity * order_details.unit_cost), 0) as offer_cost_usd,
+                COALESCE(SUM(order_details.quantity * GREATEST(0, COALESCE(NULLIF(products.sale_price, 0), order_details.unit_price_usd) - order_details.unit_price_usd)), 0) as discount_savings_usd
             ')
             ->first();
 
@@ -234,7 +235,7 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
                 SUM(order_details.quantity) as units_sold,
                 COUNT(DISTINCT orders.id) as orders_count,
                 SUM(order_details.quantity * order_details.unit_price_usd) as total_usd,
-                SUM(order_details.quantity * (order_details.unit_price_usd - (order_details.unit_cost / CASE WHEN orders.currency = "USD" THEN 1 WHEN orders.usd_conversion > 0 THEN orders.usd_conversion ELSE 1 END))) as profit_usd
+                SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) as profit_usd
             ')
             ->groupBy('orders.seller_id', 'employees.name', 'employees.last_name', 'users.username')
             ->orderByDesc('units_sold')
@@ -263,6 +264,62 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
             })
             ->toArray();
 
+        // 9. Historial detallado de todas las órdenes de la oferta
+        $ordersHistory = DB::table('orders')
+            ->leftJoin('clients', 'orders.client_id', '=', 'clients.id')
+            ->leftJoin('users', 'orders.seller_id', '=', 'users.id')
+            ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
+            ->join('order_details', function ($join) use ($individualOffer) {
+                $join->on('orders.id', '=', 'order_details.order_id')
+                     ->where('order_details.product_id', '=', $individualOffer->product_id);
+            })
+            ->whereIn('orders.id', $orderIds)
+            ->selectRaw('
+                orders.id as order_id,
+                orders.order_date,
+                orders.total_amount_usd,
+                COALESCE(CONCAT(employees.name, " ", employees.last_name), users.username, "Sin Vendedor") as seller_name,
+                COALESCE(clients.name, "Cliente General") as client_name,
+                SUM(order_details.quantity) as offer_quantity,
+                SUM(order_details.quantity * order_details.unit_price_usd) as offer_revenue_usd,
+                SUM(order_details.quantity * order_details.unit_cost) as offer_cost_usd,
+                SUM(order_details.quantity * (order_details.unit_price_usd - order_details.unit_cost)) as offer_profit_usd
+            ')
+            ->groupBy(
+                'orders.id',
+                'orders.order_date',
+                'orders.total_amount_usd',
+                'employees.name',
+                'employees.last_name',
+                'users.username',
+                'clients.name'
+            )
+            ->orderByDesc('orders.order_date')
+            ->orderByDesc('orders.id')
+            ->get()
+            ->map(function ($order) use ($crossSellOrderIds) {
+                $offerRev = (float) $order->offer_revenue_usd;
+                $offerCost = (float) $order->offer_cost_usd;
+                $offerProfit = round($offerRev - $offerCost, 2);
+                $offerMargin = $offerRev > 0 ? round(($offerProfit / $offerRev) * 100, 2) : 0;
+                $isCrossSell = in_array($order->order_id, $crossSellOrderIds);
+
+                return [
+                    'order_id' => $order->order_id,
+                    'order_date' => $order->order_date,
+                    'seller_name' => $order->seller_name,
+                    'client_name' => $order->client_name,
+                    'offer_quantity' => (float) $order->offer_quantity,
+                    'offer_revenue_usd' => (float) round($offerRev, 2),
+                    'offer_cost_usd' => (float) round($offerCost, 2),
+                    'offer_profit_usd' => (float) $offerProfit,
+                    'offer_margin' => $offerMargin,
+                    'order_total_usd' => (float) round($order->total_amount_usd ?? 0, 2),
+                    'is_cross_sell' => $isCrossSell,
+                ];
+            })
+            ->toArray();
+
         return [
             'offer' => $individualOffer,
             'kpis' => [
@@ -282,6 +339,7 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
             ],
             'cross_selling_products' => $crossSellingProducts,
             'sellers_breakdown' => $sellersBreakdown,
+            'orders_history' => $ordersHistory,
             'available_sellers' => $availableSellers,
         ];
     }

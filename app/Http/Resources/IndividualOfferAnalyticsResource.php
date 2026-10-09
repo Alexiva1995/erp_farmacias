@@ -50,6 +50,7 @@ class IndividualOfferAnalyticsResource extends JsonResource
             ],
             'cross_selling_products' => $this->resource['cross_selling_products'] ?? [],
             'sellers_breakdown' => $this->resource['sellers_breakdown'] ?? [],
+            'orders_history' => $this->resource['orders_history'] ?? [],
             'available_sellers' => $this->resource['available_sellers'] ?? [],
         ];
     }

@@ -39,6 +39,17 @@ const formatDate = (dateStr) => {
   });
 };
 
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 const formatCurrencyUSD = (amount) => {
   const val = parseFloat(amount) || 0;
   return `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -97,13 +108,14 @@ watch(selectedSellerId, () => {
 const kpis = computed(() => analyticsData.value?.kpis || {});
 const crossSellingProducts = computed(() => analyticsData.value?.cross_selling_products || []);
 const sellersBreakdown = computed(() => analyticsData.value?.sellers_breakdown || []);
+const ordersHistory = computed(() => analyticsData.value?.orders_history || []);
 const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {});
 </script>
 
 <template>
   <VDialog
     v-model="isVisible"
-    max-width="960"
+    max-width="1050"
     scrollable
     :fullscreen="mobile"
     transition="dialog-bottom-transition"
@@ -321,6 +333,10 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
                 <VIcon icon="tabler-users" class="me-1" size="16" />
                 Rendimiento por Vendedora ({{ sellersBreakdown.length }})
               </VTab>
+              <VTab value="orders-history" class="font-weight-bold text-caption">
+                <VIcon icon="tabler-history" class="me-1" size="16" />
+                Historial de Órdenes ({{ ordersHistory.length }})
+              </VTab>
             </VTabs>
 
             <VWindow v-model="activeTab">
@@ -431,6 +447,91 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
                   </tbody>
                 </VTable>
               </VWindowItem>
+
+              <!-- Tab 3: Orders History -->
+              <VWindowItem value="orders-history">
+                <VTable density="compact" hover class="text-no-wrap">
+                  <thead>
+                    <tr>
+                      <th class="text-center font-weight-bold text-uppercase text-caption"># Orden</th>
+                      <th class="text-left font-weight-bold text-uppercase text-caption">Fecha</th>
+                      <th class="text-left font-weight-bold text-uppercase text-caption">Vendedora</th>
+                      <th class="text-left font-weight-bold text-uppercase text-caption">Cliente</th>
+                      <th class="text-center font-weight-bold text-uppercase text-caption">Cant. Oferta</th>
+                      <th class="text-center font-weight-bold text-uppercase text-caption">Venta Cruzada</th>
+                      <th class="text-end font-weight-bold text-uppercase text-caption">Total Orden USD</th>
+                      <th class="text-end font-weight-bold text-uppercase text-caption">Ganancia Oferta USD</th>
+                      <th class="text-center font-weight-bold text-uppercase text-caption">Margen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="ordersHistory.length === 0">
+                      <td colspan="9" class="text-center py-6 text-medium-emphasis">
+                        No hay órdenes registradas para esta oferta.
+                      </td>
+                    </tr>
+                    <tr v-for="order in ordersHistory" :key="order.order_id">
+                      <td class="text-center">
+                        <VChip
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          class="font-weight-black"
+                        >
+                          #{{ order.order_id }}
+                        </VChip>
+                      </td>
+                      <td>
+                        <span class="text-xs font-weight-medium text-high-emphasis">
+                          {{ formatDateTime(order.order_date) }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="text-xs font-weight-bold text-uppercase">
+                          {{ order.seller_name }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="text-xs text-medium-emphasis text-uppercase">
+                          {{ order.client_name }}
+                        </span>
+                      </td>
+                      <td class="text-center font-weight-black text-primary">
+                        {{ order.offer_quantity }}
+                      </td>
+                      <td class="text-center">
+                        <VChip
+                          size="x-small"
+                          :color="order.is_cross_sell ? 'success' : 'secondary'"
+                          variant="tonal"
+                          class="font-weight-bold"
+                        >
+                          {{ order.is_cross_sell ? 'Sí (Mixta)' : 'Solo Oferta' }}
+                        </VChip>
+                      </td>
+                      <td class="text-end font-weight-bold">
+                        {{ formatCurrencyUSD(order.order_total_usd) }}
+                      </td>
+                      <td
+                        class="text-end font-weight-black"
+                        :class="order.offer_profit_usd >= 0 ? 'text-success' : 'text-error'"
+                      >
+                        {{ formatCurrencyUSD(order.offer_profit_usd) }}
+                      </td>
+                      <td class="text-center">
+                        <VChip
+                          size="x-small"
+                          :color="order.offer_margin >= 0 ? 'success' : 'error'"
+                          variant="tonal"
+                          class="font-weight-bold"
+                        >
+                          {{ order.offer_margin }}%
+                        </VChip>
+                      </td>
+                    </tr>
+                  </tbody>
+                </VTable>
+              </VWindowItem>
             </VWindow>
           </VCard>
         </div>
@@ -455,6 +556,10 @@ const offerInfo = computed(() => analyticsData.value?.offer || props.offer || {}
 <style scoped>
 .text-super-xs {
   font-size: 0.65rem !important;
+}
+
+.text-xs {
+  font-size: 0.75rem !important;
 }
 
 .my-1-5 {
