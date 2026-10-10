@@ -1079,18 +1079,29 @@ const executeSalesImport = async () => {
                 <div
                   v-if="uploading"
                   class="w-100 mt-4 text-center"
-                  style="max-width: 420px"
+                  style="max-width: 480px"
                 >
                   <VProgressLinear
-                    v-model="uploadProgress"
+                    :model-value="uploadProgress < 100 ? uploadProgress : undefined"
+                    :indeterminate="uploadProgress >= 100"
                     color="primary"
-                    height="8"
+                    height="10"
                     rounded
                     striped
                   />
-                  <span class="text-caption text-medium-emphasis mt-1 d-block">
-                    Subiendo y procesando catálogo: {{ uploadProgress }}%
-                  </span>
+                  <div class="mt-2 text-center">
+                    <span v-if="uploadProgress < 100" class="text-caption font-weight-medium text-primary">
+                      Subiendo archivos al servidor: {{ uploadProgress }}%
+                    </span>
+                    <div v-else class="d-flex flex-column align-center">
+                      <span class="text-caption font-weight-bold text-primary mb-1">
+                        ⚙️ Procesando e insertando catálogo y lotes en la base de datos...
+                      </span>
+                      <span class="text-caption text-medium-emphasis">
+                        Consolidando existencias, verificando claves y sincronizando. Esto puede tomar 1 o 2 minutos.
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
