@@ -22,8 +22,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 API_BASE_URL = "https://ensalud.tovaerp.com/api"
 LOCAL_TCP_PORT = 8090
 POLLING_INTERVAL = 3  # Segundos entre consultas
-
-PROCESSED_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "processed_invoices.txt")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROCESSED_FILE = os.path.join(BASE_DIR, "processed_invoices.txt")
 PROCESSED_INVOICE_IDS = set()
 
 if os.path.exists(PROCESSED_FILE):
@@ -311,7 +311,7 @@ def process_pending_invoices():
                     try:
                         conf_resp = requests.patch(
                             f"{API_BASE_URL}/fiscal/confirm/{invoice_id}",
-                            json={"invoice_number": str(last_inv), "fiscal_id": str(m_serial)},
+                            json={"invoice_number": str(last_inv)},
                             verify=False,
                             timeout=10
                         )

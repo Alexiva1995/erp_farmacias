@@ -52,29 +52,15 @@ class FiscalPrinterController extends Controller
             }
 
             $targetInvoiceNumber = (string) $request->invoice_number;
-            $updateData = [
+            $fiscal->update([
                 'invoice_number' => $targetInvoiceNumber,
                 'is_queued' => false,
                 'invoice_date' => now(),
-            ];
-
-            if (!empty($request->fiscal_id)) {
-                $updateData['fiscal_id'] = (string) $request->fiscal_id;
-            }
-
-            $fiscal->update($updateData);
-
-            // Sincronizar número de factura con la orden de venta si existe
-            if ($fiscal->order_id) {
-                \App\Models\Order::where('id', $fiscal->order_id)->update([
-                    'invoice_number' => $targetInvoiceNumber,
-                ]);
-            }
+            ]);
 
             return response()->json([
                 'message' => 'Factura confirmada exitosamente',
                 'invoice_number' => $targetInvoiceNumber,
-                'fiscal_id' => $fiscal->fiscal_id,
             ]);
         } catch (\Exception $e) {
             Log::error('Error en FiscalPrinterController@confirm: ' . $e->getMessage(), [
@@ -87,7 +73,6 @@ class FiscalPrinterController extends Controller
 
     /**
      * Confirm that a fiscal invoice has been printed (REPLICA).
-     * Ensures fiscal_id is always saved.
      */
     public function confirmReplica(ConfirmFiscalPrintRequest $request, $id)
     {
@@ -99,23 +84,16 @@ class FiscalPrinterController extends Controller
                 return response()->json(['error' => "Registro fiscal no encontrado para ID {$id}"], 404);
             }
             
-            $targetInvoiceNumber = $request->invoice_number;
-            $updateData = [
+            $targetInvoiceNumber = (string) $request->invoice_number;
+            $fiscal->update([
                 'invoice_number' => $targetInvoiceNumber,
                 'is_queued' => false,
                 'invoice_date' => now(),
-            ];
-
-            if (!empty($request->fiscal_id)) {
-                $updateData['fiscal_id'] = $request->fiscal_id;
-            }
-
-            $fiscal->update($updateData);
+            ]);
 
             return response()->json([
                 'message' => 'Factura confirmada exitosamente en RÉPLICA',
                 'invoice_number' => $targetInvoiceNumber,
-                'fiscal_id' => $fiscal->fiscal_id,
             ]);
         } catch (\Exception $e) {
             Log::error('Error en FiscalPrinterController@confirmReplica: ' . $e->getMessage());
