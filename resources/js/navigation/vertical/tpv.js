@@ -22,6 +22,29 @@ export default [
         to: 'tpv-credit',
       },
       {
+        title: 'Devoluciones',
+        children: [
+          {
+            title: 'Usuario',
+            to: { path: '/tpv/returnsUser' },
+            action: 'manage',
+            subject: 'user',
+          },
+          {
+            title: 'Supervisor',
+            to: { path: '/tpv/returnsSupervisor' },
+            action: 'manage',
+            subject: 'supervisor-or-admin',
+          },
+          {
+            title: 'Generales',
+            to: { path: '/tpv/returns' },
+            action: 'manage',
+            subject: 'admin',
+          },
+        ],
+      },
+      {
         title: 'Pedidos',
         to: 'tpv-order-general',
         action: 'manage',

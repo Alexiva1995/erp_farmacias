@@ -34,6 +34,14 @@ const props = defineProps({
     type: String,
     default: "USD",
   },
+  appliesSpecialTax: {
+    type: Boolean,
+    default: false,
+  },
+  specialTaxAmount: {
+    type: Number,
+    default: 0,
+  },
   baseUrl: {
     type: String,
     default: "/",
@@ -47,6 +55,9 @@ const getItemPriceByCurrency = (item, currency) => {
   const taxRate = item.taxRate || 0;
   const price = getBaseItemPrice(item, currency, false);
   let priceWithIva = price * (1 + taxRate);
+  if (props.appliesSpecialTax && (currency === "USD" || currency === "COP")) {
+    priceWithIva = priceWithIva * 1.03;
+  }
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }

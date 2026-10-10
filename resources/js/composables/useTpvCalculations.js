@@ -8,6 +8,7 @@ export function useTpvCalculations({
   selectedDisplayCurrency,
   selectedClient,
   isSpecialTaxpayer,
+  allForeignSalesSpe,
   fiscalMode,
   selectedDiscountType,
   selectedCompanyId,
@@ -114,8 +115,14 @@ export function useTpvCalculations({
       finalOrderTotal = Math.round((finalOrderTotal + Number.EPSILON) * 100) / 100
     }
 
-    // Impuesto IGTF / Especial
-    const isSpecialTax = isSpecialTaxpayer.value && (currency === 'USD' || currency === 'COP') && fiscalMode?.value === 'activa'
+    // Determinar si aplica el régimen IGTF (SPE) para divisas
+    const foreignTaxApplies = Boolean(
+      (isSpecialTaxpayer?.value || allForeignSalesSpe?.value) &&
+      fiscalMode?.value === 'activa'
+    )
+
+    // Impuesto IGTF / Especial para la moneda actualmente seleccionada en pantalla
+    const isSpecialTax = foreignTaxApplies && (currency === 'USD' || currency === 'COP')
     let specialTax = 0
     if (isSpecialTax) {
       specialTax = finalOrderTotal * 0.03
@@ -132,22 +139,21 @@ export function useTpvCalculations({
       else speSavings = Math.round((speSavings + Number.EPSILON) * 100) / 100
     }
 
-    // Calculo USD Final
+    // Calculo USD Final (incluyendo IGTF si aplica a divisas)
     const descuentoUSD = subtotalUsd * (globalDiscountPct / 100)
     let finalUsd = totalUsdBase - descuentoUSD
-    if (isSpecialTax) finalUsd += finalUsd * 0.03
+    if (foreignTaxApplies) finalUsd = finalUsd * 1.03
 
     // Aplicar descuento global a monedas alternativas (COP y BS)
-    // para que el modal de pago muestre el total correcto independientemente de la moneda de display
+    // para que el modal de pago y el resumen muestren el total correcto independientemente de la moneda de display
     let finalCop = amtCop
     let finalBs = amtBs
     if (globalDiscountPct > 0) {
       finalCop = roundUpToNearestHundred(amtCop - amtCop * (globalDiscountPct / 100))
       finalBs = Math.round((amtBs - amtBs * (globalDiscountPct / 100) + Number.EPSILON) * 100) / 100
     }
-    if (isSpecialTax) {
+    if (foreignTaxApplies) {
       finalCop = roundUpToNearestHundred(finalCop * 1.03)
-      finalBs = Math.round((finalBs * 1.03 + Number.EPSILON) * 100) / 100
     }
 
     return {

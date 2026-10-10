@@ -16,10 +16,15 @@ import { useTpvCatalog } from "@/composables/useTpvCatalog";
 import { getItemPriceByCurrency } from "@/composables/useTpvItemFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 
+import { useTpvCalculations } from "@/composables/useTpvCalculations";
+
 // ─── Configuración y Estado Base ─────────────────────────────────────────────
 const brandingStore = useBrandingStore();
 const isRestaurant = ref(false);
 const enableDishes = ref(false);
+const isSpecialTaxpayer = ref(false);
+const allForeignSalesSpe = ref(false);
+const fiscalMode = ref("demo");
 
 // ─── Tasas de cambio ──────────────────────────────────────────────────────────
 const { exchangeRates, fetchExchangeRates } = useTpvRates(brandingStore, isRestaurant);
@@ -192,107 +197,42 @@ watch(
   { immediate: true },
 );
 
-// ─── Cálculos de Totales ──────────────────────────────────────────────────────
-const totalProductsAmount = computed(() => {
-  let total = 0;
-  quotationItems.value.forEach((item) => {
-    const price = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
-    const quantity = item.selectedQuantity || 0;
-    total += price * quantity;
-  });
-  return total;
-});
-
-const totalIVAAmount = computed(() => {
-  let totalIVA = 0;
-  quotationItems.value.forEach((item) => {
-    const price = getItemPriceByCurrency(item, selectedDisplayCurrency.value);
-    const quantity = item.selectedQuantity || 0;
-    const taxRate = item.taxRate || 0;
-    totalIVA += price * quantity * taxRate;
-  });
-  return totalIVA;
+// ─── Cálculos Centralizados de Totales (Mismo motor que /tpv/orderUser) ────────
+const {
+  totalEligibleAmount,
+  totalCompanyDiscountAmount,
+  totalDoctorDiscountAmount,
+  totalRecipeDiscountAmount,
+  totalExpirationDiscountAmount,
+  totalProductsAmount,
+  totalIVAAmount,
+  totalOrderAmount,
+  appliesSpecialTax,
+  specialTaxAmount,
+  totalOrderAmountWithspecialTaxAmount,
+  totalOrderCost,
+  totalOrderAmountSinDiscount,
+  totalSPESavings,
+  totalAmountBs,
+  totalAmountUsd,
+  totalAmountCop,
+} = useTpvCalculations({
+  orderItems: quotationItems,
+  selectedDisplayCurrency,
+  selectedClient,
+  isSpecialTaxpayer,
+  allForeignSalesSpe,
+  fiscalMode,
+  selectedDiscountType,
+  selectedCompanyId,
+  activeCompanyOffers,
+  selectedDoctorOffer,
+  currentPrescriptionDiscountPercentage,
+  getItemPriceByCurrency,
 });
 
 const totalQuotationAmount = computed(() => {
-  return totalProductsAmount.value + totalIVAAmount.value;
-});
-
-const totalAmountBs = computed(() => {
-  let total = 0;
-  quotationItems.value.forEach((item) => {
-    const priceBs = item.price_bs || 0;
-    const quantity = item.selectedQuantity || 0;
-    const taxRate = item.taxRate || 0;
-    total += priceBs * quantity * (1 + taxRate);
-  });
-  return total;
-});
-
-const totalAmountUsd = computed(() => {
-  let total = 0;
-  quotationItems.value.forEach((item) => {
-    const priceUsd = item.price || 0;
-    const quantity = item.selectedQuantity || 0;
-    const taxRate = item.taxRate || 0;
-    total += priceUsd * quantity * (1 + taxRate);
-  });
-  return total;
-});
-
-const totalAmountCop = computed(() => {
-  let total = 0;
-  quotationItems.value.forEach((item) => {
-    const priceCop = item.price_cop || 0;
-    const quantity = item.selectedQuantity || 0;
-    const taxRate = item.taxRate || 0;
-    let priceWithIva = priceCop * (1 + taxRate);
-    priceWithIva = roundUpToNearestHundred(priceWithIva);
-    total += priceWithIva * quantity;
-  });
-  return total;
-});
-
-const totalEligibleBaseAmount = computed(() => {
-  let total = 0;
-  quotationItems.value.forEach((item) => {
-    if (item.discount_type === "expiration") return;
-    const basePrice = getItemPriceByCurrency(item, selectedDisplayCurrency.value, true);
-    const quantity = item.selectedQuantity || 0;
-    total += basePrice * quantity;
-  });
-  return total;
-});
-
-const totalCompanyDiscountAmount = computed(() => {
-  if (selectedDiscountType.value === "Empresa" && selectedCompanyId.value) {
-    const offer = activeCompanyOffers.value.find((o) => o.value === selectedCompanyId.value);
-    const porcentaje = parseFloat(offer?.current_discount || 0);
-    if (porcentaje > 0) {
-      return totalEligibleBaseAmount.value * (porcentaje / 100);
-    }
-  }
-  return 0;
-});
-
-const totalDoctorDiscountAmount = computed(() => {
-  if (selectedDiscountType.value === "Medico" && selectedDoctorOffer.value) {
-    const porcentaje = parseFloat(selectedDoctorOffer.value.percentage || 0);
-    if (porcentaje > 0) {
-      return totalEligibleBaseAmount.value * (porcentaje / 100);
-    }
-  }
-  return 0;
-});
-
-const totalRecipeDiscountAmount = computed(() => {
-  if (selectedDiscountType.value === "Recipe") {
-    const porcentaje = parseFloat(currentPrescriptionDiscountPercentage.value || 0);
-    if (porcentaje > 0) {
-      return totalEligibleBaseAmount.value * (porcentaje / 100);
-    }
-  }
-  return 0;
+  return totalOrderAmountWithspecialTaxAmount.value;
 });
 
 // ─── Payload para Envío al Backend ────────────────────────────────────────────
@@ -332,10 +272,23 @@ const buildPayload = computed(() => {
 // ─── Carga de Configuración General ──────────────────────────────────────────
 const fetchGeneralSettings = async () => {
   try {
-    const { data } = await axios.get("/general-settings");
+    let response;
+    try {
+      response = await axios.get("/general-settings");
+    } catch (err) {
+      if (err.response?.status === 401) {
+        response = await axios.get("/public/general-settings");
+      } else {
+        throw err;
+      }
+    }
+    const data = response.data;
     const settings = data.data || data;
+    fiscalMode.value = settings.fiscal_mode ?? "demo";
     enableDishes.value = settings.enable_dishes !== undefined ? !!settings.enable_dishes : true;
-    isRestaurant.value = settings.quotation_style === "restaurant";
+    isSpecialTaxpayer.value = Boolean(settings.enable_ce || settings.special_taxpayer_status === "activa");
+    allForeignSalesSpe.value = Boolean(settings.enable_ce || settings.all_foreign_sales_spe);
+    isRestaurant.value = settings.tpv_style === "restaurant" || settings.quotation_style === "restaurant";
     if (isRestaurant.value && enableDishes.value) {
       activeTab.value = "menu";
     }
@@ -725,6 +678,9 @@ onUnmounted(() => {
           :doctor-discount-total="totalDoctorDiscountAmount"
           :recipe-discount-total="totalRecipeDiscountAmount"
           :selected-discount-type="selectedDiscountType"
+          :applies-special-tax="appliesSpecialTax"
+          :special-tax-amount="specialTaxAmount"
+          :is-special-taxpayer="isSpecialTaxpayer"
           @currency-changed="handleCurrencyChanged"
         />
       </VCol>
@@ -738,6 +694,11 @@ onUnmounted(() => {
           :total-amount-bs="totalAmountBs"
           :total-amount-usd="totalAmountUsd"
           :total-amount-cop="totalAmountCop"
+          :applies-special-tax="appliesSpecialTax"
+          :special-tax-amount="specialTaxAmount"
+          :is-special-taxpayer="isSpecialTaxpayer"
+          :all-foreign-sales-spe="allForeignSalesSpe"
+          :fiscal-mode="fiscalMode"
           :on-save-quotation="saveQuotation"
           :selected-client="selectedClient"
           :is-saving="isSaving"
@@ -817,6 +778,8 @@ onUnmounted(() => {
         :total-iva-amount="totalIVAAmount"
         :total-quotation-amount="totalQuotationAmount"
         :selected-display-currency="selectedDisplayCurrency"
+        :applies-special-tax="appliesSpecialTax"
+        :special-tax-amount="specialTaxAmount"
       />
     </div>
 

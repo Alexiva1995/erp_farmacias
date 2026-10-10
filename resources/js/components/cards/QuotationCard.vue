@@ -64,6 +64,18 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  appliesSpecialTax: {
+    type: Boolean,
+    default: false,
+  },
+  specialTaxAmount: {
+    type: Number,
+    default: 0,
+  },
+  isSpecialTaxpayer: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["currency-changed"]);
@@ -127,6 +139,18 @@ const breakdownItems = computed(() => {
       title: "Otros Descuentos (Venc/Indiv)",
       amount: -props.otherDiscountsTotal,
       isDiscount: true,
+    });
+  }
+
+  if (props.appliesSpecialTax && props.specialTaxAmount > 0) {
+    let igtfAmt = props.specialTaxAmount;
+    if (props.selectedDisplayCurrency === "COP") {
+      igtfAmt = roundUpToNearestHundred(igtfAmt);
+    }
+    items.push({
+      title: "IGTF (3%)",
+      amount: igtfAmt,
+      isTax: true,
     });
   }
 

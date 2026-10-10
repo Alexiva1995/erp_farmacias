@@ -104,6 +104,26 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  appliesSpecialTax: {
+    type: Boolean,
+    default: false,
+  },
+  specialTaxAmount: {
+    type: Number,
+    default: 0,
+  },
+  isSpecialTaxpayer: {
+    type: Boolean,
+    default: false,
+  },
+  allForeignSalesSpe: {
+    type: Boolean,
+    default: false,
+  },
+  fiscalMode: {
+    type: String,
+    default: "demo",
+  },
   // Indica que el backend está procesando una petición de guardado
   isSaving: {
     type: Boolean,
@@ -208,10 +228,23 @@ const remove = () => {
   emit("remove");
 };
 
+const foreignTaxApplies = computed(() => {
+  return Boolean(
+    (props.isSpecialTaxpayer || props.allForeignSalesSpe || props.appliesSpecialTax) &&
+    props.fiscalMode === "activa"
+  );
+});
+
 const getProductPrice = (product, currency, useBase = false) => {
   const taxRate = product.taxRate || 0;
   const price = getItemPriceByCurrency(product, currency, useBase);
   let priceWithIva = price * (1 + taxRate);
+
+  // Si aplica el régimen IGTF en divisas (USD / COP)
+  if (foreignTaxApplies.value && (currency === "USD" || currency === "COP")) {
+    priceWithIva = priceWithIva * 1.03;
+  }
+
   if (currency === "COP") {
     priceWithIva = roundUpToNearestHundred(priceWithIva);
   }
@@ -261,6 +294,7 @@ const generateWhatsappMessage = () => {
       productos_array.join("\n") +
       "\n\n" +
       `💰 TOTAL A PAGAR: ${totalSymbol}${formatCurrency(totalAmountVal, props.selectedDisplayCurrency)}\n\n` +
+      (foreignTaxApplies.value && (props.selectedDisplayCurrency === "USD" || props.selectedDisplayCurrency === "COP") ? "👉 Nota: Precios en divisas incluyen IGTF (3%).\n" : "") +
       "👉 Nota: Los precios pueden variar sin previo aviso. Válido según disponibilidad del día. ¡Buen provecho! 🍽️";
       
     return whatsappMessage;
@@ -306,6 +340,10 @@ const generateWhatsappMessage = () => {
     ? `\nNúmero de Cotización: #${props.quotationDetails.id}\n`
     : "";
 
+  const igtfNote = foreignTaxApplies.value
+    ? "\n* Precios en USD y COP incluyen el 3% de IGTF.\n"
+    : "";
+
   const whatsappMessage =
     "Mensaje de presupuesto\n\n" +
     "Fecha: " +
@@ -331,6 +369,7 @@ const generateWhatsappMessage = () => {
     "💰 COP: " +
     formatCurrency(roundUpToNearestHundred(props.totalAmountCop), "COP") +
     "\n" +
+    igtfNote +
     "\n👉 Condiciones\n" +
     "\nPrecios sujetos a cambio sin previo aviso.\n" +
     "\nEl Presupuesto es Válido hasta agotarse las existencias.\n" +
