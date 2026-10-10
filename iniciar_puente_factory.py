@@ -258,12 +258,15 @@ def process_pending_invoices():
                     cmds.append(f"GF+{tax_code}{price_str}||{qty_str}||{p_name}")
 
                 # 3. Medio de Pago (120 Divisas con IGTF 3% o 101 Bolivares) y Cierre (199)
-                is_spe = bool(data.get('spe')) or float(data.get('spe_surcharge_amount', 0.0) or 0.0) > 0
+                spe_raw = str(data.get('spe', '')).lower()
+                spe_amount = float(data.get('spe_surcharge_amount', 0.0) or 0.0)
+                is_spe = spe_raw in ['1', 'true'] or spe_amount > 0
+
                 if is_spe:
-                    # Pago en Divisa 1: la impresora calcula e imprime el IGTF 3% oficial
+                    print(f"[PAGO] Divisas / SPE detectado -> Aplicando Medio de Pago Divisa (120) con IGTF 3%...")
                     cmds.append("120")
                 else:
-                    # Pago en Moneda Nacional (Efectivo 1 / Bolivares)
+                    print(f"[PAGO] Moneda Nacional detectada -> Aplicando Medio de Pago Efectivo Bs (101)...")
                     cmds.append("101")
 
                 # Cierre oficial de documento fiscal (Flag 50 / IGTF)
