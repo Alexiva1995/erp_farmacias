@@ -168,6 +168,12 @@ class OnboardingSupplierPayablesImportService
                         $exchangeRate = round($totalAmount / $totalUsd, 4);
                     }
 
+                    // Normalizar número de factura si viene con formato 'SERIE: A XXXXX' o 'SERIE A XXXXX'
+                    $cleanInvoiceNum = preg_replace('/^SERIE\s*:?\s*A\s*/i', 'A', $invoiceNumber);
+                    if (!empty($cleanInvoiceNum)) {
+                        $invoiceNumber = $cleanInvoiceNum;
+                    }
+
                     Invoice::create([
                         'supplier_id'          => $supplierId,
                         'invoice_number'       => $invoiceNumber,
@@ -175,7 +181,7 @@ class OnboardingSupplierPayablesImportService
                         'created_invoice_date' => $createdDate,
                         'received_date'        => $createdDate,
                         'exp_date'             => $expDate,
-                        'payment_date'         => null,
+                        'payment_date'         => $expDate,
                         'currency'             => 'Bs',
                         'is_indexed'           => $exchangeRate > 0,
                         'exchange_rate'        => $exchangeRate > 0 ? $exchangeRate : 1.0,
@@ -185,7 +191,7 @@ class OnboardingSupplierPayablesImportService
                         'taxable_base'         => 0.0,
                         'exempt_amount'        => 0.0,
                         'tax_amount'           => 0.0,
-                        'status'               => 'pending',
+                        'status'               => 'ordered',
                         'status_payment'       => 0,
                         'registered_by'        => $currentUserId,
                         'uploaded_by'          => $currentUserId,
