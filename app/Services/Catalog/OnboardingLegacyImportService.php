@@ -473,13 +473,20 @@ class OnboardingLegacyImportService
             'sales_average'          => 0.0,
         ];
 
-        // 5. Asignar ID oficial unificado si viene del Master
+        // 5. Asignar ID oficial unificado si viene del Master o reutilizar producto existente
         $existingProduct = $existingProducts->get($barcode);
+        if (!$existingProduct) {
+            $existingProduct = Product::withoutGlobalScope('not_deleted')
+                ->withTrashed()
+                ->where('barcode', $barcode)
+                ->first();
+        }
+
         $isNew = !$existingProduct;
 
         if ($isNew && !empty($masterProduct['id'])) {
             $targetId = (int) $masterProduct['id'];
-            if (!isset($existingIds[$targetId])) {
+            if (!isset($existingIds[$targetId]) && !Product::withoutGlobalScope('not_deleted')->withTrashed()->where('id', $targetId)->exists()) {
                 $productData['id'] = $targetId;
                 $existingIds[$targetId] = true;
             }
@@ -489,22 +496,39 @@ class OnboardingLegacyImportService
             try {
                 $product = Product::create($productData);
             } catch (\Illuminate\Database\QueryException $e) {
+                // Si falla por ID o por coincidencia concurrente de barcode, recuperar o reintentar
                 if (isset($productData['id'])) {
                     unset($productData['id']);
-                    $product = Product::create($productData);
+                }
+                $product = Product::withoutGlobalScope('not_deleted')
+                    ->withTrashed()
+                    ->where('barcode', $barcode)
+                    ->first();
+
+                if ($product) {
+                    if ($product->trashed()) {
+                        $product->restore();
+                    }
+                    $product->update($productData);
+                    $stats['updated']++;
                 } else {
-                    throw $e;
+                    $product = Product::create($productData);
+                    $stats['created']++;
                 }
             }
             $existingProducts->put($barcode, $product);
             $existingIds[$product->id] = true;
-            $stats['created']++;
+            if (!isset($product)) {
+                $stats['created']++;
+            }
         } else {
             $product = $existingProduct;
             if ($product->trashed()) {
                 $product->restore();
             }
             $product->update($productData);
+            $existingProducts->put($barcode, $product);
+            $existingIds[$product->id] = true;
             $stats['updated']++;
         }
 
