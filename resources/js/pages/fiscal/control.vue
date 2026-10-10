@@ -125,28 +125,17 @@ const fetchCommands = async (isBackground = false) => {
 const checkBridgeStatus = async (showToast = true) => {
   checkingConnection.value = true;
   try {
-    if (isFactory.value) {
-      const response = await axios.post("/fiscal/factory/test-connection");
-      const data = response.data?.data || response.data;
-      isBridgeConnected.value = !!(data.success && data.printer_present);
-      if (showToast) {
-        if (isBridgeConnected.value) {
-          toast.success("Impresora The Factory HKA conectada y respondiendo.");
-        } else if (data.connected) {
-          toast.warning("Conectado al listener TCP, pero la impresora no responde.");
-        } else {
-          toast.error(data.message || "Sin conexión con The Factory HKA.");
-        }
-      }
-    } else {
-      const response = await axios.get("/fiscal/commands/status");
-      isBridgeConnected.value = !!response.data?.is_connected;
-      if (showToast) {
-        if (isBridgeConnected.value) {
-          toast.success("Puente fiscal PNP conectado y respondiendo.");
-        } else {
-          toast.error("El puente fiscal PNP no está ejecutándose en la estación local.");
-        }
+    const response = await axios.get("/fiscal/commands/status");
+    isBridgeConnected.value = !!response.data?.is_connected;
+    if (showToast) {
+      if (isBridgeConnected.value) {
+        toast.success(
+          isFactory.value
+            ? "Puente fiscal The Factory HKA activo y sincronizado."
+            : "Puente fiscal PNP conectado y respondiendo."
+        );
+      } else {
+        toast.error("El puente fiscal en Python no está ejecutándose en la estación local.");
       }
     }
   } catch (error) {
@@ -198,50 +187,14 @@ const sendCommand = async (commandKey, payload = {}) => {
 
 // --- Manejadores de Eventos ---
 const handleReportX = async () => {
-  if (isFactory.value) {
-    actionLoading.REPORT_X = true;
-    try {
-      const response = await axios.post("/fiscal/factory/report-x");
-      const res = response.data?.data || response.data;
-      if (res.success) {
-        toast.success(res.message || "Reporte X impreso exitosamente en The Factory.");
-        await fetchCommands(true);
-      } else {
-        toast.error(res.message || "Error al imprimir Reporte X.");
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Error al emitir Reporte X en Factory.");
-    } finally {
-      actionLoading.REPORT_X = false;
-    }
-  } else {
-    sendCommand("REPORT_X");
-  }
+  sendCommand("REPORT_X");
 };
 
 const handleReportZ = () => {
   toast.confirm(
     "¿Seguro que desea generar el Reporte Z? Esto cerrará la jornada fiscal actual.",
     async () => {
-      if (isFactory.value) {
-        actionLoading.REPORT_Z = true;
-        try {
-          const response = await axios.post("/fiscal/factory/report-z");
-          const res = response.data?.data || response.data;
-          if (res.success) {
-            toast.success(res.message || "Reporte Z diario cerrado exitosamente en The Factory.");
-            await fetchCommands(true);
-          } else {
-            toast.error(res.message || "Error al imprimir Reporte Z.");
-          }
-        } catch (err) {
-          toast.error(err.response?.data?.message || "Error al emitir Reporte Z en Factory.");
-        } finally {
-          actionLoading.REPORT_Z = false;
-        }
-      } else {
-        sendCommand("REPORT_Z");
-      }
+      sendCommand("REPORT_Z");
     }
   );
 };
