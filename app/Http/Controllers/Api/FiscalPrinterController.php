@@ -51,7 +51,7 @@ class FiscalPrinterController extends Controller
                 return response()->json(['error' => "Registro fiscal no encontrado para ID {$id}"], 404);
             }
 
-            $targetInvoiceNumber = $request->invoice_number;
+            $targetInvoiceNumber = (string) $request->invoice_number;
             $updateData = [
                 'invoice_number' => $targetInvoiceNumber,
                 'is_queued' => false,
@@ -59,10 +59,17 @@ class FiscalPrinterController extends Controller
             ];
 
             if (!empty($request->fiscal_id)) {
-                $updateData['fiscal_id'] = $request->fiscal_id;
+                $updateData['fiscal_id'] = (string) $request->fiscal_id;
             }
 
             $fiscal->update($updateData);
+
+            // Sincronizar número de factura con la orden de venta si existe
+            if ($fiscal->order_id) {
+                \App\Models\Order::where('id', $fiscal->order_id)->update([
+                    'invoice_number' => $targetInvoiceNumber,
+                ]);
+            }
 
             return response()->json([
                 'message' => 'Factura confirmada exitosamente',
@@ -70,8 +77,11 @@ class FiscalPrinterController extends Controller
                 'fiscal_id' => $fiscal->fiscal_id,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error en FiscalPrinterController@confirm: ' . $e->getMessage());
-            return response()->json(['error' => 'Error al confirmar la impresión'], 500);
+            Log::error('Error en FiscalPrinterController@confirm: ' . $e->getMessage(), [
+                'id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Error al confirmar la impresión: ' . $e->getMessage()], 500);
         }
     }
 

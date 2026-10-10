@@ -23,8 +23,28 @@ API_BASE_URL = "https://ensalud.tovaerp.com/api"
 LOCAL_TCP_PORT = 8090
 POLLING_INTERVAL = 3  # Segundos entre consultas
 
+PROCESSED_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "processed_invoices.txt")
 PROCESSED_INVOICE_IDS = set()
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+if os.path.exists(PROCESSED_FILE):
+    try:
+        with open(PROCESSED_FILE, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    PROCESSED_INVOICE_IDS.add(int(line) if line.isdigit() else line)
+    except Exception:
+        pass
+
+
+def mark_invoice_as_processed(inv_id):
+    PROCESSED_INVOICE_IDS.add(inv_id)
+    try:
+        with open(PROCESSED_FILE, "a") as f:
+            f.write(f"{inv_id}\n")
+    except Exception:
+        pass
+
 LISTENER_EXE = os.path.join(
     BASE_DIR,
     "FACTORY",
@@ -286,13 +306,21 @@ def process_pending_invoices():
                     m_serial = s1.get('machine_serial') or "Z1F0000379"
 
                     print(f"[EXITO] Factura #{last_inv} emitida correctamente. Serial: {m_serial}")
-                    PROCESSED_INVOICE_IDS.add(invoice_id)
+                    mark_invoice_as_processed(invoice_id)
                     
-                    requests.patch(
-                        f"{API_BASE_URL}/fiscal/confirm/{invoice_id}",
-                        json={"invoice_number": str(last_inv), "fiscal_id": str(m_serial)},
-                        verify=False
-                    )
+                    try:
+                        conf_resp = requests.patch(
+                            f"{API_BASE_URL}/fiscal/confirm/{invoice_id}",
+                            json={"invoice_number": str(last_inv), "fiscal_id": str(m_serial)},
+                            verify=False,
+                            timeout=10
+                        )
+                        if conf_resp.status_code == 200:
+                            print(f"[CONFIRMACION CLOUD] Factura #{last_inv} guardada exitosamente en el ERP.")
+                        else:
+                            print(f"[AVISO CLOUD] Servidor respondio HTTP {conf_resp.status_code}: {conf_resp.text}")
+                    except Exception as conf_err:
+                        print(f"[ERROR CONFIRMACION CLOUD] {conf_err}")
                 else:
                     print(f"[ERROR] No se pudo imprimir la factura {invoice_id}. Anulando documento...")
                     execute_hka_cmd("7")
