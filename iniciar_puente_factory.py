@@ -20,7 +20,6 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- CONFIGURACION ---
 API_BASE_URL = "https://ensalud.tovaerp.com/api"
-LOCAL_TCP_IP = "127.0.0.1"
 LOCAL_TCP_PORT = 8090
 POLLING_INTERVAL = 3  # Segundos entre consultas
 
@@ -44,7 +43,6 @@ def get_local_ip() -> str:
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(0.5)
-        # No realiza conexion real a internet, solo resuelve el enrutamiento del socket
         s.connect(('8.8.8.8', 80))
         local_ip = s.getsockname()[0]
         s.close()
@@ -58,7 +56,6 @@ def ensure_hka_listener_running():
     if not os.path.exists(LISTENER_EXE):
         return
 
-    # Verificar proceso en Windows
     try:
         tasks = subprocess.check_output('tasklist /FI "IMAGENAME eq DemoTCPIP-PHP.exe"', shell=True).decode('latin-1', errors='ignore')
         if "DemoTCPIP-PHP.exe" not in tasks:
@@ -72,18 +69,44 @@ def ensure_hka_listener_running():
 
 
 def send_raw_socket(payload: str, timeout: int = 5) -> str:
-    """Envia una trama de comando terminada en NULL byte al socket TCP local de HKA."""
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(timeout)
-            s.connect((LOCAL_TCP_IP, LOCAL_TCP_PORT))
-            raw_data = (payload + "\0").encode("latin-1", errors="replace")
-            s.sendall(raw_data)
-            
-            response = s.recv(4096)
-            return response.decode("latin-1", errors="replace").strip("\0").strip()
-    except Exception as e:
-        return f"ERROR: {e}"
+    """
+    Envia una trama de comando terminada en NULL byte al socket TCP de HKA.
+    Prueba tanto la IP local (192.168.x.x) como 127.0.0.1 / localhost.
+    """
+    target_ips = ["127.0.0.1", get_local_ip(), "localhost"]
+    last_error = ""
+
+    for target_ip in target_ips:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(timeout)
+                s.connect((target_ip, LOCAL_TCP_PORT))
+                raw_data = (payload + "\0").encode("latin-1", errors="replace")
+                s.sendall(raw_data)
+                
+                response = s.recv(4096)
+                return response.decode("latin-1", errors="replace").strip("\0").strip()
+        except Exception as e:
+            last_error = f"{e} (en {target_ip}:{LOCAL_TCP_PORT})"
+            continue
+
+    return f"ERROR: {last_error}"
+
+
+def get_fp_status() -> dict:
+    """Consulta el estado y error descriptivo exacto de la impresora fiscal."""
+    res = send_raw_socket("ReadFpStatus():1")
+    if not res or res.startswith("ERROR"):
+        return {"status": "Error", "error": res}
+    if res.startswith("Resultado:"):
+        res = res[10:]
+    parts = res.split("|")
+    return {
+        "status_code": parts[0] if len(parts) > 0 else "",
+        "status_desc": parts[1] if len(parts) > 1 else "",
+        "error_code": parts[2] if len(parts) > 2 else "",
+        "error_desc": parts[3] if len(parts) > 3 else "",
+    }
 
 
 def check_printer_present() -> bool:
@@ -99,7 +122,10 @@ def execute_hka_cmd(cmd: str) -> bool:
     res = send_raw_socket(f"SendCmd():{cmd}")
     if "Resultado:True" in res or (len(res) >= 11 and res[10] == "T"):
         return True
-    print(f"[CMD RECHAZADO] Comando: '{cmd}' | Respuesta: '{res}'")
+    
+    st = get_fp_status()
+    err_detail = f"{st.get('error_desc', '')} [Cod: {st.get('error_code', '')}]" if st.get('error_desc') else res
+    print(f"[CMD RECHAZADO] Comando: '{cmd}' | Error: {err_detail}")
     return False
 
 
@@ -143,6 +169,26 @@ def clean_text(text: str, max_len: int = 40) -> str:
     return cleaned.strip()[:max_len]
 
 
+def format_gf_price(amount: float) -> str:
+    """Formatea monto a 14 enteros + coma + 2 decimales: 00000000001558,66"""
+    integer_part = int(amount)
+    decimal_part = int(round((amount - integer_part) * 100))
+    if decimal_part >= 100:
+        integer_part += 1
+        decimal_part = 0
+    return f"{integer_part:014d},{decimal_part:02d}"
+
+
+def format_gf_qty(qty: float) -> str:
+    """Formatea cantidad a 14 enteros + coma + 3 decimales: 00000000000001,000"""
+    integer_part = int(qty)
+    decimal_part = int(round((qty - integer_part) * 1000))
+    if decimal_part >= 1000:
+        integer_part += 1
+        decimal_part = 0
+    return f"{integer_part:014d},{decimal_part:03d}"
+
+
 # --- PROCESAMIENTO DE FACTURAS ---
 def process_pending_invoices():
     try:
@@ -170,38 +216,60 @@ def process_pending_invoices():
                     print("[ALERTA] La impresora fiscal no responde. Reintentando en proximo ciclo...")
                     return
 
+                # Si quedo un documento fiscal abierto (status 5) se anula con el comando 7
+                st_prev = get_fp_status()
+                if str(st_prev.get('status_code')) == "5":
+                    print("[AVISO] Documento fiscal abierto detectado. Anulando (cmd 7)...")
+                    execute_hka_cmd("7")
+
                 # 1. Encabezado de Cliente
                 client_name = clean_text(data.get('business_name') or 'CLIENTE CONTADO', 40)
                 raw_rif = str(data.get('identification') or 'V000000000')
-                client_rif = re.sub(r'[^A-Za-z0-9]', '', raw_rif).upper()
-                client_addr = clean_text(data.get('address') or 'LOCAL', 40)
+                client_rif = re.sub(r'[^A-Za-z0-9]', '', raw_rif).upper() or 'V000000000'
+                client_addr = clean_text(data.get('address') or '', 40)
 
                 cmds = [
                     f"iS*{client_name}",
                     f"iR*{client_rif}",
-                    f"i00{client_addr}"
                 ]
+                if client_addr:
+                    cmds.append(f"i01{client_addr}")
 
-                # 2. Renglones de Productos
+                # 2. Renglones de Productos (Protocolo Extendido GF+ oficial SRP-812)
                 for detail in details:
                     qty = float(detail.get('quantity', 1) or 1)
                     item_total = float(detail.get('total_amount', 0) or 0)
                     unit_price = item_total / qty if qty > 0 else item_total
 
                     is_taxable = (detail.get('vat_status') == 1 or detail.get('vat_status') is True or float(detail.get('iva_amount', 0) or 0) > 0)
-                    rate_char = '"' if is_taxable else '!'
-                    base_price = (unit_price / 1.16) if is_taxable else unit_price
+                    
+                    # Protocolo GF+: '0' = Exento, '1' = Tasa General (16%), '2' = Tasa Reducida (8%)
+                    if is_taxable:
+                        tax_code = '1'
+                        base_price = unit_price / 1.16
+                    else:
+                        tax_code = '0'
+                        base_price = unit_price
 
-                    price_str = f"{int(round(base_price * 100)):010d}"
-                    qty_str = f"{int(round(qty * 1000)):08d}"
+                    price_str = format_gf_price(base_price)
+                    qty_str = format_gf_qty(qty)
                     p_name = clean_text(detail.get('product_name') or 'PRODUCTO', 38)
 
-                    cmds.append(f"{rate_char}{price_str}{qty_str}{p_name}")
+                    cmds.append(f"GF+{tax_code}{price_str}||{qty_str}||{p_name}")
 
-                # 3. Cierre Totalizado
-                cmds.append("101")
+                # 3. Medio de Pago (120 Divisas con IGTF 3% o 101 Bolivares) y Cierre (199)
+                is_spe = bool(data.get('spe')) or float(data.get('spe_surcharge_amount', 0.0) or 0.0) > 0
+                if is_spe:
+                    # Pago en Divisa 1: la impresora calcula e imprime el IGTF 3% oficial
+                    cmds.append("120")
+                else:
+                    # Pago en Moneda Nacional (Efectivo 1 / Bolivares)
+                    cmds.append("101")
 
-                # 4. Enviar comandos
+                # Cierre oficial de documento fiscal (Flag 50 / IGTF)
+                cmds.append("199")
+
+                # 4. Enviar comandos paso a paso
                 all_ok = True
                 for c in cmds:
                     if not execute_hka_cmd(c):
@@ -212,7 +280,7 @@ def process_pending_invoices():
                     time.sleep(1)
                     s1 = get_status_s1()
                     last_inv = s1.get('last_invoice') or f"FAC-{invoice_id}"
-                    m_serial = s1.get('machine_serial') or "HKA-BIXOLON"
+                    m_serial = s1.get('machine_serial') or "Z1F0000379"
 
                     print(f"[EXITO] Factura #{last_inv} emitida correctamente. Serial: {m_serial}")
                     PROCESSED_INVOICE_IDS.add(invoice_id)
@@ -223,7 +291,8 @@ def process_pending_invoices():
                         verify=False
                     )
                 else:
-                    print(f"[ERROR] No se pudo imprimir la factura {invoice_id}")
+                    print(f"[ERROR] No se pudo imprimir la factura {invoice_id}. Anulando documento...")
+                    execute_hka_cmd("7")
     except Exception as e:
         print(f"[ERROR FACTURA] {e}")
 
@@ -251,12 +320,18 @@ def process_general_commands():
                         if not execute_hka_cmd("I0X"):
                             status = "error"
                             res_output = "Fallo al ejecutar Reporte X"
+                        else:
+                            # Manual HKA: esperar ~3s mientras emite tickets DNF
+                            time.sleep(3)
                             
                     elif cmd_type == "REPORT_Z":
                         print("[ACCION] Imprimiendo Reporte Z (Cierre Diario)...")
                         if not execute_hka_cmd("I0Z"):
                             status = "error"
                             res_output = "Fallo al ejecutar Reporte Z"
+                        else:
+                            # Manual HKA: esperar ~20s hasta el reporte de estado de transmision
+                            time.sleep(20)
 
                     elif cmd_type == "CREDIT_NOTE":
                         print("[ACCION] Imprimiendo Nota de Credito...")
@@ -269,9 +344,9 @@ def process_general_commands():
                         raw_date = str(payload.get('invoice_date') or time.strftime("%Y-%m-%d"))
                         d_parts = raw_date.replace("/", "-").split("-")
                         if len(d_parts) == 3 and len(d_parts[0]) == 4:
-                            formatted_date = f"{d_parts[2]}-{d_parts[1]}-{d_parts[0]}"
+                            formatted_date = f"{d_parts[2]}/{d_parts[1]}/{d_parts[0]}"
                         else:
-                            formatted_date = time.strftime("%d-%m-%Y")
+                            formatted_date = time.strftime("%d/%m/%Y")
 
                         nc_cmds = [
                             f"iS*{client_name}",
@@ -283,12 +358,15 @@ def process_general_commands():
                         nc_cmds.append(f"iD*{formatted_date}")
 
                         is_tax = bool(payload.get('is_taxable', True))
-                        dev_rate = 'd1' if is_tax else 'd0'
                         refund_amt = float(payload.get('refund_amount', 0.0) or 0.0)
                         base_amt = (refund_amt / 1.16) if is_tax else refund_amt
+                        tax_code = '1' if is_tax else '0'
 
-                        nc_cmds.append(f"{dev_rate}{int(round(base_amt * 100)):010d}00001000DEVOLUCION DE MERCANCIA")
+                        price_str = format_gf_price(base_amt)
+                        qty_str = format_gf_qty(1.0)
+                        nc_cmds.append(f"GC+{tax_code}{price_str}||{qty_str}||DEVOLUCION DE MERCANCIA")
                         nc_cmds.append("101")
+                        nc_cmds.append("199")
 
                         all_ok = True
                         for c in nc_cmds:
@@ -300,9 +378,10 @@ def process_general_commands():
                             res_output = "Fallo al emitir Nota de Credito"
 
                     elif cmd_type == "REPRINT_REPORT_Z":
-                        z_num = f"{int(str(payload.get('z_number', '1')).strip()):04d}"
+                        # Manual 17.1: RZ + inicio(7 digitos) + fin(7 digitos)
+                        z_num = f"{int(str(payload.get('z_number', '1')).strip()):07d}"
                         print(f"[ACCION] Reimprimiendo Reporte Z #{z_num}...")
-                        if not execute_hka_cmd(f"RU{z_num}{z_num}"):
+                        if not execute_hka_cmd(f"RZ{z_num}{z_num}"):
                             status = "error"
                             res_output = "Fallo al reimprimir Reporte Z"
 
@@ -326,7 +405,7 @@ if __name__ == "__main__":
     print("  PUENTE FISCAL AUTONOMO THE FACTORY HKA - TOVA ERP")
     print(f"  Servidor Cloud:   {API_BASE_URL}")
     print(f"  IP Local de la PC:{local_ip}")
-    print(f"  Socket Local HKA: {LOCAL_TCP_IP}:{LOCAL_TCP_PORT}")
+    print(f"  Socket Local HKA: 127.0.0.1 / {local_ip}:{LOCAL_TCP_PORT}")
     print("================================================================")
 
     # 1. Asegurar ejecucion de DemoTCPIP-PHP
