@@ -233,42 +233,16 @@ const handleCreditNote = () => {
     `¿Confirma la emisión de una Nota de Crédito por Bs ${refundAmt.toFixed(2)} ` +
     `sobre la Factura #${invNumber}?\n\nEsta acción genera un documento fiscal irreversible.`,
     async () => {
-      if (isFactory.value) {
-        actionLoading.CREDIT_NOTE = true;
-        try {
-          const response = await axios.post("/fiscal/factory/credit-note", {
-            invoice_number: invNumber,
-            machine_serial: machineSerial,
-            invoice_date:   invDate,
-            refund_amount:  refundAmt,
-            client_name:    clientName,
-            client_rif:     clientRif,
-            is_taxable:     Boolean(ncForm.is_taxable),
-          });
-          const res = response.data?.data || response.data;
-          if (res.success) {
-            toast.success(res.message || "Nota de Crédito fiscal emitida exitosamente en Factory.");
-            await fetchCommands(true);
-          } else {
-            toast.error(res.message || "Error al emitir Nota de Crédito en Factory.");
-          }
-        } catch (err) {
-          toast.error(err.response?.data?.message || "Error al emitir Nota de Crédito en Factory.");
-        } finally {
-          actionLoading.CREDIT_NOTE = false;
-        }
-      } else {
-        sendCommand("CREDIT_NOTE", {
-          invoice_number: invNumber,
-          machine_serial: machineSerial,
-          invoice_date:   invDate,
-          invoice_hour:   invHour,
-          refund_amount:  refundAmt,
-          client_name:    clientName,
-          client_rif:     clientRif,
-          is_taxable:     Boolean(ncForm.is_taxable),
-        });
-      }
+      sendCommand("CREDIT_NOTE", {
+        invoice_number: invNumber,
+        machine_serial: machineSerial,
+        invoice_date:   invDate,
+        invoice_hour:   invHour,
+        refund_amount:  refundAmt,
+        client_name:    clientName,
+        client_rif:     clientRif,
+        is_taxable:     Boolean(ncForm.is_taxable),
+      });
     }
   );
 };
@@ -475,7 +449,7 @@ onUnmounted(() => {
         </VCard>
       </VCol>
 
-      <!-- Card de Nota de Crédito — Protocolo PNP 0141 v5.4 -->
+      <!-- Card de Nota de Crédito -->
       <VCol cols="12" md="6">
         <VCard border variant="flat" class="rounded-lg h-100 d-flex flex-column">
           <VCardItem>
@@ -485,7 +459,9 @@ onUnmounted(() => {
               </div>
             </template>
             <VCardTitle class="font-weight-black">Generar Nota de Crédito</VCardTitle>
-            <VCardSubtitle>Devolución total — Protocolo PNP 0141 v5.4 (Cmd 0x40 / Campo D)</VCardSubtitle>
+            <VCardSubtitle>
+              Devolución total — Protocolo {{ isFactory ? 'The Factory HKA (Cmds iS/iR/iF/d1)' : 'PNP 0141 v5.4 (Cmd 0x40 / Campo D)' }}
+            </VCardSubtitle>
           </VCardItem>
 
           <VCardText class="pt-2 flex-grow-1">
