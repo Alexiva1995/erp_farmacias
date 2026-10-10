@@ -1,5 +1,8 @@
-import socket
+import os
+import sys
 import time
+import socket
+import subprocess
 import requests
 import urllib3
 import re
@@ -7,10 +10,12 @@ import re
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ==============================================================================
-# PUENTE FISCAL THE FACTORY HKA (BIXOLON / DT230 / SRP-812 / HKA)
+# PUENTE FISCAL AUTONOMO THE FACTORY HKA - TOVA ERP (CLOUD BRIDGE)
 # ==============================================================================
-# Se comunica con el ERP en la nube mediante HTTP Polling y envia las tramas
-# al socket TCP local de The Factory HKA (DemoTCPIP-PHP / IntTFHKA en 127.0.0.1:8090).
+# 1. Inicia y garantiza la ejecucion en segundo plano de DemoTCPIP-PHP.exe.
+# 2. Detecta la IP local de la maquina y valida el puerto 8090.
+# 3. Consulta la nube (https://ensalud.tovaerp.com) por facturas y comandos pendientes.
+# 4. Imprime automaticamente y confirma seriales y numeros de facturas fiscales reales.
 # ==============================================================================
 
 # --- CONFIGURACION ---
@@ -20,6 +25,50 @@ LOCAL_TCP_PORT = 8090
 POLLING_INTERVAL = 3  # Segundos entre consultas
 
 PROCESSED_INVOICE_IDS = set()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LISTENER_EXE = os.path.join(
+    BASE_DIR,
+    "FACTORY",
+    "TFHKA Venezuela - PHP SDK",
+    "TFHKA Venezuela - WEB PHP con TCP SDK",
+    "Socket TCPIP",
+    "DemoTCPIP-PHP",
+    "bin",
+    "Debug",
+    "DemoTCPIP-PHP.exe"
+)
+
+
+def get_local_ip() -> str:
+    """Obtiene la IP local activa de la interfaz de red de la maquina."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.5)
+        # No realiza conexion real a internet, solo resuelve el enrutamiento del socket
+        s.connect(('8.8.8.8', 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        return local_ip
+    except Exception:
+        return "127.0.0.1"
+
+
+def ensure_hka_listener_running():
+    """Verifica si DemoTCPIP-PHP.exe esta corriendo en Windows; si no, lo inicia."""
+    if not os.path.exists(LISTENER_EXE):
+        return
+
+    # Verificar proceso en Windows
+    try:
+        tasks = subprocess.check_output('tasklist /FI "IMAGENAME eq DemoTCPIP-PHP.exe"', shell=True).decode('latin-1', errors='ignore')
+        if "DemoTCPIP-PHP.exe" not in tasks:
+            print("[AUTO-INICIO] Iniciando DemoTCPIP-PHP.exe en segundo plano...")
+            subprocess.Popen([LISTENER_EXE], cwd=os.path.dirname(LISTENER_EXE), shell=False)
+            time.sleep(2)
+        else:
+            print("[INFO] El listener DemoTCPIP-PHP.exe ya se encuentra en ejecucion.")
+    except Exception as e:
+        print(f"[AVISO] No se pudo verificar el proceso DemoTCPIP-PHP: {e}")
 
 
 def send_raw_socket(payload: str, timeout: int = 5) -> str:
@@ -34,7 +83,6 @@ def send_raw_socket(payload: str, timeout: int = 5) -> str:
             response = s.recv(4096)
             return response.decode("latin-1", errors="replace").strip("\0").strip()
     except Exception as e:
-        print(f"[SOCKET ERROR] Fallo al comunicar con {LOCAL_TCP_IP}:{LOCAL_TCP_PORT} -> {e}")
         return f"ERROR: {e}"
 
 
@@ -61,7 +109,6 @@ def get_status_s1() -> dict:
     if not res or res.startswith("ERROR"):
         return {}
     
-    # Remover prefijo "Resultado:" si existe
     if res.startswith("Resultado:"):
         payload = res[10:]
     else:
@@ -85,7 +132,6 @@ def clean_text(text: str, max_len: int = 40) -> str:
     """Limpia caracteres especiales no soportados por el protocolo ASCII de HKA."""
     if not text:
         return ""
-    # Reemplazar tildes y caracteres comunes
     replacements = {
         'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
         'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U',
@@ -93,12 +139,11 @@ def clean_text(text: str, max_len: int = 40) -> str:
     }
     for orig, rep in replacements.items():
         text = text.replace(orig, rep)
-    # Conservar solo caracteres alfanumericos y puntuacion basica
     cleaned = re.sub(r'[^a-zA-Z0-9\s.,#\-_/\(\)]', '', text)
     return cleaned.strip()[:max_len]
 
 
-# --- LOGICA DE FACTURACION ---
+# --- PROCESAMIENTO DE FACTURAS ---
 def process_pending_invoices():
     try:
         resp = requests.get(f"{API_BASE_URL}/fiscal/pending", timeout=10, verify=False)
@@ -121,12 +166,11 @@ def process_pending_invoices():
                 print(f"[FACTURA PENDIENTE] ID: {invoice_id} | Total: Bs {total_amount:.2f}")
                 print(f"=======================================================")
 
-                # Verificar conexion con impresora
                 if not check_printer_present():
-                    print("[ALERTA] La impresora no esta lista o el socket no responde. Reintentando...")
+                    print("[ALERTA] La impresora fiscal no responde. Reintentando en proximo ciclo...")
                     return
 
-                # 1. Datos de Encabezado Cliente
+                # 1. Encabezado de Cliente
                 client_name = clean_text(data.get('business_name') or 'CLIENTE CONTADO', 40)
                 raw_rif = str(data.get('identification') or 'V000000000')
                 client_rif = re.sub(r'[^A-Za-z0-9]', '', raw_rif).upper()
@@ -148,16 +192,16 @@ def process_pending_invoices():
                     rate_char = '"' if is_taxable else '!'
                     base_price = (unit_price / 1.16) if is_taxable else unit_price
 
-                    price_str = f"{int(round(base_price * 100)):010d}" # 10 digitos (2 decimales)
-                    qty_str = f"{int(round(qty * 1000)):08d}"          # 8 digitos (3 decimales)
+                    price_str = f"{int(round(base_price * 100)):010d}"
+                    qty_str = f"{int(round(qty * 1000)):08d}"
                     p_name = clean_text(detail.get('product_name') or 'PRODUCTO', 38)
 
                     cmds.append(f"{rate_char}{price_str}{qty_str}{p_name}")
 
-                # 3. Cierre de Factura (101 = Efectivo / Totalizado)
+                # 3. Cierre Totalizado
                 cmds.append("101")
 
-                # 4. Enviar comandos secuenciales
+                # 4. Enviar comandos
                 all_ok = True
                 for c in cmds:
                     if not execute_hka_cmd(c):
@@ -170,22 +214,21 @@ def process_pending_invoices():
                     last_inv = s1.get('last_invoice') or f"FAC-{invoice_id}"
                     m_serial = s1.get('machine_serial') or "HKA-BIXOLON"
 
-                    print(f"[EXITO] Factura Fiscal #{last_inv} emitida correctamente. Serial: {m_serial}")
+                    print(f"[EXITO] Factura #{last_inv} emitida correctamente. Serial: {m_serial}")
                     PROCESSED_INVOICE_IDS.add(invoice_id)
                     
-                    # Confirmar al ERP
                     requests.patch(
                         f"{API_BASE_URL}/fiscal/confirm/{invoice_id}",
                         json={"invoice_number": str(last_inv), "fiscal_id": str(m_serial)},
                         verify=False
                     )
                 else:
-                    print(f"[ERROR] No se pudo completar la impresion de la factura {invoice_id}")
+                    print(f"[ERROR] No se pudo imprimir la factura {invoice_id}")
     except Exception as e:
         print(f"[ERROR FACTURA] {e}")
 
 
-# --- LOGICA DE COMANDOS (REPORTE X, Z, NOTA DE CREDITO) ---
+# --- PROCESAMIENTO DE COMANDOS GENERALES (REPORTE X, Z, NOTA DE CREDITO) ---
 def process_general_commands():
     try:
         resp = requests.get(f"{API_BASE_URL}/fiscal/commands/pending", timeout=10, verify=False)
@@ -198,7 +241,7 @@ def process_general_commands():
                 cmd_type = cmd_data.get('command')
                 payload = cmd_data.get('payload', {}) or {}
                 
-                print(f"\n[COMANDO FISCAL] Tipo: {cmd_type} | ID: {cmd_id}")
+                print(f"\n[COMANDO RECIBIDO] {cmd_type} (ID: {cmd_id})")
                 res_output = "OK"
                 status = "success"
 
@@ -216,7 +259,7 @@ def process_general_commands():
                             res_output = "Fallo al ejecutar Reporte Z"
 
                     elif cmd_type == "CREDIT_NOTE":
-                        print("[ACCION] Procesando Nota de Credito...")
+                        print("[ACCION] Imprimiendo Nota de Credito...")
                         client_name = clean_text(payload.get('client_name') or 'CLIENTE CONTADO', 40)
                         raw_rif = str(payload.get('client_rif') or 'V000000000')
                         client_rif = re.sub(r'[^A-Za-z0-9]', '', raw_rif).upper()
@@ -224,9 +267,8 @@ def process_general_commands():
                         mach_serial = str(payload.get('machine_serial', '')).strip().upper()
                         
                         raw_date = str(payload.get('invoice_date') or time.strftime("%Y-%m-%d"))
-                        # Formato dd-mm-yyyy
                         d_parts = raw_date.replace("/", "-").split("-")
-                        if len(d_parts) == 3 and len(d_parts[0]) == 4: # YYYY-MM-DD
+                        if len(d_parts) == 3 and len(d_parts[0]) == 4:
                             formatted_date = f"{d_parts[2]}-{d_parts[1]}-{d_parts[0]}"
                         else:
                             formatted_date = time.strftime("%d-%m-%Y")
@@ -240,7 +282,6 @@ def process_general_commands():
                             nc_cmds.append(f"iI*{mach_serial}")
                         nc_cmds.append(f"iD*{formatted_date}")
 
-                        # Renglon de devolucion (d1 = 16%, d0 = exento)
                         is_tax = bool(payload.get('is_taxable', True))
                         dev_rate = 'd1' if is_tax else 'd0'
                         refund_amt = float(payload.get('refund_amount', 0.0) or 0.0)
@@ -269,7 +310,6 @@ def process_general_commands():
                     status = "error"
                     res_output = str(cmd_err)
 
-                # Confirmar comando al ERP
                 requests.patch(
                     f"{API_BASE_URL}/fiscal/commands/{cmd_id}/confirm",
                     json={"status": status, "response": res_output},
@@ -281,21 +321,30 @@ def process_general_commands():
 
 
 if __name__ == "__main__":
+    local_ip = get_local_ip()
     print("================================================================")
-    print("  PUENTE FISCAL THE FACTORY HKA - ERP FARMACIAS (CLOUD BRIDGE)")
-    print(f"  Servidor Cloud: {API_BASE_URL}")
-    print(f"  Listener Local: {LOCAL_TCP_IP}:{LOCAL_TCP_PORT}")
+    print("  PUENTE FISCAL AUTONOMO THE FACTORY HKA - TOVA ERP")
+    print(f"  Servidor Cloud:   {API_BASE_URL}")
+    print(f"  IP Local de la PC:{local_ip}")
+    print(f"  Socket Local HKA: {LOCAL_TCP_IP}:{LOCAL_TCP_PORT}")
     print("================================================================")
 
-    # Verificar conexion con el Listener de Demo TCP
+    # 1. Asegurar ejecucion de DemoTCPIP-PHP
+    ensure_hka_listener_running()
+
+    # 2. Diagnostico inicial de conexion
+    time.sleep(1)
     if check_printer_present():
-        print("[OK] Conectado exitosamente al Listener de The Factory HKA y a la impresora.")
+        print("[OK] Impresora The Factory HKA conectada y lista para operar.")
         s1 = get_status_s1()
         if s1.get('machine_serial'):
             print(f"[IMPRESORA] Serial: {s1.get('machine_serial')} | RIF: {s1.get('rif')} | Ultima Factura: {s1.get('last_invoice')}")
     else:
-        print("[AVISO] Esperando que Demo TCP .Net este activo en el puerto 8090...")
+        print("[AVISO] Esperando conexion activa en Demo TCP .Net...")
 
+    print("\n[ESTADO] Escuchando ordenes y facturas desde la nube en tiempo real...\n")
+
+    # 3. Bucle continuo de sincronizacion
     while True:
         try:
             process_pending_invoices()
@@ -304,5 +353,5 @@ if __name__ == "__main__":
             print("\n[SALIR] Puente fiscal detenido.")
             break
         except Exception as e:
-            print(f"[ERROR LOOP] {e}")
+            print(f"[ERROR BUCLE] {e}")
         time.sleep(POLLING_INTERVAL)
