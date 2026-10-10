@@ -656,9 +656,9 @@ const executeClientsImport = async () => {
 }
 
 // ==========================================================================
-// SECCIÓN 4: TRANSACCIONES Y VENTAS (HISTÓRICO DE VENTAS)
+// SECCIÓN 4: TRANSACCIONES Y VENTAS (HISTÓRICO DE VENTAS) - MÚLTIPLES ARCHIVOS
 // ==========================================================================
-const salesFile = ref(null)
+const salesFiles = ref([])
 const salesInputRef = ref(null)
 const isDraggingSales = ref(false)
 const analyzingSales = ref(false)
@@ -677,13 +677,18 @@ try {
 }
 const lastSalesResult = ref(initialSalesStats)
 
-const salesFileSize = computed(() => {
-  return salesFile.value ? (salesFile.value.size / 1024).toFixed(2) : '0'
+const totalSalesFilesSize = computed(() => {
+  const totalBytes = salesFiles.value.reduce((acc, f) => acc + (f.size || 0), 0)
+  return (totalBytes / 1024).toFixed(2)
 })
 
-const clearSalesFile = () => {
-  salesFile.value = null
+const clearSalesFiles = () => {
+  salesFiles.value = []
   if (salesInputRef.value) salesInputRef.value.value = ''
+}
+
+const removeSalesFile = index => {
+  salesFiles.value.splice(index, 1)
 }
 
 const clearSalesReport = () => {
@@ -693,33 +698,41 @@ const clearSalesReport = () => {
   } catch {}
 }
 
-const onSalesFileSelected = event => {
-  const file = event.target.files?.[0]
-  if (file) salesFile.value = file
+const onSalesFilesSelected = event => {
+  const files = Array.from(event.target.files || [])
+  if (files.length > 0) {
+    salesFiles.value = [...salesFiles.value, ...files]
+  }
 }
 
 const onDropSales = event => {
   isDraggingSales.value = false
-  const file = event.dataTransfer?.files?.[0]
-  if (file) {
-    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
-      salesFile.value = file
-    } else {
-      toast.error('Formato no válido. Solo se admiten archivos Excel (.xlsx, .xls) o CSV.')
+  const droppedFiles = Array.from(event.dataTransfer?.files || [])
+  if (droppedFiles.length > 0) {
+    const validFiles = droppedFiles.filter(f =>
+      f.name.endsWith('.xlsx') || f.name.endsWith('.xls') || f.name.endsWith('.csv') || f.name.endsWith('.txt')
+    )
+    if (validFiles.length < droppedFiles.length) {
+      toast.warning('Se omitieron algunos archivos no válidos. Solo se admiten archivos Excel (.xlsx, .xls) o CSV (.csv, .txt).')
+    }
+    if (validFiles.length > 0) {
+      salesFiles.value = [...salesFiles.value, ...validFiles]
     }
   }
 }
 
 const analyzeSalesFile = async () => {
-  if (!salesFile.value) {
-    toast.error('Por favor selecciona el archivo de Transacciones de Ventas.')
+  if (!salesFiles.value || salesFiles.value.length === 0) {
+    toast.error('Por favor selecciona o arrastra al menos un archivo de Transacciones de Ventas.')
     return
   }
 
   analyzingSales.value = true
 
   const formData = new FormData()
-  formData.append('sales_file', salesFile.value)
+  salesFiles.value.forEach(file => {
+    formData.append('sales_files[]', file)
+  })
 
   try {
     const response = await axios.post('/import-hybrid/analyze-sales', formData, {
@@ -733,7 +746,7 @@ const analyzeSalesFile = async () => {
     isSalesModalOpen.value = true
     toast.success('Análisis de transacciones de ventas completado.')
   } catch (err) {
-    const message = err.response?.data?.message ?? 'Ocurrió un error al analizar el archivo de ventas.'
+    const message = err.response?.data?.message ?? 'Ocurrió un error al analizar los archivos de ventas.'
     toast.error(message)
   } finally {
     analyzingSales.value = false
@@ -1716,7 +1729,7 @@ const executeSalesImport = async () => {
                   </div>
 
                   <div
-                    class="d-flex flex-column align-center justify-center rounded pa-8 border-dashed"
+                    class="d-flex flex-column align-center justify-center rounded pa-6 border-dashed"
                     :style="{
                       borderWidth: '2px',
                       borderColor: isDraggingSales ? 'rgb(var(--v-theme-primary))' : 'rgba(var(--v-border-color), 0.35)',
@@ -1728,34 +1741,52 @@ const executeSalesImport = async () => {
                     @drop.prevent="onDropSales"
                   >
                     <VIcon
-                      :icon="salesFile ? 'tabler-file-check' : 'tabler-upload'"
-                      size="48"
-                      :color="salesFile ? 'success' : 'primary'"
+                      :icon="salesFiles.length > 0 ? 'tabler-file-check' : 'tabler-upload'"
+                      size="44"
+                      :color="salesFiles.length > 0 ? 'success' : 'primary'"
                       class="mb-2"
                     />
 
-                    <template v-if="!salesFile">
-                      <span class="text-body-1 font-weight-medium mb-1">
-                        Arrastra el archivo de Ventas y Transacciones
+                    <template v-if="salesFiles.length === 0">
+                      <span class="text-body-1 font-weight-medium mb-1 text-center">
+                        Arrastra uno o varios archivos de Ventas y Transacciones
                       </span>
-                      <span class="text-caption text-disabled mb-4">
-                        Formatos admitidos: Excel (.xlsx, .xls) o CSV (.csv, .txt)
+                      <span class="text-caption text-disabled mb-4 text-center">
+                        Formatos admitidos: Excel (.xlsx, .xls) o CSV (.csv, .txt) — Puedes seleccionar múltiples a la vez
                       </span>
                     </template>
                     <template v-else>
-                      <span class="text-body-1 font-weight-bold mb-1 text-center">{{ salesFile.name }}</span>
-                      <span class="text-caption text-medium-emphasis mb-3">{{ salesFileSize }} KB</span>
+                      <div class="d-flex flex-column align-center w-100 mb-3">
+                        <span class="text-body-2 font-weight-bold text-primary mb-2">
+                          {{ salesFiles.length }} archivo(s) seleccionado(s) (Total: {{ totalSalesFilesSize }} KB)
+                        </span>
+                        <div class="d-flex flex-wrap gap-2 justify-center" style="max-height: 140px; overflow-y: auto;">
+                          <VChip
+                            v-for="(file, fIdx) in salesFiles"
+                            :key="fIdx"
+                            size="small"
+                            color="primary"
+                            variant="tonal"
+                            closable
+                            @click:close="removeSalesFile(fIdx)"
+                          >
+                            <VIcon icon="tabler-file-spreadsheet" size="14" class="me-1" />
+                            {{ file.name }} ({{ (file.size / 1024).toFixed(1) }} KB)
+                          </VChip>
+                        </div>
+                      </div>
                     </template>
 
                     <input
                       ref="salesInputRef"
                       type="file"
+                      multiple
                       accept=".xlsx, .xls, .csv, .txt"
                       class="d-none"
-                      @change="onSalesFileSelected"
+                      @change="onSalesFilesSelected"
                     >
 
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 mt-2">
                       <VBtn
                         color="secondary"
                         variant="outlined"
@@ -1764,17 +1795,17 @@ const executeSalesImport = async () => {
                         :disabled="analyzingSales || processingSales"
                         @click="salesInputRef?.click()"
                       >
-                        {{ salesFile ? 'Cambiar Archivo' : 'Seleccionar Archivo' }}
+                        {{ salesFiles.length > 0 ? 'Agregar Más Archivos' : 'Seleccionar Archivos' }}
                       </VBtn>
 
                       <VBtn
-                        v-if="salesFile"
+                        v-if="salesFiles.length > 0"
                         color="error"
                         variant="text"
                         icon="tabler-trash"
                         size="small"
                         :disabled="analyzingSales || processingSales"
-                        @click="clearSalesFile"
+                        @click="clearSalesFiles"
                       />
                     </div>
                   </div>
@@ -1784,11 +1815,11 @@ const executeSalesImport = async () => {
                       color="primary"
                       size="large"
                       prepend-icon="tabler-scan-eye"
-                      :disabled="!salesFile || analyzingSales || processingSales"
+                      :disabled="salesFiles.length === 0 || analyzingSales || processingSales"
                       :loading="analyzingSales"
                       @click="analyzeSalesFile"
                     >
-                      Analizar Transacciones de Ventas
+                      Analizar Transacciones de Ventas ({{ salesFiles.length }} Archivo{{ salesFiles.length === 1 ? '' : 's' }})
                     </VBtn>
                   </div>
                 </VCol>

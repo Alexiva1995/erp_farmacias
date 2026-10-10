@@ -18,15 +18,26 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 class OnboardingSalesOrdersImportService
 {
     /**
-     * Parsea el archivo de transacciones de ventas y realiza el pre-análisis de clientes y productos.
+     * Parsea uno o múltiples archivos de transacciones de ventas y realiza el pre-análisis de clientes y productos.
+     *
+     * @param string|array<string> $filePaths
      */
-    public function parseAndAnalyze(string $filePath): array
+    public function parseAndAnalyze(string|array $filePaths): array
     {
-        @ini_set('memory_limit', '512M');
-        @ini_set('max_execution_time', '300');
+        @ini_set('memory_limit', '1024M');
+        @ini_set('max_execution_time', '600');
 
-        $rows = $this->extractRawRows($filePath);
-        $parsedOrders = $this->structureSalesOrders($rows);
+        $paths = is_array($filePaths) ? $filePaths : [$filePaths];
+        $allRows = [];
+
+        foreach ($paths as $filePath) {
+            if (!empty($filePath) && file_exists($filePath)) {
+                $rows = $this->extractRawRows($filePath);
+                $allRows = array_merge($allRows, $rows);
+            }
+        }
+
+        $parsedOrders = $this->structureSalesOrders($allRows);
 
         return $this->correlateOrdersData($parsedOrders);
     }

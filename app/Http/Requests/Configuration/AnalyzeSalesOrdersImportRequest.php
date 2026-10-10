@@ -16,16 +16,19 @@ class AnalyzeSalesOrdersImportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'sales_file' => ['required', 'file', 'mimes:xlsx,xls,csv,txt'],
+            'sales_file'    => ['nullable', 'file', 'mimes:xlsx,xls,csv,txt'],
+            'sales_files'   => ['nullable', 'array'],
+            'sales_files.*' => ['file', 'mimes:xlsx,xls,csv,txt'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'sales_file.required' => 'El archivo de transacciones de ventas es obligatorio.',
-            'sales_file.file'     => 'El archivo de ventas debe ser un archivo válido.',
-            'sales_file.mimes'    => 'El formato debe ser .xlsx, .xls, .csv o .txt.',
+            'sales_file.file'      => 'El archivo de ventas debe ser un archivo válido.',
+            'sales_file.mimes'     => 'El formato debe ser .xlsx, .xls, .csv o .txt.',
+            'sales_files.*.file'   => 'Cada archivo de ventas debe ser válido.',
+            'sales_files.*.mimes'  => 'Cada archivo debe tener formato .xlsx, .xls, .csv o .txt.',
         ];
     }
 }

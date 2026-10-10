@@ -44,16 +44,34 @@ class DataImportController extends Controller
         protected ?ExternalCatalogImportService $externalCatalogService = null
     ) {}
 
-    /**
-     * Analiza el archivo de Transacciones de Ventas generando una pre-visualización de órdenes y detalles.
-     */
     public function analyzeSalesOrders(
         AnalyzeSalesOrdersImportRequest $request,
         OnboardingSalesOrdersImportService $service
     ): JsonResponse {
         try {
-            $file = $request->file('sales_file');
-            $analysis = $service->parseAndAnalyze($file->getRealPath());
+            $filePaths = [];
+
+            if ($request->hasFile('sales_files')) {
+                foreach ($request->file('sales_files') as $file) {
+                    if ($file && $file->isValid()) {
+                        $filePaths[] = $file->getRealPath();
+                    }
+                }
+            } elseif ($request->hasFile('sales_file')) {
+                $file = $request->file('sales_file');
+                if ($file && $file->isValid()) {
+                    $filePaths[] = $file->getRealPath();
+                }
+            }
+
+            if (empty($filePaths)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debe adjuntar al menos un archivo de transacciones de ventas.',
+                ], 422);
+            }
+
+            $analysis = $service->parseAndAnalyze($filePaths);
 
             return response()->json([
                 'success' => true,
