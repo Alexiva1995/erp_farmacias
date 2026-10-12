@@ -353,7 +353,16 @@ function rowClass(item) {
 </script>
 
 <template>
-  <VCard class="rounded-lg border shadow-sm bg-surface">
+  <VCard class="rounded-lg border shadow-sm bg-surface position-relative">
+    <!-- Barra de progreso superior no destructiva -->
+    <VProgressLinear
+      v-if="loading"
+      indeterminate
+      color="primary"
+      height="3"
+      class="position-absolute"
+      style="top: 0; left: 0; right: 0; z-index: 5;"
+    />
 
     <!-- Estado vacío -->
     <div v-if="!loading && grupos.length === 0" class="d-flex flex-column align-center py-16 text-disabled">
@@ -361,14 +370,8 @@ function rowClass(item) {
       <span class="text-body-1 font-weight-medium">No hay grupos con productos filtrados</span>
     </div>
 
-    <!-- Cargador de carga limpio -->
-    <div v-else-if="loading" class="pa-12 text-center bg-white rounded-lg">
-      <VProgressCircular indeterminate color="primary" size="38" class="mb-3" />
-      <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando grupos de sugerencias...</div>
-    </div>
-
-    <!-- Acordeón de grupos -->
-    <div v-else class="pa-2">
+    <!-- Acordeón de grupos (con opacidad durante carga sin destruir elementos) -->
+    <div v-else class="pa-2" :class="{ 'opacity-50 pointer-events-none': loading }">
       <div
         v-for="grupo in grupos"
         :key="grupo.group_id"
@@ -885,6 +888,7 @@ function rowClass(item) {
           <VSelect
             :model-value="perPage"
             :items="[10, 25, 50, 100]"
+            :disabled="loading"
             density="compact"
             variant="outlined"
             hide-details
@@ -897,6 +901,7 @@ function rowClass(item) {
       <VPagination
         :model-value="currentPage"
         :length="lastPage"
+        :disabled="loading"
         :total-visible="$vuetify.display.xs ? 3 : 5"
         density="compact"
         @update:model-value="(val) => emit('page-change', { page: Number(val), itemsPerPage: perPage })"

@@ -218,7 +218,6 @@ const onGrupalPageChange = (payload) => {
   } else if (typeof payload === 'number' || typeof payload === 'string') {
     page.value = Number(payload);
   }
-  actualizarTabla();
 };
 
 const handleProductScarceToggled = (productId) => {
