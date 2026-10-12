@@ -35,6 +35,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
         private readonly ?string $costUsdCol,
         private readonly ?string $activeIngredientCol,
         private readonly ?string $expirationCol,
+        private readonly ?string $laboratoryCol = null,
     ) {
         $this->cleanedRows = collect();
     }
@@ -187,7 +188,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                     "updated_at" => $now,
                     "connection_date" => $now,
                     'active_ingredient' => $this->cleanCell($active_ingredient),
-                    "laboratory" => null,
+                    "laboratory" => !empty($this->laboratoryCol) ? $this->cleanCell($row[$this->colIndex($this->laboratoryCol)] ?? null) : null,
                     "product_id" => null,
                     "unit_cost_with_discount" => $this->castToFloat($bs),
                     "unit_cost_usd_with_discount" => $this->castToFloat($usd),
@@ -195,7 +196,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
 
                 $product = $products->get($bar);
                 if ($product) {
-                    $data['laboratory'] = $product->laboratory?->name;
+                    $data['laboratory'] = $data['laboratory'] ?: $product->laboratory?->name;
                     $data['product_id'] = $product->id;
                 }
 

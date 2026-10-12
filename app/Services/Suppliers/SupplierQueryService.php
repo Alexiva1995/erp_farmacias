@@ -785,8 +785,8 @@ class SupplierQueryService
                     ORDER BY CASE 
                         WHEN type IN ('api', 'http') THEN 1
                         WHEN type IN ('ftp', 'sftp') THEN 2
-                        WHEN type LIKE '%bot%' OR type LIKE '%_bot' THEN 3
-                        WHEN type = 'file' THEN 4
+                        WHEN type = 'file' THEN 3
+                        WHEN type LIKE '%bot%' OR type LIKE '%_bot' THEN 4
                         ELSE 5 
                     END ASC,
                     id DESC

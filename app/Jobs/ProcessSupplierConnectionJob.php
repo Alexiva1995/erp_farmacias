@@ -186,6 +186,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                         costUsdCol: $map["unit_cost_usd"] ?? null,
                         activeIngredientCol: $map["active_ingredient"] ?? null,
                         expirationCol: $map["expiration"] ?? null,
+                        laboratoryCol: $map["laboratory"] ?? null,
                         currencyCol: $this->exchangeRate ?? ($map["currency"] ?? null),
                     );
 

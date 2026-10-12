@@ -29,6 +29,7 @@ const formats = reactive({
     active_ingredient: "",
     expiration: null,
     quantity: null,
+    laboratory: "",
     currency: null,
     file_keyword: "",
   },
@@ -42,6 +43,7 @@ const formats = reactive({
     active_ingredient: "",
     expiration: null,
     quantity: null,
+    laboratory: "",
     currency: null,
     file_keyword: "",
   },
@@ -55,6 +57,7 @@ const formats = reactive({
     active_ingredient: "",
     expiration: null,
     quantity: null,
+    laboratory: "",
     currency: null,
     file_keyword: "",
   },
@@ -90,6 +93,7 @@ const submitForm = async () => {
   form.append("unit_cost", current.unit_cost || "");
   form.append("unit_cost_usd", current.unit_cost_usd || "");
   form.append("active_ingredient", current.active_ingredient || "");
+  form.append("laboratory", current.laboratory || "");
   form.append("expiration", current.expiration || "");
   form.append("file_keyword", current.file_keyword || "");
   form.append("format_type", activeFormat.value);
@@ -155,6 +159,7 @@ const fetchSupplierConnection = async (id) => {
       unit_cost: structure.unit_cost ?? "",
       unit_cost_usd: structure.unit_cost_usd ?? "",
       active_ingredient: structure.active_ingredient ?? "",
+      laboratory: structure.laboratory ?? "",
       expiration: structure.expiration != "null" ? structure.expiration : null,
       quantity: structure.quantity != "null" ? structure.quantity : null,
       currency: structure.currency ?? null,
@@ -169,6 +174,7 @@ const fetchSupplierConnection = async (id) => {
       unit_cost: secondaryStructure.unit_cost ?? "",
       unit_cost_usd: secondaryStructure.unit_cost_usd ?? "",
       active_ingredient: secondaryStructure.active_ingredient ?? "",
+      laboratory: secondaryStructure.laboratory ?? structure.laboratory ?? "",
       expiration: secondaryStructure.expiration != "null" ? secondaryStructure.expiration : null,
       quantity: secondaryStructure.quantity != "null" ? secondaryStructure.quantity : null,
       currency: secondaryStructure.currency ?? null,
@@ -183,6 +189,7 @@ const fetchSupplierConnection = async (id) => {
       unit_cost: tertiaryStructure.unit_cost ?? "",
       unit_cost_usd: tertiaryStructure.unit_cost_usd ?? "",
       active_ingredient: tertiaryStructure.active_ingredient ?? "",
+      laboratory: tertiaryStructure.laboratory ?? structure.laboratory ?? "",
       expiration: tertiaryStructure.expiration != "null" ? tertiaryStructure.expiration : null,
       quantity: tertiaryStructure.quantity != "null" ? tertiaryStructure.quantity : null,
       currency: tertiaryStructure.currency ?? null,
@@ -456,6 +463,19 @@ watch(
                 prepend-inner-icon="tabler-packages"
                 class="rounded-lg font-weight-black"
                 :error-messages="errors.quantity"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Laboratorio</span>
+              <VTextField
+                v-model="formats[activeFormat].laboratory"
+                type="text"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-building-factory-2"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.laboratory"
               />
             </VCol>
           </VRow>

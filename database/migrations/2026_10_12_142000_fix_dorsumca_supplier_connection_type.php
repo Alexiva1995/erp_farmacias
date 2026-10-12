@@ -10,12 +10,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Buscar el proveedor Dorsumca por coincidencia de nombre
-        $dorsumcaSuppliers = DB::table('suppliers')
-            ->where('name', 'LIKE', '%DORSUMCA%')
+        // Buscar el proveedor Drosymca / Dorsumca por coincidencia de nombre
+        $drosymcaSuppliers = DB::table('suppliers')
+            ->where(function ($query) {
+                $query->where('name', 'LIKE', '%DROSYMCA%')
+                      ->orWhere('name', 'LIKE', '%DORSUMCA%');
+            })
             ->pluck('id');
 
-        foreach ($dorsumcaSuppliers as $supplierId) {
+        foreach ($drosymcaSuppliers as $supplierId) {
             $hasFileConn = DB::table('supplier_connections')
                 ->where('supplier_id', $supplierId)
                 ->where('type', 'file')
