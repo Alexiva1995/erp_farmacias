@@ -14,6 +14,8 @@ const canManageBot = computed(() => ability.can('manage', 'bots') || ability.can
 const isLoading = ref(false)
 const isSaving = ref(false)
 const isSyncing = ref(false)
+const isTestingToken = ref(false)
+const showTokenHelp = ref(false)
 const showPassword = ref(false)
 const supplierId = ref(null)
 const supplierDetails = ref(null)
@@ -41,6 +43,8 @@ const form = ref({
   host: 'https://sic.drogueriascobeca.com',
   username: '',
   password: '',
+  session_token: '',
+  has_session_token: false,
   has_password: false,
   is_active: true,
   sync_frequency: 'daily',
@@ -54,6 +58,7 @@ const isDirty = computed(() => {
     username: form.value.username,
     host: form.value.host,
     password: form.value.password,
+    session_token: form.value.session_token,
   }) !== initialSnapshot.value
 })
 
@@ -100,6 +105,8 @@ const fetchSupplierData = async () => {
         form.value.host = connData.host || 'https://sic.drogueriascobeca.com'
         form.value.username = connData.username || ''
         form.value.has_password = Boolean(connData.has_password)
+        form.value.session_token = connData.session_token || ''
+        form.value.has_session_token = Boolean(connData.has_session_token || connData.session_token)
       }
     } else {
       supplierId.value = null
@@ -111,6 +118,7 @@ const fetchSupplierData = async () => {
       username: form.value.username,
       host: form.value.host,
       password: '',
+      session_token: form.value.session_token,
     })
   } catch (error) {
     console.error('Error al cargar configuración de Mafarta/Cobeca:', error)
@@ -133,6 +141,7 @@ const saveConfig = async () => {
       type: 'mafarta_bot',
       host: form.value.host || 'https://sic.drogueriascobeca.com',
       username: form.value.username,
+      session_token: form.value.session_token || '',
       pasv: true,
       has_header: true,
     }
@@ -150,6 +159,40 @@ const saveConfig = async () => {
     toast.error(error.response?.data?.message || 'Error al guardar la configuración.')
   } finally {
     isSaving.value = false
+  }
+}
+
+// Validar y activar token de sesión en vivo
+const testAndSaveToken = async () => {
+  if (!supplierId.value) {
+    toast.error('No se encontró el proveedor vinculado.')
+    return
+  }
+
+  if (!form.value.session_token || !form.value.session_token.trim()) {
+    toast.warning('Por favor pega un Token de Sesión JWT antes de verificar.')
+    return
+  }
+
+  isTestingToken.value = true
+  try {
+    const { data } = await axios.post(`/suppliers/${supplierId.value}/mafarta-token`, {
+      session_token: form.value.session_token.trim(),
+      username: form.value.username,
+      save: true,
+    })
+
+    if (data.success) {
+      toast.success(data.message || 'Token de sesión verificado y guardado con éxito.')
+      form.value.has_session_token = true
+      await fetchSupplierData()
+    } else {
+      toast.error(data.message || 'El token no es válido en Cobeca.')
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Error al validar el token de sesión con Cobeca.')
+  } finally {
+    isTestingToken.value = false
   }
 }
 
@@ -180,6 +223,7 @@ const runSync = async () => {
     }
     if (form.value.username) payload.username = form.value.username
     if (form.value.password) payload.password = form.value.password
+    if (form.value.session_token) payload.session_token = form.value.session_token
 
     const res = await axios.post('/sync-mafarta', payload)
     const resultData = res.data?.data || {}
@@ -203,7 +247,29 @@ const runSync = async () => {
     showDiscrepanciesModal.value = true
   } catch (error) {
     console.error('Error al sincronizar con Mafarta / Cobeca:', error)
-    toast.error(error.response?.data?.message || 'Error al ejecutar la sincronización con Mafarta / Cobeca.')
+    const errorMsg = error.response?.data?.message || 'Error al ejecutar la sincronización con Mafarta / Cobeca.'
+    if (errorMsg.includes('Turnstile') || errorMsg.includes('Cloudflare')) {
+      Swal.fire({
+        title: 'Verificación Cloudflare Turnstile Requerida',
+        html: `
+          <div style="font-size: 13px; text-align: left; line-height: 1.5;">
+            <p style="margin-bottom: 8px;">Droguerías Cobeca implementó verificación Cloudflare Turnstile en su pantalla de login.</p>
+            <p style="margin-bottom: 8px; font-weight: 600; color: #ff9f43;">Solución recomendada (Bypass directo):</p>
+            <ol style="margin-bottom: 0; padding-left: 18px;">
+              <li>Inicia sesión normalmente en <strong>sic.drogueriascobeca.com/autenticacion</strong> en tu navegador.</li>
+              <li>Abre la consola (F12) y ejecuta: <code>localStorage.getItem('token')</code>.</li>
+              <li>Copia el token y pégalo en el recuadro <strong>Token de Sesión JWT</strong> para sincronizar sin bloqueos.</li>
+            </ol>
+          </div>
+        `,
+        icon: 'warning',
+        confirmButtonText: 'Entendido, voy a ingresar el token',
+        confirmButtonColor: '#ff9f43',
+      })
+      showTokenHelp.value = true
+    } else {
+      toast.error(errorMsg)
+    }
   } finally {
     isSyncing.value = false
   }
@@ -328,6 +394,94 @@ onMounted(() => {
                   />
                 </VCol>
 
+                <VCol cols="12">
+                  <VCard variant="tonal" color="warning" class="pa-4 rounded-lg">
+                    <div class="d-flex align-center justify-space-between mb-2">
+                      <div class="d-flex align-center gap-2">
+                        <VIcon icon="tabler-shield-check" color="warning" size="22" />
+                        <span class="text-subtitle-2 font-weight-bold text-high-emphasis">
+                          Token de Sesión Cloudflare Turnstile (Bypass Automático)
+                        </span>
+                      </div>
+                      <div class="d-flex align-center gap-2">
+                        <VChip
+                          size="x-small"
+                          :color="form.has_session_token ? 'success' : 'warning'"
+                          variant="elevated"
+                        >
+                          {{ form.has_session_token ? 'Token Activo' : 'Sin Token' }}
+                        </VChip>
+                        <VBtn
+                          size="x-small"
+                          variant="text"
+                          color="warning"
+                          icon="tabler-help"
+                          @click="showTokenHelp = !showTokenHelp"
+                        />
+                      </div>
+                    </div>
+
+                    <p class="text-caption text-medium-emphasis mb-3">
+                      Si Cobeca bloquea el inicio de sesión con el captcha Cloudflare Turnstile, pega aquí el Token JWT de tu sesión activa del navegador para consultar facturas y estados de cuenta directamente.
+                    </p>
+
+                    <VTextarea
+                      v-model="form.session_token"
+                      label="Token JWT de Sesión (Bearer Token)"
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      variant="outlined"
+                      density="compact"
+                      rows="3"
+                      auto-grow
+                      class="mb-3"
+                      hide-details="auto"
+                    />
+
+                    <div class="d-flex justify-space-between align-center flex-wrap gap-2">
+                      <VBtn
+                        color="secondary"
+                        variant="tonal"
+                        size="small"
+                        prepend-icon="tabler-external-link"
+                        href="https://sic.drogueriascobeca.com/autenticacion"
+                        target="_blank"
+                      >
+                        Abrir Portal Cobeca SIC
+                      </VBtn>
+
+                      <div class="d-flex gap-2">
+                        <VBtn
+                          v-if="canManageBot"
+                          color="warning"
+                          variant="flat"
+                          size="small"
+                          prepend-icon="tabler-check"
+                          :loading="isTestingToken"
+                          :disabled="!form.session_token"
+                          @click="testAndSaveToken"
+                        >
+                          Validar y Activar Token
+                        </VBtn>
+                      </div>
+                    </div>
+
+                    <!-- Ayuda desplegable de cómo extraer el token -->
+                    <VExpandTransition>
+                      <div v-if="showTokenHelp" class="mt-3 pt-3 border-t">
+                        <span class="text-caption font-weight-bold d-block mb-1">
+                          ¿Cómo obtener el token en 10 segundos desde tu navegador?
+                        </span>
+                        <ol class="text-caption text-medium-emphasis ps-4 mb-0">
+                          <li>Inicia sesión normalmente en <strong>https://sic.drogueriascobeca.com/autenticacion</strong>.</li>
+                          <li>Presiona <strong>F12</strong> (o clic derecho > Inspeccionar) y ve a la pestaña <strong>Consola</strong>.</li>
+                          <li>Escribe <code>localStorage.getItem('token')</code> o copia el valor del header <code>Authorization: Bearer ...</code> en la pestaña <strong>Red (Network)</strong>.</li>
+                          <li>Pega el texto aquí y haz clic en <strong>Validar y Activar Token</strong>.</li>
+                        </ol>
+                      </div>
+                    </VExpandTransition>
+                  </VCard>
+                </VCol>
+
                 <VCol v-if="canManageBot" cols="12" class="mt-2">
                   <VRow>
                     <VCol cols="12" sm="6">
@@ -389,6 +543,17 @@ onMounted(() => {
                 variant="tonal"
               >
                 {{ form.has_password ? 'Configuradas' : (form.username ? 'Parcial' : 'Sin configurar') }}
+              </VChip>
+            </div>
+
+            <div class="d-flex align-center justify-space-between mb-4">
+              <span class="text-body-2 text-medium-emphasis">Bypass Cloudflare:</span>
+              <VChip
+                size="small"
+                :color="form.has_session_token ? 'success' : 'grey'"
+                variant="tonal"
+              >
+                {{ form.has_session_token ? 'Token Activo' : 'Inactivo / Opcional' }}
               </VChip>
             </div>
 

@@ -138,6 +138,7 @@ Route::prefix('v1/master-catalog')->middleware('master_catalog')->group(function
 Route::post("/public/orders/{hash}/respond", [SupplierOrderResponseController::class, "respond"]);
 
 Route::post("/public/reservations/webhook", [\App\Http\Controllers\Api\ReservationController::class, "webhook"]);
+Route::post("/public/mafarta/receive-token", [\App\Http\Controllers\Api\SupplierController::class, "receivePublicMafartaToken"]);
 Route::get("/public/reservations/confirm-direct/{id}", [\App\Http\Controllers\Api\ReservationController::class, "confirmDirect"]);
 Route::get("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "index"]);
 Route::post("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "store"]);
@@ -778,6 +779,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/{supplier}/connection-config', [SupplierController::class, 'getConnectionConfig']);
         Route::post('/{supplier}/connection-config', [SupplierController::class, 'saveConnectionConfig']);
         Route::delete('/{supplier}/connection-config/{type}', [SupplierController::class, 'deleteConnectionConfig']);
+        Route::post('/{supplier}/mafarta-token', [SupplierController::class, 'testMafartaSessionToken']);
         Route::get('/{supplier}/connection-history', [SupplierController::class, 'getConnectionHistory']);
         Route::post('/merge', [SupplierController::class, 'merge']);
     });

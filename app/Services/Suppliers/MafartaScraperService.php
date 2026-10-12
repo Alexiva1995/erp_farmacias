@@ -24,7 +24,7 @@ class MafartaScraperService implements MafartaScraperServiceInterface
      * - Detecta facturas indexadas (facturaDolari === 1 o vencidas).
      * - Actualiza fechas de vencimiento reales, montos y número de control oficial.
      */
-    public function syncInvoices(?string $username = null, ?string $password = null, ?int $supplierId = null, ?string $onlyInvoice = null): array
+    public function syncInvoices(?string $username = null, ?string $password = null, ?int $supplierId = null, ?string $onlyInvoice = null, ?string $sessionToken = null): array
     {
         $supplier = null;
         if ($supplierId) {
@@ -66,7 +66,9 @@ class MafartaScraperService implements MafartaScraperServiceInterface
         $user = $user ?: env('MAFARTA_USERNAME');
         $pass = $pass ?: env('MAFARTA_PASSWORD');
 
-        $result = $this->fetchDocumentsWithToken($user, $pass);
+        $activeToken = $sessionToken ?: ($conn?->structure['session_token'] ?? null);
+
+        $result = $this->fetchDocumentsWithToken($user, $pass, $activeToken);
         $documents = $result['documents'] ?? [];
         $token = $result['token'] ?? null;
 
@@ -396,21 +398,98 @@ class MafartaScraperService implements MafartaScraperServiceInterface
     /**
      * Extrae los documentos desde el portal SIC de Cobeca autenticándose con JWT.
      */
-    public function fetchDocuments(string $username, string $password): array
+    public function fetchDocuments(string $username, string $password, ?string $sessionToken = null): array
     {
-        $res = $this->fetchDocumentsWithToken($username, $password);
+        $res = $this->fetchDocumentsWithToken($username, $password, $sessionToken);
         return $res['documents'] ?? [];
+    }
+
+    /**
+     * Valida si un token de sesión de Cobeca sigue activo consultando el estado de cuenta.
+     */
+    public function testSessionToken(string $token, ?int $clientCode = null): array
+    {
+        try {
+            $client = $clientCode ?: (int) env('MAFARTA_CLIENTE', 31373);
+            $drugstore = (int) env('MAFARTA_COD_DROGUERIA', 3);
+
+            $docsRes = Http::withHeaders([
+                'Authorization' => "Bearer " . trim($token),
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ])->withoutVerifying()->timeout(30)->post(self::ESTADO_CUENTA_URL, [
+                'compania' => $drugstore,
+                'drogueria' => $drugstore,
+                'cliente' => $client,
+                'tipo' => 1,
+            ]);
+
+            if ($docsRes->successful()) {
+                $data = $docsRes->json();
+                $docs = $data['estadoCuenta'] ?? $data['documentos'] ?? [];
+                return [
+                    'valid' => true,
+                    'documents_count' => count($docs),
+                    'message' => 'Token de sesión válido y activo en Cobeca.',
+                ];
+            }
+
+            $status = $docsRes->status();
+            $body = $docsRes->body();
+            return [
+                'valid' => false,
+                'status' => $status,
+                'message' => ($status === 401 || $status === 403)
+                    ? 'El token de sesión ha expirado o no es válido.'
+                    : "Respuesta de Cobeca: HTTP {$status} - {$body}",
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'valid' => false,
+                'message' => 'Error al validar el token de sesión: ' . $e->getMessage(),
+            ];
+        }
     }
 
     /**
      * Realiza login y devuelve documentos junto con el token.
      */
-    public function fetchDocumentsWithToken(string $username, string $password): array
+    public function fetchDocumentsWithToken(string $username, string $password, ?string $sessionToken = null): array
     {
         try {
             $user = $username ?: 'F31373';
             $pass = $password ?: 'Mafarta2026*';
+            $clientCode = (int) (preg_replace('/\D/', '', (string) $user) ?: env('MAFARTA_CLIENTE', 31373));
+            $drugstore = (int) env('MAFARTA_COD_DROGUERIA', 3);
 
+            // 1. PRIORIDAD: Si se suministró un token de sesión (Bypass de Cloudflare Turnstile)
+            if (!empty($sessionToken)) {
+                $cleanToken = trim($sessionToken);
+                $docsRes = Http::withHeaders([
+                    'Authorization' => "Bearer {$cleanToken}",
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ])->withoutVerifying()->timeout(45)->post(self::ESTADO_CUENTA_URL, [
+                    'compania' => $drugstore,
+                    'drogueria' => $drugstore,
+                    'cliente' => $clientCode,
+                    'tipo' => 1,
+                ]);
+
+                if ($docsRes->successful()) {
+                    $data = $docsRes->json();
+                    $documents = $data['estadoCuenta'] ?? $data['documentos'] ?? [];
+                    Log::info("[MAFARTA SCRAPER] Conexión exitosa usando Token de Sesión JWT. Documentos obtenidos: " . count($documents));
+                    return [
+                        'documents' => $documents,
+                        'token' => $cleanToken,
+                    ];
+                }
+
+                Log::warning("[MAFARTA SCRAPER] El Token de Sesión provisto falló con código HTTP " . $docsRes->status() . " - Se intentará login automático.");
+            }
+
+            // 2. Si no hay token de sesión o falló, intentar login directo
             $loginRes = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
@@ -431,18 +510,33 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             }
 
             if ($loginRes->failed()) {
-                Log::error("[MAFARTA SCRAPER] Error en login: " . $loginRes->body());
+                $errBody = $loginRes->body();
+                Log::error("[MAFARTA SCRAPER] Error en login: " . $errBody);
+
+                if (str_contains($errBody, 'turnstileToken') || $loginRes->status() === 400 || $loginRes->status() === 403) {
+                    throw new \Exception("El portal de Droguerías Cobeca tiene activo Cloudflare Turnstile. Ingrese el Token de Sesión JWT activo en la configuración del Bot Mafarta para sincronizar.");
+                }
+
                 return ['documents' => [], 'token' => null];
             }
 
             $loginData = $loginRes->json();
             $token = $loginData['token'] ?? null;
-            $clientCode = (int) ($loginData['client'] ?? 31373);
-            $drugstore = (int) ($loginData['drogueria'] ?? 3);
+            $clientCode = (int) ($loginData['client'] ?? $clientCode);
+            $drugstore = (int) ($loginData['drogueria'] ?? $drugstore);
 
             if (!$token) {
                 Log::error("[MAFARTA SCRAPER] No se recibió token en respuesta de login.");
                 return ['documents' => [], 'token' => null];
+            }
+
+            // Guardar automáticamente el token obtenido en la conexión
+            $conn = \App\Models\SupplierConnection::where('type', 'mafarta_bot')->first();
+            if ($conn) {
+                $struct = $conn->structure ?: [];
+                $struct['session_token'] = $token;
+                $conn->structure = $struct;
+                $conn->save();
             }
 
             // Consultar Estado de Cuenta
@@ -470,8 +564,8 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                 'token' => $token,
             ];
         } catch (\Throwable $e) {
-            Log::error("[MAFARTA SCRAPER] Excepción en fetchDocuments: " . $e->getMessage());
-            return ['documents' => [], 'token' => null];
+            Log::error("[MAFARTA SCRAPER] Excepción en fetchDocumentsWithToken: " . $e->getMessage());
+            throw $e;
         }
     }
 

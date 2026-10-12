@@ -129,7 +129,6 @@ const emit = defineEmits([
                     type="button"
                     class="action-icon-btn action-icon-btn--error"
                     title="Eliminar método"
-                    :disabled="!props.isLastPaymentAdded(payment)"
                     @click="props.removePaymentFromSummary(payments.indexOf(payment))"
                   >
                     <VIcon size="15">tabler-trash</VIcon>

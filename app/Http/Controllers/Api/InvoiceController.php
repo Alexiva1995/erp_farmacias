@@ -542,8 +542,9 @@ class InvoiceController extends Controller
             $user = $request->input('username');
             $pass = $request->input('password');
             $supplierId = $request->input('supplier_id') ? (int) $request->input('supplier_id') : null;
+            $token = $request->input('session_token') ?: $request->input('token');
 
-            $result = $this->mafartaScraperService->syncInvoices($user, $pass, $supplierId);
+            $result = $this->mafartaScraperService->syncInvoices($user, $pass, $supplierId, null, $token);
 
             return response()->json([
                 'success' => true,

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "ERP Farmacias - Conector Cobeca / Mafarta",
+  "version": "1.0.0",
+  "description": "Captura y sincroniza automáticamente la sesión autorizada de Cobeca SIC con el ERP de Farmacias para omitir Cloudflare Turnstile.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://sic.drogueriascobeca.com/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://sic.drogueriascobeca.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ERP Farmacias - Conector Cobeca"
+  }
+}

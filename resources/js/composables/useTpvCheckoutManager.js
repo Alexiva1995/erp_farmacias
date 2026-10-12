@@ -50,14 +50,42 @@ export function useTpvCheckoutManager({
 
   const selectPaymentMethod = (methodValue, currency = null) => {
     const targetCurrency = currency || props.selectedCurrency
-    const existingIndex = payments.value.findIndex(
+
+    const existingPayments = payments.value.filter(
       (p) => p.method === methodValue && p.currency === targetCurrency
     )
 
-    if (existingIndex !== -1) {
-      payments.value.splice(existingIndex, 1)
-      toast.info('Método de pago removido.')
-      return
+    const isMultiAllowed = ['debit_card', 'credit_card', 'card', 'mobile_payment', 'bank_transfer', 'bank_transfer_bs'].includes(methodValue)
+
+    if (existingPayments.length > 0) {
+      // Si hay un pago del mismo método que está actualmente en edición o sin confirmar monto
+      const incompletePaymentIndex = payments.value.findIndex(
+        (p) => p.method === methodValue && p.currency === targetCurrency && (p._isInputActive || !p.amount || p.amount <= 0)
+      )
+
+      if (incompletePaymentIndex !== -1) {
+        payments.value.splice(incompletePaymentIndex, 1)
+        toast.info('Método de pago removido.')
+        return
+      }
+
+      // Si todos los existentes ya están confirmados con monto > 0
+      if (isMultiAllowed) {
+        if (remainingAmount.value <= 0) {
+          toast.info('El monto total ya ha sido cubierto.')
+          return
+        }
+        // Permitir continuar hacia abajo para agregar el siguiente pago (segunda tarjeta de débito, etc.)
+      } else {
+        // Métodos que no admiten duplicarse (ej. crédito, saldo, etc.): hacer toggle
+        const lastPayment = existingPayments[existingPayments.length - 1]
+        const lastIndex = payments.value.indexOf(lastPayment)
+        if (lastIndex !== -1) {
+          payments.value.splice(lastIndex, 1)
+          toast.info('Método de pago removido.')
+          return
+        }
+      }
     }
 
     if (remainingAmount.value <= 0) {
@@ -331,9 +359,22 @@ export function useTpvCheckoutManager({
       }
 
       const isCustomChange = !!brandingStore?.settings?.enable_custom_change_currency
+      const mappedItems = (props.orderProducts || []).map((item) => ({
+        order_detail_id: item.order_detail_id || item.id,
+        quantity: item.selectedQuantity || item.quantity,
+        price: item.price,
+        price_before_discount: item.price_before_discount || item.basePrice || item.price,
+        price_bs: item.price_bs,
+        price_before_discount_bs: item.price_before_discount_bs || item.base_price_bs,
+        discount_percentage: item.discount_percentage,
+        discount_type: item.discount_type,
+        discount_source_id: item.discount_source_id,
+      }))
+
       const payload = {
         order_id: orderIdNum,
         payments: validPayments,
+        items: mappedItems,
         total_amount: roundedTotalAmountToPay.value,
         changeAmount: changeAmount.value,
         changeAmountInCop: changeAmountInCop?.value || 0,

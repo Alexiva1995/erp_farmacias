@@ -1013,36 +1013,41 @@ class OrderActionService
 
             // Save discount details if provided (optimizado: cargar detalles una vez)
             if ($request->has('items') && !empty($request->items)) {
-                $detailsById = $orderId->details()->get()->keyBy('id');
+                $rawItems = $request->items;
+                $items = is_string($rawItems) ? json_decode($rawItems, true) : $rawItems;
 
-                foreach ($request->items as $itemData) {
-                    $detailId = $itemData['order_detail_id'] ?? null;
-                    $detail = $detailId ? $detailsById->get($detailId) : null;
-                    if (!$detail) {
-                        continue;
+                if (is_array($items)) {
+                    $detailsById = $orderId->details()->get()->keyBy('id');
+
+                    foreach ($items as $itemData) {
+                        $detailId = $itemData['order_detail_id'] ?? null;
+                        $detail = $detailId ? $detailsById->get($detailId) : null;
+                        if (!$detail) {
+                            continue;
+                        }
+                        if (isset($itemData['quantity'])) {
+                            $detail->quantity = $itemData['quantity'];
+                        }
+                        if ($orderId->currency === 'COP') {
+                            $detail->price = ($itemData['price'] ?? 0);
+                            $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0);
+                        } else {
+                            $detail->price = ($itemData['price'] ?? 0);
+                            $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0);
+                        }
+                        if (isset($itemData['price_bs'])) {
+                            $detail->price_bs = $itemData['price_bs'];
+                        }
+                        if (isset($itemData['price_before_discount_bs'])) {
+                            $detail->price_before_discount_bs = $itemData['price_before_discount_bs'];
+                        }
+                        if (isset($itemData['discount_percentage'])) {
+                            $detail->discount_percentage = $itemData['discount_percentage'];
+                            $detail->discount_type = $itemData['discount_type'] ?? null;
+                            $detail->discount_source_id = $itemData['discount_source_id'] ?? null;
+                        }
+                        $detail->save();
                     }
-                    if (isset($itemData['quantity'])) {
-                        $detail->quantity = $itemData['quantity'];
-                    }
-                    if ($orderId->currency === 'COP') {
-                        $detail->price = ($itemData['price'] ?? 0);
-                        $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0);
-                    } else {
-                        $detail->price = ($itemData['price'] ?? 0);
-                        $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0);
-                    }
-                    if (isset($itemData['price_bs'])) {
-                        $detail->price_bs = $itemData['price_bs'];
-                    }
-                    if (isset($itemData['price_before_discount_bs'])) {
-                        $detail->price_before_discount_bs = $itemData['price_before_discount_bs'];
-                    }
-                    if (isset($itemData['discount_percentage'])) {
-                        $detail->discount_percentage = $itemData['discount_percentage'];
-                        $detail->discount_type = $itemData['discount_type'] ?? null;
-                        $detail->discount_source_id = $itemData['discount_source_id'] ?? null;
-                    }
-                    $detail->save();
                 }
             }
 
@@ -1325,6 +1330,51 @@ class OrderActionService
                 $orderId->spe_surcharge_amount = 0.00;
             }
 
+            // Detección de pago por crédito
+            $hasCreditInRequest = filter_var($request->credit, FILTER_VALIDATE_BOOLEAN) || 
+                collect($request->payments)->contains(function ($payment) {
+                    $method = is_array($payment) ? ($payment['method'] ?? '') : ($payment->method ?? '');
+                    return strtolower((string) $method) === 'credit';
+                });
+
+            // Si incluye crédito, sincronizar el renglón de crédito al monto exacto restante de la orden para evitar discrepancias por recálculo
+            if ($hasCreditInRequest && !empty($request->payments) && is_array($request->payments)) {
+                $orderTotalCalculated = (float) $orderId->total_amount + (float) ($orderId->spe_surcharge_amount ?? 0);
+                $orderCurrency = strtoupper($orderId->currency ?? 'USD');
+                $resourceService = app(ResourceService::class);
+                $rates = [
+                    'USD' => (float) ($resourceService->getExchangeRate('USD') ?: 1),
+                    'COP' => (float) ($resourceService->getExchangeRate('COP') ?: 1),
+                    'BS'  => (float) ($resourceService->getExchangeRate('BS') ?: 1),
+                ];
+
+                $otherPaymentsTotal = 0;
+                $paymentsList = $request->payments;
+                foreach ($paymentsList as $p) {
+                    $m = strtolower((string) ($p['method'] ?? ''));
+                    if ($m !== 'credit') {
+                        $amt = (float) ($p['amount'] ?? 0);
+                        $cur = strtoupper($p['currency'] ?? 'USD');
+                        $rate = $rates[$cur] ?? 1;
+                        $amtInBase = ($cur === 'USD') ? $amt : ($amt / $rate);
+                        $otherPaymentsTotal += $amtInBase * ($rates[$orderCurrency] ?? 1);
+                    }
+                }
+
+                $creditNeeded = max(0, $orderTotalCalculated - $otherPaymentsTotal);
+
+                foreach ($paymentsList as $idx => $p) {
+                    $m = strtolower((string) ($p['method'] ?? ''));
+                    if ($m === 'credit') {
+                        $paymentsList[$idx]['amount'] = round($creditNeeded, 2);
+                        $paymentsList[$idx]['currency'] = $orderCurrency;
+                    }
+                }
+
+                $request->merge(['payments' => $paymentsList]);
+                $orderId->payment_methods = $paymentsList;
+            }
+
             // Validación de integridad financiera: el neto (pagos - vuelto) debe ser igual al total (incluyendo recargos)
             $this->validatePaymentsCoverOrderTotal($orderId, $request->payments, (float) ($request->changeAmount ?? 0));
 
@@ -1343,15 +1393,12 @@ class OrderActionService
                 $client->save();
             }
 
-            $hasCreditInRequest = filter_var($request->credit, FILTER_VALIDATE_BOOLEAN) || 
-                collect($request->payments)->contains(function ($payment) {
-                    $method = is_array($payment) ? ($payment['method'] ?? '') : ($payment->method ?? '');
-                    return strtolower((string) $method) === 'credit';
-                });
-
             if ($hasCreditInRequest) {
-                // El crédito siempre es por el total de la orden (solo completo)
-                $creditAmount = (float) $orderId->total_amount;
+                // Registrar el crédito con el monto exacto asignado a crédito
+                $creditPaymentItem = collect($request->payments)->first(function ($p) {
+                    return strtolower((string)($p['method'] ?? '')) === 'credit';
+                });
+                $creditAmount = $creditPaymentItem ? (float) ($creditPaymentItem['amount'] ?? 0) : (float) $orderId->total_amount;
 
                 if ($creditAmount > 0) {
                     Credit::create([

@@ -214,18 +214,9 @@ const editPaymentAmount = (payment) => {
 };
 
 const removePaymentFromSummary = (paymentIndex) => {
-  const paymentsWithMethod = payments.value.filter((p) => p.method);
-  if (paymentsWithMethod.length === 0) return;
-
-  const lastPaymentWithMethod = paymentsWithMethod[paymentsWithMethod.length - 1];
-  const lastPaymentIndex = payments.value.indexOf(lastPaymentWithMethod);
-
-  if (paymentIndex !== lastPaymentIndex) {
-    toast.error("Solo se puede eliminar el último método de pago agregado.");
-    return;
-  }
-
+  if (paymentIndex < 0 || paymentIndex >= payments.value.length) return;
   const payment = payments.value[paymentIndex];
+  if (!payment) return;
   if (payment.debounceTimeout) clearTimeout(payment.debounceTimeout);
   payments.value.splice(paymentIndex, 1);
 };

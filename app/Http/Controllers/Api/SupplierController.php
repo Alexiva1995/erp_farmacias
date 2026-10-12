@@ -565,6 +565,8 @@ class SupplierController extends Controller
                 'port'                => $conn->port,
                 'username'            => $conn->username,
                 'has_password'        => !empty($conn->password),
+                'session_token'       => $conn->structure['session_token'] ?? null,
+                'has_session_token'   => !empty($conn->structure['session_token']),
                 'path'                => $conn->path,
                 'pasv'                => (bool) $conn->pasv,
                 'has_header'          => (bool) $conn->has_header,
@@ -592,6 +594,8 @@ class SupplierController extends Controller
             'port'                => $connection->port,
             'username'            => $connection->username,
             'has_password'        => !empty($connection->password),
+            'session_token'       => $connection->structure['session_token'] ?? null,
+            'has_session_token'   => !empty($connection->structure['session_token']),
             'path'                => $connection->path,
             'pasv'                => (bool) $connection->pasv,
             'has_header'          => (bool) $connection->has_header,
@@ -813,6 +817,16 @@ class SupplierController extends Controller
                 $data['structure'] = [];
             }
 
+            // Si se envió un session_token (ej. para Mafarta / Cobeca bypass Cloudflare Turnstile)
+            if (array_key_exists('session_token', $validated)) {
+                $struct = $data['structure'] ?? ($existingConn?->structure ?? []);
+                if (!is_array($struct)) {
+                    $struct = [];
+                }
+                $struct['session_token'] = !empty($validated['session_token']) ? trim($validated['session_token']) : null;
+                $data['structure'] = $struct;
+            }
+
             $connection = $supplier->connections()->updateOrCreate(
                 ['supplier_id' => $supplier->id, 'type' => $validated['type']],
                 $data
@@ -847,17 +861,19 @@ class SupplierController extends Controller
             return response()->json([
                 'message'    => 'Configuración guardada correctamente.',
                 'connection' => [
-                    'id'              => $connection->id,
-                    'type'            => $connection->type,
-                    'host'            => $connection->host,
-                    'port'            => $connection->port,
-                    'username'        => $connection->username,
-                    'path'            => $connection->path,
-                    'pasv'            => (bool) $connection->pasv,
-                    'has_header'      => (bool) $connection->has_header,
-                    'invoice_path'    => $connection->invoice_path,
-                    'last_connection' => $connection->last_connection,
-                    'has_password'    => !empty($connection->password),
+                    'id'                => $connection->id,
+                    'type'              => $connection->type,
+                    'host'              => $connection->host,
+                    'port'              => $connection->port,
+                    'username'          => $connection->username,
+                    'path'              => $connection->path,
+                    'pasv'              => (bool) $connection->pasv,
+                    'has_header'        => (bool) $connection->has_header,
+                    'invoice_path'      => $connection->invoice_path,
+                    'last_connection'   => $connection->last_connection,
+                    'has_password'      => !empty($connection->password),
+                    'session_token'     => $connection->structure['session_token'] ?? null,
+                    'has_session_token' => !empty($connection->structure['session_token']),
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -894,6 +910,110 @@ class SupplierController extends Controller
                 'message' => 'Error al eliminar la conexión: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Valida y guarda un token de sesión de Mafarta/Cobeca para bypass de Cloudflare Turnstile.
+     */
+    public function testMafartaSessionToken(Request $request, Supplier $supplier)
+    {
+        $token = $request->input('session_token') ?: $request->input('token');
+        if (empty($token)) {
+            $conn = $supplier->connections()->where('type', 'mafarta_bot')->first();
+            $token = $conn?->structure['session_token'] ?? null;
+        }
+
+        if (empty($token)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se proporcionó ningún token de sesión para validar.',
+            ], 422);
+        }
+
+        $scraper = app(\App\Contracts\Suppliers\MafartaScraperServiceInterface::class);
+        $clientCode = (int) (preg_replace('/\D/', '', (string) ($request->input('username') ?: '31373')) ?: 31373);
+        $result = $scraper->testSessionToken($token, $clientCode);
+
+        if ($result['valid']) {
+            if ($request->boolean('save', true)) {
+                $conn = $supplier->connections()->where('type', 'mafarta_bot')->first();
+                if ($conn) {
+                    $struct = $conn->structure ?: [];
+                    $struct['session_token'] = trim($token);
+                    $conn->structure = $struct;
+                    $conn->save();
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Token de sesión de Cobeca validado exitosamente. Conexión establecida con el portal SIC.',
+                'documents_count' => $result['documents_count'] ?? 0,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => $result['message'] ?? 'El token de sesión no es válido o ha expirado en Cobeca.',
+        ], 400);
+    }
+
+    /**
+     * Endpoint público para recibir y persistir de forma desatendida el token desde la extensión de Chrome.
+     */
+    public function receivePublicMafartaToken(\App\Http\Requests\Supplier\ReceiveMafartaTokenRequest $request)
+    {
+        $validated = $request->validated();
+        $token = trim($validated['token']);
+
+        // Buscar proveedor Mafarta / Cobeca por id o por coincidencia de nombre
+        $supplierId = !empty($validated['supplier_id']) ? (int) $validated['supplier_id'] : null;
+        $supplier = null;
+        if ($supplierId) {
+            $supplier = Supplier::find($supplierId);
+        }
+
+        if (!$supplier) {
+            $supplier = Supplier::where('name', 'LIKE', '%COBECA%')
+                ->orWhere('name', 'LIKE', '%MAFARTA%')
+                ->first();
+        }
+
+        if (!$supplier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró el proveedor Cobeca/Mafarta en el ERP.',
+            ], 404);
+        }
+
+        // Validar token contra la API de Cobeca
+        $scraper = app(\App\Contracts\Suppliers\MafartaScraperServiceInterface::class);
+        $result = $scraper->testSessionToken($token, 31373);
+
+        if (!$result['valid']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'] ?? 'El token no fue aceptado por el portal Cobeca.',
+            ], 400);
+        }
+
+        // Persistir en connection mafarta_bot
+        $conn = $supplier->connections()->where('type', 'mafarta_bot')->first();
+        if ($conn) {
+            $struct = $conn->structure ?: [];
+            $struct['session_token'] = $token;
+            $struct['last_token_source'] = 'chrome_extension';
+            $struct['last_token_sync_at'] = now()->toDateTimeString();
+            $conn->structure = $struct;
+            $conn->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Token de sesión recibido y activado en el ERP con éxito.',
+            'supplier' => $supplier->name,
+            'documents_count' => $result['documents_count'] ?? 0,
+        ]);
     }
 
     /**
