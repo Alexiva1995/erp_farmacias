@@ -16,6 +16,10 @@ export default [
         to: 'configuration-pharmacy',
       },
       {
+        title: 'Roles',
+        to: 'configuration-roles',
+      },
+      {
         title: 'E-commerce',
         to: 'configuration-branding',
       },

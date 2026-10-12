@@ -409,14 +409,64 @@ const processedNavItems = computed(() => {
   if (!authStore.isLoaded || !authStore.user) {
     return items;
   }
- 
+
+  // Filtrado dinámico por permisos personalizados de menú configurados en el rol
+  const rolePermissions = authStore.user?.role?.menu_permissions;
+  if (Array.isArray(rolePermissions)) {
+    const allowedSet = new Set(rolePermissions);
+    const isKeyAllowed = (key) => allowedSet.has(key);
+
+    const filterByRolePermissions = (navItemsList, parentKey = '') => {
+      return navItemsList.map(item => {
+        const copy = { ...item };
+        let itemKey = '';
+        if (typeof copy.to === 'string') {
+          itemKey = copy.to;
+        } else if (copy.to && typeof copy.to === 'object') {
+          itemKey = copy.to.name || copy.to.path || copy.title;
+        } else {
+          const cleanTitle = (copy.title || 'item').toLowerCase().replace(/\s+/g, '_');
+          itemKey = parentKey ? `${parentKey}::${cleanTitle}` : `module::${cleanTitle}`;
+        }
+
+        // Red de seguridad: si es Admin, mantener siempre visible la ruta de Roles dentro de Configuración
+        if (authStore.isAdmin && (copy.to === 'configuration-roles' || (copy.title === 'Configuración' && copy.children))) {
+          if (copy.children && Array.isArray(copy.children)) {
+            let filteredChildren = filterByRolePermissions(copy.children, itemKey);
+            const hasRoles = filteredChildren.some(c => c.to === 'configuration-roles');
+            if (!hasRoles) {
+              const rolesChild = copy.children.find(c => c.to === 'configuration-roles');
+              if (rolesChild) filteredChildren.push(rolesChild);
+            }
+            copy.children = filteredChildren;
+            return copy;
+          }
+          return copy;
+        }
+
+        if (copy.children && Array.isArray(copy.children)) {
+          const filteredChildren = filterByRolePermissions(copy.children, itemKey);
+          if (filteredChildren.length === 0 && !isKeyAllowed(itemKey)) {
+            return null;
+          }
+          copy.children = filteredChildren;
+          return copy;
+        }
+
+        return isKeyAllowed(itemKey) ? copy : null;
+      }).filter(Boolean);
+    };
+
+    items = filterByRolePermissions(items);
+  }
+
   const currentRoleId = authStore.user?.role_id;
   const isUser = currentRoleId === 3;
- 
+
   if (!isUser) {
     return items;
   }
- 
+
   // Para usuarios tipo "usuario" (empleado), mostrar Inventario Ciclicos solo con Pendientes e Inventario de Usuario
   try {
     return items.map((item) => {

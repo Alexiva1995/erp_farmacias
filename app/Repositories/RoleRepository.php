@@ -4,15 +4,60 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Contracts\Role as RoleContract;
 use App\Models\Role;
 use Illuminate\Database\Eloquent\Collection;
 
-
-class RoleRepository implements \App\Contracts\Role
+class RoleRepository implements RoleContract
 {
+    /**
+     * Listar todos los roles con su conteo de usuarios asociados.
+     */
+    public function list(): Collection
+    {
+        return Role::query()
+            ->withCount('users')
+            ->select(['id', 'name', 'menu_permissions', 'created_at', 'updated_at'])
+            ->orderBy('id', 'asc')
+            ->get();
+    }
 
-  public function list(): Collection
-  {
-    return Role::query()->select(['id', 'name'])->get();
-  }
+    /**
+     * Buscar un rol por su identificador.
+     */
+    public function findById(int $id): ?Role
+    {
+        return Role::query()
+            ->withCount('users')
+            ->find($id);
+    }
+
+    /**
+     * Crear un nuevo rol en la base de datos.
+     */
+    public function create(array $data): Role
+    {
+        return Role::create($data);
+    }
+
+    /**
+     * Actualizar los atributos de un rol.
+     */
+    public function update(int $id, array $data): Role
+    {
+        $role = Role::findOrFail($id);
+        $role->update($data);
+
+        return $role->fresh()->loadCount('users');
+    }
+
+    /**
+     * Eliminar un rol de la base de datos.
+     */
+    public function delete(int $id): bool
+    {
+        $role = Role::findOrFail($id);
+
+        return (bool) $role->delete();
+    }
 }

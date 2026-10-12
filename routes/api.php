@@ -232,7 +232,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     });
     Route::get("/user", function (Request $request) {
         // Query fresca con eager loading garantizado
-        return \App\Models\User::with('employee.laboratories')->find($request->user()->id);
+        return \App\Models\User::with(['employee.laboratories', 'role'])->find($request->user()->id);
     });
     Route::get('/user/config', function (Request $request) {
         return $request->user()->load('config');
@@ -657,7 +657,16 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         });
     });
 
-    Route::get('/roles', [RoleController::class, 'list']);
+    // Gestión de Roles y Permisos de Menú
+    Route::prefix('roles')->group(function () {
+        Route::get('/', [RoleController::class, 'index']);
+        Route::get('/list', [RoleController::class, 'list']);
+        Route::post('/', [RoleController::class, 'store']);
+        Route::get('/{id}', [RoleController::class, 'show']);
+        Route::put('/{id}', [RoleController::class, 'update']);
+        Route::put('/{id}/menu-permissions', [RoleController::class, 'updateMenuPermissions']);
+        Route::delete('/{id}', [RoleController::class, 'destroy']);
+    });
 
     Route::prefix("orders")->group(function () {
         Route::get("/psychotropics/pagination", [OrderController::class, "filtrarOrderPorpsychotropicsConPaginacion"]);
