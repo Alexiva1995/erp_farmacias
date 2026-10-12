@@ -26,32 +26,10 @@ class UpdateExchangeRate extends Command
     /**
      * Execute the console command.
      */
-    public function handle(\App\Services\TelegramService $telegramService)
+    public function handle(\App\Services\TelegramService $telegramService, \App\Services\ExchangeRateServices $exchangeRateService)
     {
-        // ── Dólar BCV → BS ──────────────────────────────────────────────────
-        $bcvRate = null;
-        try {
-            $responseBCV = Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/dolares/oficial');
-            if ($responseBCV->successful() && !is_null($responseBCV->json('promedio'))) {
-                $bcvRate = $responseBCV->json('promedio');
-            } else {
-                // Intento fallback con la lista general de dólares
-                $responseBCVList = Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/dolares');
-                if ($responseBCVList->successful() && is_array($responseBCVList->json())) {
-                    foreach ($responseBCVList->json() as $item) {
-                        if (isset($item['fuente']) && $item['fuente'] === 'bcv') {
-                            $bcvRate = $item['promedio'] ?? null;
-                            break;
-                        }
-                    }
-                    if (!$bcvRate && isset($responseBCVList[0]['promedio'])) {
-                        $bcvRate = $responseBCVList[0]['promedio'];
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error("Error consultando el Dólar BCV en comando: " . $e->getMessage());
-        }
+        // ── Dólar BCV → BS (Portal BCV oficial / DolarApi) ───────────────────
+        $bcvRate = $exchangeRateService->fetchRateFromApi('BS');
 
         if ($bcvRate && floatval($bcvRate) > 0) {
             ExchangeRate::create([
@@ -62,7 +40,7 @@ class UpdateExchangeRate extends Command
             Cache::forget('resources.exchange_rate.BS');
             $this->info("Dólar BCV actualizado: {$bcvRate} BS");
         } else {
-            $this->error("No se pudo obtener la tasa de Dólar BCV desde el API.");
+            $this->error("No se pudo obtener la tasa de Dólar BCV desde las fuentes oficiales.");
         }
 
         // ── Dólar Binance → BINANCE ─────────────────────────────────────────
@@ -103,30 +81,8 @@ class UpdateExchangeRate extends Command
             $this->error("No se pudo obtener la tasa de Dólar Binance.");
         }
 
-        // ── Euro → BS (ve.dolarapi.com) ──────────────────────────────────────
-        $eurToVes = null;
-        try {
-            $responseEUR = Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/euros/oficial');
-            if ($responseEUR->successful() && !is_null($responseEUR->json('promedio'))) {
-                $eurToVes = $responseEUR->json('promedio');
-            } else {
-                // Intento fallback con la lista general de euros
-                $responseEURList = Http::retry(3, 1000)->get('https://ve.dolarapi.com/v1/euros');
-                if ($responseEURList->successful() && is_array($responseEURList->json())) {
-                    foreach ($responseEURList->json() as $item) {
-                        if (isset($item['fuente']) && $item['fuente'] === 'bcv') {
-                            $eurToVes = $item['promedio'] ?? null;
-                            break;
-                        }
-                    }
-                    if (!$eurToVes && isset($responseEURList[0]['promedio'])) {
-                        $eurToVes = $responseEURList[0]['promedio'];
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error("Error consultando el Euro en comando: " . $e->getMessage());
-        }
+        // ── Euro → BS (Portal BCV oficial / DolarApi) ───────────────────────
+        $eurToVes = $exchangeRateService->fetchRateFromApi('EUR');
 
         if ($eurToVes && floatval($eurToVes) > 0) {
             ExchangeRate::create([

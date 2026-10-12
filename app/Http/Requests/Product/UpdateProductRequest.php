@@ -53,6 +53,10 @@ class UpdateProductRequest extends FormRequest
         if ($this->has('supplier_id') && (empty($this->input('supplier_id')) || $this->input('supplier_id') === 'null')) {
             $merges['supplier_id'] = null;
         }
+        if ($this->has('unit_of_measure')) {
+            $val = $this->input('unit_of_measure');
+            $merges['unit_of_measure'] = (empty($val) || $val === 'null' || $val === 'undefined') ? null : trim((string) $val);
+        }
 
         $this->merge($merges);
     }
@@ -119,7 +123,7 @@ class UpdateProductRequest extends FormRequest
                 'max:2048',
             ],
             'presentation' => 'nullable|numeric|min:0',
-            'unit_of_measure' => 'nullable|string|in:g,ml,und',
+            'unit_of_measure' => 'nullable|string|max:50',
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'supplier_ids' => 'sometimes|array',
             'supplier_ids.*' => 'integer|exists:suppliers,id',

@@ -29,4 +29,5 @@ interface ExchangeRate
 
     public function store(array $data): Model;
 
+    public function fetchRateFromApi(string $currency): ?float;
 }

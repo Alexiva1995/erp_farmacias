@@ -85,19 +85,7 @@ class ExchangeRateController extends Controller
 
     public function updateBCVDollar(Request $request)
     {
-        $rate = null;
-        try {
-            $response = Http::get('https://ve.dolarapi.com/v1/dolares');
-            if ($response->successful() && isset($response[0]['promedio'])) {
-                $rate = $response[0]['promedio'];
-            }
-        } catch (\Exception $e) {
-            \Log::error("Error consultando Dólar BCV en Controller updateBCVDollar: " . $e->getMessage());
-        }
-
-        if (!$rate) {
-            $rate = 1.0; // Fallback de seguridad
-        }
+        $rate = $this->exchangeRate->fetchRateFromApi('BS') ?? 1.0;
 
         if ($request->exchange_id == null) {
             $data = [

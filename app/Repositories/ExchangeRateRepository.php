@@ -67,4 +67,9 @@ class ExchangeRateRepository implements \App\Contracts\ExchangeRate
     {
         return ExchangeRate::create($data);
     }
+
+    public function fetchRateFromApi(string $currency): ?float
+    {
+        return null;
+    }
 }
