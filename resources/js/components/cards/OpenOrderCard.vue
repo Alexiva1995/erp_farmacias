@@ -1162,6 +1162,14 @@ const getIva = (product, currency) => {
                       + {{ formatCurrency(props.totalIvaAmount, props.selectedDisplayCurrency) }}
                    </span>
                 </div>
+
+                <!-- Recargo SPE (3%) -->
+                <div v-if="appliesSpecialTax" class="d-flex flex-column">
+                   <span class="total-label mb-1">Recargo SPE (3%)</span>
+                   <span class="total-value text-primary font-weight-bold">
+                      + {{ formatCurrency(specialTaxAmount, props.selectedDisplayCurrency) }}
+                   </span>
+                </div>
              </div>
 
              <!-- Monto Total Grande y Visible -->

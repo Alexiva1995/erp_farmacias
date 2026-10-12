@@ -94,7 +94,7 @@ defineEmits([
       :order-products="orderItems || []"
       :order-data="openOrderData || null"
       :is-external-loading="isFinishingOrder"
-      :total-amount="selectedDisplayCurrency === 'BS' ? (totalAmountBs || totalOrderAmount || 0) : (selectedDisplayCurrency === 'COP' ? (totalAmountCop || totalOrderAmount || 0) : (totalAmountUsd || totalOrderAmount || 0))"
+      :total-amount="totalOrderAmount || 0"
       :selected-currency="selectedDisplayCurrency || 'USD'"
       @modal-closed="$emit('closeBuysModal')"
       @purchase-completed="() => {/* La venta ya fue completada, BuysModal muestra el ticket. finish-and-reload limpia el estado al cerrar. */}"
