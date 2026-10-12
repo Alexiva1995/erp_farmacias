@@ -15,6 +15,12 @@ const props = defineProps({
   showChangeAmount: Boolean,
   changeAmount: Number,
   changeAmountInCop: Number,
+  changeAmountInUsd: { type: Number, default: 0 },
+  enableCustomChangeCurrency: { type: Boolean, default: false },
+  changeCurrencyMode: { type: String, default: 'COP' },
+  customChangeUsdDelivered: { type: [Number, String], default: 0 },
+  effectiveChangeDeliveredUsd: { type: Number, default: 0 },
+  effectiveChangeDeliveredCop: { type: Number, default: 0 },
   getConvertedRemainingAmount: Function,
   getPaymentMethodLabel: Function,
   editPaymentAmount: Function,
@@ -29,7 +35,15 @@ const props = defineProps({
   orderData: Object,
 });
 
-const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment", "handle-payment-enter", "remove-payment"]);
+const emit = defineEmits([
+  "complete-purchase",
+  "close-modal",
+  "confirm-payment",
+  "handle-payment-enter",
+  "remove-payment",
+  "update:change-currency-mode",
+  "update:custom-change-usd-delivered",
+]);
 </script>
 
 <template>
@@ -209,17 +223,118 @@ const emit = defineEmits(["complete-purchase", "close-modal", "confirm-payment",
 
           <!-- Tarjeta VUELTO (verde) — cuando se pagó de más -->
           <div v-if="showChangeAmount" class="change-card change-card--success">
-            <div class="d-flex align-center gap-1 mb-2">
-              <VIcon icon="tabler-coins" size="14" class="change-card__icon" />
-              <span class="change-card__label">CAMBIO / VUELTO</span>
+            <div class="d-flex align-center justify-space-between mb-2">
+              <div class="d-flex align-center gap-1">
+                <VIcon icon="tabler-coins" size="14" class="change-card__icon" />
+                <span class="change-card__label">CAMBIO / VUELTO</span>
+              </div>
+              <span v-if="!enableCustomChangeCurrency" class="text-caption font-weight-bold text-success-darken-2">
+                COP
+              </span>
             </div>
-            <div class="change-card__amount">
-              {{ formatCurrency(changeAmountInCop, 'COP') }}
-            </div>
-            <div v-if="selectedCurrency !== 'COP'" class="change-card__secondary">
-              <span>Equivalente en {{ selectedCurrency }}:</span>
-              <strong>{{ formatCurrency(changeAmount, selectedCurrency) }}</strong>
-            </div>
+
+            <!-- MODO ESTÁNDAR (cuando enableCustomChangeCurrency está desactivado) -->
+            <template v-if="!enableCustomChangeCurrency">
+              <div class="change-card__amount">
+                {{ formatCurrency(changeAmountInCop, 'COP') }}
+              </div>
+              <div v-if="selectedCurrency !== 'COP'" class="change-card__secondary">
+                <span>Equivalente en {{ selectedCurrency }}:</span>
+                <strong>{{ formatCurrency(changeAmount, selectedCurrency) }}</strong>
+              </div>
+            </template>
+
+            <!-- MODO MULTIMONEDA (cuando enableCustomChangeCurrency está activado) -->
+            <template v-else>
+              <!-- Selector de Moneda de Vuelto -->
+              <div class="mb-2">
+                <VBtnToggle
+                  :model-value="changeCurrencyMode"
+                  mandatory
+                  density="compact"
+                  color="success"
+                  class="w-100 rounded-lg border bg-surface"
+                  @update:model-value="val => emit('update:change-currency-mode', val)"
+                >
+                  <VBtn value="COP" size="small" class="flex-grow-1 text-none font-weight-bold" variant="text">
+                    <VIcon icon="tabler-coin" size="14" class="me-1" />
+                    COP
+                  </VBtn>
+                  <VBtn value="USD" size="small" class="flex-grow-1 text-none font-weight-bold" variant="text">
+                    <VIcon icon="tabler-currency-dollar" size="14" class="me-1" />
+                    USD
+                  </VBtn>
+                  <VBtn value="MIXED" size="small" class="flex-grow-1 text-none font-weight-bold" variant="text">
+                    <VIcon icon="tabler-arrows-exchange" size="14" class="me-1" />
+                    Mixto
+                  </VBtn>
+                </VBtnToggle>
+              </div>
+
+              <!-- CASO 1: Vuelto en COP -->
+              <div v-if="changeCurrencyMode === 'COP'">
+                <div class="change-card__amount">
+                  {{ formatCurrency(changeAmountInCop, 'COP') }}
+                </div>
+                <div class="change-card__secondary">
+                  <span>Equivalente en USD:</span>
+                  <strong>{{ formatCurrency(changeAmountInUsd, 'USD') }}</strong>
+                </div>
+              </div>
+
+              <!-- CASO 2: Vuelto en USD -->
+              <div v-else-if="changeCurrencyMode === 'USD'">
+                <div class="change-card__amount">
+                  {{ formatCurrency(effectiveChangeDeliveredUsd, 'USD') }}
+                </div>
+                <div v-if="effectiveChangeDeliveredCop > 0" class="change-card__secondary">
+                  <span class="text-error font-weight-bold">Restante en COP:</span>
+                  <strong>{{ formatCurrency(effectiveChangeDeliveredCop, 'COP') }}</strong>
+                </div>
+                <div v-else class="text-caption text-medium-emphasis mt-1">
+                  100% en Dólares en efectivo
+                </div>
+              </div>
+
+              <!-- CASO 3: Vuelto MIXTO (USD + COP) -->
+              <div v-else-if="changeCurrencyMode === 'MIXED'">
+                <div class="bg-surface pa-2 rounded-lg border mb-2">
+                  <div class="d-flex align-center justify-space-between mb-1">
+                    <span class="text-caption font-weight-bold text-high-emphasis">USD a entregar:</span>
+                    <span class="text-tiny text-medium-emphasis">Vuelto total: {{ formatCurrency(changeAmountInUsd, 'USD') }}</span>
+                  </div>
+                  <div class="d-flex align-center gap-1">
+                    <span class="text-caption font-weight-bold text-primary">$</span>
+                    <input
+                      :value="customChangeUsdDelivered"
+                      type="number"
+                      step="any"
+                      min="0"
+                      :max="changeAmountInUsd"
+                      class="payment-input-box font-weight-bold flex-grow-1 text-right"
+                      placeholder="0.00"
+                      @input="e => emit('update:custom-change-usd-delivered', e.target.value)"
+                    />
+                    <span class="text-caption text-medium-emphasis ms-1">USD</span>
+                  </div>
+                </div>
+
+                <div class="d-flex flex-column gap-1 pt-1 border-t border-success border-opacity-25">
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption font-weight-bold text-high-emphasis">Entrega en USD:</span>
+                    <span class="text-subtitle-2 font-weight-bold text-success-darken-3">
+                      {{ formatCurrency(effectiveChangeDeliveredUsd, 'USD') }}
+                    </span>
+                  </div>
+                  <div class="d-flex justify-space-between align-center">
+                    <span class="text-caption font-weight-bold text-high-emphasis">Restante en COP:</span>
+                    <span class="text-subtitle-2 font-weight-bold text-primary">
+                      {{ formatCurrency(effectiveChangeDeliveredCop, 'COP') }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
 
           <!-- Tarjeta PENDIENTE (rojo) — cuando aún falta cobrar -->

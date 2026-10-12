@@ -34,6 +34,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  enableCustomChangeCurrency: {
+    type: Boolean,
+    default: false
+  },
   canEdit: {
     type: Boolean,
     default: true
@@ -52,7 +56,8 @@ const emit = defineEmits([
   'update:defaultCurrency',
   'update:enableQuotations',
   'update:quotationStyle',
-  'update:roundUsdUp'
+  'update:roundUsdUp',
+  'update:enableCustomChangeCurrency'
 ])
 
 const isCompleteMode = computed({
@@ -93,6 +98,11 @@ const isQuotations = computed({
 const isRoundUsdUp = computed({
   get: () => props.roundUsdUp,
   set: (val) => emit('update:roundUsdUp', val)
+})
+
+const isCustomChangeCurrency = computed({
+  get: () => props.enableCustomChangeCurrency,
+  set: (val) => emit('update:enableCustomChangeCurrency', val)
 })
 
 const styleOptions = [
@@ -371,6 +381,51 @@ const quotationStyleOptions = [
               </div>
               <p class="text-caption text-medium-emphasis mb-0">
                 Ajusta el precio de los artículos en USD hacia el número entero superior para facilitar vuelto.
+              </p>
+            </div>
+          </VCard>
+        </VCol>
+
+        <!-- Gestión de Vueltos Multimoneda (USD / COP / Mixto) -->
+        <VCol cols="12" sm="6" md="4">
+          <VCard
+            variant="outlined"
+            class="rounded-lg h-100 pa-4 d-flex flex-column justify-space-between"
+            :class="isCustomChangeCurrency ? 'border-primary bg-var-theme-background' : 'opacity-90'"
+          >
+            <div>
+              <div class="d-flex align-center justify-space-between mb-3">
+                <div class="d-flex align-center gap-2">
+                  <VAvatar
+                    :color="isCustomChangeCurrency ? 'primary' : 'secondary'"
+                    variant="tonal"
+                    size="36"
+                    class="rounded-lg"
+                  >
+                    <VIcon icon="tabler-arrows-exchange" size="20" />
+                  </VAvatar>
+                  <div>
+                    <span class="text-subtitle-2 font-weight-bold d-block">Vueltos Multimoneda</span>
+                    <VChip
+                      :color="isCustomChangeCurrency ? 'success' : 'secondary'"
+                      size="x-small"
+                      variant="tonal"
+                      class="font-weight-bold"
+                    >
+                      {{ isCustomChangeCurrency ? 'USD / COP / Mixto' : 'Estándar (COP)' }}
+                    </VChip>
+                  </div>
+                </div>
+                <VSwitch
+                  v-model="isCustomChangeCurrency"
+                  color="primary"
+                  density="comfortable"
+                  hide-details="auto"
+                  :disabled="!canEdit || isSaving"
+                />
+              </div>
+              <p class="text-caption text-medium-emphasis mb-0">
+                Permite al cajero seleccionar la moneda del vuelto (COP, USD o Mixto) e indicar los dólares entregados.
               </p>
             </div>
           </VCard>

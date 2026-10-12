@@ -116,6 +116,12 @@ const {
   changeAmountInCop,
   changeAmountInUsd,
   showChangeAmount,
+  changeCurrencyMode,
+  customChangeUsdDelivered,
+  effectiveChangeDeliveredUsd,
+  effectiveChangeDeliveredCop,
+  setChangeCurrencyMode,
+  setCustomChangeUsdDelivered,
 } = useTpvCheckoutCalculations(props, payments, brandingStore);
 
 // 2. Módulo UI
@@ -168,6 +174,10 @@ const {
   changeAmountInUsd,
   exchangeRates,
   currentProgress,
+  brandingStore,
+  changeCurrencyMode,
+  effectiveChangeDeliveredUsd,
+  effectiveChangeDeliveredCop,
 });
 
 const closeModal = () => {
@@ -331,6 +341,12 @@ const activeDiscountDisplay = computed(() => {
                 :show-change-amount="showChangeAmount"
                 :change-amount="changeAmount"
                 :change-amount-in-cop="changeAmountInCop"
+                :change-amount-in-usd="changeAmountInUsd"
+                :enable-custom-change-currency="brandingStore?.settings?.enable_custom_change_currency"
+                :change-currency-mode="changeCurrencyMode"
+                :custom-change-usd-delivered="customChangeUsdDelivered"
+                :effective-change-delivered-usd="effectiveChangeDeliveredUsd"
+                :effective-change-delivered-cop="effectiveChangeDeliveredCop"
                 :get-converted-remaining-amount="getConvertedRemainingAmount"
                 :get-payment-method-label="getPaymentMethodLabel"
                 :edit-payment-amount="editPaymentAmount"
@@ -348,6 +364,8 @@ const activeDiscountDisplay = computed(() => {
                 @confirm-payment="confirmPaymentComplete"
                 @handle-payment-enter="handlePaymentEnter"
                 @remove-payment="removePaymentFromSummary"
+                @update:change-currency-mode="setChangeCurrencyMode"
+                @update:custom-change-usd-delivered="setCustomChangeUsdDelivered"
               />
             </div>
           </VCol>

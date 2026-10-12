@@ -1047,23 +1047,29 @@ class OrderActionService
             }
 
 
-            if ($request->has('changeAmountInCop') && (float)$request->changeAmountInCop > 0) {
-                $orderId->money_returns = (float) $request->changeAmountInCop;
-            } elseif ($orderId->currency === 'COP') {
-                if (isset($request->changeAmount)) {
-                    $resourceService = app(\App\Services\Resources\ResourceService::class);
-                    $tasaCop = (float) ($resourceService->getExchangeRate('COP') ?: 1);
-                    $rawChange = (float) $request->changeAmount;
-                    $orderId->money_returns = ($rawChange < 1000 && $tasaCop > 1) ? round($rawChange * $tasaCop) : $rawChange;
-                }
+            if ($request->filled('change_currency_mode')) {
+                // Modo de vuelto multimoneda configurado por el cajero
+                $orderId->money_returns = (float) ($request->input('change_delivered_cop', 0));
+                $orderId->usd_conversion = (float) ($request->input('change_delivered_usd', 0));
             } else {
-                if (isset($request->changeAmount)) {
-                    $orderId->money_returns = (float) $request->changeAmount;
+                if ($request->has('changeAmountInCop') && (float)$request->changeAmountInCop > 0) {
+                    $orderId->money_returns = (float) $request->changeAmountInCop;
+                } elseif ($orderId->currency === 'COP') {
+                    if (isset($request->changeAmount)) {
+                        $resourceService = app(\App\Services\Resources\ResourceService::class);
+                        $tasaCop = (float) ($resourceService->getExchangeRate('COP') ?: 1);
+                        $rawChange = (float) $request->changeAmount;
+                        $orderId->money_returns = ($rawChange < 1000 && $tasaCop > 1) ? round($rawChange * $tasaCop) : $rawChange;
+                    }
+                } else {
+                    if (isset($request->changeAmount)) {
+                        $orderId->money_returns = (float) $request->changeAmount;
+                    }
                 }
-            }
 
-            if (isset($request->changeAmountUSD)) {
-                $orderId->usd_conversion = $request->changeAmountUSD;
+                if (isset($request->changeAmountUSD)) {
+                    $orderId->usd_conversion = $request->changeAmountUSD;
+                }
             }
 
             $currencies = [];

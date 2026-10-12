@@ -27,6 +27,7 @@ const defaultSettings = {
   tpv_rate_type: 'bcv',
   default_currency: 'USD',
   round_usd_up: false,
+  enable_custom_change_currency: false,
   tpv_payment_methods: {
     COP: { enabled: true, methods: [] },
     USD: { enabled: true, methods: [] },
@@ -64,6 +65,7 @@ const fetchSettings = async () => {
     'quotation_style',
     'tpv_rate_type',
     'round_usd_up',
+    'enable_custom_change_currency',
     'tpv_payment_methods',
     'enabled_offer_types'
   ].join(',')
@@ -83,6 +85,7 @@ const fetchSettings = async () => {
       tpv_rate_type: settings.tpv_rate_type || 'bcv',
       default_currency: settings.default_currency || 'USD',
       round_usd_up: !!settings.round_usd_up,
+      enable_custom_change_currency: !!settings.enable_custom_change_currency,
       tpv_payment_methods: settings.tpv_payment_methods || defaultSettings.tpv_payment_methods,
       enabled_offer_types: Array.isArray(settings.enabled_offer_types)
         ? settings.enabled_offer_types
@@ -150,6 +153,7 @@ const saveSettings = async () => {
       quotation_style: formState.quotation_style,
       tpv_rate_type: formState.tpv_rate_type,
       round_usd_up: formState.round_usd_up,
+      enable_custom_change_currency: formState.enable_custom_change_currency,
       tpv_payment_methods: formState.tpv_payment_methods,
       enabled_offer_types: formState.enabled_offer_types
     }
@@ -295,6 +299,7 @@ onMounted(() => {
         v-model:enable-quotations="formState.enable_quotations"
         v-model:quotation-style="formState.quotation_style"
         v-model:round-usd-up="formState.round_usd_up"
+        v-model:enable-custom-change-currency="formState.enable_custom_change_currency"
         :can-edit="canEdit"
         :is-saving="isSaving"
       />

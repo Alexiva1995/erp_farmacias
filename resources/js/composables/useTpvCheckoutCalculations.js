@@ -1,4 +1,4 @@
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
 import { roundUpToNearestHundred } from '@/utils/roundUpToNearesHundred.js'
@@ -372,6 +372,67 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
     return hasRelevantCashPayment && (props.selectedCurrency === 'COP' ? changeAmountInCop.value > 0 : changeAmount.value > 0)
   })
 
+  // Modo de vuelto: 'COP', 'USD', 'MIXED'
+  const changeCurrencyMode = ref('COP')
+  const customChangeUsdDelivered = ref(0)
+
+  // Establecer modo de vuelto
+  const setChangeCurrencyMode = (mode) => {
+    changeCurrencyMode.value = mode
+    if (mode === 'USD') {
+      customChangeUsdDelivered.value = changeAmountInUsd.value
+    } else if (mode === 'MIXED') {
+      customChangeUsdDelivered.value = Math.floor(changeAmountInUsd.value)
+    } else {
+      customChangeUsdDelivered.value = 0
+    }
+  }
+
+  // Establecer monto USD entregado
+  const setCustomChangeUsdDelivered = (val) => {
+    const num = Math.max(0, parseFloat(val) || 0)
+    const maxUsd = changeAmountInUsd.value
+    customChangeUsdDelivered.value = num > maxUsd ? maxUsd : num
+  }
+
+  // USD a entregar efectivamente
+  const effectiveChangeDeliveredUsd = computed(() => {
+    if (changeCurrencyMode.value === 'COP') {
+      return 0
+    }
+    const delivered = Number(customChangeUsdDelivered.value) || 0
+    return Math.min(changeAmountInUsd.value, Math.max(0, roundToTwoDecimalPlaces(delivered)))
+  })
+
+  // COP a entregar efectivamente
+  const effectiveChangeDeliveredCop = computed(() => {
+    if (changeCurrencyMode.value === 'COP') {
+      return changeAmountInCop.value
+    }
+
+    const usdDelivered = effectiveChangeDeliveredUsd.value
+    const remainingUsdChange = Math.max(0, roundToTwoDecimalPlaces(changeAmountInUsd.value - usdDelivered))
+
+    if (remainingUsdChange <= 0.001) {
+      return 0
+    }
+
+    const copRate = getCopChangeRate()
+    const copAmount = remainingUsdChange * copRate
+    return roundUpToNearestHundred(copAmount)
+  })
+
+  watch(
+    () => changeAmountInUsd.value,
+    (newVal) => {
+      if (changeCurrencyMode.value === 'USD') {
+        customChangeUsdDelivered.value = newVal
+      } else if (changeCurrencyMode.value === 'MIXED') {
+        customChangeUsdDelivered.value = Math.floor(newVal)
+      }
+    }
+  )
+
   return {
     exchangeRates,
     ratesLoaded,
@@ -391,5 +452,11 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
     changeAmountInUsd,
     changeAmountInCop,
     showChangeAmount,
+    changeCurrencyMode,
+    customChangeUsdDelivered,
+    effectiveChangeDeliveredUsd,
+    effectiveChangeDeliveredCop,
+    setChangeCurrencyMode,
+    setCustomChangeUsdDelivered,
   }
 }

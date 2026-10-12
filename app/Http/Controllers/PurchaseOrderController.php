@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Contracts\PurchaseOrder;
 use App\Helpers\ApiResponse;
 use App\Http\Requests\GetPurchaseOrdersRequest;
+use App\Http\Requests\PurchaseOrder\ConfirmSentPurchaseOrderRequest;
 use App\Http\Requests\UpdateAutoOrderDetailsRequest;
 use App\Http\Resources\AutoOrderResource;
 use App\Models\AutoOrder;
@@ -74,19 +75,23 @@ class PurchaseOrderController extends Controller
         return ApiResponse::success(["data" => $data]);
     }
 
-    public function confirmSent(AutoOrder $autoOrder)
+    public function confirmSent(AutoOrder $autoOrder, ConfirmSentPurchaseOrderRequest $request)
     {
         try {
-            $result = $this->purchaseOrder->confirmSent($autoOrder);
+            $force = (bool) $request->boolean('force', false);
+            $result = $this->purchaseOrder->confirmSent($autoOrder, $force);
             return response()->json([
                 'success' => true,
                 'data' => $result,
-                'message' => 'Orden transmitida y marcada como enviada exitosamente.'
+                'message' => $force
+                    ? 'Orden de compra marcada como enviada manualmente.'
+                    : 'Orden transmitida y marcada como enviada exitosamente.'
             ]);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("[PURCHASE ORDER] Error en confirmSent #{$autoOrder->id}: " . $e->getMessage());
             return response()->json([
                 'success' => false,
+                'can_force' => true,
                 'message' => $e->getMessage()
             ], 400);
         }
@@ -119,17 +124,19 @@ class PurchaseOrderController extends Controller
         return response()->json(['success' => $this->purchaseOrder->revertToSent($autoOrder)]);
     }
 
-    public function resendFtp(AutoOrder $autoOrder)
+    public function resendFtp(AutoOrder $autoOrder, ConfirmSentPurchaseOrderRequest $request)
     {
         try {
-            $this->purchaseOrder->confirmSent($autoOrder);
+            $force = (bool) $request->boolean('force', false);
+            $this->purchaseOrder->confirmSent($autoOrder, $force);
             return response()->json([
                 'success' => true,
-                'message' => 'Pedido reenviado exitosamente por FTP.'
+                'message' => 'Pedido reenviado exitosamente.'
             ]);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
+                'can_force' => true,
                 'message' => $e->getMessage()
             ], 400);
         }

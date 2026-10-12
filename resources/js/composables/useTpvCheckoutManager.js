@@ -22,6 +22,10 @@ export function useTpvCheckoutManager({
   changeAmountInUsd,
   exchangeRates,
   currentProgress,
+  brandingStore,
+  changeCurrencyMode,
+  effectiveChangeDeliveredUsd,
+  effectiveChangeDeliveredCop,
 }) {
   const issubmitting = ref(false)
   const receiptOrderData = ref(null)
@@ -291,6 +295,7 @@ export function useTpvCheckoutManager({
         receiptOrderProducts.value = props.orderProducts
         receiptPayments.value = validPayments
         currentProgress.value = 100
+        const isCustomChange = !!brandingStore?.settings?.enable_custom_change_currency
         emit('purchase-completed', {
           order: props.orderData,
           payments: validPayments,
@@ -298,6 +303,9 @@ export function useTpvCheckoutManager({
           changeAmount: changeAmount.value,
           changeAmountInCop: changeAmountInCop?.value || 0,
           changeAmountUSD: changeAmountInUsd?.value || 0,
+          change_currency_mode: isCustomChange ? (changeCurrencyMode?.value || 'COP') : 'COP',
+          change_delivered_usd: isCustomChange ? (effectiveChangeDeliveredUsd?.value || 0) : (changeAmountInUsd?.value || 0),
+          change_delivered_cop: isCustomChange ? (effectiveChangeDeliveredCop?.value || 0) : (changeAmountInCop?.value || 0),
           currency: props.selectedCurrency,
         })
         issubmitting.value = false
@@ -322,6 +330,7 @@ export function useTpvCheckoutManager({
         return
       }
 
+      const isCustomChange = !!brandingStore?.settings?.enable_custom_change_currency
       const payload = {
         order_id: orderIdNum,
         payments: validPayments,
@@ -329,6 +338,9 @@ export function useTpvCheckoutManager({
         changeAmount: changeAmount.value,
         changeAmountInCop: changeAmountInCop?.value || 0,
         changeAmountUSD: changeAmountInUsd?.value || 0,
+        change_currency_mode: isCustomChange ? (changeCurrencyMode?.value || 'COP') : 'COP',
+        change_delivered_usd: isCustomChange ? (effectiveChangeDeliveredUsd?.value || 0) : (changeAmountInUsd?.value || 0),
+        change_delivered_cop: isCustomChange ? (effectiveChangeDeliveredCop?.value || 0) : (changeAmountInCop?.value || 0),
         currency: props.selectedCurrency,
         applies_spe_tax: appliesSpecialTax.value,
         spe_tax_amount: specialTaxAmount.value,

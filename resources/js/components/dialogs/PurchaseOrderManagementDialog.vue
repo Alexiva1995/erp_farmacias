@@ -1,6 +1,6 @@
 <script setup>
 import axios from "@/plugins/axios";
-import { toast } from "@/plugins/sweetalert";
+import { toast, Swal } from "@/plugins/sweetalert";
 import { pdfPurchaseOrderGenerator } from "@/utils/pdfPurchaseOrderGenerator";
 import { computed, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
@@ -164,7 +164,7 @@ const handleSave = async () => {
   }
 };
 
-const handleConfirmSent = async () => {
+const handleConfirmSent = async (force = false) => {
   const isFinishing = props.purchaseOrder.status === 1 || props.purchaseOrder.sent_at;
 
   // Validación de pedido mínimo para órdenes en estado pendiente (status 0)
@@ -183,7 +183,8 @@ const handleConfirmSent = async () => {
       ? `/suppliers/purchase-orders/${props.purchaseOrder.id}/finish` 
       : `/suppliers/purchase-orders/${props.purchaseOrder.id}/confirm-sent`;
       
-    const { data } = await axios.post(url);
+    const payload = isFinishing ? {} : { force };
+    const { data } = await axios.post(url, payload);
     if (data.success !== false) {
       toast.success(data.message || (isFinishing ? "Orden finalizada correctamente." : "Orden marcada como enviada."));
       emit("refresh");
@@ -193,6 +194,45 @@ const handleConfirmSent = async () => {
     }
   } catch (error) {
     const errorMsg = error.response?.data?.message || "Error al procesar la solicitud.";
+    
+    // Si la transmisión falló y estamos confirmando el envío de una orden pendiente
+    if (!isFinishing && !force && (error.response?.data?.can_force || error.response?.status === 400)) {
+      sending.value = false;
+      const confirmManual = await Swal.fire({
+        title: "Fallo en Transmisión con el Proveedor",
+        html: `
+          <div style="font-size: 13px; text-align: left; line-height: 1.5;">
+            <p style="margin-bottom: 8px; color: #ea5455; font-weight: 600;">Detalle reportado:</p>
+            <p style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.05); border-radius: 6px; word-break: break-word;">${errorMsg}</p>
+            <p style="margin-bottom: 0;">¿Deseas marcar la orden de compra como <strong>Enviada</strong> en el sistema de todas formas para gestionarla manualmente (por WhatsApp o PDF)?</p>
+          </div>
+        `,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, marcar como enviada",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#28c76f",
+        cancelButtonColor: "#808390",
+      });
+
+      if (confirmManual.isConfirmed) {
+        sending.value = true;
+        try {
+          const forceResp = await axios.post(`/suppliers/purchase-orders/${props.purchaseOrder.id}/confirm-sent`, { force: true });
+          toast.success(forceResp.data?.message || "Orden de compra marcada como enviada correctamente.");
+          emit("refresh");
+          closeDialog(false);
+          return;
+        } catch (forceErr) {
+          toast.error(forceErr.response?.data?.message || "No se pudo marcar la orden como enviada.");
+          return;
+        } finally {
+          sending.value = false;
+        }
+      }
+      return;
+    }
+
     toast.error(errorMsg);
   } finally {
     sending.value = false;
@@ -652,6 +692,21 @@ watch(
             </span>
           </template>
         </VTooltip>
+
+        <!-- Botón para marcar directamente como enviada de forma manual (sin transmisión externa) -->
+        <VBtn
+          v-if="purchaseOrder.status === 0"
+          color="success"
+          variant="outlined"
+          prepend-icon="tabler-check"
+          @click="handleConfirmSent(true)"
+          :loading="sending"
+          :disabled="isBelowMinOrder"
+          class="flex-grow-1 font-weight-black rounded-lg shadow-sm"
+          size="large"
+        >
+          Marcar Enviada (Manual)
+        </VBtn>
 
         <VBtn
           v-if="isDirty"

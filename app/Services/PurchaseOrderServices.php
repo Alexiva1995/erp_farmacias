@@ -68,7 +68,7 @@ class PurchaseOrderServices implements PurchaseOrder
     return $this->autoOrdersRepository->getStats($data);
   }
 
-  public function confirmSent(AutoOrder $autoOrder): bool
+  public function confirmSent(AutoOrder $autoOrder, bool $force = false): bool
   {
     $supplier = $autoOrder->supplier ?: \App\Models\Supplier::find($autoOrder->supplier_id);
 
@@ -81,8 +81,10 @@ class PurchaseOrderServices implements PurchaseOrder
       }
     }
     
-    // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca, Mafarta, Cristmedicals, Dromega)
-    $isDronena = false;
+    // Si no es confirmación manual forzada, intentar transmisión automatizada
+    if (!$force) {
+      // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca, Mafarta, Cristmedicals, Dromega)
+      $isDronena = false;
     $isVitalclinic = false;
     $isDrocerca = false;
     $isMafarta = false;
@@ -203,6 +205,7 @@ class PurchaseOrderServices implements PurchaseOrder
         \Illuminate\Support\Facades\Log::error("[DROMEGA FTP] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
         throw new \Exception("Error al transmitir el pedido a Dromega por FTP: " . $e->getMessage());
       }
+    }
     }
 
     return $this->autoOrdersRepository->confirmSent($autoOrder);

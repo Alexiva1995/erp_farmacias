@@ -194,6 +194,7 @@ class GeneralSettingResource extends JsonResource
             'enabled_finance_views' => $this->enabled_finance_views ?? ['profitability', 'exchangerate', 'pending-payments', 'payment-history', 'cashout', 'payslips', 'cash-closure', 'cash-closure-user', 'income-statement', 'expense-expenses', 'balance-general', 'furnitures-list', 'loans-list'],
             'profitability_calculation_type' => $this->profitability_calculation_type ?? 'simple',
             'round_usd_up' => (bool) ($this->round_usd_up ?? false),
+            'enable_custom_change_currency' => (bool) ($this->enable_custom_change_currency ?? false),
             'expense_mode' => $this->expense_mode ?? 'real',
             'expense_auto_approve' => (bool) ($this->expense_auto_approve ?? false),
             'enabled_ia_assistant_views' => $this->enabled_ia_assistant_views ?? ['pedidos', 'reporte', 'oportunidad', 'comparador', 'automatizacion'],
