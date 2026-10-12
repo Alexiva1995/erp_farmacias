@@ -144,6 +144,52 @@ const submitForm = async () => {
   }
 };
 
+const saveOnlyStructure = async () => {
+  if (!props.selectedSupplier?.id) {
+    toast.error("No se ha seleccionado ningún proveedor.");
+    return;
+  }
+
+  isSavingStructure.value = true;
+  errors.value = {};
+
+  const current = formats[activeFormat.value];
+  const payload = {
+    start_row: current.start_row || 1,
+    cod_supplier: current.cod_supplier || "",
+    name: current.name || "",
+    barcode_match: current.barcode_match || "",
+    quantity: current.quantity || "",
+    unit_cost: current.unit_cost || "",
+    unit_cost_usd: current.unit_cost_usd || "",
+    active_ingredient: current.active_ingredient || "",
+    laboratory: current.laboratory || "",
+    expiration: current.expiration || "",
+    file_keyword: current.file_keyword || "",
+    format_type: activeFormat.value,
+  };
+
+  if (current.currency !== null && current.currency !== "") {
+    payload.currency = current.currency;
+  }
+
+  try {
+    const { data } = await axios.post(`/suppliers/${props.selectedSupplier.id}/save-structure`, payload);
+    toast.success(data.message || "Configuración de columnas guardada correctamente.");
+    emit("refresh-products");
+  } catch (error) {
+    console.error("[SaveStructure] Error:", error);
+    if (error.response && error.response.status === 422) {
+      errors.value = error.response.data.errors || {};
+      toast.error("Por favor verifique los campos marcados en rojo.");
+    } else {
+      toast.error("No se pudo guardar la configuración del formato.");
+    }
+  } finally {
+    isSavingStructure.value = false;
+  }
+};
+
 const fetchSupplierConnection = async (id) => {
   try {
     const { data } = await axios.get(`suppliers/${id}/first-connection`);
@@ -511,7 +557,7 @@ watch(
 
       <VCardActions class="pa-4 pa-sm-6 bg-white border-t">
         <VRow dense class="w-100 ma-0">
-          <VCol cols="6" class="pa-1">
+          <VCol cols="12" sm="4" class="pa-1">
             <VBtn
               color="secondary"
               variant="outlined"
@@ -523,17 +569,32 @@ watch(
               Cancelar
             </VBtn>
           </VCol>
-          <VCol cols="6" class="pa-1">
+          <VCol cols="12" sm="4" class="pa-1">
+            <VBtn
+              color="info"
+              variant="tonal"
+              height="50"
+              block
+              class="font-weight-black rounded-lg uppercase"
+              :loading="isSavingStructure"
+              @click="saveOnlyStructure"
+            >
+              <VIcon start icon="tabler-device-floppy" size="18" />
+              Guardar Configuración
+            </VBtn>
+          </VCol>
+          <VCol cols="12" sm="4" class="pa-1">
             <VBtn
               color="primary"
               variant="flat"
               height="50"
               block
               class="font-weight-black rounded-lg shadow-primary uppercase"
+              :loading="loading"
               @click="submitForm"
             >
               <VIcon start icon="tabler-upload" size="18" />
-              Cargar con {{ activeFormat === 'secondary' ? 'Formato 2' : 'Formato 1' }}
+              Cargar con {{ activeFormat === 'tertiary' ? 'Formato 3' : (activeFormat === 'secondary' ? 'Formato 2' : 'Formato 1') }}
             </VBtn>
           </VCol>
         </VRow>

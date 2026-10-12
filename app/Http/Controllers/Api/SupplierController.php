@@ -12,6 +12,7 @@ use App\Models\ProductSupplier;
 use App\Services\Suppliers\SupplierQueryService;
 use App\Services\Suppliers\SupplierActionService;
 use App\Http\Requests\GetDataFromSupplierFileRequest;
+use App\Http\Requests\SaveSupplierStructureRequest;
 use App\Http\Requests\StoreSupplierLaboratoryRequest;
 use App\Http\Requests\UpdatePaymentRuleSupplierRequest;
 use App\Http\Requests\StoreDiscountsRequest;
@@ -442,6 +443,37 @@ class SupplierController extends Controller
         ProcessSupplierConnectionJob::dispatchSync($supplier, $userId, $path, $validated);
 
         return response()->json(["status" => "completed"]);
+    }
+
+    /**
+     * Guarda la estructura de columnas de un proveedor (Formato 1, 2 o 3) sin requerir subir un archivo Excel.
+     */
+    public function saveExcelStructure(SaveSupplierStructureRequest $request, Supplier $supplier)
+    {
+        $validated = $request->validated();
+        $formatType = $validated['format_type'] ?? 'primary';
+        unset($validated['format_type']);
+
+        $fileConnection = $supplier->connections()->where('type', 'file')->first();
+        if (!$fileConnection) {
+            $fileConnection = $supplier->connections()->create([
+                'type' => 'file',
+                'name' => $supplier->name . ' (Excel)',
+            ]);
+        }
+
+        if ($formatType === 'tertiary') {
+            $fileConnection->update(['tertiary_structure' => $validated]);
+        } elseif ($formatType === 'secondary') {
+            $fileConnection->update(['secondary_structure' => $validated]);
+        } else {
+            $fileConnection->update(['structure' => $validated]);
+        }
+
+        return response()->json([
+            'message' => 'Configuración de columnas guardada correctamente.',
+            'structure' => $validated,
+        ]);
     }
 
     public function deleteProducts(Supplier $supplier)
