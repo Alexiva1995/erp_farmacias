@@ -777,6 +777,22 @@ class SupplierQueryService
         // O mantenemos compatibilidad si enviasen 'selectedSupplier' como texto
         $searchTerm = $filters["search"] ?? $filters["selectedSupplier"] ?? null;
 
+        $priorityConnections = DB::table("supplier_connections")
+            ->select(
+                "supplier_connections.*",
+                DB::raw("ROW_NUMBER() OVER (
+                    PARTITION BY supplier_id 
+                    ORDER BY CASE 
+                        WHEN type IN ('api', 'http') THEN 1
+                        WHEN type IN ('ftp', 'sftp') THEN 2
+                        WHEN type LIKE '%bot%' OR type LIKE '%_bot' THEN 3
+                        WHEN type = 'file' THEN 4
+                        ELSE 5 
+                    END ASC,
+                    id DESC
+                ) as rn")
+            );
+
         $paginated = DB::table("suppliers")
             ->select(
                 "suppliers.name as name",
@@ -784,11 +800,14 @@ class SupplierQueryService
                 "suppliers.public_token",
                 DB::raw("COALESCE(suppliers.is_active, 1) as is_active"),
                 DB::raw(
-                    "COALESCE(supplier_connections.last_connection, 'No se ha establecido conexión') as last_connection",
+                    "COALESCE(sc.last_connection, 'No se ha establecido conexión') as last_connection",
                 ),
-                DB::raw("UPPER(COALESCE(CASE WHEN supplier_connections.type = 'file' THEN 'Archivo Excel' ELSE supplier_connections.type END, 'No registrado')) as type"),
+                DB::raw("UPPER(COALESCE(CASE WHEN sc.type = 'file' THEN 'Archivo Excel' ELSE sc.type END, 'No registrado')) as type"),
             )
-            ->leftJoin("supplier_connections", "supplier_id", "=", "suppliers.id")
+            ->leftJoinSub($priorityConnections, "sc", function ($join) {
+                $join->on("sc.supplier_id", "=", "suppliers.id")
+                     ->where("sc.rn", "=", 1);
+            })
             ->whereNull("suppliers.deleted_at")
             ->where(function ($query) {
                 $query->where("suppliers.type", "drogueria")

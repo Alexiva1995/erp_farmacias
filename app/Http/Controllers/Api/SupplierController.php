@@ -422,16 +422,21 @@ class SupplierController extends Controller
             return response()->json(['error' => 'Failed to store file'], 500);
         }
 
-        // Actualizar la estructura correspondiente en la conexión del proveedor
-        $connection = $supplier->connections()->first();
-        if ($connection) {
-            if ($saveAsTertiary) {
-                $connection->update(['tertiary_structure' => $validated]);
-            } elseif ($saveAsSecondary) {
-                $connection->update(['secondary_structure' => $validated]);
-            } else {
-                $connection->update(['structure' => $validated]);
-            }
+        // Actualizar la estructura correspondiente en la conexión de tipo Excel ('file') del proveedor
+        $fileConnection = $supplier->connections()->where('type', 'file')->first();
+        if (!$fileConnection) {
+            $fileConnection = $supplier->connections()->create([
+                'type' => 'file',
+                'name' => $supplier->name . ' (Excel)',
+            ]);
+        }
+
+        if ($saveAsTertiary) {
+            $fileConnection->update(['tertiary_structure' => $validated]);
+        } elseif ($saveAsSecondary) {
+            $fileConnection->update(['secondary_structure' => $validated]);
+        } else {
+            $fileConnection->update(['structure' => $validated]);
         }
 
         ProcessSupplierConnectionJob::dispatchSync($supplier, $userId, $path, $validated);
@@ -831,6 +836,30 @@ class SupplierController extends Controller
 
             return response()->json([
                 'message' => 'Error al guardar la configuración: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Elimina una configuración de conexión específica (por tipo) de un proveedor.
+     */
+    public function deleteConnectionConfig(Supplier $supplier, string $type)
+    {
+        try {
+            $deleted = $supplier->connections()->where('type', $type)->delete();
+
+            if ($deleted) {
+                return response()->json([
+                    'message' => "Conexión de tipo {$type} eliminada correctamente.",
+                ]);
+            }
+
+            return response()->json([
+                'message' => 'No se encontró la conexión especificada.',
+            ], 404);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Error al eliminar la conexión: ' . $e->getMessage(),
             ], 500);
         }
     }

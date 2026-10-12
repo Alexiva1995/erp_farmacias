@@ -1,6 +1,7 @@
 <script setup>
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
+import Swal from "sweetalert2";
 import { computed, ref, watch } from "vue";
 import SupplierConnectionHistoryDialog from "@/components/dialogs/SupplierConnectionHistoryDialog.vue";
 
@@ -189,6 +190,39 @@ const saveConfig = async () => {
     }
   } finally {
     saving.value = false;
+  }
+};
+
+const deletingProtocol = ref(false);
+
+const deleteProtocolConfig = async () => {
+  if (!props.supplier?.id || !form.value.type) return;
+
+  const typeName = form.value.type.toUpperCase();
+  const result = await Swal.fire({
+    title: `¿Eliminar conexión ${typeName}?`,
+    text: `Esta acción removerá la configuración de conexión de tipo ${typeName} para este proveedor.`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#d33",
+  });
+
+  if (!result.isConfirmed) return;
+
+  deletingProtocol.value = true;
+  try {
+    await axios.delete(`/suppliers/${props.supplier.id}/connection-config/${form.value.type}`);
+    toast.success(`Conexión ${typeName} eliminada correctamente.`);
+    delete connectionsMap.value[form.value.type];
+    loadFormForType(form.value.type);
+    emit("saved");
+  } catch (err) {
+    console.error("Error al eliminar conexión:", err);
+    toast.error("No se pudo eliminar la conexión.");
+  } finally {
+    deletingProtocol.value = false;
   }
 };
 
@@ -532,6 +566,18 @@ watch(
         </VBtn>
 
         <div class="d-flex align-center gap-2">
+          <VBtn
+            v-if="connectionsMap[form.type]"
+            color="error"
+            variant="tonal"
+            height="42"
+            prepend-icon="tabler-trash"
+            class="font-weight-bold rounded-lg text-xs px-3"
+            :loading="deletingProtocol"
+            @click="deleteProtocolConfig"
+          >
+            Eliminar {{ form.type.toUpperCase() }}
+          </VBtn>
           <VBtn
             color="secondary"
             variant="outlined"
