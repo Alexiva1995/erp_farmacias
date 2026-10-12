@@ -438,16 +438,29 @@ onMounted(() => {
                     />
 
                     <div class="d-flex justify-space-between align-center flex-wrap gap-2">
-                      <VBtn
-                        color="secondary"
-                        variant="tonal"
-                        size="small"
-                        prepend-icon="tabler-external-link"
-                        href="https://sic.drogueriascobeca.com/autenticacion"
-                        target="_blank"
-                      >
-                        Abrir Portal Cobeca SIC
-                      </VBtn>
+                      <div class="d-flex gap-2">
+                        <VBtn
+                          color="secondary"
+                          variant="tonal"
+                          size="small"
+                          prepend-icon="tabler-external-link"
+                          href="https://sic.drogueriascobeca.com/autenticacion"
+                          target="_blank"
+                        >
+                          Abrir Portal Cobeca SIC
+                        </VBtn>
+
+                        <VBtn
+                          color="primary"
+                          variant="outlined"
+                          size="small"
+                          prepend-icon="tabler-download"
+                          href="/extensions/conector-cobeca.zip"
+                          download="conector-cobeca.zip"
+                        >
+                          Descargar Extensión (.zip)
+                        </VBtn>
+                      </div>
 
                       <div class="d-flex gap-2">
                         <VBtn
