@@ -667,31 +667,53 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             }
             $password = $password ?: env('MAFARTA_PASSWORD', 'Mafarta2026*');
 
-            // 2. Iniciar sesión en el portal SIC
-            $loginRes = Http::withoutVerifying()->post('https://sic.drogueriascobeca.com/api/auth/login', [
-                'User' => $username,
-                'Password' => $password,
-            ]);
+            $sessionToken = $conn?->structure['session_token'] ?? null;
+            $token = null;
+            $clientCode = (int) (preg_replace('/\D/', '', (string) ($username ?: '31373')) ?: 31373);
+            $drugstore = 3;
 
-            if ($loginRes->status() !== 200 || empty($loginRes->json('token'))) {
-                // Reintento con clave de respaldo oficial si falla
+            // Prioridad 1: Usar session_token guardado (Bypass de Cloudflare Turnstile)
+            if (!empty($sessionToken)) {
+                $testRes = $this->testSessionToken($sessionToken, $clientCode);
+                if ($testRes['valid']) {
+                    Log::info("[COBECA PAYMENT] Usando session_token activo guardado para reportar pago en Cobeca.");
+                    $token = $sessionToken;
+                } else {
+                    Log::warning("[COBECA PAYMENT] El session_token guardado ha expirado. Intentando login directo...");
+                }
+            }
+
+            // Prioridad 2: Si no hay session_token o expiró, intentar iniciar sesión en el portal SIC
+            if (empty($token)) {
                 $loginRes = Http::withoutVerifying()->post('https://sic.drogueriascobeca.com/api/auth/login', [
-                    'User' => 'F31373',
-                    'Password' => 'Mafarta2026*',
+                    'User' => $username,
+                    'Password' => $password,
                 ]);
-            }
 
-            if ($loginRes->status() !== 200 || empty($loginRes->json('token'))) {
-                Log::error('[COBECA PAYMENT] Error de autenticación al reportar pago: ' . $loginRes->body());
-                return [
-                    'success' => false,
-                    'message' => 'Error de autenticación con el portal de Cobeca.',
-                ];
-            }
+                if ($loginRes->status() !== 200 || empty($loginRes->json('token'))) {
+                    // Reintento con clave de respaldo oficial si falla
+                    $loginRes = Http::withoutVerifying()->post('https://sic.drogueriascobeca.com/api/auth/login', [
+                        'User' => 'F31373',
+                        'Password' => 'Mafarta2026*',
+                    ]);
+                }
 
-            $token = $loginRes->json('token');
-            $clientCode = (int) ($loginRes->json('client') ?? 31373);
-            $drugstore = (int) ($loginRes->json('drogueria') ?? 3);
+                if ($loginRes->status() !== 200 || empty($loginRes->json('token'))) {
+                    $bodyStr = $loginRes->body();
+                    Log::error('[COBECA PAYMENT] Error de autenticación al reportar pago: ' . $bodyStr);
+                    $isTurnstile = str_contains($bodyStr, 'turnstileToken') || str_contains($bodyStr, 'Turnstile');
+                    return [
+                        'success' => false,
+                        'message' => $isTurnstile
+                            ? 'Cobeca solicita verificación Cloudflare Turnstile. Actualiza el Token de Sesión en la pantalla del Bot Mafarta.'
+                            : 'Error de autenticación con el portal de Cobeca.',
+                    ];
+                }
+
+                $token = $loginRes->json('token');
+                $clientCode = (int) ($loginRes->json('client') ?? $clientCode);
+                $drugstore = (int) ($loginRes->json('drogueria') ?? 3);
+            }
 
             // 3. Consultar estado de cuenta en vivo para obtener los documentos exactos y calcular el monto oficial de Cobeca
             $edoCuentaRes = Http::withHeaders(['Authorization' => "Bearer {$token}"])

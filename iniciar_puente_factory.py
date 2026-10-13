@@ -137,14 +137,24 @@ def check_printer_present() -> bool:
     return False
 
 
-def execute_hka_cmd(cmd: str) -> bool:
+def execute_hka_cmd(cmd: str, timeout: int = SOCKET_TIMEOUT) -> bool:
     """Envia un comando SendCmd():<cmd> a la impresora fiscal."""
-    res = send_raw_socket(f"SendCmd():{cmd}")
+    res = send_raw_socket(f"SendCmd():{cmd}", timeout=timeout)
     if "Resultado:True" in res or (len(res) >= 11 and res[10] == "T"):
         return True
     
     st = get_fp_status()
-    err_detail = f"{st.get('error_desc', '')} [Cod: {st.get('error_code', '')}]" if st.get('error_desc') else res
+    err_code = str(st.get('error_code', '')).strip()
+    err_desc = st.get('error_desc', '')
+
+    # Si es Reporte Z y dio 137 (timeout mientras la impresora sigue cortando e imprimiendo), verificar presencia
+    if cmd == "I0Z" and (err_code == "137" or "No Answer" in err_desc):
+        time.sleep(3)
+        if check_printer_present():
+            print(f"[AVISO HKA] Reporte Z emitido (impresora ocupada durante respuesta). Estado recuperado exitosamente.")
+            return True
+
+    err_detail = f"{err_desc} [Cod: {err_code}]" if err_desc else res
     print(f"[CMD RECHAZADO] Comando: '{cmd}' | Error: {err_detail}")
     return False
 
@@ -357,12 +367,12 @@ def process_general_commands():
                             
                     elif cmd_type == "REPORT_Z":
                         print("[ACCION] Imprimiendo Reporte Z (Cierre Diario)...")
-                        if not execute_hka_cmd("I0Z"):
+                        if not execute_hka_cmd("I0Z", timeout=45):
                             status = "error"
                             res_output = "Fallo al ejecutar Reporte Z"
                         else:
-                            # Manual HKA: esperar ~20s hasta el reporte de estado de transmision
-                            time.sleep(20)
+                            # Manual HKA: esperar ~10s adicionales para estabilizar la conexion tras el corte
+                            time.sleep(10)
 
                     elif cmd_type == "CREDIT_NOTE":
                         print("[ACCION] Imprimiendo Nota de Credito...")
