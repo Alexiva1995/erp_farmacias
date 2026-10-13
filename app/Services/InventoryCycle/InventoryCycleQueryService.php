@@ -584,8 +584,8 @@ class InventoryCycleQueryService
                 ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
                 ->whereColumn('invoice_details.product_id', 'products.id')
                 ->where('invoices.status', 'ordered')
-                ->where('invoices.updated_at', '>', $afterCycleStart)
-                ->selectRaw('MAX(invoices.updated_at)')
+                ->where('invoices.created_at', '>', $afterCycleStart)
+                ->selectRaw('MAX(invoices.created_at)')
         ]);
 
         $query->whereExists(function ($sub) use ($activeCycleId, $afterCycleStart) {
@@ -594,15 +594,23 @@ class InventoryCycleQueryService
                 ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
                 ->whereColumn('invoice_details.product_id', 'products.id')
                 ->where('invoices.status', 'ordered')
-                ->where('invoices.updated_at', '>', $afterCycleStart);
+                ->where('invoices.created_at', '>', $afterCycleStart);
 
-            // Solo mostrar si no hay un conteo posterior a la fecha en que se ordenó la factura en el ciclo actual
+            // Solo mostrar si no hay un conteo de factura ni conteo cíclico posterior a la fecha de ingreso de la factura en el ciclo actual
             $sub->whereNotExists(function ($countSub) use ($activeCycleId) {
                 $countSub->select(DB::raw(1))
                     ->from('invoices_counts')
                     ->whereColumn('invoices_counts.product_id', 'products.id')
                     ->where('invoices_counts.cycle_id', $activeCycleId)
-                    ->whereRaw('invoices_counts.created_at >= invoices.updated_at');
+                    ->whereRaw('invoices_counts.created_at >= invoices.created_at');
+            });
+
+            $sub->whereNotExists(function ($prodCountSub) use ($activeCycleId) {
+                $prodCountSub->select(DB::raw(1))
+                    ->from('product_counts')
+                    ->whereColumn('product_counts.product_id', 'products.id')
+                    ->where('product_counts.cycle_id', $activeCycleId)
+                    ->whereRaw('product_counts.created_at >= invoices.created_at');
             });
         });
 
