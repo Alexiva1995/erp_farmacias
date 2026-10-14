@@ -418,7 +418,7 @@ const hasQuiebreAlert = computed(() => {
 const isLeader = computed(() => {
   const ventasLiga = Number(props.item?.ventas_totales_liga ?? 0);
   if (ventasLiga <= 0) return false;
-  return Number(props.item?.ipo ?? 0) >= 35 || Boolean(props.item?.es_best_seller_liga);
+  return Number(props.item?.ipo ?? 0) >= 25 || Boolean(props.item?.es_best_seller_liga);
 });
 
 // Faltante Directo
