@@ -183,7 +183,7 @@ const handleConfirmSent = async (force = false) => {
       ? `/suppliers/purchase-orders/${props.purchaseOrder.id}/finish` 
       : `/suppliers/purchase-orders/${props.purchaseOrder.id}/confirm-sent`;
       
-    const payload = isFinishing ? {} : { force };
+    const payload = isFinishing ? {} : { force: force === true };
     const { data } = await axios.post(url, payload);
     if (data.success !== false) {
       toast.success(data.message || (isFinishing ? "Orden finalizada correctamente." : "Orden marcada como enviada."));
@@ -681,7 +681,7 @@ watch(
                 :color="purchaseOrder.status === 1 ? 'primary' : 'success'"
                 variant="elevated"
                 :prepend-icon="purchaseOrder.status === 1 ? 'tabler-circle-check' : 'tabler-send'"
-                @click="handleConfirmSent"
+                @click="() => handleConfirmSent(false)"
                 :loading="sending"
                 :disabled="isBelowMinOrder"
                 class="w-100 font-weight-black rounded-lg shadow-sm"
