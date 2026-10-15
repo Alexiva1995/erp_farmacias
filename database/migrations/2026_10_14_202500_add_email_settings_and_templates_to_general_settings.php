@@ -13,31 +13,31 @@ return new class extends Migration
     {
         Schema::table('general_settings', function (Blueprint $table) {
             if (!Schema::hasColumn('general_settings', 'mail_mailer')) {
-                $table->string('mail_mailer')->default('smtp')->after('gmail_sync_last_status');
+                $table->string('mail_mailer')->default('smtp');
             }
             if (!Schema::hasColumn('general_settings', 'mail_host')) {
-                $table->string('mail_host')->nullable()->after('mail_mailer');
+                $table->string('mail_host')->nullable();
             }
             if (!Schema::hasColumn('general_settings', 'mail_port')) {
-                $table->integer('mail_port')->default(587)->after('mail_host');
+                $table->integer('mail_port')->default(587);
             }
             if (!Schema::hasColumn('general_settings', 'mail_username')) {
-                $table->string('mail_username')->nullable()->after('mail_port');
+                $table->string('mail_username')->nullable();
             }
             if (!Schema::hasColumn('general_settings', 'mail_password')) {
-                $table->text('mail_password')->nullable()->after('mail_username');
+                $table->text('mail_password')->nullable();
             }
             if (!Schema::hasColumn('general_settings', 'mail_encryption')) {
-                $table->string('mail_encryption')->default('tls')->after('mail_password');
+                $table->string('mail_encryption')->default('tls');
             }
             if (!Schema::hasColumn('general_settings', 'mail_from_address')) {
-                $table->string('mail_from_address')->nullable()->after('mail_encryption');
+                $table->string('mail_from_address')->nullable();
             }
             if (!Schema::hasColumn('general_settings', 'mail_from_name')) {
-                $table->string('mail_from_name')->nullable()->after('mail_from_address');
+                $table->string('mail_from_name')->nullable();
             }
             if (!Schema::hasColumn('general_settings', 'ecommerce_email_templates')) {
-                $table->json('ecommerce_email_templates')->nullable()->after('mail_from_name');
+                $table->json('ecommerce_email_templates')->nullable();
             }
         });
     }

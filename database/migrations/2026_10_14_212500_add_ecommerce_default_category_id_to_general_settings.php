@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('general_settings', function (Blueprint $table) {
             if (!Schema::hasColumn('general_settings', 'ecommerce_default_category_id')) {
-                $table->unsignedBigInteger('ecommerce_default_category_id')->nullable()->after('ecommerce_menu');
+                $table->unsignedBigInteger('ecommerce_default_category_id')->nullable();
             }
         });
     }
