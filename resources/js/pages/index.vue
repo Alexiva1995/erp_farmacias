@@ -1176,7 +1176,7 @@ onMounted(async () => {
               <span class="item-qty">x{{ item.quantity }}</span>
               <span class="item-price">{{ formatPrice(productPrice(item.product, item.variant) * item.quantity) }}</span>
             </div>
-            <div class="checkout-total-row">
+
             <div class="checkout-summary-row" style="margin-top: 6px; color: #64748B;">
               <span class="item-name">Subtotal Productos</span>
               <span></span>
