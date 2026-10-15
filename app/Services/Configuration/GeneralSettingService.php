@@ -87,7 +87,7 @@ class GeneralSettingService
     }
 
     /**
-     * Subir un archivo al almacenamiento público.
+     * Subir un archivo al almacenamiento público y retornar la ruta relativa.
      *
      * @param UploadedFile $file
      * @param string $folder
@@ -95,12 +95,6 @@ class GeneralSettingService
      */
     protected function uploadFile(UploadedFile $file, string $folder): string
     {
-        $path = $file->store($folder, 'public');
-
-        if (function_exists('tenancy') && tenancy()->initialized && function_exists('tenant_asset')) {
-            return tenant_asset($path);
-        }
-
-        return Storage::url($path);
+        return $file->store($folder, 'public');
     }
 }

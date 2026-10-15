@@ -103,6 +103,9 @@ class TenancyServiceProvider extends ServiceProvider
             return;
         }
 
+        // Asegurar que el controlador de assets del tenant reconozca la inicialización por subdominio/dominio
+        \Stancl\Tenancy\Controllers\TenantAssetsController::$tenancyMiddleware = \App\Http\Middleware\InitializeTenancyIfTenantDomain::class;
+
         $this->bootEvents();
         $this->mapRoutes();
 

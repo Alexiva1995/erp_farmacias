@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { usePharmacySettingsForm } from '@/composables/usePharmacySettingsForm'
 import { useAbility } from '@casl/vue'
 import axios from '@/plugins/axios'
@@ -34,6 +34,14 @@ const {
 
 const logoHasError = ref(false)
 const signatureHasError = ref(false)
+
+watch(logoPreview, () => {
+  logoHasError.value = false
+})
+
+watch(signatureStampPreview, () => {
+  signatureHasError.value = false
+})
 
 const onLogoChange = (e) => {
   const file = e.target.files?.[0]
