@@ -62,9 +62,56 @@ const cartTotalPrice = computed(() =>
   }, 0)
 )
 
-// ——— Formulario de orden ———
-const binanceRate = ref(45.50) // Tasa de cambio Binance de referencia para VES
+// ——— Formulario de orden y tasas dinámicas ———
+const binanceRate = ref(45.50) // Fallback de referencia
 const copRate = ref(4000.00) // Tasa de cambio COP de referencia
+
+const configuredBsRateType = computed(() => {
+  return (brandingStore.settings?.tpv_rate_type || 'bcv').toLowerCase()
+})
+
+const activeBsRateInfo = computed(() => {
+  const rates = Array.isArray(brandingStore.exchangeRates) ? brandingStore.exchangeRates : []
+  const type = configuredBsRateType.value
+
+  let targetCode = 'BCV'
+  let label = 'BCV'
+
+  if (type === 'binance') {
+    targetCode = 'BINANCE'
+    label = 'Binance'
+  } else if (type === 'eur') {
+    targetCode = 'EUR'
+    label = 'Euro'
+  } else {
+    targetCode = 'BCV'
+    label = 'BCV'
+  }
+
+  // 1. Buscar coincidencia exacta por código configurado
+  let found = rates.find(r => r.currency_code?.toUpperCase() === targetCode)
+
+  // 2. Fallbacks si la tasa configurada no está cargada aún
+  if (!found && targetCode === 'BCV') {
+    found = rates.find(r => ['BS', 'VES'].includes(r.currency_code?.toUpperCase()))
+  }
+  if (!found) {
+    found = rates.find(r => ['BINANCE', 'BCV', 'BS', 'VES', 'EUR'].includes(r.currency_code?.toUpperCase()))
+  }
+
+  const rateVal = (found && Number(found.rate) > 0)
+    ? Number(found.rate)
+    : (binanceRate.value > 0 ? binanceRate.value : 45.50)
+
+  return {
+    rate: rateVal,
+    label: label,
+    code: targetCode,
+  }
+})
+
+const activeBsRate = computed(() => activeBsRateInfo.value.rate)
+
 const getInitialCurrency = () => {
   const saved = localStorage.getItem('ecommerce_currency')
   if (saved === 'VES' || saved === 'BS' || saved === 'Bs') return 'Bs'
@@ -228,11 +275,12 @@ const fetchExchangeRates = async () => {
   try {
     const { data } = await axios.get('/public/exchange-rates')
     if (Array.isArray(data)) {
-      const binance = data.find(r => r.currency_code === 'BINANCE')
+      brandingStore.exchangeRates = data
+      const binance = data.find(r => r.currency_code?.toUpperCase() === 'BINANCE')
       if (binance && binance.rate) {
         binanceRate.value = parseFloat(binance.rate)
       }
-      const cop = data.find(r => r.currency_code === 'COP')
+      const cop = data.find(r => r.currency_code?.toUpperCase() === 'COP')
       if (cop && cop.rate) {
         copRate.value = parseFloat(cop.rate)
       }
@@ -507,12 +555,11 @@ const changeCurrency = (currency) => {
 const getRateFor = (currency) => {
   if (currency === 'USD') return 1
   if (currency === 'COP') {
-    const r = brandingStore.exchangeRates.find(x => x.currency_code === 'COP')
-    return r ? Number(r.rate) : 3200
+    const r = brandingStore.exchangeRates?.find(x => x.currency_code?.toUpperCase() === 'COP')
+    return r && Number(r.rate) > 0 ? Number(r.rate) : (copRate.value || 3200)
   }
   if (currency === 'Bs' || currency === 'VES' || currency === 'BS') {
-    const r = brandingStore.exchangeRates.find(x => x.currency_code === 'BINANCE')
-    return r ? Number(r.rate) : 840
+    return activeBsRateInfo.value.rate
   }
   return 1
 }
@@ -1534,8 +1581,8 @@ onMounted(async () => {
                 <!-- Monto Total a Pagar calculado según la moneda (Productos + Envío) -->
                 <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #E2E8F0;">
                   <template v-if="selectedCurrency === 'VES' || selectedCurrency === 'Bs' || selectedCurrency === 'BS'">
-                    <p style="font-size: 11px; color: #64748B; margin-bottom: 4px;"><strong>Tasa de cambio:</strong> {{ binanceRate.toFixed(2) }} Bs/USD</p>
-                    <p style="font-size: 15px; color: #0F172A; margin: 0;"><strong>Monto Total a Pagar (Incluye Envío):</strong> <span style="font-weight: 800; color: var(--editorial-black);">Bs. {{ (finalOrderTotalUSD * binanceRate).toFixed(2) }}</span></p>
+                    <p style="font-size: 11px; color: #64748B; margin-bottom: 4px;"><strong>Tasa de cambio ({{ activeBsRateInfo.label }}):</strong> {{ activeBsRateInfo.rate.toFixed(2) }} Bs/USD</p>
+                    <p style="font-size: 15px; color: #0F172A; margin: 0;"><strong>Monto Total a Pagar (Incluye Envío):</strong> <span style="font-weight: 800; color: var(--editorial-black);">Bs. {{ (finalOrderTotalUSD * activeBsRateInfo.rate).toFixed(2) }}</span></p>
                   </template>
                   <template v-else-if="selectedCurrency === 'COP'">
                     <p style="font-size: 11px; color: #64748B; margin-bottom: 4px;"><strong>Tasa de cambio:</strong> {{ copRate.toFixed(2) }} COP/USD</p>

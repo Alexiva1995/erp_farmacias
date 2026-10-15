@@ -443,7 +443,7 @@ class EcommerceOrderService
     }
 
     /**
-     * Convierte un monto en USD a la moneda del cliente aplicando la tasa activa.
+     * Convierte un monto en USD a la moneda del cliente aplicando la tasa activa configurada en el sistema.
      * Los precios de los productos están guardados en USD.
      */
     private function convertToClientCurrency(float $amountUsd, string $currency): float
@@ -452,16 +452,32 @@ class EcommerceOrderService
             return round($amountUsd, 2);
         }
 
-        // Buscar la tasa de cambio activa para la moneda objetivo
-        $rateObj = ExchangeRate::where('currency_code', $currency)->latest()->first();
+        $upper = strtoupper(trim($currency));
+        $resourceService = app(\App\Services\Resources\ResourceService::class);
 
-        if (!$rateObj || (float) $rateObj->rate <= 0) {
-            // Sin tasa disponible: retornar el monto en USD como fallback
-            return round($amountUsd, 2);
+        // Si es Bolívares (VES / BS / Bs), obtener la tasa configurada (BINANCE, EUR, BCV)
+        if (in_array($upper, ['VES', 'BS', 'BS.'])) {
+            $rate = (float) $resourceService->getExchangeRate('BS');
+            if ($rate > 0) {
+                return round($amountUsd * $rate, 2);
+            }
         }
 
-        // La tasa almacenada es USD → moneda_local (ej. 1 USD = 4200 COP o 1 USD = 45 VES)
-        return round($amountUsd * (float) $rateObj->rate, 2);
+        // Si es Pesos Colombianos (COP)
+        if ($upper === 'COP') {
+            $rate = (float) $resourceService->getExchangeRate('COP');
+            if ($rate > 0) {
+                return round($amountUsd * $rate, 2);
+            }
+        }
+
+        // Fallback genérico para cualquier otra divisa
+        $rateObj = ExchangeRate::where('currency_code', $currency)->latest()->first();
+        if ($rateObj && (float) $rateObj->rate > 0) {
+            return round($amountUsd * (float) $rateObj->rate, 2);
+        }
+
+        return round($amountUsd, 2);
     }
 }
 
