@@ -112,10 +112,9 @@ const onActionClick = async (item, action) => {
 
   if (action === 'add') {
     const quantity = getInputValue(item);
-    const isColombian = Number(item.is_colombian_origin) === 1;
 
-    if (!props.selectedSupplierId && !item.best_supplier && !isColombian) {
-      // Si no hay proveedor seleccionado, ni proveedor más barato, ni es producto COL, abrir modal de comparación
+    if (!props.selectedSupplierId && !item.best_supplier) {
+      // Si no hay proveedor seleccionado ni proveedor más barato, abrir modal de comparación
       emit('open-comparator', { item, quantity });
       return;
     }
@@ -139,9 +138,7 @@ const onActionClick = async (item, action) => {
         quantity: quantity,
       };
 
-      if (isColombian) {
-        // El backend resuelve el proveedor colombiano dinámicamente
-      } else if (props.selectedSupplierId) {
+      if (props.selectedSupplierId) {
         payload.supplier_id = typeof props.selectedSupplierId === 'object' ? props.selectedSupplierId?.id : props.selectedSupplierId;
         if (item.best_supplier_price) {
           payload.unit_cost = item.best_supplier_price;

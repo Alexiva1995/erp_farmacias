@@ -23,6 +23,7 @@ export const applyPremiumHeader = (doc, title, subtitle = "", customOptions = {}
   const companyName = customOptions.companyName || storeSettings.app_name || "FARMACIA";
   const companyRif = customOptions.companyRif !== undefined ? customOptions.companyRif : (storeSettings.app_rif || "");
   const companyLogo = customOptions.logo || storeSettings.app_logo || "/images/logoDonative.png";
+  const companyAddress = customOptions.address !== undefined ? customOptions.address : (storeSettings.address || "");
 
   // 1. Logo (Izquierda)
   try {
@@ -48,10 +49,13 @@ export const applyPremiumHeader = (doc, title, subtitle = "", customOptions = {}
     currentY += 4;
   }
   
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 100, 100);
-  doc.text("Calle Principal Local 05 (L3) Sector Barrio Sucre", pageWidth - margin, 24, { align: "right" });
-  doc.text("La Fría, Táchira", pageWidth - margin, 28, { align: "right" });
+  if (companyAddress) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 100, 100);
+    const splitAddress = doc.splitTextToSize(companyAddress, 80);
+    doc.text(splitAddress, pageWidth - margin, currentY, { align: "right" });
+  }
 
   // 3. Título del Reporte (Central)
   doc.setDrawColor(0, 0, 0);
@@ -87,13 +91,22 @@ export const applyFooter = (doc) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   
+  let storeSettings = {};
+  try {
+    const store = useBrandingStore();
+    storeSettings = store.settings || {};
+  } catch (e) {
+    // Contexto sin Pinia activo
+  }
+  const appName = storeSettings.app_name || "Farmacia";
+
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFont("helvetica", "italic");
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text(
-      `Página ${i} de ${pageCount} | Generado por ERP Farmacia Barrio Sucre`,
+      `Página ${i} de ${pageCount} | Generado por ERP ${appName}`,
       pageWidth / 2,
       pageHeight - 10,
       { align: "center" }

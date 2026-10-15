@@ -49,21 +49,6 @@ class IaAssistantActionController extends Controller
                 ], 422);
             }
 
-            // Si es origen colombiano (COL), forzar la adición a la orden del proveedor de Colombia
-            if ((int)$product->is_colombian_origin === 1) {
-                $colSupplier = Supplier::where('id', 48)
-                    ->orWhere('name', 'like', '%COLOMBIA%')
-                    ->first();
-
-                if (!$colSupplier) {
-                    $colSupplier = Supplier::firstOrCreate(
-                        ['name' => 'DROGUERIA COLOMBIA'],
-                        ['is_active' => true]
-                    );
-                }
-                $supplierId = $colSupplier->id;
-                $productSupplierId = null;
-            }
 
             // 1. Obtener el enlace producto-proveedor
             $ps = null;

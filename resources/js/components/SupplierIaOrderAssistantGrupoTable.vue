@@ -121,9 +121,8 @@ const onActionClick = async (item, action) => {
 
   if (action === 'add') {
     const quantity = getInputValue(item);
-    const isColombian = Number(item.is_colombian_origin) === 1;
 
-    if (!props.selectedSupplierId && !item.best_supplier && !isColombian) {
+    if (!props.selectedSupplierId && !item.best_supplier) {
       emit('open-comparator', { item, quantity });
       return;
     }
