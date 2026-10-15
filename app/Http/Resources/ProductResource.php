@@ -87,7 +87,21 @@ class ProductResource extends JsonResource
                     ];
                 });
             }),
-            'variants' => $this->whenLoaded('variants'),
+            'variants' => $this->whenLoaded('variants', function () {
+                return $this->variants->map(function ($variant) {
+                    return [
+                        'id' => $variant->id,
+                        'product_id' => $variant->product_id,
+                        'attribute_type' => $variant->attribute_type,
+                        'attribute_value' => $variant->attribute_value,
+                        'color_hex' => $variant->color_hex,
+                        'photo_url' => $variant->photo_url,
+                        'image_url' => $variant->image_url ?? $variant->photo_url,
+                        'price_modifier' => (float) $variant->price_modifier,
+                        'stock' => (int) $variant->stock,
+                    ];
+                });
+            }),
         ];
     }
 }

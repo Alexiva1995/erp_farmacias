@@ -178,11 +178,29 @@ class ProductActionService
             $variantsData = is_string($variantsInput) ? json_decode($variantsInput, true) : $variantsInput;
             $variantsData = is_array($variantsData) ? $variantsData : [];
 
-            foreach ($variantsData as $v) {
+            foreach ($variantsData as $index => $v) {
+                $photoPath = null;
+                // Verificar si viene archivo de imagen para esta variante
+                if (request()->hasFile("variant_photos.{$index}")) {
+                    $photoPath = request()->file("variant_photos.{$index}")->store('product_variants', 'public');
+                } elseif (request()->hasFile("variant_photos_{$index}")) {
+                    $photoPath = request()->file("variant_photos_{$index}")->store('product_variants', 'public');
+                }
+
+                $colorHex = trim($v['color_hex'] ?? '#E20074');
+                if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $colorHex)) {
+                    if (preg_match('/^[0-9A-Fa-f]{6}$/', $colorHex)) {
+                        $colorHex = '#' . $colorHex;
+                    } else {
+                        $colorHex = '#E20074';
+                    }
+                }
+
                 $product->variants()->create([
                     'attribute_type' => 'shade',
                     'attribute_value' => $v['attribute_value'] ?? '',
-                    'color_hex' => $v['color_hex'] ?? '#E20074',
+                    'color_hex' => $colorHex,
+                    'photo_url' => $photoPath,
                     'price_modifier' => (float)($v['price_modifier'] ?? 0),
                     'stock' => (int)($v['stock'] ?? 0)
                 ]);
@@ -270,7 +288,7 @@ class ProductActionService
             $variantsData = is_array($variantsData) ? $variantsData : [];
 
             $keepVariantIds = [];
-            foreach ($variantsData as $v) {
+            foreach ($variantsData as $index => $v) {
                 $colorHex = trim($v['color_hex'] ?? '#E20074');
                 if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $colorHex)) {
                     if (preg_match('/^[0-9A-Fa-f]{6}$/', $colorHex)) {
@@ -280,29 +298,63 @@ class ProductActionService
                     }
                 }
 
+                // Manejo de archivo nuevo
+                $newPhoto = null;
+                if (request()->hasFile("variant_photos.{$index}")) {
+                    $newPhoto = request()->file("variant_photos.{$index}");
+                } elseif (request()->hasFile("variant_photos_{$index}")) {
+                    $newPhoto = request()->file("variant_photos_{$index}");
+                }
+
                 if (!empty($v['id'])) {
                     $variant = $product->variants()->find($v['id']);
                     if ($variant) {
-                        $variant->update([
+                        $updateData = [
                             'attribute_value' => $v['attribute_value'] ?? '',
                             'color_hex' => $colorHex,
                             'price_modifier' => (float)($v['price_modifier'] ?? 0)
-                        ]);
+                        ];
+
+                        if ($newPhoto) {
+                            if ($variant->getRawOriginal('photo_url')) {
+                                Storage::disk('public')->delete($variant->getRawOriginal('photo_url'));
+                            }
+                            $updateData['photo_url'] = $newPhoto->store('product_variants', 'public');
+                        } elseif (!empty($v['remove_photo'])) {
+                            if ($variant->getRawOriginal('photo_url')) {
+                                Storage::disk('public')->delete($variant->getRawOriginal('photo_url'));
+                            }
+                            $updateData['photo_url'] = null;
+                        }
+
+                        $variant->update($updateData);
                         $keepVariantIds[] = $variant->id;
                     }
                 } else {
+                    $photoPath = null;
+                    if ($newPhoto) {
+                        $photoPath = $newPhoto->store('product_variants', 'public');
+                    }
+
                     $newVariant = $product->variants()->create([
                         'attribute_type' => 'shade',
                         'attribute_value' => $v['attribute_value'] ?? '',
                         'color_hex' => $colorHex,
+                        'photo_url' => $photoPath,
                         'price_modifier' => (float)($v['price_modifier'] ?? 0),
                         'stock' => 0
                     ]);
                     $keepVariantIds[] = $newVariant->id;
                 }
             }
-            // Eliminar variantes viejas que ya no se pasaron en el payload
-            $product->variants()->whereNotIn('id', $keepVariantIds)->delete();
+            // Eliminar variantes viejas que ya no se pasaron en el payload (y sus fotos)
+            $oldVariantsToDelete = $product->variants()->whereNotIn('id', $keepVariantIds)->get();
+            foreach ($oldVariantsToDelete as $oldVar) {
+                if ($oldVar->getRawOriginal('photo_url')) {
+                    Storage::disk('public')->delete($oldVar->getRawOriginal('photo_url'));
+                }
+                $oldVar->delete();
+            }
         }
 
         $product->load(['category', 'laboratory', 'origin', 'lots', 'group', 'productSuppliers', 'variants']);

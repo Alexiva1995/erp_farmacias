@@ -8,6 +8,32 @@ const emit = defineEmits([
   "add-variant",
   "remove-variant",
 ]);
+const triggerFileInput = (index) => {
+  const fileInput = document.getElementById(`variant-file-input-${index}`);
+  if (fileInput) {
+    fileInput.click();
+  }
+};
+
+const onPhotoSelected = (event, variant) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  variant.imageFile = file;
+  variant.preview_url = URL.createObjectURL(file);
+  variant.remove_photo = false;
+};
+
+const removeVariantPhoto = (variant, index) => {
+  variant.imageFile = null;
+  variant.preview_url = null;
+  variant.photo_url = null;
+  variant.remove_photo = true;
+  const fileInput = document.getElementById(`variant-file-input-${index}`);
+  if (fileInput) {
+    fileInput.value = "";
+  }
+};
 </script>
 
 <template>
@@ -48,7 +74,7 @@ const emit = defineEmits([
             class="border-b pb-4 mb-2"
           >
             <!-- Nombre del Tono -->
-            <VCol cols="12" sm="4">
+            <VCol cols="12" sm="3">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Nombre del Tono</span>
               <AppTextField
                 v-model="variant.attribute_value"
@@ -85,9 +111,62 @@ const emit = defineEmits([
               </div>
             </VCol>
 
-            <!-- Modificador de Precio -->
+            <!-- Foto de la Variante -->
             <VCol cols="12" sm="3">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Ajuste de Precio ($)</span>
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Foto del Tono</span>
+              <div class="d-flex align-center gap-2">
+                <!-- Previsualización / Avatar de Foto -->
+                <div
+                  class="variant-photo-preview border rounded-lg d-flex align-center justify-center overflow-hidden position-relative"
+                  style="width: 42px; height: 42px; min-width: 42px; background: #f8fafc;"
+                >
+                  <img
+                    v-if="variant.preview_url || variant.photo_url || variant.image_url"
+                    :src="variant.preview_url || variant.photo_url || variant.image_url"
+                    alt="Foto tono"
+                    style="width: 100%; height: 100%; object-fit: cover;"
+                  />
+                  <VIcon v-else icon="tabler-photo" size="20" class="text-disabled" />
+                </div>
+
+                <!-- Input oculto para subida de archivo -->
+                <input
+                  :id="`variant-file-input-${index}`"
+                  type="file"
+                  accept="image/*"
+                  class="d-none"
+                  @change="onPhotoSelected($event, variant)"
+                />
+
+                <!-- Botones de Acción de Imagen -->
+                <VBtn
+                  size="small"
+                  variant="tonal"
+                  color="primary"
+                  density="comfortable"
+                  class="rounded-lg text-none"
+                  prepend-icon="tabler-camera"
+                  @click="triggerFileInput(index)"
+                >
+                  {{ (variant.preview_url || variant.photo_url || variant.image_url) ? 'Cambiar' : 'Foto' }}
+                </VBtn>
+
+                <VBtn
+                  v-if="variant.preview_url || variant.photo_url || variant.image_url"
+                  icon="tabler-x"
+                  size="x-small"
+                  variant="text"
+                  color="error"
+                  density="compact"
+                  title="Quitar foto"
+                  @click="removeVariantPhoto(variant, index)"
+                />
+              </div>
+            </VCol>
+
+            <!-- Modificador de Precio -->
+            <VCol cols="12" sm="2">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Ajuste ($)</span>
               <AppTextField
                 v-model="variant.price_modifier"
                 type="number"
@@ -102,7 +181,7 @@ const emit = defineEmits([
             </VCol>
 
             <!-- Eliminar Fila de Tono -->
-            <VCol cols="12" sm="2" class="d-flex justify-end mt-sm-6">
+            <VCol cols="12" sm="1" class="d-flex justify-end mt-sm-6">
               <VBtn
                 icon="tabler-trash"
                 color="error"

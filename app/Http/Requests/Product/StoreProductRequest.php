@@ -149,6 +149,9 @@ class StoreProductRequest extends FormRequest
             'supplier_ids'     => ['sometimes', 'array'],
             'supplier_ids.*'   => ['integer', 'exists:suppliers,id'],
             'master_id'        => ['nullable', 'integer'],
+            'variants'         => ['nullable'],
+            'variant_photos'   => ['nullable', 'array'],
+            'variant_photos.*' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
         ];
     }
 

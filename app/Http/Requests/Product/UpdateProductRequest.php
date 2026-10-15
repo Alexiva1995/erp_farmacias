@@ -127,6 +127,9 @@ class UpdateProductRequest extends FormRequest
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'supplier_ids' => 'sometimes|array',
             'supplier_ids.*' => 'integer|exists:suppliers,id',
+            'variants' => 'nullable',
+            'variant_photos' => 'nullable|array',
+            'variant_photos.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
         ];
     }
 

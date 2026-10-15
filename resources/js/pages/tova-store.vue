@@ -379,11 +379,107 @@ const removeFromCart = (key) => {
 
 const clearCart = () => { cart.value = [] }
 
+// ——— Galería de fotos del detalle de producto ———
+const currentPhotoIndex = ref(0)
+
+const activeProductPhotos = computed(() => {
+  if (!selectedProduct.value) return []
+  const photos = []
+  if (selectedProduct.value.image_url) {
+    photos.push({
+      url: selectedProduct.value.image_url,
+      label: 'Foto Principal',
+      variantId: null,
+      variant: null,
+    })
+  }
+
+  if (selectedProduct.value.variants && Array.isArray(selectedProduct.value.variants)) {
+    selectedProduct.value.variants.forEach((v) => {
+      const vUrl = v.image_url || v.photo_url
+      if (vUrl) {
+        const existing = photos.find((p) => p.url === vUrl)
+        if (!existing) {
+          photos.push({
+            url: vUrl,
+            label: v.attribute_value || 'Tono',
+            variantId: v.id,
+            variant: v,
+          })
+        } else if (!existing.variant) {
+          existing.variant = v
+          existing.variantId = v.id
+        }
+      }
+    })
+  }
+
+  return photos
+})
+
+const currentPhoto = computed(() => {
+  const list = activeProductPhotos.value
+  if (!list.length) return null
+  if (currentPhotoIndex.value >= list.length) return list[0]
+  return list[currentPhotoIndex.value]
+})
+
+const nextPhoto = () => {
+  const list = activeProductPhotos.value
+  if (list.length <= 1) return
+  currentPhotoIndex.value = (currentPhotoIndex.value + 1) % list.length
+  syncVariantFromCurrentPhoto()
+}
+
+const prevPhoto = () => {
+  const list = activeProductPhotos.value
+  if (list.length <= 1) return
+  currentPhotoIndex.value = (currentPhotoIndex.value - 1 + list.length) % list.length
+  syncVariantFromCurrentPhoto()
+}
+
+const selectPhotoByIndex = (index) => {
+  currentPhotoIndex.value = index
+  syncVariantFromCurrentPhoto()
+}
+
+const syncVariantFromCurrentPhoto = () => {
+  const photo = activeProductPhotos.value[currentPhotoIndex.value]
+  if (photo && photo.variant) {
+    selectedVariant.value = photo.variant
+  }
+}
+
+const selectVariant = (variant) => {
+  selectedVariant.value = variant
+  const vUrl = variant?.image_url || variant?.photo_url
+  if (vUrl) {
+    const idx = activeProductPhotos.value.findIndex(
+      (p) => p.url === vUrl || (variant.id && p.variantId === variant.id)
+    )
+    if (idx !== -1) {
+      currentPhotoIndex.value = idx
+    }
+  }
+}
+
 // ——— Vista rápida ———
 const openQuickView = (product) => {
   if (Number(product.stock) <= 0) return
   selectedProduct.value = product
   selectedVariant.value = product.variants?.length ? product.variants[0] : null
+  currentPhotoIndex.value = 0
+  if (selectedVariant.value) {
+    const vUrl = selectedVariant.value.image_url || selectedVariant.value.photo_url
+    if (vUrl) {
+      const idx = activeProductPhotos.value.findIndex(
+        (p) => p.url === vUrl || p.variantId === selectedVariant.value.id
+      )
+      if (idx !== -1) {
+        currentPhotoIndex.value = idx
+      }
+    }
+  }
   quickViewDialog.value = true
 }
 
@@ -1136,9 +1232,57 @@ onMounted(async () => {
           <button class="editorial-modal-close" @click="quickViewDialog = false">✕</button>
 
           <div class="editorial-qv-grid">
-            <div class="editorial-qv-img-container">
-              <img v-if="selectedProduct.image_url" :src="selectedProduct.image_url" :alt="selectedProduct.name" class="editorial-qv-img" />
-              <div v-else class="editorial-qv-fallback">TOVA</div>
+            <div class="editorial-qv-media-column">
+              <!-- Contenedor Principal de la Imagen con Flechas de Navegación -->
+              <div class="editorial-qv-img-container position-relative">
+                <img
+                  v-if="currentPhoto?.url || selectedProduct.image_url"
+                  :src="currentPhoto?.url || selectedProduct.image_url"
+                  :alt="selectedProduct.name"
+                  class="editorial-qv-img"
+                />
+                <div v-else class="editorial-qv-fallback">TOVA</div>
+
+                <!-- Flechas de Navegación Editorial -->
+                <button
+                  v-if="activeProductPhotos.length > 1"
+                  type="button"
+                  class="editorial-gallery-nav prev"
+                  title="Foto anterior"
+                  @click.stop="prevPhoto"
+                >
+                  &#8249;
+                </button>
+                <button
+                  v-if="activeProductPhotos.length > 1"
+                  type="button"
+                  class="editorial-gallery-nav next"
+                  title="Foto siguiente"
+                  @click.stop="nextPhoto"
+                >
+                  &#8250;
+                </button>
+
+                <!-- Contador de fotos -->
+                <div v-if="activeProductPhotos.length > 1" class="editorial-gallery-counter">
+                  {{ currentPhotoIndex + 1 }} / {{ activeProductPhotos.length }}
+                </div>
+              </div>
+
+              <!-- Tira de Miniaturas (Thumbnails) para moverse entre fotos -->
+              <div v-if="activeProductPhotos.length > 1" class="editorial-qv-thumbs">
+                <button
+                  v-for="(photo, pIdx) in activeProductPhotos"
+                  :key="pIdx"
+                  type="button"
+                  class="editorial-qv-thumb-btn"
+                  :class="{ 'thumb-active': currentPhotoIndex === pIdx }"
+                  :title="photo.label"
+                  @click="selectPhotoByIndex(pIdx)"
+                >
+                  <img :src="photo.url" :alt="photo.label" class="editorial-qv-thumb-img" />
+                </button>
+              </div>
             </div>
             <div class="editorial-qv-details">
               <span v-if="selectedProduct.brand" class="qv-brand-tag">{{ selectedProduct.brand }}</span>
@@ -1158,11 +1302,12 @@ onMounted(async () => {
                   <button
                     v-for="v in selectedProduct.variants"
                     :key="v.id"
+                    type="button"
                     class="qv-variant-color-circle"
                     :class="{ 'qv-circle-active': selectedVariant?.id === v.id }"
                     :style="{ ...getSwatchStyle(v.color_hex), width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', transition: 'all 0.2s ease', position: 'relative' }"
                     :title="v.attribute_value.toUpperCase()"
-                    @click="selectedVariant = v"
+                    @click="selectVariant(v)"
                   >
                     <!-- Check adaptado al color del fondo: blanco en oscuros, negro en claros -->
                     <span
@@ -2584,6 +2729,14 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .editorial-qv-grid { grid-template-columns: 1fr; }
 }
+.editorial-qv-media-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+}
 .editorial-qv-img-container {
   background-color: var(--editorial-grey-bg);
   max-width: 450px;
@@ -2595,6 +2748,8 @@ onMounted(async () => {
   justify-content: center;
   margin: 0 auto;
   overflow: hidden;
+  border-radius: 8px;
+  position: relative;
 }
 .editorial-qv-img {
   max-width: 100%;
@@ -2602,6 +2757,89 @@ onMounted(async () => {
   width: auto;
   height: auto;
   object-fit: contain;
+  display: block;
+  transition: opacity 0.2s ease;
+}
+.editorial-gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--editorial-black);
+  font-size: 26px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s ease;
+  z-index: 5;
+  user-select: none;
+}
+.editorial-gallery-nav:hover {
+  background: #ffffff;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+.editorial-gallery-nav.prev {
+  left: 12px;
+}
+.editorial-gallery-nav.next {
+  right: 12px;
+}
+.editorial-gallery-counter {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  backdrop-filter: blur(2px);
+  z-index: 4;
+}
+.editorial-qv-thumbs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 6px 4px;
+}
+.editorial-qv-thumb-btn {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  overflow: hidden;
+  background: #f1f5f9;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+.editorial-qv-thumb-btn:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+}
+.editorial-qv-thumb-btn.thumb-active {
+  border-color: var(--editorial-black);
+  opacity: 1;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+.editorial-qv-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 .editorial-qv-fallback {

@@ -126,6 +126,12 @@ class EcommerceController extends Controller
                 }
             }
 
+            if ($product->relationLoaded('variants') && $product->variants) {
+                foreach ($product->variants as $variant) {
+                    $variant->image_url = $variant->photo_url ?? $variant->image_url ?? null;
+                }
+            }
+
             return $product;
         };
 

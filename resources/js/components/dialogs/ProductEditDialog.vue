@@ -115,6 +115,18 @@ watch(
         clonedProduct.supplier_ids = [];
       }
       clonedProduct.supplier_id = clonedProduct.supplier_id || null;
+
+      if (clonedProduct.variants && Array.isArray(clonedProduct.variants)) {
+        clonedProduct.variants = clonedProduct.variants.map((v) => ({
+          ...v,
+          imageFile: null,
+          preview_url: v.photo_url || v.image_url || null,
+          remove_photo: false,
+        }));
+      } else {
+        clonedProduct.variants = [];
+      }
+
       formData.value = clonedProduct;
     } else {
       formData.value = {
@@ -144,6 +156,7 @@ watch(
         supplier_ids: [],
         supplier_id: null,
         master_id: null,
+        variants: [],
       };
     }
     masterFound.value = false;
@@ -269,6 +282,10 @@ const addVariantRow = () => {
     attribute_value: "",
     color_hex: "#E20074",
     price_modifier: 0,
+    photo_url: null,
+    imageFile: null,
+    preview_url: null,
+    remove_photo: false,
   });
 };
 
@@ -350,7 +367,23 @@ const submitForm = () => {
         return;
       }
     }
-    payload.append("variants", JSON.stringify(formData.value.variants));
+
+    const sanitizedVariants = formData.value.variants.map((v, index) => {
+      if (v.imageFile instanceof File) {
+        payload.append(`variant_photos_${index}`, v.imageFile);
+      }
+      return {
+        id: v.id || null,
+        attribute_type: v.attribute_type || "shade",
+        attribute_value: v.attribute_value,
+        color_hex: v.color_hex,
+        price_modifier: v.price_modifier,
+        photo_url: v.photo_url,
+        remove_photo: Boolean(v.remove_photo),
+      };
+    });
+
+    payload.append("variants", JSON.stringify(sanitizedVariants));
   }
 
   emit("save", payload);
