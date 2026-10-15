@@ -51,6 +51,14 @@ const form = reactive({
         cost: 2.0,
         estimated_time: '1 a 3 horas',
         description: 'Servicio de entrega local motorizado directo a tu ubicación.'
+      },
+      cod: {
+        id: 'cod',
+        title: 'Pago Contra Entrega (Delivery + Cobro al Recibir)',
+        enabled: true,
+        cost: 3.0,
+        estimated_time: 'Mismo día / Coordinar entrega',
+        description: 'Paga en efectivo, pago móvil o punto de venta al recibir tus productos.'
       }
     },
     national: {
@@ -820,6 +828,74 @@ onMounted(async () => {
                         hide-details="auto"
                         class="mt-2"
                         :disabled="isLoading || !form.shipping_methods.local.delivery.enabled"
+                      />
+                    </VCard>
+                  </VCol>
+
+                  <!-- 1.3 Pago Contra Entrega (Delivery + Cobro al Recibir) -->
+                  <VCol cols="12" md="6" v-if="form.shipping_methods.local.cod">
+                    <VCard variant="outlined" class="pa-5 rounded-lg border h-100">
+                      <div class="d-flex align-center justify-space-between mb-4">
+                        <div class="d-flex align-center gap-2">
+                          <VIcon icon="tabler-cash" size="24" color="success" />
+                          <span class="text-subtitle-1 font-weight-bold">Pago Contra Entrega</span>
+                        </div>
+                        <VSwitch
+                          v-model="form.shipping_methods.local.cod.enabled"
+                          color="success"
+                          hide-details
+                          inset
+                          :disabled="isLoading"
+                        />
+                      </div>
+
+                      <VTextField
+                        v-model="form.shipping_methods.local.cod.title"
+                        label="Nombre del Método"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        class="mb-3"
+                        :disabled="isLoading || !form.shipping_methods.local.cod.enabled"
+                      />
+
+                      <VRow class="mb-1">
+                        <VCol cols="6">
+                          <VTextField
+                            v-model.number="form.shipping_methods.local.cod.cost"
+                            label="Costo / Recargo ($ USD)"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            prepend-inner-icon="tabler-currency-dollar"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.local.cod.enabled"
+                          />
+                        </VCol>
+                        <VCol cols="6">
+                          <VTextField
+                            v-model="form.shipping_methods.local.cod.estimated_time"
+                            label="Tiempo Estimado"
+                            placeholder="Mismo día"
+                            variant="outlined"
+                            density="comfortable"
+                            hide-details="auto"
+                            :disabled="isLoading || !form.shipping_methods.local.cod.enabled"
+                          />
+                        </VCol>
+                      </VRow>
+
+                      <VTextarea
+                        v-model="form.shipping_methods.local.cod.description"
+                        label="Instrucciones para el Cliente"
+                        rows="2"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        class="mt-2"
+                        :disabled="isLoading || !form.shipping_methods.local.cod.enabled"
                       />
                     </VCard>
                   </VCol>

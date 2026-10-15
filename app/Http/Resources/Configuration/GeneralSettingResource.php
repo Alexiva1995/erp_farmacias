@@ -63,6 +63,14 @@ class GeneralSettingResource extends JsonResource
                     'cost' => 2.00,
                     'estimated_time' => '1 a 3 horas',
                     'description' => 'Servicio de entrega local motorizado directo a tu ubicación.'
+                ],
+                'cod' => [
+                    'id' => 'cod',
+                    'title' => 'Pago Contra Entrega (Delivery + Cobro al Recibir)',
+                    'enabled' => true,
+                    'cost' => 3.00,
+                    'estimated_time' => 'Mismo día / Coordinar entrega',
+                    'description' => 'Paga en efectivo, pago móvil o punto de venta al recibir tus productos en la comodidad de tu hogar.'
                 ]
             ],
             'national' => [

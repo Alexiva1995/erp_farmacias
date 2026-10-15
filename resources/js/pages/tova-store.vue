@@ -141,6 +141,7 @@ const storeShippingMethods = computed(() => {
   const defaultLocal = {
     pickup: { id: 'pickup', title: 'Recogida en Tienda', enabled: true, cost: 0, estimated_time: 'Inmediato / Horario comercial', description: 'Retira tu pedido directamente en nuestra sucursal principal sin costo adicional.' },
     delivery: { id: 'delivery', title: 'Envío a Domicilio / Delivery Local', enabled: true, cost: 2.0, estimated_time: '1 a 3 horas', description: 'Servicio de entrega local motorizado directo a tu ubicación.' },
+    cod: { id: 'cod', title: 'Pago Contra Entrega (Delivery + Cobro al Recibir)', enabled: true, cost: 3.0, estimated_time: 'Mismo día / Coordinar entrega', description: 'Paga en efectivo, pago móvil o punto de venta al recibir tus productos en la comodidad de tu hogar.' },
   }
   const defaultNational = {
     mrw: { id: 'mrw', title: 'MRW (Nacional)', enabled: true, cost: 0, is_cod: true, estimated_time: '24 a 48 horas hábiles', description: 'Envío nacional a través de agencia MRW con cobro en destino.' },
