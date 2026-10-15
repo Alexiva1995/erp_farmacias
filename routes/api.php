@@ -517,6 +517,13 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::post('/run', [EmailSyncConfigController::class, 'runSync']);
     });
 
+    // Rutas de Configuración de Correos Salientes y Plantillas de E-commerce
+    Route::prefix('configuration/emails')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\Configuration\EmailConfigurationController::class, 'getConfiguration']);
+        Route::post('/', [\App\Http\Controllers\Api\Configuration\EmailConfigurationController::class, 'updateConfiguration']);
+        Route::post('/test', [\App\Http\Controllers\Api\Configuration\EmailConfigurationController::class, 'testConnection']);
+    });
+
     // Rutas del Dashboard
     Route::prefix('dashboard')->group(function () {
         Route::get('/total-income', [DashboardController::class, 'getTotalIncome']);

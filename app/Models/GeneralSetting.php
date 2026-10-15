@@ -102,6 +102,15 @@ class GeneralSetting extends Model
         'gmail_sync_enabled',
         'gmail_sync_last_tested_at',
         'gmail_sync_last_status',
+        'mail_mailer',
+        'mail_host',
+        'mail_port',
+        'mail_username',
+        'mail_password',
+        'mail_encryption',
+        'mail_from_address',
+        'mail_from_name',
+        'ecommerce_email_templates',
     ];
 
     protected $casts = [
@@ -110,6 +119,8 @@ class GeneralSetting extends Model
         'blind_cash_closure' => 'boolean',
         'ecommerce_menu' => 'array',
         'ecommerce_shipping_methods' => 'array',
+        'ecommerce_email_templates' => 'array',
+        'mail_port' => 'integer',
         'cyclic_inventory_barcode_required' => 'boolean',
         'cyclic_inventory_scope' => 'string',
         'cyclic_inventory_daily_quota' => 'integer',

@@ -84,6 +84,10 @@ export default [
         to: 'configuration-sync',
       },
       {
+        title: 'Correos',
+        to: 'configuration-emails',
+      },
+      {
         title: 'Importar Datos',
         children: [
           {

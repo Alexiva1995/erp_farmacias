@@ -194,13 +194,22 @@ class EcommerceOrderService
                 ]);
             }
 
-            return [
+            $result = [
                 'success'          => true,
                 'order_id'         => $orderId,
                 'total_amount'     => $totalAmount,
                 'currency'         => $currency,
                 'total_in_currency' => $totalInCurrency,
             ];
+
+            // Enviar notificación de pedido recibido al cliente
+            try {
+                app(\App\Services\Ecommerce\EcommerceMailService::class)->sendOrderNotification($orderId, 'order_created');
+            } catch (\Throwable $mailErr) {
+                \Illuminate\Support\Facades\Log::warning('[ECOMMERCE_MAIL] Error enviando correo de pedido creado #' . $orderId . ': ' . $mailErr->getMessage());
+            }
+
+            return $result;
         });
     }
 
@@ -271,6 +280,13 @@ class EcommerceOrderService
             if (!empty($tpvOrderId)) {
                 \App\Models\Order::where('id', $tpvOrderId)
                     ->update(['status' => 'Completed']);
+            }
+
+            // Enviar notificación de pedido aprobado al cliente
+            try {
+                app(\App\Services\Ecommerce\EcommerceMailService::class)->sendOrderNotification($id, 'order_approved');
+            } catch (\Throwable $mailErr) {
+                \Illuminate\Support\Facades\Log::warning('[ECOMMERCE_MAIL] Error enviando correo de pedido aprobado #' . $id . ': ' . $mailErr->getMessage());
             }
 
             return true;
@@ -402,6 +418,13 @@ class EcommerceOrderService
             DB::table('ecommerce_orders')
                 ->where('id', $id)
                 ->update(['status' => 'Shipped', 'updated_at' => now()]);
+
+            // Enviar notificación de pedido enviado al cliente
+            try {
+                app(\App\Services\Ecommerce\EcommerceMailService::class)->sendOrderNotification($id, 'order_shipped');
+            } catch (\Throwable $mailErr) {
+                \Illuminate\Support\Facades\Log::warning('[ECOMMERCE_MAIL] Error enviando correo de pedido enviado #' . $id . ': ' . $mailErr->getMessage());
+            }
 
             return true;
         });
