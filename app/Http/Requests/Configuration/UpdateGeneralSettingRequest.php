@@ -83,6 +83,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'business_type' => 'nullable|string|in:pharmacy,restaurant,sports_rental,minimarket',
             'default_currency' => 'nullable|string|in:COP,USD,BS',
             'ecommerce_menu' => 'nullable',
+            'ecommerce_default_category_id' => 'nullable|integer',
             'ecommerce_shipping_methods' => 'nullable',
             'hero_title' => 'nullable|string|max:255',
             'hero_subtitle' => 'nullable|string',

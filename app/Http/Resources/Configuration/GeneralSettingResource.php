@@ -147,6 +147,7 @@ class GeneralSettingResource extends JsonResource
             'business_type' => $this->business_type ?? 'pharmacy',
             'default_currency' => $this->default_currency ?? 'COP',
             'ecommerce_menu' => $this->ecommerce_menu ?? [],
+            'ecommerce_default_category_id' => $this->ecommerce_default_category_id ? (int) $this->ecommerce_default_category_id : null,
             'ecommerce_shipping_methods' => $shippingMethods,
             'hero_title' => $this->hero_title ?? 'YOUR NEW BOMB NUDES',
             'hero_subtitle' => $this->hero_subtitle ?? 'Tonos sofisticados, texturas sedosas y fórmulas de alta gama diseñadas para realzar tu belleza natural con un acabado impecable de pasarela.',

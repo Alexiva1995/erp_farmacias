@@ -17,11 +17,14 @@ const presetOptions = [
   { title: 'Belleza & Cosmética', value: 'beauty' },
 ]
 
+const categoriesList = ref([])
+
 const form = reactive({
   primary_color: '#E20074',
   secondary_color: '#7A0099',
   tertiary_color: '#F5C842',
   footer_text: '',
+  ecommerce_default_category_id: null,
   hero_title: '',
   hero_subtitle: '',
   hero_tagline: '',
@@ -147,6 +150,7 @@ const saveEcommerceSettings = async () => {
   formData.append('secondary_color', form.secondary_color)
   formData.append('tertiary_color', form.tertiary_color)
   formData.append('footer_text', form.footer_text || '')
+  formData.append('ecommerce_default_category_id', form.ecommerce_default_category_id || '')
   formData.append('hero_title', form.hero_title || '')
   formData.append('hero_subtitle', form.hero_subtitle || '')
   formData.append('hero_tagline', form.hero_tagline || '')
@@ -199,6 +203,7 @@ onMounted(async () => {
       secondary_color: brandingStore.settings.secondary_color || '#7A0099',
       tertiary_color: brandingStore.settings.tertiary_color || '#F5C842',
       footer_text: brandingStore.settings.footer_text || '',
+      ecommerce_default_category_id: brandingStore.settings.ecommerce_default_category_id ? Number(brandingStore.settings.ecommerce_default_category_id) : null,
       hero_title: brandingStore.settings.hero_title || '',
       hero_subtitle: brandingStore.settings.hero_subtitle || '',
       hero_tagline: brandingStore.settings.hero_tagline || '',
@@ -231,6 +236,15 @@ onMounted(async () => {
     heroImagePreview.value = brandingStore.settings.hero_image || ''
     section2ImagePreview.value = brandingStore.settings.section2_image || ''
     section3ImagePreview.value = brandingStore.settings.section3_image || ''
+
+    try {
+      const catRes = await axios.get('/public/ecommerce/categories')
+      if (catRes.data?.data) {
+        categoriesList.value = catRes.data.data
+      }
+    } catch (e) {
+      console.error('Error al cargar categorías:', e)
+    }
   } catch (error) {
     console.error('Error loading settings:', error)
   } finally {
@@ -401,6 +415,24 @@ onMounted(async () => {
                         variant="outlined"
                         density="comfortable"
                         hide-details="auto"
+                        :disabled="isLoading"
+                      />
+                    </VCol>
+
+                    <VCol cols="12" class="mt-2">
+                      <VSelect
+                        v-model="form.ecommerce_default_category_id"
+                        :items="categoriesList"
+                        item-title="name"
+                        item-value="id"
+                        label="Categoría Inicial por Defecto en la Tienda"
+                        placeholder="Todas las categorías (Mostrar todo sin filtrar)"
+                        variant="outlined"
+                        density="comfortable"
+                        clearable
+                        prepend-inner-icon="tabler-category"
+                        hint="Al entrar un cliente al e-commerce, se mostrarán automáticamente los productos de esta categoría en lugar de todos en desorden."
+                        persistent-hint
                         :disabled="isLoading"
                       />
                     </VCol>

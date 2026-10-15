@@ -598,12 +598,22 @@ const scrollToCatalog = () => {
 
 onMounted(async () => {
   try {
-    await brandingStore.fetchSettings()
+    await brandingStore.fetchSettings(true)
   } catch (e) {
     // Silenciar fallos de branding
   }
   fetchExchangeRates()
-  fetchCategories()
+  await fetchCategories()
+
+  // Asignar categoría por defecto si está configurada en el branding
+  const defaultCatId = brandingStore.settings?.ecommerce_default_category_id
+  if (defaultCatId && categories.value.length) {
+    const foundDefault = categories.value.find(c => c.id === Number(defaultCatId) || c.id === defaultCatId)
+    if (foundDefault) {
+      selectedCategory.value = foundDefault.slug || foundDefault.id
+    }
+  }
+
   fetchFavorites()
   fetchProducts(1)
 
