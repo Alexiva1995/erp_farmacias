@@ -10,7 +10,9 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+Schedule::command('app:update-exchange-rate')->dailyAt('00:10');
 Schedule::command('tenants:run app:update-exchange-rate')->dailyAt('00:10');
+Schedule::command('app:close-cash')->dailyAt('23:59');
 Schedule::command('tenants:run app:close-cash')->dailyAt('23:59');
 Schedule::command('app:clear-expired-reservations')->everyMinute();
 Schedule::command('products:ai-categorize')
