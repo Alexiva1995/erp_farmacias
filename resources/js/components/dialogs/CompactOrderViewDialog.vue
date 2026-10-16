@@ -70,8 +70,12 @@ const displayProducts = computed(() => {
       laboratory: item.laboratory ?? detailMatch?.product?.laboratory?.name ?? detailMatch?.product?.laboratory ?? (detailMatch?.dish ? 'PLATO' : 'S/L'),
       selectedQuantity: parseFloat(item.selectedQuantity ?? item.quantity ?? detailMatch?.quantity) || 1,
       price: parseFloat(item.price ?? detailMatch?.price) || 0,
-      price_cop: parseFloat(item.price_cop ?? item.price ?? detailMatch?.price_cop ?? detailMatch?.price) || 0,
-      price_bs: parseFloat(item.price_bs ?? item.price ?? detailMatch?.price_bs ?? detailMatch?.price) || 0,
+      price_cop: (item.price_cop !== undefined && item.price_cop !== null)
+        ? parseFloat(item.price_cop)
+        : (detailMatch?.price_cop !== undefined && detailMatch?.price_cop !== null ? parseFloat(detailMatch.price_cop) : null),
+      price_bs: (item.price_bs !== undefined && item.price_bs !== null)
+        ? parseFloat(item.price_bs)
+        : (detailMatch?.price_bs !== undefined && detailMatch?.price_bs !== null ? parseFloat(detailMatch.price_bs) : null),
       price_before_discount: priceBefore,
       discount_percentage: discountPct,
       discount_type: discountType,

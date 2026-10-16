@@ -93,25 +93,40 @@ const handleViewOrder = async (orderId) => {
     if (response.data?.data?.order) {
       const { order, hasCreditPayment } = response.data.data;
       
+      const orderCurrency = (order.currency ? String(order.currency).trim().toUpperCase() : '') || 'USD';
+      const usdConv = parseFloat(order.usd_conversion) || 1;
+      const rateCop = parseFloat(order.exchange_rate_cop ?? order.rate_cop) || (usdConv > 1 ? usdConv : 4000);
+      const rateBs = parseFloat(order.exchange_rate_bs ?? order.rate_bs) || 1;
+
       compactOrderData.value = {
         order: order,
-        currency: order.currency?.toUpperCase() || 'COP',
-        products: order.details.map((detail) => ({
-          id: detail.product?.id ?? detail.dish?.id ?? detail.product_id ?? detail.dish_id,
-          product_id: detail.product_id ?? detail.dish_id ?? detail.product?.id ?? detail.dish?.id,
-          title: detail.product?.name ?? detail.dish?.name ?? 'S/N',
-          active_ingredient: detail.product?.active_ingredient || null,
-          laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? (detail.dish ? 'PLATO' : 'S/L'),
-          selectedQuantity: detail.quantity,
-          taxRate: detail.product?.iva ?? 0,
-          price_bs: parseFloat(detail.price_bs ?? detail.price) || 0,
-          price_cop: parseFloat(detail.price_cop ?? detail.price) || 0,
-          price: parseFloat(detail.price) || 0,
-          price_before_discount: detail.price_before_discount ? parseFloat(detail.price_before_discount) : null,
-          discount_percentage: parseFloat(detail.discount_percentage) || 0,
-          discount_type: detail.discount_type || null,
-          discount_source_id: detail.discount_source_id || null,
-        })),
+        currency: orderCurrency,
+        products: order.details.map((detail) => {
+          const basePrice = parseFloat(detail.price ?? detail.unit_price ?? 0) || 0;
+          const resolvedPriceCop = detail.price_cop !== undefined && detail.price_cop !== null
+            ? parseFloat(detail.price_cop)
+            : (orderCurrency === 'COP' ? basePrice : Math.round(basePrice * rateCop));
+          const resolvedPriceBs = detail.price_bs !== undefined && detail.price_bs !== null
+            ? parseFloat(detail.price_bs)
+            : (orderCurrency === 'BS' ? basePrice : parseFloat((basePrice * rateBs).toFixed(2)));
+
+          return {
+            id: detail.product?.id ?? detail.dish?.id ?? detail.product_id ?? detail.dish_id,
+            product_id: detail.product_id ?? detail.dish_id ?? detail.product?.id ?? detail.dish?.id,
+            title: detail.product?.name ?? detail.dish?.name ?? 'S/N',
+            active_ingredient: detail.product?.active_ingredient || null,
+            laboratory: detail.product?.laboratory?.name ?? detail.product?.laboratory ?? (detail.dish ? 'PLATO' : 'S/L'),
+            selectedQuantity: detail.quantity,
+            taxRate: detail.product?.iva ?? 0,
+            price_bs: resolvedPriceBs,
+            price_cop: resolvedPriceCop,
+            price: basePrice,
+            price_before_discount: detail.price_before_discount ? parseFloat(detail.price_before_discount) : null,
+            discount_percentage: parseFloat(detail.discount_percentage) || 0,
+            discount_type: detail.discount_type || null,
+            discount_source_id: detail.discount_source_id || null,
+          };
+        }),
         payments: order.payment_methods || [],
         change: parseFloat(order.money_returns || 0),
         total: parseFloat(order.total_amount || 0),
