@@ -34,12 +34,25 @@
   <meta property="twitter:description" content="{{ $seoDescription ?? 'Explora nuestro catálogo de productos y gestiona tu inventario con la plataforma inteligente Tova.' }}" />
   <meta property="twitter:image" content="{{ asset('favicon-512x512.png') }}" />
   <?php
-    $settings = \Illuminate\Support\Facades\Schema::hasTable('general_settings')
-      ? \DB::table('general_settings')->first()
-      : null;
-    $primary = $settings->primary_color ?? '#FAFAFA';
-    $secondary = $settings->secondary_color ?? '#1E1614';
-    $tertiary = $settings->tertiary_color ?? '#E8C5C8';
+    $themeColors = \Illuminate\Support\Facades\Cache::remember('theme_colors', 86400, function () {
+      try {
+        $settings = \Illuminate\Support\Facades\DB::table('general_settings')->first();
+        return [
+          'primary'   => $settings->primary_color ?? '#FAFAFA',
+          'secondary' => $settings->secondary_color ?? '#1E1614',
+          'tertiary'  => $settings->tertiary_color ?? '#E8C5C8',
+        ];
+      } catch (\Throwable) {
+        return [
+          'primary'   => '#FAFAFA',
+          'secondary' => '#1E1614',
+          'tertiary'  => '#E8C5C8',
+        ];
+      }
+    });
+    $primary = $themeColors['primary'];
+    $secondary = $themeColors['secondary'];
+    $tertiary = $themeColors['tertiary'];
   ?>
   <style>
     html {

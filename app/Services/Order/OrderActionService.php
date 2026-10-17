@@ -1737,28 +1737,27 @@ class OrderActionService
                         'lot_number' => 'LOT-RETURN-' . $item->product_id,
                         'quantity' => 0,
                         'expiration_date' => Carbon::now()->addYears(2),
-                        'cost_price' => $item->product->cost_price ?? 0,
+                        'unit_cost' => $item->product->cost_price ?? 0,
                     ]);
                 }
 
-                $product = $item->product;
-                $stockBefore = (float) ($product ? ($product->lots()->sum('quantity') ?? 0) : 0);
+                $qty = (float) $item->quantity;
+                $stockBefore = round((float) ProductLot::where('product_id', $item->product_id)->sum('quantity'), 4);
+                $stockAfter = round($stockBefore + $qty, 4);
                 
                 // Activar bandera estática para que ProductLotObserver no cree un movimiento automático de 'AJUSTE'
                 \App\Observers\ProductLotObserver::$isReturningLot = true;
                 try {
-                    $productLot->increment('quantity', $item->quantity);
+                    $productLot->increment('quantity', $qty);
                 } finally {
                     \App\Observers\ProductLotObserver::$isReturningLot = false;
                 }
                 
-                // Sincronizar stock del producto
+                // Sincronizar stock estático del producto
+                $product = $item->product;
                 if ($product) {
-                    $totalStock = (float) ($product->lots()->sum('quantity') ?? 0);
-                    $product->updateQuietly(['stock' => $totalStock]);
-                    \App\Services\Inventory\StockoutService::syncStockout($product, $totalStock);
-                } else {
-                    $totalStock = $stockBefore + (float) $item->quantity;
+                    $product->updateQuietly(['stock' => $stockAfter]);
+                    \App\Services\Inventory\StockoutService::syncStockout($product, $stockAfter);
                 }
 
                 // Crear el movimiento de inventario de tipo 'return' (devolución por cancelación) asociado a la orden
@@ -1766,13 +1765,13 @@ class OrderActionService
                     'product_id' => $item->product_id,
                     'product_lot_id' => $productLot->id,
                     'movement_type' => 'return',
-                    'quantity' => $item->quantity,
+                    'quantity' => $qty,
                     'invoice_id' => null,
                     'supplier_id' => null,
                     'order_id' => $order->id,
                     'user_id' => \Illuminate\Support\Facades\Auth::id() ?? $order->seller_id,
                     'stock_before' => $stockBefore,
-                    'stock_after' => $totalStock,
+                    'stock_after' => $stockAfter,
                     'movement_date' => now(),
                 ]);
             }
