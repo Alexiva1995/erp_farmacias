@@ -18,11 +18,25 @@ class InitializeTenancyIfTenantDomain
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $host = $request->getHost();
-        $centralDomains = config('tenancy.central_domains', ['127.0.0.1', 'localhost']);
+        // 0. Si el paquete Tenancy no está cargado o no existe tenancy(), continuar en modo estándar
+        if (!class_exists(Domain::class) || !function_exists('tenancy')) {
+            return $next($request);
+        }
 
-        // Si es un dominio central, continuar en contexto central sin alterar nada
+        $host = $request->getHost();
+        $centralDomains = config('tenancy.central_domains', ['127.0.0.1', 'localhost', 'victoriadoreshop.com', 'www.victoriadoreshop.com']);
+
+        // 1. Si es un dominio central, continuar en contexto central sin alterar nada
         if (in_array($host, $centralDomains, true)) {
+            return $next($request);
+        }
+
+        // 2. Si la tabla domains no existe en la BD actual, no es un entorno tenant
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('domains')) {
+                return $next($request);
+            }
+        } catch (\Throwable) {
             return $next($request);
         }
 

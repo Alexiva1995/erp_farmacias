@@ -24,6 +24,8 @@ return [
         'www.farmaciabs.com',
         'tovaerp.com',
         'www.tovaerp.com',
+        'victoriadoreshop.com',
+        'www.victoriadoreshop.com',
     ],
 
     /**

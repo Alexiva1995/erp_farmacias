@@ -62,6 +62,11 @@ class OriginSyncService
      */
     public function syncAllTenants(?string $tenantId = null): array
     {
+        $centralConnection = config('tenancy.database.central_connection', 'mysql');
+        if (!\Illuminate\Support\Facades\Schema::connection($centralConnection)->hasTable('tenants')) {
+            return [];
+        }
+
         $masterOrigins = $this->getMasterOrigins();
         if (empty($masterOrigins)) {
             return [];

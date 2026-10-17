@@ -51,8 +51,8 @@ class LoginController extends Controller
             ->first();
 
         $currentDb = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
-        $isTenancy = tenancy()->initialized;
-        $tenantId = $isTenancy ? tenant('id') : 'central';
+        $isTenancy = function_exists('tenancy') && tenancy()->initialized;
+        $tenantId = ($isTenancy && function_exists('tenant')) ? tenant('id') : 'central';
 
         \Illuminate\Support\Facades\Log::info("[Auth Login Attempt] Host: {$request->getHost()} | DB: {$currentDb} | Tenant: {$tenantId} | Login: {$request->login} | UserFound: " . ($user ? "Yes (ID: {$user->id}, Role: {$user->role_id}, Active: {$user->is_active})" : "No"));
 
