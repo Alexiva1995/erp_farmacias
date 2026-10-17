@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Hash;
 
 class TenantProvisioningService
 {
+    public function __construct(
+        protected OriginSyncService $originSyncService
+    ) {}
+
     /**
      * Crear un nuevo Tenant con su base de datos y usuario administrador.
      *
@@ -104,6 +108,13 @@ class TenantProvisioningService
                 }
             } catch (\Throwable $e) {}
         });
+
+        // 4. Sincronizar datos maestros del central (orígenes) hacia el nuevo tenant
+        try {
+            $this->originSyncService->syncTenant($tenant);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Error sincronizando orígenes en nuevo tenant {$data['tenant_id']}: " . $e->getMessage());
+        }
 
         return $tenant;
     }
