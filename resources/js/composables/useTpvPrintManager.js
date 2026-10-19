@@ -77,10 +77,14 @@ export function useTpvPrintManager({
         itemsToPrint.value = rawDetails.map((detail) => {
           // Si ya está formateado en el frontend
           if (detail.title || detail.name) {
+            const isZoom = detail.is_zoom || detail.itemCode === 'ZOOM-SERVICE' || detail.product?.barcode === 'ZOOM-SERVICE'
+            const resolvedTitle = (isZoom && detail.notes)
+              ? detail.notes
+              : (detail.title || detail.name || detail.dish?.name || detail.product?.name || "—")
             return {
               ...detail,
-              title: detail.title || detail.name || detail.dish?.name || detail.product?.name || "—",
-              notes: detail.notes || detail.observation || null,
+              title: resolvedTitle,
+              notes: isZoom ? null : (detail.notes || detail.observation || null),
             }
           }
           // Si es un modelo Eloquent OrderDetail directo

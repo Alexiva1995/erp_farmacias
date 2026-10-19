@@ -831,11 +831,14 @@ class OrderActionService
                 $itemIvaSubtotal = $isTaxable ? ($itemSubtotalBs * 0.16) : 0;
                 $itemTotalAmount = $itemSubtotalBs + $itemIvaSubtotal;
 
+                $isZoomItem = !empty($detail->notes) && ($product->barcode === 'ZOOM-SERVICE' || $product->name === 'SERVICIO ZOOM');
+                $printedProductName = $isZoomItem ? $detail->notes : $product->name;
+
                 // Insertamos en la tabla de detalles (multiplicado por la cantidad del renglón)
                 FiscalHistoryDetail::create([
                     'fiscal_history_id' => $fiscalHistory->id,
                     'product_id'        => $product->id,
-                    'product_name'      => $product->name,
+                    'product_name'      => $printedProductName,
                     'quantity'          => $quantity,
                     'vat_status'        => $isTaxable ? 1 : 0,
                     'exempt_amount'     => !$isTaxable ? $itemSubtotalBs : 0,
@@ -1905,6 +1908,9 @@ class OrderActionService
                 if ($discountPct <= 0) continue;
 
                 foreach ($details as $detail) {
+                    if ($detail->product && ($detail->product->barcode === 'ZOOM-SERVICE' || $detail->product->name === 'SERVICIO ZOOM')) {
+                        continue;
+                    }
                     $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
                     if (!empty($promo->categories) && is_array($promo->categories) && count($promo->categories) > 0) {
                         if (!$categoryId || !in_array($categoryId, $promo->categories)) {
@@ -1926,6 +1932,9 @@ class OrderActionService
         $fixedPricePromos = $promotions->where('type', 'fixed_price');
         if ($fixedPricePromos->isNotEmpty()) {
             foreach ($details as $detail) {
+                if ($detail->product && ($detail->product->barcode === 'ZOOM-SERVICE' || $detail->product->name === 'SERVICIO ZOOM')) {
+                    continue;
+                }
                 // Obtener ID de categoría del producto o plato
                 $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
                 if (!$categoryId) continue;
@@ -1963,6 +1972,9 @@ class OrderActionService
         // 4. Agrupar los detalles por categoría
         $detailsByCategory = [];
         foreach ($details as $detail) {
+            if ($detail->product && ($detail->product->barcode === 'ZOOM-SERVICE' || $detail->product->name === 'SERVICIO ZOOM')) {
+                continue;
+            }
             $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
             if (!$categoryId) continue;
             $detailsByCategory[$categoryId][] = $detail;
@@ -2102,7 +2114,10 @@ class OrderActionService
             $product = $detail->product;
             $pricingStrategy = \App\Services\Order\Strategies\PricingStrategyFactory::make($targetCurrency);
             $priceToSet = $pricingStrategy->calculatePrice($product, $detail);
-            $usdPrice = $product->sale_price;
+            $isCustomOrZoom = $product->barcode === 'ZOOM-SERVICE'
+                || $product->name === 'SERVICIO ZOOM'
+                || ((float) ($product->sale_price ?? 0) <= 0 && (float) ($detail->unit_price_usd ?? 0) > 0);
+            $usdPrice = $isCustomOrZoom ? (float) $detail->unit_price_usd : $product->sale_price;
         }
 
         $detail->price = $priceToSet;

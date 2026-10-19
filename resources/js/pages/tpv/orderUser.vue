@@ -399,8 +399,15 @@ watch(isZoomActive, (active) => {
   }
 });
 
-const handleZoomItemAdded = async () => {
+const handleZoomItemAdded = async (zoomData = null) => {
+  const targetCurrency = zoomData?.selected_currency || zoomData?.order?.currency;
+  if (targetCurrency) {
+    selectedDisplayCurrency.value = String(targetCurrency).toUpperCase();
+  }
   await fetchOpenOrder();
+  if (targetCurrency) {
+    selectedDisplayCurrency.value = String(targetCurrency).toUpperCase();
+  }
 };
 
 // ─── Atajos de teclado (F12 = cobrar, Esc = cerrar modal, Alt + letra) ────────

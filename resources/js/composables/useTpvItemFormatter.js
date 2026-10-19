@@ -133,12 +133,46 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
     }
   }
 
-  // Ítem PRODUCTO NORMAL
+  // Ítem PRODUCTO NORMAL O SERVICIO ZOOM
   const product = backendItem.product || {}
-  const originalPrice = parseFloat(product.price ?? product.sale_price ?? backendItem.price_usd_unit ?? backendItem.price_at_product ?? 0)
-  const originalPriceBs = parseFloat(product.price_bs ?? backendItem.price_bs ?? 0)
-  const originalPriceCop = parseFloat(product.price_cop ?? backendItem.price_cop ?? 0)
+  const isZoomItem =
+    product.barcode === 'ZOOM-SERVICE' ||
+    product.name === 'SERVICIO ZOOM' ||
+    (parseFloat(product.sale_price ?? product.price ?? 0) <= 0 &&
+      (parseFloat(backendItem.unit_price_usd ?? 0) > 0 || parseFloat(backendItem.price ?? 0) > 0))
 
+  let originalPrice = 0
+  let originalPriceBs = 0
+  let originalPriceCop = 0
+
+  if (isZoomItem) {
+    const rateBs = (typeof getEffectiveRate === 'function' ? getEffectiveRate('USD', 'BS') : 0) || 1
+    const rateCop = (typeof getEffectiveRate === 'function' ? getEffectiveRate('USD', 'COP') : 0) || 4000
+
+    originalPrice = parseFloat(
+      backendItem.unit_price_usd ?? backendItem.price_usd_unit ?? backendItem.price ?? 0
+    )
+
+    const savedBs = parseFloat(backendItem.price_bs ?? backendItem.price_before_discount_bs ?? 0)
+    originalPriceBs = savedBs > 0 ? savedBs : parseFloat((originalPrice * rateBs).toFixed(2))
+
+    const savedCop = parseFloat(backendItem.price_cop ?? 0)
+    const rawDetailPrice = parseFloat(backendItem.price ?? 0)
+    if (savedCop > 0) {
+      originalPriceCop = savedCop
+    } else if (rawDetailPrice > originalPrice * 100 && rateCop > 100) {
+      // Si el precio guardado en el detalle ya está expresado en COP
+      originalPriceCop = Math.round(rawDetailPrice)
+    } else {
+      originalPriceCop = Math.ceil((originalPrice * rateCop) / 100) * 100
+    }
+  } else {
+    originalPrice = parseFloat(
+      product.price ?? product.sale_price ?? backendItem.price_usd_unit ?? backendItem.price_at_product ?? 0
+    )
+    originalPriceBs = parseFloat(product.price_bs ?? backendItem.price_bs ?? 0)
+    originalPriceCop = parseFloat(product.price_cop ?? backendItem.price_cop ?? 0)
+  }
 
   const backendDiscount = parseFloat(backendItem.discount_percentage) || 0
   const hasPackDiscount = !!(backendItem.pack_id || backendItem.pack_config)
@@ -152,11 +186,14 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
   const rawTaxRate = parseFloat(product.tax_rate)
   const taxMultiplier = !isNaN(rawTaxRate) ? rawTaxRate : (product.iva == 1 ? 0.16 : 0)
 
+  const rawNotes = backendItem.notes || backendItem.observation || null
+  const displayTitle = isZoomItem && rawNotes ? rawNotes : product.name
+
   return {
     order_detail_id: backendItem.id,
     product_id: product.id,
     dish_id: null,
-    title: product.name,
+    title: displayTitle,
     active_ingredient: product.active_ingredient,
     itemCode: product.barcode,
     price: discountedPrice,
@@ -174,7 +211,7 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
     availableQuantity:
       parseInt(product.valid_stock_sum) || parseInt(product.lots_sum_quantity),
     selectedQuantity: parseInt(backendItem.quantity) || 0,
-    laboratory: product.laboratory ? product.laboratory.name : 'N/A',
+    laboratory: product.laboratory ? product.laboratory.name : (isZoomItem ? 'ZOOM' : 'N/A'),
     taxRate: taxMultiplier,
     pack_id: backendItem.pack_id || null,
     discount_percentage: parseFloat(backendItem.discount_percentage) || 0,
@@ -184,6 +221,7 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
       backendItem.pack_config || backendItem.product?.pack_config || null,
     has_pack_discount: hasPackDiscount,
     is_dish: false,
-    notes: backendItem.notes || backendItem.observation || null,
+    is_zoom: isZoomItem,
+    notes: isZoomItem ? null : rawNotes,
   }
 }

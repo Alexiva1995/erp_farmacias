@@ -61,25 +61,61 @@ class ZoomService implements ZoomServiceInterface
                 ]);
             }
 
-            $orderCurrency = strtoupper($order->currency ?? 'USD');
-            $inputCurrency = strtoupper($data['currency'] ?? $orderCurrency);
+            $inputCurrency = strtoupper($data['currency'] ?? $order->currency ?? 'USD');
+            $currentOrderCurrency = strtoupper($order->currency ?? 'USD');
             $amountNet = (float) $data['amount_net']; // Monto sin IVA ingresado
 
             $tasaBs = (float) ($this->resourceService->getExchangeRate('BS') ?: 1);
             $tasaCop = (float) ($this->resourceService->getExchangeRate('COP') ?: 1);
 
-            // 2. Normalizar el monto neto a USD como moneda base
+            // Si la orden estaba en otra moneda, actualizar la orden y sus ítems previos a la moneda escogida en Zoom
+            if ($currentOrderCurrency !== $inputCurrency) {
+                $order->currency = $inputCurrency;
+                $order->save();
+
+                $pricingStrategy = \App\Services\Order\Strategies\PricingStrategyFactory::make($inputCurrency);
+                $existingDetails = $order->details()->with('product')->get();
+                foreach ($existingDetails as $item) {
+                    if ($item->dish_id || $item->court_id) {
+                        $usdPrice = (float) $item->unit_price_usd;
+                        $priceToSet = match ($inputCurrency) {
+                            'BS' => round($usdPrice * $tasaBs, 2),
+                            'COP' => ceil(round($usdPrice * $tasaCop) / 100) * 100,
+                            default => $usdPrice,
+                        };
+                    } elseif ($item->product) {
+                        $priceToSet = $pricingStrategy->calculatePrice($item->product, $item);
+                    } else {
+                        $priceToSet = (float) $item->price;
+                    }
+
+                    if ($item->discount_percentage > 0 && $item->discount_type) {
+                        $priceToSet = $priceToSet * (1 - ($item->discount_percentage / 100));
+                    }
+
+                    $item->price = $priceToSet;
+                    $item->save();
+                }
+            }
+
+            $orderCurrency = $inputCurrency;
+
+            // 2. Normalizar el monto neto a USD como moneda base y calcular equivalencias exactas
             $amountNetUsd = match ($inputCurrency) {
                 'BS' => ($tasaBs > 0) ? ($amountNet / $tasaBs) : $amountNet,
                 'COP' => ($tasaCop > 0) ? ($amountNet / $tasaCop) : $amountNet,
                 default => $amountNet,
             };
 
-            // 3. Calcular el precio unitario en la moneda de la orden
+            $priceBsExact = ($inputCurrency === 'BS')
+                ? round($amountNet, 2)
+                : round($amountNetUsd * $tasaBs, 2);
+
+            // 3. Calcular el precio unitario en la moneda de la orden preservando el monto exacto ingresado
             $priceAtOrder = match ($orderCurrency) {
-                'BS' => round($amountNetUsd * $tasaBs, 2),
-                'COP' => ceil(($amountNetUsd * $tasaCop) / 100) * 100,
-                default => round($amountNetUsd, 2),
+                'BS' => $priceBsExact,
+                'COP' => ($inputCurrency === 'COP') ? round($amountNet, 2) : (ceil(($amountNetUsd * $tasaCop) / 100) * 100),
+                default => ($inputCurrency === 'USD') ? round($amountNet, 2) : round($amountNetUsd, 4),
             };
 
             $description = trim($data['description']);
@@ -91,10 +127,10 @@ class ZoomService implements ZoomServiceInterface
                 'quantity' => 1,
                 'price' => $priceAtOrder,
                 'unit_cost' => 0.00,
-                'unit_price_usd' => round($amountNetUsd, 2),
+                'unit_price_usd' => round($amountNetUsd, 4),
                 'price_before_discount' => $priceAtOrder,
-                'price_bs' => round($amountNetUsd * $tasaBs, 2),
-                'price_before_discount_bs' => round($amountNetUsd * $tasaBs, 2),
+                'price_bs' => $priceBsExact,
+                'price_before_discount_bs' => $priceBsExact,
                 'notes' => $description,
                 'product_type' => 'product',
             ]);

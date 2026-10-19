@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
@@ -27,6 +27,15 @@ const amountNet = ref("");
 const selectedCurrency = ref(props.selectedDisplayCurrency || "USD");
 const isSubmitting = ref(false);
 const autoOpenCheckout = ref(false);
+
+watch(
+  () => props.selectedDisplayCurrency,
+  (newCurr) => {
+    if (newCurr && !amountNet.value) {
+      selectedCurrency.value = newCurr;
+    }
+  }
+);
 
 const currencyOptions = [
   { title: "Dólares (USD)", value: "USD" },
@@ -95,18 +104,22 @@ const handleAddZoomToOrder = async (openCheckoutImmediately = false) => {
   autoOpenCheckout.value = openCheckoutImmediately;
 
   try {
+    const chosenCurrency = selectedCurrency.value;
     const payload = {
       description: description.value.trim(),
       amount_net: netValue.value,
-      currency: selectedCurrency.value,
+      currency: chosenCurrency,
     };
 
     const response = await axios.post("/tpv/zoom/add-to-order", payload);
 
     toast.success(response.data?.message || "Servicio Zoom agregado a la orden correctamente.");
 
-    // Notificar al componente padre para sincronizar la orden
-    emit("zoomItemAdded", response.data?.data);
+    // Notificar al componente padre para sincronizar la orden y moneda escogida
+    emit("zoomItemAdded", {
+      ...(response.data?.data || {}),
+      selected_currency: chosenCurrency,
+    });
 
     // Si el usuario eligió facturar/cobrar inmediatamente
     if (openCheckoutImmediately) {

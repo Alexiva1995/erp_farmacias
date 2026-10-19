@@ -82,7 +82,7 @@ defineEmits([
         :selected-display-currency="selectedDisplayCurrency || 'USD'"
         @currency-changed="$emit('handleCurrencyChanged', $event)"
         @update-quantity="$emit('updateOrderItemQuantity', $event)"
-        @remove-item="$emit('removeOrderItem', $event)"
+        @remove-item="(...args) => $emit('removeOrderItem', ...args)"
         @cancelar-order="$emit('cancelarOrder')"
         @reserve-order="$emit('reserverOrder')"
         @open-buys-modal="$emit('openBuysModal')"

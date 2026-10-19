@@ -116,14 +116,14 @@ const formatAsBS = (amount, fromCurrency = "BS") => {
         <VDivider class="my-2 border-dashed" />
 
         <div class="receipt-items mb-2">
-          <div v-for="product in orderProducts" :key="product.id" class="receipt-item mb-1">
+          <div v-for="product in orderProducts" :key="product.id || product.order_detail_id" class="receipt-item mb-1">
             <div class="d-flex flex-column text-caption border-b pb-1">
               <span class="font-weight-medium leading-tight">
-                {{ product.selectedQuantity }} x {{ product.title }}
-                <template v-if="product.notes">
+                {{ product.selectedQuantity || product.quantity }} x {{ (product.is_zoom && product.notes) ? product.notes : (product.title || product.product?.name) }}
+                <template v-if="product.notes && !product.is_zoom">
                   - <strong class="text-success">NOTA: {{ product.notes }}</strong>
                 </template>
-                <template v-else-if="product.laboratory && product.laboratory !== 'Restaurante' && product.laboratory !== 'N/A'">
+                <template v-else-if="product.laboratory && product.laboratory !== 'Restaurante' && product.laboratory !== 'N/A' && product.laboratory !== 'ZOOM'">
                   - <span class="text-disabled">LAB: {{ product.laboratory || product.laboratory_name }}</span>
                 </template>
               </span>

@@ -80,9 +80,13 @@ const activeDiscount = computed(() => {
 const productLab = (item) => item.laboratory || item.laboratory_name || null;
 const productLineText = (item) => {
   const qty = item.selectedQuantity || item.quantity || 1;
-  const rawTitle = item.title || item.name || item.dish?.name || item.product?.name || "—";
+  const isZoom = item.is_zoom || item.itemCode === "ZOOM-SERVICE" || item.product?.barcode === "ZOOM-SERVICE";
+  const rawTitle = (isZoom && item.notes)
+    ? item.notes
+    : (item.title || item.name || item.dish?.name || item.product?.name || "—");
   const title = String(rawTitle).toUpperCase();
-  const lab = productLab(item) && productLab(item) !== 'Restaurante' && productLab(item) !== 'N/A' ? String(productLab(item)).toUpperCase() : "";
+  const labVal = productLab(item);
+  const lab = labVal && labVal !== "Restaurante" && labVal !== "N/A" && labVal !== "ZOOM" ? String(labVal).toUpperCase() : "";
   const line = lab ? `${qty} X ${title} ${lab}` : `${qty} X ${title}`;
   return line.trim();
 };

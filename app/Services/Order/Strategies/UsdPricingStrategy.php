@@ -12,8 +12,15 @@ class UsdPricingStrategy implements CurrencyPricingStrategy
 {
     public function calculatePrice(Product $product, ?OrderDetail $detail = null): float
     {
-        if ($detail && $detail->pack_id && $detail->unit_price_usd > 0) {
-            return (float) $detail->unit_price_usd;
+        if ($detail && $detail->unit_price_usd > 0) {
+            $isCustomOrZoom = $detail->pack_id
+                || $product->barcode === 'ZOOM-SERVICE'
+                || $product->name === 'SERVICIO ZOOM'
+                || (float) ($product->sale_price ?? $product->price ?? 0) <= 0;
+
+            if ($isCustomOrZoom) {
+                return (float) $detail->unit_price_usd;
+            }
         }
         return (float) ($product->sale_price ?? $product->price ?? 0.0);
     }

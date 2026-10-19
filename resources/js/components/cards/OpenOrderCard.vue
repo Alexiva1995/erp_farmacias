@@ -554,10 +554,10 @@ const handleClickProductItem = (product) => {
     cancelButtonText: "Cancelar",
   }).then(async (result) => {
     if (result.isConfirmed) {
-      if (product.is_dish) {
-        emit("remove-item", null, product.order_detail_id);
+      if (product.is_dish || product.is_zoom) {
+        emit("remove-item", product.product_id, product.order_detail_id);
       } else {
-        emit("remove-item", product.product_id);
+        emit("remove-item", product.product_id, product.order_detail_id);
       }
     }
   });
