@@ -33,10 +33,16 @@ class ExchangeRateServices implements ExchangeRate
             }
         }
 
+        // Prevenir tasas anómalas o invertidas para pesos colombianos
+        if (in_array($data['currency_code'], ['COP', 'COPC']) && floatval($data['rate']) < 100) {
+            throw new \InvalidArgumentException("La tasa de {$data['currency_code']} debe expresarse en Pesos por Dólar (ej. 3300 o superior). El valor ingresado es inválido.");
+        }
+
         $model = $this->exchangeRateRepository->store($data);
 
-        // Limpiar caché de tasas de cambio
+        // Limpiar caché de tasas de cambio y fallbacks
         \Illuminate\Support\Facades\Cache::forget("resources.exchange_rate.{$data['currency_code']}");
+        \Illuminate\Support\Facades\Cache::forget("resources.exchange_rate.{$data['currency_code']}.fallback");
         \Illuminate\Support\Facades\Cache::forget('resources.all_exchange_rates');
 
         return $model;

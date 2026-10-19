@@ -79,6 +79,7 @@ class TelegramConfigController extends Controller
     {
         $config = TelegramConfig::firstOrCreate(['id' => 1]);
         $config->update($request->validated());
+        $this->telegramService->refreshConfig();
 
         return response()->json([
             'message' => 'Configuración de Telegram actualizada con éxito.',

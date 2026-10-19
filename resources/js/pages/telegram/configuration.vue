@@ -65,8 +65,34 @@ const syncInitialConfig = (data) => {
   fields.forEach(k => {
     cleanData[k] = data[k] ?? (k === 'is_active' ? true : '')
   })
+  cleanData.is_active = Boolean(cleanData.is_active)
   Object.assign(configForm, cleanData)
   initialConfig.value = { ...cleanData }
+}
+
+const toggleNotificationsStatus = async (val) => {
+  savingConfig.value = true
+  try {
+    const payload = {
+      ...configForm,
+      is_active: Boolean(val),
+    }
+    const { data } = await axios.put('/telegram/config', payload)
+    if (data && data.data) {
+      syncInitialConfig(data.data)
+    }
+    showToast(
+      val
+        ? 'Notificaciones de Telegram activadas correctamente.'
+        : 'Notificaciones desactivadas. El sistema no enviará ningún mensaje.',
+      val ? 'success' : 'warning'
+    )
+  } catch (error) {
+    configForm.is_active = !val
+    showToast('Error al actualizar el estado de las notificaciones.', 'error')
+  } finally {
+    savingConfig.value = false
+  }
 }
 
 const fetchConfig = async () => {
@@ -179,7 +205,21 @@ onMounted(() => {
         </VCardSubtitle>
 
         <template #append>
-          <div class="d-flex align-center gap-2">
+          <div class="d-flex align-center gap-2 flex-wrap">
+            <VChip
+              :color="configForm.is_active ? 'success' : 'error'"
+              variant="tonal"
+              size="small"
+              class="font-weight-medium"
+            >
+              <VIcon
+                start
+                size="14"
+                :icon="configForm.is_active ? 'tabler-bell' : 'tabler-bell-off'"
+              />
+              {{ configForm.is_active ? 'Notificaciones Activas' : 'Notificaciones Desactivadas' }}
+            </VChip>
+
             <VChip
               :color="isWebhookConfigured ? 'success' : 'warning'"
               variant="tonal"
@@ -249,6 +289,48 @@ onMounted(() => {
 
                 <VForm @submit.prevent="saveConfig">
                   <VRow>
+                    <VCol cols="12">
+                      <VCard
+                        variant="tonal"
+                        :color="configForm.is_active ? 'success' : 'error'"
+                        class="mb-2"
+                      >
+                        <VCardText class="d-flex align-center justify-space-between py-3 px-4 flex-wrap gap-2">
+                          <div class="d-flex align-center gap-3">
+                            <VAvatar
+                              :color="configForm.is_active ? 'success' : 'error'"
+                              variant="tonal"
+                              size="40"
+                            >
+                              <VIcon
+                                :icon="configForm.is_active ? 'tabler-bell' : 'tabler-bell-off'"
+                                size="22"
+                              />
+                            </VAvatar>
+                            <div>
+                              <div class="text-subtitle-1 font-weight-bold">
+                                {{ configForm.is_active ? 'Notificaciones Activadas' : 'Notificaciones Desactivadas' }}
+                              </div>
+                              <div class="text-caption">
+                                {{ configForm.is_active
+                                  ? 'El sistema enviará alertas y mensajes a los canales configurados.'
+                                  : 'El sistema tiene bloqueado totalmente el envío de cualquier notificación o alerta por Telegram.' }}
+                              </div>
+                            </div>
+                          </div>
+
+                          <VSwitch
+                            v-model="configForm.is_active"
+                            :color="configForm.is_active ? 'success' : 'error'"
+                            hide-details
+                            inset
+                            :disabled="savingConfig || loadingConfig"
+                            @update:model-value="toggleNotificationsStatus"
+                          />
+                        </VCardText>
+                      </VCard>
+                    </VCol>
+
                     <VCol cols="12">
                       <VTextField
                         v-model="configForm.bot_token"

@@ -18,7 +18,12 @@ export function useTpvRates(brandingStore, isRestaurant, isSportsRental) {
       const formattedRates = {}
       apiRates.forEach((rateItem) => {
         const currencyCode = rateItem.currency_code
-        const rateValue = parseFloat(rateItem.rate)
+        let rateValue = parseFloat(rateItem.rate)
+
+        // Sanitización defensiva para evitar tasas corruptas o decimales en pesos colombianos
+        if ((currencyCode === 'COP' || currencyCode === 'COPC') && (isNaN(rateValue) || rateValue < 100)) {
+          rateValue = 3300
+        }
 
         if (!formattedRates['USD']) formattedRates['USD'] = {}
         formattedRates['USD'][currencyCode] = rateValue

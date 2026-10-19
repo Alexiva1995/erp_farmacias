@@ -27,18 +27,26 @@ class ExchangeRateCreateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            "currency_code" => "required",
+        $rules = [
+            "currency_code" => "required|string",
             "rate" => "nullable|numeric",
         ];
+
+        // Validar que las tasas de peso colombiano se expresen en pesos por dólar (mínimo 100)
+        if (in_array($this->input('currency_code'), ['COP', 'COPC'])) {
+            $rules['rate'] = "required|numeric|min:100";
+        }
+
+        return $rules;
     }
 
-    public function menssages()
+    public function messages(): array
     {
         return [
-            "currency_code.required" => "the currency code is required",
-            "rate.required" => "the rate is required",
-
+            "currency_code.required" => "El código de moneda es requerido.",
+            "rate.required" => "La tasa es requerida.",
+            "rate.numeric" => "La tasa debe ser un número válido.",
+            "rate.min" => "La tasa en pesos (COP) debe expresarse en Pesos por Dólar (ej. 3300 o superior).",
         ];
     }
 

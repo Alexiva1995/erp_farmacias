@@ -113,23 +113,41 @@ class ResourceService
         try {
             // Intentar obtener la tasa fresca o desde la caché con expiración
             $rate = Cache::remember($cacheKey, now()->addHours(1), function () use ($currencyCode, $fallbackKey) {
-                $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->latest('id')->first();
-                if (!$exchangeRate && ($currencyCode === 'BCV' || $currencyCode === 'BS')) {
-                    $exchangeRate = ExchangeRate::whereIn('currency_code', ['BS', 'BCV', 'VES'])->latest('id')->first();
+                if ($currencyCode === 'COP' || $currencyCode === 'COPC') {
+                    $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)
+                        ->where('rate', '>=', 100)
+                        ->latest('id')
+                        ->first();
+
+                    if (!$exchangeRate && $currencyCode === 'COP') {
+                        $exchangeRate = ExchangeRate::where('currency_code', 'COPC')
+                            ->where('rate', '>=', 100)
+                            ->latest('id')
+                            ->first();
+                    }
+                } else {
+                    $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->latest('id')->first();
+                    if (!$exchangeRate && ($currencyCode === 'BCV' || $currencyCode === 'BS')) {
+                        $exchangeRate = ExchangeRate::whereIn('currency_code', ['BS', 'BCV', 'VES'])->latest('id')->first();
+                    }
                 }
+
                 if ($exchangeRate) {
                     $val = (float) $exchangeRate->rate;
                     // Almacenar en caché persistente (sin expiración) como fallback de seguridad
                     Cache::forever($fallbackKey, $val);
                     return $val;
                 }
-                
+
                 // Si no hay registro fresco pero hay fallback, usarlo
                 if (Cache::has($fallbackKey)) {
-                    return (float) Cache::get($fallbackKey);
+                    $cachedFallback = (float) Cache::get($fallbackKey);
+                    if ($currencyCode !== 'COP' && $currencyCode !== 'COPC' || $cachedFallback >= 100) {
+                        return $cachedFallback;
+                    }
                 }
 
-                return 1.0;
+                return ($currencyCode === 'COP' || $currencyCode === 'COPC') ? 3300.0 : 1.0;
             });
 
             return $rate;
@@ -143,9 +161,12 @@ class ResourceService
 
             // Fallback ante cualquier error de red, timeout o fallo de base de datos
             if (Cache::has($fallbackKey)) {
-                return (float) Cache::get($fallbackKey);
+                $cachedFallback = (float) Cache::get($fallbackKey);
+                if ($currencyCode !== 'COP' && $currencyCode !== 'COPC' || $cachedFallback >= 100) {
+                    return $cachedFallback;
+                }
             }
-            return 1.0;
+            return ($currencyCode === 'COP' || $currencyCode === 'COPC') ? 3300.0 : 1.0;
         }
     }
 
@@ -176,7 +197,7 @@ class ResourceService
         }
 
         return Cache::remember('resources.all_exchange_rates', now()->addHours(1), function () {
-            return ExchangeRate::query()
+            $rates = ExchangeRate::query()
                 ->whereIn('id', function ($query) {
                     $query->selectRaw('MAX(id)')
                         ->from('exchange_rates')
@@ -184,6 +205,19 @@ class ResourceService
                 })
                 ->orderBy('currency_code')
                 ->get(['currency_code', 'rate', 'source']);
+
+            // Proteger las tasas de COP y COPC si hay valores anómalos menores a 100
+            foreach ($rates as $item) {
+                if (in_array($item->currency_code, ['COP', 'COPC']) && floatval($item->rate) < 100) {
+                    $validRate = ExchangeRate::where('currency_code', $item->currency_code)
+                        ->where('rate', '>=', 100)
+                        ->latest('id')
+                        ->value('rate');
+                    $item->rate = $validRate ?: 3300.0;
+                }
+            }
+
+            return $rates;
         });
     }
 

@@ -31,11 +31,21 @@ const submitManualRate = async (currencyCode, value) => {
     return;
   }
 
+  const numericVal = parseFloat(value);
+  if ((currencyCode === "COP" || currencyCode === "COPC") && (isNaN(numericVal) || numericVal < 100)) {
+    Swal.fire({
+      icon: "warning",
+      title: "Tasa en Pesos Inválida",
+      text: `La tasa de ${currencyCode} debe expresarse en Pesos por Dólar (ej: 3300 o superior). No ingrese valores decimales ni menores a 100.`,
+    });
+    return;
+  }
+
   loadingButtons.value[currencyCode] = true;
   try {
     await axios.post("/finances/exchange-rates/store", {
       currency_code: currencyCode,
-      rate: parseFloat(value),
+      rate: numericVal,
     });
     Swal.fire({
       icon: "success",
@@ -207,7 +217,7 @@ const updateRate = async (currency) => {
               badge-text="Tasa Manual"
               :rate-value="props.rates.COP.rate"
               :decimals="0"
-              subtext="Tasa Actual de Venta"
+              subtext="Tasa de Venta (COP por USD — Ej: 3300)"
               color="info"
               icon="tabler-currency-peso"
               :date-update="props.rates.COP.dateUpdate"
@@ -226,7 +236,7 @@ const updateRate = async (currency) => {
               badge-text="Cambio Manual"
               :rate-value="props.rates.COPC.rate"
               :decimals="0"
-              subtext="Tasa para Compras"
+              subtext="Tasa para Compras (COP por USD — Ej: 3300)"
               color="success"
               icon="tabler-arrows-right-left"
               :date-update="props.rates.COPC.dateUpdate"
