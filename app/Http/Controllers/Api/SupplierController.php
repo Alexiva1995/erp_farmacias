@@ -132,11 +132,12 @@ class SupplierController extends Controller
         }
 
         $userId = auth()->id() ?? 1;
+        $priorityConn = $supplier->getPriorityConnection();
 
         $status = \App\Models\SupplierConnectionStatus::create([
             "supplier_id" => $supplier->id,
             "user_id" => $userId,
-            "method" => $supplier->connection?->type ?? 'api',
+            "method" => $priorityConn?->type ?? 'api',
             "status" => "processing",
         ]);
 
@@ -575,11 +576,11 @@ class SupplierController extends Controller
             ];
         }
 
-        // Conexión principal priorizada para compatibilidad
-        $connection = $connections->firstWhere('type', 'dronena_bot') 
-            ?? $connections->firstWhere('type', 'api')
-            ?? $connections->firstWhere('type', 'http')
-            ?? $connections->firstWhere('type', 'file')
+        // Conexión principal priorizada: 1. API/HTTP, 2. FTP/SFTP, 3. Email/File, 4. Bot
+        $connection = $connections->first(fn($c) => in_array($c->type, ['api', 'http']))
+            ?? $connections->first(fn($c) => in_array($c->type, ['ftp', 'sftp']))
+            ?? $connections->first(fn($c) => in_array($c->type, ['email', 'file']))
+            ?? $connections->first(fn($c) => str_contains($c->type ?? '', 'bot'))
             ?? $connections->first();
 
         // Buscar si existe una conexión FTP para pedidos (ej. Mafarta API + FTP o Dronena Bot + FTP)

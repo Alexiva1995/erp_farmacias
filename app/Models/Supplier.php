@@ -196,8 +196,31 @@ class Supplier extends Model
     {
         return $this->hasMany(SupplierConnection::class);
     }
+
+    /**
+     * Obtiene la conexión prioritaria según el orden:
+     * 1. API / HTTP
+     * 2. FTP / SFTP
+     * 3. Email / File
+     * 4. Bot (dronena_bot, drosymca_bot, etc.)
+     */
+    public function getPriorityConnection(): ?SupplierConnection
+    {
+        $conns = $this->connections;
+        if ($conns->isEmpty()) {
+            return null;
+        }
+
+        return $conns->first(fn($c) => in_array($c->type, ['api', 'http']))
+            ?? $conns->first(fn($c) => in_array($c->type, ['ftp', 'sftp']))
+            ?? $conns->first(fn($c) => in_array($c->type, ['email', 'file']))
+            ?? $conns->first(fn($c) => str_contains($c->type ?? '', 'bot'))
+            ?? $conns->first();
+    }
+
     public function paymentDate()
     {
         return $this->hasOne(SupplierPaymentMethod::class);
     }
 }
+

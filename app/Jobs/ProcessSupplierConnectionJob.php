@@ -97,12 +97,13 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             return;
         }
 
+        $supplierConnection = $this->supplier->getPriorityConnection();
         $status = $this->statusId ? SupplierConnectionStatus::find($this->statusId) : null;
         if (!$status) {
             $status = SupplierConnectionStatus::create([
                 "supplier_id" => $this->supplier->id,
                 "user_id" => $validUserId,
-                "method" => $this->supplier->connections->first()?->type ?? 'api',
+                "method" => $supplierConnection?->type ?? 'api',
                 "status" => "processing",
             ]);
         }
@@ -110,7 +111,6 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ [JOB] Status activo - ID: {$status->id}, Status: processing\n";
         $this->writeDebugLog($logMessage);
 
-        $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
         if (is_null($supplierConnection) && !$hasFiles) {
             $status->update([
                 "status" => "failed",
@@ -218,11 +218,11 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 🌐 [JOB] Procesando conexión FTP/API\n";
                 $this->writeDebugLog($logMessage);
                 
-                $supplierConnection = \App\Models\SupplierConnection::where('supplier_id', $this->supplier->id)->first();
+                $supplierConnection = $supplierConnection ?? $this->supplier->getPriorityConnection();
                 if (!$supplierConnection) {
                     $logMessage = "[" . date('Y-m-d H:i:s') . "] ⚠️ [JOB] No se encontró conexión configurada para {$this->supplier->name}\n";
                     $this->writeDebugLog($logMessage);
-                    throw new \Exception("El proveedor {$this->supplier->name} no tiene una conexión FTP/API configurada.");
+                    throw new \Exception("El proveedor {$this->supplier->name} no tiene una conexión configurada.");
                 }
 
                 $logMessage = "[" . date('Y-m-d H:i:s') . "] 🔗 [JOB] Conexión encontrada - Host: {$supplierConnection->host}\n";
