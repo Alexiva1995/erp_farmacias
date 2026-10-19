@@ -21,12 +21,45 @@ class CompleteOrderRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $merge = [];
+        $orderId = $this->route('orderId');
+        $resolvedOrderId = is_object($orderId) ? $orderId->id : $orderId;
 
         if ($this->has('items')) {
             $items = $this->items;
             if (is_string($items)) {
                 $decoded = json_decode($items, true);
-                $merge['items'] = is_array($decoded) ? $decoded : [];
+                $items = is_array($decoded) ? $decoded : [];
+            }
+
+            if (is_array($items) && $resolvedOrderId) {
+                // Obtener los detalles vigentes de la orden en base de datos
+                $existingDetails = \Illuminate\Support\Facades\DB::table('order_details')
+                    ->where('order_id', $resolvedOrderId)
+                    ->get();
+                $validDetailIds = $existingDetails->pluck('id')->all();
+
+                foreach ($items as $k => $item) {
+                    $detailId = $item['order_detail_id'] ?? null;
+                    // Si el detailId es temporal o no existe actualmente en la orden, reconciliar con el detalle vigente
+                    if (!in_array($detailId, $validDetailIds, false)) {
+                        $matched = null;
+                        if (!empty($item['product_id'])) {
+                            $matched = $existingDetails->firstWhere('product_id', $item['product_id']);
+                        } elseif (!empty($item['dish_id'])) {
+                            $matched = $existingDetails->firstWhere('dish_id', $item['dish_id']);
+                        }
+
+                        if ($matched) {
+                            $items[$k]['order_detail_id'] = $matched->id;
+                        } else {
+                            // Si el ítem ya no existe en la base de datos de la orden, se omite para no bloquear la compra
+                            unset($items[$k]);
+                        }
+                    }
+                }
+                $merge['items'] = array_values($items);
+            } else {
+                $merge['items'] = is_array($items) ? $items : [];
             }
         }
 

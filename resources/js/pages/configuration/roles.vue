@@ -132,12 +132,21 @@ async function handleSaveRole() {
 function openPermissionsDialog(role) {
   selectedRole.value = role
 
-  // Si menu_permissions es null, por defecto tiene todos habilitados
+  // Si menu_permissions es array o string JSON, cargarlo; si es null, todos por defecto
+  let initialPermissions = []
   if (Array.isArray(role.menu_permissions)) {
-    selectedPermissions.value = [...role.menu_permissions]
+    initialPermissions = [...role.menu_permissions]
+  } else if (typeof role.menu_permissions === 'string') {
+    try {
+      const parsed = JSON.parse(role.menu_permissions)
+      initialPermissions = Array.isArray(parsed) ? parsed : [...allAvailableKeys.value]
+    } catch (e) {
+      initialPermissions = [...allAvailableKeys.value]
+    }
   } else {
-    selectedPermissions.value = [...allAvailableKeys.value]
+    initialPermissions = [...allAvailableKeys.value]
   }
+  selectedPermissions.value = initialPermissions
 
   // Desplegar todos los paneles al abrir
   expandedPanels.value = menuTree.value.map((_, index) => index)
@@ -657,27 +666,73 @@ async function handleDeleteRole(role) {
               <!-- Submódulos / Pantallas -->
               <VExpansionPanelText class="pt-2 pb-4">
                 <div v-if="moduleNode.children?.length" class="d-flex flex-column ga-2 ps-6">
-                  <div
-                    v-for="child in moduleNode.children"
-                    :key="child.key"
-                    class="d-flex align-center justify-space-between py-1 px-3 rounded hover-bg"
-                  >
-                    <div class="d-flex align-center ga-2">
-                      <VCheckboxBtn
-                        :model-value="isPermissionSelected(child.key)"
-                        color="primary"
-                        density="compact"
-                        @update:model-value="togglePermission(child.key)"
-                      />
-                      <span class="text-body-2 font-weight-medium">
-                        {{ child.title }}
-                      </span>
+                  <template v-for="child in moduleNode.children" :key="child.key">
+                    <!-- Si el elemento tiene sus propios sub-hijos (p. ej. Optimización, Devoluciones) -->
+                    <div v-if="child.children?.length" class="border rounded p-2 mb-2 bg-var-theme-background">
+                      <div class="d-flex align-center justify-space-between py-1 px-2 rounded">
+                        <div class="d-flex align-center ga-2">
+                          <VCheckboxBtn
+                            :model-value="getModuleCheckState(child) === 'all'"
+                            :indeterminate="getModuleCheckState(child) === 'some'"
+                            color="primary"
+                            density="compact"
+                            @click.stop="toggleModule(child)"
+                          />
+                          <span class="text-body-2 font-weight-bold text-high-emphasis">
+                            {{ child.title }}
+                          </span>
+                        </div>
+                        <span class="text-caption text-medium-emphasis">
+                          {{ child.key }}
+                        </span>
+                      </div>
+                      <!-- Hijos de segundo nivel -->
+                      <div class="d-flex flex-column ga-1 ps-6 mt-1">
+                        <div
+                          v-for="subChild in child.children"
+                          :key="subChild.key"
+                          class="d-flex align-center justify-space-between py-1 px-3 rounded hover-bg"
+                        >
+                          <div class="d-flex align-center ga-2">
+                            <VCheckboxBtn
+                              :model-value="isPermissionSelected(subChild.key)"
+                              color="primary"
+                              density="compact"
+                              @update:model-value="togglePermission(subChild.key)"
+                            />
+                            <span class="text-body-2 font-weight-medium">
+                              {{ subChild.title }}
+                            </span>
+                          </div>
+                          <span class="text-caption text-medium-emphasis">
+                            {{ subChild.to || subChild.key }}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <span class="text-caption text-medium-emphasis">
-                      {{ child.to || child.key }}
-                    </span>
-                  </div>
+                    <!-- Enlace directo regular -->
+                    <div
+                      v-else
+                      class="d-flex align-center justify-space-between py-1 px-3 rounded hover-bg"
+                    >
+                      <div class="d-flex align-center ga-2">
+                        <VCheckboxBtn
+                          :model-value="isPermissionSelected(child.key)"
+                          color="primary"
+                          density="compact"
+                          @update:model-value="togglePermission(child.key)"
+                        />
+                        <span class="text-body-2 font-weight-medium">
+                          {{ child.title }}
+                        </span>
+                      </div>
+
+                      <span class="text-caption text-medium-emphasis">
+                        {{ child.to || child.key }}
+                      </span>
+                    </div>
+                  </template>
                 </div>
 
                 <div v-else class="text-caption text-medium-emphasis ps-6 py-1">

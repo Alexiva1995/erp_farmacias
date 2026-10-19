@@ -1008,7 +1008,7 @@ const getIva = (product, currency) => {
           <div class="d-flex flex-column gap-2 overflow-y-auto" style="max-block-size: 380px; padding-inline-end: 4px;">
             <div 
               v-for="(product, index) in props.orderProducts" 
-              :key="product.id" 
+              :key="product.order_detail_id || product.product_id || product.dish_id || index" 
               class="product-row pa-2 rounded-lg border bg-surface d-flex align-center gap-3"
             >
               <!-- Cantidad Selector Estilo Premium -->

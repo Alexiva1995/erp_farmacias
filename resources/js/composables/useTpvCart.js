@@ -72,11 +72,18 @@ export function useTpvCart({
         .then((response) => {
           const updatedItem = response.data?.data?.order_item
           if (updatedItem) {
-            const idx = orderItems.value.findIndex((i) => i.order_detail_id === (updatedItem.id || orderDetailId))
+            const idx = orderItems.value.findIndex(
+              (i) =>
+                (orderDetailId && i.order_detail_id === orderDetailId) ||
+                (productId && i.product_id === productId) ||
+                (updatedItem.dish_id && i.dish_id === updatedItem.dish_id)
+            )
             if (idx !== -1) {
-              orderItems.value[idx] = formatOrderItemForFrontend(updatedItem)
+              orderItems.value[idx] = formatOrderItemForFrontend(updatedItem, (from, to) => 1)
             }
           }
+          // Sincronizar en segundo plano la orden completa (totales, impuestos, lotes)
+          fetchOpenOrder().catch((err) => console.error('Error al sincronizar orden:', err))
         })
         .catch((error) => {
           console.error('Error al actualizar cantidad:', error)
@@ -242,6 +249,15 @@ export function useTpvCart({
 
       // Guardar en servidor en segundo plano
       const backendResponse = await axios.post(`/tpv/orders/${openOrderData.value.id}/items`, payload)
+      const savedItem = backendResponse.data?.data?.order_item
+      if (savedItem) {
+        const itemIndex = orderItems.value.findIndex(
+          (i) => i.product_id === productDetails.id && (!packId || i.pack_id === packId)
+        )
+        if (itemIndex !== -1) {
+          orderItems.value[itemIndex] = formatOrderItemForFrontend(savedItem, (from, to) => 1)
+        }
+      }
       
       // Sincronizar silenciosamente los datos finales del backend
       fetchOpenOrder().catch((err) => console.error('Error al sincronizar orden:', err))

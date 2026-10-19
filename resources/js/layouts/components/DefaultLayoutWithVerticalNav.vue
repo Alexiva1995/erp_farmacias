@@ -439,8 +439,12 @@ const processedNavItems = computed(() => {
               if (rolesChild) filteredChildren.push(rolesChild);
             }
             copy.children = filteredChildren;
+            delete copy.action;
+            delete copy.subject;
             return copy;
           }
+          delete copy.action;
+          delete copy.subject;
           return copy;
         }
 
@@ -450,10 +454,20 @@ const processedNavItems = computed(() => {
             return null;
           }
           copy.children = filteredChildren;
+          // Eliminar restricciones estáticas de CASL para permitir visualización según rol
+          delete copy.action;
+          delete copy.subject;
           return copy;
         }
 
-        return isKeyAllowed(itemKey) ? copy : null;
+        if (isKeyAllowed(itemKey)) {
+          // Eliminar restricciones estáticas de CASL para permitir visualización según rol
+          delete copy.action;
+          delete copy.subject;
+          return copy;
+        }
+
+        return null;
       }).filter(Boolean);
     };
 

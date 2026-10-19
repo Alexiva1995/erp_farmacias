@@ -362,6 +362,8 @@ export function useTpvCheckoutManager({
       const isCustomChange = !!brandingStore?.settings?.enable_custom_change_currency
       const mappedItems = (props.orderProducts || []).map((item) => ({
         order_detail_id: item.order_detail_id || item.id,
+        product_id: item.product_id || null,
+        dish_id: item.dish_id || null,
         quantity: item.selectedQuantity || item.quantity,
         price: item.price,
         price_before_discount: item.price_before_discount || item.basePrice || item.price,
