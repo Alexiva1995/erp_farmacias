@@ -73,6 +73,7 @@ declare global {
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
   const getCurrentScope: typeof import('vue')['getCurrentScope']
   const getItemPriceByCurrency: typeof import('./resources/js/composables/useTpvItemFormatter.js')['getItemPriceByCurrency']
+  const getOfflineDB: typeof import('./resources/js/composables/useOfflineCatalogSync.js')['getOfflineDB']
   const h: typeof import('vue')['h']
   const hexToRgb: typeof import('./resources/js/@core/utils/colorConverter.js')['hexToRgb']
   const ignorableWatch: typeof import('@vueuse/core')['ignorableWatch']
@@ -88,8 +89,10 @@ declare global {
   const isReactive: typeof import('vue')['isReactive']
   const isReadonly: typeof import('vue')['isReadonly']
   const isRef: typeof import('vue')['isRef']
+  const isSyncingGlobalCatalog: typeof import('./resources/js/composables/useOfflineCatalogSync.js')['isSyncingGlobalCatalog']
   const isToday: typeof import('./resources/js/@core/utils/helpers.js')['isToday']
   const kFormatter: typeof import('./resources/js/@core/utils/formatters.js')['kFormatter']
+  const lastGlobalCatalogSync: typeof import('./resources/js/composables/useOfflineCatalogSync.js')['lastGlobalCatalogSync']
   const lengthValidator: typeof import('./resources/js/@core/utils/validators.js')['lengthValidator']
   const logicAnd: typeof import('@vueuse/math')['logicAnd']
   const logicNot: typeof import('@vueuse/math')['logicNot']
@@ -169,6 +172,7 @@ declare global {
   const shallowReadonly: typeof import('vue')['shallowReadonly']
   const shallowRef: typeof import('vue')['shallowRef']
   const storeToRefs: typeof import('pinia')['storeToRefs']
+  const syncCatalogInBackground: typeof import('./resources/js/composables/useOfflineCatalogSync.js')['syncCatalogInBackground']
   const syncRef: typeof import('@vueuse/core')['syncRef']
   const syncRefs: typeof import('@vueuse/core')['syncRefs']
   const templateRef: typeof import('@vueuse/core')['templateRef']
@@ -502,6 +506,7 @@ declare module 'vue' {
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
     readonly getItemPriceByCurrency: UnwrapRef<typeof import('./resources/js/composables/useTpvItemFormatter.js')['getItemPriceByCurrency']>
+    readonly getOfflineDB: UnwrapRef<typeof import('./resources/js/composables/useOfflineCatalogSync.js')['getOfflineDB']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
     readonly hexToRgb: UnwrapRef<typeof import('./resources/js/@core/utils/colorConverter.js')['hexToRgb']>
     readonly ignorableWatch: UnwrapRef<typeof import('@vueuse/core')['ignorableWatch']>
@@ -517,8 +522,10 @@ declare module 'vue' {
     readonly isReactive: UnwrapRef<typeof import('vue')['isReactive']>
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
+    readonly isSyncingGlobalCatalog: UnwrapRef<typeof import('./resources/js/composables/useOfflineCatalogSync.js')['isSyncingGlobalCatalog']>
     readonly isToday: UnwrapRef<typeof import('./resources/js/@core/utils/helpers.js')['isToday']>
     readonly kFormatter: UnwrapRef<typeof import('./resources/js/@core/utils/formatters.js')['kFormatter']>
+    readonly lastGlobalCatalogSync: UnwrapRef<typeof import('./resources/js/composables/useOfflineCatalogSync.js')['lastGlobalCatalogSync']>
     readonly lengthValidator: UnwrapRef<typeof import('./resources/js/@core/utils/validators.js')['lengthValidator']>
     readonly logicAnd: UnwrapRef<typeof import('@vueuse/math')['logicAnd']>
     readonly logicNot: UnwrapRef<typeof import('@vueuse/math')['logicNot']>
@@ -598,6 +605,7 @@ declare module 'vue' {
     readonly shallowReadonly: UnwrapRef<typeof import('vue')['shallowReadonly']>
     readonly shallowRef: UnwrapRef<typeof import('vue')['shallowRef']>
     readonly storeToRefs: UnwrapRef<typeof import('pinia')['storeToRefs']>
+    readonly syncCatalogInBackground: UnwrapRef<typeof import('./resources/js/composables/useOfflineCatalogSync.js')['syncCatalogInBackground']>
     readonly syncRef: UnwrapRef<typeof import('@vueuse/core')['syncRef']>
     readonly syncRefs: UnwrapRef<typeof import('@vueuse/core')['syncRefs']>
     readonly templateRef: UnwrapRef<typeof import('@vueuse/core')['templateRef']>

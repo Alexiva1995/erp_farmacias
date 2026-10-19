@@ -246,6 +246,16 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\Suppliers\SupplierFinancialSyncService::class
         );
 
+        $this->app->bind(
+            \App\Contracts\Repositories\ZoomProductRepositoryInterface::class,
+            \App\Repositories\ZoomProductRepository::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\Zoom\ZoomServiceInterface::class,
+            \App\Services\Zoom\ZoomService::class
+        );
+
         $this->app->bind(LocationContract::class, LocationRepository::class);
 
 

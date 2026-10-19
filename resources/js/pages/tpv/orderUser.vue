@@ -2,6 +2,7 @@
 import TpvHeaderBar from "@/components/tpv/TpvHeaderBar.vue";
 import TpvOrderMainSection from "@/components/tpv/TpvOrderMainSection.vue";
 import TpvCatalogSection from "@/components/tpv/TpvCatalogSection.vue";
+import TpvZoomSection from "@/components/tpv/TpvZoomSection.vue";
 import TpvDialogsContainer from "@/components/tpv/TpvDialogsContainer.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useBrandingStore } from "@/stores/useBrandingStore";
@@ -387,6 +388,12 @@ const openBuysModal = () => { showBuysModal.value = true; };
 const closeBuysModal = () => { showBuysModal.value = false; };
 const handleFlashCheckout = () => { showBuysModal.value = true; };
 
+// ─── Control de Pestaña Principal (Catálogo vs Zoom) ─────────────────────────
+const currentTpvTab = ref("catalog");
+const handleZoomItemAdded = async () => {
+  await fetchOpenOrder();
+};
+
 // ─── Atajos de teclado (F12 = cobrar, Esc = cerrar modal, Alt + letra) ────────
 useTpvKeyboardShortcuts({
   openBuysModal,
@@ -504,7 +511,38 @@ useTpvInit({
       @handle-load-quotation="handleLoadQuotation"
     />
 
+    <!-- Selector de Sección Inferior: Catálogo vs Zoom -->
+    <div class="d-flex align-center justify-space-between mb-4 border-b pb-2 flex-wrap gap-2">
+      <VTabs
+        v-model="currentTpvTab"
+        color="primary"
+        density="compact"
+        class="rounded-lg"
+      >
+        <VTab value="catalog" class="font-weight-bold text-uppercase">
+          <VIcon start icon="tabler-building-store" size="18" />
+          Catálogo de Productos
+        </VTab>
+        <VTab value="zoom" class="font-weight-bold text-uppercase">
+          <VIcon start icon="tabler-truck-delivery" size="18" />
+          Zoom
+        </VTab>
+      </VTabs>
+    </div>
+
+    <!-- Sección de Envíos Zoom -->
+    <TpvZoomSection
+      v-if="currentTpvTab === 'zoom'"
+      :exchange-rates="exchangeRates"
+      :selected-display-currency="selectedDisplayCurrency"
+      :has-open-order="hasOpenOrder"
+      @zoom-item-added="handleZoomItemAdded"
+      @open-buys-modal="openBuysModal"
+    />
+
+    <!-- Sección de Catálogo de Productos -->
     <TpvCatalogSection
+      v-show="currentTpvTab === 'catalog'"
       v-model:filter-search-query="filterSearchQuery"
       v-model:selected-laboratory="selectedLaboratory"
       v-model:selected-origin="selectedOrigin"

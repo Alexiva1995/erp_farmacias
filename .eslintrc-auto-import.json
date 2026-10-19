@@ -429,6 +429,10 @@
     "useBiThemeColors": true,
     "useLaboratoryReport": true,
     "usePharmacySettingsForm": true,
-    "useTelegramCommands": true
+    "useTelegramCommands": true,
+    "getOfflineDB": true,
+    "isSyncingGlobalCatalog": true,
+    "lastGlobalCatalogSync": true,
+    "syncCatalogInBackground": true
   }
 }
