@@ -145,6 +145,31 @@ router.beforeEach(async (to, from, next) => {
       }
     }
 
+    // La raíz '/' siempre renderiza la tienda directamente (tova-store.vue) sin bloquear ni redirigir
+    if (to.path === '/') {
+      clearTimeout(safetyTimeout)
+      console.log('[ROUTER] Raíz /: Sirviendo la tienda directamente por defecto')
+      return safeNext()
+    }
+
+    if (to.path === '/tova-store') {
+      clearTimeout(safetyTimeout)
+      if (brandingStore.settings.business_type === 'restaurant') {
+        console.log('[ROUTER] Ecommerce no disponible para restaurante, redirigiendo a restaurant-store')
+        return safeNext({ path: '/restaurant-store' })
+      }
+      return safeNext()
+    }
+
+    if (to.path === '/restaurant-store') {
+      clearTimeout(safetyTimeout)
+      if (brandingStore.settings.business_type !== 'restaurant') {
+        console.log('[ROUTER] Restaurant store no disponible, redirigiendo a tova-store')
+        return safeNext({ path: '/tova-store' })
+      }
+      return safeNext()
+    }
+
     console.log('[ROUTER] AuthStore estado:', { isLoaded: authStore.isLoaded, hasUser: !!authStore.user })
     
     // Intentar obtener el usuario en la carga inicial si no está cargado aún
@@ -176,28 +201,6 @@ router.beforeEach(async (to, from, next) => {
     }
     
     clearTimeout(safetyTimeout)
-    // La raíz '/' siempre renderiza la tienda directamente (tova-store.vue) sin redirecciones
-    if (to.path === '/') {
-      console.log('[ROUTER] Raíz /: Sirviendo la tienda directamente por defecto')
-      return safeNext()
-    }
-
-
-    if (to.path === '/tova-store') {
-      const brandingStore = useBrandingStore()
-      if (brandingStore.settings.business_type === 'restaurant') {
-        console.log('[ROUTER] Ecommerce no disponible para restaurante, redirigiendo a restaurant-store')
-        return safeNext({ path: '/restaurant-store' })
-      }
-    }
-
-    if (to.path === '/restaurant-store') {
-      const brandingStore = useBrandingStore()
-      if (brandingStore.settings.business_type !== 'restaurant') {
-        console.log('[ROUTER] Restaurant store no disponible, redirigiendo a tova-store')
-        return safeNext({ path: '/tova-store' })
-      }
-    }
 
     const isAuthenticated = authStore.isAuthenticated
     console.log('[ROUTER] Verificación:', { isAuthenticated, requiresAuth })

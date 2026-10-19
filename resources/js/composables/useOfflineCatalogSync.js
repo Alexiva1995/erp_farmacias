@@ -1,4 +1,5 @@
 import axios from '@/plugins/axios'
+import { useAuthStore } from '@/stores/auth'
 import { ref } from 'vue'
 
 const DB_NAME = 'ErpFarmaciasOfflineDB'
@@ -46,6 +47,21 @@ export const lastGlobalCatalogSync = ref(localStorage.getItem('tpv_offline_catal
  */
 export async function syncCatalogInBackground() {
   if (!navigator.onLine || isSyncingGlobalCatalog.value) return false
+
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
+  const isPublicPath =
+    pathname === '/' ||
+    pathname.includes('/login') ||
+    pathname.startsWith('/p/') ||
+    pathname.startsWith('/reservar') ||
+    pathname.startsWith('/tova-store') ||
+    pathname.startsWith('/restaurant-store')
+
+  const authStore = useAuthStore()
+  if (isPublicPath || !authStore.isAuthenticated) {
+    return false
+  }
+
   isSyncingGlobalCatalog.value = true
 
   try {

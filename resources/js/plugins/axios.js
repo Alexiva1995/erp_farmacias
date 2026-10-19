@@ -158,6 +158,7 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401) {
       const pathname = window.location.pathname
       const isPublicPath = 
+        pathname === '/' ||
         pathname.includes('/login') ||
         pathname.startsWith('/p/') ||
         pathname.startsWith('/reservar') ||

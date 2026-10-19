@@ -1,14 +1,28 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from '@/plugins/axios'
+import { useAuthStore } from '@/stores/auth'
 import OfflineOrder from '@/pages/tpv/offlineOrder.vue'
 import { syncCatalogInBackground } from '@/composables/useOfflineCatalogSync'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 const showOfflineModal = ref(false)
 const isFullscreenOffline = ref(false)
+
+const isPublicRoute = computed(() => {
+  const p = route.path || window.location.pathname || ''
+  return (
+    p === '/' ||
+    p.includes('/login') ||
+    p.startsWith('/p/') ||
+    p.startsWith('/reservar') ||
+    p.startsWith('/tova-store') ||
+    p.startsWith('/restaurant-store')
+  )
+})
 
 const rateBs = computed(() => {
   const val = Number(localStorage.getItem('tpv_offline_rate_bs')) || 45.50
@@ -22,8 +36,8 @@ const rateCop = computed(() => {
 
 // ─── 1. Detección por Eventos Nativos del DOM (Corte de Red Real) ────────────
 const handleOffline = () => {
-  // Solo abrir si REALMENTE el navegador perdió la conexión a internet
-  if (!navigator.onLine && route.path !== '/tpv/offlineOrder' && !isFullscreenOffline.value) {
+  // Solo abrir si REALMENTE el navegador perdió la conexión a internet y es una ruta interna autenticada
+  if (!navigator.onLine && authStore.isAuthenticated && !isPublicRoute.value && route.path !== '/tpv/offlineOrder' && !isFullscreenOffline.value) {
     showOfflineModal.value = true
   }
 }
@@ -42,9 +56,8 @@ const setupAxiosInterceptor = () => {
         return Promise.reject(error)
       }
 
-      // Solo activar el modal de desconexión si navigator.onLine es false
-      // Esto evita que errores 404, 500, validaciones o timeouts con internet abran el modal
-      if (!navigator.onLine) {
+      // Solo activar el modal de desconexión si navigator.onLine es false y estamos en sesión interna
+      if (!navigator.onLine && authStore.isAuthenticated && !isPublicRoute.value) {
         if (route.path !== '/tpv/offlineOrder' && !isFullscreenOffline.value) {
           showOfflineModal.value = true
         }
@@ -70,20 +83,30 @@ const closeOfflineView = () => {
 
 let backgroundSyncInterval = null
 
+// Sincronizar cuando el usuario inicie sesión y entre a una ruta interna
+watch(
+  () => [authStore.isAuthenticated, isPublicRoute.value],
+  ([isAuth, isPub]) => {
+    if (isAuth && !isPub && navigator.onLine) {
+      syncCatalogInBackground()
+    }
+  }
+)
+
 // ─── Ciclo de Vida ───────────────────────────────────────────────────────────
 onMounted(() => {
   window.addEventListener('offline', handleOffline)
   window.addEventListener('online', handleOnline)
   setupAxiosInterceptor()
 
-  // Sincronización automática silenciosa del catálogo al iniciar la app
-  if (navigator.onLine) {
+  // Sincronización automática silenciosa del catálogo solo si hay sesión activa fuera de tienda pública
+  if (navigator.onLine && authStore.isAuthenticated && !isPublicRoute.value) {
     syncCatalogInBackground()
   }
 
-  // Repetir sincronización silenciosa cada 15 minutos mientras haya conexión
+  // Repetir sincronización silenciosa cada 15 minutos mientras haya conexión y sesión activa
   backgroundSyncInterval = setInterval(() => {
-    if (navigator.onLine) {
+    if (navigator.onLine && authStore.isAuthenticated && !isPublicRoute.value) {
       syncCatalogInBackground()
     }
   }, 15 * 60 * 1000)
