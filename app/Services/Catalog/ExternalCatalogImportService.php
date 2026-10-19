@@ -75,13 +75,44 @@ class ExternalCatalogImportService
         // 4. Pre-cargar conjunto de IDs existentes en memoria para evitar queries O(N)
         $existingIds = Product::withoutGlobalScope('not_deleted')->withTrashed()->pluck('id')->flip()->toArray();
 
+        // 5. Pre-cargar llaves foráneas válidas del tenant para prevenir violaciones de integridad
+        $validCategoryIds   = DB::table('categories')->pluck('id')->flip()->toArray();
+        $validLaboratoryIds = DB::table('laboratories')->pluck('id')->flip()->toArray();
+        $validOriginIds     = DB::table('origins')->pluck('id')->flip()->toArray();
+
         // Lotes de 250 registros para alta velocidad y transacciones atómicas
         $chunks = array_chunk($rows, 250);
 
         foreach ($chunks as $chunk) {
-            DB::transaction(function () use ($chunk, $date, $monthsElapsed, $isInitialLoad, &$stats, $masterMap, $existingProducts, $existingLots, &$existingIds) {
+            DB::transaction(function () use (
+                $chunk,
+                $date,
+                $monthsElapsed,
+                $isInitialLoad,
+                &$stats,
+                $masterMap,
+                $existingProducts,
+                $existingLots,
+                &$existingIds,
+                $validCategoryIds,
+                $validLaboratoryIds,
+                $validOriginIds
+            ) {
                 foreach ($chunk as $row) {
-                    $this->processRow($row, $date, $monthsElapsed, $isInitialLoad, $stats, $masterMap, $existingProducts, $existingLots, $existingIds);
+                    $this->processRow(
+                        $row,
+                        $date,
+                        $monthsElapsed,
+                        $isInitialLoad,
+                        $stats,
+                        $masterMap,
+                        $existingProducts,
+                        $existingLots,
+                        $existingIds,
+                        $validCategoryIds,
+                        $validLaboratoryIds,
+                        $validOriginIds
+                    );
                 }
             });
         }
@@ -176,7 +207,10 @@ class ExternalCatalogImportService
         array $masterMap,
         $existingProducts,
         $existingLots,
-        array &$existingIds
+        array &$existingIds,
+        array $validCategoryIds = [],
+        array $validLaboratoryIds = [],
+        array $validOriginIds = []
     ): void {
         $barcode = $row['barcode'];
         $rawName = $row['name'];
@@ -244,7 +278,7 @@ class ExternalCatalogImportService
             'external_sales_date'        => $date->format('Y-m-d'),
         ];
 
-        // Homologar relaciones e ID unificado si provienen del Master
+        // Homologar relaciones e ID unificado si provienen del Master y existen en el Tenant
         if ($masterProduct) {
             if ($isNew && !empty($masterProduct['id'])) {
                 $targetId = (int) $masterProduct['id'];
@@ -254,14 +288,14 @@ class ExternalCatalogImportService
                 }
             }
 
-            if (!empty($masterProduct['laboratory_id'])) {
-                $productData['laboratory_id'] = $masterProduct['laboratory_id'];
+            if (!empty($masterProduct['laboratory_id']) && isset($validLaboratoryIds[(int) $masterProduct['laboratory_id']])) {
+                $productData['laboratory_id'] = (int) $masterProduct['laboratory_id'];
             }
-            if (!empty($masterProduct['category_id'])) {
-                $productData['category_id'] = $masterProduct['category_id'];
+            if (!empty($masterProduct['category_id']) && isset($validCategoryIds[(int) $masterProduct['category_id']])) {
+                $productData['category_id'] = (int) $masterProduct['category_id'];
             }
-            if (!empty($masterProduct['origin_id'])) {
-                $productData['origin_id'] = $masterProduct['origin_id'];
+            if (!empty($masterProduct['origin_id']) && isset($validOriginIds[(int) $masterProduct['origin_id']])) {
+                $productData['origin_id'] = (int) $masterProduct['origin_id'];
             }
             if (!empty($masterProduct['group_id'])) {
                 $productData['group_id'] = $masterProduct['group_id'];

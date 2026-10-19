@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Hash;
 class TenantProvisioningService
 {
     public function __construct(
-        protected OriginSyncService $originSyncService
+        protected OriginSyncService $originSyncService,
+        protected CategorySyncService $categorySyncService,
+        protected LaboratorySyncService $laboratorySyncService
     ) {}
 
     /**
@@ -109,11 +111,23 @@ class TenantProvisioningService
             } catch (\Throwable $e) {}
         });
 
-        // 4. Sincronizar datos maestros del central (orígenes) hacia el nuevo tenant
+        // 4. Sincronizar datos maestros del central (orígenes, categorías, laboratorios) hacia el nuevo tenant
         try {
             $this->originSyncService->syncTenant($tenant);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning("Error sincronizando orígenes en nuevo tenant {$data['tenant_id']}: " . $e->getMessage());
+        }
+
+        try {
+            $this->categorySyncService->syncTenant($tenant);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Error sincronizando categorías en nuevo tenant {$data['tenant_id']}: " . $e->getMessage());
+        }
+
+        try {
+            $this->laboratorySyncService->syncTenant($tenant);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Error sincronizando laboratorios en nuevo tenant {$data['tenant_id']}: " . $e->getMessage());
         }
 
         return $tenant;
