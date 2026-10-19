@@ -34,6 +34,7 @@ const currentUser = computed(() => authStore.user);
 // ─── Configuración del TPV (platos, restaurante, deportes) ───────────────────
 const {
   enableDishes,
+  enableZoom,
   isRestaurant,
   isSportsRental,
   isSpecialTaxpayer,
@@ -389,7 +390,15 @@ const closeBuysModal = () => { showBuysModal.value = false; };
 const handleFlashCheckout = () => { showBuysModal.value = true; };
 
 // ─── Control de Pestaña Principal (Catálogo vs Zoom) ─────────────────────────
+const isZoomActive = computed(() => Boolean(enableZoom.value || brandingStore.settings?.enable_zoom));
 const currentTpvTab = ref("catalog");
+
+watch(isZoomActive, (active) => {
+  if (!active && currentTpvTab.value === 'zoom') {
+    currentTpvTab.value = 'catalog';
+  }
+});
+
 const handleZoomItemAdded = async () => {
   await fetchOpenOrder();
 };
@@ -511,8 +520,8 @@ useTpvInit({
       @handle-load-quotation="handleLoadQuotation"
     />
 
-    <!-- Selector de Sección Inferior: Catálogo vs Zoom -->
-    <div class="d-flex align-center justify-space-between mb-4 border-b pb-2 flex-wrap gap-2">
+    <!-- Selector de Sección Inferior: Catálogo vs Zoom (Visible solo si Zoom está activo en configuración) -->
+    <div v-if="isZoomActive" class="d-flex align-center justify-space-between mb-4 border-b pb-2 flex-wrap gap-2">
       <VTabs
         v-model="currentTpvTab"
         color="primary"
@@ -532,7 +541,7 @@ useTpvInit({
 
     <!-- Sección de Envíos Zoom -->
     <TpvZoomSection
-      v-if="currentTpvTab === 'zoom'"
+      v-if="isZoomActive && currentTpvTab === 'zoom'"
       :exchange-rates="exchangeRates"
       :selected-display-currency="selectedDisplayCurrency"
       :has-open-order="hasOpenOrder"
@@ -542,7 +551,7 @@ useTpvInit({
 
     <!-- Sección de Catálogo de Productos -->
     <TpvCatalogSection
-      v-show="currentTpvTab === 'catalog'"
+      v-show="!isZoomActive || currentTpvTab === 'catalog'"
       v-model:filter-search-query="filterSearchQuery"
       v-model:selected-laboratory="selectedLaboratory"
       v-model:selected-origin="selectedOrigin"

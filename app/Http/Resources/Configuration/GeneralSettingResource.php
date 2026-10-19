@@ -190,6 +190,7 @@ class GeneralSettingResource extends JsonResource
             'quotation_style' => $this->quotation_style ?? 'pharmacy',
             'tpv_style' => $this->tpv_style ?? 'pharmacy',
             'enable_flash_checkout' => (bool) $this->enable_flash_checkout,
+            'enable_zoom' => (bool) ($this->enable_zoom ?? false),
             'tpv_payment_methods' => $paymentMethods,
             'tpv_rate_type' => $this->tpv_rate_type ?? 'bcv',
             'enabled_offer_types' => $this->enabled_offer_types ?? ['general', 'individual', 'category', 'pack', 'company', 'doctor', 'prescription', 'expiration'],

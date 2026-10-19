@@ -4,6 +4,7 @@ import { toast } from '@/plugins/sweetalert'
 
 export function useTpvDishes() {
   const enableDishes = ref(false)
+  const enableZoom = ref(false)
   const isRestaurant = ref(false)
   const isSportsRental = ref(false)
   const isSpecialTaxpayer = ref(false)
@@ -30,6 +31,7 @@ export function useTpvDishes() {
       const settings = data.data || data
       fiscalMode.value = settings.fiscal_mode ?? 'demo'
       enableDishes.value = settings.enable_dishes !== undefined ? !!settings.enable_dishes : true
+      enableZoom.value = Boolean(settings.enable_zoom)
       isSpecialTaxpayer.value = Boolean(settings.enable_ce || settings.special_taxpayer_status === 'activa')
       allForeignSalesSpe.value = Boolean(settings.enable_ce || settings.all_foreign_sales_spe)
       isRestaurant.value = settings.tpv_style === 'restaurant'
@@ -81,6 +83,7 @@ export function useTpvDishes() {
 
   return {
     enableDishes,
+    enableZoom,
     isRestaurant,
     isSportsRental,
     isSpecialTaxpayer,

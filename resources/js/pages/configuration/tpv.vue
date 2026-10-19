@@ -22,6 +22,7 @@ const defaultSettings = {
   tpv_mode: 'complete',
   tpv_style: 'pharmacy',
   enable_flash_checkout: false,
+  enable_zoom: false,
   enable_quotations: true,
   quotation_style: 'pharmacy',
   tpv_rate_type: 'bcv',
@@ -61,6 +62,7 @@ const fetchSettings = async () => {
     'tpv_mode',
     'tpv_style',
     'enable_flash_checkout',
+    'enable_zoom',
     'enable_quotations',
     'quotation_style',
     'tpv_rate_type',
@@ -80,6 +82,7 @@ const fetchSettings = async () => {
       tpv_mode: settings.tpv_mode || 'complete',
       tpv_style: settings.tpv_style || 'pharmacy',
       enable_flash_checkout: !!settings.enable_flash_checkout,
+      enable_zoom: !!settings.enable_zoom,
       enable_quotations: settings.enable_quotations !== undefined ? !!settings.enable_quotations : true,
       quotation_style: settings.quotation_style || 'pharmacy',
       tpv_rate_type: settings.tpv_rate_type || 'bcv',
@@ -149,6 +152,7 @@ const saveSettings = async () => {
       tpv_mode: formState.tpv_mode,
       tpv_style: formState.tpv_style,
       enable_flash_checkout: formState.enable_flash_checkout,
+      enable_zoom: formState.enable_zoom,
       enable_quotations: formState.enable_quotations,
       quotation_style: formState.quotation_style,
       tpv_rate_type: formState.tpv_rate_type,
@@ -294,6 +298,7 @@ onMounted(() => {
         v-model:tpv-mode="formState.tpv_mode"
         v-model:tpv-style="formState.tpv_style"
         v-model:enable-flash-checkout="formState.enable_flash_checkout"
+        v-model:enable-zoom="formState.enable_zoom"
         v-model:tpv-rate-type="formState.tpv_rate_type"
         v-model:default-currency="formState.default_currency"
         v-model:enable-quotations="formState.enable_quotations"

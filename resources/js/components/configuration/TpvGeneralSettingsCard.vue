@@ -14,6 +14,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  enableZoom: {
+    type: Boolean,
+    default: false
+  },
   tpvRateType: {
     type: String,
     default: 'bcv'
@@ -52,6 +56,7 @@ const emit = defineEmits([
   'update:tpvMode',
   'update:tpvStyle',
   'update:enableFlashCheckout',
+  'update:enableZoom',
   'update:tpvRateType',
   'update:defaultCurrency',
   'update:enableQuotations',
@@ -88,6 +93,11 @@ const currentQuotationStyle = computed({
 const isFlashCheckout = computed({
   get: () => props.enableFlashCheckout,
   set: (val) => emit('update:enableFlashCheckout', val)
+})
+
+const isZoomEnabled = computed({
+  get: () => props.enableZoom,
+  set: (val) => emit('update:enableZoom', val)
 })
 
 const isQuotations = computed({
@@ -270,6 +280,51 @@ const quotationStyleOptions = [
               </div>
               <p class="text-caption text-medium-emphasis mb-0">
                 Procesamiento instantáneo en un clic con cliente genérico para cobros en efectivo exacto.
+              </p>
+            </div>
+          </VCard>
+        </VCol>
+
+        <!-- Módulo de Envíos y Facturación Zoom -->
+        <VCol cols="12" sm="6" md="4">
+          <VCard
+            variant="outlined"
+            class="rounded-lg h-100 pa-4 d-flex flex-column justify-space-between"
+            :class="isZoomEnabled ? 'border-primary bg-var-theme-background' : 'opacity-90'"
+          >
+            <div>
+              <div class="d-flex align-center justify-space-between mb-3">
+                <div class="d-flex align-center gap-2">
+                  <VAvatar
+                    :color="isZoomEnabled ? 'primary' : 'secondary'"
+                    variant="tonal"
+                    size="36"
+                    class="rounded-lg"
+                  >
+                    <VIcon icon="tabler-truck-delivery" size="20" />
+                  </VAvatar>
+                  <div>
+                    <span class="text-subtitle-2 font-weight-bold d-block">Módulo Zoom</span>
+                    <VChip
+                      :color="isZoomEnabled ? 'success' : 'secondary'"
+                      size="x-small"
+                      variant="tonal"
+                      class="font-weight-bold"
+                    >
+                      {{ isZoomEnabled ? 'Habilitado' : 'Deshabilitado' }}
+                    </VChip>
+                  </div>
+                </div>
+                <VSwitch
+                  v-model="isZoomEnabled"
+                  color="primary"
+                  density="comfortable"
+                  hide-details="auto"
+                  :disabled="!canEdit || isSaving"
+                />
+              </div>
+              <p class="text-caption text-medium-emphasis mb-0">
+                Habilita en el TPV la sección para facturar envíos y encomiendas Zoom con cálculo automático de IVA (16%).
               </p>
             </div>
           </VCard>
