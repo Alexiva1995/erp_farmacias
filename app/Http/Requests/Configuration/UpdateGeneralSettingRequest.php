@@ -127,6 +127,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'quotation_style' => 'nullable|string|in:pharmacy,restaurant,cosmetic',
             'tpv_style' => 'nullable|string|in:pharmacy,restaurant,sports_rental',
             'enable_flash_checkout' => 'nullable|boolean',
+            'enable_zoom' => 'nullable|boolean',
             'tpv_payment_methods' => 'nullable|array',
             'tpv_rate_type' => 'nullable|string|in:bcv,eur,binance',
             'enabled_offer_types' => 'nullable|array',

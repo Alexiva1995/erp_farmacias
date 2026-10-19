@@ -38,6 +38,7 @@ return [
         Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper::class,
         // Stancl\Tenancy\Bootstrappers\CacheTenancyBootstrapper::class, // Requiere Redis/Memcached con soporte de tags. No compatible con drivers 'database' y 'file'.
         Stancl\Tenancy\Bootstrappers\FilesystemTenancyBootstrapper::class,
+        \App\Tenancy\Bootstrappers\LoggingTenancyBootstrapper::class,
         Stancl\Tenancy\Bootstrappers\QueueTenancyBootstrapper::class,
         // Stancl\Tenancy\Bootstrappers\RedisTenancyBootstrapper::class, // Note: phpredis is needed
     ],
