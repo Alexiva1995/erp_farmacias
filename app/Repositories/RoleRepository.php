@@ -21,8 +21,8 @@ class RoleRepository implements RoleContract
         }
 
         return Role::query()
-            ->withCount('users')
             ->select($columns)
+            ->withCount('users')
             ->orderBy('id', 'asc')
             ->get();
     }
