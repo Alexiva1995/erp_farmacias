@@ -42,6 +42,7 @@ class GeneralSettingResource extends JsonResource
                     ['label' => 'Tarjeta de Débito', 'value' => 'debit_card', 'enabled' => true, 'description' => 'Punto de venta débito nacional.'],
                     ['label' => 'Tarjeta de Crédito', 'value' => 'credit_card', 'enabled' => true, 'description' => 'Punto de venta crédito nacional.'],
                     ['label' => 'Transferencia Bs', 'value' => 'bank_transfer_bs', 'enabled' => true, 'description' => 'Banco de Venezuela Cuenta Corriente: 0102-XXXX-XX-XXXXXXXXXX.'],
+                    ['label' => 'Venta a Crédito', 'value' => 'credit', 'enabled' => true, 'description' => 'Venta a crédito en Bolívares.'],
                 ]
             ]
         ];
@@ -110,6 +111,18 @@ class GeneralSettingResource extends JsonResource
         }
         if (empty($paymentMethods)) {
             $paymentMethods = $defaultPaymentMethods;
+        } elseif (isset($paymentMethods['BS']['methods']) && is_array($paymentMethods['BS']['methods'])) {
+            $hasBsCredit = collect($paymentMethods['BS']['methods'])->contains(function ($m) {
+                return ($m['value'] ?? '') === 'credit';
+            });
+            if (!$hasBsCredit) {
+                $paymentMethods['BS']['methods'][] = [
+                    'label' => 'Venta a Crédito',
+                    'value' => 'credit',
+                    'enabled' => true,
+                    'description' => 'Venta a crédito en Bolívares.',
+                ];
+            }
         }
 
         $shippingMethods = $this->ecommerce_shipping_methods;

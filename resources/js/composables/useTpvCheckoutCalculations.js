@@ -20,7 +20,7 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
 
   const requiresReference = (method, currency) => {
     if (isCashMethod(method)) return false
-    if (isCredit(method) && currency === 'USD') return false
+    if (isCredit(method)) return false
     if (method === 'balance') return false
     return true
   }

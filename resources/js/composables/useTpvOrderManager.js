@@ -347,8 +347,6 @@ export function useTpvOrderManager({
         }
 
         const ivaAmount = finalPrice * taxRateValue
-        const finalPriceTax = finalPrice * taxMultiplier
-        const finalPriceBeforeDiscountTax = finalPriceBeforeDiscount * taxMultiplier
 
         const finalIva = selectedDisplayCurrency.value === 'COP'
           ? roundUpToNearestHundred(ivaAmount)
@@ -356,18 +354,16 @@ export function useTpvOrderManager({
 
         const rawPriceBs = (item.originalPriceBs ?? item.original_price_bs ?? item.basePrice) || 0
         const finalPriceBs = rawPriceBs * (1 - dPercent / 100)
-        const finalPriceTaxBs = finalPriceBs * taxMultiplier
-        const finalPriceBeforeDiscountTaxBs = rawPriceBs * taxMultiplier
 
         return {
           order_detail_id: item.order_detail_id,
           unit_cost: finalPrice,
           iva_amount: finalIva,
-          price: finalPriceTax,
+          price: finalPrice,
           tax: item.taxRate,
-          price_before_discount: finalPriceBeforeDiscountTax,
-          price_bs: finalPriceTaxBs,
-          price_before_discount_bs: finalPriceBeforeDiscountTaxBs,
+          price_before_discount: finalPriceBeforeDiscount,
+          price_bs: finalPriceBs,
+          price_before_discount_bs: rawPriceBs,
           discount_percentage: dPercent > 0 ? dPercent : null,
           discount_type: dType,
           discount_source_id: dSourceId,

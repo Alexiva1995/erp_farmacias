@@ -117,13 +117,31 @@ class Order extends Model
         // Recalcular promociones generales antes de sumar los totales
         app(\App\Services\Order\OrderActionService::class)->applyGeneralPromotions($this);
 
-        // Sumamos (precio unitario * cantidad) de los detalles vinculados
-        $newTotal = $this->details()->select(DB::raw('SUM(price * quantity) as total'))->value('total') ?? 0;
-        $totalCost = $this->details()->select(DB::raw('SUM(unit_cost * quantity) as total'))->value('total') ?? 0;
+        // Sumamos (precio unitario * cantidad) de los detalles vinculados incluyendo IVA (16%) en productos gravados
+        $details = $this->details()->with('product:id,iva')->get();
+        $newTotal = 0;
+        $totalCost = 0;
+
+        foreach ($details as $detail) {
+            $qty = (float) ($detail->quantity ?? 0);
+            $price = (float) ($detail->price ?? 0);
+            $unitCost = (float) ($detail->unit_cost ?? 0);
+            $isTaxable = $detail->product_type !== 'dish'
+                && $detail->product_type !== 'court'
+                && ((int) ($detail->product?->iva ?? 0) === 1);
+
+            $lineSubtotal = $price * $qty;
+            $lineIva = $isTaxable ? ($lineSubtotal * 0.16) : 0;
+
+            $newTotal += ($lineSubtotal + $lineIva);
+            $totalCost += ($unitCost * $qty);
+        }
 
         // Redondeo específico para COP al total (no por unidad) para evitar discrepancias
         if (strtoupper($this->currency) === 'COP') {
             $newTotal = ceil($newTotal / 100) * 100;
+        } else {
+            $newTotal = round($newTotal, 2);
         }
 
         $totalUsd = 0;

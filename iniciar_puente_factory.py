@@ -252,6 +252,22 @@ def process_pending_invoices():
                     print("[AVISO] Documento fiscal abierto detectado. Anulando (cmd 7)...")
                     execute_hka_cmd("7")
 
+                # Detectar modalidad de pago (Crédito vs Efectivo/Divisa) desde la orden
+                order_data = data.get('order') or {}
+                payment_methods = order_data.get('payment_methods') if isinstance(order_data, dict) else []
+                if not isinstance(payment_methods, list):
+                    payment_methods = []
+
+                is_credit = any(
+                    str((pm or {}).get('method', '')).strip().lower() in ['credit', 'credito', 'crédito']
+                    for pm in payment_methods
+                    if isinstance(pm, dict)
+                )
+
+                if is_credit:
+                    print("[PAGO] Modalidad CREDITO detectada -> Programando descriptor PE16CREDITO...")
+                    execute_hka_cmd("PE16CREDITO")
+
                 # 1. Encabezado de Cliente
                 client_name = clean_text(data.get('business_name') or 'CLIENTE CONTADO', 40)
                 raw_rif = str(data.get('identification') or 'V000000000')
@@ -264,6 +280,8 @@ def process_pending_invoices():
                 ]
                 if client_addr:
                     cmds.append(f"i01{client_addr}")
+                if is_credit:
+                    cmds.append("i02CONDICION DE PAGO: CREDITO")
 
                 # 2. Renglones de Productos (Protocolo Extendido GF+ oficial SRP-812)
                 for detail in details:
@@ -287,27 +305,34 @@ def process_pending_invoices():
 
                     cmds.append(f"GF+{tax_code}{price_str}||{qty_str}||{p_name}")
 
-                # 3. Medio de Pago (120 Divisas con IGTF 3% o 101 Bolivares) y Cierre (199)
-                spe_raw = str(data.get('spe', '')).lower()
-                spe_amount = float(data.get('spe_surcharge_amount', 0.0) or 0.0)
-                is_spe = spe_raw in ['1', 'true'] or spe_amount > 0
-
-                if is_spe:
-                    print(f"[PAGO] Divisas / SPE detectado -> Aplicando Medio de Pago Divisa (120) con IGTF 3%...")
-                    cmds.append("120")
-                else:
-                    print(f"[PAGO] Moneda Nacional detectada -> Aplicando Medio de Pago Efectivo Bs (101)...")
-                    cmds.append("101")
-
-                # Cierre oficial de documento fiscal (Flag 50 / IGTF)
-                cmds.append("199")
-
-                # 4. Enviar comandos paso a paso
+                # 3. Enviar comandos de encabezado y renglones paso a paso
                 all_ok = True
                 for c in cmds:
                     if not execute_hka_cmd(c):
                         all_ok = False
                         break
+
+                # 4. Medio de Pago (116 Credito, 120 Divisas con IGTF 3% o 101 Bolivares) y Cierre (199)
+                if all_ok:
+                    spe_raw = str(data.get('spe', '')).lower()
+                    spe_amount = float(data.get('spe_surcharge_amount', 0.0) or 0.0)
+                    is_spe = spe_raw in ['1', 'true'] or spe_amount > 0
+
+                    if is_credit and not is_spe:
+                        print("[PAGO] Modalidad CREDITO en Bs -> Aplicando Medio de Pago CREDITO (116)...")
+                        if not execute_hka_cmd("116"):
+                            print("[AVISO] Medio 116 rechazado, aplicando fallback 101...")
+                            all_ok = execute_hka_cmd("101")
+                    elif is_spe:
+                        print("[PAGO] Divisas / SPE detectado -> Aplicando Medio de Pago Divisa (120) con IGTF 3%...")
+                        all_ok = execute_hka_cmd("120")
+                    else:
+                        print("[PAGO] Moneda Nacional detectada -> Aplicando Medio de Pago Efectivo Bs (101)...")
+                        all_ok = execute_hka_cmd("101")
+
+                    if all_ok:
+                        # Cierre oficial de documento fiscal (Flag 50 / IGTF)
+                        execute_hka_cmd("199")
 
                 if all_ok:
                     time.sleep(1)

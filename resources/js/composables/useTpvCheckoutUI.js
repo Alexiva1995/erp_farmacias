@@ -18,7 +18,8 @@ export function useTpvCheckoutUI({
       { label: "P. Móvil", value: "mobile_payment" },
       { label: "Transf.", value: "bank_transfer_bs" },
       { label: "Débito", value: "debit_card" },
-      { label: "Crédito", value: "credit_card" },
+      { label: "T. Crédito", value: "credit_card" },
+      { label: "Crédito", value: "credit" },
     ],
     USD: [
       { label: "Efectivo", value: "cash_usd" },
@@ -90,23 +91,32 @@ export function useTpvCheckoutUI({
         rawMethods = fallbackPaymentMethods[currencyKey] || []
       }
 
-      const shortenLabel = (lbl) => {
+      const shortenLabel = (lbl, val) => {
         if (!lbl) return ''
-        if (lbl.toLowerCase().includes('pago móvil') || lbl.toLowerCase().includes('pago movil')) return 'P. Móvil'
-        if (lbl.toLowerCase().includes('débito') || lbl.toLowerCase().includes('debito')) return 'Débito'
-        if (lbl.toLowerCase().includes('crédito') || lbl.toLowerCase().includes('credito')) return 'Crédito'
-        if (lbl.toLowerCase().includes('transferencia')) return 'Transf.'
-        if (lbl.toLowerCase().includes('efectivo')) return 'Efectivo'
+        const lower = lbl.toLowerCase()
+        if (lower.includes('pago móvil') || lower.includes('pago movil')) return 'P. Móvil'
+        if (lower.includes('débito') || lower.includes('debito')) return 'Débito'
+        if (val === 'credit_card' || (lower.includes('tarjeta') && (lower.includes('crédito') || lower.includes('credito')))) return 'T. Crédito'
+        if (val === 'credit' || lower.includes('crédito') || lower.includes('credito')) return 'Crédito'
+        if (lower.includes('transferencia')) return 'Transf.'
+        if (lower.includes('efectivo')) return 'Efectivo'
         return lbl
       }
 
       const enabledMethods = rawMethods
         .filter((m) => m.enabled !== false)
-        .map((m) => ({
-          ...m,
-          label: shortenLabel(m.label),
-          value: normalizeMethodValue(m.value, currencyKey),
-        }))
+        .map((m) => {
+          const normalizedVal = normalizeMethodValue(m.value, currencyKey)
+          return {
+            ...m,
+            label: shortenLabel(m.label, normalizedVal),
+            value: normalizedVal,
+          }
+        })
+
+      if (currencyKey === 'BS' && !rawMethods.some((m) => m.value === 'credit')) {
+        enabledMethods.push({ label: 'Crédito', value: 'credit', enabled: true })
+      }
 
       if (currencyKey === 'USD' && props.orderData?.client?.balance > 0) {
         if (!enabledMethods.some((m) => m.value === 'balance')) {

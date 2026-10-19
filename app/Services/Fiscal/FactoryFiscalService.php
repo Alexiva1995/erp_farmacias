@@ -225,6 +225,18 @@ class FactoryFiscalService implements FactoryFiscalServiceInterface
         }
 
         try {
+            // Detectar modalidad de pago desde la orden asociada
+            $paymentMethods = is_array($fiscal->order?->payment_methods ?? null) ? $fiscal->order->payment_methods : [];
+            $isCredit = collect($paymentMethods)->contains(function ($pm) {
+                $method = strtolower((string) ($pm['method'] ?? ''));
+                return in_array($method, ['credit', 'credito', 'crédito'], true);
+            });
+
+            if ($isCredit) {
+                // Programar descriptor del medio de pago 16 como CREDITO antes de abrir documento fiscal
+                $this->executeCmd($socket, "PE16CREDITO");
+            }
+
             // 1. Encabezado del cliente
             $cleanName = $this->sanitizeText($fiscal->business_name ?: 'CLIENTE CONTADO', 40);
             $cleanRif = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($fiscal->identification ?: 'V000000000')));
@@ -234,6 +246,9 @@ class FactoryFiscalService implements FactoryFiscalServiceInterface
             $commands[] = "iS*" . $cleanName;
             $commands[] = "iR*" . $cleanRif;
             $commands[] = "i00" . $cleanAddress;
+            if ($isCredit) {
+                $commands[] = "i01CONDICION DE PAGO: CREDITO";
+            }
 
             // 2. Líneas de detalle / productos
             foreach ($fiscal->details as $detail) {
@@ -260,11 +275,7 @@ class FactoryFiscalService implements FactoryFiscalServiceInterface
                 $commands[] = $rateChar . $priceFormatted . $qtyFormatted . $desc;
             }
 
-            // 3. Medios de pago / Cierre
-            // 101 = Efectivo Bs / Cierre total
-            $commands[] = "101";
-
-            // 4. Enviar comandos secuencialmente
+            // 3. Enviar comandos de encabezado y renglones secuencialmente
             foreach ($commands as $cmd) {
                 $accepted = $this->executeCmd($socket, $cmd);
                 if (!$accepted) {
@@ -281,6 +292,30 @@ class FactoryFiscalService implements FactoryFiscalServiceInterface
                     ];
                 }
             }
+
+            // 4. Medios de pago / Cierre
+            $paymentCmd = $isCredit ? "116" : "101";
+            $paymentAccepted = $this->executeCmd($socket, $paymentCmd);
+            if (!$paymentAccepted && $isCredit) {
+                // Fallback a 101 si el medio 16 no está habilitado en el firmware de la máquina
+                $paymentAccepted = $this->executeCmd($socket, "101");
+            }
+
+            if (!$paymentAccepted) {
+                $outStatus = $this->sendRaw($socket, "ReadFpStatus():1");
+                @socket_close($socket);
+
+                Log::error("[FactoryFiscal] Error al ejecutar comando de pago '{$paymentCmd}'. Estado: {$outStatus}");
+                return [
+                    'success' => false,
+                    'message' => "La impresora fiscal rechazó el comando de pago '{$paymentCmd}'. Estado: {$outStatus}",
+                    'failed_command' => $paymentCmd,
+                    'status' => $outStatus,
+                ];
+            }
+
+            // En caso de que Flag 50=01 (IGTF activo) requiera comando 199 para cerrar la factura
+            $this->executeCmd($socket, "199");
 
             // 5. Obtener estado S1 para capturar el consecutivo fiscal y el serial
             $outS1 = $this->sendRaw($socket, "UploadStatus():S1");

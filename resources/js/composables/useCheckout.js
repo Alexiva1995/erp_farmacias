@@ -22,6 +22,7 @@ export function useCheckout(props) {
       { label: "Transferencia", value: "bank_transfer_bs" },
       { label: "T. Debito", value: "debit_card" },
       { label: "T. Crédito", value: "credit_card" },
+      { label: "Crédito", value: "credit" },
     ],
     USD: [
       { label: "Efectivo", value: "cash_usd" },
@@ -37,7 +38,7 @@ export function useCheckout(props) {
 
   const requiresReference = (method, currency) => {
     if (isCashMethod(method)) return false;
-    if (isCredit(method) && currency === "USD") return false;
+    if (method === "credit") return false;
     if (method === "balance") return false;
     return true;
   };

@@ -43,10 +43,17 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $exceptions->report(function (\Throwable $e) {
+            $userId = null;
+            try {
+                $userId = auth()->check() ? auth()->id() : null;
+            } catch (\Throwable) {
+                $userId = null;
+            }
+
             \Illuminate\Support\Facades\Log::error($e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'userId' => auth()->id(),
+                'userId' => $userId,
             ]);
         });
     })->create();

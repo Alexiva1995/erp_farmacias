@@ -114,6 +114,7 @@ const getPaymentMethodLabel = (methodValue, currency) => {
       { label: "Tarjeta", value: "card" },
       { label: "T. Débito", value: "debit_card" },
       { label: "T. Crédito", value: "credit_card" },
+      { label: "Crédito", value: "credit" },
     ],
     USD: [
       { label: "Efectivo", value: "cash_usd" },

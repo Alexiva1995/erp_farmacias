@@ -131,8 +131,9 @@ export function useTpvCheckoutManager({
       availablePayment.inputAmount = availablePayment.amount
       availablePayment._isInputActive = false
     } else if (methodValue === 'credit') {
-      availablePayment.amount = remainingAmount.value
-      availablePayment.inputAmount = remainingAmount.value
+      const convertedCreditAmount = getConvertedRemainingAmount(targetCurrency)
+      availablePayment.amount = convertedCreditAmount
+      availablePayment.inputAmount = convertedCreditAmount
       availablePayment._isInputActive = false
       availablePayment._isReferenceActive = false
     } else {

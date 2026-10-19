@@ -15,9 +15,14 @@ class RoleRepository implements RoleContract
      */
     public function list(): Collection
     {
+        $columns = ['id', 'name', 'created_at', 'updated_at'];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('roles', 'menu_permissions')) {
+            $columns[] = 'menu_permissions';
+        }
+
         return Role::query()
             ->withCount('users')
-            ->select(['id', 'name', 'menu_permissions', 'created_at', 'updated_at'])
+            ->select($columns)
             ->orderBy('id', 'asc')
             ->get();
     }

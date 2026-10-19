@@ -706,14 +706,8 @@ class OrderActionService
                 $product = $detail->product;
                 $quantity = $detail->quantity;
 
-                // Usar el precio en BS mandado desde el frontend (Fijo y exacto)
-                // Si por alguna razón no existe (ventas viejas), cae de nuevo al catálogo
+                // detail->price_bs y product->price_bs representan siempre el precio unitario NETO (sin IVA)
                 $priceBs = (float)($detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100))));
-
-                // Si el producto tiene IVA, extraer el neto
-                if ($product->iva == 1) {
-                    $priceBs = $priceBs / 1.16;
-                }
 
                 $itemSubtotal = $priceBs * $quantity;
 
@@ -818,13 +812,8 @@ class OrderActionService
 
                 $product = $detail->product;
 
-                // Usar el precio en BS mandado desde el frontend para el desglose
-                $priceBs = $detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100)));
-
-                // Extraer el neto para el desglose detallado si tiene IVA
-                if ($product->iva == 1) {
-                    $priceBs = $priceBs / 1.16;
-                }
+                // detail->price_bs y product->price_bs representan siempre el precio unitario NETO (sin IVA)
+                $priceBs = (float)($detail->price_bs ?? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100))));
 
                 $isTaxable = ($product->iva == 1);
                 $itemSubtotalBs = $priceBs * $quantity;
@@ -1090,7 +1079,9 @@ class OrderActionService
                 } elseif ($payment['currency'] == 'COP') {
                     $currencies[] = 'COP';
                 }
-                if ($method === 'binance' || $method === 'paypal' || $method === 'credit') {
+                if ($method === 'binance' || $method === 'paypal') {
+                    $currencies[] = 'USD';
+                } elseif ($method === 'credit' && empty($payment['currency'])) {
                     $currencies[] = 'USD';
                 }
             }
@@ -1295,7 +1286,12 @@ class OrderActionService
             // Recalcular totales desde los detalles en BD (no confiar en el cliente)
             $orderId->updateTotals();
             $orderId->total_amount_usd = $orderId->details->sum(function ($d) {
-                return ($d->unit_price_usd ?? 0) * ($d->quantity ?? 0);
+                $qty = (float) ($d->quantity ?? 0);
+                $unitUsd = (float) ($d->unit_price_usd ?? 0);
+                $isTaxable = $d->product_type !== 'dish'
+                    && $d->product_type !== 'court'
+                    && ((int) ($d->product?->iva ?? 0) === 1);
+                return ($unitUsd * $qty) * ($isTaxable ? 1.16 : 1.0);
             });
 
             // Determinar si aplica Recargo Sujeto Pasivo Especial (CE / IGTF 3%)
@@ -1369,8 +1365,17 @@ class OrderActionService
                 foreach ($paymentsList as $idx => $p) {
                     $m = strtolower((string) ($p['method'] ?? ''));
                     if ($m === 'credit') {
-                        $paymentsList[$idx]['amount'] = round($creditNeeded, 2);
-                        $paymentsList[$idx]['currency'] = $orderCurrency;
+                        $payCurrency = strtoupper($p['currency'] ?? $orderCurrency);
+                        if ($payCurrency === $orderCurrency) {
+                            $paymentsList[$idx]['amount'] = round($creditNeeded, 2);
+                        } else {
+                            $rateOrder = $rates[$orderCurrency] ?? 1;
+                            $ratePay = $rates[$payCurrency] ?? 1;
+                            $neededInUsd = ($orderCurrency === 'USD') ? $creditNeeded : ($creditNeeded / ($rateOrder ?: 1));
+                            $neededInPayCurrency = ($payCurrency === 'USD') ? $neededInUsd : ($neededInUsd * $ratePay);
+                            $paymentsList[$idx]['amount'] = round($neededInPayCurrency, 2);
+                        }
+                        $paymentsList[$idx]['currency'] = $payCurrency;
                     }
                 }
 
@@ -1397,18 +1402,28 @@ class OrderActionService
             }
 
             if ($hasCreditInRequest) {
-                // Registrar el crédito con el monto exacto asignado a crédito
+                // Registrar el crédito con el monto equivalente en USD (moneda base de la tabla credits)
                 $creditPaymentItem = collect($request->payments)->first(function ($p) {
                     return strtolower((string)($p['method'] ?? '')) === 'credit';
                 });
-                $creditAmount = $creditPaymentItem ? (float) ($creditPaymentItem['amount'] ?? 0) : (float) $orderId->total_amount;
+                $rawCreditAmount = $creditPaymentItem ? (float) ($creditPaymentItem['amount'] ?? 0) : (float) $orderId->total_amount;
+                $creditCurrency = strtoupper($creditPaymentItem['currency'] ?? $orderId->currency ?? 'USD');
 
-                if ($creditAmount > 0) {
+                $creditAmountUsd = $rawCreditAmount;
+                if ($creditCurrency !== 'USD') {
+                    $resourceService = app(ResourceService::class);
+                    $rate = (float) ($resourceService->getExchangeRate($creditCurrency) ?: 1);
+                    if ($rate > 0) {
+                        $creditAmountUsd = round($rawCreditAmount / $rate, 2);
+                    }
+                }
+
+                if ($creditAmountUsd > 0) {
                     Credit::create([
                         'client_id' => $request->client_id ?? $orderId->client_id,
                         'order_id' => $orderId->id,
-                        'credit_amount' => $creditAmount,
-                        'pending_amount' => $creditAmount,
+                        'credit_amount' => $creditAmountUsd,
+                        'pending_amount' => $creditAmountUsd,
                         'credit_date' => Carbon::now(),
                         'status' => 'Active'
                     ]);
@@ -1478,7 +1493,15 @@ class OrderActionService
                             $current_cash->usd_paypal += $amount;
                             break;
                         case 'credit':
-                            $current_cash->usd_credit += $orderTotal;
+                            $payCurr = strtoupper($payment['currency'] ?? $orderCurrency);
+                            if ($payCurr === 'USD') {
+                                $current_cash->usd_credit += ($amount > 0 ? $amount : $orderTotal);
+                            } else {
+                                $resourceService = app(ResourceService::class);
+                                $rate = (float) ($resourceService->getExchangeRate($payCurr) ?: 1);
+                                $rawCred = $amount > 0 ? $amount : $orderTotal;
+                                $current_cash->usd_credit += ($rate > 0) ? round($rawCred / $rate, 2) : $rawCred;
+                            }
                             break;
                         case 'cash_bs':
                             $current_cash->bs_cash += $amount;
