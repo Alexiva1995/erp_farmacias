@@ -21,6 +21,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # --- CONFIGURACION ---
 API_BASE_URL = "https://ensalud.tovaerp.com/api"
 LOCAL_TCP_PORT = 8090
+SOCKET_TIMEOUT = 5
 POLLING_INTERVAL = 3  # Segundos entre consultas
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROCESSED_FILE = os.path.join(BASE_DIR, "processed_invoices.txt")

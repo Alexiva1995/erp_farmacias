@@ -216,13 +216,22 @@ class FiscalPrinterController extends Controller
 
             // Fallback a modelo Order si no se localizó directamente en FiscalHistory
             if (!$invoice && !empty($numericOnly)) {
-                $order = \App\Models\Order::with(['client', 'fiscalHistories'])
-                    ->where('id', $numericOnly)
-                    ->orWhere('invoice_number', $query)
-                    ->orWhere('invoice_number', $padded)
-                    ->orWhere('invoice_number', $numericOnly)
-                    ->latest('id')
-                    ->first();
+                $hasInvoiceCol = \Illuminate\Support\Facades\Schema::hasColumn('orders', 'invoice_number');
+                $orderQuery = \App\Models\Order::with(['client', 'fiscalHistories'])->where('id', $numericOnly);
+
+                if ($hasInvoiceCol) {
+                    $orderQuery->orWhere('invoice_number', $query)
+                        ->orWhere('invoice_number', $padded)
+                        ->orWhere('invoice_number', $numericOnly);
+                } else {
+                    $orderQuery->orWhereHas('fiscalHistories', function ($q) use ($query, $padded, $numericOnly) {
+                        $q->where('invoice_number', $query)
+                            ->orWhere('invoice_number', $padded)
+                            ->orWhere('invoice_number', $numericOnly);
+                    });
+                }
+
+                $order = $orderQuery->latest('id')->first();
 
                 if ($order) {
                     $orderFiscal = $order->fiscalHistories()->latest('id')->first();

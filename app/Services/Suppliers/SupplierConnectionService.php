@@ -413,6 +413,7 @@ class SupplierConnectionService
                 }
             }
 
+            $token = null;
             if (!empty($connection->username) && !empty($connection->password) && !$isCristmedicals) {
                 $rawPass = (string) $connection->password;
                 $decryptedPass = $rawPass;
