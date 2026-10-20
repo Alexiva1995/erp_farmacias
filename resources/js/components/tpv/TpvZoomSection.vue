@@ -153,22 +153,22 @@ const handleAddZoomToOrder = async (openCheckoutImmediately = false) => {
           </div>
           <div>
             <h2 class="text-subtitle-1 font-weight-black text-uppercase text-high-emphasis leading-none mb-1">
-              Facturación Envíos Zoom
+              Ingreso Envíos Zoom
             </h2>
             <span class="text-caption text-medium-emphasis">
-              Factura envíos y encomiendas Zoom con cálculo automático de IVA (16%)
+              Registro de encomiendas y servicios Zoom (Documento no fiscal)
             </span>
           </div>
         </div>
 
         <VChip
-          color="warning"
+          color="success"
           variant="tonal"
           size="small"
           class="font-weight-black text-uppercase letter-spacing-1 px-3"
         >
-          <VIcon start icon="tabler-bolt" size="14" />
-          Servicio Fiscal 16% IVA
+          <VIcon start icon="tabler-file-off" size="14" />
+          No Genera Factura Fiscal
         </VChip>
       </div>
     </VCardItem>
@@ -268,8 +268,8 @@ const handleAddZoomToOrder = async (openCheckoutImmediately = false) => {
                 :disabled="!isFormValid || isSubmitting"
                 @click="handleAddZoomToOrder(true)"
               >
-                <VIcon start icon="tabler-cash" size="18" />
-                <span>Agregar y Facturar Ahora</span>
+                <VIcon start icon="tabler-file-dollar" size="18" />
+                <span>INGRESO ZOOM</span>
               </VBtn>
             </div>
           </VCard>
@@ -281,10 +281,10 @@ const handleAddZoomToOrder = async (openCheckoutImmediately = false) => {
             <div>
               <div class="d-flex align-center justify-space-between mb-3">
                 <span class="text-subtitle-2 font-weight-black text-uppercase text-medium-emphasis">
-                  Desglose Fiscal
+                  Resumen de Ingreso
                 </span>
-                <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
-                  IVA 16%
+                <VChip size="x-small" color="success" variant="tonal" class="font-weight-bold">
+                  Ingreso Zoom
                 </VChip>
               </div>
 
@@ -305,7 +305,7 @@ const handleAddZoomToOrder = async (openCheckoutImmediately = false) => {
                 </div>
 
                 <div class="d-flex justify-space-between align-center py-2 bg-primary-subtle rounded-lg px-2 mt-1">
-                  <span class="text-subtitle-2 font-weight-black text-primary text-uppercase">Total a Facturar:</span>
+                  <span class="text-subtitle-2 font-weight-black text-primary text-uppercase">Total a Ingresar:</span>
                   <span class="text-h6 font-weight-black text-primary">
                     {{ formatCurrency(totalValue, selectedCurrency) }}
                   </span>
