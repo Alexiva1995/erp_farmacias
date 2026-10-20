@@ -861,7 +861,10 @@ class OrderActionService
     {
         $resourceService = app(ResourceService::class);
         $orderCurrency = strtoupper($order->currency ?? 'USD');
-        $orderTotal = (float) $order->total_amount + (float) ($order->spe_surcharge_amount ?? 0);
+        $generalSettings = \DB::table('general_settings')->first();
+        $isFiscalActive = $generalSettings && $generalSettings->fiscal_mode === 'activa';
+        $chargeSpeToCustomer = $isFiscalActive && (bool)($generalSettings->enable_ce ?? false);
+        $orderTotal = (float) $order->total_amount + ($chargeSpeToCustomer ? (float) ($order->spe_surcharge_amount ?? 0) : 0);
 
         $rates = [
             'USD' => (float) ($resourceService->getExchangeRate('USD') ?: 1),
@@ -1298,13 +1301,27 @@ class OrderActionService
             $currency = strtoupper($orderId->currency);
             $isForeignCurrency = in_array($currency, ['USD', 'COP']);
             $isCeEnabled = $generalSettings && (bool) ($generalSettings->enable_ce ?? false);
+            $chargeSpeToCustomer = $isFiscalActive && $isCeEnabled;
             
             $hasIvaItems = $orderId->details->contains(function ($detail) {
                 return optional($detail->product)->iva == 1;
             });
 
-            // En modo demo o con CE desactivado, NO se aplica recargo SPE automáticamente
-            $applySpe = $isFiscalActive && $isForeignCurrency && $isCeEnabled;
+            // Determinar si aplica Recargo Sujeto Pasivo Especial (CE / IGTF 3%)
+            $applySpe = false;
+            if ($isFiscalActive) {
+                // Modo Activo / Producción: Toda venta en divisas con CE activo aplica el 3%
+                if ($isForeignCurrency && $isCeEnabled) {
+                    $applySpe = true;
+                }
+            } else {
+                // Modo Demo: muestreo selectivo (1 de cada 5 o con IVA) para registrar SPE fiscal internamente sin alterar el cobro en caja
+                if ($isForeignCurrency) {
+                    if ($hasIvaItems || mt_rand(1, 5) === 1) {
+                        $applySpe = true;
+                    }
+                }
+            }
 
             if ($applySpe) {
                 $orderId->spe_surcharge_rate = 3.00;
@@ -1323,7 +1340,7 @@ class OrderActionService
 
             // Si incluye crédito, sincronizar el renglón de crédito al monto exacto restante de la orden para evitar discrepancias por recálculo
             if ($hasCreditInRequest && !empty($request->payments) && is_array($request->payments)) {
-                $orderTotalCalculated = (float) $orderId->total_amount + (float) ($orderId->spe_surcharge_amount ?? 0);
+                $orderTotalCalculated = (float) $orderId->total_amount + ($chargeSpeToCustomer ? (float) ($orderId->spe_surcharge_amount ?? 0) : 0);
                 $orderCurrency = strtoupper($orderId->currency ?? 'USD');
                 $resourceService = app(ResourceService::class);
                 $rates = [
