@@ -1303,23 +1303,8 @@ class OrderActionService
                 return optional($detail->product)->iva == 1;
             });
 
-            $applySpe = false;
-
-            if ($isFiscalActive) {
-                // Modo Activo / Producción: Toda venta en divisas con CE activo aplica el 3%
-                if ($isForeignCurrency && $isCeEnabled) {
-                    $applySpe = true;
-                }
-            } else {
-                // Modo Demo:
-                // - Productos con IVA en divisas aplican 3%
-                // - Muestreo selectivo de 1 de cada 5 ventas en divisas aplica 3%
-                if ($isForeignCurrency && $isCeEnabled) {
-                    if ($hasIvaItems || mt_rand(1, 5) === 1) {
-                        $applySpe = true;
-                    }
-                }
-            }
+            // En modo demo o con CE desactivado, NO se aplica recargo SPE automáticamente
+            $applySpe = $isFiscalActive && $isForeignCurrency && $isCeEnabled;
 
             if ($applySpe) {
                 $orderId->spe_surcharge_rate = 3.00;
