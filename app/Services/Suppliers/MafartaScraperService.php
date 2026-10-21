@@ -66,9 +66,20 @@ class MafartaScraperService implements MafartaScraperServiceInterface
         $user = $user ?: env('MAFARTA_USERNAME');
         $pass = $pass ?: env('MAFARTA_PASSWORD');
 
+        if (empty($user) || empty($pass)) {
+            \Illuminate\Support\Facades\Log::warning('[MafartaScraper] Faltan credenciales para el proveedor ID: ' . $supplierId);
+            return [
+                'total_extracted' => 0,
+                'updated' => 0,
+                'skipped' => 0,
+                'supplier_id' => $supplierId,
+                'details' => [],
+            ];
+        }
+
         $activeToken = $sessionToken ?: ($conn?->structure['session_token'] ?? null);
 
-        $result = $this->fetchDocumentsWithToken($user, $pass, $activeToken);
+        $result = $this->fetchDocumentsWithToken((string) $user, (string) $pass, $activeToken);
         $documents = $result['documents'] ?? [];
         $token = $result['token'] ?? null;
 

@@ -56,6 +56,7 @@ class ZoomService implements ZoomServiceInterface
                     'currency' => $orderCurrency,
                     'total_amount' => 0.00,
                     'total_amount_usd' => 0.00,
+                    'money_returns' => 0.00,
                     'total_cost' => 0.00,
                     'order_date' => Carbon::now(),
                 ]);

@@ -341,7 +341,19 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
         $user = $user ?: env('CRISTMEDICALS_USERNAME');
         $pass = $pass ?: env('CRISTMEDICALS_PASSWORD');
 
-        $invoices = $this->fetchInvoices($user, $pass);
+        if (empty($user) || empty($pass)) {
+            \Illuminate\Support\Facades\Log::warning('[CristmedicalsScraper] Faltan credenciales para el proveedor ID: ' . $supplierId);
+            return [
+                'total_extracted' => 0,
+                'created' => 0,
+                'updated' => 0,
+                'skipped' => 0,
+                'supplier_id' => $supplierId,
+                'details' => [],
+            ];
+        }
+
+        $invoices = $this->fetchInvoices((string) $user, (string) $pass);
 
         if (empty($invoices)) {
             return [
