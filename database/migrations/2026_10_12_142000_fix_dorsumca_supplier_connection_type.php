@@ -32,13 +32,14 @@ return new class extends Migration
                     ->delete();
             } else {
                 // Si solo tenía la de tipo 'api', convertirla a 'file'
+                $updateData = ['type' => 'file'];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('supplier_connections', 'name')) {
+                    $updateData['name'] = DB::raw("CONCAT(COALESCE(name, 'Dorsumca'), ' (Excel)')");
+                }
                 DB::table('supplier_connections')
                     ->where('supplier_id', $supplierId)
                     ->where('type', 'api')
-                    ->update([
-                        'type' => 'file',
-                        'name' => DB::raw("CONCAT(COALESCE(name, 'Dorsumca'), ' (Excel)')"),
-                    ]);
+                    ->update($updateData);
             }
         }
     }
