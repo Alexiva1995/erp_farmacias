@@ -48,16 +48,16 @@ const monthsList = [
 const yearsList = [2024, 2025, 2026, 2027, 2028]
 
 const tableHeaders = [
-  { title: 'Período', key: 'period_label', sortable: false },
+  { title: 'PERÍODO', key: 'period_label', sortable: false },
   { title: 'Rango de Fechas', key: 'dates', sortable: false },
   { title: 'Tipo', key: 'period_type', sortable: false, align: 'center' },
   { title: 'Operaciones', key: 'entries_count', sortable: false, align: 'center' },
-  { title: 'Total Ventas c/IVA', key: 'total_sales_with_vat', sortable: false, align: 'end' },
-  { title: 'No Gravadas', key: 'total_non_taxable_sales', sortable: false, align: 'end' },
-  { title: 'Base Imponible (16%)', key: 'total_taxpayer_taxable_base', sortable: false, align: 'end' },
-  { title: 'Débito Fiscal (IVA)', key: 'total_taxpayer_vat', sortable: false, align: 'end' },
-  { title: 'IVA Retenido', key: 'total_vat_withheld', sortable: false, align: 'end' },
-  { title: 'IGTF', key: 'total_igtf', sortable: false, align: 'end' },
+  { title: 'TOT. VENTAS', key: 'total_sales_with_vat', sortable: false, align: 'end' },
+  { title: 'EXENTAS / N.G.', key: 'total_non_taxable_sales', sortable: false, align: 'end' },
+  { title: 'B.I. (16%)', key: 'total_taxpayer_taxable_base', sortable: false, align: 'end' },
+  { title: 'IVA (16%)', key: 'total_taxpayer_vat', sortable: false, align: 'end' },
+  { title: 'RET. IVA', key: 'total_vat_withheld', sortable: false, align: 'end' },
+  { title: 'IGTF (3%)', key: 'total_igtf', sortable: false, align: 'end' },
   { title: 'Estado', key: 'status', sortable: false, align: 'center' },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'center', width: '160px' },
 ]

@@ -15,6 +15,7 @@ use App\Models\Retention;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PurchaseBookRepository implements PurchaseBookContract
 {
@@ -68,24 +69,35 @@ class PurchaseBookRepository implements PurchaseBookContract
             $endDate = Carbon::create($year, $month, 1)->endOfMonth()->endOfDay();
         }
 
-        $book = PurchaseBook::firstOrCreate(
-            [
+        $query = PurchaseBook::where('year', $year)->where('month', $month);
+        if ($fortnight !== null) {
+            $query->where('fortnight', $fortnight);
+        } else {
+            $query->whereNull('fortnight');
+        }
+
+        $book = $query->first();
+
+        if (!$book) {
+            $book = PurchaseBook::create([
                 'year' => $year,
                 'month' => $month,
                 'fortnight' => $fortnight,
-            ],
-            [
                 'period_type' => $periodType,
                 'start_date' => $startDate->toDateString(),
                 'end_date' => $endDate->toDateString(),
                 'status' => PurchaseBookStatus::OPEN,
                 'enable_zoom_snapshot' => $enableZoom,
-            ]
-        );
+            ]);
+        }
 
         // Si el libro está abierto y no tiene entradas, sincronizar transacciones
         if ($book->isOpen() && $book->entries()->count() === 0) {
-            $this->syncTransactions($book);
+            try {
+                $this->syncTransactions($book);
+            } catch (\Throwable $e) {
+                Log::warning("No se pudieron autosincronizar las transacciones del libro de compras ID {$book->id}: " . $e->getMessage());
+            }
         }
 
         return $book;
@@ -118,7 +130,11 @@ class PurchaseBookRepository implements PurchaseBookContract
 
             // 2. Obtener Retenciones de IVA emitidas dentro del rango del libro
             $retentions = Retention::with(['supplier', 'invoices'])
-                ->where('type', \App\Enums\RetentionType::IVA)
+                ->where(function ($q) {
+                    $q->where('type', 'iva')
+                      ->orWhere('type', 'IVA')
+                      ->orWhereNull('type');
+                })
                 ->whereBetween('date', [$startDate, $endDate])
                 ->orderBy('date', 'asc')
                 ->orderBy('id', 'asc')
@@ -163,105 +179,71 @@ class PurchaseBookRepository implements PurchaseBookContract
                     'date' => $inv->created_invoice_date ? $inv->created_invoice_date->format('Y-m-d') : $startDate,
                     'invoice_id' => $inv->id,
                     'retention_id' => null,
-                    'rif' => $inv->supplier?->rif ?? 'J-00000000-0',
-                    'supplier_name' => $inv->supplier?->social_reason ?? $inv->supplier?->name ?? 'PROVEEDOR DESCONOCIDO',
+                    'rif' => $inv->supplier?->rif ?? 'N/A',
+                    'supplier_name' => $inv->supplier?->name ?: ($inv->supplier?->social_reason ?: 'PROVEEDOR VARIOS'),
                     'import_planilla_number' => null,
                     'import_dossier_number' => null,
-                    'invoice_number' => $inv->invoice_number,
-                    'control_number' => $inv->control_number,
+                    'invoice_number' => (string) $inv->invoice_number,
+                    'control_number' => (string) ($inv->control_number ?? ''),
                     'debit_note_number' => null,
                     'credit_note_number' => null,
                     'affected_invoice_number' => null,
                     'document_type' => 'FACTURA',
                     'transaction_type' => '01-REG',
-                    'total_purchases_with_vat' => $totalAmount,
+                    'total_purchases_with_vat' => $totalAmount > 0 ? $totalAmount : round($exemptAmount + $taxableBase + $taxAmount, 2),
                     'exempt_purchases' => $exemptAmount,
                     'general_taxable_base' => $generalBase,
                     'general_aliquot' => $generalBase > 0 ? 0.16 : 0.00,
                     'general_vat' => $generalVat,
                     'reduced_taxable_base' => $reducedBase,
-                    'reduced_aliquot' => $reducedBase > 0 ? 0.08 : 0.00,
+                    'reduced_aliquot' => $hasReduced ? 0.08 : 0.00,
                     'reduced_vat' => $reducedVat,
                     'vat_withheld' => 0.00,
                     'withholding_receipt_number' => null,
                 ]);
             }
 
-            // Agregar Retenciones de IVA como 05-RET (una fila por cada factura asociada)
+            // Agregar Comprobantes de Retención de IVA como 05-RET
             foreach ($retentions as $ret) {
-                $retInvoices = $ret->invoices;
-                $retDate = $ret->date ? $ret->date->format('Y-m-d') : $startDate;
-                $retSupplier = $ret->supplier;
+                $affectedInvoices = $ret->invoices;
+                $affectedInvoiceNum = $affectedInvoices->isNotEmpty()
+                    ? $affectedInvoices->pluck('invoice_number')->implode(', ')
+                    : null;
 
-                if ($retInvoices->isNotEmpty()) {
-                    foreach ($retInvoices as $retInv) {
-                        $withheld = round(((float) $retInv->tax_amount) * ((float) ($ret->retention_percentage ?? 0.75)), 2);
-
-                        $rawRows->push([
-                            'type' => 'retention',
-                            'date' => $retDate,
-                            'invoice_id' => $retInv->id,
-                            'retention_id' => $ret->id,
-                            'rif' => $retSupplier?->rif ?? $retInv->supplier?->rif ?? 'J-00000000-0',
-                            'supplier_name' => $retSupplier?->social_reason ?? $retSupplier?->name ?? $retInv->supplier?->social_reason ?? 'PROVEEDOR',
-                            'import_planilla_number' => null,
-                            'import_dossier_number' => null,
-                            'invoice_number' => null,
-                            'control_number' => $retInv->control_number,
-                            'debit_note_number' => null,
-                            'credit_note_number' => null,
-                            'affected_invoice_number' => $retInv->invoice_number,
-                            'document_type' => 'COMPROBANTE DE RETENCION DE IVA',
-                            'transaction_type' => '05-RET',
-                            'total_purchases_with_vat' => 0.00,
-                            'exempt_purchases' => 0.00,
-                            'general_taxable_base' => 0.00,
-                            'general_aliquot' => 0.16,
-                            'general_vat' => 0.00,
-                            'reduced_taxable_base' => 0.00,
-                            'reduced_aliquot' => 0.00,
-                            'reduced_vat' => 0.00,
-                            'vat_withheld' => $withheld,
-                            'withholding_receipt_number' => $ret->number,
-                        ]);
-                    }
-                } else {
-                    // Si no tiene facturas enlazadas directamente
-                    $rawRows->push([
-                        'type' => 'retention',
-                        'date' => $retDate,
-                        'invoice_id' => null,
-                        'retention_id' => $ret->id,
-                        'rif' => $retSupplier?->rif ?? 'J-00000000-0',
-                        'supplier_name' => $retSupplier?->social_reason ?? $retSupplier?->name ?? 'PROVEEDOR',
-                        'import_planilla_number' => null,
-                        'import_dossier_number' => null,
-                        'invoice_number' => null,
-                        'control_number' => null,
-                        'debit_note_number' => null,
-                        'credit_note_number' => null,
-                        'affected_invoice_number' => null,
-                        'document_type' => 'COMPROBANTE DE RETENCION DE IVA',
-                        'transaction_type' => '05-RET',
-                        'total_purchases_with_vat' => 0.00,
-                        'exempt_purchases' => 0.00,
-                        'general_taxable_base' => 0.00,
-                        'general_aliquot' => 0.16,
-                        'general_vat' => 0.00,
-                        'reduced_taxable_base' => 0.00,
-                        'reduced_aliquot' => 0.00,
-                        'reduced_vat' => 0.00,
-                        'vat_withheld' => (float) $ret->total_withheld_amount,
-                        'withholding_receipt_number' => $ret->number,
-                    ]);
-                }
+                $rawRows->push([
+                    'type' => 'retention',
+                    'date' => $ret->date ? $ret->date->format('Y-m-d') : $startDate,
+                    'invoice_id' => $affectedInvoices->first()?->id,
+                    'retention_id' => $ret->id,
+                    'rif' => $ret->supplier?->rif ?? 'N/A',
+                    'supplier_name' => $ret->supplier?->name ?: ($ret->supplier?->social_reason ?: 'PROVEEDOR VARIOS'),
+                    'import_planilla_number' => null,
+                    'import_dossier_number' => null,
+                    'invoice_number' => null,
+                    'control_number' => null,
+                    'debit_note_number' => null,
+                    'credit_note_number' => null,
+                    'affected_invoice_number' => $affectedInvoiceNum,
+                    'document_type' => 'RETENCIÓN',
+                    'transaction_type' => '05-RET',
+                    'total_purchases_with_vat' => 0.00,
+                    'exempt_purchases' => 0.00,
+                    'general_taxable_base' => (float) ($ret->total_taxable_base ?? 0),
+                    'general_aliquot' => 0.16,
+                    'general_vat' => (float) ($ret->total_tax_amount ?? 0),
+                    'reduced_taxable_base' => 0.00,
+                    'reduced_aliquot' => 0.00,
+                    'reduced_vat' => 0.00,
+                    'vat_withheld' => (float) ($ret->total_withheld_amount ?? 0),
+                    'withholding_receipt_number' => (string) $ret->number,
+                ]);
             }
 
-            // Ordenar cronológicamente y asignar número correlativo
+            // Ordenar por fecha de operación cronológicamente
             $sorted = $rawRows->sortBy([
                 ['date', 'asc'],
-                ['transaction_type', 'asc'],
-            ])->values();
+                ['invoice_number', 'asc'],
+            ]);
 
             $opNum = 1;
             foreach ($sorted as $item) {

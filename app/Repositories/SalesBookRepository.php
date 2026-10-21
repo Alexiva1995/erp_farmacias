@@ -16,6 +16,7 @@ use App\Models\SalesBookEntry;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SalesBookRepository implements SalesBookContract
 {
@@ -69,23 +70,34 @@ class SalesBookRepository implements SalesBookContract
             $endDate = Carbon::create($year, $month, 1)->endOfMonth()->endOfDay();
         }
 
-        $book = SalesBook::firstOrCreate(
-            [
+        $query = SalesBook::where('year', $year)->where('month', $month);
+        if ($fortnight !== null) {
+            $query->where('fortnight', $fortnight);
+        } else {
+            $query->whereNull('fortnight');
+        }
+
+        $book = $query->first();
+
+        if (!$book) {
+            $book = SalesBook::create([
                 'year' => $year,
                 'month' => $month,
                 'fortnight' => $fortnight,
-            ],
-            [
                 'period_type' => $periodType,
                 'start_date' => $startDate->toDateString(),
                 'end_date' => $endDate->toDateString(),
                 'status' => PurchaseBookStatus::OPEN,
                 'enable_zoom_snapshot' => $enableZoom,
-            ]
-        );
+            ]);
+        }
 
         if ($book->isOpen() && $book->entries()->count() === 0) {
-            $this->syncTransactions($book);
+            try {
+                $this->syncTransactions($book);
+            } catch (\Throwable $e) {
+                Log::warning("No se pudieron autosincronizar las transacciones del libro de ventas ID {$book->id}: " . $e->getMessage());
+            }
         }
 
         return $book;
@@ -110,8 +122,17 @@ class SalesBookRepository implements SalesBookContract
             $endDate = $book->end_date->format('Y-m-d');
 
             $generalSetting = GeneralSetting::first();
-            $defaultSerial = $generalSetting?->fiscal_printer_serial ?:
-                (FiscalHistory::whereNotNull('fiscal_id')->latest('id')->value('fiscal_id') ?: 'Z1F0000379');
+            $defaultSerial = $generalSetting?->fiscal_printer_serial;
+            if (!$defaultSerial) {
+                try {
+                    $defaultSerial = FiscalHistory::whereNotNull('fiscal_id')->latest('id')->value('fiscal_id');
+                } catch (\Throwable) {
+                    $defaultSerial = null;
+                }
+            }
+            if (!$defaultSerial) {
+                $defaultSerial = 'Z1F0000379';
+            }
 
             // 1. Obtener Reportes Z en el rango de fechas
             $zReports = FiscalZReport::whereBetween('report_date', [$startDate, $endDate])
@@ -184,7 +205,10 @@ class SalesBookRepository implements SalesBookContract
 
             // Agregar Notas de Crédito (FiscalCommand CREDIT_NOTE)
             foreach ($creditNotes as $cn) {
-                $payload = $cn->payload ?? [];
+                $payload = is_array($cn->payload)
+                    ? $cn->payload
+                    : (is_string($cn->payload) ? (json_decode($cn->payload, true) ?: []) : []);
+
                 $date = $cn->created_at ? $cn->created_at->format('Y-m-d') : $startDate;
 
                 $clientName = $payload['client_name'] ?? 'CLIENTE';
@@ -252,8 +276,8 @@ class SalesBookRepository implements SalesBookContract
             // Ordenar cronológicamente
             $sorted = $rawRows->sortBy([
                 ['date', 'asc'],
-                ['transaction_type', 'asc'],
-            ])->values();
+                ['z_report_number', 'asc'],
+            ]);
 
             $opNum = 1;
             foreach ($sorted as $item) {

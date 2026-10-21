@@ -28,8 +28,29 @@ class Retention extends Model
         'total_withheld_amount' => 'decimal:2',
         'retention_percentage' => 'decimal:2',
         'subtrahend' => 'decimal:2',
-        'type' => \App\Enums\RetentionType::class,
     ];
+
+    /**
+     * Accesor tolerante para el Enum RetentionType (evita fatal error si la BD contiene '' o nulos)
+     */
+    public function getTypeAttribute($value): ?\App\Enums\RetentionType
+    {
+        if (empty($value)) {
+            return \App\Enums\RetentionType::IVA;
+        }
+
+        return \App\Enums\RetentionType::tryFrom(strtolower((string) $value)) ?? \App\Enums\RetentionType::IVA;
+    }
+
+    /**
+     * Mutador tolerante para el Enum RetentionType
+     */
+    public function setTypeAttribute($value): void
+    {
+        $this->attributes['type'] = $value instanceof \App\Enums\RetentionType
+            ? $value->value
+            : (empty($value) ? 'iva' : strtolower((string) $value));
+    }
 
     public function supplier(): BelongsTo
     {

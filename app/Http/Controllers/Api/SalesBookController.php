@@ -23,7 +23,11 @@ class SalesBookController extends Controller
 
     public function index(IndexSalesBookRequest $request): JsonResponse
     {
-        $this->salesBookService->findOrCreateCurrentBook();
+        try {
+            $this->salesBookService->findOrCreateCurrentBook();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Error al inicializar libro actual de ventas: " . $e->getMessage());
+        }
 
         $filters = $request->validated();
         $perPage = (int) ($filters['per_page'] ?? 15);

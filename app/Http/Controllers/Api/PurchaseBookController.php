@@ -24,7 +24,11 @@ class PurchaseBookController extends Controller
     public function index(IndexPurchaseBookRequest $request): JsonResponse
     {
         // Asegurar la existencia del libro del período actual
-        $this->purchaseBookService->findOrCreateCurrentBook();
+        try {
+            $this->purchaseBookService->findOrCreateCurrentBook();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Error al inicializar libro actual de compras: " . $e->getMessage());
+        }
 
         $filters = $request->validated();
         $perPage = (int) ($filters['per_page'] ?? 15);
