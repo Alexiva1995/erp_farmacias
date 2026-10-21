@@ -1171,6 +1171,19 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::post('/parse-seniat', [\App\Http\Controllers\Api\FiscalContributionController::class, 'parseRawSeniat']);
         Route::patch('/{id}/toggle-payment', [\App\Http\Controllers\Api\FiscalContributionController::class, 'togglePayment']);
     });
+
+    Route::prefix('purchase-books')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\PurchaseBookController::class, 'index']);
+        Route::post('/generate-period', [\App\Http\Controllers\Api\PurchaseBookController::class, 'generatePeriod']);
+        Route::get('/{id}', [\App\Http\Controllers\Api\PurchaseBookController::class, 'show']);
+        Route::post('/{id}/sync', [\App\Http\Controllers\Api\PurchaseBookController::class, 'sync']);
+        Route::post('/{id}/entries', [\App\Http\Controllers\Api\PurchaseBookController::class, 'storeEntry']);
+        Route::put('/{id}/entries/{entryId}', [\App\Http\Controllers\Api\PurchaseBookController::class, 'updateEntry']);
+        Route::delete('/{id}/entries/{entryId}', [\App\Http\Controllers\Api\PurchaseBookController::class, 'destroyEntry']);
+        Route::post('/{id}/close', [\App\Http\Controllers\Api\PurchaseBookController::class, 'close']);
+        Route::get('/{id}/export/excel', [\App\Http\Controllers\Api\PurchaseBookController::class, 'exportExcel']);
+        Route::get('/{id}/export/pdf', [\App\Http\Controllers\Api\PurchaseBookController::class, 'exportPdf']);
+    });
 });
 
 
