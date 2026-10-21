@@ -81,6 +81,7 @@ const diasFull = {
 };
 
 const isNewSupplier = computed(() => !formData.value.id);
+const isReadOnly = computed(() => !isNewSupplier.value && !authStore.isAdmin);
 
 // ─── Métodos ───────────────────────────────────────────────────────────────
 const closeDialog = () => {
@@ -310,7 +311,7 @@ watch(
                           label="Tipo de Proveedor *"
                           prepend-inner-icon="tabler-category"
                           :error-messages="formErrors.type"
-                          :readonly="!authStore.isAdmin"
+                          :readonly="isReadOnly"
                         />
                       </VCol>
 
@@ -338,7 +339,7 @@ watch(
                           placeholder="Ej: Droguería Nena"
                           prepend-inner-icon="tabler-building-store"
                           :error-messages="formErrors.name"
-                          :readonly="!authStore.isAdmin"
+                          :readonly="isReadOnly"
                         />
                       </VCol>
 
@@ -349,7 +350,7 @@ watch(
                           placeholder="Ej: Droguería Nena C.A."
                           prepend-inner-icon="tabler-certificate"
                           :error-messages="formErrors.social_reason"
-                          :readonly="!authStore.isAdmin"
+                          :readonly="isReadOnly"
                         />
                       </VCol>
 
@@ -360,7 +361,7 @@ watch(
                           placeholder="J-12345678-9"
                           prepend-inner-icon="tabler-id-badge-2"
                           :error-messages="formErrors.rif"
-                          :readonly="!authStore.isAdmin"
+                          :readonly="isReadOnly"
                         />
                       </VCol>
 
@@ -371,7 +372,7 @@ watch(
                           placeholder="Ubicación o dirección completa"
                           prepend-inner-icon="tabler-map-pin"
                           :error-messages="formErrors.address"
-                          :readonly="!authStore.isAdmin"
+                          :readonly="isReadOnly"
                         />
                       </VCol>
                     </VRow>
@@ -396,7 +397,7 @@ watch(
                             placeholder="04121234567"
                             prepend-inner-icon="tabler-phone"
                             :error-messages="formErrors.sales_phone"
-                            :readonly="!authStore.isAdmin"
+                            :readonly="isReadOnly"
                           />
                         </VCol>
 
@@ -408,7 +409,7 @@ watch(
                             placeholder="04147654321"
                             prepend-inner-icon="tabler-phone-incoming"
                             :error-messages="formErrors.collections_phone"
-                            :readonly="!authStore.isAdmin"
+                            :readonly="isReadOnly"
                           />
                         </VCol>
 
@@ -422,7 +423,7 @@ watch(
                             :error-messages="formErrors.payment_email"
                             hint="Se enviará automáticamente el soporte de pago a este correo"
                             persistent-hint
-                            :readonly="!authStore.isAdmin"
+                            :readonly="isReadOnly"
                           />
                         </VCol>
 
@@ -437,7 +438,7 @@ watch(
                             label="Condición de Vencimiento"
                             prepend-inner-icon="tabler-calendar-stats"
                             :error-messages="formErrors.payment_due_type"
-                            :readonly="!authStore.isAdmin"
+                            :readonly="isReadOnly"
                           />
                         </VCol>
 
@@ -453,7 +454,7 @@ watch(
                             label="Referencia de Fecha"
                             prepend-inner-icon="tabler-timeline"
                             :error-messages="formErrors.invoice_date_reference"
-                            :readonly="!authStore.isAdmin"
+                            :readonly="isReadOnly"
                           />
                           <AppTextField
                             v-else-if="formData.payment_due_type === 'custom' && isFieldVisible('custom_due_days')"
@@ -462,7 +463,7 @@ watch(
                             type="number"
                             prepend-inner-icon="tabler-numbers"
                             :error-messages="formErrors.custom_due_days"
-                            :readonly="!authStore.isAdmin"
+                            :readonly="isReadOnly"
                           />
                           <AppSelect
                             v-else-if="formData.payment_due_type === 'early_payment' && isFieldVisible('payment_due_reference')"
@@ -474,7 +475,7 @@ watch(
                             label="Calcular desde"
                             prepend-inner-icon="tabler-clock-play"
                             :error-messages="formErrors.payment_due_reference"
-                            :readonly="!authStore.isAdmin"
+                            :readonly="isReadOnly"
                           />
                         </VCol>
 
@@ -486,7 +487,7 @@ watch(
                             placeholder="Ej: 15"
                             prepend-inner-icon="tabler-calendar-time"
                             :error-messages="formErrors.credit_days"
-                            :readonly="!authStore.isAdmin"
+                            :readonly="isReadOnly"
                           />
                         </VCol>
 
@@ -500,7 +501,7 @@ watch(
                             placeholder="0.00"
                             prepend-inner-icon="tabler-shopping-cart-dollar"
                             :error-messages="formErrors.min_order_amount"
-                            :readonly="!authStore.isAdmin"
+                            :readonly="isReadOnly"
                           />
                         </VCol>
                       </VRow>
