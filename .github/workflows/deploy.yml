@@ -171,3 +171,52 @@ jobs:
             php artisan route:cache
             php artisan view:cache
             php artisan queue:restart || true
+
+
+  # Despliegue en Servidor 3 (victoriadoreshop)
+  deploy-server-3:
+    name: Deploy to Servidor Independiente (victoriadoreshop)
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-assets
+          path: public/build
+
+      - name: Transfer Compiled Assets via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_3_HOST || secrets.SERVER_HOST || '162.240.166.50' }}
+          username: ${{ secrets.SERVER_3_USER || 'victoriadoreshop' }}
+          key: ${{ secrets.SERVER_3_KEY || secrets.SERVER_KEY || secrets.SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_3_PASSPHRASE || secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
+          password: ${{ secrets.SERVER_3_PASSWORD || secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SERVER_3_PORT || secrets.SERVER_PORT || 22022 }}
+          source: "public/build"
+          target: ${{ secrets.SERVER_3_DEPLOY_PATH || '/home/victoriadoreshop/public_html' }}
+          strip_components: 0
+
+      - name: Execute Remote Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_3_HOST || secrets.SERVER_HOST || '162.240.166.50' }}
+          username: ${{ secrets.SERVER_3_USER || 'victoriadoreshop' }}
+          key: ${{ secrets.SERVER_3_KEY || secrets.SERVER_KEY || secrets.SSH_KEY }}
+          passphrase: ${{ secrets.SERVER_3_PASSPHRASE || secrets.SERVER_PASSPHRASE || secrets.SSH_PASSPHRASE }}
+          password: ${{ secrets.SERVER_3_PASSWORD || secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SERVER_3_PORT || secrets.SERVER_PORT || 22022 }}
+          script: |
+            cd ${{ secrets.SERVER_3_DEPLOY_PATH || '/home/victoriadoreshop/public_html' }}
+            git pull origin ${{ github.ref_name }}
+            composer install --no-dev --optimize-autoloader --no-interaction
+            php artisan migrate --force
+            php artisan optimize:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan queue:restart || true

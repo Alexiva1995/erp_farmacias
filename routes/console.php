@@ -10,10 +10,27 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('app:update-exchange-rate')->dailyAt('00:10');
-Schedule::command('tenants:run app:update-exchange-rate')->dailyAt('00:10');
-Schedule::command('app:close-cash')->dailyAt('23:59');
-Schedule::command('tenants:run app:close-cash')->dailyAt('23:59');
+// Helper para ejecutar comandos tanto en BD local/central como en tenants si existen
+$scheduleTenantAware = function (string $command, callable $scheduleConfig) {
+    // 1. Siempre registrar para la base de datos principal/independiente
+    $scheduleConfig(Schedule::command($command));
+
+    // 2. Si existen tenants registrados en el sistema y la tabla existe, programar para los tenants
+    try {
+        $hasTenants = class_exists(\Stancl\Tenancy\Database\Models\Tenant::class)
+            && \Illuminate\Support\Facades\Schema::hasTable('tenants')
+            && \Stancl\Tenancy\Database\Models\Tenant::exists();
+
+        if ($hasTenants) {
+            $scheduleConfig(Schedule::command("tenants:run {$command}"));
+        }
+    } catch (\Throwable) {
+        // Ignorar si la base de datos no tiene soporte o conexión de tenants
+    }
+};
+
+$scheduleTenantAware('app:update-exchange-rate', fn ($event) => $event->dailyAt('00:10'));
+$scheduleTenantAware('app:close-cash', fn ($event) => $event->dailyAt('23:59'));
 Schedule::command('app:clear-expired-reservations')->everyMinute();
 Schedule::command('products:ai-categorize')
     ->dailyAt('02:00')
@@ -100,37 +117,41 @@ Schedule::command('lots:consolidate-duplicates')
         \Log::error('[ConsolidateLots] Falló la consolidación automática de lotes duplicados a las 04:00 AM');
     });
 
-Schedule::command('tenants:run dronena:sync-invoices')
-    ->dailyAt('04:00')
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->onFailure(function () {
-        \Log::error('[DronenaSync] Falló la sincronización automática de facturas a las 04:00 AM');
-    });
+$scheduleTenantAware('dronena:sync-invoices', function ($event) {
+    $event->dailyAt('04:00')
+        ->withoutOverlapping()
+        ->runInBackground()
+        ->onFailure(function () {
+            \Log::error('[DronenaSync] Falló la sincronización automática de facturas a las 04:00 AM');
+        });
+});
 
-Schedule::command('tenants:run drocerca:sync-invoices')
-    ->dailyAt('04:30')
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->onFailure(function () {
-        \Log::error('[DrocercaSync] Falló la sincronización automática de facturas de Drocerca a las 04:30 AM');
-    });
+$scheduleTenantAware('drocerca:sync-invoices', function ($event) {
+    $event->dailyAt('04:30')
+        ->withoutOverlapping()
+        ->runInBackground()
+        ->onFailure(function () {
+            \Log::error('[DrocercaSync] Falló la sincronización automática de facturas de Drocerca a las 04:30 AM');
+        });
+});
 
-Schedule::command('tenants:run drosymca:sync-invoices')
-    ->dailyAt('04:45')
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->onFailure(function () {
-        \Log::error('[DrosymcaSync] Falló la sincronización automática de facturas de Drosymca a las 04:45 AM');
-    });
+$scheduleTenantAware('drosymca:sync-invoices', function ($event) {
+    $event->dailyAt('04:45')
+        ->withoutOverlapping()
+        ->runInBackground()
+        ->onFailure(function () {
+            \Log::error('[DrosymcaSync] Falló la sincronización automática de facturas de Drosymca a las 04:45 AM');
+        });
+});
 
-Schedule::command('tenants:run supplier:sync-email-catalogs')
-    ->hourly()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->onFailure(function () {
-        \Log::error('[EmailSupplierSync] Falló la sincronización automática de catálogos desde Gmail');
-    });
+$scheduleTenantAware('supplier:sync-email-catalogs', function ($event) {
+    $event->hourly()
+        ->withoutOverlapping()
+        ->runInBackground()
+        ->onFailure(function () {
+            \Log::error('[EmailSupplierSync] Falló la sincronización automática de catálogos desde Gmail');
+        });
+});
 
 
 // Reposición automática de inventario: cada config activa define su propio cron
