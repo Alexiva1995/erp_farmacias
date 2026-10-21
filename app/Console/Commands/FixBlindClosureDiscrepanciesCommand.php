@@ -71,7 +71,7 @@ class FixBlindClosureDiscrepanciesCommand extends Command
                 // Buscar el valor teórico del sistema que se mostró en pantalla en la nota original
                 // Ej: "COP Físico: Declarado 272,300.00 / Sistema 268,700.00"
                 $extractedSysCop = null;
-                if (preg_match('/COP\s+F[ií]sico:\s*Declarado\s*[\d,\.]+\s*\/\s*Sistema\s*([\d,\.]+)/i', $blindNote, $matches)) {
+                if (preg_match('/COP.+?Sistema\s*([\d,\.]+)/i', $blindNote, $matches)) {
                     $cleanSys = str_replace(',', '', $matches[1]);
                     $extractedSysCop = (float) $cleanSys;
                 }
