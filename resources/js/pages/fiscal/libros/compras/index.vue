@@ -47,18 +47,17 @@ const monthsList = [
 
 const yearsList = [2024, 2025, 2026, 2027, 2028]
 
+// Encabezados optimizados UI/UX y Fiscal: concisos, profesionales y con ancho predeterminado
 const tableHeaders = [
-  { title: 'Período', key: 'period_label', sortable: false },
-  { title: 'Rango de Fechas', key: 'dates', sortable: false },
-  { title: 'Tipo', key: 'period_type', sortable: false, align: 'center' },
-  { title: 'Operaciones', key: 'entries_count', sortable: false, align: 'center' },
-  { title: 'Total Compras c/IVA', key: 'total_purchases_with_vat', sortable: false, align: 'end' },
-  { title: 'Exento', key: 'total_exempt_purchases', sortable: false, align: 'end' },
-  { title: 'Base Imponible (16%)', key: 'total_general_taxable_base', sortable: false, align: 'end' },
-  { title: 'Crédito Fiscal (IVA)', key: 'total_general_vat', sortable: false, align: 'end' },
-  { title: 'IVA Retenido', key: 'total_vat_withheld', sortable: false, align: 'end' },
-  { title: 'Estado', key: 'status', sortable: false, align: 'center' },
-  { title: 'Acciones', key: 'actions', sortable: false, align: 'center', width: '160px' },
+  { title: 'PERÍODO', key: 'period_label', sortable: false, minWidth: '170px' },
+  { title: 'TIPO / OPS', key: 'period_type', sortable: false, align: 'center', minWidth: '120px' },
+  { title: 'TOT. COMPRAS', key: 'total_purchases_with_vat', sortable: false, align: 'end', minWidth: '135px' },
+  { title: 'EXENTO', key: 'total_exempt_purchases', sortable: false, align: 'end', minWidth: '125px' },
+  { title: 'B.I. (16%)', key: 'total_general_taxable_base', sortable: false, align: 'end', minWidth: '125px' },
+  { title: 'CRÉDITO (IVA)', key: 'total_general_vat', sortable: false, align: 'end', minWidth: '125px' },
+  { title: 'RET. IVA', key: 'total_vat_withheld', sortable: false, align: 'end', minWidth: '115px' },
+  { title: 'ESTADO', key: 'status', sortable: false, align: 'center', minWidth: '110px' },
+  { title: 'ACCIONES', key: 'actions', sortable: false, align: 'center', width: '130px', minWidth: '130px' },
 ]
 
 const fetchBooks = async () => {
@@ -163,7 +162,6 @@ onMounted(() => {
             density="compact"
             variant="outlined"
             hide-details
-            clearable
             @update:model-value="fetchBooks"
           />
         </VCol>
@@ -176,8 +174,8 @@ onMounted(() => {
             label="Mes"
             density="compact"
             variant="outlined"
-            hide-details
             clearable
+            hide-details
             @update:model-value="fetchBooks"
           />
         </VCol>
@@ -212,67 +210,65 @@ onMounted(() => {
         :headers="tableHeaders"
         :items="books"
         :loading="loading"
-        density="comfortable"
+        density="compact"
         hover
         no-data-text="No se encontraron libros de compras para los filtros seleccionados."
       >
+        <!-- Período + Rango de Fechas Integrado Compacto -->
         <template #item.period_label="{ item }">
-          <div class="d-flex flex-column">
-            <span class="font-weight-bold text-high-emphasis">{{ item.period_label }}</span>
+          <div class="d-flex flex-column py-1">
+            <span class="font-weight-bold text-high-emphasis text-body-2">{{ item.period_label }}</span>
             <span class="text-caption text-medium-emphasis">
-              {{ item.company_info?.name }}
+              {{ item.start_date }} al {{ item.end_date }}
             </span>
           </div>
         </template>
 
-        <template #item.dates="{ item }">
-          <span class="text-caption">
-            {{ item.start_date }} al {{ item.end_date }}
-          </span>
-        </template>
-
+        <!-- Tipo Quincenal/Mensual + Cantidad de Operaciones en Stack -->
         <template #item.period_type="{ item }">
-          <VChip size="small" variant="tonal" :color="item.period_type === 'fortnightly' ? 'info' : 'primary'">
-            {{ item.period_type === 'fortnightly' ? 'Quincenal' : 'Mensual' }}
-          </VChip>
+          <div class="d-flex flex-column align-center gap-1 py-1">
+            <VChip size="x-small" variant="tonal" :color="item.period_type === 'fortnightly' ? 'info' : 'primary'" class="font-weight-medium">
+              {{ item.period_type === 'fortnightly' ? 'Quincenal' : 'Mensual' }}
+            </VChip>
+            <span class="text-caption text-medium-emphasis font-weight-medium">
+              {{ item.entries_count }} ops
+            </span>
+          </div>
         </template>
 
-        <template #item.entries_count="{ item }">
-          <VChip size="x-small" variant="flat" color="secondary" class="font-weight-bold">
-            {{ item.entries_count }} ops
-          </VChip>
-        </template>
-
+        <!-- Totales Numéricos Formateados con Tipografía Tabular Compacta -->
         <template #item.total_purchases_with_vat="{ item }">
-          <span class="font-weight-bold text-high-emphasis">
+          <span class="font-weight-bold text-high-emphasis text-body-2 font-tabular">
             {{ formatNumber(item.total_purchases_with_vat) }}
           </span>
         </template>
 
         <template #item.total_exempt_purchases="{ item }">
-          <span>{{ formatNumber(item.total_exempt_purchases) }}</span>
+          <span class="text-body-2 font-tabular">{{ formatNumber(item.total_exempt_purchases) }}</span>
         </template>
 
         <template #item.total_general_taxable_base="{ item }">
-          <span>{{ formatNumber(item.total_general_taxable_base) }}</span>
+          <span class="text-body-2 font-tabular">{{ formatNumber(item.total_general_taxable_base) }}</span>
         </template>
 
         <template #item.total_general_vat="{ item }">
-          <span class="text-success font-weight-medium">{{ formatNumber(item.total_general_vat) }}</span>
+          <span class="text-success font-weight-medium text-body-2 font-tabular">{{ formatNumber(item.total_general_vat) }}</span>
         </template>
 
         <template #item.total_vat_withheld="{ item }">
-          <span class="text-error font-weight-bold">{{ formatNumber(item.total_vat_withheld) }}</span>
+          <span class="font-weight-bold text-body-2 font-tabular" :class="Number(item.total_vat_withheld) > 0 ? 'text-error' : 'text-medium-emphasis'">
+            {{ formatNumber(item.total_vat_withheld) }}
+          </span>
         </template>
 
         <template #item.status="{ item }">
           <VChip
-            size="small"
+            size="x-small"
             :color="item.is_closed ? 'error' : 'success'"
             variant="tonal"
             class="font-weight-bold"
           >
-            <VIcon start size="14">{{ item.is_closed ? 'tabler-lock' : 'tabler-lock-open' }}</VIcon>
+            <VIcon start size="12">{{ item.is_closed ? 'tabler-lock' : 'tabler-lock-open' }}</VIcon>
             {{ item.is_closed ? 'Cerrado' : 'Abierto' }}
           </VChip>
         </template>
@@ -286,11 +282,11 @@ onMounted(() => {
                   v-bind="tooltipProps"
                   icon
                   variant="tonal"
-                  size="small"
+                  size="x-small"
                   color="primary"
                   @click="openBookDetail(item.id)"
                 >
-                  <VIcon size="18">tabler-eye</VIcon>
+                  <VIcon size="16">tabler-eye</VIcon>
                 </VBtn>
               </template>
             </VTooltip>
@@ -302,11 +298,11 @@ onMounted(() => {
                   v-bind="tooltipProps"
                   icon
                   variant="text"
-                  size="small"
+                  size="x-small"
                   color="success"
                   @click="handleExportExcel(item.id)"
                 >
-                  <VIcon size="18">tabler-file-spreadsheet</VIcon>
+                  <VIcon size="16">tabler-file-spreadsheet</VIcon>
                 </VBtn>
               </template>
             </VTooltip>
@@ -318,11 +314,11 @@ onMounted(() => {
                   v-bind="tooltipProps"
                   icon
                   variant="text"
-                  size="small"
+                  size="x-small"
                   color="error"
                   @click="handleExportPdf(item.id)"
                 >
-                  <VIcon size="18">tabler-file-type-pdf</VIcon>
+                  <VIcon size="16">tabler-file-type-pdf</VIcon>
                 </VBtn>
               </template>
             </VTooltip>
@@ -333,28 +329,34 @@ onMounted(() => {
 
     <!-- Modal Detalle del Libro de Compras -->
     <PurchaseBookDetailDialog
+      v-if="selectedBookId"
       v-model="showDetailModal"
       :book-id="selectedBookId"
       @book-updated="fetchBooks"
+      @book-closed="fetchBooks"
     />
 
-    <!-- Modal para Generar Período Específico -->
-    <VDialog v-model="showGenerateModal" max-width="480px" persistent>
-      <VCard>
-        <VCardTitle class="bg-primary text-white py-3 px-4 d-flex align-center justify-space-between">
-          <span class="text-subtitle-1 font-weight-bold text-white">Generar Período de Libro</span>
-          <VBtn icon variant="text" color="white" density="compact" @click="showGenerateModal = false">
-            <VIcon icon="tabler-x" />
+    <!-- Modal Generar Nuevo Período -->
+    <VDialog v-model="showGenerateModal" max-width="500">
+      <VCard class="rounded-lg">
+        <VCardTitle class="d-flex align-center justify-space-between pa-4">
+          <span class="text-h6 font-weight-bold">Generar Período Fiscal</span>
+          <VBtn icon variant="text" size="small" @click="showGenerateModal = false">
+            <VIcon>tabler-x</VIcon>
           </VBtn>
         </VCardTitle>
+        <VDivider />
         <VCardText class="pa-4">
+          <p class="text-caption text-medium-emphasis mb-4">
+            Selecciona el año, mes y quincena para inicializar y sincronizar automáticamente las facturas y retenciones del período.
+          </p>
           <VForm @submit.prevent="handleGeneratePeriod">
-            <VRow density="compact">
+            <VRow>
               <VCol cols="12" sm="6">
                 <VSelect
                   v-model="generateForm.year"
                   :items="yearsList"
-                  label="Año *"
+                  label="Año"
                   variant="outlined"
                   density="compact"
                 />
@@ -365,7 +367,7 @@ onMounted(() => {
                   :items="monthsList"
                   item-title="title"
                   item-value="value"
-                  label="Mes *"
+                  label="Mes"
                   variant="outlined"
                   density="compact"
                 />
@@ -374,8 +376,8 @@ onMounted(() => {
                 <VSelect
                   v-model="generateForm.fortnight"
                   :items="[
-                    { title: 'Quincena 1 (Del 01 al 15)', value: 1 },
-                    { title: 'Quincena 2 (Del 16 al fin de mes)', value: 2 },
+                    { title: '1era Quincena (Día 01 al 15)', value: 1 },
+                    { title: '2da Quincena (Día 16 al fin de mes)', value: 2 },
                   ]"
                   item-title="title"
                   item-value="value"
@@ -399,5 +401,10 @@ onMounted(() => {
 <style scoped>
 .purchase-books-page {
   width: 100%;
+}
+
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 </style>
