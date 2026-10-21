@@ -9,10 +9,24 @@ export const useAuthStore = defineStore('auth', () => {
   
   const ability = useAbility();
   const isAuthenticated = computed(() => !!user.value)
-  const isAdmin = computed(() => user.value?.role_id === 1)
-  const isSupervisor = computed(() => user.value?.role_id === 2)
-  const isVendedor = computed(() => user.value?.role_id === 3)
+  const isAdmin = computed(() => user.value?.role_id === 1 || user.value?.role_id === 4 || user.value?.role?.name?.toLowerCase() === 'admin' || user.value?.role?.name?.toLowerCase() === 'administrador')
+  const isSupervisor = computed(() => user.value?.role_id === 2 || user.value?.role?.name?.toLowerCase() === 'supervisor')
+  const isVendedor = computed(() => user.value?.role_id === 3 || user.value?.role?.name?.toLowerCase() === 'employee' || user.value?.role?.name?.toLowerCase() === 'empleado')
+  const isContador = computed(() => user.value?.role_id === 5 || user.value?.role?.name?.toLowerCase() === 'contador')
   const isLoaded = ref(false);
+
+  /**
+   * Ruta de aterrizaje por defecto según el rol y permisos configurados.
+   */
+  const defaultHomeRoute = computed(() => {
+    if (isContador.value) {
+      return '/fiscal/home'
+    }
+    if (isAdmin.value) {
+      return '/dashboard'
+    }
+    return '/tpv/orderUser'
+  })
 
   function updateAbility(userObject) {
     const newAbility = buildAbilityForRules(userObject);
@@ -59,5 +73,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, isAuthenticated, isAdmin, isVendedor, isSupervisor, fetchUser, logout, isLoaded }
+  return { user, isAuthenticated, isAdmin, isVendedor, isSupervisor, isContador, defaultHomeRoute, fetchUser, logout, isLoaded }
 })

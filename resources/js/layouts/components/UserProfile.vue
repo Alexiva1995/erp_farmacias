@@ -46,7 +46,12 @@ const userName = computed(() => {
   return user.username || 'Usuario'
 })
 
-const userRole = computed(() => (authStore.isAdmin ? 'Admin' : 'Usuario'))
+const userRole = computed(() => {
+  if (authStore.user?.role?.name) {
+    return authStore.user.role.name
+  }
+  return authStore.isAdmin ? 'Admin' : 'Usuario'
+})
 
 // Avatar: foto del empleado/usuario → logo del negocio → imagen genérica interna
 const userAvatar = computed(() => {

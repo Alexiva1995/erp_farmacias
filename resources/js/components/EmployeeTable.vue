@@ -22,6 +22,8 @@ const resolveRoleName = (role) => {
     'Admin': 'Administrador',
     'Supervisor': 'Supervisor',
     'Employee': 'Empleado',
+    'Administrador': 'Administrador',
+    'Contador': 'Contador',
   };
   
   return map[role.name] || role.name;

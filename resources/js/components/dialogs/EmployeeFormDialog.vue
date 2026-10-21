@@ -28,17 +28,19 @@ const showPassword = ref(false);
 const totalPackageUsd = ref("");
 const createdAt = ref("");
 
-const roleItems = computed(() =>
-  props.roles.map((role) => ({
-    title:
-      role.name === 'Admin'
-        ? 'Administrador'
-        : role.name === 'Employee'
-        ? 'Empleado'
-        : 'Supervisor',
+const roleItems = computed(() => {
+  const roleNameMap = {
+    'Admin': 'Administrador',
+    'Supervisor': 'Supervisor',
+    'Employee': 'Empleado',
+    'Administrador': 'Administrador',
+    'Contador': 'Contador',
+  };
+  return props.roles.map((role) => ({
+    title: roleNameMap[role.name] || role.name,
     value: Number(role.id),
-  }))
-);
+  }));
+});
 
 const closeDialog = () => {
   emit("close");

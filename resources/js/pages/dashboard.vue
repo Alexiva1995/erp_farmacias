@@ -363,7 +363,7 @@ watch(() => authStore.user, (newUser) => {
 
 watch(() => authStore.isLoaded, (isLoaded) => {
   if (isLoaded && !authStore.isAdmin) {
-    router.push('/tpv/orderUser')
+    router.push(authStore.defaultHomeRoute)
   }
 })
 </script>

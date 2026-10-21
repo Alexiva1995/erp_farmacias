@@ -219,11 +219,7 @@ router.beforeEach(async (to, from, next) => {
         return safeNext({ path: '/reservations' })
       }
       
-      if (authStore.isAdmin) {
-        return safeNext({ path: '/dashboard' })
-      } else {
-        return safeNext({ path: '/tpv/orderUser' })
-      }
+      return safeNext({ path: authStore.defaultHomeRoute })
     }
     
     // Para minimarket, permitir navegación en raíz / sin redirigir
@@ -257,16 +253,31 @@ router.beforeEach(async (to, from, next) => {
         return safeNext({ path: '/reservations' })
       }
       
-      if (authStore.isAdmin) {
-        return safeNext({ path: '/dashboard' })
-      } else {
-        return safeNext({ path: '/tpv/orderUser' })
-      }
+      return safeNext({ path: authStore.defaultHomeRoute })
     }
     
     if ((to.path.startsWith('/finances/pending-payments') || to.path.startsWith('/finances/cashout')) && authStore.isVendedor) {
       console.log('[ROUTER] Empleado intentó acceder a sección financiera restringida, redirigiendo')
       return safeNext({ path: '/invoice/invoices' })
+    }
+
+    // Restricción para rol Contador: acceso exclusivo a vistas fiscales a menos que tenga permisos extra
+    if (authStore.isContador) {
+      const allowedPrefixes = ['/fiscal', 'iva', 'islr']
+      const pathLower = to.path.toLowerCase()
+      const isAllowedFiscalPath = allowedPrefixes.some(p => pathLower.startsWith(p) || pathLower.startsWith('/' + p))
+
+      const rolePermissions = authStore.user?.role?.menu_permissions
+      const isExtraPermissionAllowed = Array.isArray(rolePermissions) && rolePermissions.some(perm => {
+        if (!perm) return false
+        const cleanPerm = String(perm).toLowerCase()
+        return pathLower.includes(cleanPerm) || cleanPerm.includes(pathLower.replace(/^\//, ''))
+      })
+
+      if (!isAllowedFiscalPath && !isExtraPermissionAllowed) {
+        console.log('[ROUTER] Contador intentó acceder a ruta no autorizada, redirigiendo a /fiscal/home:', to.path)
+        return safeNext({ path: '/fiscal/home' })
+      }
     }
     
     const isMiniMarket = brandingStore.settings?.business_type === 'minimarket'
