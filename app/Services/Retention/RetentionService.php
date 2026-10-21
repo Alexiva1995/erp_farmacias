@@ -150,4 +150,19 @@ class RetentionService implements RetentionContract
     {
         return $this->retentionRepository->restoreOmittedInvoices();
     }
+
+    public function getNextIslrCorrelative(): array
+    {
+        return $this->retentionRepository->getNextIslrCorrelative();
+    }
+
+    public function generateIslrRetention(array $data): Retention
+    {
+        return $this->retentionRepository->generateIslrRetention($data);
+    }
+
+    public function prepareIslrRetentionData($source): array
+    {
+        return $this->retentionRepository->prepareIslrRetentionData($source);
+    }
 }

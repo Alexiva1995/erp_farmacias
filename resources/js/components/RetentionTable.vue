@@ -15,7 +15,7 @@ const props = defineProps({
   selected: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(["update:options", "update:selected", "download-pdf", "delete-retention", "edit-retention", "generate-supplier"]);
+const emit = defineEmits(["update:options", "update:selected", "download-pdf", "delete-retention", "edit-retention", "generate-supplier", "generate-islr"]);
 
 const { mobile } = useDisplay();
 const authStore = useAuthStore();
@@ -27,13 +27,14 @@ const selectedModel = computed({
 
 const pendingHeaders = [
   { title: "Fecha", key: "created_invoice_date", sortable: true },
-  { title: "Razón Social", key: "supplier.name", sortable: true, width: "28%" },
+  { title: "Razón Social", key: "supplier.name", sortable: true, width: "26%" },
   { title: "Nº Factura", key: "invoice_number", sortable: true },
   { title: "Exento", key: "exempt_amount", align: "end", sortable: true },
   { title: "BIG", key: "taxable_base", align: "end", sortable: true },
   { title: "IVA", key: "tax_amount", align: "end", sortable: true },
   { title: "Total", key: "total_amount", align: "end", sortable: true },
   { title: "RET.", key: "estimated_retention", align: "end", sortable: false },
+  { title: "Acción", key: "actions", sortable: false, align: "center" },
 ];
 
 const supplierHeaders = [
@@ -279,7 +280,33 @@ const toggleSelection = (id) => {
                 @click="emit('generate-supplier', item.invoices.map(i => i.id))"
               >
                 <VIcon icon="tabler-file-percent" size="20" />
-                <VTooltip activator="parent" location="top">Generar Retención</VTooltip>
+                <VTooltip activator="parent" location="top">Generar Retención IVA</VTooltip>
+              </VBtn>
+              <VBtn
+                v-if="item.invoices.some(i => i.has_islr_retention && !i.islr_retention_generated)"
+                icon
+                variant="text"
+                size="32"
+                color="warning"
+                class="rounded-lg shadow-sm"
+                @click="emit('generate-islr', item.invoices.filter(i => i.has_islr_retention && !i.islr_retention_generated))"
+              >
+                <VIcon icon="tabler-receipt-tax" size="20" />
+                <VTooltip activator="parent" location="top">Generar Retención ISLR</VTooltip>
+              </VBtn>
+            </template>
+            <template v-else-if="props.currentTab === 'pending'">
+              <VBtn
+                v-if="item.has_islr_retention && !item.islr_retention_generated"
+                icon
+                variant="text"
+                size="32"
+                color="warning"
+                class="rounded-lg shadow-sm"
+                @click="emit('generate-islr', [item])"
+              >
+                <VIcon icon="tabler-receipt-tax" size="20" />
+                <VTooltip activator="parent" location="top">Generar Retención ISLR</VTooltip>
               </VBtn>
             </template>
             <template v-else-if="props.currentTab === 'generated'">

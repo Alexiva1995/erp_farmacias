@@ -22,10 +22,23 @@ class RetentionRepository implements \App\Contracts\Retention
             $sortBy = 'created_invoice_date';
         }
 
+        $retentionType = $filters['retention_type'] ?? 'iva';
+
         $query = Invoice::with(['supplier:id,name,social_reason,rif,address'])
-            ->select(['invoices.id', 'invoices.supplier_id', 'invoices.invoice_number', 'invoices.control_number', 'invoices.exempt_amount', 'invoices.taxable_base', 'invoices.tax_amount', 'invoices.total_amount', 'invoices.created_invoice_date', 'invoices.retention_generated', 'invoices.retention_id'])
-            ->where('invoices.tax_amount', '>', 0)
-            ->where('invoices.retention_generated', $isGenerated);
+            ->select([
+                'invoices.id', 'invoices.supplier_id', 'invoices.invoice_number', 'invoices.control_number',
+                'invoices.exempt_amount', 'invoices.taxable_base', 'invoices.tax_amount', 'invoices.total_amount',
+                'invoices.created_invoice_date', 'invoices.retention_generated', 'invoices.retention_id',
+                'invoices.is_expense', 'invoices.has_islr_retention', 'invoices.islr_retention_generated', 'invoices.islr_retention_id'
+            ]);
+
+        if ($retentionType === 'islr') {
+            $query->where('invoices.has_islr_retention', true)
+                  ->where('invoices.islr_retention_generated', $isGenerated);
+        } else {
+            $query->where('invoices.tax_amount', '>', 0)
+                  ->where('invoices.retention_generated', $isGenerated);
+        }
 
         if (empty($filters['start_date']) && empty($filters['end_date'])) {
             $query->whereYear('created_invoice_date', date('Y'));
@@ -234,10 +247,18 @@ class RetentionRepository implements \App\Contracts\Retention
             $sortBy = 'date';
         }
 
+        $retentionType = $filters['retention_type'] ?? 'iva';
+
         $query = Retention::with([
             'supplier:id,name,social_reason,rif',
         ])
-        ->select(['retentions.id', 'retentions.supplier_id', 'retentions.number', 'retentions.date', 'retentions.total_taxable_base', 'retentions.total_tax_amount', 'retentions.total_withheld_amount']);
+        ->select([
+            'retentions.id', 'retentions.type', 'retentions.supplier_id', 'retentions.number',
+            'retentions.date', 'retentions.total_taxable_base', 'retentions.total_tax_amount',
+            'retentions.total_withheld_amount', 'retentions.retention_percentage',
+            'retentions.concept_description', 'retentions.subtrahend'
+        ])
+        ->where('retentions.type', $retentionType);
 
         if (!empty($filters['start_date'])) {
             $query->whereDate('date', '>=', $filters['start_date']);
@@ -282,11 +303,19 @@ class RetentionRepository implements \App\Contracts\Retention
     {
         $retention = Retention::findOrFail($id);
 
-        Invoice::where('retention_id', $retention->id)
-            ->update([
-                'retention_generated' => false,
-                'retention_id' => null
-            ]);
+        if (($retention->type?->value ?? $retention->type) === 'islr') {
+            Invoice::where('islr_retention_id', $retention->id)
+                ->update([
+                    'islr_retention_generated' => false,
+                    'islr_retention_id' => null
+                ]);
+        } else {
+            Invoice::where('retention_id', $retention->id)
+                ->update([
+                    'retention_generated' => false,
+                    'retention_id' => null
+                ]);
+        }
 
         return $retention->delete();
     }
@@ -462,5 +491,185 @@ class RetentionRepository implements \App\Contracts\Retention
             ->update([
                 'retention_generated' => false,
             ]);
+    }
+
+    public function getNextIslrCorrelative(): array
+    {
+        $lastIslr = Retention::where('type', 'islr')->orderBy('id', 'desc')->first();
+
+        if (!$lastIslr) {
+            return [
+                'is_first' => true,
+                'next_number' => null,
+            ];
+        }
+
+        $cleanNum = preg_replace('/\D/', '', $lastIslr->number);
+        $nextSeq = ((int) $cleanNum) + 1;
+        $formatted = str_pad((string) $nextSeq, 10, '0', STR_PAD_LEFT);
+
+        return [
+            'is_first' => false,
+            'next_number' => $formatted,
+            'last_number' => $lastIslr->number,
+        ];
+    }
+
+    public function generateIslrRetention(array $data): Retention
+    {
+        $invoiceIds = $data['invoice_ids'];
+        $invoices = Invoice::with('supplier')
+            ->whereIn('id', $invoiceIds)
+            ->where('has_islr_retention', true)
+            ->where('islr_retention_generated', false)
+            ->get();
+
+        if ($invoices->isEmpty()) {
+            throw new \Exception('No hay facturas válidas para generar retención de ISLR.');
+        }
+
+        if ($invoices->pluck('supplier_id')->unique()->count() > 1) {
+            throw new \Exception('Todas las facturas de la retención deben pertenecer al mismo proveedor.');
+        }
+
+        $supplier = $invoices->first()->supplier;
+        $supplierId = $supplier?->id ?? $invoices->first()->supplier_id;
+
+        // Determinar número de comprobante
+        $correlativeInfo = $this->getNextIslrCorrelative();
+        if ($correlativeInfo['is_first']) {
+            if (empty($data['starting_number'])) {
+                throw new \Exception('Por ser la primera retención de ISLR, debe indicar el número de comprobante inicial.');
+            }
+            $cleanStart = preg_replace('/\D/', '', (string) $data['starting_number']);
+            $number = str_pad($cleanStart ?: '1', 10, '0', STR_PAD_LEFT);
+        } else {
+            $number = !empty($data['starting_number'])
+                ? str_pad(preg_replace('/\D/', '', (string) $data['starting_number']), 10, '0', STR_PAD_LEFT)
+                : $correlativeInfo['next_number'];
+        }
+
+        while (Retention::where('type', 'islr')->where('number', $number)->exists()) {
+            $numVal = ((int) preg_replace('/\D/', '', $number)) + 1;
+            $number = str_pad((string) $numVal, 10, '0', STR_PAD_LEFT);
+        }
+
+        $date = !empty($data['date']) ? \Carbon\Carbon::parse($data['date']) : now();
+        $percentage = (float) ($data['retention_percentage'] ?? 2.0);
+        $subtrahend = (float) ($data['subtrahend'] ?? 0.0);
+        $concept = trim((string) ($data['concept_description'] ?? 'SERVICIOS'));
+
+        $totalTaxable = $invoices->sum('taxable_base');
+        $totalTaxAmount = $invoices->sum('tax_amount');
+        $withheld = round(($totalTaxable * ($percentage / 100)) - $subtrahend, 2);
+        if ($withheld < 0) {
+            $withheld = 0.00;
+        }
+
+        return \DB::transaction(function () use (
+            $supplierId, $number, $date, $totalTaxable, $totalTaxAmount,
+            $withheld, $percentage, $concept, $subtrahend, $invoices
+        ) {
+            $retention = Retention::create([
+                'supplier_id' => $supplierId,
+                'type' => \App\Enums\RetentionType::ISLR,
+                'number' => $number,
+                'date' => $date,
+                'total_taxable_base' => $totalTaxable,
+                'total_tax_amount' => $totalTaxAmount,
+                'total_withheld_amount' => $withheld,
+                'retention_percentage' => $percentage,
+                'concept_description' => $concept,
+                'subtrahend' => $subtrahend,
+            ]);
+
+            Invoice::whereIn('id', $invoices->pluck('id'))->update([
+                'islr_retention_generated' => true,
+                'islr_retention_id' => $retention->id,
+            ]);
+
+            return $retention;
+        });
+    }
+
+    public function prepareIslrRetentionData($source): array
+    {
+        if ($source instanceof Retention) {
+            $retention = $source->load(['supplier', 'islrInvoices']);
+            $invoices = $retention->islrInvoices;
+            $supplier = $retention->supplier;
+            $comprobanteNumber = $retention->number;
+            $emissionDate = $retention->date ? $retention->date->format('d/m/Y') : now()->format('d/m/Y');
+            $year = $retention->date ? $retention->date->format('Y') : now()->format('Y');
+            $month = $retention->date ? $retention->date->format('m') : now()->format('m');
+            $percentage = (float) $retention->retention_percentage;
+            $subtrahend = (float) $retention->subtrahend;
+            $concept = $retention->concept_description ?: 'SERVICIOS';
+        } else {
+            $invoiceIds = is_array($source) ? $source : [$source];
+            $invoices = Invoice::with('supplier')->whereIn('id', $invoiceIds)->get();
+            if ($invoices->isEmpty()) {
+                throw new \Exception('No se encontraron facturas para la retención ISLR.');
+            }
+            $supplier = $invoices->first()->supplier;
+            $comprobanteNumber = '0000000001';
+            $emissionDate = now()->format('d/m/Y');
+            $year = now()->format('Y');
+            $month = now()->format('m');
+            $percentage = 2.00;
+            $subtrahend = 0.00;
+            $concept = 'SERVICIOS';
+        }
+
+        $generalSetting = \App\Models\GeneralSetting::first();
+
+        $operNo = 1;
+        $operations = $invoices->map(function ($inv) use (&$operNo, $concept, $percentage, $subtrahend) {
+            $base = (float) $inv->taxable_base;
+            $withheld = round(($base * ($percentage / 100)) - $subtrahend, 2);
+            if ($withheld < 0) $withheld = 0.00;
+
+            $invNumber = $inv->invoice_number;
+            if (!str_starts_with(strtoupper($invNumber), 'F-') && !str_starts_with(strtoupper($invNumber), 'FAC-')) {
+                $docNumber = 'F-' . $invNumber;
+            } else {
+                $docNumber = $invNumber;
+            }
+
+            return [
+                'oper_no' => $operNo++,
+                'doc_date' => optional($inv->created_invoice_date)->format('d/m/Y') ?? '-',
+                'doc_number' => $docNumber,
+                'control_number' => $inv->control_number ?: '-',
+                'concept_description' => $concept,
+                'taxable_base' => $base,
+                'subtrahend' => $subtrahend,
+                'retention_percentage' => $percentage,
+                'withheld_amount' => $withheld,
+            ];
+        });
+
+        return [
+            'comprobante_number' => $comprobanteNumber,
+            'emission_date' => $emissionDate,
+            'period_year' => $year,
+            'period_month' => $month,
+            'agent' => [
+                'name' => $generalSetting?->app_name ?: 'ENSALUD FARMACIA EL TAMA C.A.',
+                'rif' => $generalSetting?->app_rif ?: 'J407570170',
+                'address' => $generalSetting?->address ?: 'AV 4 EDIFICIO MINICENTRO PARAMILLO 1 ETAPA LOCAL NRO 3 ZONA INDUSTRIAL DE PARAMILLO SAN CRISTOBAL TACHIRA ZONA POSTAL 5001',
+            ],
+            'subject' => [
+                'name' => $supplier?->social_reason ?: $supplier?->name ?: 'PROVEEDOR',
+                'rif' => $supplier?->rif ?: 'J000000000',
+                'address' => $supplier?->address ?: 'DIRECCIÓN FISCAL',
+            ],
+            'operations' => $operations,
+            'totals' => [
+                'taxable_base' => $operations->sum('taxable_base'),
+                'subtrahend' => $operations->sum('subtrahend'),
+                'withheld_amount' => $operations->sum('withheld_amount'),
+            ],
+        ];
     }
 }

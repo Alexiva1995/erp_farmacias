@@ -16,12 +16,15 @@ class RetentionResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'type' => $this->type?->value ?? $this->type ?? 'iva',
             'number' => $this->number,
             'date' => $this->date?->format('Y-m-d'),
             'total_taxable_base' => (float)$this->total_taxable_base,
             'total_tax_amount' => (float)$this->total_tax_amount,
             'total_withheld_amount' => (float)$this->total_withheld_amount,
             'retention_percentage' => (float)$this->retention_percentage,
+            'concept_description' => $this->concept_description,
+            'subtrahend' => (float)($this->subtrahend ?? 0),
             'supplier' => [
                 'id' => $this->supplier?->id,
                 'name' => $this->supplier?->name,

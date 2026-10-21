@@ -41,6 +41,8 @@ class UpdateInvoiceDataRequest extends FormRequest
             'tax_amount' => 'nullable|numeric|min:0',
             'total_amount' => 'required|numeric|gt:0',
             'currency' => ['required', Rule::in(['Bs', 'USD', 'COP'])],
+            'is_expense' => 'nullable|boolean',
+            'has_islr_retention' => 'nullable|boolean',
             'created_invoice_date' => 'required|date',
         ];
 

@@ -17,6 +17,10 @@ class Invoice extends Model
         'received_date',
         'currency',
         'is_indexed', // ISSUE #3: Campo para facturas indexadas
+        'is_expense',
+        'has_islr_retention',
+        'islr_retention_generated',
+        'islr_retention_id',
         'discount_rule_id',
         'exempt_amount',
         'taxable_base',
@@ -44,6 +48,9 @@ class Invoice extends Model
      */
     protected $casts = [
         'is_indexed' => 'boolean',
+        'is_expense' => 'boolean',
+        'has_islr_retention' => 'boolean',
+        'islr_retention_generated' => 'boolean',
         'retention_generated' => 'boolean',
         'exp_date' => 'date',
         'payment_date' => 'date',
@@ -66,6 +73,9 @@ class Invoice extends Model
      */
     protected $attributes = [
         'is_indexed' => false, // Por defecto las facturas NO están indexadas
+        'is_expense' => false,
+        'has_islr_retention' => false,
+        'islr_retention_generated' => false,
         'status' => 'loaded',
         'status_payment' => 0,
         'exempt_amount' => 0.00,
@@ -182,6 +192,11 @@ class Invoice extends Model
     public function retention(): BelongsTo
     {
         return $this->belongsTo(Retention::class);
+    }
+
+    public function islrRetention(): BelongsTo
+    {
+        return $this->belongsTo(Retention::class, 'islr_retention_id');
     }
 
     public function getOutstandingDebtAttribute(): float

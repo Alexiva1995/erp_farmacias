@@ -33,6 +33,9 @@ class InvoiceActionService
                 ->select(['id'])
                 ->first();
 
+            $isExpense = !empty($data['is_expense']);
+            $hasIslr = $isExpense && !empty($data['has_islr_retention']);
+
             $invoiceData = [
                 'auto_order_id' => $autoOrder->id ?? null,
                 'supplier_id' => $data['supplier_id'],
@@ -50,7 +53,10 @@ class InvoiceActionService
                 'total_usd' => $totalUSD,
                 'currency' => $data['currency'],
                 'discount_rule_id' => $data['discount_rule_id'] ?? null,
-                'status' => 'pending',
+                'is_expense' => $isExpense,
+                'has_islr_retention' => $hasIslr,
+                'status' => $isExpense ? 'ordered' : 'pending',
+                'ordered_by' => $isExpense ? (Auth::id() ?? $data['registered_by'] ?? null) : null,
                 'registered_by' => Auth::id() ?? $data['registered_by'] ?? null,
                 'uploaded_by' => Auth::id() ?? $data['uploaded_by'] ?? null,
                 'status_payment' => 0,
@@ -112,6 +118,18 @@ class InvoiceActionService
                 'discount_rule_id' => $data['discount_rule_id'] ?? null,
                 'created_invoice_date' => $data['created_invoice_date'],
             ];
+
+            if (array_key_exists('is_expense', $data)) {
+                $invoiceData['is_expense'] = (bool)$data['is_expense'];
+                if ($invoiceData['is_expense']) {
+                    $invoiceData['status'] = 'ordered';
+                    $invoiceData['ordered_by'] = Auth::id() ?? $invoice->ordered_by;
+                }
+            }
+
+            if (array_key_exists('has_islr_retention', $data)) {
+                $invoiceData['has_islr_retention'] = (bool)$data['has_islr_retention'];
+            }
 
             $invoice->update($invoiceData);
 

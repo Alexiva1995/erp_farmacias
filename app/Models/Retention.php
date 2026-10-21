@@ -10,12 +10,15 @@ class Retention extends Model
 {
     protected $fillable = [
         'supplier_id',
+        'type',
         'number',
         'date',
         'total_taxable_base',
         'total_tax_amount',
         'total_withheld_amount',
         'retention_percentage',
+        'concept_description',
+        'subtrahend',
     ];
 
     protected $casts = [
@@ -24,6 +27,8 @@ class Retention extends Model
         'total_tax_amount' => 'decimal:2',
         'total_withheld_amount' => 'decimal:2',
         'retention_percentage' => 'decimal:2',
+        'subtrahend' => 'decimal:2',
+        'type' => \App\Enums\RetentionType::class,
     ];
 
     public function supplier(): BelongsTo
@@ -34,5 +39,10 @@ class Retention extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    public function islrInvoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class, 'islr_retention_id');
     }
 }

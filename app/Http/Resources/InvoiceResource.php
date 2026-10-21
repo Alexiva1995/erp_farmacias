@@ -34,6 +34,10 @@ class InvoiceResource extends JsonResource
             'outstanding_debt' => (float)($this->outstanding_debt ?? 0),
             'status' => $this->status,
             'retention_generated' => (bool)($this->retention_generated ?? false),
+            'is_expense' => (bool)($this->is_expense ?? false),
+            'has_islr_retention' => (bool)($this->has_islr_retention ?? false),
+            'islr_retention_generated' => (bool)($this->islr_retention_generated ?? false),
+            'islr_retention_id' => $this->islr_retention_id,
             'supplier' => [
                 'id' => $this->supplier?->id,
                 'name' => $this->supplier?->name,

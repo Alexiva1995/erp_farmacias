@@ -131,6 +131,50 @@ const onFileChange = (file) => {
       </VRow>
     </div>
 
+    <!-- SECCIÓN: Clasificación de la Factura (Factura de Gasto / ISLR) -->
+    <VCard variant="tonal" color="primary" class="mb-4 pa-3 rounded-lg border-primary">
+      <VRow density="compact" align="center">
+        <VCol cols="12" sm="6">
+          <div class="d-flex align-center">
+            <VCheckbox
+              v-model="formData.is_expense"
+              color="primary"
+              hide-details
+              density="compact"
+              @update:model-value="(val) => { if (!val) formData.has_islr_retention = false; }"
+            >
+              <template #label>
+                <div class="d-flex flex-column ms-1">
+                  <span class="text-subtitle-2 font-weight-bold text-high-emphasis">¿Es Factura de Tipo Gasto?</span>
+                  <span class="text-caption text-medium-emphasis">Se ordenará automáticamente sin requerir recepción de lotes ni inventario.</span>
+                </div>
+              </template>
+            </VCheckbox>
+          </div>
+        </VCol>
+
+        <VCol cols="12" sm="6">
+          <VExpandTransition>
+            <div v-if="formData.is_expense" class="d-flex align-center ps-sm-4 border-sm-s">
+              <VCheckbox
+                v-model="formData.has_islr_retention"
+                color="info"
+                hide-details
+                density="compact"
+              >
+                <template #label>
+                  <div class="d-flex flex-column ms-1">
+                    <span class="text-subtitle-2 font-weight-bold text-info">¿Genera Retención de ISLR?</span>
+                    <span class="text-caption text-medium-emphasis">Se habilitará en el módulo de Retenciones para comprobante ISLR.</span>
+                  </div>
+                </template>
+              </VCheckbox>
+            </div>
+          </VExpandTransition>
+        </VCol>
+      </VRow>
+    </VCard>
+
     <!-- SECCIÓN 2: Fechas y Condiciones de Pago -->
     <div class="mb-2">
       <div class="d-flex align-center gap-2 mb-3">

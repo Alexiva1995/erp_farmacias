@@ -1,5 +1,6 @@
 <script setup>
 import BatchGenerateRetentionsDialog from "@/components/dialogs/BatchGenerateRetentionsDialog.vue";
+import GenerateIslrRetentionDialog from "@/components/dialogs/GenerateIslrRetentionDialog.vue";
 import EditRetentionDialog from "@/components/dialogs/EditRetentionDialog.vue";
 import OmitRetentionsDialog from "@/components/dialogs/OmitRetentionsDialog.vue";
 import RetentionFilters from "@/components/RetentionFilters.vue";
@@ -27,6 +28,9 @@ const page = ref(1);
 const itemsPerPage = ref(10);
 const selected = ref([]);
 const currentTab = ref("by_supplier");
+const retentionType = ref("iva"); // 'iva' | 'islr'
+const showIslrDialog = ref(false);
+const islrInvoicesToProcess = ref([]);
 
 // Filtros de búsqueda
 const search = ref("");
@@ -68,6 +72,7 @@ const fetchRetentions = async () => {
         end_date: endDate.value || undefined,
         supplier_id: supplierId.value || undefined,
         is_generated: currentTab.value === "generated",
+        retention_type: retentionType.value,
         sortBy: sortBy.value,
         orderBy: orderBy.value,
       },
@@ -172,7 +177,9 @@ const handleConfirmOmit = async (cutoffDate) => {
 const downloadPdf = async (id, isRetention = true) => {
   downloadingPdf.value = { ...downloadingPdf.value, [id]: true };
   try {
-    const params = isRetention ? { retention_id: id } : { ids: id };
+    const params = isRetention
+      ? { retention_id: id, retention_type: retentionType.value }
+      : { ids: id, retention_type: retentionType.value };
     const response = await axios.get("/retentions/download", {
       params,
       responseType: "blob",
@@ -181,7 +188,8 @@ const downloadPdf = async (id, isRetention = true) => {
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `comprobante_retencion_${id}.pdf`);
+    const prefix = retentionType.value === "islr" ? "comprobante_islr" : "comprobante_retencion";
+    link.setAttribute("download", `${prefix}_${id}.pdf`);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -302,6 +310,25 @@ const handleSort = (sortOptions) => {
   fetchRetentions();
 };
 
+const handleOpenIslrDialog = (invoicesList) => {
+  islrInvoicesToProcess.value = invoicesList || [];
+  showIslrDialog.value = true;
+};
+
+const handleIslrGenerated = async (retentionId) => {
+  showIslrDialog.value = false;
+  if (retentionId) {
+    await downloadPdf(retentionId, true);
+  }
+  fetchRetentions();
+};
+
+watch(retentionType, () => {
+  page.value = 1;
+  selected.value = [];
+  fetchRetentions();
+});
+
 watch(currentTab, (newTab) => {
   page.value = 1;
   selected.value = [];
@@ -366,13 +393,39 @@ onUnmounted(() => {
 
       <!-- Gestión de Retenciones con Pestañas -->
       <VCard class="ma-0 rounded-lg border shadow-sm overflow-hidden bg-surface">
-        <VCardTitle class="pa-4 px-6 d-flex align-center flex-wrap gap-2">
+        <VCardTitle class="pa-4 px-6 d-flex align-center justify-space-between flex-wrap gap-3">
           <div class="d-flex align-center">
-            <VAvatar color="primary" variant="tonal" size="32" class="me-3 rounded-lg">
-              <VIcon icon="tabler-file-analytics" size="18" />
+            <VAvatar :color="retentionType === 'islr' ? 'warning' : 'primary'" variant="tonal" size="34" class="me-3 rounded-lg">
+              <VIcon :icon="retentionType === 'islr' ? 'tabler-receipt-tax' : 'tabler-file-analytics'" size="20" />
             </VAvatar>
-            <span class="text-sm font-weight-black uppercase">Gestión de Retenciones IVA</span>
+            <div>
+              <div class="text-sm font-weight-black uppercase">
+                {{ retentionType === 'islr' ? 'Gestión de Retenciones ISLR (Impuesto Sobre La Renta)' : 'Gestión de Retenciones IVA' }}
+              </div>
+              <div class="text-caption text-medium-emphasis">
+                {{ retentionType === 'islr' ? 'Facturas de gasto sujetas a retención de ISLR y sus comprobantes' : 'Control fiscal de retención sobre el impuesto al valor agregado' }}
+              </div>
+            </div>
           </div>
+
+          <!-- Selector Unificado de Módulo Tributario -->
+          <VBtnToggle
+            v-model="retentionType"
+            mandatory
+            color="primary"
+            variant="outlined"
+            density="compact"
+            class="rounded-lg"
+          >
+            <VBtn value="iva" class="px-4 font-weight-bold">
+              <VIcon start icon="tabler-percentage" size="16" />
+              RETENCIONES IVA
+            </VBtn>
+            <VBtn value="islr" class="px-4 font-weight-bold">
+              <VIcon start icon="tabler-receipt-tax" size="16" />
+              RETENCIONES ISLR
+            </VBtn>
+          </VBtnToggle>
         </VCardTitle>
 
         <VTabs v-model="currentTab" color="primary" grow class="premium-tabs bg-surface-variant-opacity-2">
@@ -413,6 +466,7 @@ onUnmounted(() => {
             @delete-retention="handleDeleteRetention"
             @edit-retention="handleEditRetention"
             @generate-supplier="handleBulkGenerate"
+            @generate-islr="handleOpenIslrDialog"
           />
         </VCardText>
       </VCard>
@@ -441,6 +495,13 @@ onUnmounted(() => {
       :retention="editingRetention"
       :loading="savingEdit"
       @saved="handleSaveRetention"
+    />
+
+    <!-- Generate ISLR Retention Dialog Component -->
+    <GenerateIslrRetentionDialog
+      v-model="showIslrDialog"
+      :invoices="islrInvoicesToProcess"
+      @generated="handleIslrGenerated"
     />
   </div>
 </template>

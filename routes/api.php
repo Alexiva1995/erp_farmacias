@@ -1150,6 +1150,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
 
     Route::prefix('retentions')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\RetentionController::class, 'index']);
+        Route::get('/islr/next-number', [\App\Http\Controllers\Api\RetentionController::class, 'nextIslrNumber']);
+        Route::post('/islr/generate', [\App\Http\Controllers\Api\RetentionController::class, 'generateIslr']);
         Route::post('/bulk-generate', [\App\Http\Controllers\Api\RetentionController::class, 'bulkGenerate']);
         Route::post('/batch-generate-all', [\App\Http\Controllers\Api\RetentionController::class, 'batchGenerateAll']);
         Route::post('/omit-until-date', [\App\Http\Controllers\Api\RetentionController::class, 'omitUntilDate']);

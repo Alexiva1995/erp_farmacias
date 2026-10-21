@@ -12,6 +12,7 @@ use App\Http\Requests\Retention\BatchGenerateAllRequest;
 use App\Http\Requests\Retention\UpdateRetentionRequest;
 use App\Http\Requests\Retention\UpdateInvoiceControlNumberRequest;
 use App\Http\Requests\Retention\OmitUntilDateRequest;
+use App\Http\Requests\Retention\GenerateIslrRetentionRequest;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -27,7 +28,7 @@ class RetentionController extends Controller
     public function index(Request $request)
     {
         try {
-            $filters = $request->only(['start_date', 'end_date', 'supplier_id', 'search', 'is_generated', 'sortBy', 'orderBy']);
+            $filters = $request->only(['start_date', 'end_date', 'supplier_id', 'search', 'is_generated', 'sortBy', 'orderBy', 'retention_type']);
             $isGenerated = filter_var($request->input('is_generated', false), FILTER_VALIDATE_BOOLEAN);
             $perPage = (int) $request->input('itemsPerPage', 10);
             if ($perPage <= 0) {
@@ -128,10 +129,22 @@ class RetentionController extends Controller
                 return response()->json(['status' => 'error', 'message' => 'No se especificó origen'], 400);
             }
 
-            $data = $this->retentionService->prepareRetentionData($source);
-            $pdf = Pdf::loadView('pdf.retention', $data);
-            
-            $filename = "retencion_" . str_replace(['/', ' '], '_', $data['comprobante']['number']) . ".pdf";
+            $isIslr = false;
+            if ($source instanceof \App\Models\Retention) {
+                $isIslr = ($source->type?->value ?? $source->type) === 'islr';
+            } elseif ($request->input('retention_type') === 'islr') {
+                $isIslr = true;
+            }
+
+            if ($isIslr) {
+                $data = $this->retentionService->prepareIslrRetentionData($source);
+                $pdf = Pdf::loadView('pdf.islr_retention', $data);
+                $filename = "retencion_islr_" . str_replace(['/', ' '], '_', $data['comprobante_number']) . ".pdf";
+            } else {
+                $data = $this->retentionService->prepareRetentionData($source);
+                $pdf = Pdf::loadView('pdf.retention', $data);
+                $filename = "retencion_" . str_replace(['/', ' '], '_', $data['comprobante']['number']) . ".pdf";
+            }
 
             return $pdf->download($filename);
         } catch (\Exception $e) {
@@ -239,6 +252,41 @@ class RetentionController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    public function nextIslrNumber()
+    {
+        try {
+            $info = $this->retentionService->getNextIslrCorrelative();
+            return response()->json([
+                'status' => 'success',
+                'data' => $info,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function generateIslr(GenerateIslrRetentionRequest $request)
+    {
+        try {
+            $retention = $this->retentionService->generateIslrRetention($request->validated());
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Comprobante de Retención ISLR N° {$retention->number} generado con éxito.",
+                'retention_id' => $retention->id,
+                'number' => $retention->number,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
             ], 400);
         }
     }

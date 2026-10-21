@@ -18,4 +18,7 @@ interface Retention
     public function getRetentionWithInvoices(int $id): MRetention;
     public function omitInvoicesUntilDate(string $cutoffDate): int;
     public function restoreOmittedInvoices(): int;
+    public function getNextIslrCorrelative(): array;
+    public function generateIslrRetention(array $data): MRetention;
+    public function prepareIslrRetentionData($source): array;
 }

@@ -25,6 +25,8 @@ class StoreInvoiceRequest extends FormRequest
             'invoice_number' => 'required|string|max:100|unique:invoices,invoice_number',
             'control_number' => 'required|string|max:100',
             'currency' => ['required', Rule::in(['Bs', 'USD', 'COP'])],
+            'is_expense' => 'nullable|boolean',
+            'has_islr_retention' => 'nullable|boolean',
             'exp_date' => 'required|date',
             'payment_date' => 'nullable|date|after_or_equal:received_date',
             'received_date' => 'required|date',
