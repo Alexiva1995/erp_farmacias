@@ -343,16 +343,17 @@ class CashClosureController extends Controller
         $decBsMobile = (float) ($request->declared_bs_mobile ?? 0);
         $decBsCard = (float) ($request->declared_bs_card ?? 0);
 
-        // Recalcular discrepancias con el sistema actual
-        $sysCop = (float) $cashClosing->cop_delivered;
+        // Recalcular discrepancias con el sistema actual (efectivo teórico neto real esperado)
+        $sysCop = (float) ($cashClosing->cop_cash + ($cashClosing->cop_cash_payment_credit ?? 0));
         $sysCopTransfer = (float) $cashClosing->cop_transfer;
-        $sysUsd = (float) $cashClosing->usd_delivered;
+        $sysUsd = (float) ($cashClosing->usd_cash + ($cashClosing->usd_cash_payment_credit ?? 0));
         $sysCredit = (float) $cashClosing->usd_credit;
         $sysBsMobile = (float) ($cashClosing->bs_transfer + $cashClosing->bs_mobile);
         $sysBsCard = (float) ($cashClosing->bs_card_debito + $cashClosing->bs_card_credit);
 
         // Si se editó COP, el sobrante y totales en COP podrían cambiar.
-        $sobrante = max(0, $decCop - $sysCop);
+        $diffCop = round($decCop - $sysCop, 2);
+        $sobrante = max(0.0, $diffCop);
         
         $updateData = [
             'declared_cop' => $decCop,
@@ -362,7 +363,8 @@ class CashClosureController extends Controller
             'declared_bs_mobile' => $decBsMobile,
             'declared_bs_card' => $decBsCard,
             'cop_spare' => $sobrante,
-            'cop_delivered' => $sysCop + $sobrante,
+            'cop_delivered' => $decCop,
+            'diff_cop' => $diffCop,
         ];
 
         $mismatches = [];

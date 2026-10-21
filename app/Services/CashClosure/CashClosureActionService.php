@@ -184,16 +184,18 @@ class CashClosureActionService
             $decBsMobile = (float) ($validatedData['declared_bs_mobile'] ?? 0);
             $decBsCard = (float) ($validatedData['declared_bs_card'] ?? 0);
 
-            $sysCop = (float) $cashClosure->cop_delivered;
+            // Calcular el efectivo teórico neto real esperado en gaveta (Ventas Cash + Abonos - Vueltos/Ajustes)
+            $sysCop = (float) ($cashClosure->cop_cash + ($cashClosure->cop_cash_payment_credit ?? 0));
             $sysCopTransfer = (float) $cashClosure->cop_transfer;
-            $sysUsd = (float) $cashClosure->usd_delivered;
+            $sysUsd = (float) ($cashClosure->usd_cash + ($cashClosure->usd_cash_payment_credit ?? 0));
             $sysCredit = (float) $cashClosure->usd_credit;
             $sysBsMobile = (float) ($cashClosure->bs_transfer + $cashClosure->bs_mobile);
             $sysBsCard = (float) ($cashClosure->bs_card_debito + $cashClosure->bs_card_credit);
 
-            $sobrante = max(0, $decCop - $sysCop);
+            $diffCop = round($decCop - $sysCop, 2);
+            $sobrante = max(0.0, $diffCop);
             $updateData['cop_spare'] = $sobrante;
-            $updateData['cop_delivered'] = $sysCop + $sobrante;
+            $updateData['cop_delivered'] = $decCop;
             // total_cop original
             $origTotalCop = (float) $cashClosure->total_cop;
             $updateData['total_cop'] = $origTotalCop + $sobrante;
@@ -205,7 +207,7 @@ class CashClosureActionService
             $updateData['declared_bs_mobile'] = $decBsMobile;
             $updateData['declared_bs_card'] = $decBsCard;
 
-            $updateData['diff_cop'] = round($decCop - $sysCop, 2);
+            $updateData['diff_cop'] = $diffCop;
             $updateData['diff_cop_transfer'] = round($decCopTransfer - $sysCopTransfer, 2);
             $updateData['diff_usd'] = round($decUsd - $sysUsd, 2);
             $updateData['diff_credit'] = round($decCredit - $sysCredit, 2);
