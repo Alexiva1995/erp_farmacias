@@ -70,3 +70,9 @@ Esta sección define los criterios mínimos que el agente debe cumplir y verific
 - **Componentes reutilizables:** Si un bloque de UI se repite en más de un lugar (inputs, modales, tablas, badges de estado), debe extraerse a un componente independiente en `resources/js/Components/`.
 - **Ciclo de vida limpio:** Usar `onMounted` para inicializar datos. Si se registran event listeners o intervalos en `onMounted`, deben limpiarse en `onUnmounted`.
 - **Manejo de props tipado:** Declarar props con `defineProps<{...}>()` usando TypeScript o con validación de tipo explícita. Nunca recibir props sin tipo.
+
+## 8. REGLA ESTRICTA DE MIGRACIONES EN MULTI-TENANCY
+- **Sincronización Obligatoria:** Toda migración que cree o modifique tablas que pertenezcan a los inquilinos (invoices, products, settings, roles, retentions, purchase_books, sales_books, etc.) DEBE crearse o replicarse OBLIGATORIAMENTE en ambos directorios:
+  1. `database/migrations/` (para base de datos central/global)
+  2. `database/migrations/tenant/` (para las bases de datos de cada tenant que se ejecutan con `tenants:migrate`)
+- **Prohibido:** NUNCA crear una migración que afecte modelos del tenant únicamente en `database/migrations/` sin su respectiva copia idéntica en `database/migrations/tenant/`. Esto previene errores de "Unknown column" o "Table doesn't exist" en producción (ej. ensalud.tovaerp.com).
