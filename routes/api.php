@@ -1184,6 +1184,19 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/{id}/export/excel', [\App\Http\Controllers\Api\PurchaseBookController::class, 'exportExcel']);
         Route::get('/{id}/export/pdf', [\App\Http\Controllers\Api\PurchaseBookController::class, 'exportPdf']);
     });
+
+    Route::prefix('sales-books')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\SalesBookController::class, 'index']);
+        Route::post('/generate-period', [\App\Http\Controllers\Api\SalesBookController::class, 'generatePeriod']);
+        Route::get('/{id}', [\App\Http\Controllers\Api\SalesBookController::class, 'show']);
+        Route::post('/{id}/sync', [\App\Http\Controllers\Api\SalesBookController::class, 'sync']);
+        Route::post('/{id}/entries', [\App\Http\Controllers\Api\SalesBookController::class, 'storeEntry']);
+        Route::put('/{id}/entries/{entryId}', [\App\Http\Controllers\Api\SalesBookController::class, 'updateEntry']);
+        Route::delete('/{id}/entries/{entryId}', [\App\Http\Controllers\Api\SalesBookController::class, 'destroyEntry']);
+        Route::post('/{id}/close', [\App\Http\Controllers\Api\SalesBookController::class, 'close']);
+        Route::get('/{id}/export/excel', [\App\Http\Controllers\Api\SalesBookController::class, 'exportExcel']);
+        Route::get('/{id}/export/pdf', [\App\Http\Controllers\Api\SalesBookController::class, 'exportPdf']);
+    });
 });
 
 

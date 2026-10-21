@@ -60,24 +60,16 @@ export default [
         subject: 'supervisor-or-admin',
       },
       {
-        title: 'Libros',
-        icon: {
-          is: 'font-awesome-icon',
-          props: {
-            icon: ['fas', 'book-open'],
-            size: 'sm',
-          },
-        },
+        title: 'Libro de Compras',
+        to: 'fiscal-libros-compras',
         action: 'manage',
         subject: 'supervisor-or-admin',
-        children: [
-          {
-            title: 'Libro de Compras',
-            to: 'fiscal-libros-compras',
-            action: 'manage',
-            subject: 'supervisor-or-admin',
-          },
-        ],
+      },
+      {
+        title: 'Libro de Ventas',
+        to: 'fiscal-libros-ventas',
+        action: 'manage',
+        subject: 'supervisor-or-admin',
       },
     ],
   },
