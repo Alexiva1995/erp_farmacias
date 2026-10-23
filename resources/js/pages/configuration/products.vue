@@ -39,6 +39,12 @@ const enableLocations         = ref(true)
 const enableOptimization      = ref(true)
 const enableDishes            = ref(true)
 const enableReservations      = ref(true)
+const enableTables            = ref(false)
+const enableKds               = ref(false)
+const enableModifiers         = ref(false)
+const enableSplitCheck        = ref(false)
+const enableTips              = ref(false)
+const enableSubRecipes        = ref(false)
 const traceabilityMode        = ref('units')
 const productFormFields       = ref([])
 
@@ -62,6 +68,12 @@ const fetchSettings = async () => {
     'enable_locations',
     'enable_optimization',
     'enable_dishes',
+    'enable_tables',
+    'enable_kds',
+    'enable_modifiers',
+    'enable_split_check',
+    'enable_tips',
+    'enable_sub_recipes',
     'enable_reservations',
     'traceability_mode',
     'product_form_fields'
@@ -87,6 +99,12 @@ const fetchSettings = async () => {
       enableOptimization.value     = settings.enable_optimization      ?? true
       enableDishes.value           = settings.enable_dishes            ?? true
       enableReservations.value     = settings.enable_reservations      ?? true
+      enableTables.value           = settings.enable_tables            ?? false
+      enableKds.value              = settings.enable_kds               ?? false
+      enableModifiers.value        = settings.enable_modifiers         ?? false
+      enableSplitCheck.value       = settings.enable_split_check       ?? false
+      enableTips.value             = settings.enable_tips              ?? false
+      enableSubRecipes.value       = settings.enable_sub_recipes       ?? false
       traceabilityMode.value       = settings.traceability_mode        ?? 'units'
       productFormFields.value      = settings.product_form_fields      ?? []
     }
@@ -123,6 +141,12 @@ const updateSettings = () => {
         enable_locations:          enableLocations.value,
         enable_optimization:       enableOptimization.value,
         enable_dishes:             enableDishes.value,
+        enable_tables:             enableTables.value,
+        enable_kds:                enableKds.value,
+        enable_modifiers:          enableModifiers.value,
+        enable_split_check:        enableSplitCheck.value,
+        enable_tips:               enableTips.value,
+        enable_sub_recipes:        enableSubRecipes.value,
         enable_reservations:       enableReservations.value,
         traceability_mode:         traceabilityMode.value,
         product_form_fields:       productFormFields.value,
@@ -219,6 +243,12 @@ onMounted(fetchSettings)
         v-model:enable-optimization="enableOptimization"
         v-model:enable-dishes="enableDishes"
         v-model:enable-reservations="enableReservations"
+        v-model:enable-tables="enableTables"
+        v-model:enable-kds="enableKds"
+        v-model:enable-modifiers="enableModifiers"
+        v-model:enable-split-check="enableSplitCheck"
+        v-model:enable-tips="enableTips"
+        v-model:enable-sub-recipes="enableSubRecipes"
         v-model:traceability-mode="traceabilityMode"
         :is-saving="isSaving"
         :can-edit="canEdit"

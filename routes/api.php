@@ -159,6 +159,7 @@ Route::post("/public/ecommerce/products/{id}/toggle-favorite", [EcommerceControl
 // Consulta CNE pública para autocompletar datos del cliente en la tienda virtual
 Route::post("/public/clients/cne-verify", [\App\Http\Controllers\Api\ClientController::class, "verifyCne"]);
 Route::get("/public/general-settings", [GeneralSettingController::class, "index"]);
+Route::get("/public/general-settings/presets", [GeneralSettingController::class, "presets"]);
 
 // Rutas de administración de órdenes de e-commerce (dentro del bloque auth:sanctum)
 Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
@@ -510,6 +511,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
 
     //ruta de configuracion
     Route::post('/general-settings', [GeneralSettingController::class, 'store']);
+    Route::get('/general-settings/presets', [GeneralSettingController::class, 'presets']);
+    Route::post('/general-settings/apply-preset', [GeneralSettingController::class, 'applyPreset']);
 
     // Rutas de Configuración de Sincronización Gmail
     Route::prefix('configuration/email-sync')->group(function () {

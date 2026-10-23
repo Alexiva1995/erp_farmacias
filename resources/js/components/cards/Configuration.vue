@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { useAbility } from '@casl/vue'
 import { useGeneralSettings } from '@/composables/configuration/useGeneralSettings'
+import VerticalPresetCard from '@/components/configuration/VerticalPresetCard.vue'
 
 const ability = useAbility()
 
@@ -113,6 +114,9 @@ onMounted(() => {
 
       <!-- Formulario Principal Simplificado -->
       <VCardText v-else class="py-6">
+        <!-- Selector de Vertical de Negocio / Presets 1-Click -->
+        <VerticalPresetCard @preset-applied="fetchSettings" />
+
         <VRow>
           <!-- Configuración Fiscal -->
           <VCol cols="12" md="6">

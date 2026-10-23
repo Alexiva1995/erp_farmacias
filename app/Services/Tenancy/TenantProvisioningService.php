@@ -111,6 +111,14 @@ class TenantProvisioningService
                     app(\Database\Seeders\TelegramCommandSeeder::class)->run();
                 }
             } catch (\Throwable $e) {}
+
+            // 3.5 Aplicar preset de vertical de negocio seleccionado (o farmacia por defecto)
+            try {
+                $vertical = $data['vertical'] ?? \AppEnums\BusinessVerticalEnum::PHARMACY->value;
+                app(\App\Contracts\VerticalPresetServiceInterface::class)->applyPreset($vertical, true);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Error aplicando preset de vertical en tenant {$data['tenant_id']}: " . $e->getMessage());
+            }
         });
 
         // 4. Sincronizar datos maestros del central (orígenes, categorías, laboratorios) hacia el nuevo tenant

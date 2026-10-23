@@ -27,7 +27,15 @@ const form = reactive({
   admin_name: 'Administrador',
   admin_email: '',
   password: '',
+  vertical: 'pharmacy',
 })
+
+const verticalOptions = [
+  { title: 'Farmacia & Salud Integral', value: 'pharmacy', icon: 'tabler-pill' },
+  { title: 'Restaurante con Salón (Mesas & Comandas)', value: 'restaurant', icon: 'tabler-tools-kitchen-2' },
+  { title: 'Comida Rápida / Dark Kitchen / Cafetería', value: 'fast_food', icon: 'tabler-burger' },
+  { title: 'Bodegón / Minimarket / Retail', value: 'minimarket', icon: 'tabler-building-store' },
+]
 
 const errors = reactive({
   company_name: '',
@@ -86,6 +94,7 @@ const resetForm = () => {
   form.admin_name = 'Administrador'
   form.admin_email = ''
   form.password = ''
+  form.vertical = 'pharmacy'
   
   Object.keys(errors).forEach((key) => {
     errors[key] = ''
@@ -424,6 +433,20 @@ onMounted(() => {
                 :error-messages="errors.tenant_id"
                 :disabled="isSubmitting"
                 hint="Solo letras minúsculas, números y guiones. Será la URL de acceso de la farmacia."
+                persistent-hint
+              />
+            </VCol>
+
+            <!-- Vertical de Negocio / Perfil Inicial -->
+            <VCol cols="12">
+              <VSelect
+                v-model="form.vertical"
+                :items="verticalOptions"
+                label="Vertical y Perfil de Negocio *"
+                prepend-inner-icon="tabler-topology-star-3"
+                variant="outlined"
+                :disabled="isSubmitting"
+                hint="El sistema precargará las vistas, reglas de stock y TPV ideales para este rubro."
                 persistent-hint
               />
             </VCol>

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Central;
 
+use App\Enums\BusinessVerticalEnum;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CreateTenantRequest extends FormRequest
 {
@@ -36,6 +38,11 @@ class CreateTenantRequest extends FormRequest
             'admin_email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string', 'min:6', 'max:100'],
             'domain' => ['nullable', 'string', 'max:100'],
+            'vertical' => [
+                'nullable',
+                'string',
+                Rule::in(BusinessVerticalEnum::values()),
+            ],
         ];
     }
 
@@ -48,10 +55,11 @@ class CreateTenantRequest extends FormRequest
     {
         return [
             'tenant_id' => 'identificador o subdominio',
-            'company_name' => 'nombre de la farmacia',
+            'company_name' => 'nombre del negocio',
             'admin_name' => 'nombre del administrador',
             'admin_email' => 'correo electrónico',
             'password' => 'contraseña',
+            'vertical' => 'vertical de negocio',
         ];
     }
 }

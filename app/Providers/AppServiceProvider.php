@@ -242,6 +242,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\VerticalPresetServiceInterface::class,
+            \App\Services\Configuration\VerticalPresetService::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Suppliers\SupplierFinancialSyncServiceInterface::class,
             \App\Services\Suppliers\SupplierFinancialSyncService::class
         );

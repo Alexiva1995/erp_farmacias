@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from '@axios'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 export const useBrandingStore = defineStore('branding', () => {
   const settings = ref({
@@ -51,6 +51,14 @@ export const useBrandingStore = defineStore('branding', () => {
     enable_invoices: true,
     enable_invoice_locations: true,
     enable_reservations: true,
+    enable_dishes: false,
+    enable_tables: false,
+    enable_kds: false,
+    enable_modifiers: false,
+    enable_split_check: false,
+    enable_tips: false,
+    default_service_fee_pct: 10.00,
+    enable_sub_recipes: false,
     enabled_telegram_views: ['configuration', 'generales', 'farmacia', 'restaurante', 'cosmeticos', 'alquileres'],
     is_tenant: false,
     is_master: true,
@@ -60,6 +68,19 @@ export const useBrandingStore = defineStore('branding', () => {
   const isLoaded = ref(false)
   const exchangeRates = ref([])
   let fetchPromise = null
+
+  const isRestaurant = computed(() => settings.value.business_type === 'restaurant')
+
+  const labels = computed(() => {
+    const isRest = isRestaurant.value
+    return {
+      businessName: isRest ? 'Datos del Restaurante' : 'Datos de la Farmacia',
+      catalog: isRest ? 'Menú y Platos' : 'Catálogo de Medicamentos',
+      products: isRest ? 'Insumos y Mercancía' : 'Medicamentos y Productos',
+      suppliers: isRest ? 'Proveedores de Insumos' : 'Droguerías y Proveedores',
+      laboratories: isRest ? 'Marcas / Líneas' : 'Laboratorios',
+    }
+  })
 
   const fetchSettings = async (force = false) => {
     if (!force && isLoaded.value && settings.value.app_rif) {
@@ -119,16 +140,12 @@ export const useBrandingStore = defineStore('branding', () => {
   }
 
   const applyThemeColors = () => {
-    // Si estamos en la página del e-commerce público, evitamos alterar el tema del ERP
     if (window.location.pathname.includes('/tova-store')) {
       return
     }
 
     const root = document.documentElement
-
-    // Para el ERP usamos colores de marca que mantengan legibilidad
-    // Si el color secundario (oscuro) o primario original existe, los aplicamos al ERP de forma legible
-    const primary = settings.value.secondary_color || '#E20074' // Usamos el color secundario como primario en el ERP para evitar fondos claros invisibles
+    const primary = settings.value.secondary_color || '#E20074'
     const secondary = settings.value.tertiary_color || '#7A0099'
 
     if (primary) {
@@ -154,7 +171,6 @@ export const useBrandingStore = defineStore('branding', () => {
     )
   }
 
-  // Helper: convierte HEX a formato RGB que usa Vuetify 3 en CSS vars
   const hexToRgb = (hex) => {
     const r = parseInt(hex.slice(1, 3), 16)
     const g = parseInt(hex.slice(3, 5), 16)
@@ -162,14 +178,10 @@ export const useBrandingStore = defineStore('branding', () => {
     return `${r}, ${g}, ${b}`
   }
 
-  // Actualiza solo el campo tpv_payment_methods de forma reactiva
   const updatePaymentMethods = (methods) => {
-    // Mutación directa de la propiedad para que los computed que dependen de
-    // settings.tpv_payment_methods detecten el cambio sin reemplazar el objeto raíz
     settings.value.tpv_payment_methods = methods
   }
 
-  // Recarga solo las tasas de cambio sin depender del caché de fetchSettings
   const fetchExchangeRates = async () => {
     try {
       const ratesResponse = await axios.get('/public/exchange-rates')
@@ -181,14 +193,38 @@ export const useBrandingStore = defineStore('branding', () => {
     }
   }
 
+  /**
+   * Aplicar una plantilla de vertical de negocio con 1 clic
+   */
+  const applyVerticalPreset = async (verticalKey, preserveIdentity = true) => {
+    isLoading.value = true
+    try {
+      const response = await axios.post('/general-settings/apply-preset', {
+        vertical: verticalKey,
+        preserve_identity: preserveIdentity,
+      })
+      if (response.data?.data) {
+        settings.value = { ...settings.value, ...response.data.data }
+        localStorage.setItem('business_type', response.data.data.business_type)
+        applyThemeColors()
+      }
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     settings,
     exchangeRates,
     isLoading,
     isLoaded,
+    isRestaurant,
+    labels,
     fetchSettings,
     fetchExchangeRates,
     updatePaymentMethods,
+    applyVerticalPreset,
     hexToRgb,
   }
 })

@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class GeneralSetting extends Model
 {
-   protected $table = 'general_settings';
+    protected $table = 'general_settings';
+
     protected $fillable = [
         'fiscal_mode',
         'special_taxpayer_status',
@@ -71,6 +72,13 @@ class GeneralSetting extends Model
         'enable_optimization',
         'traceability_mode',
         'enable_dishes',
+        'enable_tables',
+        'enable_kds',
+        'enable_modifiers',
+        'enable_split_check',
+        'enable_tips',
+        'default_service_fee_pct',
+        'enable_sub_recipes',
         'enable_reservations',
         'enable_quotations',
         'quotation_style',
@@ -145,6 +153,13 @@ class GeneralSetting extends Model
         'enable_optimization' => 'boolean',
         'traceability_mode' => 'string',
         'enable_dishes' => 'boolean',
+        'enable_tables' => 'boolean',
+        'enable_kds' => 'boolean',
+        'enable_modifiers' => 'boolean',
+        'enable_split_check' => 'boolean',
+        'enable_tips' => 'boolean',
+        'default_service_fee_pct' => 'float',
+        'enable_sub_recipes' => 'boolean',
         'enable_reservations' => 'boolean',
         'enable_quotations' => 'boolean',
         'quotation_style' => 'string',
