@@ -52,7 +52,7 @@ class TenantManagementController extends Controller
             $tenant->load('domains');
 
             return response()->json([
-                'message' => 'Farmacia aprovisionada exitosamente con todos los catálogos y formatos maestros.',
+                'message' => 'Empresa aprovisionada exitosamente con todos los catálogos y formatos maestros.',
                 'tenant'  => new TenantResource($tenant),
                 'login_url' => 'https://' . ($tenant->domains->first()?->domain ?? "{$tenant->id}.tovaerp.com"),
             ], 201);
@@ -62,7 +62,7 @@ class TenantManagementController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Error al aprovisionar la farmacia: ' . $e->getMessage(),
+                'message' => 'Error al aprovisionar la empresa: ' . $e->getMessage(),
             ], 422);
         }
     }
@@ -93,13 +93,13 @@ class TenantManagementController extends Controller
             }
 
             return response()->json([
-                'message' => "Farmacia '{$id}' y su base de datos fueron eliminadas correctamente.",
+                'message' => "Empresa '{$id}' y su base de datos fueron eliminadas correctamente.",
             ]);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Error eliminando tenant {$id}: " . $e->getMessage());
 
             return response()->json([
-                'message' => 'Error al eliminar la farmacia: ' . $e->getMessage(),
+                'message' => 'Error al eliminar la empresa: ' . $e->getMessage(),
             ], 422);
         }
     }

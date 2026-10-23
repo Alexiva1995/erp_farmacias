@@ -19,6 +19,7 @@ class TenantResource extends JsonResource
         return [
             'id' => $this->id,
             'company_name' => $this->company_name ?? $this->id,
+            'vertical' => $this->vertical ?? 'pharmacy',
             'plan_id' => $this->plan_id,
             'domains' => $this->whenLoaded('domains', function () {
                 return $this->domains->map(fn($d) => [

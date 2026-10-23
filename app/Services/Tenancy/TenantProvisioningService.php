@@ -43,6 +43,7 @@ class TenantProvisioningService
         $tenant = Tenant::create([
             'id' => $data['tenant_id'],
             'company_name' => $data['company_name'] ?? $data['tenant_id'],
+            'vertical' => $data['vertical'] ?? \App\Enums\BusinessVerticalEnum::PHARMACY->value,
             'plan_id' => $data['plan_id'] ?? null,
         ]);
 

@@ -20,7 +20,7 @@ const alert = reactive({
   message: '',
 })
 
-// Formulario de nueva farmacia
+// Formulario de nueva empresa
 const form = reactive({
   company_name: '',
   tenant_id: '',
@@ -37,12 +37,27 @@ const verticalOptions = [
   { title: 'Bodegón / Minimarket / Retail', value: 'minimarket', icon: 'tabler-building-store' },
 ]
 
+const getVerticalBadge = (key) => {
+  switch (key) {
+    case 'restaurant':
+      return { label: 'Restaurante', color: 'success', icon: 'tabler-tools-kitchen-2' }
+    case 'fast_food':
+      return { label: 'Comida Rápida', color: 'warning', icon: 'tabler-burger' }
+    case 'minimarket':
+      return { label: 'Minimarket', color: 'info', icon: 'tabler-building-store' }
+    case 'pharmacy':
+    default:
+      return { label: 'Farmacia', color: 'primary', icon: 'tabler-pill' }
+  }
+}
+
 const errors = reactive({
   company_name: '',
   tenant_id: '',
   admin_name: '',
   admin_email: '',
   password: '',
+  vertical: '',
 })
 
 // Auto-generar identificador slug a partir del nombre
@@ -64,14 +79,15 @@ const slugify = (text) => {
 
 // Encabezados de la tabla
 const headers = [
-  { title: 'Farmacia / Razón Social', key: 'company_name', sortable: true },
+  { title: 'Empresa / Razón Social', key: 'company_name', sortable: true },
+  { title: 'Tipo de Negocio', key: 'vertical', sortable: true },
   { title: 'Identificador (ID)', key: 'id', sortable: true },
   { title: 'Dominio / URL de Acceso', key: 'domains', sortable: false },
   { title: 'Fecha de Creación', key: 'created_at', sortable: true },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
 ]
 
-// Cargar lista de farmacias registradas
+// Cargar lista de empresas registradas
 const fetchTenants = async () => {
   isLoading.value = true
   try {
@@ -79,7 +95,7 @@ const fetchTenants = async () => {
     const data = response.data?.data ?? response.data
     tenants.value = Array.isArray(data) ? data : []
   } catch (error) {
-    console.error('Error al cargar farmacias:', error)
+    console.error('Error al cargar empresas:', error)
     tenants.value = []
     showAlert('error', error.response?.data?.message || 'Error al conectar con el servidor central')
   } finally {
@@ -121,7 +137,7 @@ const showAlert = (type, message) => {
   }, 6000)
 }
 
-// Crear farmacia y aprovisionar
+// Crear empresa y aprovisionar
 const handleCreateTenant = async () => {
   // Limpiar errores previos
   Object.keys(errors).forEach((key) => {
@@ -136,9 +152,10 @@ const handleCreateTenant = async () => {
       admin_name: form.admin_name,
       admin_email: form.admin_email,
       password: form.password,
+      vertical: form.vertical,
     })
 
-    showAlert('success', response.data.message || 'Farmacia creada y aprovisionada exitosamente')
+    showAlert('success', response.data.message || 'Empresa creada y aprovisionada exitosamente')
     closeCreateDialog()
     await fetchTenants()
   } catch (error) {
@@ -150,7 +167,7 @@ const handleCreateTenant = async () => {
         }
       })
     } else {
-      showAlert('error', error.response?.data?.message || 'Ocurrió un error al aprovisionar la farmacia')
+      showAlert('error', error.response?.data?.message || 'Ocurrió un error al aprovisionar la empresa')
     }
   } finally {
     isSubmitting.value = false
@@ -174,12 +191,12 @@ const handleDeleteTenant = async () => {
   isDeleting.value = true
   try {
     const response = await axios.delete(`/central/tenants/${id}`)
-    showAlert('success', response.data.message || 'Farmacia eliminada exitosamente')
+    showAlert('success', response.data.message || 'Empresa eliminada exitosamente')
     isDeleteDialogOpen.value = false
     tenantToDelete.value = null
     await fetchTenants()
   } catch (error) {
-    showAlert('error', error.response?.data?.message || 'Error al eliminar la farmacia')
+    showAlert('error', error.response?.data?.message || 'Error al eliminar la empresa')
   } finally {
     isDeleting.value = false
   }
@@ -200,7 +217,7 @@ onMounted(() => {
       class="mb-6"
       title="Módulo Exclusivo de la Instancia Central (Master)"
     >
-      La gestión y aprovisionamiento de farmacias SaaS solo está habilitada desde el dominio maestro central del sistema.
+      La gestión y aprovisionamiento de empresas SaaS solo está habilitada desde el dominio maestro central del sistema.
     </VAlert>
   </div>
 
@@ -209,10 +226,10 @@ onMounted(() => {
     <div class="d-flex flex-column flex-sm-row align-sm-center justify-space-between mb-6 ga-3">
       <div>
         <h1 class="text-h5 font-weight-bold text-high-emphasis mb-1">
-          Gestión de Farmacias (Tenants)
+          Gestión de Empresas (Tenants)
         </h1>
         <p class="text-body-2 text-medium-emphasis mb-0">
-          Aprovisiona nuevas instancias de farmacias independientes con catálogos y formatos maestros preconfigurados.
+          Aprovisiona nuevas instancias de empresas y negocios independientes con catálogos y formatos maestros preconfigurados.
         </p>
       </div>
 
@@ -222,7 +239,7 @@ onMounted(() => {
         class="font-weight-medium"
         @click="openCreateDialog"
       >
-        Nueva Farmacia
+        Nueva Empresa
       </VBtn>
     </div>
 
@@ -238,7 +255,7 @@ onMounted(() => {
       {{ alert.message }}
     </VAlert>
 
-    <!-- Tabla Principal de Farmacias -->
+    <!-- Tabla Principal de Empresas -->
     <VCard variant="outlined">
       <VCardText class="pa-4">
         <VRow align="center" justify="space-between">
@@ -246,7 +263,7 @@ onMounted(() => {
             <VTextField
               v-model="searchQuery"
               density="compact"
-              placeholder="Buscar por farmacia o subdominio..."
+              placeholder="Buscar por empresa o subdominio..."
               prepend-inner-icon="tabler-search"
               variant="outlined"
               hide-details
@@ -269,12 +286,12 @@ onMounted(() => {
         :items="tenants"
         :search="searchQuery"
         :loading="isLoading"
-        loading-text="Cargando farmacias registradas..."
-        no-data-text="No hay farmacias registradas actualmente"
+        loading-text="Cargando empresas registradas..."
+        no-data-text="No hay empresas registradas actualmente"
         hover
         class="elevation-0"
       >
-        <!-- Columna Farmacia -->
+        <!-- Columna Empresa -->
         <template #item.company_name="{ item }">
           <div class="d-flex align-center ga-3 py-2">
             <VAvatar color="primary" variant="tonal" size="38">
@@ -289,6 +306,19 @@ onMounted(() => {
               </span>
             </div>
           </div>
+        </template>
+
+        <!-- Columna Tipo de Negocio / Vertical -->
+        <template #item.vertical="{ item }">
+          <VChip
+            size="small"
+            variant="tonal"
+            :color="getVerticalBadge(item.vertical ?? item.raw?.vertical).color"
+            class="font-weight-medium"
+          >
+            <VIcon start size="14" :icon="getVerticalBadge(item.vertical ?? item.raw?.vertical).icon" />
+            {{ getVerticalBadge(item.vertical ?? item.raw?.vertical).label }}
+          </VChip>
         </template>
 
         <!-- Columna Identificador -->
@@ -357,7 +387,7 @@ onMounted(() => {
       <VCard class="pa-2">
         <VCardTitle class="d-flex align-center ga-2 text-error pa-4">
           <VIcon icon="tabler-alert-triangle" size="26" />
-          <span class="text-h6 font-weight-bold">¿Eliminar Farmacia?</span>
+          <span class="text-h6 font-weight-bold">¿Eliminar Empresa?</span>
         </VCardTitle>
 
         <VCardText class="pa-4 pt-0">
@@ -386,35 +416,49 @@ onMounted(() => {
             prepend-icon="tabler-trash"
             @click="handleDeleteTenant"
           >
-            {{ isDeleting ? 'Eliminando...' : 'Eliminar Farmacia' }}
+            {{ isDeleting ? 'Eliminando...' : 'Eliminar Empresa' }}
           </VBtn>
         </VCardActions>
       </VCard>
     </VDialog>
 
-    <!-- Modal de Creación / Aprovisionamiento de Farmacia -->
+    <!-- Modal de Creación / Aprovisionamiento de Empresa -->
     <VDialog v-model="isDialogOpen" max-width="600" persistent>
       <VCard class="pa-2">
         <VCardTitle class="d-flex align-center justify-space-between pa-4">
           <div class="d-flex align-center ga-2">
-            <VIcon icon="tabler-building-hospital" color="primary" size="26" />
-            <span class="text-h6 font-weight-bold">Aprovisionar Nueva Farmacia</span>
+            <VIcon icon="tabler-building-store" color="primary" size="26" />
+            <span class="text-h6 font-weight-bold">Aprovisionar Nueva Empresa</span>
           </div>
           <VBtn icon="tabler-x" variant="text" size="small" @click="closeCreateDialog" :disabled="isSubmitting" />
         </VCardTitle>
 
         <VCardText class="pa-4">
           <p class="text-body-2 text-medium-emphasis mb-4">
-            Al crear la farmacia, el sistema creará automáticamente su base de datos aislada, correrá todas las migraciones e importará el catálogo maestro de proveedores con credenciales limpias.
+            Al crear la empresa, el sistema creará automáticamente su base de datos aislada, correrá todas las migraciones e inicializará el entorno según la vertical de negocio seleccionada.
           </p>
 
           <VRow>
-            <!-- Nombre de la Farmacia -->
+            <!-- Vertical de Negocio / Perfil Inicial -->
+            <VCol cols="12">
+              <VSelect
+                v-model="form.vertical"
+                :items="verticalOptions"
+                label="Vertical y Tipo de Negocio *"
+                prepend-inner-icon="tabler-topology-star-3"
+                variant="outlined"
+                :disabled="isSubmitting"
+                hint="El sistema precargará las vistas, reglas de stock y TPV ideales para este rubro."
+                persistent-hint
+              />
+            </VCol>
+
+            <!-- Nombre de la Empresa -->
             <VCol cols="12">
               <VTextField
                 v-model="form.company_name"
-                label="Nombre de la Farmacia / Empresa *"
-                placeholder="Ej: Farmacia Zorca Salud C.A."
+                label="Nombre de la Empresa / Razón Social *"
+                placeholder="Ej: Restaurante Don Pedro C.A."
                 variant="outlined"
                 :error-messages="errors.company_name"
                 :disabled="isSubmitting"
@@ -427,26 +471,12 @@ onMounted(() => {
               <VTextField
                 v-model="form.tenant_id"
                 label="Identificador de Subdominio *"
-                placeholder="zorcasalud"
+                placeholder="donpedro"
                 suffix=".tovaerp.com"
                 variant="outlined"
                 :error-messages="errors.tenant_id"
                 :disabled="isSubmitting"
-                hint="Solo letras minúsculas, números y guiones. Será la URL de acceso de la farmacia."
-                persistent-hint
-              />
-            </VCol>
-
-            <!-- Vertical de Negocio / Perfil Inicial -->
-            <VCol cols="12">
-              <VSelect
-                v-model="form.vertical"
-                :items="verticalOptions"
-                label="Vertical y Perfil de Negocio *"
-                prepend-inner-icon="tabler-topology-star-3"
-                variant="outlined"
-                :disabled="isSubmitting"
-                hint="El sistema precargará las vistas, reglas de stock y TPV ideales para este rubro."
+                hint="Solo letras minúsculas, números y guiones. Será la URL de acceso del negocio."
                 persistent-hint
               />
             </VCol>
@@ -468,7 +498,7 @@ onMounted(() => {
               <VTextField
                 v-model="form.admin_email"
                 label="Correo Electrónico de Acceso *"
-                placeholder="admin@farmacia.com"
+                placeholder="admin@empresa.com"
                 type="email"
                 variant="outlined"
                 :error-messages="errors.admin_email"
@@ -509,7 +539,7 @@ onMounted(() => {
             prepend-icon="tabler-circle-check"
             @click="handleCreateTenant"
           >
-            {{ isSubmitting ? 'Aprovisionando...' : 'Crear y Aprovisionar' }}
+            {{ isSubmitting ? 'Aprovisionando...' : 'Crear y Aprovisionar Empresa' }}
           </VBtn>
         </VCardActions>
       </VCard>

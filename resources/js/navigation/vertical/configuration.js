@@ -101,7 +101,7 @@ export default [
         ],
       },
       {
-        title: 'Farmacias (SaaS)',
+        title: 'Empresas (SaaS)',
         to: 'configuration-tenants',
       },
     ],
