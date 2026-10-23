@@ -53,14 +53,21 @@ class InvoiceActionService
                 'total_usd' => $totalUSD,
                 'currency' => $data['currency'],
                 'discount_rule_id' => $data['discount_rule_id'] ?? null,
-                'is_expense' => $isExpense,
-                'has_islr_retention' => $hasIslr,
                 'status' => $isExpense ? 'ordered' : 'pending',
                 'ordered_by' => $isExpense ? (Auth::id() ?? $data['registered_by'] ?? null) : null,
                 'registered_by' => Auth::id() ?? $data['registered_by'] ?? null,
                 'uploaded_by' => Auth::id() ?? $data['uploaded_by'] ?? null,
                 'status_payment' => 0,
             ];
+
+            // Blindaje de columnas si el tenant no ha corrido la última migración
+            if (\Illuminate\Support\Facades\Schema::hasColumn('invoices', 'is_expense')) {
+                $invoiceData['is_expense'] = $isExpense;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('invoices', 'has_islr_retention')) {
+                $invoiceData['has_islr_retention'] = $hasIslr;
+            }
+
             return Invoice::create($invoiceData);
         });
     }
@@ -119,7 +126,7 @@ class InvoiceActionService
                 'created_invoice_date' => $data['created_invoice_date'],
             ];
 
-            if (array_key_exists('is_expense', $data)) {
+            if (array_key_exists('is_expense', $data) && \Illuminate\Support\Facades\Schema::hasColumn('invoices', 'is_expense')) {
                 $invoiceData['is_expense'] = (bool)$data['is_expense'];
                 if ($invoiceData['is_expense']) {
                     $invoiceData['status'] = 'ordered';
@@ -127,7 +134,7 @@ class InvoiceActionService
                 }
             }
 
-            if (array_key_exists('has_islr_retention', $data)) {
+            if (array_key_exists('has_islr_retention', $data) && \Illuminate\Support\Facades\Schema::hasColumn('invoices', 'has_islr_retention')) {
                 $invoiceData['has_islr_retention'] = (bool)$data['has_islr_retention'];
             }
 

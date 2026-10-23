@@ -637,7 +637,8 @@ const handleSubmit = async () => {
       const errors = Object.values(error.response.data.errors).flat();
       toast.error(errors.join("\n"));
     } else {
-      toast.error("Hubo un problema al procesar la factura.");
+      const serverMsg = error.response?.data?.message || "Hubo un problema al procesar la factura.";
+      toast.error(serverMsg);
     }
   } finally {
     loading.value = false;

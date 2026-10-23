@@ -79,12 +79,24 @@ class InvoiceController extends Controller
 
     public function store(StoreInvoiceRequest $request)
     {
-        $invoice = $this->invoiceActionService->createInvoice($request->validated());
+        try {
+            $invoice = $this->invoiceActionService->createInvoice($request->validated());
 
-        return response()->json([
-            'message' => 'Factura registrada con éxito.',
-            'invoice' => new InvoiceResource($invoice)
-        ], 201);
+            return response()->json([
+                'message' => 'Factura registrada con éxito.',
+                'invoice' => new InvoiceResource($invoice)
+            ], 201);
+        } catch (\Throwable $e) {
+            Log::error('Error en InvoiceController@store: ' . $e->getMessage(), [
+                'exception' => $e,
+                'payload' => $request->all(),
+            ]);
+
+            return response()->json([
+                'message' => 'Hubo un problema al procesar la factura: ' . $e->getMessage(),
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
     }
 
     public function destroy(Invoice $invoice)

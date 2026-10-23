@@ -13,7 +13,9 @@ class TenantProvisioningService
     public function __construct(
         protected OriginSyncService $originSyncService,
         protected CategorySyncService $categorySyncService,
-        protected LaboratorySyncService $laboratorySyncService
+        protected LaboratorySyncService $laboratorySyncService,
+        protected GroupSyncService $groupSyncService,
+        protected SupplierSyncService $supplierSyncService
     ) {}
 
     /**
@@ -128,6 +130,18 @@ class TenantProvisioningService
             $this->laboratorySyncService->syncTenant($tenant);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning("Error sincronizando laboratorios en nuevo tenant {$data['tenant_id']}: " . $e->getMessage());
+        }
+
+        try {
+            $this->groupSyncService->syncTenant($tenant);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Error sincronizando grupos en nuevo tenant {$data['tenant_id']}: " . $e->getMessage());
+        }
+
+        try {
+            $this->supplierSyncService->syncTenant($tenant);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Error sincronizando proveedores en nuevo tenant {$data['tenant_id']}: " . $e->getMessage());
         }
 
         return $tenant;
