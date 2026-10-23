@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrderDetail extends Model
 {
@@ -56,5 +57,10 @@ class OrderDetail extends Model
     public function court(): BelongsTo
     {
         return $this->belongsTo(Court::class, 'court_id');
+    }
+
+    public function modifiers(): HasMany
+    {
+        return $this->hasMany(OrderDetailModifier::class, 'order_detail_id');
     }
 }

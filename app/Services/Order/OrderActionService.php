@@ -163,11 +163,56 @@ class OrderActionService
             // HANDLE DISHES (Only for restaurant mode)
             $dishId = $validatedData['dish_id'] ?? null;
             if ($dishId) {
-                $dish = \App\Models\Dish::with('ingredients')->findOrFail($dishId);
+                $dish = \App\Models\Dish::with(['ingredients', 'modifierGroups.options'])->findOrFail($dishId);
                 $requestedQuantity = (int)$validatedData['quantity'];
-                
-                // Derivar precio de designated_price
-                $price_usd = $dish->designated_price ?? 0;
+                $notes = isset($validatedData['notes']) ? trim((string)$validatedData['notes']) : null;
+                $modifiersInput = $validatedData['modifiers'] ?? [];
+                $orderDetailId = $validatedData['order_detail_id'] ?? null;
+
+                // Calcular impacto de modificadores en precio y costo
+                $extraPriceUsd = 0.0;
+                $extraCostUsd = 0.0;
+                $normalizedModifiers = [];
+
+                if (!empty($modifiersInput) && is_array($modifiersInput)) {
+                    foreach ($modifiersInput as $mod) {
+                        $option = null;
+                        if (!empty($mod['modifier_option_id'])) {
+                            $option = \App\Models\ModifierOption::with('product')->find($mod['modifier_option_id']);
+                        }
+
+                        $modName = $mod['name'] ?? ($option?->name ?? 'Modificador');
+                        $modType = $mod['modifier_type'] ?? ($option?->modifier_type?->value ?? ($option?->modifier_type ?? 'add'));
+                        $modExtraPrice = (float)($mod['extra_price_usd'] ?? ($option?->extra_price_usd ?? 0));
+                        $modProductId = $mod['product_id'] ?? ($option?->product_id ?? null);
+                        $modPortion = (float)($mod['portion'] ?? ($option?->portion ?? 0));
+
+                        if ($modType === 'add') {
+                            $extraPriceUsd += $modExtraPrice;
+                            if ($option && $option->product) {
+                                $pres = $option->product->presentation > 0 ? $option->product->presentation : 1;
+                                $extraCostUsd += ($modPortion * ($option->product->unit_cost ?? 0)) / $pres;
+                            }
+                        } elseif ($modType === 'remove' && $option && $option->product) {
+                            $pres = $option->product->presentation > 0 ? $option->product->presentation : 1;
+                            $extraCostUsd -= ($modPortion * ($option->product->unit_cost ?? 0)) / $pres;
+                        }
+
+                        $normalizedModifiers[] = [
+                            'modifier_option_id' => $option?->id ?? ($mod['modifier_option_id'] ?? null),
+                            'name' => $modName,
+                            'modifier_type' => $modType,
+                            'extra_price_usd' => $modExtraPrice,
+                            'product_id' => $modProductId,
+                            'portion' => $modPortion,
+                        ];
+                    }
+                }
+
+                // Derivar precio total en USD (base + modificadores)
+                $price_usd = (float)($dish->designated_price ?? 0) + $extraPriceUsd;
+                $unitCost = max(0, (float)($dish->cost_price ?? 0) + $extraCostUsd);
+
                 $targetCurrency = $order->currency;
                 if ($targetCurrency === 'USD') {
                     $unitPriceAtOrder = $price_usd;
@@ -183,33 +228,70 @@ class OrderActionService
                     $unitPriceAtOrder = $price_usd;
                 }
 
-                // 1. Remove existing detail for this dish
-                $order->details()->where('dish_id', $dishId)->delete();
+                // Determinar si editamos una línea específica o agregamos
+                $existingItem = null;
+                if ($orderDetailId) {
+                    $existingItem = $order->details()->where('id', $orderDetailId)->where('dish_id', $dishId)->first();
+                } else {
+                    // Buscar si ya existe una línea idéntica (mismo plato, misma nota y mismos modificadores)
+                    $candidateItems = $order->details()->with('modifiers')->where('dish_id', $dishId)->get();
+                    $modOptionIdsInput = collect($normalizedModifiers)->pluck('modifier_option_id')->filter()->sort()->values()->all();
+
+                    foreach ($candidateItems as $candidate) {
+                        $candidateNotes = trim((string)($candidate->notes ?? ''));
+                        $currentNotes = trim((string)($notes ?? ''));
+                        if ($candidateNotes !== $currentNotes) {
+                            continue;
+                        }
+                        $candidateOptionIds = $candidate->modifiers->pluck('modifier_option_id')->filter()->sort()->values()->all();
+                        if ($candidateOptionIds === $modOptionIdsInput) {
+                            $existingItem = $candidate;
+                            break;
+                        }
+                    }
+                }
 
                 if ($requestedQuantity === 0) {
+                    if ($existingItem) {
+                        $existingItem->modifiers()->delete();
+                        $existingItem->delete();
+                    }
                     $order->updateTotals();
                     DB::commit();
                     return new OrderDetail(['dish_id' => $dishId, 'quantity' => 0]);
                 }
 
-
-                // 3. Create detail
-                $orderItem = $order->details()->create([
-                    'dish_id' => $dishId,
-                    'quantity' => $requestedQuantity,
-                    'price' => $unitPriceAtOrder,
-                    'unit_cost' => $dish->cost_price ?? 0,
-                    'unit_price_usd' => $price_usd,
-                    'product_type' => 'dish',
-                    'notes' => $validatedData['notes'] ?? null,
-                ]);
+                if ($existingItem) {
+                    $existingItem->update([
+                        'quantity' => $requestedQuantity,
+                        'price' => $unitPriceAtOrder,
+                        'unit_cost' => $unitCost,
+                        'unit_price_usd' => $price_usd,
+                        'notes' => $notes,
+                    ]);
+                    $existingItem->modifiers()->delete();
+                    foreach ($normalizedModifiers as $nm) {
+                        $existingItem->modifiers()->create($nm);
+                    }
+                    $orderItem = $existingItem;
+                } else {
+                    $orderItem = $order->details()->create([
+                        'dish_id' => $dishId,
+                        'quantity' => $requestedQuantity,
+                        'price' => $unitPriceAtOrder,
+                        'unit_cost' => $unitCost,
+                        'unit_price_usd' => $price_usd,
+                        'product_type' => 'dish',
+                        'notes' => $notes,
+                    ]);
+                    foreach ($normalizedModifiers as $nm) {
+                        $orderItem->modifiers()->create($nm);
+                    }
+                }
 
                 $order->updateTotals();
                 DB::commit();
-                // Recargar desde BD para obtener los campos de descuento actualizados por applyGeneralPromotions
-                $orderItem = $orderItem->fresh(['dish' => function ($q) {
-                    $q->with('category');
-                }]);
+                $orderItem = $orderItem->fresh(['dish.category', 'modifiers.product']);
                 return $orderItem;
             }
 
@@ -692,13 +774,23 @@ class OrderActionService
         if (!$fiscalexist) {
             $detailsForHash = [];
             foreach ($order->details as $detail) {
-                // Los platos de restaurante no tienen producto asociado (product es null)
+                // Los platos de restaurante pueden ser gravados o exentos según dish->iva
                 if ($detail->product_type === 'dish') {
                     $dish = $detail->dish;
                     $priceBs = (float)($detail->price_bs ?? $detail->price);
                     $quantity = $detail->quantity;
                     $itemSubtotal = $priceBs * $quantity;
-                    $exemptAmount += $itemSubtotal;
+                    $isDishTaxable = $dish && (bool) $dish->iva;
+
+                    if ($isDishTaxable) {
+                        $ratePct = ((float) ($dish->tax_rate ?? 16.0)) / 100;
+                        $itemIva = $itemSubtotal * $ratePct;
+                        $totalIva += $itemIva;
+                        $taxableAmount += $itemSubtotal;
+                    } else {
+                        $exemptAmount += $itemSubtotal;
+                    }
+
                     $detailsForHash[] = "dish_{$detail->dish_id}:{$quantity}:" . number_format($priceBs, 4, '.', '');
                     continue;
                 }
@@ -774,20 +866,26 @@ class OrderActionService
                 $unitPriceInOrderCurrency = $detail->unit_cost;
                 $quantity = $detail->quantity;
 
-                // Los platos de restaurante no tienen producto, tratar como exentos
+                // Los platos de restaurante registran IVA si dish->iva es true
                 if ($detail->product_type === 'dish') {
                     $dish = $detail->dish;
                     $priceBs = $detail->price_bs ?? (float)$detail->price;
+                    $isDishTaxable = $dish && (bool) $dish->iva;
+                    $ratePct = $isDishTaxable ? (((float) ($dish->tax_rate ?? 16.0)) / 100) : 0;
+                    $itemSubtotalBs = $priceBs * $quantity;
+                    $itemIvaSubtotal = $isDishTaxable ? ($itemSubtotalBs * $ratePct) : 0;
+                    $itemTotalAmount = $itemSubtotalBs + $itemIvaSubtotal;
+
                     FiscalHistoryDetail::create([
                         'fiscal_history_id' => $fiscalHistory->id,
                         'product_id'        => null,
                         'product_name'      => $dish?->name ?? 'Plato',
                         'quantity'          => $quantity,
-                        'vat_status'        => 0,
-                        'exempt_amount'     => $priceBs,
-                        'iva_amount'        => 0,
-                        'total_amount'      => $priceBs,
-                        'big_amount'        => $priceBs,
+                        'vat_status'        => $isDishTaxable ? 1 : 0,
+                        'exempt_amount'     => !$isDishTaxable ? $itemSubtotalBs : 0,
+                        'iva_amount'        => $itemIvaSubtotal,
+                        'total_amount'      => $itemTotalAmount,
+                        'big_amount'        => $itemTotalAmount,
                     ]);
                     continue;
                 }
@@ -1097,7 +1195,7 @@ class OrderActionService
             $orderId->load(['details.product', 'details.dish']);
             $productIds = $orderId->details->whereNotIn('product_type', ['dish', 'court'])->pluck('product_id')->unique()->filter()->values()->all();
             
-            // Si hay platos, extraer todos los product_id de sus ingredientes
+            // Si hay platos, extraer todos los product_id de sus ingredientes y modificadores
             $dishDetails = $orderId->details->where('product_type', 'dish');
             if ($dishDetails->isNotEmpty()) {
                 $dishIds = $dishDetails->pluck('dish_id')->unique()->all();
@@ -1106,7 +1204,16 @@ class OrderActionService
                     ->pluck('product_id')
                     ->unique()
                     ->all();
-                $productIds = array_unique(array_merge($productIds, $ingredientProductIds));
+                
+                $modifierDetailIds = $dishDetails->pluck('id')->all();
+                $modifierProductIds = DB::table('order_detail_modifiers')
+                    ->whereIn('order_detail_id', $modifierDetailIds)
+                    ->whereNotNull('product_id')
+                    ->pluck('product_id')
+                    ->unique()
+                    ->all();
+
+                $productIds = array_unique(array_merge($productIds, $ingredientProductIds, $modifierProductIds));
             }
 
             $lotsByProduct = collect();
@@ -1127,9 +1234,53 @@ class OrderActionService
 
                 if ($detail->product_type === 'dish') {
                     $dish = \App\Models\Dish::with('ingredients')->findOrFail($detail->dish_id);
+                    $detail->load('modifiers');
+
+                    // Construir consumo por producto considerando modificadores add y remove
+                    $effectiveIngredients = [];
                     foreach ($dish->ingredients as $ingredient) {
+                        $effectiveIngredients[$ingredient->id] = [
+                            'product' => $ingredient,
+                            'portion' => (float)$ingredient->pivot->portion,
+                        ];
+                    }
+
+                    foreach ($detail->modifiers as $mod) {
+                        if (!$mod->product_id) continue;
+                        $mType = $mod->modifier_type instanceof \App\Enums\ModifierTypeEnum ? $mod->modifier_type->value : (string)$mod->modifier_type;
+                        $modPortion = (float)$mod->portion;
+
+                        if ($mType === 'remove') {
+                            if (isset($effectiveIngredients[$mod->product_id])) {
+                                if ($modPortion <= 0) {
+                                    unset($effectiveIngredients[$mod->product_id]);
+                                } else {
+                                    $effectiveIngredients[$mod->product_id]['portion'] = max(0, $effectiveIngredients[$mod->product_id]['portion'] - $modPortion);
+                                    if ($effectiveIngredients[$mod->product_id]['portion'] <= 0) {
+                                        unset($effectiveIngredients[$mod->product_id]);
+                                    }
+                                }
+                            }
+                        } elseif ($mType === 'add') {
+                            if (isset($effectiveIngredients[$mod->product_id])) {
+                                $effectiveIngredients[$mod->product_id]['portion'] += $modPortion;
+                            } else {
+                                $pObj = \App\Models\Product::find($mod->product_id);
+                                if ($pObj) {
+                                    $effectiveIngredients[$mod->product_id] = [
+                                        'product' => $pObj,
+                                        'portion' => $modPortion,
+                                    ];
+                                }
+                            }
+                        }
+                    }
+
+                    foreach ($effectiveIngredients as $ingData) {
+                        $ingredient = $ingData['product'];
+                        $portionToUse = $ingData['portion'];
                         $presentation = $ingredient->presentation > 0 ? $ingredient->presentation : 1;
-                        $quantityToReduce = ($ingredient->pivot->portion * $detail->quantity) / $presentation;
+                        $quantityToReduce = ($portionToUse * $detail->quantity) / $presentation;
                         $lots = $lotsByProduct->get($ingredient->id, collect())->sortBy('expiration_date')->values();
                         
                         foreach ($lots as $lot) {
@@ -1156,7 +1307,6 @@ class OrderActionService
                             
                             $globalStockAfter = (float) ProductLot::where('product_id', $ingredient->id)->sum('quantity');
 
-                            // Registrar el movimiento de inventario con el lote exacto vendido
                             \App\Models\InventoryMovement::create([
                                 'product_id' => $ingredient->id,
                                 'product_lot_id' => $lot->id,
@@ -1291,10 +1441,16 @@ class OrderActionService
             $orderId->total_amount_usd = $orderId->details->sum(function ($d) {
                 $qty = (float) ($d->quantity ?? 0);
                 $unitUsd = (float) ($d->unit_price_usd ?? 0);
-                $isTaxable = $d->product_type !== 'dish'
-                    && $d->product_type !== 'court'
-                    && ((int) ($d->product?->iva ?? 0) === 1);
-                return ($unitUsd * $qty) * ($isTaxable ? 1.16 : 1.0);
+                $isTaxable = false;
+                $taxMultiplier = 1.0;
+                if ($d->product_type === 'dish' && $d->dish && (bool)$d->dish->iva) {
+                    $isTaxable = true;
+                    $taxMultiplier = 1 + (((float)($d->dish->tax_rate ?? 16.0)) / 100);
+                } elseif ($d->product_type !== 'dish' && $d->product_type !== 'court' && ((int) ($d->product?->iva ?? 0) === 1)) {
+                    $isTaxable = true;
+                    $taxMultiplier = 1.16;
+                }
+                return ($unitUsd * $qty) * ($isTaxable ? $taxMultiplier : 1.0);
             });
 
             // Determinar si aplica Recargo Sujeto Pasivo Especial (CE / IGTF 3%)
@@ -1304,6 +1460,9 @@ class OrderActionService
             $chargeSpeToCustomer = $isFiscalActive && $isCeEnabled;
             
             $hasIvaItems = $orderId->details->contains(function ($detail) {
+                if ($detail->product_type === 'dish') {
+                    return $detail->dish && (bool)$detail->dish->iva;
+                }
                 return optional($detail->product)->iva == 1;
             });
 

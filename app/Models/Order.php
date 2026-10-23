@@ -117,8 +117,8 @@ class Order extends Model
         // Recalcular promociones generales antes de sumar los totales
         app(\App\Services\Order\OrderActionService::class)->applyGeneralPromotions($this);
 
-        // Sumamos (precio unitario * cantidad) de los detalles vinculados incluyendo IVA (16%) en productos gravados
-        $details = $this->details()->with('product:id,iva')->get();
+        // Sumamos (precio unitario * cantidad) de los detalles vinculados incluyendo IVA en productos o platos gravados
+        $details = $this->details()->with(['product:id,iva', 'dish:id,iva,tax_rate'])->get();
         $newTotal = 0;
         $totalCost = 0;
 
@@ -126,12 +126,24 @@ class Order extends Model
             $qty = (float) ($detail->quantity ?? 0);
             $price = (float) ($detail->price ?? 0);
             $unitCost = (float) ($detail->unit_cost ?? 0);
-            $isTaxable = $detail->product_type !== 'dish'
-                && $detail->product_type !== 'court'
-                && ((int) ($detail->product?->iva ?? 0) === 1);
+            
+            $isTaxable = false;
+            $taxRatePct = 16.0;
+
+            if ($detail->product_type === 'dish') {
+                if ($detail->dish && (bool) $detail->dish->iva) {
+                    $isTaxable = true;
+                    $taxRatePct = (float) ($detail->dish->tax_rate ?? 16.0);
+                }
+            } elseif ($detail->product_type !== 'court') {
+                if ((int) ($detail->product?->iva ?? 0) === 1) {
+                    $isTaxable = true;
+                    $taxRatePct = 16.0;
+                }
+            }
 
             $lineSubtotal = $price * $qty;
-            $lineIva = $isTaxable ? ($lineSubtotal * 0.16) : 0;
+            $lineIva = $isTaxable ? ($lineSubtotal * ($taxRatePct / 100)) : 0;
 
             $newTotal += ($lineSubtotal + $lineIva);
             $totalCost += ($unitCost * $qty);

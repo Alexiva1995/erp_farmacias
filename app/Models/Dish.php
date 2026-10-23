@@ -22,6 +22,22 @@ class Dish extends Model
         'status',
         'photo_url',
         'description',
+        'iva',
+        'tax_rate',
+        'preparation_time_minutes',
+        'kitchen_station_id',
+    ];
+
+    protected $casts = [
+        'cost_price' => 'decimal:2',
+        'cpv' => 'decimal:2',
+        'suggested_price' => 'decimal:2',
+        'designated_price' => 'decimal:2',
+        'percentage_profit' => 'decimal:2',
+        'iva' => 'boolean',
+        'tax_rate' => 'decimal:2',
+        'preparation_time_minutes' => 'integer',
+        'kitchen_station_id' => 'integer',
     ];
 
     public function ingredients(): BelongsToMany
@@ -34,5 +50,12 @@ class Dish extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id');
+    }
+
+    public function modifierGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(ModifierGroup::class, 'dish_modifier_group')
+            ->withPivot('sort_order')
+            ->withTimestamps();
     }
 }

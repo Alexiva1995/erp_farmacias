@@ -16,7 +16,7 @@ class DishServices implements DishContract
      */
     public function getAll(array $filters): LengthAwarePaginator
     {
-        $query = Dish::with(['category', 'ingredients']);
+        $query = Dish::with(['category', 'ingredients', 'modifierGroups.options.product']);
 
         if (!empty($filters['q'])) {
             $search = $filters['q'];
@@ -54,7 +54,7 @@ class DishServices implements DishContract
      */
     public function find(int $id): ?Dish
     {
-        return Dish::with(['category', 'ingredients'])->find($id);
+        return Dish::with(['category', 'ingredients', 'modifierGroups.options.product'])->find($id);
     }
 
     /**
@@ -74,12 +74,8 @@ class DishServices implements DishContract
             // Si no se envía cost_price, usar el calculado
             $data['cost_price'] = $data['cost_price'] ?? $costPrice;
 
-            // Calcular CPV (Costo de venta). En Toffle se deducían empaques. 
-            // Si el frontend marca qué es empaque o deducible, podemos procesarlo.
-            // Para ser retrocompatible, calculamos cost_price menos ingredientes especiales.
             $cpvDeduction = 0;
             foreach ($ingredientsData as $ing) {
-                // Si el producto/ingrediente viene marcado como embalaje/empaque o deducible del CPV
                 if (!empty($ing['is_packaging']) || !empty($ing['cpv_deductible'])) {
                     $cpvDeduction += (float) ($ing['designated_cost'] ?? 0);
                 }
@@ -96,6 +92,10 @@ class DishServices implements DishContract
                 'percentage_profit' => $data['percentage_profit'],
                 'category_id' => $data['category_id'] ?? null,
                 'status' => $data['status'] ?? 1,
+                'iva' => $data['iva'] ?? false,
+                'tax_rate' => $data['tax_rate'] ?? 16.00,
+                'preparation_time_minutes' => $data['preparation_time_minutes'] ?? 15,
+                'kitchen_station_id' => $data['kitchen_station_id'] ?? null,
             ]);
 
             // Vincular ingredientes
@@ -106,10 +106,15 @@ class DishServices implements DishContract
                 ]);
             }
 
+            // Vincular grupos de modificadores si vienen en la petición
+            if (isset($data['modifier_group_ids']) && is_array($data['modifier_group_ids'])) {
+                $dish->modifierGroups()->sync($data['modifier_group_ids']);
+            }
+
             // Limpiar caché de categorías de platos
             \Cache::forget('resources.categories.dishes');
 
-            return $dish->load(['category', 'ingredients']);
+            return $dish->load(['category', 'ingredients', 'modifierGroups.options.product']);
         });
     }
 
@@ -146,6 +151,10 @@ class DishServices implements DishContract
                 'percentage_profit' => $data['percentage_profit'],
                 'category_id' => $data['category_id'] ?? null,
                 'status' => $data['status'] ?? 1,
+                'iva' => $data['iva'] ?? $dish->iva,
+                'tax_rate' => $data['tax_rate'] ?? $dish->tax_rate,
+                'preparation_time_minutes' => $data['preparation_time_minutes'] ?? $dish->preparation_time_minutes,
+                'kitchen_station_id' => $data['kitchen_station_id'] ?? $dish->kitchen_station_id,
             ]);
 
             // Sincronizar ingredientes
@@ -158,10 +167,15 @@ class DishServices implements DishContract
             }
             $dish->ingredients()->sync($syncData);
 
+            // Sincronizar grupos de modificadores si vienen en la petición
+            if (isset($data['modifier_group_ids']) && is_array($data['modifier_group_ids'])) {
+                $dish->modifierGroups()->sync($data['modifier_group_ids']);
+            }
+
             // Limpiar caché de categorías de platos
             \Cache::forget('resources.categories.dishes');
 
-            return $dish->load(['category', 'ingredients']);
+            return $dish->load(['category', 'ingredients', 'modifierGroups.options.product']);
         });
     }
 
@@ -171,10 +185,8 @@ class DishServices implements DishContract
     public function delete(Dish $dish): bool
     {
         return DB::transaction(function () use ($dish) {
-            // Verificar si el plato está asociado a órdenes en el nuevo sistema
-            // (La tabla orders o order_details podría relacionarse en el futuro).
-            // Por ahora, eliminamos la relación de ingredientes y luego el plato.
             $dish->ingredients()->detach();
+            $dish->modifierGroups()->detach();
             
             // Limpiar caché de categorías de platos
             \Cache::forget('resources.categories.dishes');

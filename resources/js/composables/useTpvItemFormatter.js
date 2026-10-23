@@ -94,10 +94,11 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
     const rateCop = getEffectiveRate('USD', 'COP') || 4000
     const rateBs = getEffectiveRate('USD', 'BS') || 1
 
-    // designated_price es el precio del plato en USD
-    const priceUsd = parseFloat(dish.designated_price ?? dish.price ?? 0)
+    // Si el backend envió unit_price_usd (con modificadores sumados), usarlo; si no, designated_price
+    const priceUsd = parseFloat(backendItem.unit_price_usd ?? dish.designated_price ?? dish.price ?? 0)
     const priceCop = Math.ceil((priceUsd * rateCop) / 100) * 100
     const priceBs = parseFloat((priceUsd * rateBs).toFixed(2))
+    const dishTax = dish.iva ? (parseFloat(dish.tax_rate || 16) / 100) : 0
 
     return {
       order_detail_id: backendItem.id,
@@ -113,7 +114,7 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
       base_price: priceUsd,
       base_price_bs: priceBs,
       base_price_cop: priceCop,
-      unitCost: 0,
+      unitCost: parseFloat(backendItem.unit_cost ?? dish.cost_price ?? 0),
       basePrice: priceUsd,
       original_price_usd: priceUsd,
       original_price_bs: priceBs,
@@ -121,7 +122,7 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
       availableQuantity: 9999,
       selectedQuantity: parseFloat(backendItem.quantity) || 0,
       laboratory: 'Restaurante',
-      taxRate: 0,
+      taxRate: dishTax,
       pack_id: null,
       discount_percentage: 0,
       discount_type: null,
@@ -129,6 +130,7 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
       original_pack_config: null,
       has_pack_discount: false,
       is_dish: true,
+      modifiers: backendItem.modifiers || [],
       notes: backendItem.notes || backendItem.observation || null,
     }
   }

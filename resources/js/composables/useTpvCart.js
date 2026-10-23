@@ -274,23 +274,33 @@ export function useTpvCart({
   }
 
 
-  const addDishToOrder = async (dish) => {
+  const addDishToOrder = async (dish, options = {}) => {
     if (!hasOpenOrder.value || !openOrderData.value?.id) {
       toast.error('Debe haber una orden abierta para agregar platos.')
       return
     }
 
-    const existing = orderItems.value.find((item) => item.dish_id === dish.id)
-    const newQty = existing ? existing.selectedQuantity + 1 : 1
+    const orderDetailId = options.order_detail_id || null
+    const modifiers = options.modifiers || []
+    const notes = options.notes || null
+
+    const existing = orderDetailId
+      ? orderItems.value.find((item) => item.order_detail_id === orderDetailId)
+      : (modifiers.length === 0 && !notes ? orderItems.value.find((item) => item.dish_id === dish.id && (!item.modifiers || item.modifiers.length === 0) && !item.notes) : null)
+
+    const newQty = existing ? existing.selectedQuantity + (options.quantity || 1) : (options.quantity || 1)
     const unitPrice = parseFloat(dish.designated_price) || parseFloat(dish.sale_price) || parseFloat(dish.price) || 0
 
     try {
       const payload = {
+        order_detail_id: orderDetailId,
         dish_id: dish.id,
         quantity: newQty,
         price_at_product: unitPrice,
         price_usd_unit: unitPrice,
         currency_at_order: selectedDisplayCurrency.value,
+        notes: notes,
+        modifiers: modifiers,
       }
 
       await axios.post(`/tpv/orders/${openOrderData.value.id}/items`, payload)
@@ -301,32 +311,8 @@ export function useTpvCart({
     }
   }
 
-  const handleAddDishToOrder = async ({ dish, quantity }) => {
-    if (!hasOpenOrder.value || !openOrderData.value?.id) {
-      toast.error('Debe haber una orden abierta para agregar platos.')
-      return
-    }
-
-    const existing = orderItems.value.find((item) => item.dish_id === dish.id)
-    const currentQty = existing ? existing.selectedQuantity : 0
-    const newQty = currentQty + quantity
-    const unitPrice = parseFloat(dish.designated_price) || parseFloat(dish.sale_price) || parseFloat(dish.price) || 0
-
-    try {
-      const payload = {
-        dish_id: dish.id,
-        quantity: newQty,
-        price_at_product: unitPrice,
-        price_usd_unit: unitPrice,
-        currency_at_order: selectedDisplayCurrency.value,
-      }
-
-      await axios.post(`/tpv/orders/${openOrderData.value.id}/items`, payload)
-      await fetchOpenOrder()
-      toast.success(`"${dish.name}" agregado al pedido.`)
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Error al agregar el plato.')
-    }
+  const handleAddDishToOrder = async ({ dish, quantity, modifiers = [], notes = null, orderDetailId = null }) => {
+    return addDishToOrder(dish, { quantity, modifiers, notes, order_detail_id: orderDetailId })
   }
 
   return {

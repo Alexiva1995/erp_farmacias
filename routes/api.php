@@ -79,6 +79,7 @@ use App\Http\Controllers\Api\FiscalPrinterController;
 use App\Http\Controllers\Api\FactoryFiscalController;
 use App\Http\Controllers\Api\IaAssistantActionController;
 use App\Http\Controllers\Api\DishController;
+use App\Http\Controllers\Api\ModifierGroupController;
 use App\Http\Controllers\Api\EcommerceController;
 
 // Fiscal Printer Bridge (OUTSIDE AUTH TO AVOID LOGIN ISSUES IN PYTHON / LOCAL APPS)
@@ -313,6 +314,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::get("/categories", [ResourceController::class, "getCategories"]);
     Route::apiResource("locations", LocationController::class);
     Route::apiResource("dishes", DishController::class);
+    Route::apiResource("modifier-groups", ModifierGroupController::class);
     Route::get("/suppliers", [ResourceController::class, "getSuppliers"]);
     Route::get("/products/all", [ResourceController::class, "getAllProducts"]);
     Route::get("/barcode/{barcode}", [ResourceController::class, "findProductByBarcode"]);
