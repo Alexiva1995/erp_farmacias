@@ -36,6 +36,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
         private readonly ?string $activeIngredientCol,
         private readonly ?string $expirationCol,
         private readonly ?string $laboratoryCol = null,
+        private readonly ?string $creditDaysCol = null,
     ) {
         $this->cleanedRows = collect();
     }
@@ -175,6 +176,12 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                     $expiration = $date ? $date->format('Y-m-d') : null;
                 }
 
+                $creditDays = null;
+                if (!empty($this->creditDaysCol)) {
+                    $rawCredit = $row[$this->colIndex($this->creditDaysCol)] ?? null;
+                    $creditDays = $this->parseCreditDays($rawCredit);
+                }
+
                 $data = [
                     "cod_supplier" => $cod,
                     "name" => $this->cleanCell($name),
@@ -183,6 +190,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                     "unit_cost" => $this->castToFloat($bs),
                     "unit_cost_usd" => $this->castToFloat($usd),
                     "expiration" => $expiration,
+                    "credit_days" => $creditDays,
                     "supplier_id" => $this->supplierId,
                     "created_at" => $now,
                     "updated_at" => $now,
@@ -247,5 +255,33 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
             return "0.00";
         }
         return number_format((float) $value, 2, ".", "");
+    }
+
+    public static function parseCreditDays(mixed $rawValue): ?int
+    {
+        if ($rawValue === null || $rawValue === '') {
+            return null;
+        }
+
+        $str = strtoupper(trim((string) $rawValue));
+        if ($str === '') {
+            return null;
+        }
+
+        if (str_contains($str, 'CONTADO') || str_contains($str, 'PREPAGO')) {
+            return 0;
+        }
+
+        if (is_numeric($str)) {
+            $val = (int) round((float) $str);
+            return $val >= 0 ? $val : null;
+        }
+
+        if (preg_match('/(\d+)/', $str, $matches)) {
+            $val = (int) $matches[1];
+            return $val >= 0 ? $val : null;
+        }
+
+        return null;
     }
 }

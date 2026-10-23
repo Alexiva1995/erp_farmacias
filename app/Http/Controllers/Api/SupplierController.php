@@ -572,6 +572,9 @@ class SupplierController extends Controller
                 'pasv'                => (bool) $conn->pasv,
                 'has_header'          => (bool) $conn->has_header,
                 'invoice_path'        => $conn->invoice_path,
+                'credit_days_email'   => $conn->credit_days_email ?? null,
+                'credit_days_cod_col' => $conn->credit_days_cod_col ?? null,
+                'credit_days_col'     => $conn->credit_days_col ?? null,
                 'last_connection'     => $conn->last_connection,
             ];
         }
@@ -601,6 +604,9 @@ class SupplierController extends Controller
             'pasv'                => (bool) $connection->pasv,
             'has_header'          => (bool) $connection->has_header,
             'invoice_path'        => $connection->invoice_path,
+            'credit_days_email'   => $connection->credit_days_email ?? null,
+            'credit_days_cod_col' => $connection->credit_days_cod_col ?? null,
+            'credit_days_col'     => $connection->credit_days_col ?? null,
             'last_connection'     => $connection->last_connection,
             'ftp_orders_enabled'  => $ftpOrdersConn ? true : false,
             'ftp_orders_host'     => $ftpOrdersConn?->host,
@@ -637,6 +643,18 @@ class SupplierController extends Controller
                 'has_header'   => isset($validated['has_header']) ? (bool) $validated['has_header'] : (bool) ($existingConn?->has_header ?? false),
                 'invoice_path' => $validated['invoice_path'] ?? $existingConn?->invoice_path,
             ];
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('supplier_connections', 'credit_days_email')) {
+                $data['credit_days_email'] = array_key_exists('credit_days_email', $validated)
+                    ? (!empty($validated['credit_days_email']) ? trim($validated['credit_days_email']) : null)
+                    : $existingConn?->credit_days_email;
+                $data['credit_days_cod_col'] = array_key_exists('credit_days_cod_col', $validated)
+                    ? (!empty($validated['credit_days_cod_col']) ? strtoupper(trim($validated['credit_days_cod_col'])) : null)
+                    : $existingConn?->credit_days_cod_col;
+                $data['credit_days_col'] = array_key_exists('credit_days_col', $validated)
+                    ? (!empty($validated['credit_days_col']) ? strtoupper(trim($validated['credit_days_col'])) : null)
+                    : $existingConn?->credit_days_col;
+            }
 
             // Solo actualizar la contraseña si el usuario envió una nueva
             if (!empty($validated['password'])) {
@@ -862,19 +880,22 @@ class SupplierController extends Controller
             return response()->json([
                 'message'    => 'Configuración guardada correctamente.',
                 'connection' => [
-                    'id'                => $connection->id,
-                    'type'              => $connection->type,
-                    'host'              => $connection->host,
-                    'port'              => $connection->port,
-                    'username'          => $connection->username,
-                    'path'              => $connection->path,
-                    'pasv'              => (bool) $connection->pasv,
-                    'has_header'        => (bool) $connection->has_header,
-                    'invoice_path'      => $connection->invoice_path,
-                    'last_connection'   => $connection->last_connection,
-                    'has_password'      => !empty($connection->password),
-                    'session_token'     => $connection->structure['session_token'] ?? null,
-                    'has_session_token' => !empty($connection->structure['session_token']),
+                    'id'                  => $connection->id,
+                    'type'                => $connection->type,
+                    'host'                => $connection->host,
+                    'port'                => $connection->port,
+                    'username'            => $connection->username,
+                    'path'                => $connection->path,
+                    'pasv'                => (bool) $connection->pasv,
+                    'has_header'          => (bool) $connection->has_header,
+                    'invoice_path'        => $connection->invoice_path,
+                    'credit_days_email'   => $connection->credit_days_email ?? null,
+                    'credit_days_cod_col' => $connection->credit_days_cod_col ?? null,
+                    'credit_days_col'     => $connection->credit_days_col ?? null,
+                    'last_connection'     => $connection->last_connection,
+                    'has_password'        => !empty($connection->password),
+                    'session_token'       => $connection->structure['session_token'] ?? null,
+                    'has_session_token'   => !empty($connection->structure['session_token']),
                 ],
             ]);
         } catch (\Throwable $e) {

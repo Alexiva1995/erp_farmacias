@@ -121,6 +121,17 @@ class UpdateSuppliersCommand extends Command
                     $queryService->addDiscountsToProducts($supplier);
                 }
 
+                // Enlazar días de crédito desde correo si la conexión FTP/API lo tiene configurado
+                try {
+                    $emailCatalogService = app(\App\Services\Suppliers\SupplierEmailCatalogService::class);
+                    $linkedCredit = $emailCatalogService->syncCreditDaysFromEmailForSupplier($supplier, $connection);
+                    if ($linkedCredit > 0) {
+                        $this->line("   📧 Días de crédito enlazados desde correo: <fg=green>{$linkedCredit}</> productos.");
+                    }
+                } catch (\Throwable $creditEx) {
+                    $this->warn("   ⚠️ No se pudieron enlazar días de crédito por correo: " . $creditEx->getMessage());
+                }
+
                 $connection->update(['last_connection' => now()->today()]);
 
                 $duration = round(microtime(true) - $start, 2);

@@ -23,6 +23,7 @@ class SaveSupplierStructureRequest extends FormRequest
             "unit_cost" => ["nullable", "string"],
             "unit_cost_usd" => ["nullable", "string"],
             "expiration" => ["nullable", "string"],
+            "credit_days" => ["nullable", "string"],
             "laboratory" => ["nullable", "string"],
             "active_ingredient" => ["nullable", "string"],
             "file_keyword" => ["nullable", "string"],

@@ -241,6 +241,29 @@ class SupplierQueryService
             $products = $data["products"] ?? [];
             $invoices = $data["invoices"] ?? [];
 
+            $hasCreditDaysColumn = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'credit_days');
+            $preservedCreditDays = [];
+
+            if ($hasCreditDaysColumn) {
+                $existingWithCredit = DB::table('product_suppliers')
+                    ->where('supplier_id', $supplier->id)
+                    ->whereNotNull('cod_supplier')
+                    ->whereNotNull('credit_days')
+                    ->select(['cod_supplier', 'credit_days'])
+                    ->get();
+
+                foreach ($existingWithCredit as $exItem) {
+                    $cCode = strtoupper(trim((string) $exItem->cod_supplier));
+                    if ($cCode !== '') {
+                        $preservedCreditDays[$cCode] = (int) $exItem->credit_days;
+                        $noZ = ltrim($cCode, '0');
+                        if ($noZ !== '') {
+                            $preservedCreditDays[$noZ] = (int) $exItem->credit_days;
+                        }
+                    }
+                }
+            }
+
             // Borrado automático de productos previos del proveedor que NO estén en auto-orden
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🧹 Iniciando limpieza automática de productos para el proveedor: {$supplier->id}\n";
             $this->writeDebugLog($logMessage);
@@ -395,12 +418,29 @@ class SupplierQueryService
                 'updated_at' => $nowStr,
             ];
 
+            if ($hasCreditDaysColumn) {
+                $templateRow['credit_days'] = null;
+            }
+
             $batchRows = [];
             foreach ($uniqueProducts as $productData) {
                 $row = $templateRow;
                 foreach (array_keys($templateRow) as $key) {
                     if (array_key_exists($key, $productData) && $productData[$key] !== null) {
                         $row[$key] = $productData[$key];
+                    }
+                }
+
+                if ($hasCreditDaysColumn) {
+                    if ($row['credit_days'] !== null && is_numeric($row['credit_days'])) {
+                        $row['credit_days'] = (int) $row['credit_days'];
+                    } elseif (!empty($row['cod_supplier'])) {
+                        $cCode = strtoupper(trim((string) $row['cod_supplier']));
+                        $noZ = ltrim($cCode, '0');
+                        $row['credit_days'] = $preservedCreditDays[$cCode]
+                            ?? ($noZ !== '' ? ($preservedCreditDays[$noZ] ?? null) : null);
+                    } else {
+                        $row['credit_days'] = null;
                     }
                 }
 
@@ -829,29 +869,94 @@ class SupplierQueryService
     {
         $filters = $request->query();
         $perPage = $filters["perPage"] ?? 10;
+        $hasCreditDaysColumn = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'credit_days');
+
+        $selectColumns = [
+            DB::raw("COALESCE(product_suppliers.product_id, 'N/A') as product_id"),
+            "product_suppliers.cod_supplier",
+            "product_suppliers.barcode_match",
+            DB::raw("COALESCE(NULLIF(product_suppliers.laboratory, ''), 'N/A') as laboratory"),
+            "product_suppliers.id",
+            "product_suppliers.unit_cost",
+            "product_suppliers.unit_cost_usd",
+            "product_suppliers.unit_cost_with_discount",
+            "product_suppliers.unit_cost_usd_with_discount",
+            DB::raw("ROUND(CASE WHEN product_suppliers.unit_cost > 0 AND product_suppliers.unit_cost_with_discount > 0 AND product_suppliers.unit_cost_with_discount < product_suppliers.unit_cost THEN (1 - (product_suppliers.unit_cost_with_discount / product_suppliers.unit_cost)) * 100 ELSE 0 END, 2) as discount_percentage"),
+            "product_suppliers.quantity",
+            "product_suppliers.expiration",
+            DB::raw("COALESCE(NULLIF(product_suppliers.name, ''), products.name, 'N/A') as name"),
+        ];
+
+        if ($hasCreditDaysColumn) {
+            $selectColumns[] = "product_suppliers.credit_days";
+        }
 
         $paginated = DB::table("product_suppliers")
-            ->select(
-                DB::raw("COALESCE(product_suppliers.product_id, 'N/A') as product_id"),
-                "product_suppliers.cod_supplier",
-                "product_suppliers.barcode_match",
-                DB::raw("COALESCE(NULLIF(product_suppliers.laboratory, ''), 'N/A') as laboratory"),
-                "product_suppliers.id",
-                "product_suppliers.unit_cost",
-                "product_suppliers.unit_cost_usd",
-                "product_suppliers.unit_cost_with_discount",
-                "product_suppliers.unit_cost_usd_with_discount",
-                DB::raw("ROUND(CASE WHEN product_suppliers.unit_cost > 0 AND product_suppliers.unit_cost_with_discount > 0 AND product_suppliers.unit_cost_with_discount < product_suppliers.unit_cost THEN (1 - (product_suppliers.unit_cost_with_discount / product_suppliers.unit_cost)) * 100 ELSE 0 END, 2) as discount_percentage"),
-                "product_suppliers.quantity",
-                "product_suppliers.expiration",
-                DB::raw("COALESCE(NULLIF(product_suppliers.name, ''), products.name, 'N/A') as name"),
-            )
+            ->select($selectColumns)
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->where("product_suppliers.supplier_id", "=", $supplier->id)
             ->orderBy("product_suppliers.name", "asc")
             ->paginate($perPage);
 
         return $paginated;
+    }
+
+    /**
+     * Enlaza masivamente los días de crédito extraídos de un archivo Excel a los productos existentes
+     * del proveedor mediante el código de producto del proveedor (cod_supplier).
+     *
+     * @param Supplier $supplier
+     * @param array<string, int> $creditDaysMap
+     * @return int Cantidad de productos actualizados
+     */
+    public function applyCreditDaysMapToSupplierProducts(Supplier $supplier, array $creditDaysMap): int
+    {
+        if (empty($creditDaysMap) || !\Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'credit_days')) {
+            return 0;
+        }
+
+        $existingProducts = DB::table('product_suppliers')
+            ->where('supplier_id', $supplier->id)
+            ->whereNotNull('cod_supplier')
+            ->select(['id', 'cod_supplier', 'credit_days'])
+            ->get();
+
+        if ($existingProducts->isEmpty()) {
+            return 0;
+        }
+
+        $idsByCreditDays = [];
+        $updatedCount = 0;
+
+        foreach ($existingProducts as $prod) {
+            $rawCod = strtoupper(trim((string) $prod->cod_supplier));
+            if ($rawCod === '') {
+                continue;
+            }
+
+            $noZeroCod = ltrim($rawCod, '0');
+            $matchedDays = $creditDaysMap[$rawCod]
+                ?? ($noZeroCod !== '' ? ($creditDaysMap[$noZeroCod] ?? null) : null);
+
+            if ($matchedDays === null) {
+                continue;
+            }
+
+            $updatedCount++;
+            if ($prod->credit_days === null || (int) $prod->credit_days !== $matchedDays) {
+                $idsByCreditDays[$matchedDays][] = (int) $prod->id;
+            }
+        }
+
+        foreach ($idsByCreditDays as $days => $ids) {
+            foreach (array_chunk($ids, 1000) as $idChunk) {
+                DB::table('product_suppliers')
+                    ->whereIn('id', $idChunk)
+                    ->update(['credit_days' => (int) $days]);
+            }
+        }
+
+        return $updatedCount;
     }
 
     public function addDiscountsToProducts(Supplier $supplier): void
@@ -911,6 +1016,8 @@ class SupplierQueryService
 
         $enableDiscounts = filter_var($request->query("enableDiscounts", false), FILTER_VALIDATE_BOOLEAN);
 
+        $hasCreditDaysColumn = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'credit_days');
+
         $sortableColumns = [
             'name' => 'product_suppliers.name',
             'unit_cost' => $enableDiscounts 
@@ -924,10 +1031,54 @@ class SupplierQueryService
                 : 'product_suppliers.unit_cost_usd',
             'final_cost_bs' => DB::raw("CASE WHEN product_suppliers.unit_cost_with_discount > 0 THEN product_suppliers.unit_cost_with_discount ELSE product_suppliers.unit_cost END"),
             'final_cost_usd' => DB::raw("CASE WHEN product_suppliers.unit_cost_usd_with_discount > 0 THEN product_suppliers.unit_cost_usd_with_discount ELSE product_suppliers.unit_cost_usd END"),
-            'expiration' => 'product_suppliers.expiration'
+            'expiration' => 'product_suppliers.expiration',
+            'credit_days' => $hasCreditDaysColumn ? 'product_suppliers.credit_days' : 'product_suppliers.name',
         ];
 
         $sortColumn = $sortableColumns[$sortBy] ?? 'product_suppliers.name';
+
+        $selectColumns = [
+            "product_suppliers.id as id",
+            "product_suppliers.product_id as product_id",
+            "product_suppliers.cod_supplier as cod_supplier",
+            "product_suppliers.name as name",
+            DB::raw("COALESCE(NULLIF(product_suppliers.laboratory, ''), laboratories.name, 'N/A') as laboratory_name"),
+            "suppliers.name as supplier_name",
+            "product_suppliers.unit_cost as unit_cost_bs",
+            "product_suppliers.unit_cost_usd as unit_cost_usd",
+            DB::raw("COALESCE(product_suppliers.unit_cost_with_discount, 0) as final_cost_bs"),
+            DB::raw("COALESCE(product_suppliers.unit_cost_usd_with_discount, 0) as final_cost_usd"),
+            DB::raw("COALESCE(products.unit_cost, 0) as our_unit_cost_usd"),
+            "product_suppliers.expiration as expiration",
+            "product_suppliers.active_ingredient as active_ingredient",
+            "product_suppliers.is_active as is_active",
+        ];
+
+        if ($hasCreditDaysColumn) {
+            $selectColumns[] = "product_suppliers.credit_days as credit_days";
+        }
+
+        $groupByColumns = [
+            'product_suppliers.id',
+            'product_suppliers.product_id',
+            'product_suppliers.cod_supplier',
+            'product_suppliers.name',
+            'suppliers.name',
+            'product_suppliers.unit_cost',
+            'product_suppliers.unit_cost_usd',
+            'product_suppliers.unit_cost_with_discount',
+            'product_suppliers.unit_cost_usd_with_discount',
+            'product_suppliers.expiration',
+            'product_suppliers.active_ingredient',
+            'product_suppliers.is_active',
+            'product_suppliers.laboratory',
+            'laboratories.name',
+            'products.id',
+        ];
+
+        if ($hasCreditDaysColumn) {
+            $groupByColumns[] = 'product_suppliers.credit_days';
+        }
 
         $results = ProductSupplier::query()
             ->where(function ($q) {
@@ -942,21 +1093,7 @@ class SupplierQueryService
                 'product.laboratory:id,name',
                 'supplier:id,name'
             ])
-            ->select([
-                "product_suppliers.id as id",
-                "product_suppliers.product_id as product_id",
-                "product_suppliers.name as name",
-                DB::raw("COALESCE(NULLIF(product_suppliers.laboratory, ''), laboratories.name, 'N/A') as laboratory_name"),
-                "suppliers.name as supplier_name",
-                "product_suppliers.unit_cost as unit_cost_bs",
-                "product_suppliers.unit_cost_usd as unit_cost_usd",
-                DB::raw("COALESCE(product_suppliers.unit_cost_with_discount, 0) as final_cost_bs"),
-                DB::raw("COALESCE(product_suppliers.unit_cost_usd_with_discount, 0) as final_cost_usd"),
-                DB::raw("COALESCE(products.unit_cost, 0) as our_unit_cost_usd"),
-                "product_suppliers.expiration as expiration",
-                "product_suppliers.active_ingredient as active_ingredient",
-                "product_suppliers.is_active as is_active",
-            ])
+            ->select($selectColumns)
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
             ->leftJoin("laboratories", "laboratories.id", "=", "products.laboratory_id")
             ->leftJoin("suppliers", "suppliers.id", "=", "product_suppliers.supplier_id")
@@ -970,28 +1107,13 @@ class SupplierQueryService
             })
             ->where('suppliers.type', '!=', 'externo')
             ->whereNull('suppliers.deleted_at')
-            ->when($hasStock !== null, function ($query) {
+            ->when($hasStock !== null, function ($query) use ($groupByColumns) {
                 $query->leftJoin('product_lots', function ($join) {
                     $join->on('product_lots.product_id', '=', 'products.id')
                          ->where('product_lots.expiration_date', '>=', DB::raw('CURDATE()'))
                          ->where('product_lots.quantity', '>', 0);
                 })
-                ->groupBy([
-                    'product_suppliers.id',
-                    'product_suppliers.product_id',
-                    'product_suppliers.name',
-                    'suppliers.name',
-                    'product_suppliers.unit_cost',
-                    'product_suppliers.unit_cost_usd',
-                    'product_suppliers.unit_cost_with_discount',
-                    'product_suppliers.unit_cost_usd_with_discount',
-                    'product_suppliers.expiration',
-                    'product_suppliers.active_ingredient',
-                    'product_suppliers.is_active',
-                    'product_suppliers.laboratory',
-                    'laboratories.name',
-                    'products.id'
-                ]);
+                ->groupBy($groupByColumns);
             })
             ->when(!empty($search), function ($query) use ($search, $isStrictSearch) {
                 if ($isStrictSearch) {

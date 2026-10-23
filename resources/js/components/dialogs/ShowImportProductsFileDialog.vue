@@ -30,6 +30,7 @@ const formats = reactive({
     expiration: null,
     quantity: null,
     laboratory: "",
+    credit_days: "",
     currency: null,
     file_keyword: "",
   },
@@ -44,6 +45,7 @@ const formats = reactive({
     expiration: null,
     quantity: null,
     laboratory: "",
+    credit_days: "",
     currency: null,
     file_keyword: "",
   },
@@ -58,6 +60,7 @@ const formats = reactive({
     expiration: null,
     quantity: null,
     laboratory: "",
+    credit_days: "",
     currency: null,
     file_keyword: "",
   },
@@ -95,6 +98,7 @@ const submitForm = async () => {
   form.append("active_ingredient", current.active_ingredient || "");
   form.append("laboratory", current.laboratory || "");
   form.append("expiration", current.expiration || "");
+  form.append("credit_days", current.credit_days || "");
   form.append("file_keyword", current.file_keyword || "");
   form.append("format_type", activeFormat.value);
   form.append("save_as_secondary", activeFormat.value === "secondary" ? "1" : "0");
@@ -165,6 +169,7 @@ const saveOnlyStructure = async () => {
     active_ingredient: current.active_ingredient || "",
     laboratory: current.laboratory || "",
     expiration: current.expiration || "",
+    credit_days: current.credit_days || "",
     file_keyword: current.file_keyword || "",
     format_type: activeFormat.value,
   };
@@ -208,6 +213,7 @@ const fetchSupplierConnection = async (id) => {
       laboratory: structure.laboratory ?? "",
       expiration: structure.expiration != "null" ? structure.expiration : null,
       quantity: structure.quantity != "null" ? structure.quantity : null,
+      credit_days: structure.credit_days != "null" ? (structure.credit_days ?? "") : "",
       currency: structure.currency ?? null,
       file_keyword: structure.file_keyword ?? "",
     };
@@ -223,6 +229,7 @@ const fetchSupplierConnection = async (id) => {
       laboratory: secondaryStructure.laboratory ?? structure.laboratory ?? "",
       expiration: secondaryStructure.expiration != "null" ? secondaryStructure.expiration : null,
       quantity: secondaryStructure.quantity != "null" ? secondaryStructure.quantity : null,
+      credit_days: secondaryStructure.credit_days != "null" ? (secondaryStructure.credit_days ?? "") : "",
       currency: secondaryStructure.currency ?? null,
       file_keyword: secondaryStructure.file_keyword ?? "",
     };
@@ -238,6 +245,7 @@ const fetchSupplierConnection = async (id) => {
       laboratory: tertiaryStructure.laboratory ?? structure.laboratory ?? "",
       expiration: tertiaryStructure.expiration != "null" ? tertiaryStructure.expiration : null,
       quantity: tertiaryStructure.quantity != "null" ? tertiaryStructure.quantity : null,
+      credit_days: tertiaryStructure.credit_days != "null" ? (tertiaryStructure.credit_days ?? "") : "",
       currency: tertiaryStructure.currency ?? null,
       file_keyword: tertiaryStructure.file_keyword ?? "",
     };
@@ -522,6 +530,20 @@ watch(
                 prepend-inner-icon="tabler-building-factory-2"
                 class="rounded-lg font-weight-black"
                 :error-messages="errors.laboratory"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Días de Crédito</span>
+              <VTextField
+                v-model="formats[activeFormat].credit_days"
+                type="text"
+                placeholder="Ej: F (opcional)"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-clock-dollar"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.credit_days"
               />
             </VCol>
           </VRow>

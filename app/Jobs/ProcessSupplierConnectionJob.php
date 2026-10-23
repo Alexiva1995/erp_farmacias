@@ -187,6 +187,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                         activeIngredientCol: $map["active_ingredient"] ?? null,
                         expirationCol: $map["expiration"] ?? null,
                         laboratoryCol: $map["laboratory"] ?? null,
+                        creditDaysCol: $map["credit_days"] ?? null,
                         currencyCol: $this->exchangeRate ?? ($map["currency"] ?? null),
                     );
 
@@ -277,6 +278,16 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             $this->writeDebugLog($logMessage);
 
             $queryService->addDiscountsToProducts($this->supplier);
+
+            // Si la conexión FTP/API tiene configurado el enlace de días de crédito por correo, aplicarlo
+            if (!$hasFiles) {
+                try {
+                    $emailCatalogService = app(\App\Services\Suppliers\SupplierEmailCatalogService::class);
+                    $emailCatalogService->syncCreditDaysFromEmailForSupplier($this->supplier, $supplierConnection);
+                } catch (\Throwable $creditEx) {
+                    Log::warning("[ProcessSupplierConnectionJob] No se pudieron enlazar días de crédito desde correo para {$this->supplier->name}: " . $creditEx->getMessage());
+                }
+            }
 
             \Illuminate\Support\Facades\DB::table('supplier_connections')
                 ->where('supplier_id', $this->supplier->id)

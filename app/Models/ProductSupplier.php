@@ -16,6 +16,7 @@ class ProductSupplier extends Model
         "name",
         "laboratory",
         "expiration",
+        "credit_days",
         "unit_cost",
         "unit_cost_usd",
         "connection_date",
@@ -30,6 +31,7 @@ class ProductSupplier extends Model
     ];
 
     protected $casts = [
+        "credit_days" => "integer",
         "discount_percentage" => "float",
         "is_ai_matched" => "boolean",
         "is_active" => "boolean",

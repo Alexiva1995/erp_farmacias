@@ -185,6 +185,7 @@ const headers = computed(() => [
   { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "180px" },
   { title: props.enableUsdAmountCol ? "COSTO" : "COSTO (BS)", key: "our_cost", sortable: false, width: "100px", align: 'end' },
   { title: props.enableUsdAmountCol ? "COSTO USD" : "COSTO BS", key: "unit_cost", sortable: true, width: "110px", align: 'end' },
+  { title: "CRÉDITO", key: "credit_days", sortable: true, width: "90px", align: 'center' },
   { title: "EXP", key: "expiration", sortable: true, width: "95px", align: 'center' },
   { title: "ACCIÓN", key: "actions", sortable: false, width: "110px", align: "end" },
 ]);
@@ -577,6 +578,20 @@ const headers = computed(() => [
             </div>
           </template>
 
+          <template #item.credit_days="{ item }">
+            <VChip
+              v-if="item.credit_days !== null && item.credit_days !== undefined"
+              :color="Number(item.credit_days) > 0 ? 'info' : 'secondary'"
+              size="x-small"
+              variant="tonal"
+              density="compact"
+              class="font-weight-bold"
+            >
+              {{ Number(item.credit_days) > 0 ? `${item.credit_days} días` : 'Contado' }}
+            </VChip>
+            <span v-else class="text-disabled text-xs">—</span>
+          </template>
+
           <template #item.expiration="{ item }">
             <span v-if="item.expiration" class="text-xs font-weight-medium">
               {{ item.expiration }}
@@ -714,6 +729,21 @@ const headers = computed(() => [
                       ${{ formatUsd(props.enableDiscounts && parseFloat(item.final_cost_usd) > 0 ? item.final_cost_usd : item.unit_cost_usd) }}
                     </span>
                   </template>
+                </div>
+
+                <div class="d-flex flex-column align-end">
+                  <span class="text-xs text-disabled uppercase font-weight-bold">DÍAS CRÉDITO</span>
+                  <VChip
+                    v-if="item.credit_days !== null && item.credit_days !== undefined"
+                    :color="Number(item.credit_days) > 0 ? 'info' : 'secondary'"
+                    size="x-small"
+                    variant="tonal"
+                    density="compact"
+                    class="font-weight-bold mt-1"
+                  >
+                    {{ Number(item.credit_days) > 0 ? `${item.credit_days} días` : 'Contado' }}
+                  </VChip>
+                  <span v-else class="text-disabled text-xs">—</span>
                 </div>
               </div>
 

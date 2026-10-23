@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Suppliers;
 
 use App\Jobs\ProcessSupplierConnectionJob;
+use App\Exports\SupplierCreditDaysImport;
 use App\Exports\SupplierImport;
 use App\Models\ExchangeRate;
 use App\Models\Supplier;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Services\Email\GmailImapService;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
@@ -71,6 +73,8 @@ class SupplierEmailCatalogService
         $systemUser = User::first();
         $userId = $systemUser?->id ?? 1;
 
+        $hasCreditEmailCol = Schema::hasColumn('supplier_connections', 'credit_days_email');
+
         if ($targetSupplier) {
             if ($targetSupplier->is_active === false) {
                 $skipped[] = [
@@ -91,23 +95,67 @@ class SupplierEmailCatalogService
             // Sincronizar proveedor específico
             $suppliersToProcess = [$targetSupplier];
         } else {
-            // Sincronizar solo proveedores activos de tipo mercancía con conexión tipo file/email que tengan un correo configurado
+            // Sincronizar proveedores activos con conexión tipo file/email o con enlace de días de crédito por correo en FTP/API
             $suppliersToProcess = Supplier::where('is_active', true)
                 ->where(function ($q) {
                     $q->where('type', 'drogueria')->orWhereNull('type');
                 })
-                ->whereHas('connections', function ($q) {
-                    $q->whereIn('type', ['file', 'email'])
-                      ->where(function ($sq) {
-                          $sq->where('username', 'LIKE', '%@%')
-                             ->orWhere('host', 'LIKE', '%@%');
-                      });
+                ->whereHas('connections', function ($q) use ($hasCreditEmailCol) {
+                    $q->where(function ($sub) {
+                        $sub->whereIn('type', ['file', 'email'])
+                            ->where(function ($sq) {
+                                $sq->where('username', 'LIKE', '%@%')
+                                   ->orWhere('host', 'LIKE', '%@%');
+                            });
+                    });
+
+                    if ($hasCreditEmailCol) {
+                        $q->orWhere(function ($sub) {
+                            $sub->whereNotNull('credit_days_email')
+                                ->where('credit_days_email', 'LIKE', '%@%')
+                                ->whereNotNull('credit_days_col')
+                                ->where('credit_days_col', '!=', '');
+                        });
+                    }
                 })
                 ->get();
         }
 
         foreach ($suppliersToProcess as $supplier) {
-            $connection = $supplier->connections()->first();
+            // Verificar primero si tiene una conexión FTP/API con enlace exclusivo de días de crédito por correo
+            $creditConn = $hasCreditEmailCol
+                ? $supplier->connections()
+                    ->whereIn('type', ['ftp', 'sftp', 'api', 'http', 'dronena_bot', 'drosymca_bot'])
+                    ->whereNotNull('credit_days_email')
+                    ->where('credit_days_email', 'LIKE', '%@%')
+                    ->whereNotNull('credit_days_col')
+                    ->where('credit_days_col', '!=', '')
+                    ->first()
+                : null;
+
+            if ($creditConn) {
+                try {
+                    $this->processCreditDaysOnlyForSupplier(
+                        supplier: $supplier,
+                        connection: $creditConn,
+                        allowedExtensions: $allowedExtensions,
+                        dryRun: $dryRun,
+                        processed: $processed,
+                        skipped: $skipped
+                    );
+                } catch (\Throwable $e) {
+                    $errors[] = [
+                        'supplier_id' => $supplier->id,
+                        'supplier_name' => $supplier->name,
+                        'error' => $e->getMessage(),
+                    ];
+                    Log::error("❌ [GMAIL CREDIT DAYS SYNC] Error procesando proveedor {$supplier->name}: " . $e->getMessage());
+                }
+                continue;
+            }
+
+            $connection = $supplier->connections()->whereIn('type', ['file', 'email'])->first()
+                ?? $supplier->connections()->first();
             $supplierEmail = $this->extractSupplierEmail($connection);
 
             if (empty($supplierEmail)) {
@@ -307,6 +355,8 @@ class SupplierEmailCatalogService
                                 costUsdCol: !empty($map["unit_cost_usd"]) ? $map["unit_cost_usd"] : null,
                                 activeIngredientCol: !empty($map["active_ingredient"]) ? $map["active_ingredient"] : null,
                                 expirationCol: !empty($map["expiration"]) ? $map["expiration"] : null,
+                                laboratoryCol: !empty($map["laboratory"]) ? $map["laboratory"] : null,
+                                creditDaysCol: !empty($map["credit_days"]) ? $map["credit_days"] : null,
                                 currencyCol: $emailRate ?? (!empty($map["currency"]) ? (float)$map["currency"] : null),
                             );
 
@@ -521,6 +571,212 @@ class SupplierEmailCatalogService
         }
 
         return $results;
+    }
+
+    /**
+     * Sincroniza únicamente los días de crédito desde el correo configurado en una conexión FTP/API.
+     * Enlaza cada registro mediante el código del producto del proveedor (cod_supplier) sin alterar precios ni existencias.
+     */
+    public function syncCreditDaysFromEmailForSupplier(Supplier $supplier, ?SupplierConnection $connection = null): int
+    {
+        if (!Schema::hasColumn('supplier_connections', 'credit_days_email') || !Schema::hasColumn('product_suppliers', 'credit_days')) {
+            return 0;
+        }
+
+        $creditConn = $connection;
+        if (!$creditConn || empty($creditConn->credit_days_email) || empty($creditConn->credit_days_col)) {
+            $creditConn = $supplier->connections()
+                ->whereNotNull('credit_days_email')
+                ->where('credit_days_email', 'LIKE', '%@%')
+                ->whereNotNull('credit_days_col')
+                ->where('credit_days_col', '!=', '')
+                ->first();
+        }
+
+        if (!$creditConn || empty($creditConn->credit_days_email) || empty($creditConn->credit_days_col)) {
+            return 0;
+        }
+
+        $settings = \App\Models\GeneralSetting::first();
+        $email = $settings?->gmail_sync_email ?: config('mail_sync.email');
+        $rawPassword = $settings?->gmail_sync_password;
+        if (!empty($rawPassword)) {
+            try {
+                $password = \App\Helpers\FtpCrypt::decrypt($rawPassword);
+            } catch (\Throwable) {
+                $password = $rawPassword;
+            }
+        } else {
+            $password = config('mail_sync.password');
+        }
+
+        if (empty($email) || empty($password)) {
+            return 0;
+        }
+
+        $host = $settings?->gmail_sync_host ?: config('mail_sync.host', 'imap.gmail.com');
+        $port = (int) ($settings?->gmail_sync_port ?: config('mail_sync.port', 993));
+        $folder = $settings?->gmail_sync_folder ?: config('mail_sync.folder', 'INBOX');
+        $allowedExtensions = config('mail_sync.allowed_extensions', ['xlsx', 'xls', 'csv']);
+
+        $this->imapService->connect($host, $port, $email, $password);
+        $this->imapService->selectFolder($folder);
+
+        $processed = [];
+        $skipped = [];
+
+        try {
+            return $this->processCreditDaysOnlyForSupplier(
+                supplier: $supplier,
+                connection: $creditConn,
+                allowedExtensions: $allowedExtensions,
+                dryRun: false,
+                processed: $processed,
+                skipped: $skipped
+            );
+        } finally {
+            $this->imapService->disconnect();
+        }
+    }
+
+    /**
+     * Extrae únicamente la columna de días de crédito y el código del proveedor desde los adjuntos de Gmail
+     * y actualiza los registros existentes en product_suppliers.
+     */
+    private function processCreditDaysOnlyForSupplier(
+        Supplier $supplier,
+        SupplierConnection $connection,
+        array $allowedExtensions,
+        bool $dryRun,
+        array &$processed,
+        array &$skipped
+    ): int {
+        $cleanEmail = trim((string) $connection->credit_days_email);
+        $creditCol = trim((string) $connection->credit_days_col);
+        $codCol = !empty($connection->credit_days_cod_col) ? trim((string) $connection->credit_days_cod_col) : null;
+
+        if ($cleanEmail === '' || $creditCol === '') {
+            return 0;
+        }
+
+        $messages = $this->imapService->search("FROM \"{$cleanEmail}\"");
+        if (empty($messages)) {
+            $skipped[] = [
+                'supplier_id' => $supplier->id,
+                'supplier_name' => $supplier->name,
+                'email' => $cleanEmail,
+                'reason' => "No se encontraron correos para días de crédito desde '{$cleanEmail}'.",
+            ];
+            return 0;
+        }
+
+        rsort($messages);
+
+        $collectedEmails = [];
+        $latestEmailDate = null;
+
+        foreach ($messages as $msgNum) {
+            $emailData = $this->imapService->fetchMessage((int) $msgNum, $allowedExtensions);
+            if (!$emailData || empty($emailData['attachments'])) {
+                continue;
+            }
+
+            $currentDateOnly = null;
+            if (!empty($emailData['date'])) {
+                try {
+                    $currentDateOnly = \Carbon\Carbon::parse($emailData['date'])->format('Y-m-d');
+                } catch (\Throwable) {
+                    $currentDateOnly = null;
+                }
+            }
+
+            if ($latestEmailDate === null) {
+                $latestEmailDate = $currentDateOnly;
+            }
+
+            if ($latestEmailDate !== null && $currentDateOnly !== null && $currentDateOnly !== $latestEmailDate) {
+                break;
+            }
+
+            $collectedEmails[] = $emailData;
+            if (count($collectedEmails) >= 3) {
+                break;
+            }
+        }
+
+        if (empty($collectedEmails)) {
+            $skipped[] = [
+                'supplier_id' => $supplier->id,
+                'supplier_name' => $supplier->name,
+                'email' => $cleanEmail,
+                'reason' => "Los correos de '{$cleanEmail}' no contienen adjuntos Excel compatibles.",
+            ];
+            return 0;
+        }
+
+        $combinedCreditMap = [];
+        $attachmentIndex = 0;
+
+        foreach ($collectedEmails as $emailData) {
+            foreach ($emailData['attachments'] as $attachment) {
+                $filename = $attachment['filename'];
+                $content = $attachment['content'];
+
+                if ($dryRun) {
+                    $processed[] = [
+                        'dry_run' => true,
+                        'supplier_id' => $supplier->id,
+                        'supplier_name' => $supplier->name,
+                        'filename' => $filename,
+                        'size' => strlen($content),
+                        'subject' => $emailData['subject'] ?? '',
+                        'from' => $emailData['from_email'] ?? $cleanEmail,
+                        'date' => $emailData['date'] ?? '',
+                        'format_used' => "Solo Días Crédito (Col {$creditCol})",
+                    ];
+                    continue;
+                }
+
+                $storagePath = 'temp/credit_' . Str::slug($supplier->name) . '_' . date('Ymd_His') . '_' . $attachmentIndex . '_' . $filename;
+                $attachmentIndex++;
+                Storage::disk('local')->put($storagePath, $content);
+                $absolutePath = Storage::disk('local')->path($storagePath);
+
+                try {
+                    $creditImport = new SupplierCreditDaysImport(
+                        codSupplierCol: $codCol,
+                        creditDaysCol: $creditCol
+                    );
+                    Excel::import($creditImport, $absolutePath);
+
+                    $fileMap = $creditImport->getCreditDaysMap();
+                    if (!empty($fileMap)) {
+                        $combinedCreditMap = array_replace($combinedCreditMap, $fileMap);
+                    }
+
+                    $processed[] = [
+                        'supplier_id' => $supplier->id,
+                        'supplier_name' => $supplier->name,
+                        'filename' => $filename,
+                        'subject' => $emailData['subject'] ?? '',
+                        'from' => $emailData['from_email'] ?? $cleanEmail,
+                        'date' => $emailData['date'] ?? '',
+                        'format_used' => "Enlace Días Crédito (Col {$creditCol})",
+                        'products_count' => count($fileMap),
+                    ];
+                } catch (\Throwable $e) {
+                    Log::error("Error extrayendo días de crédito del archivo {$filename}: " . $e->getMessage());
+                } finally {
+                    Storage::disk('local')->delete($storagePath);
+                }
+            }
+        }
+
+        if ($dryRun || empty($combinedCreditMap)) {
+            return 0;
+        }
+
+        return $this->queryService->applyCreditDaysMapToSupplierProducts($supplier, $combinedCreditMap);
     }
 }
 

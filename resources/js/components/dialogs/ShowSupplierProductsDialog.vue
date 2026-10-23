@@ -44,6 +44,7 @@ const productsHeaders = [
   { title: "ID", key: "id", sortable: false },
   { title: "Nombre", key: "name", sortable: false },
   { title: "Laboratorio", key: "laboratory", sortable: false },
+  { title: "Días Crédito", key: "credit_days", sortable: false, align: "center" },
   { title: "Vencimiento", key: "expiration", sortable: false, align: "center" },
   { title: "Coste (BS)", key: "unit_cost", sortable: false },
   { title: "Coste (Usd)", key: "unit_cost_usd", sortable: false },
@@ -204,6 +205,18 @@ const updateTableOptions = (options) => {
             <template #item.laboratory="{ item }">
               <span class="text-xs text-medium-emphasis">{{ item.laboratory }}</span>
             </template>
+            <template #item.credit_days="{ item }">
+              <VChip
+                v-if="item.credit_days !== null && item.credit_days !== undefined"
+                :color="Number(item.credit_days) > 0 ? 'info' : 'secondary'"
+                size="x-small"
+                variant="tonal"
+                class="font-weight-bold"
+              >
+                {{ Number(item.credit_days) > 0 ? `${item.credit_days} días` : 'Contado' }}
+              </VChip>
+              <span v-else class="text-disabled text-xs">—</span>
+            </template>
             <template #item.expiration="{ item }">
               <span v-if="item.expiration" class="text-xs font-weight-medium">
                 {{ item.expiration }}
@@ -243,6 +256,15 @@ const updateTableOptions = (options) => {
                     <div class="d-flex flex-column align-end gap-1">
                       <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-black">
                         {{ item.laboratory || 'S/L' }}
+                      </VChip>
+                      <VChip
+                        v-if="item.credit_days !== null && item.credit_days !== undefined"
+                        size="x-small"
+                        :color="Number(item.credit_days) > 0 ? 'info' : 'secondary'"
+                        variant="tonal"
+                        class="font-weight-bold"
+                      >
+                        {{ Number(item.credit_days) > 0 ? `${item.credit_days} días` : 'Contado' }}
                       </VChip>
                       <span v-if="item.expiration" class="text-super-xs font-weight-bold text-disabled">
                         Vence: {{ item.expiration }}

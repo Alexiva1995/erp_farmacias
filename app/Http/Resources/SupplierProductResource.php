@@ -17,6 +17,7 @@ class SupplierProductResource extends JsonResource
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
+            'cod_supplier' => $this->cod_supplier ?? null,
             'name' => $this->name,
             'active_ingredient' => $this->active_ingredient ?? null,
             'laboratory_name' => $this->laboratory_name ?? $this->laboratory ?? 'N/A',
@@ -28,6 +29,7 @@ class SupplierProductResource extends JsonResource
             'supplier_name' => $this->supplier_name ?? $this->supplier?->name ?? 'N/A',
             'barcode_match' => $this->barcode_match ?? null,
             'expiration' => $this->expiration ?? null,
+            'credit_days' => isset($this->credit_days) && $this->credit_days !== null ? (int) $this->credit_days : null,
             'is_active' => (bool) ($this->is_active ?? true),
         ];
     }

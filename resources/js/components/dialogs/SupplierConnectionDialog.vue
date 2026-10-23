@@ -37,6 +37,9 @@ const getDefaultFormForType = (type) => ({
   ftp_orders_username: "",
   ftp_orders_password: "",
   ftp_orders_path: "",
+  credit_days_email: "",
+  credit_days_cod_col: "",
+  credit_days_col: "",
 });
 
 const form = ref(getDefaultFormForType("ftp"));
@@ -90,6 +93,9 @@ const loadFormForType = (type) => {
       ftp_orders_username: existing.ftp_orders_username ?? connectionsMap.value["ftp"]?.username ?? "",
       ftp_orders_password: "",
       ftp_orders_path: existing.ftp_orders_path ?? connectionsMap.value["ftp"]?.path ?? "",
+      credit_days_email: existing.credit_days_email ?? "",
+      credit_days_cod_col: existing.credit_days_cod_col ?? "",
+      credit_days_col: existing.credit_days_col ?? "",
     };
     hasExistingPassword.value = existing.has_password ?? false;
     lastConnection.value = existing.last_connection ?? null;
@@ -472,6 +478,51 @@ watch(
               </div>
             </VCard>
           </template>
+
+          <!-- Enlace de Días de Crédito vía Correo (Gmail) para conexiones FTP / SFTP / API / Bot -->
+          <div v-if="!isEmail" class="mt-2">
+            <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
+              <div class="d-flex align-center gap-2 mb-1">
+                <VIcon icon="tabler-calendar-Dollar" color="primary" size="18" />
+                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
+                  Enlace de Días de Crédito vía Correo (Gmail)
+                </span>
+              </div>
+              <p class="text-xs text-medium-emphasis mb-3">
+                Si el archivo {{ form.type.toUpperCase() }} no incluye los días de crédito por producto, configura el correo y las columnas del Excel adjunto para enlazarlos automáticamente mediante el <strong>Código de Producto del Proveedor</strong>.
+              </p>
+
+              <VRow dense>
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="form.credit_days_email"
+                    label="Correo del Remitente (Gmail)"
+                    placeholder="catalogo@proveedor.com"
+                    prepend-inner-icon="tabler-mail"
+                    :error-messages="errors.credit_days_email"
+                  />
+                </VCol>
+                <VCol cols="12" sm="6" md="3">
+                  <AppTextField
+                    v-model="form.credit_days_cod_col"
+                    label="Columna Código Prov."
+                    placeholder="Ej: A"
+                    prepend-inner-icon="tabler-barcode"
+                    :error-messages="errors.credit_days_cod_col"
+                  />
+                </VCol>
+                <VCol cols="12" sm="6" md="3">
+                  <AppTextField
+                    v-model="form.credit_days_col"
+                    label="Columna Días Crédito"
+                    placeholder="Ej: F"
+                    prepend-inner-icon="tabler-clock-dollar"
+                    :error-messages="errors.credit_days_col"
+                  />
+                </VCol>
+              </VRow>
+            </VCard>
+          </div>
 
           <!-- Transmisión de Pedidos FTP / EDI Secundaria (si aplica) -->
           <div v-if="isHttp || isMafarta || form.type === 'dronena_bot'" class="mt-2">

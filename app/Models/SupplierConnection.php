@@ -22,6 +22,9 @@ class SupplierConnection extends Model
         "tertiary_structure",
         "invoice_path",
         "invoice_structure",
+        "credit_days_email",
+        "credit_days_cod_col",
+        "credit_days_col",
         "last_connection",
     ];
 
