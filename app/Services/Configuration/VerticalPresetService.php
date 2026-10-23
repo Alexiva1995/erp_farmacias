@@ -65,6 +65,17 @@ class VerticalPresetService implements VerticalPresetServiceInterface
             Cache::forget('bootstrap_config');
             Cache::forget('branding_settings');
 
+            // Sincronizar campo vertical en la base de datos central de tenants si estamos en un tenant activo
+            if (function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant) {
+                try {
+                    tenancy()->tenant->update([
+                        'vertical' => $enum->value,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Silencioso si ocurre error secundario en master
+                }
+            }
+
             return $updated;
         });
     }

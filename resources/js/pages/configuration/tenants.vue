@@ -294,8 +294,12 @@ onMounted(() => {
         <!-- Columna Empresa -->
         <template #item.company_name="{ item }">
           <div class="d-flex align-center ga-3 py-2">
-            <VAvatar color="primary" variant="tonal" size="38">
-              <VIcon icon="tabler-building-store" size="20" />
+            <VAvatar
+              :color="getVerticalBadge(item.vertical ?? item.raw?.vertical).color"
+              variant="tonal"
+              size="38"
+            >
+              <VIcon :icon="getVerticalBadge(item.vertical ?? item.raw?.vertical).icon" size="20" />
             </VAvatar>
             <div>
               <div class="font-weight-semibold text-high-emphasis">
