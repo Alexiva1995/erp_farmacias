@@ -4,6 +4,9 @@ import { usePharmacySettingsForm } from '@/composables/usePharmacySettingsForm'
 import { useAbility } from '@casl/vue'
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
+import { useBrandingStore } from '@/stores/useBrandingStore'
+
+const brandingStore = useBrandingStore()
 
 const { can } = useAbility()
 const logoInputRef = ref(null)
@@ -162,7 +165,7 @@ const testFactoryConnection = async () => {
               </VAvatar>
               <div>
                 <VCardTitle class="text-h5 font-weight-bold">
-                  Datos de la Farmacia e Identidad Corporativa
+                  {{ brandingStore.isRestaurant ? 'Datos del Negocio e Identidad Corporativa' : 'Datos de la Farmacia e Identidad Corporativa' }}
                 </VCardTitle>
                 <VCardSubtitle class="text-caption text-medium-emphasis mt-1">
                   Razón social, RIF, serial de máquina fiscal, moneda principal, logotipos y membretes oficiales.

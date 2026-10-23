@@ -389,12 +389,23 @@ const processedNavItems = computed(() => {
           if (childs.length === 0) return null;
         }
 
-        // Filtrar Farmacias (SaaS) para que solo aparezca en la Master / Central
+        // Filtrar Farmacias (SaaS) para que solo aparezca en la Master / Central y dinamizar títulos
         if (copy.title === 'Configuración') {
           const isTenant = brandingStore.settings.is_tenant ?? false;
           if (isTenant) {
-            childs = childs.filter(c => c.to !== 'configuration-tenants' && c.title !== 'Farmacias (SaaS)');
+            childs = childs.filter(c => c.to !== 'configuration-tenants' && c.title !== 'Farmacias (SaaS)' && c.title !== 'Empresas (SaaS)');
           }
+
+          // Dinamizar título de Datos de Farmacia / Negocio
+          childs = childs.map(c => {
+            if (c.to === 'configuration-pharmacy' || c.title === 'Datos de Farmacia') {
+              return {
+                ...c,
+                title: brandingStore.isRestaurant ? 'Datos del Negocio' : 'Datos de Farmacia',
+              };
+            }
+            return c;
+          });
         }
 
         copy.children = childs;
