@@ -435,6 +435,16 @@ class AppServiceProvider extends ServiceProvider
             \App\Repositories\FiscalContributionRepository::class
         );
 
+        $this->app->bind(
+            \App\Contracts\KitchenStationServiceInterface::class,
+            \App\Services\Restaurant\KitchenStationService::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\KdsServiceInterface::class,
+            \App\Services\Restaurant\KdsService::class
+        );
+
         $this->app->when(LocationController::class)
             ->needs(LocationContract::class)
             ->give(LocationRepository::class);

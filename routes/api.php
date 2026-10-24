@@ -315,6 +315,15 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::apiResource("locations", LocationController::class);
     Route::apiResource("dishes", DishController::class);
     Route::apiResource("modifier-groups", ModifierGroupController::class);
+    Route::apiResource("kitchen-stations", \App\Http\Controllers\Api\KitchenStationController::class);
+
+    // Rutas KDS (Kitchen Display System)
+    Route::prefix("kds")->group(function () {
+        Route::get("tickets", [\App\Http\Controllers\Api\KdsController::class, "index"]);
+        Route::post("orders/{order}/send", [\App\Http\Controllers\Api\KdsController::class, "sendToKitchen"]);
+        Route::patch("items/{orderDetail}/status", [\App\Http\Controllers\Api\KdsController::class, "updateItemStatus"]);
+        Route::post("orders/{order}/bump", [\App\Http\Controllers\Api\KdsController::class, "bumpTicket"]);
+    });
     Route::get("/suppliers", [ResourceController::class, "getSuppliers"]);
     Route::get("/products/all", [ResourceController::class, "getAllProducts"]);
     Route::get("/barcode/{barcode}", [ResourceController::class, "findProductByBarcode"]);

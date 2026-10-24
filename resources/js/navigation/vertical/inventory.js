@@ -74,6 +74,10 @@ export default [
         title: 'Platos / Menú',
         to: 'inventory-dishes',
       },
+      {
+        title: 'Cocina (KDS)',
+        to: 'restaurant-kds',
+      },
     ],
   }, 
 ]

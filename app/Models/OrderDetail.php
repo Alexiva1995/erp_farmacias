@@ -27,11 +27,19 @@ class OrderDetail extends Model
         'price_bs',
         'price_before_discount_bs',
         'notes',
+        'kitchen_status',
+        'course_number',
+        'commanded_at',
+        'prepared_at',
     ];
     
     protected $casts = [
         'quantity' => 'float',
         'quantity_expiration' => 'float',
+        'kitchen_status' => \App\Enums\KitchenStatusEnum::class,
+        'course_number' => 'integer',
+        'commanded_at' => 'datetime',
+        'prepared_at' => 'datetime',
     ];
 
     public function order(): BelongsTo

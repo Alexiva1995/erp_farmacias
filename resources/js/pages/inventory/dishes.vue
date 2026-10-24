@@ -41,6 +41,7 @@ const dishStatus = ref(1);
 
 // Diálogo de edición / creación
 const isEditDialogVisible = ref(false);
+const kitchenStations = ref([]);
 const currentDish = ref({
   id: null,
   name: "",
@@ -53,6 +54,7 @@ const currentDish = ref({
   iva: false,
   tax_rate: 16.0,
   preparation_time_minutes: 15,
+  kitchen_station_id: null,
   ingredients: [],
 });
 
@@ -75,6 +77,15 @@ const fetchCategories = async () => {
     categories.value = data;
   } catch (error) {
     console.error("Error al obtener categorías:", error);
+  }
+};
+
+const fetchKitchenStations = async () => {
+  try {
+    const { data } = await axios.get("/kitchen-stations");
+    kitchenStations.value = data.data || [];
+  } catch (error) {
+    console.error("Error al obtener estaciones de cocina:", error);
   }
 };
 
@@ -330,6 +341,7 @@ const handleAddDish = () => {
     iva: false,
     tax_rate: 16.0,
     preparation_time_minutes: 15,
+    kitchen_station_id: null,
     ingredients: [],
   };
   isBaseDish.value = false;
@@ -355,6 +367,7 @@ const handleEditDish = async (dish) => {
       iva: Boolean(details.iva),
       tax_rate: details.tax_rate !== null && details.tax_rate !== undefined ? details.tax_rate : 16.0,
       preparation_time_minutes: details.preparation_time_minutes || 15,
+      kitchen_station_id: details.kitchen_station_id || null,
       ingredients: details.ingredients.map((ing) => ({
         product_id: ing.id,
         name: ing.name,
@@ -456,6 +469,7 @@ const getStatusLabel = (status) => {
 
 onMounted(() => {
   fetchCategories();
+  fetchKitchenStations();
   fetchDishes();
 });
 </script>
@@ -766,19 +780,37 @@ onMounted(() => {
                   />
                 </div>
 
-                <AppTextField
-                  v-model="currentDish.preparation_time_minutes"
-                  label="Tiempo Estimado Cocina"
-                  type="number"
-                  step="1"
-                  min="1"
-                  suffix="minutos"
-                  prepend-inner-icon="tabler-clock-hour-4"
-                  placeholder="15"
-                  density="compact"
-                  hide-details
-                  :error-messages="formErrors.preparation_time_minutes"
-                />
+                <VRow dense>
+                  <VCol cols="12" sm="6">
+                    <AppTextField
+                      v-model="currentDish.preparation_time_minutes"
+                      label="Tiempo Cocina"
+                      type="number"
+                      step="1"
+                      min="1"
+                      suffix="min"
+                      prepend-inner-icon="tabler-clock-hour-4"
+                      placeholder="15"
+                      density="compact"
+                      hide-details
+                      :error-messages="formErrors.preparation_time_minutes"
+                    />
+                  </VCol>
+                  <VCol cols="12" sm="6">
+                    <VSelect
+                      v-model="currentDish.kitchen_station_id"
+                      :items="kitchenStations"
+                      item-title="name"
+                      item-value="id"
+                      label="Estación KDS"
+                      placeholder="Estación"
+                      density="compact"
+                      clearable
+                      hide-details
+                      prepend-inner-icon="tabler-flame"
+                    />
+                  </VCol>
+                </VRow>
 
                 <div class="d-flex align-center pt-1">
                   <VCheckbox

@@ -40,7 +40,7 @@ const processedNavItems = computed(() => {
     if (title === 'lotería' || to === 'lottery' || title === 'loteria') {
       return enabledModules.includes('lottery');
     }
-    if (title === 'operativa' || to === 'restaurant-process-audit' || to === 'inventory-dishes') {
+    if (title === 'operativa' || to === 'restaurant-process-audit' || to === 'inventory-dishes' || to === 'restaurant-kds') {
       return enabledModules.includes('restaurant');
     }
     if (title === 'facturas' || to === 'invoice' || to.startsWith('invoice-')) {

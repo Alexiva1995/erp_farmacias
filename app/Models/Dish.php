@@ -52,6 +52,11 @@ class Dish extends Model
         return $this->belongsTo(Category::class, 'category_id');
     }
 
+    public function kitchenStation(): BelongsTo
+    {
+        return $this->belongsTo(KitchenStation::class, 'kitchen_station_id');
+    }
+
     public function modifierGroups(): BelongsToMany
     {
         return $this->belongsToMany(ModifierGroup::class, 'dish_modifier_group')

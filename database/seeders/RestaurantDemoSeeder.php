@@ -1,19 +1,23 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Database\Seeders;
 
-use App\Enums\ModifierTypeEnum;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use App\Models\Category;
+use App\Models\Product;
+use App\Models\Lot;
 use App\Models\Dish;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
-use App\Models\Product;
-use App\Models\ProductLot;
+use App\Models\KitchenStation;
+use App\Models\Order;
+use App\Models\OrderDetail;
+use App\Models\User;
+use App\Models\Client;
+use App\Enums\ModifierTypeEnum;
+use App\Enums\KitchenStatusEnum;
 use Carbon\Carbon;
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class RestaurantDemoSeeder extends Seeder
 {
@@ -23,6 +27,51 @@ class RestaurantDemoSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function () {
+            // 0. Estaciones de Cocina
+            $stCaliente = KitchenStation::firstOrCreate(
+                ['code' => 'HOT'],
+                [
+                    'name' => 'Cocina Caliente',
+                    'color' => 'error',
+                    'icon' => 'tabler-flame',
+                    'sort_order' => 1,
+                    'is_active' => true,
+                ]
+            );
+
+            $stFria = KitchenStation::firstOrCreate(
+                ['code' => 'COLD'],
+                [
+                    'name' => 'Cocina Fría / Ensaladas',
+                    'color' => 'info',
+                    'icon' => 'tabler-snowflake',
+                    'sort_order' => 2,
+                    'is_active' => true,
+                ]
+            );
+
+            $stBar = KitchenStation::firstOrCreate(
+                ['code' => 'BAR'],
+                [
+                    'name' => 'Bar & Coctelería',
+                    'color' => 'primary',
+                    'icon' => 'tabler-glass-full',
+                    'sort_order' => 3,
+                    'is_active' => true,
+                ]
+            );
+
+            $stPostres = KitchenStation::firstOrCreate(
+                ['code' => 'DESSERT'],
+                [
+                    'name' => 'Postres & Cafetería',
+                    'color' => 'warning',
+                    'icon' => 'tabler-cake',
+                    'sort_order' => 4,
+                    'is_active' => true,
+                ]
+            );
+
             // 1. Categorías gastronómicas
             $catBurgers = Category::firstOrCreate(['name' => 'Hamburguesas Gourmet']);
             $catPizzas = Category::firstOrCreate(['name' => 'Pizzas Artesanales']);
@@ -56,26 +105,27 @@ class RestaurantDemoSeeder extends Seeder
                     ]
                 );
 
-                // Crear lote activo si no existe
                 if ($product->lots()->count() === 0) {
-                    ProductLot::create([
+                    Lot::create([
                         'product_id' => $product->id,
-                        'lot_number' => 'LOT-' . strtoupper(substr(md5($item['barcode']), 0, 8)),
-                        'quantity' => $item['stock'],
-                        'unit_cost' => $item['unit_cost'],
+                        'code' => 'LOTE-DEMO-' . strtoupper(substr(md5($product->barcode), 0, 6)),
+                        'cost' => $product->unit_cost,
+                        'current_stock' => $item['stock'],
+                        'initial_stock' => $item['stock'],
                         'expiration_date' => Carbon::now()->addMonths(6)->toDateString(),
+                        'state' => 'available',
+                        'is_active' => true,
                     ]);
                 }
 
                 $insumosMap[$item['barcode']] = $product;
             }
 
-            // 3. Grupos de Modificadores
-            // Grupo A: Término de la Carne (Opciones informativas de cocina)
+            // 3. Modificadores
             $groupTermino = ModifierGroup::firstOrCreate(
                 ['name' => 'Término de la Carne'],
                 [
-                    'description' => 'Punto de cocción solicitado para la carne',
+                    'description' => 'Punto de cocción preferido',
                     'min_selections' => 1,
                     'max_selections' => 1,
                     'is_active' => true,
@@ -96,124 +146,129 @@ class RestaurantDemoSeeder extends Seeder
                 'is_active' => true,
             ]);
 
-            ModifierOption::firstOrCreate(['modifier_group_id' => $groupTermino->id, 'name' => 'Bien Cocido'], [
-                'modifier_type' => ModifierTypeEnum::INFO,
-                'extra_price_usd' => 0.00,
-                'sort_order' => 3,
-                'is_active' => true,
-            ]);
-
-            // Grupo B: Adiciones / Extras con Precio y Descarga de Lote
-            $groupExtras = ModifierGroup::firstOrCreate(
-                ['name' => 'Adiciones & Extras'],
-                [
-                    'description' => 'Ingredientes adicionales para personalizar tu plato',
-                    'min_selections' => 0,
-                    'max_selections' => 5,
-                    'is_active' => true,
-                ]
-            );
-
-            ModifierOption::firstOrCreate(['modifier_group_id' => $groupExtras->id, 'name' => 'Extra Tocineta Ahumada'], [
-                'modifier_type' => ModifierTypeEnum::ADD,
-                'extra_price_usd' => 1.50,
-                'product_id' => $insumosMap['INS-BACON-01']->id,
-                'portion' => 0.08, // 80 gramos de tocineta
-                'sort_order' => 1,
-                'is_active' => true,
-            ]);
-
-            ModifierOption::firstOrCreate(['modifier_group_id' => $groupExtras->id, 'name' => 'Extra Queso Cheddar'], [
-                'modifier_type' => ModifierTypeEnum::ADD,
-                'extra_price_usd' => 1.00,
-                'product_id' => $insumosMap['INS-CHEDDAR-01']->id,
-                'portion' => 0.05, // 50 gramos de cheddar
-                'sort_order' => 2,
-                'is_active' => true,
-            ]);
-
-            // Grupo C: Omisiones (Sin Cebolla / Sin Salsa)
-            $groupOmisiones = ModifierGroup::firstOrCreate(
-                ['name' => 'Preferencias / Omitir Ingredientes'],
-                [
-                    'description' => 'Exclusiones de insumos sin recargo',
-                    'min_selections' => 0,
-                    'max_selections' => 5,
-                    'is_active' => true,
-                ]
-            );
-
-            ModifierOption::firstOrCreate(['modifier_group_id' => $groupOmisiones->id, 'name' => 'Sin Cebolla'], [
-                'modifier_type' => ModifierTypeEnum::REMOVE,
-                'extra_price_usd' => 0.00,
-                'product_id' => $insumosMap['INS-CEBOLLA-01']->id,
-                'portion' => 0, // 0 = omite la descarga del ingrediente de la receta
-                'sort_order' => 1,
-                'is_active' => true,
-            ]);
-
             // 4. Platos Terminados
-            // Plato 1: Hamburguesa Doble Bacon BBQ (Gravada con IVA 16%)
+            // Plato 1: Hamburguesa Doble Bacon (Cocina Caliente, Gravada con IVA)
             $dishBurger = Dish::firstOrCreate(
                 ['name' => 'Hamburguesa Doble Bacon Cheddar'],
                 [
                     'category_id' => $catBurgers->id,
                     'cost_price' => 2.80,
                     'cpv' => 2.80,
-                    'suggested_price' => 7.50,
+                    'suggested_price' => 5.04,
                     'designated_price' => 8.50,
                     'percentage_profit' => 1.8,
                     'status' => 1,
-                    'iva' => true, // Gravada con IVA
+                    'iva' => true,
                     'tax_rate' => 16.00,
                     'preparation_time_minutes' => 18,
+                    'kitchen_station_id' => $stCaliente->id,
                     'description' => 'Doble carne de 150g, queso cheddar fundido, tocineta crujiente y cebolla caramelizada en pan brioche.',
                 ]
             );
 
-            // Escandallo / Receta de la Hamburguesa
-            $dishBurger->ingredients()->syncWithoutDetaching([
-                $insumosMap['INS-CARNE-01']->id => ['portion' => 0.30, 'designated_cost' => 1.35],
-                $insumosMap['INS-PAN-01']->id => ['portion' => 1.00, 'designated_cost' => 0.40],
-                $insumosMap['INS-CHEDDAR-01']->id => ['portion' => 0.05, 'designated_cost' => 0.25],
-                $insumosMap['INS-BACON-01']->id => ['portion' => 0.06, 'designated_cost' => 0.39],
-                $insumosMap['INS-CEBOLLA-01']->id => ['portion' => 0.04, 'designated_cost' => 0.05],
+            // Escandallo de la Hamburguesa (con is_removable en Cebolla)
+            $dishBurger->ingredients()->sync([
+                $insumosMap['INS-CARNE-01']->id => ['portion' => 0.30, 'designated_cost' => 1.35, 'is_removable' => false],
+                $insumosMap['INS-PAN-01']->id => ['portion' => 1.00, 'designated_cost' => 0.40, 'is_removable' => false],
+                $insumosMap['INS-CHEDDAR-01']->id => ['portion' => 0.05, 'designated_cost' => 0.25, 'is_removable' => true],
+                $insumosMap['INS-BACON-01']->id => ['portion' => 0.06, 'designated_cost' => 0.39, 'is_removable' => true],
+                $insumosMap['INS-CEBOLLA-01']->id => ['portion' => 0.04, 'designated_cost' => 0.05, 'is_removable' => true],
             ]);
 
-            // Asignar los 3 grupos de modificadores a la hamburguesa
-            $dishBurger->modifierGroups()->syncWithoutDetaching([
-                $groupTermino->id => ['sort_order' => 1],
-                $groupExtras->id => ['sort_order' => 2],
-                $groupOmisiones->id => ['sort_order' => 3],
-            ]);
-
-            // Plato 2: Pizza Margarita Familiar (Exenta)
+            // Plato 2: Pizza Margarita Artesanal (Cocina Caliente, Exenta)
             $dishPizza = Dish::firstOrCreate(
                 ['name' => 'Pizza Margarita Artesanal'],
                 [
                     'category_id' => $catPizzas->id,
                     'cost_price' => 3.20,
                     'cpv' => 3.20,
-                    'suggested_price' => 9.00,
+                    'suggested_price' => 6.40,
                     'designated_price' => 10.00,
                     'percentage_profit' => 2.0,
                     'status' => 1,
-                    'iva' => false, // Exenta
+                    'iva' => false,
                     'tax_rate' => 0.00,
-                    'preparation_time_minutes' => 25,
-                    'description' => 'Masa artesanal fina, salsa pomodoro italiana, abundante mozzarella y albahaca fresca.',
+                    'preparation_time_minutes' => 20,
+                    'kitchen_station_id' => $stCaliente->id,
+                    'description' => 'Masa artesanal fina, salsa pomodoro italiana y mozzarella rallado fundido.',
                 ]
             );
 
-            $dishPizza->ingredients()->syncWithoutDetaching([
-                $insumosMap['INS-MASA-01']->id => ['portion' => 1.00, 'designated_cost' => 1.00],
-                $insumosMap['INS-POMODORO-01']->id => ['portion' => 0.20, 'designated_cost' => 0.30],
-                $insumosMap['INS-MOZZARELLA-01']->id => ['portion' => 0.35, 'designated_cost' => 1.90],
+            $dishPizza->ingredients()->sync([
+                $insumosMap['INS-MASA-01']->id => ['portion' => 1.00, 'designated_cost' => 1.00, 'is_removable' => false],
+                $insumosMap['INS-POMODORO-01']->id => ['portion' => 0.20, 'designated_cost' => 0.30, 'is_removable' => true],
+                $insumosMap['INS-MOZZARELLA-01']->id => ['portion' => 0.35, 'designated_cost' => 1.90, 'is_removable' => false],
             ]);
 
-            $dishPizza->modifierGroups()->syncWithoutDetaching([
-                $groupExtras->id => ['sort_order' => 1],
-            ]);
+            // 5. Comandas de Demostración para el KDS
+            $client = Client::first();
+            $seller = User::first();
+
+            if ($client && $seller) {
+                // Comanda 1: En Fuego / Preparando (Mesa 4)
+                $order1 = Order::create([
+                    'client_id' => $client->id,
+                    'seller_id' => $seller->id,
+                    'order_date' => Carbon::now()->subMinutes(8),
+                    'status' => Order::PENDING,
+                    'total_amount' => 17.00,
+                    'total_amount_usd' => 17.00,
+                    'currency' => 'USD',
+                ]);
+
+                OrderDetail::create([
+                    'order_id' => $order1->id,
+                    'dish_id' => $dishBurger->id,
+                    'product_type' => 'dish',
+                    'quantity' => 2,
+                    'price' => 8.50,
+                    'unit_price_usd' => 8.50,
+                    'unit_cost' => 2.80,
+                    'notes' => 'Término 3/4 - Sin Cebolla',
+                    'kitchen_status' => KitchenStatusEnum::PREPARING->value,
+                    'course_number' => 2,
+                    'commanded_at' => Carbon::now()->subMinutes(8),
+                ]);
+
+                // Comanda 2: En Cola / Recién Marchada (Mesa 7)
+                $order2 = Order::create([
+                    'client_id' => $client->id,
+                    'seller_id' => $seller->id,
+                    'order_date' => Carbon::now()->subMinutes(2),
+                    'status' => Order::PENDING,
+                    'total_amount' => 18.50,
+                    'total_amount_usd' => 18.50,
+                    'currency' => 'USD',
+                ]);
+
+                OrderDetail::create([
+                    'order_id' => $order2->id,
+                    'dish_id' => $dishPizza->id,
+                    'product_type' => 'dish',
+                    'quantity' => 1,
+                    'price' => 10.00,
+                    'unit_price_usd' => 10.00,
+                    'unit_cost' => 3.20,
+                    'notes' => 'Bien dorada',
+                    'kitchen_status' => KitchenStatusEnum::QUEUED->value,
+                    'course_number' => 2,
+                    'commanded_at' => Carbon::now()->subMinutes(2),
+                ]);
+
+                OrderDetail::create([
+                    'order_id' => $order2->id,
+                    'dish_id' => $dishBurger->id,
+                    'product_type' => 'dish',
+                    'quantity' => 1,
+                    'price' => 8.50,
+                    'unit_price_usd' => 8.50,
+                    'unit_cost' => 2.80,
+                    'notes' => 'Término Medio',
+                    'kitchen_status' => KitchenStatusEnum::QUEUED->value,
+                    'course_number' => 2,
+                    'commanded_at' => Carbon::now()->subMinutes(2),
+                ]);
+            }
         });
     }
 }
