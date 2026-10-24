@@ -10,12 +10,15 @@ use App\Models\Dish;
 use App\Models\KitchenStation;
 use App\Models\Order;
 use App\Models\OrderDetail;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class Phase2KdsTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected User $user;
     protected KitchenStation $station;
     protected Dish $dish;
@@ -24,7 +27,13 @@ class Phase2KdsTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create();
+        $role = Role::firstOrCreate(['id' => 1], [
+            'name' => 'Admin',
+            'guard_name' => 'web',
+            'menu_permissions' => ['*'],
+        ]);
+
+        $this->user = User::factory()->create(['role_id' => $role->id]);
         $this->actingAs($this->user);
 
         $this->station = KitchenStation::create([
