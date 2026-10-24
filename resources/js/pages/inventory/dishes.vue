@@ -41,6 +41,7 @@ const dishStatus = ref(1);
 
 // Diálogo de edición / creación
 const isEditDialogVisible = ref(false);
+const activeDialogTab = ref('recipe'); // 'recipe' | 'config'
 const modifierGroups = ref([]);
 const currentDish = ref({
   id: null,
@@ -326,6 +327,7 @@ const updateTableOptions = (options) => {
 
 // Acciones de dialogos
 const handleAddDish = () => {
+  activeDialogTab.value = 'recipe';
   currentDish.value = {
     id: null,
     name: "",
@@ -349,6 +351,7 @@ const handleAddDish = () => {
 
 const handleEditDish = async (dish) => {
   try {
+    activeDialogTab.value = 'recipe';
     const { data } = await axios.get(`/dishes/${dish.id}`);
     const details = data.data;
 
@@ -707,112 +710,254 @@ onMounted(() => {
 
         <VDivider />
 
-        <VCardText class="bg-light pa-4 pa-sm-6" style="overflow-y: auto;">
-          <VRow>
-            <!-- Lado Izquierdo: Datos Básicos del Plato -->
-            <VCol cols="12" md="5" class="d-flex flex-column gap-6">
-              <div>
-                <h3 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase mb-4">
-                  Información Básica
-                </h3>
-                <VCard variant="flat" class="pa-4 bg-white border rounded-lg d-flex flex-column gap-4">
-                  <AppTextField
-                    v-model="currentDish.name"
-                    label="Nombre del Plato"
-                    placeholder="Ej: Waffle con Nutella"
-                    :error-messages="formErrors.name"
-                    required
-                  />
+        <!-- Pestañas de Navegación UX -->
+        <VTabs v-model="activeDialogTab" color="primary" class="bg-white px-4 border-b">
+          <VTab value="recipe" class="font-weight-bold text-xs uppercase">
+            <VIcon icon="tabler-clipboard-list" class="me-2" size="18" />
+            Receta y Precios
+          </VTab>
+          <VTab value="config" class="font-weight-bold text-xs uppercase">
+            <VIcon icon="tabler-adjustments-horizontal" class="me-2" size="18" />
+            Cocina, Impuestos y Opciones
+          </VTab>
+        </VTabs>
 
-                  <VSelect
-                    v-model="currentDish.category_id"
-                    :items="categories"
-                    item-title="name"
-                    item-value="id"
-                    label="Categoría"
-                    placeholder="Selecciona Categoría"
-                    :error-messages="formErrors.category_id"
-                    required
-                  />
+        <VCardText class="bg-light pa-4 pa-sm-6" style="overflow-y: auto; max-height: calc(85vh - 170px);">
+          <!-- Pestaña 1: Receta, Escandallo y Precios -->
+          <div v-show="activeDialogTab === 'recipe'">
+            <VRow>
+              <!-- Lado Izquierdo: Datos Básicos y Ajuste de Precios -->
+              <VCol cols="12" md="5" class="d-flex flex-column gap-6">
+                <div>
+                  <h3 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase mb-4">
+                    Información Básica
+                  </h3>
+                  <VCard variant="flat" class="pa-4 bg-white border rounded-lg d-flex flex-column gap-4">
+                    <AppTextField
+                      v-model="currentDish.name"
+                      label="Nombre del Plato"
+                      placeholder="Ej: Hamburguesa Especial"
+                      :error-messages="formErrors.name"
+                      required
+                    />
 
-                  <VSelect
-                    v-model="dishStatus"
-                    :items="statusOptionsWithoutBase"
-                    label="Estado"
-                    placeholder="Selecciona Estado"
-                    :disabled="isBaseDish"
-                    :error-messages="formErrors.status"
-                    required
-                  />
+                    <VSelect
+                      v-model="currentDish.category_id"
+                      :items="categories"
+                      item-title="name"
+                      item-value="id"
+                      label="Categoría"
+                      placeholder="Selecciona Categoría"
+                      :error-messages="formErrors.category_id"
+                      required
+                    />
 
-                  <VCheckbox
-                    v-model="isBaseDish"
-                    label="Base"
-                    class="mt-2"
-                  />
-                </VCard>
-              </div>
+                    <VRow>
+                      <VCol cols="7">
+                        <VSelect
+                          v-model="dishStatus"
+                          :items="statusOptionsWithoutBase"
+                          label="Estado"
+                          placeholder="Estado"
+                          :disabled="isBaseDish"
+                          :error-messages="formErrors.status"
+                          density="compact"
+                          hide-details
+                        />
+                      </VCol>
+                      <VCol cols="5" class="d-flex align-center">
+                        <VCheckbox
+                          v-model="isBaseDish"
+                          label="Plato Base"
+                          density="compact"
+                          hide-details
+                        />
+                      </VCol>
+                    </VRow>
+                  </VCard>
+                </div>
 
-              <div>
-                <h3 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase mb-4">
-                  Ajustes de Precios e Ingresos
-                </h3>
-                <VCard variant="flat" class="pa-4 bg-white border rounded-lg d-flex flex-column gap-4">
-                  <VRow>
-                    <VCol cols="6">
-                      <AppTextField
-                        v-model="currentDish.percentage_profit"
-                        label="Ganancia (Multiplicador)"
-                        type="number"
-                        step="0.01"
-                        :error-messages="formErrors.percentage_profit"
-                        required
-                      />
-                    </VCol>
-                    <VCol cols="6">
-                      <AppTextField
-                        v-model="currentDish.cost_price"
-                        label="Costo de Plato (Calculado)"
-                        readonly
-                        prefix="$"
-                      />
-                    </VCol>
-                  </VRow>
+                <div>
+                  <h3 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase mb-4">
+                    Ajustes de Precios e Ingresos
+                  </h3>
+                  <VCard variant="flat" class="pa-4 bg-white border rounded-lg d-flex flex-column gap-4">
+                    <VRow>
+                      <VCol cols="6">
+                        <AppTextField
+                          v-model="currentDish.percentage_profit"
+                          label="Ganancia (Multiplicador)"
+                          type="number"
+                          step="0.01"
+                          :error-messages="formErrors.percentage_profit"
+                          required
+                        />
+                      </VCol>
+                      <VCol cols="6">
+                        <AppTextField
+                          v-model="currentDish.cost_price"
+                          label="Costo de Plato (Calculado)"
+                          readonly
+                          prefix="$"
+                        />
+                      </VCol>
+                    </VRow>
 
-                  <VRow>
-                    <VCol cols="6">
-                      <AppTextField
-                        v-model="currentDish.suggested_price"
-                        label="Precio Sugerido"
-                        readonly
-                        prefix="$"
-                      />
-                    </VCol>
-                    <VCol cols="6">
-                      <AppTextField
-                        v-model="currentDish.designated_price"
-                        label="Precio Designado (Venta)"
-                        type="number"
-                        step="0.01"
-                        prefix="$"
-                        :error-messages="formErrors.designated_price"
-                        required
-                      />
-                    </VCol>
-                  </VRow>
-                </VCard>
-              </div>
+                    <VRow>
+                      <VCol cols="6">
+                        <AppTextField
+                          v-model="currentDish.suggested_price"
+                          label="Precio Sugerido"
+                          readonly
+                          prefix="$"
+                        />
+                      </VCol>
+                      <VCol cols="6">
+                        <AppTextField
+                          v-model="currentDish.designated_price"
+                          label="Precio Venta (Menú)"
+                          type="number"
+                          step="0.01"
+                          prefix="$"
+                          :error-messages="formErrors.designated_price"
+                          required
+                        />
+                      </VCol>
+                    </VRow>
+                  </VCard>
+                </div>
+              </VCol>
 
-              <!-- Configuración Gastronómica e Impuestos -->
-              <div>
-                <h3 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase mb-4">
-                  Configuración Gastronómica e Impuestos
-                </h3>
-                <VCard variant="flat" class="pa-4 bg-white border rounded-lg d-flex flex-column gap-4">
-                  <div class="d-flex align-center justify-space-between">
+              <!-- Lado Derecho: Añadir Ingredientes y Receta -->
+              <VCol cols="12" md="7" class="d-flex flex-column gap-6">
+                <div>
+                  <h3 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase mb-4">
+                    Añadir Ingredientes (Productos)
+                  </h3>
+                  <VCard variant="flat" class="pa-4 bg-white border rounded-lg">
+                    <VRow align="center">
+                      <VCol cols="12" class="pb-2">
+                        <VAutocomplete
+                          v-model="selectedProduct"
+                          v-model:search="productSearch"
+                          :items="productOptions"
+                          :loading="loadingProducts"
+                          item-title="name"
+                          return-object
+                          placeholder="Buscar producto ingrediente..."
+                          clearable
+                          density="comfortable"
+                          hide-details
+                          :no-filter="true"
+                          no-data-text="Escribe para buscar ingredientes..."
+                        />
+                      </VCol>
+
+                      <VCol cols="12" v-if="selectedProduct" class="py-1">
+                        <div class="text-xs text-disabled">
+                          Costo base: <strong>{{ formatCurrency(selectedProduct.unit_cost) }}</strong> | Presentación: <strong>{{ selectedProduct.presentation }} {{ selectedProduct.unit_of_measure }}</strong>
+                        </div>
+                      </VCol>
+                    </VRow>
+
+                    <VRow align="center" v-if="selectedProduct" class="mt-2">
+                      <VCol cols="12" sm="4">
+                        <AppTextField
+                          v-model="ingredientPortion"
+                          :label="selectedProduct.is_base_dish ? 'Cantidad de Base' : 'Porción utilizada'"
+                          type="number"
+                          step="0.01"
+                          :suffix="selectedProduct.unit_of_measure"
+                          hide-details
+                        />
+                      </VCol>
+                      <VCol cols="12" sm="4">
+                        <AppTextField
+                          :model-value="calculatedPortionCost"
+                          label="Costo de Porción"
+                          prefix="$"
+                          readonly
+                          hide-details
+                        />
+                      </VCol>
+                      <VCol cols="12" sm="4" class="text-right">
+                        <VBtn color="success" block class="font-weight-black mt-5" @click="addIngredient">
+                          <VIcon icon="tabler-plus" class="me-1" />
+                          Añadir
+                        </VBtn>
+                      </VCol>
+                    </VRow>
+                  </VCard>
+                </div>
+
+                <div>
+                  <h3 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase mb-4">
+                    Receta / Ingredientes Seleccionados
+                  </h3>
+                  <VCard variant="flat" class="border rounded-lg overflow-hidden bg-white">
+                    <VTable density="compact" class="bg-transparent inner-recipe-table">
+                      <thead>
+                        <tr>
+                          <th class="text-super-xs font-weight-black uppercase">Ingrediente</th>
+                          <th class="text-super-xs font-weight-black uppercase text-center" style="width: 120px;">Porción</th>
+                          <th class="text-super-xs font-weight-black uppercase text-end" style="width: 120px;">Costo Porción</th>
+                          <th class="text-super-xs font-weight-black uppercase text-center" style="width: 80px;">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(ing, index) in currentDish.ingredients" :key="index">
+                          <td>
+                            <span class="text-xs font-weight-bold text-high-emphasis uppercase">{{ ing.name }}</span>
+                          </td>
+                          <td class="text-center">
+                            <span class="text-xs">{{ ing.portion }} {{ ing.unit_of_measure }}</span>
+                          </td>
+                          <td class="text-end">
+                            <span class="text-xs font-weight-black text-primary">{{ formatCurrency(ing.designated_cost) }}</span>
+                          </td>
+                          <td class="text-center">
+                            <IconBtn color="error" size="small" @click="removeIngredient(index)">
+                              <VIcon icon="tabler-x" size="16" />
+                            </IconBtn>
+                          </td>
+                        </tr>
+                        <tr v-if="currentDish.ingredients.length === 0">
+                          <td colspan="4" class="text-center py-6 text-disabled text-xs font-weight-bold uppercase">
+                            No has añadido ingredientes a la receta aún
+                          </td>
+                        </tr>
+                      </tbody>
+                    </VTable>
+                  </VCard>
+                </div>
+              </VCol>
+            </VRow>
+          </div>
+
+          <!-- Pestaña 2: Cocina, Impuestos y Opciones de Menú (Modificadores) -->
+          <div v-show="activeDialogTab === 'config'">
+            <VRow>
+              <!-- Tarjeta Impuestos e IVA -->
+              <VCol cols="12" md="6">
+                <VCard variant="flat" class="pa-5 bg-white border rounded-lg h-100 d-flex flex-column gap-4">
+                  <div class="d-flex align-center">
+                    <VAvatar color="primary" variant="tonal" size="36" class="me-3">
+                      <VIcon icon="tabler-receipt-tax" size="20" />
+                    </VAvatar>
                     <div>
-                      <div class="font-weight-bold text-sm text-high-emphasis">Aplica IVA (Gravado)</div>
-                      <div class="text-xs text-medium-emphasis">Indica si este plato genera impuesto de venta</div>
+                      <h4 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase">Régimen Fiscal (IVA)</h4>
+                      <p class="text-xs text-medium-emphasis mb-0">Configura si este plato cobra IVA al facturar</p>
+                    </div>
+                  </div>
+
+                  <VDivider />
+
+                  <div class="pa-4 rounded-lg border d-flex align-center justify-space-between" :class="currentDish.iva ? 'bg-primary-lighten-5 border-primary' : 'bg-light'">
+                    <div>
+                      <div class="font-weight-black text-sm text-high-emphasis">Aplica IVA (Gravado)</div>
+                      <div class="text-xs text-medium-emphasis">
+                        {{ currentDish.iva ? 'Este plato generará IVA al 16% en la factura / TPV' : 'Exento de IVA (Tasa 0% / No sujeto)' }}
+                      </div>
                     </div>
                     <VSwitch
                       v-model="currentDish.iva"
@@ -822,155 +967,97 @@ onMounted(() => {
                     />
                   </div>
 
-                  <VRow v-if="currentDish.iva">
-                    <VCol cols="12">
-                      <AppTextField
-                        v-model="currentDish.tax_rate"
-                        label="Tasa de IVA (%)"
-                        type="number"
-                        step="0.01"
-                        suffix="%"
-                        placeholder="16.00"
-                        :error-messages="formErrors.tax_rate"
-                      />
-                    </VCol>
-                  </VRow>
+                  <div class="text-xs text-disabled d-flex align-center gap-1">
+                    <VIcon icon="tabler-info-circle" size="16" />
+                    <span>La tasa fiscal oficial es aplicada de forma automática (16% estándar).</span>
+                  </div>
+                </VCard>
+              </VCol>
+
+              <!-- Tarjeta Tiempos de Cocina y Operación -->
+              <VCol cols="12" md="6">
+                <VCard variant="flat" class="pa-5 bg-white border rounded-lg h-100 d-flex flex-column gap-4">
+                  <div class="d-flex align-center">
+                    <VAvatar color="warning" variant="tonal" size="36" class="me-3">
+                      <VIcon icon="tabler-clock-hour-4" size="20" />
+                    </VAvatar>
+                    <div>
+                      <h4 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase">Tiempos de Cocina</h4>
+                      <p class="text-xs text-medium-emphasis mb-0">Control de comandas y preparación en cocina</p>
+                    </div>
+                  </div>
+
+                  <VDivider />
 
                   <AppTextField
                     v-model="currentDish.preparation_time_minutes"
-                    label="Tiempo de Preparación (Minutos)"
+                    label="Tiempo Estimado de Preparación"
                     type="number"
                     step="1"
                     min="1"
-                    prepend-inner-icon="tabler-clock"
+                    suffix="minutos"
+                    prepend-inner-icon="tabler-chef-hat"
                     placeholder="15"
+                    hint="Tiempo promedio que tarda cocina en sacar el plato a la mesa"
+                    persistent-hint
                     :error-messages="formErrors.preparation_time_minutes"
                   />
+                </VCard>
+              </VCol>
+
+              <!-- Tarjeta Grupos de Modificadores (Opciones del Plato en TPV) -->
+              <VCol cols="12">
+                <VCard variant="flat" class="pa-5 bg-white border rounded-lg d-flex flex-column gap-4">
+                  <div class="d-flex align-center">
+                    <VAvatar color="info" variant="tonal" size="36" class="me-3">
+                      <VIcon icon="tabler-adjustments-alt" size="20" />
+                    </VAvatar>
+                    <div>
+                      <h4 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase">Personalización del Plato (Modificadores)</h4>
+                      <p class="text-xs text-medium-emphasis mb-0">
+                        Permite que el cliente elija el punto de cocción, agregue extras (tocineta, queso) o pida el plato sin ingredientes (sin cebolla) al tomar el pedido en el TPV.
+                      </p>
+                    </div>
+                  </div>
+
+                  <VDivider />
 
                   <VSelect
                     v-model="currentDish.modifier_group_ids"
                     :items="modifierGroups"
                     item-title="name"
                     item-value="id"
-                    label="Grupos de Modificadores"
-                    placeholder="Selecciona modificadores aplicables"
+                    label="Grupos de Modificadores Disponibles"
+                    placeholder="Selecciona los grupos que aplican a este plato..."
                     multiple
                     chips
                     closable-chips
                     density="comfortable"
                     hide-details
-                  />
+                  >
+                    <template #chip="{ item, props }">
+                      <VChip v-bind="props" color="primary" variant="tonal" size="small" class="font-weight-bold">
+                        <VIcon icon="tabler-check" start size="14" />
+                        {{ item.title }}
+                      </VChip>
+                    </template>
+                  </VSelect>
+
+                  <div class="pa-3 bg-light rounded-lg border text-xs text-medium-emphasis d-flex flex-column gap-2">
+                    <div class="font-weight-bold text-high-emphasis d-flex align-center gap-1">
+                      <VIcon icon="tabler-bulb" size="16" color="warning" />
+                      ¿Para qué sirven los modificadores al vender en restaurante?
+                    </div>
+                    <ul class="ps-5 mb-0 d-flex flex-column gap-1">
+                      <li><strong>Término de Carne:</strong> Pregunta al cliente si desea Término Medio, 3/4 o Bien Cocido sin recargo.</li>
+                      <li><strong>Adiciones / Extras:</strong> Cobra adicionales (ej: +$1.50 Extra Tocineta) y descarga automáticamente el insumo del inventario.</li>
+                      <li><strong>Exclusiones:</strong> Permite marcar "Sin Cebolla", evitando que la comanda descargue ese ingrediente.</li>
+                    </ul>
+                  </div>
                 </VCard>
-              </div>
-            </VCol>
-
-            <!-- Lado Derecho: Añadir Ingredientes y Receta -->
-            <VCol cols="12" md="7" class="d-flex flex-column gap-6">
-              <div>
-                <h3 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase mb-4">
-                  Añadir Ingredientes (Productos)
-                </h3>
-                <VCard variant="flat" class="pa-4 bg-white border rounded-lg">
-                  <VRow align="center">
-                    <VCol cols="12" sm="12" class="pb-2">
-                      <!-- Buscador inteligente de productos en base de datos -->
-                      <VAutocomplete
-                        v-model="selectedProduct"
-                        v-model:search="productSearch"
-                        :items="productOptions"
-                        :loading="loadingProducts"
-                        item-title="name"
-                        return-object
-                        placeholder="Buscar producto ingrediente..."
-                        clearable
-                        density="comfortable"
-                        hide-details
-                        :no-filter="true"
-                        no-data-text="Escribe para buscar ingredientes..."
-                      />
-                    </VCol>
-
-
-                    
-                    <VCol cols="12" sm="5" v-if="selectedProduct" class="py-1">
-                      <div class="text-xs text-disabled">
-                        Costo base: <strong>{{ formatCurrency(selectedProduct.unit_cost) }}</strong> | Presentación: <strong>{{ selectedProduct.presentation }} {{ selectedProduct.unit_of_measure }}</strong>
-                      </div>
-                    </VCol>
-                  </VRow>
-
-                  <VRow align="center" v-if="selectedProduct" class="mt-2">
-                    <VCol cols="12" sm="4">
-                      <AppTextField
-                        v-model="ingredientPortion"
-                        :label="selectedProduct.is_base_dish ? 'Cantidad de Base' : 'Porción utilizada'"
-                        type="number"
-                        step="0.01"
-                        :suffix="selectedProduct.unit_of_measure"
-                        hide-details
-                      />
-                    </VCol>
-                    <VCol cols="12" sm="4">
-                      <AppTextField
-                        :model-value="calculatedPortionCost"
-                        label="Costo de Porción"
-                        prefix="$"
-                        readonly
-                        hide-details
-                      />
-                    </VCol>
-                    <VCol cols="12" sm="4" class="text-right">
-                      <VBtn color="success" block class="font-weight-black mt-5" @click="addIngredient">
-                        <VIcon icon="tabler-plus" class="me-1" />
-                        Añadir
-                      </VBtn>
-                    </VCol>
-                  </VRow>
-                </VCard>
-              </div>
-
-              <div>
-                <h3 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase mb-4">
-                  Receta / Ingredientes Seleccionados
-                </h3>
-                <VCard variant="flat" class="border rounded-lg overflow-hidden bg-white">
-                  <VTable density="compact" class="bg-transparent inner-recipe-table">
-                    <thead>
-                      <tr>
-                        <th class="text-super-xs font-weight-black uppercase">Ingrediente</th>
-                        <th class="text-super-xs font-weight-black uppercase text-center" style="width: 120px;">Porción</th>
-                        <th class="text-super-xs font-weight-black uppercase text-end" style="width: 120px;">Costo Porción</th>
-                        <th class="text-super-xs font-weight-black uppercase text-center" style="width: 80px;">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="(ing, index) in currentDish.ingredients" :key="index">
-                        <td>
-                          <span class="text-xs font-weight-bold text-high-emphasis uppercase">{{ ing.name }}</span>
-                        </td>
-                        <td class="text-center">
-                          <span class="text-xs">{{ ing.portion }} {{ ing.unit_of_measure }}</span>
-                        </td>
-                        <td class="text-end">
-                          <span class="text-xs font-weight-black text-primary">{{ formatCurrency(ing.designated_cost) }}</span>
-                        </td>
-                        <td class="text-center">
-                          <IconBtn color="error" size="small" @click="removeIngredient(index)">
-                            <VIcon icon="tabler-x" size="16" />
-                          </IconBtn>
-                        </td>
-                      </tr>
-                      <tr v-if="currentDish.ingredients.length === 0">
-                        <td colspan="4" class="text-center py-6 text-disabled text-xs font-weight-bold uppercase">
-                          No has añadido ingredientes a la receta aún
-                        </td>
-                      </tr>
-                    </tbody>
-                  </VTable>
-                </VCard>
-              </div>
-            </VCol>
-          </VRow>
+              </VCol>
+            </VRow>
+          </div>
         </VCardText>
 
         <VDivider />
