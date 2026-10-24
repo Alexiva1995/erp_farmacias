@@ -43,7 +43,7 @@ class Dish extends Model
     public function ingredients(): BelongsToMany
     {
         return $this->belongsToMany(Product::class, 'dish_ingredients', 'dish_id', 'product_id')
-            ->withPivot('id', 'portion', 'designated_cost')
+            ->withPivot('id', 'portion', 'designated_cost', 'is_removable')
             ->withTimestamps();
     }
 

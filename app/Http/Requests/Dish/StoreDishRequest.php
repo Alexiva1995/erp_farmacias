@@ -37,6 +37,7 @@ class StoreDishRequest extends FormRequest
             'ingredients.*.product_id' => 'required|exists:products,id',
             'ingredients.*.portion' => 'required|numeric|min:0.0001',
             'ingredients.*.designated_cost' => 'required|numeric|min:0',
+            'ingredients.*.is_removable' => 'nullable|boolean',
         ];
     }
 

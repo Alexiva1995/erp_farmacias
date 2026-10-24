@@ -41,6 +41,7 @@ class DishResource extends JsonResource
                     'unit_of_measure' => $product->unit_of_measure,
                     'portion' => (float) ($product->pivot?->portion ?? 0),
                     'designated_cost' => (float) ($product->pivot?->designated_cost ?? 0),
+                    'is_removable' => (bool) ($product->pivot?->is_removable ?? false),
                 ];
             }) : [],
             'modifier_groups' => $this->whenLoaded('modifierGroups', function () {

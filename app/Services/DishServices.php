@@ -103,6 +103,7 @@ class DishServices implements DishContract
                 $dish->ingredients()->attach($ing['product_id'], [
                     'portion' => $ing['portion'],
                     'designated_cost' => $ing['designated_cost'],
+                    'is_removable' => !empty($ing['is_removable']),
                 ]);
             }
 
@@ -163,6 +164,7 @@ class DishServices implements DishContract
                 $syncData[$ing['product_id']] = [
                     'portion' => $ing['portion'],
                     'designated_cost' => $ing['designated_cost'],
+                    'is_removable' => !empty($ing['is_removable']),
                 ];
             }
             $dish->ingredients()->sync($syncData);
