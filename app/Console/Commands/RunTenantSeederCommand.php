@@ -41,8 +41,13 @@ class RunTenantSeederCommand extends Command
         $this->info("Conectando al tenant: {$tenant->id}...");
 
         if (!class_exists($seederClass)) {
-            $this->error("La clase del seeder [{$seederClass}] no existe.");
-            return self::FAILURE;
+            $namespaced = "Database\\Seeders\\{$seederClass}";
+            if (class_exists($namespaced)) {
+                $seederClass = $namespaced;
+            } else {
+                $this->error("La clase del seeder [{$seederClass}] no existe.");
+                return self::FAILURE;
+            }
         }
 
         $tenant->run(function () use ($seederClass) {
