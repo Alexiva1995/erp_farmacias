@@ -67,8 +67,13 @@ class Phase2KdsTest extends TestCase
 
     public function test_can_send_order_to_kitchen(): void
     {
+        $client = Client::create([
+            'name' => 'Cliente Test',
+            'identification' => 'V12345678',
+        ]);
+
         $order = Order::create([
-            'client_id' => Client::factory()->create()->id,
+            'client_id' => $client->id,
             'seller_id' => $this->user->id,
             'order_date' => now(),
             'status' => Order::PENDING,
@@ -99,8 +104,13 @@ class Phase2KdsTest extends TestCase
 
     public function test_can_update_item_kitchen_status_and_bump_ticket(): void
     {
+        $client = Client::create([
+            'name' => 'Cliente Test 2',
+            'identification' => 'V87654321',
+        ]);
+
         $order = Order::create([
-            'client_id' => Client::factory()->create()->id,
+            'client_id' => $client->id,
             'seller_id' => $this->user->id,
             'order_date' => now(),
             'status' => Order::PENDING,
