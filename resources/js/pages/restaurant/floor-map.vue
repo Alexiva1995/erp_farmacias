@@ -607,7 +607,7 @@ const getStatusColor = (status) => {
 const fetchOverview = async () => {
   loadingOverview.value = true
   try {
-    const res = await axios.get('/api/dining-floor/overview')
+    const res = await axios.get('/dining-floor/overview')
     zones.value = res.data.zones || []
     tables.value = res.data.tables || []
     if (!selectedZoneIndex.value && zones.value.length) {
@@ -632,7 +632,7 @@ const submitOpenOrder = async () => {
   if (!selectedTable.value) return
   submittingAction.value = true
   try {
-    const res = await axios.post(`/api/dining-floor/tables/${selectedTable.value.id}/open-order`, {
+    const res = await axios.post(`/dining-floor/tables/${selectedTable.value.id}/open-order`, {
       guests_count: openOrderForm.guests_count,
     })
     toast.success('Mesa abierta con éxito.')
@@ -649,7 +649,7 @@ const releaseTableAction = async () => {
   if (!selectedTable.value) return
   submittingAction.value = true
   try {
-    await axios.post(`/api/dining-floor/tables/${selectedTable.value.id}/release`)
+    await axios.post(`/dining-floor/tables/${selectedTable.value.id}/release`)
     toast.info('Mesa liberada.')
     showTableActionModal.value = false
     await fetchOverview()
@@ -664,7 +664,7 @@ const releaseTableAction = async () => {
 const openPreBillDialog = async () => {
   if (!selectedTable.value?.current_order?.id) return
   try {
-    const res = await axios.post(`/api/orders/${selectedTable.value.current_order.id}/pre-bill`, {
+    const res = await axios.post(`/orders/${selectedTable.value.current_order.id}/pre-bill`, {
       service_percentage: servicePercentageInput.value,
     })
     preBillData.value = res.data.pre_bill
@@ -702,7 +702,7 @@ const submitEqualSplit = async () => {
   if (!selectedTable.value?.current_order?.id) return
   submittingAction.value = true
   try {
-    const res = await axios.post(`/api/orders/${selectedTable.value.current_order.id}/split`, {
+    const res = await axios.post(`/orders/${selectedTable.value.current_order.id}/split`, {
       type: 'equal',
       parts: equalPartsCount.value,
     })
@@ -721,7 +721,7 @@ const submitItemsSplit = async () => {
   if (!selectedTable.value?.current_order?.id) return
   submittingAction.value = true
   try {
-    const res = await axios.post(`/api/orders/${selectedTable.value.current_order.id}/split`, {
+    const res = await axios.post(`/orders/${selectedTable.value.current_order.id}/split`, {
       type: 'seats_items',
       splits: [
         { detail_ids: selectedTable.value.current_order.details.filter(d => !selectedSplitItemIds.value.includes(d.id)).map(d => d.id) },
@@ -768,7 +768,7 @@ const saveCurrentLayout = async () => {
       height: t.height,
       rotation: t.rotation,
     }))
-    await axios.post('/api/dining-floor/layout', { tables: payload })
+    await axios.post('/dining-floor/layout', { tables: payload })
     toast.success('Diseño de mesas guardado.')
   } catch (err) {
     toast.error('Error al guardar el plano.')
@@ -788,7 +788,7 @@ const openCreateTableModal = () => {
 const submitCreateTable = async () => {
   submittingAction.value = true
   try {
-    await axios.post('/api/dining-floor/tables', {
+    await axios.post('/dining-floor/tables', {
       dining_zone_id: selectedZoneIndex.value,
       name: createTableForm.name,
       capacity: createTableForm.capacity,
