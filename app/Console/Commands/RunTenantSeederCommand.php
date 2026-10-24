@@ -14,7 +14,10 @@ class RunTenantSeederCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'tenant:run-seeder {tenant : El ID o subdominio del tenant} {--class=Database\\Seeders\\RestaurantDemoSeeder : La clase del seeder a ejecutar}';
+    protected $signature = 'tenant:run-seeder 
+                            {tenant : El ID o subdominio del tenant} 
+                            {seeder? : La clase del seeder a ejecutar como argumento posicional} 
+                            {--class= : La clase del seeder a ejecutar como opcion}';
 
     /**
      * The console command description.
@@ -29,7 +32,7 @@ class RunTenantSeederCommand extends Command
     public function handle(): int
     {
         $tenantId = (string) $this->argument('tenant');
-        $seederClass = (string) $this->option('class');
+        $seederClass = (string) ($this->argument('seeder') ?: ($this->option('class') ?: 'Database\\Seeders\\RestaurantDemoSeeder'));
 
         $tenant = Tenant::find($tenantId) ?? Tenant::where('id', 'like', "%{$tenantId}%")->first();
 
