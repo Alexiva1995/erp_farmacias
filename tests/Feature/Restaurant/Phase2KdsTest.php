@@ -80,6 +80,9 @@ class Phase2KdsTest extends TestCase
             'currency' => 'USD',
             'total_amount' => 16.00,
             'total_amount_usd' => 16.00,
+            'total_cost' => 6.00,
+            'money_returns' => 0.00,
+            'usd_conversion' => 0.00,
         ]);
 
         $detail = OrderDetail::create([
@@ -119,6 +122,9 @@ class Phase2KdsTest extends TestCase
             'currency' => 'USD',
             'total_amount' => 16.00,
             'total_amount_usd' => 16.00,
+            'total_cost' => 6.00,
+            'money_returns' => 0.00,
+            'usd_conversion' => 0.00,
         ]);
 
         $detail = OrderDetail::create([
