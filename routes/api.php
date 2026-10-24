@@ -324,6 +324,29 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::patch("items/{orderDetail}/status", [\App\Http\Controllers\Api\KdsController::class, "updateItemStatus"]);
         Route::post("orders/{order}/bump", [\App\Http\Controllers\Api\KdsController::class, "bumpTicket"]);
     });
+
+    // Rutas de Salón, Mesas, Pre-cuenta y División de Cuentas (Fase 3)
+    Route::prefix("dining-floor")->group(function () {
+        Route::get("overview", [\App\Http\Controllers\Api\Restaurant\DiningFloorController::class, "overview"]);
+        Route::post("zones", [\App\Http\Controllers\Api\Restaurant\DiningFloorController::class, "storeZone"]);
+        Route::put("zones/{zone}", [\App\Http\Controllers\Api\Restaurant\DiningFloorController::class, "updateZone"]);
+        Route::delete("zones/{zone}", [\App\Http\Controllers\Api\Restaurant\DiningFloorController::class, "destroyZone"]);
+
+        Route::post("tables", [\App\Http\Controllers\Api\Restaurant\DiningFloorController::class, "storeTable"]);
+        Route::put("tables/{table}", [\App\Http\Controllers\Api\Restaurant\DiningFloorController::class, "updateTable"]);
+        Route::delete("tables/{table}", [\App\Http\Controllers\Api\Restaurant\DiningFloorController::class, "destroyTable"]);
+
+        Route::post("layout", [\App\Http\Controllers\Api\Restaurant\DiningFloorController::class, "updateLayout"]);
+        Route::post("tables/{table}/open-order", [\App\Http\Controllers\Api\Restaurant\DiningFloorController::class, "openOrder"]);
+        Route::post("tables/{table}/transfer", [\App\Http\Controllers\Api\Restaurant\DiningFloorController::class, "transfer"]);
+        Route::post("tables/{table}/release", [\App\Http\Controllers\Api\Restaurant\DiningFloorController::class, "release"]);
+    });
+
+    Route::prefix("orders/{order}")->group(function () {
+        Route::post("pre-bill", [\App\Http\Controllers\Api\Restaurant\PreBillController::class, "generate"]);
+        Route::delete("pre-bill", [\App\Http\Controllers\Api\Restaurant\PreBillController::class, "cancel"]);
+        Route::post("split", [\App\Http\Controllers\Api\Restaurant\SplitCheckController::class, "split"]);
+    });
     Route::get("/suppliers", [ResourceController::class, "getSuppliers"]);
     Route::get("/products/all", [ResourceController::class, "getAllProducts"]);
     Route::get("/barcode/{barcode}", [ResourceController::class, "findProductByBarcode"]);

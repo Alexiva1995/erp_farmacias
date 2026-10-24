@@ -34,7 +34,14 @@ class Order extends Model
         'has_multiple_currencies',
         'payment_methods',
         'usd_conversion',
-        'total_amount_usd'
+        'total_amount_usd',
+        'dining_table_id',
+        'parent_order_id',
+        'guests_count',
+        'service_charge_percentage',
+        'service_charge_amount',
+        'service_charge_amount_usd',
+        'pre_bill_printed_at',
     ];
 
     protected $casts = [
@@ -45,6 +52,11 @@ class Order extends Model
         'taxable_base' => 'decimal:2',
         'spe_surcharge_rate' => 'decimal:2',
         'spe_surcharge_amount' => 'decimal:2',
+        'guests_count' => 'integer',
+        'service_charge_percentage' => 'decimal:2',
+        'service_charge_amount' => 'decimal:2',
+        'service_charge_amount_usd' => 'decimal:2',
+        'pre_bill_printed_at' => 'datetime',
     ];
 
     public function client()
@@ -114,6 +126,11 @@ class Order extends Model
 
     public function updateTotals()
     {
+        return $this->recalculateTotals();
+    }
+
+    public function recalculateTotals()
+    {
         // Recalcular promociones generales antes de sumar los totales
         app(\App\Services\Order\OrderActionService::class)->applyGeneralPromotions($this);
 
@@ -174,5 +191,20 @@ class Order extends Model
             'total_amount_usd' => $totalUsd,
             'total_cost' => $totalCost,
         ]);
+    }
+
+    public function diningTable()
+    {
+        return $this->belongsTo(DiningTable::class, 'dining_table_id');
+    }
+
+    public function parentOrder()
+    {
+        return $this->belongsTo(Order::class, 'parent_order_id');
+    }
+
+    public function childOrders()
+    {
+        return $this->hasMany(Order::class, 'parent_order_id');
     }
 }

@@ -1,16 +1,16 @@
 export default [
   {
     title: 'Restaurante',
-    icon: {
-      is: 'font-awesome-icon', 
-      props: {
-        icon: ['fas', 'utensils'],
-        size: 'sm',
-      },
-    },
+    icon: { icon: 'tabler-tools-kitchen-2' },
     action: 'manage',
     subject: 'admin',
     children: [
+      {
+        title: 'Salón y Mesas (3D)',
+        to: 'restaurant-floor-map',
+        action: 'manage',
+        subject: 'admin',
+      },
       {
         title: 'Cocina (KDS)',
         to: 'restaurant-kds',

@@ -10,6 +10,7 @@ class OrderDetail extends Model
 {
     protected $fillable = [
         'order_id',
+        'seat_number',
         'pack_id',
         'dish_id',
         'court_id',
@@ -36,6 +37,7 @@ class OrderDetail extends Model
     protected $casts = [
         'quantity' => 'float',
         'quantity_expiration' => 'float',
+        'seat_number' => 'integer',
         'kitchen_status' => \App\Enums\KitchenStatusEnum::class,
         'course_number' => 'integer',
         'commanded_at' => 'datetime',
