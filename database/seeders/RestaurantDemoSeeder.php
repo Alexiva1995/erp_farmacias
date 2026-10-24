@@ -204,12 +204,130 @@ class RestaurantDemoSeeder extends Seeder
                 $insumosMap['INS-MOZZARELLA-01']->id => ['portion' => 0.35, 'designated_cost' => 1.90, 'is_removable' => false],
             ]);
 
-            // 5. Comandas de Demostración para el KDS
+            // 5. Zonas y Mesas de Salón (Fase 3) - Se crean siempre independientemente de clientes u órdenes previas
+            $zonePrincipal = DiningZone::firstOrCreate(
+                ['name' => 'Salón Principal'],
+                [
+                    'background_style' => 'grid',
+                    'sort_order' => 1,
+                    'is_active' => true,
+                ]
+            );
+
+            $zoneTerraza = DiningZone::firstOrCreate(
+                ['name' => 'Terraza VIP'],
+                [
+                    'background_style' => 'grass',
+                    'sort_order' => 2,
+                    'is_active' => true,
+                ]
+            );
+
+            $table1 = DiningTable::firstOrCreate(
+                ['name' => 'Mesa 1', 'dining_zone_id' => $zonePrincipal->id],
+                [
+                    'capacity' => 4,
+                    'shape' => TableShapeEnum::SQUARE->value,
+                    'pos_x' => 120,
+                    'pos_y' => 120,
+                    'width' => 90,
+                    'height' => 90,
+                    'rotation' => 0,
+                    'status' => DiningTableStatusEnum::AVAILABLE->value,
+                ]
+            );
+
+            $table2 = DiningTable::firstOrCreate(
+                ['name' => 'Mesa 2', 'dining_zone_id' => $zonePrincipal->id],
+                [
+                    'capacity' => 6,
+                    'shape' => TableShapeEnum::RECTANGLE->value,
+                    'pos_x' => 280,
+                    'pos_y' => 120,
+                    'width' => 140,
+                    'height' => 90,
+                    'rotation' => 0,
+                    'status' => DiningTableStatusEnum::AVAILABLE->value,
+                ]
+            );
+
+            DiningTable::firstOrCreate(
+                ['name' => 'Mesa 3', 'dining_zone_id' => $zonePrincipal->id],
+                [
+                    'capacity' => 2,
+                    'shape' => TableShapeEnum::ROUND->value,
+                    'pos_x' => 480,
+                    'pos_y' => 120,
+                    'width' => 80,
+                    'height' => 80,
+                    'rotation' => 0,
+                    'status' => DiningTableStatusEnum::AVAILABLE->value,
+                ]
+            );
+
+            DiningTable::firstOrCreate(
+                ['name' => 'Barra 1', 'dining_zone_id' => $zonePrincipal->id],
+                [
+                    'capacity' => 1,
+                    'shape' => TableShapeEnum::BAR->value,
+                    'pos_x' => 120,
+                    'pos_y' => 280,
+                    'width' => 60,
+                    'height' => 60,
+                    'rotation' => 0,
+                    'status' => DiningTableStatusEnum::AVAILABLE->value,
+                ]
+            );
+
+            DiningTable::firstOrCreate(
+                ['name' => 'Barra 2', 'dining_zone_id' => $zonePrincipal->id],
+                [
+                    'capacity' => 1,
+                    'shape' => TableShapeEnum::BAR->value,
+                    'pos_x' => 200,
+                    'pos_y' => 280,
+                    'width' => 60,
+                    'height' => 60,
+                    'rotation' => 0,
+                    'status' => DiningTableStatusEnum::AVAILABLE->value,
+                ]
+            );
+
+            // Mesas en Terraza VIP
+            DiningTable::firstOrCreate(
+                ['name' => 'Terraza 1', 'dining_zone_id' => $zoneTerraza->id],
+                [
+                    'capacity' => 4,
+                    'shape' => TableShapeEnum::ROUND->value,
+                    'pos_x' => 150,
+                    'pos_y' => 150,
+                    'width' => 90,
+                    'height' => 90,
+                    'rotation' => 0,
+                    'status' => DiningTableStatusEnum::AVAILABLE->value,
+                ]
+            );
+
+            DiningTable::firstOrCreate(
+                ['name' => 'Terraza Lounge', 'dining_zone_id' => $zoneTerraza->id],
+                [
+                    'capacity' => 8,
+                    'shape' => TableShapeEnum::RECTANGLE->value,
+                    'pos_x' => 320,
+                    'pos_y' => 150,
+                    'width' => 160,
+                    'height' => 90,
+                    'rotation' => 0,
+                    'status' => DiningTableStatusEnum::RESERVED->value,
+                ]
+            );
+
+            // 6. Comandas de Demostración para el KDS y Mesas
             $client = Client::first();
             $seller = User::first();
 
             if ($client && $seller) {
-                // Comanda 1: En Fuego / Preparando (Mesa 4)
+                // Comanda 1: En Fuego / Preparando vinculada a Mesa 1
                 $order1 = Order::create([
                     'client_id' => $client->id,
                     'seller_id' => $seller->id,
@@ -217,7 +335,17 @@ class RestaurantDemoSeeder extends Seeder
                     'status' => Order::PENDING,
                     'total_amount' => 17.00,
                     'total_amount_usd' => 17.00,
+                    'total_cost' => 5.60,
+                    'money_returns' => 0,
+                    'usd_conversion' => 1,
                     'currency' => 'USD',
+                    'dining_table_id' => $table1->id,
+                    'guests_count' => 3,
+                ]);
+
+                $table1->update([
+                    'status' => DiningTableStatusEnum::OCCUPIED->value,
+                    'current_order_id' => $order1->id,
                 ]);
 
                 OrderDetail::create([
@@ -231,10 +359,11 @@ class RestaurantDemoSeeder extends Seeder
                     'notes' => 'Término 3/4 - Sin Cebolla',
                     'kitchen_status' => KitchenStatusEnum::PREPARING->value,
                     'course_number' => 2,
+                    'seat_number' => 1,
                     'commanded_at' => Carbon::now()->subMinutes(8),
                 ]);
 
-                // Comanda 2: En Cola / Recién Marchada (Mesa 7)
+                // Comanda 2: Con Pre-Cuenta Pedida vinculada a Mesa 2
                 $order2 = Order::create([
                     'client_id' => $client->id,
                     'seller_id' => $seller->id,
@@ -242,7 +371,21 @@ class RestaurantDemoSeeder extends Seeder
                     'status' => Order::PENDING,
                     'total_amount' => 18.50,
                     'total_amount_usd' => 18.50,
+                    'total_cost' => 6.00,
+                    'money_returns' => 0,
+                    'usd_conversion' => 1,
                     'currency' => 'USD',
+                    'dining_table_id' => $table2->id,
+                    'guests_count' => 2,
+                    'service_charge_percentage' => 10.00,
+                    'service_charge_amount' => 1.85,
+                    'service_charge_amount_usd' => 1.85,
+                    'pre_bill_printed_at' => Carbon::now()->subMinutes(1),
+                ]);
+
+                $table2->update([
+                    'status' => DiningTableStatusEnum::BILL_REQUESTED->value,
+                    'current_order_id' => $order2->id,
                 ]);
 
                 OrderDetail::create([
@@ -256,6 +399,7 @@ class RestaurantDemoSeeder extends Seeder
                     'notes' => 'Bien dorada',
                     'kitchen_status' => KitchenStatusEnum::QUEUED->value,
                     'course_number' => 2,
+                    'seat_number' => 1,
                     'commanded_at' => Carbon::now()->subMinutes(2),
                 ]);
 
@@ -270,124 +414,9 @@ class RestaurantDemoSeeder extends Seeder
                     'notes' => 'Término Medio',
                     'kitchen_status' => KitchenStatusEnum::QUEUED->value,
                     'course_number' => 2,
+                    'seat_number' => 2,
                     'commanded_at' => Carbon::now()->subMinutes(2),
                 ]);
-
-                // 7. Salón, Zonas y Mesas (Fase 3)
-                $zonePrincipal = DiningZone::firstOrCreate(
-                    ['name' => 'Salón Principal'],
-                    [
-                        'background_style' => 'grid',
-                        'sort_order' => 1,
-                        'is_active' => true,
-                    ]
-                );
-
-                $zoneTerraza = DiningZone::firstOrCreate(
-                    ['name' => 'Terraza VIP'],
-                    [
-                        'background_style' => 'grass',
-                        'sort_order' => 2,
-                        'is_active' => true,
-                    ]
-                );
-
-                // Crear Mesas en Salón Principal
-                $table1 = DiningTable::firstOrCreate(
-                    ['name' => 'Mesa 1', 'dining_zone_id' => $zonePrincipal->id],
-                    [
-                        'capacity' => 4,
-                        'shape' => TableShapeEnum::SQUARE->value,
-                        'pos_x' => 120,
-                        'pos_y' => 120,
-                        'width' => 90,
-                        'height' => 90,
-                        'rotation' => 0,
-                        'status' => DiningTableStatusEnum::OCCUPIED->value,
-                        'current_order_id' => $order1->id,
-                    ]
-                );
-                $order1->update(['dining_table_id' => $table1->id, 'guests_count' => 3]);
-
-                $table2 = DiningTable::firstOrCreate(
-                    ['name' => 'Mesa 2', 'dining_zone_id' => $zonePrincipal->id],
-                    [
-                        'capacity' => 6,
-                        'shape' => TableShapeEnum::RECTANGLE->value,
-                        'pos_x' => 280,
-                        'pos_y' => 120,
-                        'width' => 140,
-                        'height' => 90,
-                        'rotation' => 0,
-                        'status' => DiningTableStatusEnum::BILL_REQUESTED->value,
-                        'current_order_id' => $order2->id,
-                    ]
-                );
-                $order2->update([
-                    'dining_table_id' => $table2->id,
-                    'guests_count' => 2,
-                    'service_charge_percentage' => 10.00,
-                    'service_charge_amount' => 1.85,
-                    'service_charge_amount_usd' => 1.85,
-                    'pre_bill_printed_at' => Carbon::now()->subMinutes(1),
-                ]);
-
-                DiningTable::firstOrCreate(
-                    ['name' => 'Mesa 3', 'dining_zone_id' => $zonePrincipal->id],
-                    [
-                        'capacity' => 2,
-                        'shape' => TableShapeEnum::ROUND->value,
-                        'pos_x' => 480,
-                        'pos_y' => 120,
-                        'width' => 80,
-                        'height' => 80,
-                        'rotation' => 0,
-                        'status' => DiningTableStatusEnum::AVAILABLE->value,
-                    ]
-                );
-
-                DiningTable::firstOrCreate(
-                    ['name' => 'Barra 1', 'dining_zone_id' => $zonePrincipal->id],
-                    [
-                        'capacity' => 1,
-                        'shape' => TableShapeEnum::BAR->value,
-                        'pos_x' => 120,
-                        'pos_y' => 300,
-                        'width' => 60,
-                        'height' => 60,
-                        'rotation' => 0,
-                        'status' => DiningTableStatusEnum::AVAILABLE->value,
-                    ]
-                );
-
-                // Mesas en Terraza VIP
-                DiningTable::firstOrCreate(
-                    ['name' => 'Terraza 1', 'dining_zone_id' => $zoneTerraza->id],
-                    [
-                        'capacity' => 4,
-                        'shape' => TableShapeEnum::ROUND->value,
-                        'pos_x' => 150,
-                        'pos_y' => 150,
-                        'width' => 90,
-                        'height' => 90,
-                        'rotation' => 0,
-                        'status' => DiningTableStatusEnum::AVAILABLE->value,
-                    ]
-                );
-
-                DiningTable::firstOrCreate(
-                    ['name' => 'Terraza Lounge', 'dining_zone_id' => $zoneTerraza->id],
-                    [
-                        'capacity' => 8,
-                        'shape' => TableShapeEnum::RECTANGLE->value,
-                        'pos_x' => 320,
-                        'pos_y' => 150,
-                        'width' => 160,
-                        'height' => 90,
-                        'rotation' => 0,
-                        'status' => DiningTableStatusEnum::RESERVED->value,
-                    ]
-                );
             }
         });
     }
