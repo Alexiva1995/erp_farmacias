@@ -70,14 +70,6 @@ export default [
         title: 'Categorías',
         to: 'inventory-categories',
       },
-      {
-        title: 'Platos / Menú',
-        to: 'inventory-dishes',
-      },
-      {
-        title: 'Cocina (KDS)',
-        to: 'restaurant-kds',
-      },
     ],
   }, 
 ]

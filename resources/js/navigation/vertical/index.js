@@ -12,8 +12,9 @@ import rrhh from './rrhh'
 import suppliers from './suppliers'
 import tpv from './tpv'
 import reservations from './reservations'
+import restaurant from './restaurant'
 import telegram from './telegram'
 import bots from './bots'
 
-export default [...home, ...inventory, ...cyclicInventory, ...tpv, ...crm, ...rrhh, ...finances, ...fiscal, ...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations, ...telegram, ...bots]
+export default [...home, ...inventory, ...cyclicInventory, ...restaurant, ...tpv, ...crm, ...rrhh, ...finances, ...fiscal, ...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations, ...telegram, ...bots]
 
