@@ -41,6 +41,7 @@ const dishStatus = ref(1);
 
 // Diálogo de edición / creación
 const isEditDialogVisible = ref(false);
+const modifierGroups = ref([]);
 const currentDish = ref({
   id: null,
   name: "",
@@ -50,6 +51,10 @@ const currentDish = ref({
   suggested_price: 0,
   designated_price: 0,
   status: 1,
+  iva: false,
+  tax_rate: 16.0,
+  preparation_time_minutes: 15,
+  modifier_group_ids: [],
   ingredients: [],
 });
 
@@ -71,6 +76,15 @@ const fetchCategories = async () => {
     categories.value = data;
   } catch (error) {
     console.error("Error al obtener categorías:", error);
+  }
+};
+
+const fetchModifierGroups = async () => {
+  try {
+    const { data } = await axios.get("/api/modifier-groups");
+    modifierGroups.value = data.data || [];
+  } catch (error) {
+    console.error("Error al obtener grupos de modificadores:", error);
   }
 };
 
@@ -321,6 +335,10 @@ const handleAddDish = () => {
     suggested_price: 0,
     designated_price: 0,
     status: 1,
+    iva: false,
+    tax_rate: 16.0,
+    preparation_time_minutes: 15,
+    modifier_group_ids: [],
     ingredients: [],
   };
   isBaseDish.value = false;
@@ -343,6 +361,10 @@ const handleEditDish = async (dish) => {
       suggested_price: details.suggested_price,
       designated_price: details.designated_price,
       status: details.status,
+      iva: Boolean(details.iva),
+      tax_rate: details.tax_rate !== null && details.tax_rate !== undefined ? details.tax_rate : 16.0,
+      preparation_time_minutes: details.preparation_time_minutes || 15,
+      modifier_group_ids: (details.modifier_groups || []).map((g) => g.id),
       ingredients: details.ingredients.map((ing) => ({
         product_id: ing.id,
         name: ing.name,
@@ -443,6 +465,7 @@ const getStatusLabel = (status) => {
 
 onMounted(() => {
   fetchCategories();
+  fetchModifierGroups();
   fetchDishes();
 });
 </script>
@@ -777,6 +800,66 @@ onMounted(() => {
                       />
                     </VCol>
                   </VRow>
+                </VCard>
+              </div>
+
+              <!-- Configuración Gastronómica e Impuestos -->
+              <div>
+                <h3 class="text-subtitle-2 font-weight-black text-high-emphasis uppercase mb-4">
+                  Configuración Gastronómica e Impuestos
+                </h3>
+                <VCard variant="flat" class="pa-4 bg-white border rounded-lg d-flex flex-column gap-4">
+                  <div class="d-flex align-center justify-space-between">
+                    <div>
+                      <div class="font-weight-bold text-sm text-high-emphasis">Aplica IVA (Gravado)</div>
+                      <div class="text-xs text-medium-emphasis">Indica si este plato genera impuesto de venta</div>
+                    </div>
+                    <VSwitch
+                      v-model="currentDish.iva"
+                      color="primary"
+                      density="compact"
+                      hide-details
+                    />
+                  </div>
+
+                  <VRow v-if="currentDish.iva">
+                    <VCol cols="12">
+                      <AppTextField
+                        v-model="currentDish.tax_rate"
+                        label="Tasa de IVA (%)"
+                        type="number"
+                        step="0.01"
+                        suffix="%"
+                        placeholder="16.00"
+                        :error-messages="formErrors.tax_rate"
+                      />
+                    </VCol>
+                  </VRow>
+
+                  <AppTextField
+                    v-model="currentDish.preparation_time_minutes"
+                    label="Tiempo de Preparación (Minutos)"
+                    type="number"
+                    step="1"
+                    min="1"
+                    prepend-inner-icon="tabler-clock"
+                    placeholder="15"
+                    :error-messages="formErrors.preparation_time_minutes"
+                  />
+
+                  <VSelect
+                    v-model="currentDish.modifier_group_ids"
+                    :items="modifierGroups"
+                    item-title="name"
+                    item-value="id"
+                    label="Grupos de Modificadores"
+                    placeholder="Selecciona modificadores aplicables"
+                    multiple
+                    chips
+                    closable-chips
+                    density="comfortable"
+                    hide-details
+                  />
                 </VCard>
               </div>
             </VCol>
