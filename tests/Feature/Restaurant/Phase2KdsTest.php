@@ -78,6 +78,8 @@ class Phase2KdsTest extends TestCase
             'order_date' => now(),
             'status' => Order::PENDING,
             'currency' => 'USD',
+            'total_amount' => 16.00,
+            'total_amount_usd' => 16.00,
         ]);
 
         $detail = OrderDetail::create([
@@ -115,6 +117,8 @@ class Phase2KdsTest extends TestCase
             'order_date' => now(),
             'status' => Order::PENDING,
             'currency' => 'USD',
+            'total_amount' => 16.00,
+            'total_amount_usd' => 16.00,
         ]);
 
         $detail = OrderDetail::create([
