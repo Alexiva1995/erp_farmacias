@@ -526,9 +526,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import axios from '@axios'
-import { useToast } from 'vue-toastification'
-
-const toast = useToast()
+import { toast } from '@/plugins/sweetalert'
 
 // Estados Generales
 const viewMode = ref('3d') // '3d' o '2d'
