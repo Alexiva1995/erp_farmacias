@@ -20,11 +20,15 @@ class KitchenStation extends Model
         'printer_ip',
         'is_active',
         'sort_order',
+        'pos_x',
+        'pos_y',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'sort_order' => 'integer',
+        'pos_x' => 'float',
+        'pos_y' => 'float',
     ];
 
     public function dishes(): HasMany

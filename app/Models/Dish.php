@@ -26,6 +26,9 @@ class Dish extends Model
         'tax_rate',
         'preparation_time_minutes',
         'kitchen_station_id',
+        'output_product_id',
+        'expected_yield_quantity',
+        'shelf_life_days',
     ];
 
     protected $casts = [
@@ -38,6 +41,9 @@ class Dish extends Model
         'tax_rate' => 'decimal:2',
         'preparation_time_minutes' => 'integer',
         'kitchen_station_id' => 'integer',
+        'output_product_id' => 'integer',
+        'expected_yield_quantity' => 'decimal:2',
+        'shelf_life_days' => 'integer',
     ];
 
     public function ingredients(): BelongsToMany
@@ -55,6 +61,11 @@ class Dish extends Model
     public function kitchenStation(): BelongsTo
     {
         return $this->belongsTo(KitchenStation::class, 'kitchen_station_id');
+    }
+
+    public function outputProduct(): BelongsTo
+    {
+        return $this->belongsTo(Product::class, 'output_product_id');
     }
 
     public function modifierGroups(): BelongsToMany

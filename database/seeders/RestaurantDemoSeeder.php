@@ -6,7 +6,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\Lot;
+use App\Models\ProductLot;
 use App\Models\Dish;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
@@ -17,10 +17,15 @@ use App\Models\User;
 use App\Models\Client;
 use App\Models\DiningZone;
 use App\Models\DiningTable;
+use App\Models\ProductionOrder;
+use App\Models\KitchenWaste;
+use App\Models\Reservation;
 use App\Enums\ModifierTypeEnum;
 use App\Enums\KitchenStatusEnum;
 use App\Enums\DiningTableStatusEnum;
 use App\Enums\TableShapeEnum;
+use App\Enums\ProductionOrderStatusEnum;
+use App\Enums\KitchenWasteReasonEnum;
 use Carbon\Carbon;
 
 class RestaurantDemoSeeder extends Seeder
@@ -417,6 +422,96 @@ class RestaurantDemoSeeder extends Seeder
                     'seat_number' => 2,
                     'commanded_at' => Carbon::now()->subMinutes(2),
                 ]);
+
+                // 8. Fase 4: Sub-receta de Demostración y Orden de Producción
+                $prodPomodoro = Product::firstOrCreate(
+                    ['barcode' => 'SUB-POMODORO-01'],
+                    [
+                        'name' => 'Salsa Pomodoro Casera (Litros)',
+                        'unit_cost' => 1.50,
+                        'sale_price' => 2.50,
+                        'yield_percentage' => 95.0,
+                        'is_sub_recipe' => true,
+                        'unit_of_measure' => 'L',
+                        'stock' => 10.0,
+                        'is_active' => true,
+                        'category_id' => $catInsumos->id,
+                    ]
+                );
+
+                $dishPomodoroReceta = Dish::firstOrCreate(
+                    ['name' => 'Base Salsa Pomodoro 5L'],
+                    [
+                        'status' => 3, // Sub-receta
+                        'output_product_id' => $prodPomodoro->id,
+                        'expected_yield_quantity' => 5.0,
+                        'shelf_life_days' => 14,
+                        'kitchen_station_id' => $stCaliente->id,
+                        'description' => 'Sub-receta de salsa madre italiana para pastas y pizzas.',
+                    ]
+                );
+
+                $lotPomodoro = ProductLot::firstOrCreate(
+                    ['lot_number' => 'LOT-POM-001'],
+                    [
+                        'product_id' => $prodPomodoro->id,
+                        'quantity' => 5.0,
+                        'unit_cost' => 1.45,
+                        'expiration_date' => Carbon::now()->addDays(14)->toDateString(),
+                    ]
+                );
+
+                ProductionOrder::firstOrCreate(
+                    ['code' => 'PROD-DEMO-01'],
+                    [
+                        'dish_id' => $dishPomodoroReceta->id,
+                        'output_product_id' => $prodPomodoro->id,
+                        'user_id' => $seller->id,
+                        'kitchen_station_id' => $stCaliente->id,
+                        'batch_multiplier' => 1.0,
+                        'expected_quantity' => 5.0,
+                        'actual_quantity' => 5.0,
+                        'total_production_cost' => 7.25,
+                        'unit_cost_calculated' => 1.45,
+                        'generated_lot_id' => $lotPomodoro->id,
+                        'status' => ProductionOrderStatusEnum::COMPLETED,
+                        'produced_at' => Carbon::now()->subHours(3),
+                    ]
+                );
+
+                KitchenWaste::firstOrCreate(
+                    ['notes' => 'Merma por limpieza y descarte de tallos de tomate'],
+                    [
+                        'user_id' => $seller->id,
+                        'kitchen_station_id' => $stFria->id,
+                        'item_type' => 'product',
+                        'product_id' => $insumosMap['INS-TOMATE-01']->id,
+                        'quantity' => 0.40,
+                        'unit_cost' => 1.20,
+                        'total_loss_usd' => 0.48,
+                        'reason' => KitchenWasteReasonEnum::PREPARATION_TRIM,
+                        'occurred_at' => Carbon::now()->subHours(2),
+                    ]
+                );
+
+                // 9. Fase 5: Tokens QR en Mesas y Reservas Gastronómicas
+                $table1->update(['qr_token' => 'qr_demo_mesa_1']);
+                $table2->update(['qr_token' => 'qr_demo_mesa_2']);
+
+                Reservation::firstOrCreate(
+                    ['dining_table_id' => $table2->id, 'date' => Carbon::today()],
+                    [
+                        'client_id' => $client->id,
+                        'client_name' => 'Familia Martínez',
+                        'client_whatsapp' => '+584120001122',
+                        'start_time' => '20:00',
+                        'end_time' => '22:00',
+                        'guests_count' => 4,
+                        'special_requests' => 'Celebración de Aniversario. Mesa decorada.',
+                        'deposit_amount_usd' => 20.00,
+                        'status' => 'confirmed',
+                    ]
+                );
             }
         });
     }

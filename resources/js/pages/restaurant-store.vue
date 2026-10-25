@@ -30,6 +30,34 @@ const cartDrawer = ref(false)
 const orderSubmitting = ref(false)
 const paymentProof = ref(null)
 
+// --- MODO AUTOPEDIDO QR EN MESA (FASE 5) ---
+const qrTableToken = ref(new URLSearchParams(window.location.search).get('table_token') || null)
+const tableData = ref(null)
+const requestingAssistance = ref(false)
+
+const loadTableInfo = async () => {
+  if (!qrTableToken.value) return
+  try {
+    const { data } = await axios.get(`/public/restaurant/qr/table/${qrTableToken.value}`)
+    tableData.value = data
+  } catch (err) {
+    console.warn('Token de mesa inválido o no encontrado.')
+  }
+}
+
+const callWaiter = async (reason = 'waiter_call') => {
+  if (!qrTableToken.value) return
+  requestingAssistance.value = true
+  try {
+    const res = await axios.post(`/public/restaurant/qr/table/${qrTableToken.value}/assistance`, { reason })
+    toast.success(res.data?.message || 'Mesero notificado.')
+  } catch (err) {
+    toast.error('No se pudo notificar al mesero.')
+  } finally {
+    requestingAssistance.value = false
+  }
+}
+
 const orderForm = ref({
   customer_name: '',
   customer_email: '',
@@ -287,11 +315,24 @@ onMounted(async () => {
   await fetchCategories()
   await fetchProducts()
   await fetchExchangeRates()
+  await loadTableInfo()
 })
 </script>
 
 <template>
   <div class="sg-store-wrapper min-h-screen" :style="themeStyles">
+    <!-- Banner de Mesa QR si aplica -->
+    <div v-if="tableData" class="bg-primary text-white py-2 px-4 text-center font-weight-medium d-flex justify-space-between align-center">
+      <span>📍 Mesa: {{ tableData.table_name }} ({{ tableData.zone_name }})</span>
+      <div class="d-flex gap-2">
+        <button class="bg-white text-primary px-3 py-1 rounded text-xs font-bold" @click="callWaiter('waiter_call')">
+          🙋 Llamar Mesero
+        </button>
+        <button class="bg-amber-400 text-black px-3 py-1 rounded text-xs font-bold" @click="callWaiter('bill_requested')">
+          💳 Pedir Cuenta
+        </button>
+      </div>
+    </div>
     <!-- Header Minimalista Superior -->
     <header class="sg-header border-b border-gray-200 bg-white sticky top-0 z-20">
       <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">

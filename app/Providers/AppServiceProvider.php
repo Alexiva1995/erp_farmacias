@@ -267,6 +267,26 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\ProductionOrderServiceInterface::class,
+            \App\Services\Restaurant\ProductionOrderService::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\KitchenWasteServiceInterface::class,
+            \App\Services\Restaurant\KitchenWasteService::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\QrTableOrderServiceInterface::class,
+            \App\Services\Restaurant\QrTableOrderService::class
+        );
+
+        $this->app->bind(
+            \App\Contracts\DiningReservationServiceInterface::class,
+            \App\Services\Restaurant\DiningReservationService::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Suppliers\SupplierFinancialSyncServiceInterface::class,
             \App\Services\Suppliers\SupplierFinancialSyncService::class
         );

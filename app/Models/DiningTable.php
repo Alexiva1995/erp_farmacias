@@ -28,6 +28,9 @@ class DiningTable extends Model
         'status',
         'current_order_id',
         'is_active',
+        'qr_token',
+        'needs_attention',
+        'attention_reason',
     ];
 
     protected $casts = [
@@ -38,6 +41,7 @@ class DiningTable extends Model
         'height' => 'float',
         'rotation' => 'float',
         'is_active' => 'boolean',
+        'needs_attention' => 'boolean',
         'status' => DiningTableStatusEnum::class,
         'shape' => TableShapeEnum::class,
     ];

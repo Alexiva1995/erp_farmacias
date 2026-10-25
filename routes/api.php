@@ -347,6 +347,26 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::delete("pre-bill", [\App\Http\Controllers\Api\Restaurant\PreBillController::class, "cancel"]);
         Route::post("split", [\App\Http\Controllers\Api\Restaurant\SplitCheckController::class, "split"]);
     });
+
+    // Rutas de Producción en Lote (Sub-recetas) y Mermas de Cocina (Fase 4)
+    Route::prefix("restaurant/production")->group(function () {
+        Route::get("orders", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "listProduction"]);
+        Route::post("orders", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "storeProduction"]);
+        Route::delete("orders/{productionOrder}", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "cancelProduction"]);
+    });
+
+    Route::prefix("restaurant/waste")->group(function () {
+        Route::get("records", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "listWaste"]);
+        Route::post("records", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "storeWaste"]);
+    });
+
+    // Rutas de Reservas Gastronómicas de Salón (Fase 5)
+    Route::prefix("restaurant/reservations")->group(function () {
+        Route::get("/", [\App\Http\Controllers\Api\Restaurant\DiningReservationController::class, "index"]);
+        Route::post("/", [\App\Http\Controllers\Api\Restaurant\DiningReservationController::class, "store"]);
+        Route::post("/{reservation}/check-in", [\App\Http\Controllers\Api\Restaurant\DiningReservationController::class, "checkIn"]);
+        Route::delete("/{reservation}", [\App\Http\Controllers\Api\Restaurant\DiningReservationController::class, "cancel"]);
+    });
     Route::get("/suppliers", [ResourceController::class, "getSuppliers"]);
     Route::get("/products/all", [ResourceController::class, "getAllProducts"]);
     Route::get("/barcode/{barcode}", [ResourceController::class, "findProductByBarcode"]);
@@ -1249,6 +1269,13 @@ Route::prefix('central/tenants')->group(function () {
     Route::get('/', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'index']);
     Route::post('/', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'store']);
     Route::delete('/{id}', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'destroy']);
+});
+
+// Rutas Públicas de Menú QR en Mesa (Fase 5)
+Route::prefix('public/restaurant/qr')->group(function () {
+    Route::get('table/{token}', [\App\Http\Controllers\Api\Restaurant\QrTableOrderController::class, 'showTable']);
+    Route::post('table/{token}/order', [\App\Http\Controllers\Api\Restaurant\QrTableOrderController::class, 'submitOrder']);
+    Route::post('table/{token}/assistance', [\App\Http\Controllers\Api\Restaurant\QrTableOrderController::class, 'requestAssistance']);
 });
 
 

@@ -18,6 +18,12 @@ export default [
         subject: 'admin',
       },
       {
+        title: 'Producción & Mermas',
+        to: 'restaurant-production-and-waste',
+        action: 'manage',
+        subject: 'admin',
+      },
+      {
         title: 'Platos / Menú',
         to: 'inventory-dishes',
         action: 'manage',

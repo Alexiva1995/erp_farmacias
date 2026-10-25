@@ -9,6 +9,10 @@ class Reservation extends Model
 {
     protected $fillable = [
         'court_id',
+        'dining_table_id',
+        'guests_count',
+        'special_requests',
+        'deposit_amount_usd',
         'client_id',
         'identification',
         'date',
@@ -39,5 +43,10 @@ class Reservation extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function diningTable(): BelongsTo
+    {
+        return $this->belongsTo(DiningTable::class, 'dining_table_id');
     }
 }
