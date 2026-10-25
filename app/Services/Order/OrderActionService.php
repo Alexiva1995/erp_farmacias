@@ -1122,8 +1122,22 @@ class OrderActionService
                             $detail->quantity = $itemData['quantity'];
                         }
                         if ($orderId->currency === 'COP') {
-                            $detail->price = ($itemData['price'] ?? 0);
-                            $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0);
+                            $rawItemPrice = (float) ($itemData['price'] ?? 0);
+                            $rawBeforeDiscount = (float) ($itemData['price_before_discount'] ?? 0);
+                            $tasaCop = (float) (app(\App\Services\Resources\ResourceService::class)->getExchangeRate('COP') ?: 1);
+
+                            // Si el frontend envió el precio en USD (< 100), convertirlo a COP
+                            if ($rawItemPrice < 100 && $tasaCop > 1) {
+                                $detail->price = ceil(($rawItemPrice * $tasaCop) / 100) * 100;
+                            } else {
+                                $detail->price = $rawItemPrice;
+                            }
+
+                            if ($rawBeforeDiscount < 100 && $tasaCop > 1) {
+                                $detail->price_before_discount = ceil(($rawBeforeDiscount * $tasaCop) / 100) * 100;
+                            } else {
+                                $detail->price_before_discount = $rawBeforeDiscount;
+                            }
                         } else {
                             $detail->price = ($itemData['price'] ?? 0);
                             $detail->price_before_discount = ($itemData['price_before_discount'] ?? 0);

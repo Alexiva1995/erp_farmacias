@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\ExchangeRate;
+use App\Services\Resources\ResourceService;
 use Illuminate\Support\Facades\DB;
 
 class Order extends Model
@@ -139,10 +140,26 @@ class Order extends Model
         $newTotal = 0;
         $totalCost = 0;
 
+        $isCopOrder = strtoupper((string)$this->currency) === 'COP';
+        $copRate = 0.0;
+        if ($isCopOrder) {
+            $copRate = (float) (app(ResourceService::class)->getExchangeRate('COP') ?: 1);
+        }
+
         foreach ($details as $detail) {
             $qty = (float) ($detail->quantity ?? 0);
             $price = (float) ($detail->price ?? 0);
             $unitCost = (float) ($detail->unit_cost ?? 0);
+
+            // Blindaje: si la orden es en COP pero el detalle tiene precio unitario en USD
+            if ($isCopOrder && $copRate > 1 && $price < 100) {
+                $unitUsd = (float) ($detail->unit_price_usd ?? 0);
+                if ($unitUsd > 0) {
+                    $price = ceil(($unitUsd * $copRate) / 100) * 100;
+                } elseif ($price > 0) {
+                    $price = ceil(($price * $copRate) / 100) * 100;
+                }
+            }
             
             $isTaxable = false;
             $taxRatePct = 16.0;
