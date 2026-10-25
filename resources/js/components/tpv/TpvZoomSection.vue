@@ -123,7 +123,7 @@ const handleAddZoomToOrder = async (openCheckoutImmediately = false) => {
 
     // Si el usuario eligió facturar/cobrar inmediatamente
     if (openCheckoutImmediately) {
-      emit("openBuysModal");
+      emit("openBuysModal", { skipFiscal: true });
     }
 
     // Limpiar formulario

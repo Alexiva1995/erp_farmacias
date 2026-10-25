@@ -1600,25 +1600,15 @@ class OrderActionService
                 $ivaEjecuted = true;
             }*/
 
-            // Verificar si la orden corresponde a un ingreso o encomienda ZOOM
-            $hasZoomItem = $orderId->details->contains(function ($detail) {
-                return $detail->product && (
-                    $detail->product->barcode === 'ZOOM-SERVICE' ||
-                    $detail->product->name === 'SERVICIO ZOOM'
-                );
-            });
-
             // Determinar si se genera la factura fiscal:
-            // - Si es una orden de ingreso Zoom, NO genera factura fiscal según requerimiento.
             // - Modo Activo: Emisión total del 100% de las ventas regulares
             // - Modo Demo:
             //   1. Moneda es Bolívares (BS)
             //   2. Tiene productos con IVA gravado
             //   3. El vendedor marcó "generar factura" explícitamente en el request
             //   4. Se aplicó CE/SPE (por tener IVA en divisas, o por muestreo selectivo 1 de cada 5)
-            $shouldInvoice = !$hasZoomItem && (
-                $isFiscalActive || ($currency === 'BS') || $hasIvaItems || $request->generate_invoice || $applySpe
-            );
+            $skipFiscal = filter_var($request->input('skip_fiscal', false), FILTER_VALIDATE_BOOLEAN);
+            $shouldInvoice = !$skipFiscal && ($isFiscalActive || ($currency === 'BS') || $hasIvaItems || $request->generate_invoice || $applySpe);
 
             if ($shouldInvoice) {
                 $this->invoicing($orderId, $request->spe);

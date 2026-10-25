@@ -388,6 +388,7 @@ export function useTpvCheckoutManager({
         currency: props.selectedCurrency,
         applies_spe_tax: appliesSpecialTax.value,
         spe_tax_amount: specialTaxAmount.value,
+        skip_fiscal: Boolean(props.skipFiscal),
       }
 
       const response = await axios.post(`/tpv/orders/${orderIdNum}/complete`, payload)

@@ -32,6 +32,7 @@ const props = defineProps({
   foreignOrdersCount: { type: Number, default: 0 },
   allForeignSalesSpe: { type: Boolean, default: false },
   isOffline: { type: Boolean, default: false },
+  skipFiscal: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -58,6 +59,7 @@ watch(
   (isVisible) => {
     if (isVisible) {
       currentProgress.value = 0;
+      invoiceSwitch.value = !props.skipFiscal;
       selectedCurrencyTab.value = props.selectedCurrency || "COP";
       payments.value = [
         {

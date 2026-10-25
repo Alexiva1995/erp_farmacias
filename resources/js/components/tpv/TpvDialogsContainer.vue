@@ -13,6 +13,7 @@ defineProps({
   newClientFormData: Object,
   newClientFormErrors: Object,
   showBuysModal: Boolean,
+  skipFiscal: { type: Boolean, default: false },
   orderItems: Array,
   openOrderData: Object,
   isFinishingOrder: Boolean,
@@ -90,6 +91,7 @@ defineEmits([
 
     <BuysModal
       :is-dialog-visible="showBuysModal"
+      :skip-fiscal="skipFiscal"
       @update:is-dialog-visible="$emit('update:showBuysModal', $event)"
       :order-products="orderItems || []"
       :order-data="openOrderData || null"

@@ -122,6 +122,7 @@ class CompleteOrderRequest extends FormRequest
             'spe_surcharge_amount' => ['nullable', 'numeric', 'min:0'],
 
             'prescription_image' => ['nullable', 'file', 'image', 'max:5120'],
+            'skip_fiscal' => ['nullable', 'boolean'],
         ];
     }
 

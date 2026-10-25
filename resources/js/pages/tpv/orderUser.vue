@@ -385,9 +385,19 @@ watch(
 );
 
 // ─── Control del modal de cobro ───────────────────────────────────────────────
-const openBuysModal = () => { showBuysModal.value = true; };
-const closeBuysModal = () => { showBuysModal.value = false; };
-const handleFlashCheckout = () => { showBuysModal.value = true; };
+const skipFiscalForCheckout = ref(false);
+const openBuysModal = (options = null) => {
+  skipFiscalForCheckout.value = Boolean(options?.skipFiscal);
+  showBuysModal.value = true;
+};
+const closeBuysModal = () => {
+  showBuysModal.value = false;
+  skipFiscalForCheckout.value = false;
+};
+const handleFlashCheckout = () => {
+  skipFiscalForCheckout.value = false;
+  showBuysModal.value = true;
+};
 
 // ─── Control de Pestaña Principal (Catálogo vs Zoom) ─────────────────────────
 const isZoomActive = computed(() => Boolean(enableZoom.value || brandingStore.settings?.enable_zoom));
@@ -608,6 +618,7 @@ useTpvInit({
       @handleSaveNewClient="handleSaveNewClient"
       @clearFormErrors="clearFormErrors"
       v-model:showBuysModal="showBuysModal"
+      :skip-fiscal="skipFiscalForCheckout"
       :orderItems="orderItems"
       :openOrderData="openOrderData"
       :isFinishingOrder="isFinishingOrder"
