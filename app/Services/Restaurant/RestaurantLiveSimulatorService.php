@@ -31,14 +31,17 @@ class RestaurantLiveSimulatorService implements RestaurantSimulatorServiceInterf
             if ($table) {
                 $client = Client::inRandomOrder()->first();
                 if (!$client) {
-                    $client = Client::create([
-                        'name' => 'Cliente Ocasional Salón',
-                        'identification' => 'V-00000000',
-                        'identification_type' => 'V',
-                        'email' => 'cliente_restaurante@tovaerp.com',
-                        'phone' => '04120000000',
-                        'address' => 'Salón Principal',
-                    ]);
+                    $client = Client::firstOrCreate(
+                        ['identification' => '00000000'],
+                        [
+                            'name' => 'Cliente Ocasional',
+                            'last_name' => 'Salón',
+                            'identification_type' => Client::IDENTIFICATION_TYPE_VENEZOLANO, // 'V-'
+                            'email' => 'cliente_restaurante@tovaerp.com',
+                            'phone' => '04120000000',
+                            'address' => 'Salón Principal',
+                        ]
+                    );
                 }
 
                 $seller = User::inRandomOrder()->first();
