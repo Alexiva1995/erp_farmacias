@@ -287,6 +287,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\RestaurantSimulatorServiceInterface::class,
+            \App\Services\Restaurant\RestaurantLiveSimulatorService::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Suppliers\SupplierFinancialSyncServiceInterface::class,
             \App\Services\Suppliers\SupplierFinancialSyncService::class
         );

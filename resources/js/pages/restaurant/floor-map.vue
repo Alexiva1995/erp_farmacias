@@ -520,6 +520,8 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+    <!-- Widget del Simulador de Tráfico en Vivo -->
+    <RestaurantSimulatorWidget />
   </div>
 </template>
 
@@ -527,6 +529,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import axios from '@axios'
 import { toast } from '@/plugins/sweetalert'
+import RestaurantSimulatorWidget from '@/components/restaurant/RestaurantSimulatorWidget.vue'
 
 // Estados Generales
 const viewMode = ref('3d') // '3d' o '2d'
@@ -604,8 +607,8 @@ const getStatusColor = (status) => {
 }
 
 // Cargar overview desde API
-const fetchOverview = async () => {
-  loadingOverview.value = true
+const fetchOverview = async (silent = false) => {
+  if (!silent) loadingOverview.value = true
   try {
     const res = await axios.get('/dining-floor/overview')
     zones.value = res.data.zones || []
@@ -615,9 +618,9 @@ const fetchOverview = async () => {
     }
     updateThreeScene()
   } catch (err) {
-    toast.error('Error al cargar salón y mesas.')
+    if (!silent) toast.error('Error al cargar salón y mesas.')
   } finally {
-    loadingOverview.value = false
+    if (!silent) loadingOverview.value = false
   }
 }
 
@@ -975,6 +978,8 @@ watch(selectedZoneIndex, () => {
   updateThreeScene()
 })
 
+let floorPollInterval = null
+
 onMounted(async () => {
   await fetchOverview()
   if (viewMode.value === '3d') {
@@ -982,9 +987,15 @@ onMounted(async () => {
       initThree()
     })
   }
+
+  // Polling silencioso cada 5 segundos para actualizar mesas y 3D en tiempo real sin recargar página
+  floorPollInterval = setInterval(() => {
+    fetchOverview(true)
+  }, 5000)
 })
 
 onUnmounted(() => {
+  if (floorPollInterval) clearInterval(floorPollInterval)
   if (threeAnimationId) {
     cancelAnimationFrame(threeAnimationId)
   }

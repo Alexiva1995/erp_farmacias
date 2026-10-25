@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
+import RestaurantSimulatorWidget from "@/components/restaurant/RestaurantSimulatorWidget.vue";
 
 // Estado de KDS
 const loading = ref(false);
@@ -395,6 +396,9 @@ onUnmounted(() => {
         </VCard>
       </VCol>
     </VRow>
+
+    <!-- Widget del Simulador de Tráfico en Vivo -->
+    <RestaurantSimulatorWidget />
   </div>
 </template>
 

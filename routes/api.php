@@ -367,6 +367,16 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::post("/{reservation}/check-in", [\App\Http\Controllers\Api\Restaurant\DiningReservationController::class, "checkIn"]);
         Route::delete("/{reservation}", [\App\Http\Controllers\Api\Restaurant\DiningReservationController::class, "cancel"]);
     });
+
+    // Rutas de Simulación de Tráfico en Vivo (Live Simulator Suite)
+    Route::prefix("restaurant/simulator")->group(function () {
+        Route::get("status", [\App\Http\Controllers\Api\Restaurant\RestaurantSimulatorController::class, "status"]);
+        Route::post("trigger-order", [\App\Http\Controllers\Api\Restaurant\RestaurantSimulatorController::class, "triggerOrder"]);
+        Route::post("advance-kitchen", [\App\Http\Controllers\Api\Restaurant\RestaurantSimulatorController::class, "advanceKitchen"]);
+        Route::post("trigger-guest", [\App\Http\Controllers\Api\Restaurant\RestaurantSimulatorController::class, "triggerGuestAction"]);
+        Route::post("trigger-cycle", [\App\Http\Controllers\Api\Restaurant\RestaurantSimulatorController::class, "triggerCycle"]);
+        Route::post("reset", [\App\Http\Controllers\Api\Restaurant\RestaurantSimulatorController::class, "reset"]);
+    });
     Route::get("/suppliers", [ResourceController::class, "getSuppliers"]);
     Route::get("/products/all", [ResourceController::class, "getAllProducts"]);
     Route::get("/barcode/{barcode}", [ResourceController::class, "findProductByBarcode"]);
