@@ -23,8 +23,8 @@ class DiningFloorService implements DiningFloorServiceInterface
 
         $tablesQuery = DiningTable::with([
             'currentOrder.details.dish',
-            'currentOrder.seller:id,username,name',
-            'currentOrder.client:id,name,id_number',
+            'currentOrder.seller:id,name',
+            'currentOrder.client:id,name,identification',
         ])->where('is_active', true);
 
         if ($zoneId) {

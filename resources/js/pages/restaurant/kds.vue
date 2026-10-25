@@ -398,7 +398,7 @@ onUnmounted(() => {
     </VRow>
 
     <!-- Widget del Simulador de Tráfico en Vivo -->
-    <RestaurantSimulatorWidget />
+    <RestaurantSimulatorWidget @updated="fetchTickets(true)" />
   </div>
 </template>
 

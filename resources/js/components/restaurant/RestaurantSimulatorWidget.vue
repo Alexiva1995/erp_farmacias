@@ -217,6 +217,8 @@ const addLog = (text, type = 'info') => {
   if (eventLogs.value.length > 20) eventLogs.value.pop()
 }
 
+const emit = defineEmits(['updated'])
+
 const triggerOrder = async () => {
   loadingAction.value = 'order'
   try {
@@ -225,6 +227,7 @@ const triggerOrder = async () => {
       addLog(res.data.message, 'success')
       toast.success(res.data.message)
       fetchStatus()
+      emit('updated')
     }
   } catch (err) {
     toast.error('Error al simular orden.')
@@ -241,6 +244,7 @@ const advanceKitchen = async () => {
       addLog(res.data.message, 'warning')
       toast.info(res.data.message)
       fetchStatus()
+      emit('updated')
     } else {
       toast.info(res.data?.message || 'Sin ítems en cocina.')
     }
@@ -259,6 +263,7 @@ const triggerGuest = async () => {
       addLog(res.data.message, 'warning')
       toast.warning(res.data.message)
       fetchStatus()
+      emit('updated')
     } else {
       toast.info(res.data?.message || 'Sin mesas ocupadas.')
     }
@@ -280,6 +285,7 @@ const runFullCycle = async () => {
       if (summary.guest?.success) addLog(summary.guest.message, 'info')
       toast.success('Ciclo de tráfico ejecutado.')
       fetchStatus()
+      emit('updated')
     }
   } catch (err) {
     toast.error('Error en ciclo completo.')
@@ -295,6 +301,7 @@ const resetTables = async () => {
     addLog(res.data.message, 'error')
     toast.info(res.data.message)
     fetchStatus()
+    emit('updated')
   } catch (err) {
     toast.error('Error al resetear salón.')
   } finally {

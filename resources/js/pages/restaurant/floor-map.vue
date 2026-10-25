@@ -521,7 +521,7 @@
       </v-card>
     </v-dialog>
     <!-- Widget del Simulador de Tráfico en Vivo -->
-    <RestaurantSimulatorWidget />
+    <RestaurantSimulatorWidget @updated="fetchOverview(true)" />
   </div>
 </template>
 

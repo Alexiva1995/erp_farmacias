@@ -18,6 +18,7 @@ class KdsTicketResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'dining_table_name' => $this->diningTable?->name ?? 'Salón',
             'client_name' => $this->client?->name ?? 'Cliente General',
             'seller_name' => $this->seller?->name ?? 'Mesonero / Caja',
             'order_date' => $this->order_date?->format('Y-m-d H:i:s'),

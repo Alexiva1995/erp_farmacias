@@ -65,6 +65,7 @@ class KdsService implements KdsServiceInterface
             ->with([
                 'client:id,name',
                 'seller:id,name',
+                'diningTable:id,name',
                 'details' => function ($q) use ($stationId, $activeStatuses) {
                     $q->where('product_type', 'dish')
                       ->whereIn('kitchen_status', $activeStatuses);
