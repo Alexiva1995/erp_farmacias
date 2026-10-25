@@ -85,6 +85,7 @@ class RestaurantDemoSeeder extends Seeder
             $catBurgers = Category::firstOrCreate(['name' => 'Hamburguesas Gourmet']);
             $catPizzas = Category::firstOrCreate(['name' => 'Pizzas Artesanales']);
             $catBebidas = Category::firstOrCreate(['name' => 'Bebidas & Coctelería']);
+            $catInsumos = Category::firstOrCreate(['name' => 'Insumos y Sub-recetas']);
 
             // 2. Insumos con Lotes de Stock
             $insumosData = [
@@ -96,6 +97,7 @@ class RestaurantDemoSeeder extends Seeder
                 ['name' => 'Masa de Pizza Italiana (und)', 'barcode' => 'INS-MASA-01', 'unit_cost' => 1.00, 'sale_price' => 1.80, 'unit_of_measure' => 'und', 'stock' => 60],
                 ['name' => 'Queso Mozzarella Rallado (kg)', 'barcode' => 'INS-MOZZARELLA-01', 'unit_cost' => 5.50, 'sale_price' => 7.50, 'unit_of_measure' => 'kg', 'stock' => 35],
                 ['name' => 'Salsa Pomodoro Casera (kg)', 'barcode' => 'INS-POMODORO-01', 'unit_cost' => 1.50, 'sale_price' => 2.50, 'unit_of_measure' => 'kg', 'stock' => 40],
+                ['name' => 'Tomate Perita Fresco (kg)', 'barcode' => 'INS-TOMATE-01', 'unit_cost' => 1.20, 'sale_price' => 1.80, 'unit_of_measure' => 'kg', 'stock' => 30],
             ];
 
             $insumosMap = [];
@@ -115,15 +117,12 @@ class RestaurantDemoSeeder extends Seeder
                 );
 
                 if ($product->lots()->count() === 0) {
-                    Lot::create([
+                    ProductLot::create([
                         'product_id' => $product->id,
-                        'code' => 'LOTE-DEMO-' . strtoupper(substr(md5($product->barcode), 0, 6)),
-                        'cost' => $product->unit_cost,
-                        'current_stock' => $item['stock'],
-                        'initial_stock' => $item['stock'],
+                        'lot_number' => 'LOTE-DEMO-' . strtoupper(substr(md5($product->barcode), 0, 6)),
+                        'unit_cost' => $product->unit_cost,
+                        'quantity' => $item['stock'],
                         'expiration_date' => Carbon::now()->addMonths(6)->toDateString(),
-                        'state' => 'available',
-                        'is_active' => true,
                     ]);
                 }
 
@@ -445,6 +444,10 @@ class RestaurantDemoSeeder extends Seeder
                         'status' => 3, // Sub-receta
                         'output_product_id' => $prodPomodoro->id,
                         'expected_yield_quantity' => 5.0,
+                        'cost_price' => 7.50,
+                        'suggested_price' => 12.50,
+                        'designated_price' => 12.50,
+                        'percentage_profit' => '40',
                         'shelf_life_days' => 14,
                         'kitchen_station_id' => $stCaliente->id,
                         'description' => 'Sub-receta de salsa madre italiana para pastas y pizzas.',
@@ -509,7 +512,7 @@ class RestaurantDemoSeeder extends Seeder
                         'guests_count' => 4,
                         'special_requests' => 'Celebración de Aniversario. Mesa decorada.',
                         'deposit_amount_usd' => 20.00,
-                        'status' => 'confirmed',
+                        'status' => 'verified',
                     ]
                 );
             }
