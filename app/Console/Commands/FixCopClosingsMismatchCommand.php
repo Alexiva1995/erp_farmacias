@@ -19,7 +19,11 @@ class FixCopClosingsMismatchCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:fix-cop-closings-mismatch {--from=2026-09-22 : Fecha inicial para corrección} {--dry-run : Ejecutar en modo simulación sin guardar en base de datos}';
+    protected $signature = 'app:fix-cop-closings-mismatch 
+                            {--from=2026-09-22 : Fecha inicial para corrección} 
+                            {--closing= : ID específico de cierre a corregir} 
+                            {--include-open : Incluir cierres que aún estén abiertos} 
+                            {--dry-run : Ejecutar en modo simulación sin guardar en base de datos}';
 
     /**
      * The console command description.
@@ -34,6 +38,8 @@ class FixCopClosingsMismatchCommand extends Command
     public function handle(ResourceService $resourceService): int
     {
         $fromDate = $this->option('from') ?: '2026-09-22';
+        $closingId = $this->option('closing');
+        $includeOpen = (bool) $this->option('include-open');
         $dryRun = (bool) $this->option('dry-run');
 
         $this->info("Iniciando auditoría y corrección de cierres COP desde: {$fromDate}");
@@ -43,12 +49,21 @@ class FixCopClosingsMismatchCommand extends Command
 
         $rateCop = $resourceService->getExchangeRate('COP');
         if ($rateCop < 100) {
-            $rateCop = 3300.0;
+            $rateCop = 3200.0;
         }
 
-        $closings = CashClosing::where('closing_date', '>=', $fromDate)
-            ->where('status', CashClosing::CLOSED)
-            ->orderBy('closing_date', 'asc')
+        $query = CashClosing::query();
+
+        if ($closingId) {
+            $query->where('id', (int) $closingId);
+        } else {
+            $query->where('closing_date', '>=', $fromDate);
+            if (!$includeOpen) {
+                $query->where('status', CashClosing::CLOSED);
+            }
+        }
+
+        $closings = $query->orderBy('closing_date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
@@ -79,9 +94,9 @@ class FixCopClosingsMismatchCommand extends Command
                         $currentAmount = (float) $order->total_amount;
                         $usdAmount = (float) $order->total_amount_usd;
 
-                        // Si el total registrado es 100 pero en USD es mayor a $0.10
+                        // Si el total registrado es <= 100 pero en USD es mayor a $0.10
                         if ($currentAmount <= 100.0 && $usdAmount > 0.10) {
-                            $calculatedCop = round($usdAmount * $rateCop, 2);
+                            $calculatedCop = ceil(round($usdAmount * $rateCop) / 100) * 100;
 
                             if (!$dryRun) {
                                 $order->total_amount = $calculatedCop;
@@ -109,16 +124,20 @@ class FixCopClosingsMismatchCommand extends Command
                     }
                 }
 
-                // 3. Evaluar si el cierre requiere ajuste de sobrante
+                // 3. Evaluar si el cierre requiere ajuste de sobrante y cop_cash
                 $currentCopCash = (float) $closing->cop_cash;
                 $declaredCop = (float) ($closing->declared_cop ?? 0);
                 $originalSpare = (float) ($closing->cop_spare ?? 0);
 
                 $totalOriginalSpare += $originalSpare;
 
-                // Si se encontró efectivo real en órdenes superior al registrado en cop_cash
-                if ($realCopCash > $currentCopCash || $hasModifiedOrders) {
-                    $newCopCash = round($realCopCash, 2);
+                // Descontar conversiones COP si se entregó vuelto en COP para ventas en USD
+                $copConversion = (float) ($closing->cop_conversion ?? 0);
+                $netClosingCopCash = round($realCopCash - $copConversion, 2);
+
+                // Si se encontró efectivo real en órdenes superior al registrado en cop_cash o el cop_cash actual está desfasado
+                if ($netClosingCopCash != $currentCopCash || $hasModifiedOrders || $currentCopCash < 0) {
+                    $newCopCash = $netClosingCopCash;
                     $newDiffCop = round($declaredCop - $newCopCash, 2);
                     $newSpare = max(0.0, $newDiffCop);
                     $newDelivered = round($newCopCash + $newSpare, 2);
@@ -127,9 +146,10 @@ class FixCopClosingsMismatchCommand extends Command
                     $affectedClosingsCount++;
 
                     $this->line(sprintf(
-                        "Cierre #%d (%s): COP Sistema: %.2f -> %.2f | Declarado: %.2f | Sobrante: %.2f -> %.2f",
+                        "Cierre #%d (%s | Estado: %s): COP Sistema: %.2f -> %.2f | Declarado: %.2f | Sobrante: %.2f -> %.2f",
                         $closing->id,
                         Carbon::parse($closing->closing_date)->format('Y-m-d'),
+                        $closing->status,
                         $currentCopCash,
                         $newCopCash,
                         $declaredCop,
