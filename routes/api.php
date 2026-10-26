@@ -212,6 +212,15 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::post('/import-hybrid/process-clients', [\App\Http\Controllers\Api\DataImportController::class, 'processClients']);
     Route::post('/import-hybrid/analyze-sales', [\App\Http\Controllers\Api\DataImportController::class, 'analyzeSalesOrders']);
     Route::post('/import-hybrid/process-sales', [\App\Http\Controllers\Api\DataImportController::class, 'processSalesOrders']);
+
+    // Rutas de Integración y Sincronización a2 Softway (DBISAM)
+    Route::prefix('configuration/data-import/a2')->group(function () {
+        Route::post('/request-preview', [\App\Http\Controllers\Api\A2DataImportController::class, 'requestPreview']);
+        Route::get('/poll-tasks', [\App\Http\Controllers\Api\A2DataImportController::class, 'pollPendingTask']);
+        Route::post('/submit-task/{task}', [\App\Http\Controllers\Api\A2DataImportController::class, 'submitTaskResult']);
+        Route::get('/task/{task}', [\App\Http\Controllers\Api\A2DataImportController::class, 'checkTaskStatus']);
+        Route::post('/execute-import', [\App\Http\Controllers\Api\A2DataImportController::class, 'executeImport']);
+    });
     // Rutas de Finanzas (Estado de Resultados) - Protegidas por autenticación
     Route::prefix("finances")->group(function () {
         Route::get("/income-statement", [FinancialStatementController::class, "index"]);
