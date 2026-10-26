@@ -100,7 +100,7 @@ export default [
           },
           {
             title: 'A2',
-            to: { name: 'configuration-import-hybrid', query: { tab: 'a2_sync_tab' } },
+            to: 'configuration-import-a2',
           },
         ],
       },
