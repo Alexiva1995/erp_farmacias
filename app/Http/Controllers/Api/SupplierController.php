@@ -429,7 +429,7 @@ class SupplierController extends Controller
         if (!$fileConnection) {
             $fileConnection = $supplier->connections()->create([
                 'type' => 'file',
-                'name' => $supplier->name . ' (Excel)',
+                'host' => $supplier->name . ' (Excel)',
             ]);
         }
 
@@ -459,7 +459,7 @@ class SupplierController extends Controller
         if (!$fileConnection) {
             $fileConnection = $supplier->connections()->create([
                 'type' => 'file',
-                'name' => $supplier->name . ' (Excel)',
+                'host' => $supplier->name . ' (Excel)',
             ]);
         }
 

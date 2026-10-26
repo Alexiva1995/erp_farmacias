@@ -64,7 +64,7 @@ class KdsService implements KdsServiceInterface
         return Order::query()
             ->with([
                 'client:id,name',
-                'seller:id,name',
+                'seller:id,username',
                 'diningTable:id,name',
                 'details' => function ($q) use ($stationId, $activeStatuses) {
                     $q->where('product_type', 'dish')
