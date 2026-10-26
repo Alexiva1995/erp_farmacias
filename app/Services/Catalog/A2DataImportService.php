@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Catalog;
 
+use App\Enums\SupplierType;
 use App\Models\A2SyncTask;
 use App\Models\Category;
 use App\Models\Invoice;
@@ -238,12 +239,42 @@ class A2DataImportService
                 if (!empty($s['selected_supplier_id'])) {
                     $stats['suppliers_linked']++;
                 } elseif (!empty($s['a2_name'])) {
+                    $rawRif = trim((string)($s['a2_rif'] ?? ''));
+                    $cleanRif = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $rawRif));
+                    $supplierName = trim((string)$s['a2_name']);
+
+                    // Si ya existe por RIF o Nombre exacto, vincularlo y evitar duplicados
+                    $existingSupplier = null;
+                    if (!empty($cleanRif)) {
+                        $existingSupplier = Supplier::query()
+                            ->whereRaw("UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), '.', ''), ' ', '')) = ?", [$cleanRif])
+                            ->first();
+                    }
+                    if (!$existingSupplier && !empty($supplierName)) {
+                        $existingSupplier = Supplier::query()
+                            ->where('name', $supplierName)
+                            ->first();
+                    }
+
+                    if ($existingSupplier) {
+                        $stats['suppliers_linked']++;
+                        continue;
+                    }
+
                     Supplier::create([
-                        'name' => trim($s['a2_name']),
-                        'social_reason' => trim($s['a2_name']),
-                        'rif' => !empty($s['a2_rif']) ? strtoupper(trim($s['a2_rif'])) : null,
-                        'sales_phone' => !empty($s['a2_phone']) ? trim($s['a2_phone']) : null,
-                        'type' => 'drogueria',
+                        'name' => $supplierName,
+                        'social_reason' => $supplierName,
+                        'rif' => !empty($cleanRif) ? $cleanRif : null,
+                        'sales_phone' => !empty($s['a2_phone']) ? trim((string)$s['a2_phone']) : null,
+                        'type' => SupplierType::DROGUERIA,
+                        'credit_days' => 15,
+                        'dispatch_days' => [1, 2, 3, 4, 5, 6],
+                        'order_days' => [1, 2, 3, 4, 5, 6],
+                        'payment_due_type' => 'invoice_date',
+                        'payment_method' => 'Bs',
+                        'cash_payment' => 0,
+                        'charges_igtf' => 0,
+                        'min_order_amount' => 0.00,
                         'is_active' => true,
                         'is_indexed' => true,
                     ]);
