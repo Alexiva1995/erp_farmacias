@@ -828,12 +828,42 @@ const requestA2Preview = async (section) => {
       a2SuppliersEdit.value = JSON.parse(JSON.stringify(task.preview_data.suppliers || []))
       a2PreviewModal.value = true
       toast.success('Datos de a2 previsualizados exitosamente.')
-    } else {
+      a2Loading.value = false
+    } else if (task?.id) {
       toast.info('Solicitud enviada al puente a2. Esperando extracción...')
+      // Polling activo en frontend esperando la respuesta del puente Python
+      let attempts = 0
+      const checkInterval = setInterval(async () => {
+        attempts++
+        try {
+          const checkRes = await axios.get(`/configuration/data-import/a2/task/${task.id}`)
+          const updatedTask = checkRes.data?.task
+          if (updatedTask?.status === 'completed' && updatedTask?.preview_data) {
+            clearInterval(checkInterval)
+            a2PreviewData.value = updatedTask.preview_data
+            a2SuppliersEdit.value = JSON.parse(JSON.stringify(updatedTask.preview_data.suppliers || []))
+            a2PreviewModal.value = true
+            toast.success('Extracción completada por el puente a2.')
+            a2Loading.value = false
+          } else if (updatedTask?.status === 'failed') {
+            clearInterval(checkInterval)
+            toast.error(updatedTask?.error_message || 'El puente a2 reportó un error en la extracción.')
+            a2Loading.value = false
+          }
+        } catch (e) {
+          // continuar intentando
+        }
+        if (attempts >= 40) {
+          clearInterval(checkInterval)
+          toast.warning('El puente a2 tardó en responder. Verifique la consola de Python.')
+          a2Loading.value = false
+        }
+      }, 1500)
+    } else {
+      a2Loading.value = false
     }
   } catch (err) {
     toast.error(err.response?.data?.message || 'Error al conectar con a2.')
-  } finally {
     a2Loading.value = false
   }
 }
