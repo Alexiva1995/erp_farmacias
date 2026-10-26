@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Http/Controllers/Api;
+namespace App\Http\Controllers\Api;
 
-use App\Http/Controllers/Controller;
-use App\Http/Requests/Configuration/ExecuteA2ImportRequest;
-use App\Http/Requests/Configuration/RequestA2PreviewRequest;
-use App\Http/Resources/Configuration/A2SyncTaskResource;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Configuration\ExecuteA2ImportRequest;
+use App\Http\Requests\Configuration\RequestA2PreviewRequest;
+use App\Http\Resources\Configuration\A2SyncTaskResource;
 use App\Models\A2SyncTask;
 use App\Services\Catalog\A2DataImportService;
 use Illuminate\Http\JsonResponse;
