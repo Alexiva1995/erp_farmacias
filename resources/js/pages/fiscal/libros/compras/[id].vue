@@ -546,14 +546,42 @@ const formatNumber = (val) => {
               <td class="text-right font-tabular">0,00</td>
             </tr>
             <tr>
-              <td>Total Compras Internas Afectas solo Alicuota General (16%):</td>
+              <td>Total Compras Importación Afectas solo Alicuota General:</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+            </tr>
+            <tr>
+              <td>Total Compras Importación Afectas en Alicuota General + Adicional:</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+            </tr>
+            <tr>
+              <td>Total Compras Importación Afectas solo Alicuota Reducida:</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+            </tr>
+            <tr>
+              <td>Total Compras Internas Afectas solo Alicuota General:</td>
               <td class="text-right font-tabular">{{ formatNumber(book?.total_general_taxable_base) }}</td>
               <td class="text-right font-tabular">{{ formatNumber(book?.total_general_vat) }}</td>
               <td class="text-right font-tabular text-error font-weight-bold">{{ formatNumber(book?.total_vat_withheld) }}</td>
               <td class="text-right font-tabular">0,00</td>
             </tr>
-            <tr v-if="isZoomActive">
-              <td>Total Compras Internas Afectas solo Alicuota Reducida (Zoom 8%):</td>
+            <tr>
+              <td>Total Compras Internas Afectas en Alicuota General + Adicional:</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+            </tr>
+            <tr>
+              <td>Total Compras Internas Afectas solo Alicuota Reducida:</td>
               <td class="text-right font-tabular">{{ formatNumber(book?.total_reduced_taxable_base) }}</td>
               <td class="text-right font-tabular">{{ formatNumber(book?.total_reduced_vat) }}</td>
               <td class="text-right font-tabular">0,00</td>
