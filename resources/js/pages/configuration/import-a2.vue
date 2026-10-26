@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import axios from '@axios'
 import Swal from 'sweetalert2'
 import { toast } from '@/plugins/sweetalert'
@@ -15,6 +15,51 @@ const a2PreviewData = ref(null)
 const a2SelectedSection = ref('suppliers_payables')
 const a2YearFilter = ref(2026)
 const a2SuppliersEdit = ref([])
+const existingSuppliersList = ref([])
+
+// Opciones dinámicas para el VSelect de proveedores
+const supplierSelectOptions = computed(() => {
+  const options = [
+    { title: '➕ Registrar como NUEVO proveedor', value: null },
+  ]
+  existingSuppliersList.value.forEach(s => {
+    options.push({
+      title: `${s.name} ${s.rif ? '(' + s.rif + ')' : ''}`,
+      value: s.id,
+    })
+  })
+  return options
+})
+
+// Manejo de cambio en la vinculación manual de proveedores
+const onSupplierLinkChange = (sup, selectedId) => {
+  if (selectedId) {
+    const found = existingSuppliersList.value.find(s => s.id === selectedId)
+    sup.selected_supplier_id = selectedId
+    sup.is_matched = true
+    sup.matched_supplier_name = found ? found.name : 'Vinculado'
+    sup.match_reason = 'Vinculado manualmente'
+  } else {
+    sup.selected_supplier_id = null
+    sup.is_matched = false
+    sup.matched_supplier_name = null
+    sup.match_reason = 'Nuevo Proveedor a registrar'
+  }
+
+  // Recalcular métricas de resumen
+  if (a2PreviewData.value?.summary) {
+    const matched = a2SuppliersEdit.value.filter(s => s.is_matched).length
+    a2PreviewData.value.summary.suppliers_matched = matched
+    a2PreviewData.value.summary.suppliers_new = a2SuppliersEdit.value.length - matched
+  }
+}
+
+const populatePreview = (data) => {
+  a2PreviewData.value = data
+  a2SuppliersEdit.value = JSON.parse(JSON.stringify(data.suppliers || []))
+  existingSuppliersList.value = data.existing_suppliers || []
+  a2PreviewModal.value = true
+}
 
 const requestA2Preview = async (section) => {
   a2SelectedSection.value = section
@@ -26,9 +71,7 @@ const requestA2Preview = async (section) => {
     })
     const task = res.data?.task
     if (task?.preview_data) {
-      a2PreviewData.value = task.preview_data
-      a2SuppliersEdit.value = JSON.parse(JSON.stringify(task.preview_data.suppliers || []))
-      a2PreviewModal.value = true
+      populatePreview(task.preview_data)
       toast.success('Datos de a2 previsualizados exitosamente.')
       a2Loading.value = false
     } else if (task?.id) {
@@ -42,9 +85,7 @@ const requestA2Preview = async (section) => {
           const updatedTask = checkRes.data?.task
           if (updatedTask?.status === 'completed' && updatedTask?.preview_data) {
             clearInterval(checkInterval)
-            a2PreviewData.value = updatedTask.preview_data
-            a2SuppliersEdit.value = JSON.parse(JSON.stringify(updatedTask.preview_data.suppliers || []))
-            a2PreviewModal.value = true
+            populatePreview(updatedTask.preview_data)
             toast.success('Extracción completada por el puente a2.')
             a2Loading.value = false
           } else if (updatedTask?.status === 'failed') {
@@ -254,7 +295,7 @@ const confirmAndExecuteA2Import = async () => {
     <!-- =================================================================== -->
     <VDialog
       v-model="a2PreviewModal"
-      max-width="1200px"
+      max-width="1280px"
       persistent
     >
       <VCard class="pa-2">
@@ -293,8 +334,8 @@ const confirmAndExecuteA2Import = async () => {
             </VCol>
             <VCol cols="12" sm="4">
               <div class="pa-3 bg-surface rounded text-center border">
-                <div class="text-caption text-medium-emphasis">Operaciones Año 2026</div>
-                <div class="text-h6 font-weight-bold text-info">{{ a2PreviewData?.summary?.total_operations_year ?? 0 }}</div>
+                <div class="text-caption text-medium-emphasis">A Registrar como Nuevos</div>
+                <div class="text-h6 font-weight-bold text-warning">{{ a2PreviewData?.summary?.suppliers_new ?? 0 }}</div>
               </div>
             </VCol>
           </VRow>
@@ -303,17 +344,17 @@ const confirmAndExecuteA2Import = async () => {
           <VCard variant="outlined" class="mb-4">
             <VCardItem class="pb-2">
               <VCardTitle class="text-subtitle-2 font-weight-bold">
-                Mapeo de Proveedores a2 ➔ ERP
+                Mapeo de Proveedores a2 ➔ ERP (Editable)
               </VCardTitle>
             </VCardItem>
             <VTable density="compact" class="text-caption">
               <thead>
                 <tr>
-                  <th>RIF a2</th>
-                  <th>Nombre a2</th>
-                  <th>Teléfono</th>
-                  <th>Estado en ERP</th>
-                  <th>Acción</th>
+                  <th style="width: 130px;">RIF a2</th>
+                  <th style="width: 250px;">Nombre a2</th>
+                  <th style="width: 140px;">Teléfono</th>
+                  <th style="width: 180px;">Estado de Coincidencia</th>
+                  <th style="min-width: 320px;">Vincular con Proveedor Existente o Nuevo</th>
                 </tr>
               </thead>
               <tbody>
@@ -330,13 +371,18 @@ const confirmAndExecuteA2Import = async () => {
                       {{ sup.match_reason }}
                     </VChip>
                   </td>
-                  <td>
-                    <span v-if="sup.is_matched" class="text-success font-weight-bold">
-                      ✓ Vinculado a: {{ sup.matched_supplier_name }}
-                    </span>
-                    <span v-else class="text-primary font-weight-bold">
-                      + Se registrará nuevo
-                    </span>
+                  <td class="py-2">
+                    <VSelect
+                      v-model="sup.selected_supplier_id"
+                      :items="supplierSelectOptions"
+                      item-title="title"
+                      item-value="value"
+                      density="compact"
+                      variant="outlined"
+                      hide-details
+                      class="text-caption"
+                      @update:model-value="(val) => onSupplierLinkChange(sup, val)"
+                    />
                   </td>
                 </tr>
               </tbody>

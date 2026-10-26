@@ -30,6 +30,21 @@ class A2DataImportService
         $productsRaw = $extractedData['products'] ?? [];
         $operationsRaw = $extractedData['operations'] ?? [];
 
+        // 0. Lista de proveedores registrados en el ERP para mapeo interactivo
+        $existingSuppliersList = Supplier::query()
+            ->select(['id', 'name', 'rif'])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($s) {
+                return [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'rif' => $s->rif,
+                ];
+            })
+            ->values()
+            ->all();
+
         // 1. Homologación de Proveedores sin duplicar
         $suppliersPreview = $this->correlateSuppliers($suppliersRaw);
 
@@ -57,6 +72,7 @@ class A2DataImportService
                 'total_clients' => count($clientsRaw),
                 'total_sales_year' => count($salesRaw),
             ],
+            'existing_suppliers' => $existingSuppliersList,
             'suppliers' => $suppliersPreview['suppliers'],
             'products_sample' => array_slice($productsPreview['products'], 0, 100),
             'clients' => $clientsRaw,
