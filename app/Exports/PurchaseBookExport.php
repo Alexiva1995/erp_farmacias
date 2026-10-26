@@ -97,7 +97,7 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, S
         if ($this->enableZoom) {
             $cols[] = 'Base Imponible';
             $cols[] = '% Alicuota';
-            $cols[] = 'IVA Reducido';
+            $cols[] = 'IVA General';
         }
 
         $cols[] = 'Iva Retenido';

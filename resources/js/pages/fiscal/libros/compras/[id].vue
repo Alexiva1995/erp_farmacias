@@ -419,31 +419,31 @@ const formatNumber = (val) => {
               <th v-if="book?.is_open" class="text-center bg-primary-dark">ACCIÓN</th>
             </tr>
             <tr class="header-columns">
-              <th>N°</th>
-              <th>Fecha</th>
+              <th>Nro.</th>
+              <th>Fecha de Operación</th>
               <th>R.I.F.</th>
-              <th>Razón Social</th>
-              <th>C80/C81</th>
-              <th>Expediente</th>
-              <th>N° Factura</th>
-              <th>N° Control</th>
-              <th>N° ND</th>
-              <th>N° NC</th>
-              <th>Fac. Afectada</th>
-              <th>Tipo Doc.</th>
-              <th>Trans.</th>
-              <th class="text-right">Total c/IVA</th>
-              <th class="text-right">Exento</th>
-              <th class="text-right">Base Imp.</th>
-              <th class="text-center">%</th>
-              <th class="text-right">IVA Gen.</th>
+              <th>Nombre o Razon Social</th>
+              <th>Número Planilla Importación (C80 o C81)</th>
+              <th>Número Expediente Importación</th>
+              <th>Número de Factura</th>
+              <th>Número de Control</th>
+              <th>Número de Nota Débito</th>
+              <th>Número de Nota Crédito</th>
+              <th>Número de Factura Afectada</th>
+              <th>Tipo de Documento</th>
+              <th>Tipo Transacción</th>
+              <th class="text-right">Total Compras incluyendo IVA</th>
+              <th class="text-right">Compras sin derecho a Crédito</th>
+              <th class="text-right">Base Imponible</th>
+              <th class="text-center">% Alicuota</th>
+              <th class="text-right">IVA General</th>
               <template v-if="isZoomActive">
-                <th class="text-right zoom-header">Base Imp.</th>
-                <th class="text-center zoom-header">%</th>
-                <th class="text-right zoom-header">IVA Red.</th>
+                <th class="text-right zoom-header">Base Imponible</th>
+                <th class="text-center zoom-header">% Alicuota</th>
+                <th class="text-right zoom-header">IVA General</th>
               </template>
-              <th class="text-right">IVA Retenido</th>
-              <th>N° Comprobante</th>
+              <th class="text-right">Iva Retenido</th>
+              <th>Número de Comprobante</th>
               <th v-if="book?.is_open" class="text-center">Editar</th>
             </tr>
           </thead>
