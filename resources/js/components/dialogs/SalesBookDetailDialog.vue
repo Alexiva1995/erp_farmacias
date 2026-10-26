@@ -438,35 +438,35 @@ const formatNumber = (val) => {
                 <th v-if="book?.is_open" class="text-center bg-primary-dark">ACCIÓN</th>
               </tr>
               <tr class="header-columns">
-                <th>N°</th>
-                <th>Fecha</th>
-                <th>Cédula/RIF</th>
-                <th>Razón Social</th>
-                <th>Planilla Exp.</th>
-                <th>Tipo Doc.</th>
-                <th>N° Fact.</th>
-                <th>N° Ctrl.</th>
-                <th>N° Z</th>
-                <th>Fact. Ini.</th>
-                <th>Fact. Fin.</th>
-                <th>Reg. Máq.</th>
-                <th>N° ND</th>
-                <th>N° NC</th>
-                <th>Fac. Afect.</th>
-                <th>Trans.</th>
-                <th class="text-right">Total c/IVA</th>
-                <th class="text-right">No Gravadas</th>
-                <th class="text-right">Base Imp.</th>
-                <th class="text-center">%</th>
+                <th>Nro.</th>
+                <th>FECHA</th>
+                <th>CEDULA O R.I.F.</th>
+                <th>NOMBRE O RAZÓN SOCIAL</th>
+                <th>Nº PLANILLA DE EXPORTACIÓN</th>
+                <th>TIPO DE DOCUMENTO</th>
+                <th>Nº FACTURA</th>
+                <th>Nº DE CONTROL</th>
+                <th>NUMERO DE REPORTE Z</th>
+                <th>Número de Factura inicial del Reporte Z</th>
+                <th>Número de Factura Final del Reporte Z</th>
+                <th>REG. MAQUINA</th>
+                <th>Nº NOTA DE DEBITO</th>
+                <th>Nº NOTA DE CREDITO</th>
+                <th>Nº FACTURA AFECTADA</th>
+                <th>TIPO DE TRANSACCION</th>
+                <th class="text-right">TOTAL VENTAS INCLUYENDO IVA</th>
+                <th class="text-right">VENTAS INTERNAS NO GRAVADAS</th>
+                <th class="text-right">BASE IMPONIBLE</th>
+                <th class="text-center">%IVA</th>
                 <th class="text-right">IVA</th>
                 <template v-if="isZoomActive">
-                  <th class="text-right zoom-header">Base Imp.</th>
-                  <th class="text-center zoom-header">%</th>
+                  <th class="text-right zoom-header">BASE IMPONIBLE</th>
+                  <th class="text-center zoom-header">%IVA</th>
                   <th class="text-right zoom-header">IVA</th>
                 </template>
-                <th class="text-right">IVA Retenido</th>
-                <th>N° Comprob.</th>
-                <th>F. Rec. Comprob.</th>
+                <th class="text-right">IVA RETENIDO</th>
+                <th>Nº COMPROBANTE DE RETENCIÓN</th>
+                <th>FECHA DE RECEPCION COMPROBANTE DE RETENCIÓN</th>
                 <th class="text-right">IGTF</th>
                 <th v-if="book?.is_open" class="text-center">Editar</th>
               </tr>

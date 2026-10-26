@@ -3,6 +3,9 @@ import SalesBookDetailDialog from '@/components/dialogs/SalesBookDetailDialog.vu
 import axios from '@/plugins/axios'
 import { Swal, toast } from '@/plugins/sweetalert'
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const loading = ref(false)
 const books = ref([])
@@ -84,8 +87,7 @@ const fetchBooks = async () => {
 }
 
 const openBookDetail = (id) => {
-  selectedBookId.value = id
-  showDetailModal.value = true
+  router.push(`/fiscal/libros/ventas/${id}`)
 }
 
 const handleExportExcel = (id) => {

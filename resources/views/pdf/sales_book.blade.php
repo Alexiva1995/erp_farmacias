@@ -116,35 +116,35 @@
                 <th>IGTF</th>
             </tr>
             <tr>
-                <th>N°</th>
-                <th>Fecha</th>
-                <th>Cédula/RIF</th>
-                <th>Nombre / Razón Social</th>
-                <th>Planilla Exp.</th>
-                <th>Tipo Doc.</th>
-                <th>N° Fact.</th>
-                <th>N° Ctrl.</th>
-                <th>N° Z</th>
-                <th>Fact. Ini.</th>
-                <th>Fact. Fin.</th>
-                <th>Reg. Máq.</th>
-                <th>N° ND</th>
-                <th>N° NC</th>
-                <th>Fac. Afect.</th>
-                <th>Trans.</th>
-                <th>Total c/IVA</th>
-                <th>No Gravadas</th>
-                <th>Base Imp.</th>
-                <th>%</th>
+                <th>Nro.</th>
+                <th>FECHA</th>
+                <th>CEDULA O R.I.F.</th>
+                <th>NOMBRE O RAZÓN SOCIAL</th>
+                <th>Nº PLANILLA DE EXPORTACIÓN</th>
+                <th>TIPO DE DOCUMENTO</th>
+                <th>Nº FACTURA</th>
+                <th>Nº DE CONTROL</th>
+                <th>NUMERO DE REPORTE Z</th>
+                <th>Número de Factura inicial del Reporte Z</th>
+                <th>Número de Factura Final del Reporte Z</th>
+                <th>REG. MAQUINA</th>
+                <th>Nº NOTA DE DEBITO</th>
+                <th>Nº NOTA DE CREDITO</th>
+                <th>Nº FACTURA AFECTADA</th>
+                <th>TIPO DE TRANSACCION</th>
+                <th>TOTAL VENTAS INCLUYENDO IVA</th>
+                <th>VENTAS INTERNAS NO GRAVADAS</th>
+                <th>BASE IMPONIBLE</th>
+                <th>%IVA</th>
                 <th>IVA</th>
                 @if($enableZoom)
-                    <th class="zoom-col">Base Imp.</th>
-                    <th class="zoom-col">%</th>
+                    <th class="zoom-col">BASE IMPONIBLE</th>
+                    <th class="zoom-col">%IVA</th>
                     <th class="zoom-col">IVA</th>
                 @endif
-                <th>IVA Retenido</th>
-                <th>N° Comprob.</th>
-                <th>F. Rec. Comprob.</th>
+                <th>IVA RETENIDO</th>
+                <th>Nº COMPROBANTE DE RETENCIÓN</th>
+                <th>FECHA DE RECEPCION COMPROBANTE DE RETENCIÓN</th>
                 <th>IGTF</th>
             </tr>
         </thead>
