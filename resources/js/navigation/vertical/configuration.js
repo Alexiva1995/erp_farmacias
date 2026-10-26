@@ -98,6 +98,10 @@ export default [
             title: 'Hybrid',
             to: 'configuration-import-hybrid',
           },
+          {
+            title: 'A2',
+            to: { name: 'configuration-import-hybrid', query: { tab: 'a2_sync_tab' } },
+          },
         ],
       },
       {

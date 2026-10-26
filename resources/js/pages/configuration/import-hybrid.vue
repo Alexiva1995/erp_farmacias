@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import axios from '@axios'
 import Swal from 'sweetalert2'
 import { toast } from '@/plugins/sweetalert'
@@ -9,7 +10,14 @@ import { useAbility } from '@casl/vue'
 const ability = useAbility()
 
 // --- Pestaña Principal Activa ---
-const activeTab = ref('products_lots')
+const route = useRoute()
+const activeTab = ref(route.query.tab || 'products_lots')
+
+onMounted(() => {
+  if (route.query.tab) {
+    activeTab.value = String(route.query.tab)
+  }
+})
 
 // ==========================================
 // SECCIÓN 1: PRODUCTOS Y LOTES
@@ -877,6 +885,7 @@ const confirmAndExecuteA2Import = async () => {
 
         <VCardText class="pt-0">
           <VTabs
+            v-if="activeTab !== 'a2_sync_tab'"
             v-model="activeTab"
             color="primary"
             class="mb-6 border-b"
@@ -909,13 +918,7 @@ const confirmAndExecuteA2Import = async () => {
               />
               4. Ventas y Transacciones
             </VTab>
-            <VTab value="a2_sync_tab">
-              <VIcon
-                icon="tabler-database-import"
-                class="me-2"
-              />
-              5. A2 (Sincronización Directa 2026)
-            </VTab>
+
           </VTabs>
 
           <VWindow v-model="activeTab">
