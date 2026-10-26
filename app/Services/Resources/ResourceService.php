@@ -100,7 +100,7 @@ class ResourceService
             } elseif ($tpvRateType === 'eur') {
                 $currencyCode = 'EUR';
             } elseif ($tpvRateType === 'bcv') {
-                $currencyCode = 'BCV';
+                $currencyCode = 'BS';
             } else {
                 $isRestaurant = $setting?->business_type === 'restaurant';
                 $currencyCode = $isRestaurant ? 'BINANCE' : 'EUR';
