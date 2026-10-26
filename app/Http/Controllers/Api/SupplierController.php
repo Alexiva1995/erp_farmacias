@@ -430,6 +430,8 @@ class SupplierController extends Controller
             $fileConnection = $supplier->connections()->create([
                 'type' => 'file',
                 'host' => $supplier->name . ' (Excel)',
+                'pasv' => 0,
+                'has_header' => 0,
             ]);
         }
 
@@ -460,6 +462,8 @@ class SupplierController extends Controller
             $fileConnection = $supplier->connections()->create([
                 'type' => 'file',
                 'host' => $supplier->name . ' (Excel)',
+                'pasv' => 0,
+                'has_header' => 0,
             ]);
         }
 
