@@ -47,8 +47,12 @@ if '{$section}' in ['suppliers_payables', 'all']:
     result['suppliers'] = a2.extract_suppliers(data_dir)
 if '{$section}' in ['products_lots', 'all']:
     result['products'] = a2.extract_products(data_dir)
-if '{$section}' in ['operations', 'suppliers_payables', 'sales', 'all']:
+if '{$section}' in ['operations', 'suppliers_payables', 'all']:
     result['operations'] = a2.extract_operations(data_dir, {$year})
+if '{$section}' in ['clients', 'all']:
+    result['clients'] = a2.extract_clients(data_dir)
+if '{$section}' in ['sales', 'all']:
+    result['sales'] = a2.extract_sales(data_dir, {$year})
 print(json.dumps(result))
 ";
             $tmpScript = base_path('temp_extract.py');

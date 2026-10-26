@@ -42,6 +42,9 @@ class A2DataImportService
             return str_starts_with((string)$date, (string)$year);
         }));
 
+        $clientsRaw = $extractedData['clients'] ?? [];
+        $salesRaw = $extractedData['sales'] ?? $operationsFiltered;
+
         return [
             'summary' => [
                 'year' => $year,
@@ -51,10 +54,14 @@ class A2DataImportService
                 'total_products' => count($productsPreview['products']),
                 'products_matched_master' => $productsPreview['matched_master_count'],
                 'total_operations_year' => count($operationsFiltered),
+                'total_clients' => count($clientsRaw),
+                'total_sales_year' => count($salesRaw),
             ],
             'suppliers' => $suppliersPreview['suppliers'],
             'products_sample' => array_slice($productsPreview['products'], 0, 100),
+            'clients' => $clientsRaw,
             'operations_sample' => array_slice($operationsFiltered, 0, 100),
+            'sales_sample' => array_slice($salesRaw, 0, 100),
         ];
     }
 

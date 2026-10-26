@@ -185,3 +185,37 @@ if __name__ == '__main__':
     ops = extract_operations(data_dir, 2026)
     print(f"Total operaciones año 2026: {len(ops)}")
     print("Primeras 3:", ops[:3])
+
+
+def extract_clients(a2_data_dir: str):
+    cli_path = os.path.join(a2_data_dir, "Sclientes.dat")
+    if not os.path.exists(cli_path):
+        return []
+    table = DBISAMTable(cli_path)
+    # Longitud de registro de clientes en a2
+    record_len = 3120
+    clients = []
+    with open(cli_path, "rb") as fp:
+        fp.seek(table.header_size)
+        while True:
+            rec = fp.read(record_len)
+            if len(rec) < record_len:
+                break
+            code = DBISAMTable.decode_str(rec, 25, 30)
+            name = DBISAMTable.decode_str(rec, 57, 100)
+            phone = DBISAMTable.decode_str(rec, 267, 40)
+            address = DBISAMTable.decode_str(rec, 239, 60)
+            if code or name:
+                clients.append({
+                    "code": code,
+                    "name": name,
+                    "phone": phone,
+                    "address": address
+                })
+    return clients
+
+def extract_sales(a2_data_dir: str, target_year: int = 2026):
+    # En SOperacionInv, op_type 1001 o 1002 corresponden a ventas
+    all_ops = extract_operations(a2_data_dir, target_year)
+    sales = [op for op in all_ops if op.get("op_type") in [1001, 1002, 1025, 1537]]
+    return sales

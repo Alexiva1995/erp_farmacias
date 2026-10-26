@@ -2070,6 +2070,63 @@ const confirmAndExecuteA2Import = async () => {
                     </VCardText>
                   </VCard>
                 </VCol>
+
+                <!-- Tarjeta 3: Directorio de Clientes -->
+                <VCol cols="12" md="6" class="mt-4">
+                  <VCard variant="outlined" class="h-100 d-flex flex-column">
+                    <VCardItem>
+                      <VCardTitle class="d-flex align-center gap-2 text-subtitle-1">
+                        <VIcon icon="tabler-users" color="primary" />
+                        3. Clientes (Directorio y Cédulas)
+                      </VCardTitle>
+                      <VCardSubtitle class="text-caption">
+                        Extrae clientes desde `Sclientes.dat` cruzando por cédula/RIF para no duplicar existentes.
+                      </VCardSubtitle>
+                    </VCardItem>
+                    <VSpacer />
+                    <VCardText class="pt-0">
+                      <VBtn
+                        block
+                        color="primary"
+                        variant="tonal"
+                        prepend-icon="tabler-eye"
+                        :loading="a2Loading && a2SelectedSection === 'clients'"
+                        :disabled="a2Loading"
+                        @click="requestA2Preview('clients')"
+                      >
+                        Consultar y Previsualizar
+                      </VBtn>
+                    </VCardText>
+                  </VCard>
+                </VCol>
+
+                <!-- Tarjeta 4: Ventas y Transacciones 2026 -->
+                <VCol cols="12" md="6" class="mt-4">
+                  <VCard variant="outlined" class="h-100 d-flex flex-column">
+                    <VCardItem>
+                      <VCardTitle class="d-flex align-center gap-2 text-subtitle-1">
+                        <VIcon icon="tabler-shopping-cart" color="primary" />
+                        4. Ventas y Transacciones (2026)
+                      </VCardTitle>
+                      <VCardSubtitle class="text-caption">
+                        Extrae ventas facturadas en a2 desde `01/01/2026` para estadísticas, rotación y cierres.
+                      </VCardSubtitle>
+                    </VCardItem>
+                    <VSpacer />
+                    <VCardText class="pt-0">
+                      <VBtn
+                        block
+                        color="primary"
+                        prepend-icon="tabler-eye"
+                        :loading="a2Loading && a2SelectedSection === 'sales'"
+                        :disabled="a2Loading"
+                        @click="requestA2Preview('sales')"
+                      >
+                        Consultar y Previsualizar
+                      </VBtn>
+                    </VCardText>
+                  </VCard>
+                </VCol>
               </VRow>
             </VWindowItem>
           </VWindow>
