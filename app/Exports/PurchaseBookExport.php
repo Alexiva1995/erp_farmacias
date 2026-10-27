@@ -17,9 +17,10 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithEvents
+class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithEvents
 {
     protected GeneralSetting $settings;
     protected bool $enableZoom;
@@ -147,20 +148,85 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, S
 
     public function styles(Worksheet $sheet)
     {
+        $lastColLetter = $this->enableZoom ? 'V' : 'S';
+
+        // Configuración de impresión: Hoja horizontal y ajustar a 1 página de ancho
+        $pageSetup = $sheet->getPageSetup();
+        $pageSetup->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+        $pageSetup->setPaperSize(PageSetup::PAPERSIZE_LETTER);
+        $pageSetup->setFitToWidth(1);
+        $pageSetup->setFitToHeight(0);
+        $sheet->getSheetView()->setView(\PhpOffice\PhpSpreadsheet\Worksheet\SheetView::SHEETVIEW_PAGE_LAYOUT);
+
+        // Combinar celdas del membrete superior para que no ensanchen la columna A
+        $sheet->mergeCells("A1:{$lastColLetter}1");
+        $sheet->mergeCells("A2:{$lastColLetter}2");
+        $sheet->mergeCells("A3:{$lastColLetter}3");
+        $sheet->mergeCells("A4:{$lastColLetter}4");
+        $sheet->mergeCells("A5:{$lastColLetter}5");
+
+        // Anchos de columna específicos y optimizados para impresión
+        $columnWidths = [
+            'A' => 6,   // Nro.
+            'B' => 11,  // Fecha de Operación
+            'C' => 12,  // R.I.F.
+            'D' => 24,  // Nombre o Razon Social
+            'E' => 11,  // C80 o C81
+            'F' => 11,  // Expediente Importación
+            'G' => 12,  // Número de Factura
+            'H' => 12,  // Número de Control
+            'I' => 10,  // Número de Nota Débito
+            'J' => 10,  // Número de Nota Crédito
+            'K' => 12,  // Número de Factura Afectada
+            'L' => 9,   // Tipo de Documento
+            'M' => 8,   // Tipo Transacción
+            'N' => 14,  // Total Compras incluyendo IVA
+            'O' => 12,  // Compras sin derecho a Crédito
+            'P' => 13,  // Base Imponible
+            'Q' => 8,   // % Alicuota
+            'R' => 12,  // IVA General
+        ];
+
+        if ($this->enableZoom) {
+            $columnWidths['S'] = 13; // Base Imponible Zoom
+            $columnWidths['T'] = 8;  // % Alicuota Zoom
+            $columnWidths['U'] = 12; // IVA General Zoom
+            $columnWidths['V'] = 12; // Iva Retenido
+            $columnWidths['W'] = 14; // Número de Comprobante
+        } else {
+            $columnWidths['S'] = 12; // Iva Retenido
+            $columnWidths['T'] = 14; // Número de Comprobante
+        }
+
+        foreach ($columnWidths as $col => $width) {
+            $sheet->getColumnDimension($col)->setWidth($width);
+        }
+
+        // Altura de la fila de cabecera para permitir texto en varias líneas
+        $sheet->getRowDimension(8)->setRowHeight(40);
+
         return [
-            1 => ['font' => ['bold' => true, 'size' => 12]],
-            2 => ['font' => ['bold' => true]],
-            3 => ['font' => ['bold' => true]],
-            4 => ['font' => ['bold' => true, 'color' => ['rgb' => '003366']]],
-            5 => ['font' => ['bold' => true]],
+            1 => ['font' => ['bold' => true, 'size' => 11]],
+            2 => ['font' => ['bold' => true, 'size' => 10]],
+            3 => ['font' => ['bold' => true, 'size' => 9]],
+            4 => ['font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '003366']]],
+            5 => ['font' => ['bold' => true, 'size' => 9]],
             8 => [
-                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'font' => ['bold' => true, 'size' => 8, 'color' => ['rgb' => 'FFFFFF']],
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
                     'startColor' => ['rgb' => '2B5797'],
                 ],
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                    'wrapText' => true,
+                ],
+            ],
+            // Ajustar texto y tamaño compacto para las filas de datos
+            "A9:{$lastColLetter}500" => [
+                'font' => ['size' => 8],
+                'alignment' => [
                     'vertical' => Alignment::VERTICAL_CENTER,
                     'wrapText' => true,
                 ],
