@@ -115,31 +115,31 @@
                 <th colspan="2">RETENCIONES</th>
             </tr>
             <tr>
-                <th>N°</th>
-                <th>Fecha</th>
+                <th>Nro.</th>
+                <th>Fecha de Operación</th>
                 <th>R.I.F.</th>
-                <th>Nombre / Razón Social</th>
-                <th>C80/C81</th>
-                <th>Expediente</th>
-                <th>N° Factura</th>
-                <th>N° Control</th>
-                <th>N° ND</th>
-                <th>N° NC</th>
-                <th>Fac. Afectada</th>
-                <th>Tipo Doc.</th>
-                <th>Trans.</th>
-                <th>Total c/ IVA</th>
-                <th>Exento</th>
-                <th>Base Imp.</th>
-                <th>%</th>
-                <th>IVA Gen.</th>
+                <th>Nombre o Razon Social</th>
+                <th>Número Planilla Importación (C80 o C81)</th>
+                <th>Número Expediente Importación</th>
+                <th>Número de Factura</th>
+                <th>Número de Control</th>
+                <th>Número de Nota Débito</th>
+                <th>Número de Nota Crédito</th>
+                <th>Número de Factura Afectada</th>
+                <th>Tipo de Documento</th>
+                <th>Tipo Transacción</th>
+                <th>Total Compras incluyendo IVA</th>
+                <th>Compras sin derecho a Crédito</th>
+                <th>Base Imponible</th>
+                <th>% Alicuota</th>
+                <th>IVA General</th>
                 @if($enableZoom)
-                    <th class="zoom-col">Base Imp.</th>
-                    <th class="zoom-col">%</th>
-                    <th class="zoom-col">IVA Red.</th>
+                    <th class="zoom-col">Base Imponible</th>
+                    <th class="zoom-col">% Alicuota</th>
+                    <th class="zoom-col">IVA General</th>
                 @endif
-                <th>IVA Retenido</th>
-                <th>N° Comprobante</th>
+                <th>Iva Retenido</th>
+                <th>Número de Comprobante</th>
             </tr>
         </thead>
         <tbody>
@@ -151,24 +151,24 @@
                     <td>{{ Str::limit($entry->supplier_name, 28) }}</td>
                     <td>{{ $entry->import_planilla_number }}</td>
                     <td>{{ $entry->import_dossier_number }}</td>
-                    <td>{{ $entry->invoice_number }}</td>
-                    <td>{{ $entry->control_number }}</td>
-                    <td>{{ $entry->debit_note_number }}</td>
-                    <td>{{ $entry->credit_note_number }}</td>
-                    <td>{{ $entry->affected_invoice_number }}</td>
+                    <td class="text-right">{{ $entry->invoice_number }}</td>
+                    <td class="text-right">{{ $entry->control_number }}</td>
+                    <td class="text-right">{{ $entry->debit_note_number }}</td>
+                    <td class="text-right">{{ $entry->credit_note_number }}</td>
+                    <td class="text-right">{{ $entry->affected_invoice_number }}</td>
                     <td class="text-center">{{ Str::limit($entry->document_type, 14) }}</td>
                     <td class="text-center">{{ $entry->transaction_type }}</td>
-                    <td class="text-right">{{ number_format((float)$entry->total_purchases_with_vat, 2, ',', '.') }}</td>
-                    <td class="text-right">{{ number_format((float)$entry->exempt_purchases, 2, ',', '.') }}</td>
-                    <td class="text-right">{{ number_format((float)$entry->general_taxable_base, 2, ',', '.') }}</td>
+                    <td class="text-right">{{ number_format((float)$entry->total_purchases_with_vat, 2, '.', ',') }}</td>
+                    <td class="text-right">{{ number_format((float)$entry->exempt_purchases, 2, '.', ',') }}</td>
+                    <td class="text-right">{{ number_format((float)$entry->general_taxable_base, 2, '.', ',') }}</td>
                     <td class="text-center">{{ $entry->general_aliquot > 0 ? (number_format((float)$entry->general_aliquot * 100, 0) . '%') : '0%' }}</td>
-                    <td class="text-right">{{ number_format((float)$entry->general_vat, 2, ',', '.') }}</td>
+                    <td class="text-right">{{ number_format((float)$entry->general_vat, 2, '.', ',') }}</td>
                     @if($enableZoom)
-                        <td class="text-right zoom-col">{{ number_format((float)$entry->reduced_taxable_base, 2, ',', '.') }}</td>
+                        <td class="text-right zoom-col">{{ number_format((float)$entry->reduced_taxable_base, 2, '.', ',') }}</td>
                         <td class="text-center zoom-col">{{ $entry->reduced_aliquot > 0 ? (number_format((float)$entry->reduced_aliquot * 100, 0) . '%') : '0%' }}</td>
-                        <td class="text-right zoom-col">{{ number_format((float)$entry->reduced_vat, 2, ',', '.') }}</td>
+                        <td class="text-right zoom-col">{{ number_format((float)$entry->reduced_vat, 2, '.', ',') }}</td>
                     @endif
-                    <td class="text-right">{{ number_format((float)$entry->vat_withheld, 2, ',', '.') }}</td>
+                    <td class="text-right">{{ number_format((float)$entry->vat_withheld, 2, '.', ',') }}</td>
                     <td class="text-center">{{ $entry->withholding_receipt_number }}</td>
                 </tr>
             @empty
@@ -179,17 +179,17 @@
 
             <tr class="total-row">
                 <td colspan="13" class="text-right">TOTALES:</td>
-                <td class="text-right">{{ number_format((float)$book->total_purchases_with_vat, 2, ',', '.') }}</td>
-                <td class="text-right">{{ number_format((float)$book->total_exempt_purchases, 2, ',', '.') }}</td>
-                <td class="text-right">{{ number_format((float)$book->total_general_taxable_base, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format((float)$book->total_purchases_with_vat, 2, '.', ',') }}</td>
+                <td class="text-right">{{ number_format((float)$book->total_exempt_purchases, 2, '.', ',') }}</td>
+                <td class="text-right">{{ number_format((float)$book->total_general_taxable_base, 2, '.', ',') }}</td>
                 <td></td>
-                <td class="text-right">{{ number_format((float)$book->total_general_vat, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format((float)$book->total_general_vat, 2, '.', ',') }}</td>
                 @if($enableZoom)
-                    <td class="text-right zoom-col">{{ number_format((float)$book->total_reduced_taxable_base, 2, ',', '.') }}</td>
+                    <td class="text-right zoom-col">{{ number_format((float)$book->total_reduced_taxable_base, 2, '.', ',') }}</td>
                     <td class="zoom-col"></td>
-                    <td class="text-right zoom-col">{{ number_format((float)$book->total_reduced_vat, 2, ',', '.') }}</td>
+                    <td class="text-right zoom-col">{{ number_format((float)$book->total_reduced_vat, 2, '.', ',') }}</td>
                 @endif
-                <td class="text-right">{{ number_format((float)$book->total_vat_withheld, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format((float)$book->total_vat_withheld, 2, '.', ',') }}</td>
                 <td></td>
             </tr>
         </tbody>
@@ -209,52 +209,52 @@
         <tbody>
             <tr>
                 <td>Total Compras Exentas y/o Sin Derecho a Crédito Fiscal:</td>
-                <td class="text-right">{{ number_format((float)$book->total_exempt_purchases, 2, ',', '.') }}</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
+                <td class="text-right">{{ number_format((float)$book->total_exempt_purchases, 2, '.', ',') }}</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
             </tr>
             <tr>
                 <td>Total Compras Importación Afectas solo Alicuota General:</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
             </tr>
             <tr>
                 <td>Total Compras Importación Afectas en Alicuota General + Adicional:</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
             </tr>
             <tr>
                 <td>Total Compras Importación Afectas solo Alicuota Reducida:</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
             </tr>
             <tr>
                 <td>Total Compras Internas Afectas solo Alicuota General:</td>
-                <td class="text-right">{{ number_format((float)$book->total_general_taxable_base, 2, ',', '.') }}</td>
-                <td class="text-right">{{ number_format((float)$book->total_general_vat, 2, ',', '.') }}</td>
-                <td class="text-right">{{ number_format((float)$book->total_vat_withheld, 2, ',', '.') }}</td>
-                <td class="text-right">0,00</td>
+                <td class="text-right">{{ number_format((float)$book->total_general_taxable_base, 2, '.', ',') }}</td>
+                <td class="text-right">{{ number_format((float)$book->total_general_vat, 2, '.', ',') }}</td>
+                <td class="text-right">{{ number_format((float)$book->total_vat_withheld, 2, '.', ',') }}</td>
+                <td class="text-right">0.00</td>
             </tr>
             <tr>
                 <td>Total Compras Internas Afectas en Alicuota General + Adicional:</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
             </tr>
             <tr>
-                <td>Total Compras Internas Afectas solo Alicuota Reducida (Zoom):</td>
-                <td class="text-right">{{ number_format((float)$book->total_reduced_taxable_base, 2, ',', '.') }}</td>
-                <td class="text-right">{{ number_format((float)$book->total_reduced_vat, 2, ',', '.') }}</td>
-                <td class="text-right">0,00</td>
-                <td class="text-right">0,00</td>
+                <td>Total Compras Internas Afectas solo Alicuota Reducida:</td>
+                <td class="text-right">{{ number_format((float)$book->total_reduced_taxable_base, 2, '.', ',') }}</td>
+                <td class="text-right">{{ number_format((float)$book->total_reduced_vat, 2, '.', ',') }}</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">0.00</td>
             </tr>
             @php
                 $totBase = (float)$book->total_exempt_purchases + (float)$book->total_general_taxable_base + (float)$book->total_reduced_taxable_base;
@@ -262,10 +262,10 @@
             @endphp
             <tr style="font-weight: bold; background-color: #f7fafc;">
                 <td>TOTALES</td>
-                <td class="text-right">{{ number_format($totBase, 2, ',', '.') }}</td>
-                <td class="text-right">{{ number_format($totCredit, 2, ',', '.') }}</td>
-                <td class="text-right">{{ number_format((float)$book->total_vat_withheld, 2, ',', '.') }}</td>
-                <td class="text-right">0,00</td>
+                <td class="text-right">{{ number_format($totBase, 2, '.', ',') }}</td>
+                <td class="text-right">{{ number_format($totCredit, 2, '.', ',') }}</td>
+                <td class="text-right">{{ number_format((float)$book->total_vat_withheld, 2, '.', ',') }}</td>
+                <td class="text-right">0.00</td>
             </tr>
         </tbody>
     </table>

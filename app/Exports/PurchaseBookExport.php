@@ -7,8 +7,7 @@ namespace App\Exports;
 use App\Models\GeneralSetting;
 use App\Models\PurchaseBook;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Concerns\WithCustomStartCell;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -17,10 +16,11 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithEvents
+class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, WithColumnFormatting, WithStyles, WithEvents
 {
     protected GeneralSetting $settings;
     protected bool $enableZoom;
@@ -146,6 +146,37 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
         return $row;
     }
 
+    public function columnFormats(): array
+    {
+        $currencyFormat = '#,##0.00';
+
+        $formats = [
+            'G' => NumberFormat::FORMAT_TEXT, // Número de Factura
+            'H' => NumberFormat::FORMAT_TEXT, // Número de Control
+            'I' => NumberFormat::FORMAT_TEXT, // Número de Nota Débito
+            'J' => NumberFormat::FORMAT_TEXT, // Número de Nota Crédito
+            'K' => NumberFormat::FORMAT_TEXT, // Número de Factura Afectada
+            'N' => $currencyFormat,           // Total Compras incluyendo IVA
+            'O' => $currencyFormat,           // Compras sin derecho a Crédito
+            'P' => $currencyFormat,           // Base Imponible
+            'Q' => '0.00%',                   // % Alicuota
+            'R' => $currencyFormat,           // IVA General
+        ];
+
+        if ($this->enableZoom) {
+            $formats['S'] = $currencyFormat;  // Base Imponible Zoom
+            $formats['T'] = '0.00%';          // % Alicuota Zoom
+            $formats['U'] = $currencyFormat;  // IVA General Zoom
+            $formats['V'] = $currencyFormat;  // Iva Retenido
+            $formats['W'] = NumberFormat::FORMAT_TEXT; // Número de Comprobante
+        } else {
+            $formats['S'] = $currencyFormat;  // Iva Retenido
+            $formats['T'] = NumberFormat::FORMAT_TEXT; // Número de Comprobante
+        }
+
+        return $formats;
+    }
+
     public function styles(Worksheet $sheet)
     {
         $lastColLetter = $this->enableZoom ? 'V' : 'S';
@@ -229,6 +260,20 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
                 'alignment' => [
                     'vertical' => Alignment::VERTICAL_CENTER,
                     'wrapText' => true,
+                ],
+            ],
+            // Alineación a la derecha para Número de Factura (G) y Número de Control (H)
+            "G9:H500" => [
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_RIGHT,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+            ],
+            // Alineación centrada para códigos y comprobantes
+            "I9:K500" => [
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_RIGHT,
+                    'vertical' => Alignment::VERTICAL_CENTER,
                 ],
             ],
         ];
@@ -336,6 +381,10 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
                         'bottom' => ['borderStyle' => Border::BORDER_DOUBLE],
                     ],
                 ]);
+
+                // Formato numérico para el cuadro de Resumen
+                $currencyFormat = '#,##0.00';
+                $sheet->getStyle("H" . ($headerRow + 1) . ":N{$r}")->getNumberFormat()->setFormatCode($currencyFormat);
             },
         ];
     }
