@@ -327,7 +327,13 @@ class SupplierConnectionService
             foreach ($filesToProcess as $filePath) {
                 $tempInvoice = tempnam(sys_get_temp_dir(), "inv_");
 
-                if (@ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
+                // Normalizar ruta remota: si ftp_nlist devolvió solo el nombre del archivo, anteponer invoice_path
+                $remoteInvoiceFile = $filePath;
+                if (!str_contains($remoteInvoiceFile, '/')) {
+                    $remoteInvoiceFile = rtrim($connection->invoice_path, '/') . '/' . $filePath;
+                }
+
+                if (@ftp_get($ftp, $tempInvoice, $remoteInvoiceFile, FTP_BINARY) || @ftp_get($ftp, $tempInvoice, $filePath, FTP_BINARY)) {
                     $filename = pathinfo($filePath, PATHINFO_FILENAME);
                     $invoiceContent = file_get_contents($tempInvoice);
                     $isVitalClinic = str_contains(strtolower($connection->host ?? ''), 'vitalclinic')

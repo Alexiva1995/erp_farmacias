@@ -279,13 +279,26 @@ watch(
           <span class="text-xxs font-weight-black text-disabled text-uppercase letter-spacing-1">
             Protocolos Disponibles (Independientes):
           </span>
-          <span v-if="lastConnection" class="text-xxs text-success font-weight-bold d-flex align-center gap-1">
-            <VIcon icon="tabler-circle-check" size="14" color="success" />
-            Última sinc: {{ lastConnection }}
-          </span>
-          <span v-else class="text-xxs text-medium-emphasis">
-            Sin sincronizaciones previas en este protocolo
-          </span>
+          <div class="d-flex align-center gap-2">
+            <span v-if="lastConnection" class="text-xxs text-success font-weight-bold d-flex align-center gap-1">
+              <VIcon icon="tabler-circle-check" size="14" color="success" />
+              Última sinc: {{ lastConnection }}
+            </span>
+            <span v-else class="text-xxs text-medium-emphasis">
+              Sin sincronizaciones previas
+            </span>
+            <VBtn
+              variant="text"
+              color="primary"
+              density="compact"
+              size="small"
+              prepend-icon="tabler-history"
+              class="font-weight-bold text-xxs px-1 text-none"
+              @click="isHistoryOpen = true"
+            >
+              Historial
+            </VBtn>
+          </div>
         </div>
 
         <VTabs
@@ -603,37 +616,29 @@ watch(
 
       <VDivider />
 
-      <!-- Footer con acciones equilibradas -->
-      <VCardActions class="px-4 py-3 bg-white border-t d-flex flex-wrap align-center justify-space-between gap-2">
-        <VBtn
-          color="info"
-          variant="tonal"
-          height="38"
-          prepend-icon="tabler-history"
-          class="font-weight-bold rounded-lg text-xs"
-          @click="isHistoryOpen = true"
-        >
-          Historial de Sincronizaciones
-        </VBtn>
-
-        <div class="d-flex align-center flex-wrap gap-2 ms-auto">
+      <!-- Footer con acciones limpias y ordenadas -->
+      <VCardActions class="px-5 py-3 bg-white border-t d-flex align-center justify-space-between">
+        <div>
           <VBtn
             v-if="connectionsMap[form.type]"
             color="error"
-            variant="tonal"
+            variant="text"
             height="38"
             prepend-icon="tabler-trash"
-            class="font-weight-bold rounded-lg text-xs px-3"
+            class="font-weight-bold rounded-lg text-xs px-2 text-none"
             :loading="deletingProtocol"
             @click="deleteProtocolConfig"
           >
-            Eliminar {{ form.type.toUpperCase() }}
+            Eliminar protocolo {{ form.type.toUpperCase() }}
           </VBtn>
+        </div>
+
+        <div class="d-flex align-center gap-2">
           <VBtn
             color="secondary"
             variant="outlined"
             height="38"
-            class="font-weight-bold rounded-lg text-xs px-3"
+            class="font-weight-bold rounded-lg text-xs px-4"
             @click="close"
           >
             Cancelar
@@ -642,7 +647,7 @@ watch(
             color="primary"
             variant="flat"
             height="38"
-            class="font-weight-bold rounded-lg shadow-primary text-xs px-4"
+            class="font-weight-bold rounded-lg shadow-primary text-xs px-5"
             :loading="saving"
             @click="saveConfig"
           >
