@@ -666,7 +666,9 @@ class SupplierController extends Controller
             }
 
             // Preservar o asignar estructura por defecto para evitar errores de BD
-            if ($existingConn && !empty($existingConn->structure)) {
+            $isContinental = stripos($supplier->name, 'CONTIN') !== false || $supplier->id === 1032;
+
+            if ($existingConn && !empty($existingConn->structure) && !($isContinental && empty($existingConn->invoice_structure))) {
                 $data['structure'] = $existingConn->structure;
                 $data['invoice_structure'] = $existingConn->invoice_structure;
                 $data['parse_using'] = $existingConn->parse_using;
@@ -786,6 +788,36 @@ class SupplierController extends Controller
                     [ "target" => "unit_cost_usd", "file_field" => "G", "type" => "decimal" ],
                     [ "target" => "quantity", "file_field" => "H", "type" => "integer" ],
                     [ "target" => "laboratory", "file_field" => "I", "type" => "string" ]
+                ];
+                $data['invoice_structure'] = [
+                    "mode" => "grouped",
+                    "separator" => ";",
+                    "filter" => [ "starts_with" => "F", "ends_with" => ".txt" ],
+                    "header" => [
+                        "0" => [ "field" => "tipo", "type" => "string" ],
+                        "1" => [ "field" => "invoice_number", "type" => "string" ],
+                        "3" => [ "field" => "created_invoice_date", "type" => "date", "format" => "d/m/Y" ],
+                        "4" => [ "field" => "total_amount", "type" => "decimal" ],
+                        "7" => [ "field" => "total_usd", "type" => "decimal" ],
+                        "8" => [ "field" => "net_amount", "type" => "decimal" ],
+                        "9" => [ "field" => "exempt_amount", "type" => "decimal" ],
+                        "10" => [ "field" => "taxable_base", "type" => "decimal" ],
+                        "12" => [ "field" => "control_number", "type" => "string" ],
+                        "13" => [ "field" => "tax_amount", "type" => "decimal" ]
+                    ],
+                    "lines" => [
+                        "0" => [ "field" => "tipo", "type" => "string" ],
+                        "1" => [ "field" => "invoice_number", "type" => "string" ],
+                        "3" => [ "field" => "cod_supplier", "type" => "string" ],
+                        "4" => [ "field" => "barcode", "type" => "string" ],
+                        "5" => [ "field" => "descripcion_producto", "type" => "string" ],
+                        "6" => [ "field" => "quantity", "type" => "integer" ],
+                        "8" => [ "field" => "costo_bruto", "type" => "decimal" ],
+                        "10" => [ "field" => "unit_cost", "type" => "decimal" ],
+                        "11" => [ "field" => "lot_number", "type" => "string" ],
+                        "12" => [ "field" => "expiration_date", "type" => "date", "format" => "d/m/Y" ],
+                        "13" => [ "field" => "porcentaje_iva", "type" => "decimal" ]
+                    ]
                 ];
             } elseif (stripos($supplier->name, 'DROMEGA') !== false || $supplier->id === 1005 || $supplier->id === 9) {
                 $data['structure'] = [

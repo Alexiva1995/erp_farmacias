@@ -248,7 +248,7 @@ watch(
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="780px"
+    max-width="850px"
     persistent
     scrollable
     @update:model-value="close"
@@ -604,11 +604,11 @@ watch(
       <VDivider />
 
       <!-- Footer con acciones equilibradas -->
-      <VCardActions class="pa-4 bg-white border-t d-flex align-center justify-space-between">
+      <VCardActions class="px-4 py-3 bg-white border-t d-flex flex-wrap align-center justify-space-between gap-2">
         <VBtn
           color="info"
           variant="tonal"
-          height="42"
+          height="38"
           prepend-icon="tabler-history"
           class="font-weight-bold rounded-lg text-xs"
           @click="isHistoryOpen = true"
@@ -616,12 +616,12 @@ watch(
           Historial de Sincronizaciones
         </VBtn>
 
-        <div class="d-flex align-center gap-2">
+        <div class="d-flex align-center flex-wrap gap-2 ms-auto">
           <VBtn
             v-if="connectionsMap[form.type]"
             color="error"
             variant="tonal"
-            height="42"
+            height="38"
             prepend-icon="tabler-trash"
             class="font-weight-bold rounded-lg text-xs px-3"
             :loading="deletingProtocol"
@@ -632,8 +632,8 @@ watch(
           <VBtn
             color="secondary"
             variant="outlined"
-            height="42"
-            class="font-weight-bold rounded-lg text-xs px-4"
+            height="38"
+            class="font-weight-bold rounded-lg text-xs px-3"
             @click="close"
           >
             Cancelar
@@ -641,7 +641,7 @@ watch(
           <VBtn
             color="primary"
             variant="flat"
-            height="42"
+            height="38"
             class="font-weight-bold rounded-lg shadow-primary text-xs px-4"
             :loading="saving"
             @click="saveConfig"

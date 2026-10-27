@@ -553,43 +553,79 @@ const formatNumber = (val) => {
       <VCard variant="outlined" class="mt-4 pa-4 rounded-lg">
         <div class="d-flex align-center gap-2 mb-3">
           <VIcon icon="tabler-clipboard-list" color="primary" />
-          <span class="text-subtitle-1 font-weight-bold">RESUMEN LIBRO DE VENTAS (SENIAT)</span>
+          <span class="text-subtitle-1 font-weight-bold">RESUMEN DE LIBRO DE VENTAS</span>
         </div>
 
         <VTable density="compact" class="summary-table">
           <thead>
             <tr class="bg-light">
               <th class="font-weight-bold">Concepto</th>
+              <th class="text-center font-weight-bold">ITEM</th>
               <th class="text-right font-weight-bold">Base Imponible</th>
+              <th class="text-center font-weight-bold">ITEM</th>
               <th class="text-right font-weight-bold">Débito Fiscal</th>
-              <th class="text-right font-weight-bold">Retenciones IVA</th>
-              <th class="text-right font-weight-bold">IGTF (3%)</th>
+              <th class="text-right font-weight-bold">IVA Retenido</th>
+              <th class="text-right font-weight-bold">I.G.T.F.</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>Total Ventas Internas No Gravadas:</td>
+              <td>Total Ventas Internas no Gravadas:</td>
+              <td class="text-center">40</td>
               <td class="text-right font-tabular">{{ formatNumber(book?.total_non_taxable_sales) }}</td>
+              <td class="text-center">-</td>
               <td class="text-right font-tabular">0,00</td>
               <td class="text-right font-tabular">0,00</td>
               <td class="text-right font-tabular">0,00</td>
             </tr>
             <tr>
-              <td>Total Ventas Internas Gravadas Alícuota General (16%):</td>
+              <td>Total Ventas Exportación Afectas solo Alicuota General:</td>
+              <td class="text-center">41</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-center">-</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+            </tr>
+            <tr>
+              <td>Total Ventas Internas Afectas solo Alicuota General:</td>
+              <td class="text-center">42</td>
               <td class="text-right font-tabular">{{ formatNumber(book?.total_taxpayer_taxable_base) }}</td>
+              <td class="text-center">43</td>
               <td class="text-right font-tabular">{{ formatNumber(book?.total_taxpayer_vat) }}</td>
               <td class="text-right font-tabular text-error font-weight-bold">{{ formatNumber(book?.total_vat_withheld) }}</td>
-              <td class="text-right font-tabular">{{ formatNumber(book?.total_igtf) }}</td>
+              <td class="text-right font-tabular">0,00</td>
             </tr>
-            <tr v-if="isZoomActive">
-              <td>Total Ventas Internas Gravadas Alícuota Reducida (Zoom 8%):</td>
+            <tr>
+              <td>Total Ventas Internas Afectas en Alicuota General + Adicional:</td>
+              <td class="text-center">442</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-center">452</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+            </tr>
+            <tr>
+              <td>Total Ventas Internas Afectas solo Alicuota Reducida:</td>
+              <td class="text-center">443</td>
               <td class="text-right font-tabular">{{ formatNumber(book?.total_non_taxpayer_taxable_base) }}</td>
+              <td class="text-center">453</td>
               <td class="text-right font-tabular">{{ formatNumber(book?.total_non_taxpayer_vat) }}</td>
               <td class="text-right font-tabular">0,00</td>
               <td class="text-right font-tabular">0,00</td>
             </tr>
+            <tr>
+              <td>Total Ajustes a Periodos Anteriores:</td>
+              <td class="text-center">46</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-center">47</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+              <td class="text-right font-tabular">0,00</td>
+            </tr>
             <tr class="font-weight-bold bg-light">
-              <td>TOTALES</td>
+              <td>Total Ventas y Debitos Fiscales del Período:</td>
+              <td></td>
               <td class="text-right font-tabular">
                 {{
                   formatNumber(
@@ -599,6 +635,7 @@ const formatNumber = (val) => {
                   )
                 }}
               </td>
+              <td></td>
               <td class="text-right font-tabular">
                 {{
                   formatNumber(
@@ -608,7 +645,11 @@ const formatNumber = (val) => {
                 }}
               </td>
               <td class="text-right text-error font-tabular">{{ formatNumber(book?.total_vat_withheld) }}</td>
-              <td class="text-right font-tabular">{{ formatNumber(book?.total_igtf) }}</td>
+              <td class="text-right font-tabular">0,00</td>
+            </tr>
+            <tr class="font-weight-bold">
+              <td colspan="6">TOTAL I.G.T.F.:</td>
+              <td class="text-right text-warning font-weight-bold font-tabular">{{ formatNumber(book?.total_igtf) }}</td>
             </tr>
           </tbody>
         </VTable>

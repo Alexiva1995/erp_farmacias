@@ -1181,6 +1181,9 @@ class SupplierConnectionService
             $isDromega = str_contains(strtolower($connection->host ?? ''), 'dromega')
                 || str_contains(strtolower($connection->supplier?->name ?? ''), 'dromega')
                 || in_array($connection->supplier_id, [9, 15, 38, 1005]);
+            $isContinental = str_contains(strtolower($connection->host ?? ''), '186.167.68.54')
+                || str_contains(strtolower($connection->supplier?->name ?? ''), 'contin')
+                || (int)$connection->supplier_id === 1032;
 
             // Modo agrupado (por ejemplo, Dronena / Dromega)
             $invoicesList = [];
@@ -1227,6 +1230,14 @@ class SupplierConnectionService
 
                     if ($invoiceNumber && in_array($invoiceNumber, $seenInvoiceNumbers)) {
                         continue;
+                    }
+
+                    if ($isContinental) {
+                        $totalUSD = floatval($currentHeader["total_usd"] ?? 0);
+                        $totalAmt = floatval($currentHeader["total_amount"] ?? 0);
+                        if ($totalUSD > 0 && $totalAmt > 0) {
+                            $currentHeader["exchange_rate"] = round($totalAmt / $totalUSD, 4);
+                        }
                     }
 
                     if ($isDromega) {

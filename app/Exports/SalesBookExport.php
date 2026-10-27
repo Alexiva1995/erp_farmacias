@@ -7,7 +7,6 @@ namespace App\Exports;
 use App\Models\GeneralSetting;
 use App\Models\SalesBook;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -16,9 +15,10 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class SalesBookExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithEvents
+class SalesBookExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithEvents
 {
     protected GeneralSetting $settings;
     protected bool $enableZoom;
@@ -157,13 +157,24 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, Shou
     public function styles(Worksheet $sheet)
     {
         return [
-            1 => ['font' => ['bold' => true, 'size' => 12]],
-            2 => ['font' => ['bold' => true]],
-            3 => ['font' => ['bold' => true]],
-            4 => ['font' => ['bold' => true, 'color' => ['rgb' => '003366']]],
-            5 => ['font' => ['bold' => true]],
+            1 => ['font' => ['bold' => true, 'size' => 11]],
+            2 => ['font' => ['bold' => true, 'size' => 9]],
+            3 => ['font' => ['bold' => true, 'size' => 9]],
+            4 => ['font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '003366']]],
+            5 => ['font' => ['bold' => true, 'size' => 9]],
+            7 => [
+                'font' => ['bold' => true, 'size' => 8, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => '1A365D'],
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                ],
+            ],
             8 => [
-                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'font' => ['bold' => true, 'size' => 7.5, 'color' => ['rgb' => 'FFFFFF']],
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
                     'startColor' => ['rgb' => '2B5797'],
@@ -186,6 +197,99 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, Shou
                 $totalRow = $lastDataRow + 1;
 
                 $lastColLetter = $this->enableZoom ? 'AB' : 'Y';
+
+                // Configuración de página para impresión en 1 sola hoja de ancho horizontal
+                $sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+                $sheet->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_LETTER);
+                $sheet->getPageSetup()->setFitToWidth(1);
+                $sheet->getPageSetup()->setFitToHeight(0);
+                $sheet->getSheetView()->setView(\PhpOffice\PhpSpreadsheet\Worksheet\SheetView::SHEETVIEW_NORMAL);
+                $sheet->getPageMargins()->setTop(0.5)->setBottom(0.5)->setLeft(0.3)->setRight(0.3);
+
+                // Combinar celdas del membrete superior para que la columna A no se deforme
+                for ($row = 1; $row <= 5; $row++) {
+                    $sheet->mergeCells("A{$row}:P{$row}");
+                    $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                }
+
+                // Combinar celdas del encabezado de agrupaciones (fila 7)
+                $sheet->mergeCells('A7:P7');
+                $sheet->setCellValue('A7', 'DATOS GENERALES DE LA TRANSACCIÓN');
+                $sheet->mergeCells('Q7:R7');
+                $sheet->setCellValue('Q7', 'TOTALES');
+
+                if ($this->enableZoom) {
+                    $sheet->mergeCells('S7:U7');
+                    $sheet->setCellValue('S7', 'VENTAS GRAVADAS (16%)');
+                    $sheet->mergeCells('V7:X7');
+                    $sheet->setCellValue('V7', 'VENTAS A NO CONTRIBUYENTES (ZOOM 8%)');
+                    $sheet->mergeCells('Y7:AA7');
+                    $sheet->setCellValue('Y7', 'RETENCIONES');
+                    $sheet->setCellValue('AB7', 'IGTF');
+                } else {
+                    $sheet->mergeCells('S7:U7');
+                    $sheet->setCellValue('S7', 'VENTAS GRAVADAS (16%)');
+                    $sheet->mergeCells('V7:X7');
+                    $sheet->setCellValue('V7', 'RETENCIONES');
+                    $sheet->setCellValue('Y7', 'IGTF');
+                }
+
+                // Ajustar altura de filas de encabezado
+                $sheet->getRowDimension(7)->setRowHeight(22);
+                $sheet->getRowDimension(8)->setRowHeight(38);
+
+                // Anchos fijos y compactos por columna para formato imprimible y texto arriba/abajo (wrapText)
+                $columnWidths = [
+                    'A' => 6,   // Nro.
+                    'B' => 10,  // FECHA
+                    'C' => 12,  // CEDULA O R.I.F.
+                    'D' => 24,  // NOMBRE O RAZÓN SOCIAL
+                    'E' => 11,  // Nº PLANILLA EXPORTACIÓN
+                    'F' => 11,  // TIPO DE DOCUMENTO
+                    'G' => 11,  // Nº FACTURA
+                    'H' => 11,  // Nº DE CONTROL
+                    'I' => 10,  // NUMERO DE REPORTE Z
+                    'J' => 10,  // Factura inicial Z
+                    'K' => 10,  // Factura Final Z
+                    'L' => 12,  // REG. MAQUINA
+                    'M' => 10,  // Nº NOTA DE DEBITO
+                    'N' => 10,  // Nº NOTA DE CREDITO
+                    'O' => 10,  // Nº FACTURA AFECTADA
+                    'P' => 12,  // TIPO DE TRANSACCION
+                    'Q' => 13,  // TOTAL VENTAS INCLUYENDO IVA
+                    'R' => 12,  // VENTAS INTERNAS NO GRAVADAS
+                    'S' => 12,  // BASE IMPONIBLE
+                    'T' => 7,   // %IVA
+                    'U' => 11,  // IVA
+                ];
+
+                if ($this->enableZoom) {
+                    $columnWidths['V'] = 12; // BASE IMPONIBLE ZOOM
+                    $columnWidths['W'] = 7;  // %IVA ZOOM
+                    $columnWidths['X'] = 11; // IVA ZOOM
+                    $columnWidths['Y'] = 11; // IVA RETENIDO
+                    $columnWidths['Z'] = 13; // Nº COMPROBANTE DE RETENCIÓN
+                    $columnWidths['AA'] = 11; // FECHA DE RECEPCION COMPROBANTE
+                    $columnWidths['AB'] = 11; // IGTF
+                } else {
+                    $columnWidths['V'] = 11; // IVA RETENIDO
+                    $columnWidths['W'] = 13; // Nº COMPROBANTE DE RETENCIÓN
+                    $columnWidths['X'] = 11; // FECHA DE RECEPCION COMPROBANTE
+                    $columnWidths['Y'] = 11; // IGTF
+                }
+
+                foreach ($columnWidths as $col => $width) {
+                    $sheet->getColumnDimension($col)->setWidth($width);
+                }
+
+                // Aplicar wrap text y fuente compacta (7.5pt) al rango de datos y encabezados
+                $sheet->getStyle("A8:{$lastColLetter}{$lastDataRow}")->applyFromArray([
+                    'font' => ['size' => 7.5],
+                    'alignment' => [
+                        'vertical' => Alignment::VERTICAL_CENTER,
+                        'wrapText' => true,
+                    ],
+                ]);
 
                 // Fila de TOTALES
                 $sheet->setCellValue("P{$totalRow}", 'TOTALES');
@@ -213,7 +317,7 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, Shou
                 }
 
                 $sheet->getStyle("P{$totalRow}:{$lastColLetter}{$totalRow}")->applyFromArray([
-                    'font' => ['bold' => true],
+                    'font' => ['bold' => true, 'size' => 8],
                     'borders' => [
                         'top' => ['borderStyle' => Border::BORDER_THIN],
                         'bottom' => ['borderStyle' => Border::BORDER_DOUBLE],
