@@ -401,17 +401,6 @@ const formatNumber = (val) => {
         <VProgressLinear v-if="loading" indeterminate color="primary" />
         <table class="table-book">
           <thead>
-            <tr class="header-group">
-              <th colspan="16" class="text-center bg-primary-dark">DATOS GENERALES DE LA TRANSACCIÓN</th>
-              <th colspan="2" class="text-center bg-primary">TOTALES</th>
-              <th colspan="3" class="text-center bg-primary">VENTAS GRAVADAS (16%)</th>
-              <th v-if="isZoomActive" colspan="3" class="text-center bg-warning text-dark font-weight-bold">
-                ZOOM (ALÍCUOTA REDUCIDA 8%)
-              </th>
-              <th colspan="3" class="text-center bg-primary">RETENCIONES</th>
-              <th class="text-center bg-primary-dark">IGTF</th>
-              <th v-if="book?.is_open" class="text-center bg-primary-dark">ACCIÓN</th>
-            </tr>
             <tr class="header-columns">
               <th>Nro.</th>
               <th>FECHA</th>

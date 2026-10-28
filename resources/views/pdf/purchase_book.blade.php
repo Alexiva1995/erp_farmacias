@@ -105,24 +105,15 @@
 <body>
 
     <div class="header">
-        <h2>NOMBRE O RAZÓN SOCIAL: {{ $settings->app_name ?: 'EMPRESA' }}</h2>
-        <p><strong>R.I.F.:</strong> {{ $settings->app_rif ?: $settings->rif ?: 'J-00000000-0' }} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>DIRECCIÓN:</strong> {{ $settings->address ?: 'N/A' }}</p>
+        <h2>NOMBRE O RAZÓN SOCIAL: {{ mb_strtoupper($settings->app_name ?: 'EMPRESA', 'UTF-8') }}</h2>
+        <p><strong>R.I.F.:</strong> {{ mb_strtoupper($settings->app_rif ?: $settings->rif ?: 'J-00000000-0', 'UTF-8') }} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>DIRECCIÓN FISCAL:</strong> {{ mb_strtoupper($settings->address ?: 'N/A', 'UTF-8') }}</p>
         <p><strong>LIBRO DE COMPRAS DESDE {{ $book->start_date->format('d/m/Y') }} HASTA {{ $book->end_date->format('d/m/Y') }}</strong> &nbsp;&nbsp;|&nbsp;&nbsp; 
-           <strong>CONDICIÓN:</strong> {{ ($settings->special_taxpayer_status === 'activada' || $settings->enable_ce) ? 'CONTRIBUYENTE ESPECIAL' : 'CONTRIBUYENTE ORDINARIO' }}
+           <strong>CONDICIÓN FISCAL:</strong> {{ mb_strtoupper(($settings->special_taxpayer_status === 'activada' || $settings->enable_ce) ? 'CONTRIBUYENTE ESPECIAL' : 'CONTRIBUYENTE ORDINARIO', 'UTF-8') }}
         </p>
     </div>
 
     <table class="table-data">
         <thead>
-            <tr>
-                <th colspan="13">DATOS GENERALES DE LA TRANSACCIÓN</th>
-                <th colspan="2">TOTALES GENERALES</th>
-                <th colspan="3">COMPRAS INTERNAS / IMPORTACIÓN (16%)</th>
-                @if($enableZoom)
-                    <th colspan="3" class="zoom-header">COMPRAS INTERNAS (ZOOM 8%)</th>
-                @endif
-                <th colspan="2">RETENCIONES</th>
-            </tr>
             <tr>
                 <th style="width: 2.5%;">Nro.</th>
                 <th style="width: 5%;">Fecha</th>
