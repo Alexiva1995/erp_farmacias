@@ -286,12 +286,20 @@ const formatNumber = (val) => {
 
 <template>
   <div class="sales-book-view">
-    <!-- Encabezado de la Vista Dedicada -->
+    <!-- Encabezado de la Vista Dedicada con Acciones Homologadas -->
     <VCard class="mb-4 pa-4 rounded-lg">
       <div class="d-flex align-center justify-space-between flex-wrap gap-3">
         <div class="d-flex align-center gap-3">
-          <VBtn icon variant="tonal" size="small" @click="router.push('/fiscal/libros/ventas')">
+          <VBtn
+            icon
+            variant="tonal"
+            color="secondary"
+            size="38"
+            rounded="circle"
+            @click="router.push('/fiscal/libros/ventas')"
+          >
             <VIcon icon="tabler-arrow-left" />
+            <VTooltip activator="parent" location="top">Volver a Libros de Ventas</VTooltip>
           </VBtn>
 
           <div>
@@ -307,6 +315,10 @@ const formatNumber = (val) => {
               >
                 {{ book?.status_label }}
               </VChip>
+              <VChip v-if="isZoomActive" size="small" color="warning" class="font-weight-bold">
+                <VIcon start size="14">tabler-percentage</VIcon>
+                Alícuota Reducida Zoom (8%) Activa
+              </VChip>
             </div>
             <p class="text-caption text-medium-emphasis mb-0 mt-1">
               Período: <strong>{{ book?.start_date }}</strong> al <strong>{{ book?.end_date }}</strong>
@@ -315,82 +327,54 @@ const formatNumber = (val) => {
           </div>
         </div>
 
-        <div class="d-flex align-center gap-2 flex-wrap">
-          <VBtn
-            v-if="book?.is_open"
-            color="primary"
-            variant="outlined"
-            size="small"
-            :loading="syncing"
-            prepend-icon="tabler-refresh"
-            @click="handleSync"
-          >
-            Sincronizar
-          </VBtn>
+        <div class="d-flex align-center gap-1 flex-wrap">
+          <!-- Menú Exportar Homologado con AppFilterBase -->
+          <VMenu>
+            <template #activator="{ props: menuProps }">
+              <VBtn
+                v-bind="menuProps"
+                icon
+                color="success"
+                variant="tonal"
+                size="38"
+                rounded="circle"
+              >
+                <VIcon icon="tabler-file-export" />
+                <VTooltip activator="parent" location="top">Exportar Reporte</VTooltip>
+              </VBtn>
+            </template>
+            <VList density="compact">
+              <VListItem @click="handleExportExcel">
+                <template #prepend>
+                  <VIcon icon="tabler-file-type-csv" size="18" color="success" />
+                </template>
+                <VListItemTitle>Excel</VListItemTitle>
+              </VListItem>
+              <VListItem @click="handleExportPdf">
+                <template #prepend>
+                  <VIcon icon="tabler-file-type-pdf" size="18" color="error" />
+                </template>
+                <VListItemTitle>PDF</VListItemTitle>
+              </VListItem>
+            </VList>
+          </VMenu>
 
+          <!-- Cerrar Libro -->
           <VBtn
             v-if="book?.is_open"
-            color="secondary"
+            icon
+            color="error"
             variant="tonal"
-            size="small"
-            prepend-icon="tabler-plus"
-            @click="openCreateModal"
-          >
-            Agregar Fila
-          </VBtn>
-
-          <VBtn
-            color="success"
-            variant="outlined"
-            size="small"
-            prepend-icon="tabler-file-spreadsheet"
-            @click="handleExportExcel"
-          >
-            Excel
-          </VBtn>
-
-          <VBtn
-            color="error"
-            variant="outlined"
-            size="small"
-            prepend-icon="tabler-file-type-pdf"
-            @click="handleExportPdf"
-          >
-            PDF
-          </VBtn>
-
-          <VBtn
-            v-if="book?.is_open"
-            color="error"
-            variant="flat"
-            size="small"
+            size="38"
+            rounded="circle"
             :loading="closing"
-            prepend-icon="tabler-lock"
             @click="handleCloseBook"
           >
-            Cerrar Libro
+            <VIcon icon="tabler-lock" />
+            <VTooltip activator="parent" location="top">Cerrar Libro</VTooltip>
           </VBtn>
         </div>
       </div>
-    </VCard>
-
-    <!-- Membrete Fiscal de la Empresa -->
-    <VCard class="mb-4 pa-4 rounded-lg bg-surface">
-      <VRow align="center" justify="space-between">
-        <VCol cols="12" md="8">
-          <div class="text-body-2">
-            <strong>Razón Social:</strong> {{ book?.company_info?.name || 'N/A' }} &nbsp;|&nbsp;
-            <strong>R.I.F.:</strong> {{ book?.company_info?.rif || 'N/A' }}<br>
-            <strong>Dirección Fiscal:</strong> {{ book?.company_info?.address || 'N/A' }}
-          </div>
-        </VCol>
-        <VCol cols="12" md="4" class="d-flex justify-end align-center">
-          <VChip v-if="isZoomActive" size="small" color="warning" class="font-weight-bold">
-            <VIcon start size="14">tabler-percentage</VIcon>
-            Alícuota Reducida Zoom (8%) Activa
-          </VChip>
-        </VCol>
-      </VRow>
     </VCard>
 
     <!-- Buscador Rápido y Tabla de Transacciones -->
