@@ -51,30 +51,13 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
 
         $headings = [
             ['NOMBRE O RAZON SOCIAL: ' . ($this->settings->app_name ?: 'EMPRESA')],
-            ['R.I.F.   ' . ($this->settings->app_rif ?: $this->settings->rif ?: 'J-00000000-0')],
-            ['DIRECCIÓN: ' . ($this->settings->address ?: 'N/A')],
+            ['R.I.F.: ' . ($this->settings->app_rif ?: $this->settings->rif ?: 'J-00000000-0')],
+            ['DIRECCIÓN FISCAL: ' . ($this->settings->address ?: 'N/A')],
             [$periodText],
-            [$taxpayerType],
-            // Fila 6 eliminada (sin fila vacía desordenada)
+            ['CONDICIÓN FISCAL: ' . $taxpayerType],
         ];
 
-        // Fila 6: Encabezado superior agrupado
-        if ($this->enableZoom) {
-            $headings[] = [
-                'DATOS GENERALES DE LA TRANSACCIÓN', '', '', '', '', '', '', '', '', '', '', '', '',
-                'COMPRAS INTERNAS O IMPORTACIONES', '', '',
-                'COMPRAS INTERNAS O IMPORTACIONES (ZOOM 8%)', '', '',
-                'RETENCIONES', ''
-            ];
-        } else {
-            $headings[] = [
-                'DATOS GENERALES DE LA TRANSACCIÓN', '', '', '', '', '', '', '', '', '', '', '', '',
-                'COMPRAS INTERNAS O IMPORTACIONES', '', '',
-                'RETENCIONES', ''
-            ];
-        }
-
-        // Fila 7: Columnas principales
+        // Fila 6: Columnas principales directas (sin fila de datos generales)
         $cols = [
             'Nro.',
             'Fecha de Operación',
@@ -97,9 +80,9 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
         ];
 
         if ($this->enableZoom) {
-            $cols[] = 'Base Imponible';
+            $cols[] = 'Base Imponible (Zoom)';
             $cols[] = '% Alicuota';
-            $cols[] = 'IVA General';
+            $cols[] = 'IVA General (Zoom)';
         }
 
         $cols[] = 'Iva Retenido';
@@ -180,96 +163,19 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
 
     public function styles(Worksheet $sheet)
     {
-        $lastColLetter = $this->enableZoom ? 'W' : 'T';
-
-        // Configuración de página para impresión en 1 sola hoja de ancho horizontal
-        $sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
-        $sheet->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_LETTER);
-        $sheet->getPageSetup()->setFitToWidth(1);
-        $sheet->getPageSetup()->setFitToHeight(0);
-        $sheet->getSheetView()->setView(SheetView::SHEETVIEW_NORMAL);
-        $sheet->getPageMargins()->setTop(0.5)->setBottom(0.5)->setLeft(0.3)->setRight(0.3);
-
-        // Combinar celdas del membrete superior para que no ensanchen la columna A
-        for ($row = 1; $row <= 5; $row++) {
-            $sheet->mergeCells("A{$row}:{$lastColLetter}{$row}");
-            $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-        }
-
-        // Combinar celdas de agrupación fila 6
-        $sheet->mergeCells('A6:M6');
-        $sheet->mergeCells('N6:R6');
-
-        if ($this->enableZoom) {
-            $sheet->mergeCells('S6:U6');
-            $sheet->mergeCells('V6:W6');
-        } else {
-            $sheet->mergeCells('S6:T6');
-        }
-
-        // Anchos de columna específicos y optimizados para impresión
-        $columnWidths = [
-            'A' => 6,   // Nro.
-            'B' => 11,  // Fecha de Operación
-            'C' => 12,  // R.I.F.
-            'D' => 24,  // Nombre o Razon Social
-            'E' => 11,  // C80 o C81
-            'F' => 11,  // Expediente Importación
-            'G' => 12,  // Número de Factura
-            'H' => 12,  // Número de Control
-            'I' => 10,  // Número de Nota Débito
-            'J' => 10,  // Número de Nota Crédito
-            'K' => 12,  // Número de Factura Afectada
-            'L' => 9,   // Tipo de Documento
-            'M' => 8,   // Tipo Transacción
-            'N' => 14,  // Total Compras incluyendo IVA
-            'O' => 12,  // Compras sin derecho a Crédito
-            'P' => 13,  // Base Imponible
-            'Q' => 8,   // % Alicuota
-            'R' => 12,  // IVA General
-        ];
-
-        if ($this->enableZoom) {
-            $columnWidths['S'] = 13; // Base Imponible Zoom
-            $columnWidths['T'] = 8;  // % Alicuota Zoom
-            $columnWidths['U'] = 12; // IVA General Zoom
-            $columnWidths['V'] = 12; // Iva Retenido
-            $columnWidths['W'] = 14; // Número de Comprobante
-        } else {
-            $columnWidths['S'] = 12; // Iva Retenido
-            $columnWidths['T'] = 14; // Número de Comprobante
-        }
-
-        foreach ($columnWidths as $col => $width) {
-            $sheet->getColumnDimension($col)->setWidth($width);
-        }
-
-        // Altura de filas de cabecera
-        $sheet->getRowDimension(6)->setRowHeight(22);
-        $sheet->getRowDimension(7)->setRowHeight(38);
+        $lastCol = $this->enableZoom ? 'W' : 'T';
 
         return [
-            1 => ['font' => ['bold' => true, 'size' => 11]],
-            2 => ['font' => ['bold' => true, 'size' => 9]],
-            3 => ['font' => ['bold' => true, 'size' => 9]],
-            4 => ['font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '003366']]],
-            5 => ['font' => ['bold' => true, 'size' => 9]],
+            1 => ['font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => '1E293B']]],
+            2 => ['font' => ['bold' => true, 'size' => 9.5, 'color' => ['rgb' => '334155']]],
+            3 => ['font' => ['bold' => false, 'size' => 8.5, 'color' => ['rgb' => '475569']]],
+            4 => ['font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '1E3A8A']]],
+            5 => ['font' => ['bold' => true, 'size' => 9, 'color' => ['rgb' => '0F766E']]],
             6 => [
                 'font' => ['bold' => true, 'size' => 8, 'color' => ['rgb' => 'FFFFFF']],
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => '1A365D'],
-                ],
-                'alignment' => [
-                    'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'vertical' => Alignment::VERTICAL_CENTER,
-                ],
-            ],
-            7 => [
-                'font' => ['bold' => true, 'size' => 7.5, 'color' => ['rgb' => 'FFFFFF']],
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => '2B5797'],
+                    'startColor' => ['rgb' => '1E3A8A'],
                 ],
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_CENTER,
@@ -278,7 +184,7 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
                 ],
             ],
             // Ajustar texto y tamaño compacto para las filas de datos
-            "A8:{$lastColLetter}500" => [
+            "A7:{$lastCol}500" => [
                 'font' => ['size' => 7.5],
                 'alignment' => [
                     'vertical' => Alignment::VERTICAL_CENTER,
@@ -286,14 +192,14 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
                 ],
             ],
             // Alineación a la derecha para Número de Factura (G) y Número de Control (H)
-            "G8:H500" => [
+            "G7:H500" => [
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_RIGHT,
                     'vertical' => Alignment::VERTICAL_CENTER,
                 ],
             ],
             // Alineación centrada para códigos y comprobantes
-            "I8:K500" => [
+            "I7:K500" => [
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_RIGHT,
                     'vertical' => Alignment::VERTICAL_CENTER,
@@ -307,20 +213,92 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $lastDataRow = 7 + $this->rowCount;
+                $lastDataRow = 6 + $this->rowCount;
                 $totalRow = $lastDataRow + 1;
 
                 $lastColLetter = $this->enableZoom ? 'W' : 'T';
 
-                // Bordes de cuadrícula completos para encabezados y datos
+                // Configuración de página para impresión en 1 sola hoja de ancho horizontal
+                $sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
+                $sheet->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_LETTER);
+                $sheet->getPageSetup()->setFitToWidth(1);
+                $sheet->getPageSetup()->setFitToHeight(0);
+                $sheet->getSheetView()->setView(SheetView::SHEETVIEW_NORMAL);
+                $sheet->getPageMargins()->setTop(0.4)->setBottom(0.4)->setLeft(0.25)->setRight(0.25);
+
+                // Alturas de filas del membrete para orden visual uniforme
+                $sheet->getRowDimension(1)->setRowHeight(20);
+                $sheet->getRowDimension(2)->setRowHeight(16);
+                $sheet->getRowDimension(3)->setRowHeight(16);
+                $sheet->getRowDimension(4)->setRowHeight(18);
+                $sheet->getRowDimension(5)->setRowHeight(16);
+
+                // Combinar celdas del membrete superior para que no ensanchen la columna A
+                for ($row = 1; $row <= 5; $row++) {
+                    $sheet->mergeCells("A{$row}:{$lastColLetter}{$row}");
+                    $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                }
+
+                // Altura de fila de títulos de columna
+                $sheet->getRowDimension(6)->setRowHeight(36);
+
+                // Anchos de columna específicos y optimizados para impresión
+                $columnWidths = [
+                    'A' => 6,   // Nro.
+                    'B' => 11,  // Fecha de Operación
+                    'C' => 12,  // R.I.F.
+                    'D' => 24,  // Nombre o Razon Social
+                    'E' => 11,  // C80 o C81
+                    'F' => 11,  // Expediente Importación
+                    'G' => 12,  // Número de Factura
+                    'H' => 12,  // Número de Control
+                    'I' => 10,  // Número de Nota Débito
+                    'J' => 10,  // Número de Nota Crédito
+                    'K' => 12,  // Número de Factura Afectada
+                    'L' => 9,   // Tipo de Documento
+                    'M' => 8,   // Tipo Transacción
+                    'N' => 14,  // Total Compras incluyendo IVA
+                    'O' => 12,  // Compras sin derecho a Crédito
+                    'P' => 13,  // Base Imponible
+                    'Q' => 8,   // % Alicuota
+                    'R' => 12,  // IVA General
+                ];
+
+                if ($this->enableZoom) {
+                    $columnWidths['S'] = 13; // Base Imponible Zoom
+                    $columnWidths['T'] = 8;  // % Alicuota Zoom
+                    $columnWidths['U'] = 12; // IVA General Zoom
+                    $columnWidths['V'] = 12; // Iva Retenido
+                    $columnWidths['W'] = 14; // Número de Comprobante
+                } else {
+                    $columnWidths['S'] = 12; // Iva Retenido
+                    $columnWidths['T'] = 14; // Número de Comprobante
+                }
+
+                foreach ($columnWidths as $col => $width) {
+                    $sheet->getColumnDimension($col)->setWidth($width);
+                }
+
+                // Bordes de cuadrícula completos para encabezados y datos con líneas marcadas
                 $sheet->getStyle("A6:{$lastColLetter}{$lastDataRow}")->applyFromArray([
                     'borders' => [
                         'allBorders' => [
                             'borderStyle' => Border::BORDER_THIN,
-                            'color' => ['rgb' => 'D0D0D0'],
+                            'color' => ['rgb' => '94A3B8'],
                         ],
                     ],
                 ]);
+
+                // Filas cebra alternas en el cuerpo de la tabla para lectura clara
+                for ($r = 7; $r <= $lastDataRow; $r++) {
+                    $sheet->getRowDimension($r)->setRowHeight(19);
+                    if ($r % 2 === 0) {
+                        $sheet->getStyle("A{$r}:{$lastColLetter}{$r}")->getFill()->applyFromArray([
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => ['rgb' => 'F8FAFC'],
+                        ]);
+                    }
+                }
 
                 // Fila de TOTAL
                 $sheet->setCellValue("M{$totalRow}", 'TOTAL');
@@ -337,24 +315,18 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
                     $sheet->setCellValue("U{$totalRow}", (float) $this->book->total_reduced_vat);
                     $sheet->setCellValue("V{$totalRow}", (float) $this->book->total_vat_withheld);
 
-                    // Encabezado Zoom (filas 6 y 7): tono ámbar oscuro con texto blanco
+                    // Encabezado Zoom (fila 6): tono ámbar oscuro con texto blanco
                     $sheet->getStyle("S6:U6")->getFill()->applyFromArray([
-                        'fillType' => Fill::FILL_SOLID,
-                        'startColor' => ['rgb' => 'D97706'],
-                    ]);
-                    $sheet->getStyle("S6:U6")->getFont()->getColor()->setRGB('FFFFFF');
-
-                    $sheet->getStyle("S7:U7")->getFill()->applyFromArray([
                         'fillType' => Fill::FILL_SOLID,
                         'startColor' => ['rgb' => 'B45309'],
                     ]);
-                    $sheet->getStyle("S7:U7")->getFont()->getColor()->setRGB('FFFFFF');
+                    $sheet->getStyle("S6:U6")->getFont()->getColor()->setRGB('FFFFFF');
 
-                    // Celdas de datos Zoom (fila 8 en adelante): fondo amarillo claro
-                    if ($lastDataRow >= 8) {
-                        $sheet->getStyle("S8:U{$lastDataRow}")->getFill()->applyFromArray([
+                    // Celdas de datos Zoom (fila 7 en adelante): fondo amarillo claro
+                    if ($lastDataRow >= 7) {
+                        $sheet->getStyle("S7:U{$lastDataRow}")->getFill()->applyFromArray([
                             'fillType' => Fill::FILL_SOLID,
-                            'startColor' => ['rgb' => 'FFF2CC'],
+                            'startColor' => ['rgb' => 'FEF3C7'],
                         ]);
                     }
                 } else {
@@ -368,7 +340,7 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
                         'bottom' => ['borderStyle' => Border::BORDER_DOUBLE],
                         'allBorders' => [
                             'borderStyle' => Border::BORDER_THIN,
-                            'color' => ['rgb' => 'B0B0B0'],
+                            'color' => ['rgb' => '64748B'],
                         ],
                     ],
                 ]);
