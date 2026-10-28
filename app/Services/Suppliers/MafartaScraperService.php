@@ -864,11 +864,13 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                 ]
             ];
 
-            // 9. Enviar petición multipart a la API oficial de Cobeca
+            // 9. Enviar petición multipart a la API oficial de Cobeca (timeout extendido a 90s)
             $submitRes = Http::withHeaders([
                 'Authorization' => "Bearer {$token}",
                 'Accept' => 'application/json',
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
             ])->withoutVerifying()
+            ->timeout(90)
             ->attach('Imagen', $fileContent, $fileName)
             ->post('https://sic.drogueriascobeca.com/api/pago/pagar', [
                 'Pago' => json_encode($pagoPayload),
