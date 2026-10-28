@@ -52,26 +52,30 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
             ['DIRECCIÓN: ' . ($this->settings->address ?: 'N/A')],
             [$periodText],
             [$taxpayerType],
-            [],
+            // Fila 6 eliminada (no necesaria)
         ];
 
-        // Encabezado superior agrupado
+        // Fila 6: Encabezado superior agrupado
         if ($this->enableZoom) {
             $headings[] = [
-                '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
-                'VENTAS INTERNAS GRAVADAS A CONTRIBUYENTES', '', '',
-                'VENTAS INTERNAS GRAVADAS A NO CONTRIBUYENTES', '', '',
-                '', '', '', ''
+                'DATOS GENERALES DE LA TRANSACCIÓN', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+                'TOTALES', '',
+                'VENTAS GRAVADAS (16%)', '', '',
+                'VENTAS A NO CONTRIBUYENTES (ZOOM 8%)', '', '',
+                'RETENCIONES', '', '',
+                'IGTF'
             ];
         } else {
             $headings[] = [
-                '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
-                'VENTAS INTERNAS GRAVADAS A CONTRIBUYENTES', '', '',
-                '', '', '', ''
+                'DATOS GENERALES DE LA TRANSACCIÓN', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+                'TOTALES', '',
+                'VENTAS GRAVADAS (16%)', '', '',
+                'RETENCIONES', '', '',
+                'IGTF'
             ];
         }
 
-        // Columnas principales
+        // Fila 7: Columnas principales
         $cols = [
             'Nro.',
             'FECHA',
@@ -162,7 +166,7 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
             3 => ['font' => ['bold' => true, 'size' => 9]],
             4 => ['font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '003366']]],
             5 => ['font' => ['bold' => true, 'size' => 9]],
-            7 => [
+            6 => [
                 'font' => ['bold' => true, 'size' => 8, 'color' => ['rgb' => 'FFFFFF']],
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
@@ -173,7 +177,7 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
                     'vertical' => Alignment::VERTICAL_CENTER,
                 ],
             ],
-            8 => [
+            7 => [
                 'font' => ['bold' => true, 'size' => 7.5, 'color' => ['rgb' => 'FFFFFF']],
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
@@ -193,7 +197,7 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $lastDataRow = 8 + $this->rowCount;
+                $lastDataRow = 7 + $this->rowCount;
                 $totalRow = $lastDataRow + 1;
 
                 $lastColLetter = $this->enableZoom ? 'AB' : 'Y';
@@ -206,37 +210,28 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
                 $sheet->getSheetView()->setView(\PhpOffice\PhpSpreadsheet\Worksheet\SheetView::SHEETVIEW_NORMAL);
                 $sheet->getPageMargins()->setTop(0.5)->setBottom(0.5)->setLeft(0.3)->setRight(0.3);
 
-                // Combinar celdas del membrete superior para que la columna A no se deforme
+                // Combinar celdas del membrete superior a lo ancho de la tabla
                 for ($row = 1; $row <= 5; $row++) {
-                    $sheet->mergeCells("A{$row}:P{$row}");
+                    $sheet->mergeCells("A{$row}:{$lastColLetter}{$row}");
                     $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
                 }
 
-                // Combinar celdas del encabezado de agrupaciones (fila 7)
-                $sheet->mergeCells('A7:P7');
-                $sheet->setCellValue('A7', 'DATOS GENERALES DE LA TRANSACCIÓN');
-                $sheet->mergeCells('Q7:R7');
-                $sheet->setCellValue('Q7', 'TOTALES');
+                // Combinar celdas del encabezado de agrupaciones (fila 6)
+                $sheet->mergeCells('A6:P6');
+                $sheet->mergeCells('Q6:R6');
 
                 if ($this->enableZoom) {
-                    $sheet->mergeCells('S7:U7');
-                    $sheet->setCellValue('S7', 'VENTAS GRAVADAS (16%)');
-                    $sheet->mergeCells('V7:X7');
-                    $sheet->setCellValue('V7', 'VENTAS A NO CONTRIBUYENTES (ZOOM 8%)');
-                    $sheet->mergeCells('Y7:AA7');
-                    $sheet->setCellValue('Y7', 'RETENCIONES');
-                    $sheet->setCellValue('AB7', 'IGTF');
+                    $sheet->mergeCells('S6:U6');
+                    $sheet->mergeCells('V6:X6');
+                    $sheet->mergeCells('Y6:AA6');
                 } else {
-                    $sheet->mergeCells('S7:U7');
-                    $sheet->setCellValue('S7', 'VENTAS GRAVADAS (16%)');
-                    $sheet->mergeCells('V7:X7');
-                    $sheet->setCellValue('V7', 'RETENCIONES');
-                    $sheet->setCellValue('Y7', 'IGTF');
+                    $sheet->mergeCells('S6:U6');
+                    $sheet->mergeCells('V6:X6');
                 }
 
                 // Ajustar altura de filas de encabezado
-                $sheet->getRowDimension(7)->setRowHeight(22);
-                $sheet->getRowDimension(8)->setRowHeight(38);
+                $sheet->getRowDimension(6)->setRowHeight(22);
+                $sheet->getRowDimension(7)->setRowHeight(38);
 
                 // Anchos fijos y compactos por columna para formato imprimible y texto arriba/abajo (wrapText)
                 $columnWidths = [
@@ -282,14 +277,31 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
                     $sheet->getColumnDimension($col)->setWidth($width);
                 }
 
-                // Aplicar wrap text y fuente compacta (7.5pt) al rango de datos y encabezados
-                $sheet->getStyle("A8:{$lastColLetter}{$lastDataRow}")->applyFromArray([
+                // Aplicar wrap text y fuente compacta (7.5pt) al rango de datos
+                $sheet->getStyle("A7:{$lastColLetter}{$lastDataRow}")->applyFromArray([
                     'font' => ['size' => 7.5],
                     'alignment' => [
                         'vertical' => Alignment::VERTICAL_CENTER,
                         'wrapText' => true,
                     ],
                 ]);
+
+                // Bordes completos de cuadrícula (contorno e internos) para encabezados y datos
+                $sheet->getStyle("A6:{$lastColLetter}{$lastDataRow}")->applyFromArray([
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                            'color' => ['rgb' => 'D0D0D0'],
+                        ],
+                    ],
+                ]);
+
+                // Formato numérico profesional con separador de miles por coma y decimales por punto (#,##0.00)
+                $numberFormat = '#,##0.00';
+                $numCols = $this->enableZoom ? ['Q', 'R', 'S', 'U', 'V', 'X', 'Y', 'AB'] : ['Q', 'R', 'S', 'U', 'V', 'Y'];
+                foreach ($numCols as $c) {
+                    $sheet->getStyle("{$c}8:{$c}{$totalRow}")->getNumberFormat()->setFormatCode($numberFormat);
+                }
 
                 // Fila de TOTALES
                 $sheet->setCellValue("P{$totalRow}", 'TOTALES');
@@ -306,21 +318,40 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
                     $sheet->setCellValue("Y{$totalRow}", (float) $this->book->total_vat_withheld);
                     $sheet->setCellValue("AB{$totalRow}", (float) $this->book->total_igtf);
 
-                    // Estilo amarillo en columnas Zoom
-                    $sheet->getStyle("V8:X{$lastDataRow}")->getFill()->applyFromArray([
+                    // Encabezado Zoom (fila 6 y 7): tono más oscuro con texto blanco para legibilidad óptima
+                    $sheet->getStyle("V6:X6")->getFill()->applyFromArray([
                         'fillType' => Fill::FILL_SOLID,
-                        'startColor' => ['rgb' => 'FFF2CC'],
+                        'startColor' => ['rgb' => 'D97706'], // Ámbar oscuro
                     ]);
+                    $sheet->getStyle("V6:X6")->getFont()->getColor()->setRGB('FFFFFF');
+
+                    $sheet->getStyle("V7:X7")->getFill()->applyFromArray([
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => 'B45309'], // Ámbar encabezado columna
+                    ]);
+                    $sheet->getStyle("V7:X7")->getFont()->getColor()->setRGB('FFFFFF');
+
+                    // Celdas de datos Zoom (filas 8 en adelante): fondo amarillo claro con números visibles
+                    if ($lastDataRow >= 8) {
+                        $sheet->getStyle("V8:X{$lastDataRow}")->getFill()->applyFromArray([
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => ['rgb' => 'FFF2CC'],
+                        ]);
+                    }
                 } else {
                     $sheet->setCellValue("V{$totalRow}", (float) $this->book->total_vat_withheld);
                     $sheet->setCellValue("Y{$totalRow}", (float) $this->book->total_igtf);
                 }
 
-                $sheet->getStyle("P{$totalRow}:{$lastColLetter}{$totalRow}")->applyFromArray([
+                $sheet->getStyle("A{$totalRow}:{$lastColLetter}{$totalRow}")->applyFromArray([
                     'font' => ['bold' => true, 'size' => 8],
                     'borders' => [
                         'top' => ['borderStyle' => Border::BORDER_THIN],
                         'bottom' => ['borderStyle' => Border::BORDER_DOUBLE],
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                            'color' => ['rgb' => 'B0B0B0'],
+                        ],
                     ],
                 ]);
 
@@ -344,6 +375,9 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
                         'fillType' => Fill::FILL_SOLID,
                         'startColor' => ['rgb' => 'E0E0E0'],
                     ],
+                    'borders' => [
+                        'allBorders' => ['borderStyle' => Border::BORDER_THIN],
+                    ],
                 ]);
 
                 $summaryData = [
@@ -364,6 +398,15 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
                     $sheet->setCellValue("N{$r}", $sRow[4]);
                     $sheet->setCellValue("Q{$r}", $sRow[5]);
                     $sheet->setCellValue("T{$r}", $sRow[6]);
+
+                    $sheet->getStyle("C{$r}:T{$r}")->applyFromArray([
+                        'borders' => [
+                            'allBorders' => [
+                                'borderStyle' => Border::BORDER_THIN,
+                                'color' => ['rgb' => 'D0D0D0'],
+                            ],
+                        ],
+                    ]);
                     $r++;
                 }
 
@@ -381,6 +424,10 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
                     'borders' => [
                         'top' => ['borderStyle' => Border::BORDER_THIN],
                         'bottom' => ['borderStyle' => Border::BORDER_THIN],
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                            'color' => ['rgb' => 'D0D0D0'],
+                        ],
                     ],
                 ]);
 
@@ -392,8 +439,18 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
                     'font' => ['bold' => true],
                     'borders' => [
                         'bottom' => ['borderStyle' => Border::BORDER_DOUBLE],
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                            'color' => ['rgb' => 'D0D0D0'],
+                        ],
                     ],
                 ]);
+
+                // Formatos numéricos para el resumen
+                $sheet->getStyle("I" . ($headerRow + 1) . ":I{$r}")->getNumberFormat()->setFormatCode($numberFormat);
+                $sheet->getStyle("N" . ($headerRow + 1) . ":N{$r}")->getNumberFormat()->setFormatCode($numberFormat);
+                $sheet->getStyle("Q" . ($headerRow + 1) . ":Q{$r}")->getNumberFormat()->setFormatCode($numberFormat);
+                $sheet->getStyle("T" . ($headerRow + 1) . ":T{$r}")->getNumberFormat()->setFormatCode($numberFormat);
             },
         ];
     }
