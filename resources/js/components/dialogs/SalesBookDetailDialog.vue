@@ -43,7 +43,7 @@ const entryForm = reactive({
   debit_note_number: '',
   credit_note_number: '',
   affected_invoice_number: '',
-  transaction_type: '01-REGISTRO',
+  transaction_type: '01-REG',
   total_sales_with_vat: 0,
   non_taxable_sales: 0,
   taxpayer_taxable_base: 0,
@@ -174,7 +174,7 @@ const openEditModal = (entry) => {
     debit_note_number: entry.debit_note_number || '',
     credit_note_number: entry.credit_note_number || '',
     affected_invoice_number: entry.affected_invoice_number || '',
-    transaction_type: entry.transaction_type || '01-REGISTRO',
+    transaction_type: entry.transaction_type ? entry.transaction_type.replace('REGISTRO', 'REG') : '01-REG',
     total_sales_with_vat: entry.total_sales_with_vat || 0,
     non_taxable_sales: entry.non_taxable_sales || 0,
     taxpayer_taxable_base: entry.taxpayer_taxable_base || 0,
@@ -702,7 +702,7 @@ const formatNumber = (val) => {
               <VCol cols="12" sm="4">
                 <VSelect
                   v-model="entryForm.transaction_type"
-                  :items="['01-REGISTRO', '03-REGISTRO', '05-RETENCIÓN']"
+                  :items="['01-REG', '03-REG', '05-RET']"
                   label="Tipo Transacción *"
                   variant="outlined"
                   density="compact"

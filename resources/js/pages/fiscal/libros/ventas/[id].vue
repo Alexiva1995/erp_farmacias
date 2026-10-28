@@ -35,7 +35,7 @@ const entryForm = reactive({
   debit_note_number: '',
   credit_note_number: '',
   affected_invoice_number: '',
-  transaction_type: '01-REGISTRO',
+  transaction_type: '01-REG',
   total_sales_with_vat: 0,
   non_taxable_sales: 0,
   taxpayer_taxable_base: 0,
@@ -158,7 +158,7 @@ const openEditModal = (entry) => {
     debit_note_number: entry.debit_note_number || '',
     credit_note_number: entry.credit_note_number || '',
     affected_invoice_number: entry.affected_invoice_number || '',
-    transaction_type: entry.transaction_type || '01-REGISTRO',
+    transaction_type: entry.transaction_type ? entry.transaction_type.replace('REGISTRO', 'REG') : '01-REG',
     total_sales_with_vat: entry.total_sales_with_vat || 0,
     non_taxable_sales: entry.non_taxable_sales || 0,
     taxpayer_taxable_base: entry.taxpayer_taxable_base || 0,
@@ -193,7 +193,7 @@ const openCreateModal = () => {
     debit_note_number: '',
     credit_note_number: '',
     affected_invoice_number: '',
-    transaction_type: '01-REGISTRO',
+    transaction_type: '01-REG',
     total_sales_with_vat: 0,
     non_taxable_sales: 0,
     taxpayer_taxable_base: 0,
@@ -701,7 +701,7 @@ const formatNumber = (val) => {
                 <VTextField v-model="entryForm.affected_invoice_number" label="N° Factura Afectada" variant="outlined" density="compact" />
               </VCol>
               <VCol cols="12" sm="4">
-                <VTextField v-model="entryForm.transaction_type" label="Tipo Trans. (ej. 01-REGISTRO)" variant="outlined" density="compact" />
+                <VTextField v-model="entryForm.transaction_type" label="Tipo Trans. (ej. 01-REG)" variant="outlined" density="compact" />
               </VCol>
               <VCol cols="12" sm="4">
                 <VTextField v-model.number="entryForm.non_taxable_sales" type="number" step="0.01" label="Ventas No Gravadas" variant="outlined" density="compact" @input="updateTotalSales" />

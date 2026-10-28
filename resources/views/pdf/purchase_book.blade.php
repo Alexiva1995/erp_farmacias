@@ -5,45 +5,54 @@
     <title>Libro de Compras</title>
     <style>
         @page {
-            margin: 15px 20px 20px 20px;
+            margin: 10px 12px 15px 12px;
             size: landscape;
         }
         body {
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 8px;
+            font-size: 7px;
             color: #111;
             margin: 0;
             padding: 0;
         }
         .header {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         .header h2 {
             margin: 0 0 2px 0;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
             color: #1a365d;
         }
         .header p {
             margin: 1px 0;
-            font-size: 8.5px;
+            font-size: 7.5px;
         }
         .table-data {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
+            table-layout: fixed;
         }
         .table-data th, .table-data td {
             border: 0.5px solid #aaa;
-            padding: 2.5px 3px;
+            padding: 2px 2.5px;
             text-align: left;
+            word-wrap: break-word;
+            overflow: hidden;
         }
         .table-data th {
             background-color: #2b5797;
             color: #ffffff;
             font-weight: bold;
             text-align: center;
-            font-size: 7.5px;
+            font-size: 6.5px;
+            line-height: 1.1;
+        }
+        .table-data th.col-planilla, .table-data td.col-planilla {
+            font-size: 5.5px;
+            padding: 1px;
+            text-align: center;
         }
         .table-data th.zoom-col, .table-data td.zoom-col {
             background-color: #fff2cc;
@@ -115,31 +124,31 @@
                 <th colspan="2">RETENCIONES</th>
             </tr>
             <tr>
-                <th>Nro.</th>
-                <th>Fecha de Operación</th>
-                <th>R.I.F.</th>
-                <th>Nombre o Razon Social</th>
-                <th>Número Planilla Importación (C80 o C81)</th>
-                <th>Número Expediente Importación</th>
-                <th>Número de Factura</th>
-                <th>Número de Control</th>
-                <th>Número de Nota Débito</th>
-                <th>Número de Nota Crédito</th>
-                <th>Número de Factura Afectada</th>
-                <th>Tipo de Documento</th>
-                <th>Tipo Transacción</th>
-                <th>Total Compras incluyendo IVA</th>
-                <th>Compras sin derecho a Crédito</th>
-                <th>Base Imponible</th>
-                <th>% Alicuota</th>
-                <th>IVA General</th>
+                <th style="width: 2.5%;">Nro.</th>
+                <th style="width: 5%;">Fecha</th>
+                <th style="width: 5.5%;">R.I.F.</th>
+                <th style="width: 10%;">Nombre o Razon Social</th>
+                <th class="col-planilla" style="width: 4%;">Planilla Imp. (C80/C81)</th>
+                <th style="width: 4.5%;">Exp. Import.</th>
+                <th style="width: 5%;">Nº Fact.</th>
+                <th style="width: 5%;">Nº Control</th>
+                <th style="width: 4%;">Nota Déb.</th>
+                <th style="width: 4%;">Nota Créd.</th>
+                <th style="width: 5%;">Fact. Afect.</th>
+                <th style="width: 4.5%;">Tipo Doc.</th>
+                <th style="width: 4%;">Tipo Trans.</th>
+                <th style="width: 6%;">Total Compras</th>
+                <th style="width: 5.5%;">Compras Exentas</th>
+                <th style="width: 6%;">Base Imp.</th>
+                <th style="width: 3%;">% Alic.</th>
+                <th style="width: 5.5%;">IVA General</th>
                 @if($enableZoom)
-                    <th class="zoom-col">Base Imponible</th>
-                    <th class="zoom-col">% Alicuota</th>
-                    <th class="zoom-col">IVA General</th>
+                    <th class="zoom-col" style="width: 5.5%;">Base Zoom</th>
+                    <th class="zoom-col" style="width: 3%;">% Alic.</th>
+                    <th class="zoom-col" style="width: 5.5%;">IVA Zoom</th>
                 @endif
-                <th>Iva Retenido</th>
-                <th>Número de Comprobante</th>
+                <th style="width: 5%;">IVA Ret.</th>
+                <th style="width: 5%;">Nº Comprobante</th>
             </tr>
         </thead>
         <tbody>
@@ -148,16 +157,16 @@
                     <td class="text-center">{{ $entry->operation_number }}</td>
                     <td class="text-center">{{ optional($entry->operation_date)->format('d/m/Y') }}</td>
                     <td>{{ $entry->rif }}</td>
-                    <td>{{ Str::limit($entry->supplier_name, 28) }}</td>
-                    <td>{{ $entry->import_planilla_number }}</td>
+                    <td>{{ Str::limit($entry->supplier_name, 22) }}</td>
+                    <td class="col-planilla">{{ $entry->import_planilla_number }}</td>
                     <td>{{ $entry->import_dossier_number }}</td>
                     <td class="text-right">{{ $entry->invoice_number }}</td>
                     <td class="text-right">{{ $entry->control_number }}</td>
                     <td class="text-right">{{ $entry->debit_note_number }}</td>
                     <td class="text-right">{{ $entry->credit_note_number }}</td>
                     <td class="text-right">{{ $entry->affected_invoice_number }}</td>
-                    <td class="text-center">{{ Str::limit($entry->document_type, 14) }}</td>
-                    <td class="text-center">{{ $entry->transaction_type }}</td>
+                    <td class="text-center">{{ Str::limit($entry->document_type, 11) }}</td>
+                    <td class="text-center">{{ str_replace(['-REGISTRO', 'REGISTRO'], ['-REG', 'REG'], $entry->transaction_type) }}</td>
                     <td class="text-right">{{ number_format((float)$entry->total_purchases_with_vat, 2, '.', ',') }}</td>
                     <td class="text-right">{{ number_format((float)$entry->exempt_purchases, 2, '.', ',') }}</td>
                     <td class="text-right">{{ number_format((float)$entry->general_taxable_base, 2, '.', ',') }}</td>

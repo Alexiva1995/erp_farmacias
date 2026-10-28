@@ -5,45 +5,54 @@
     <title>Libro de Ventas</title>
     <style>
         @page {
-            margin: 15px 20px 20px 20px;
+            margin: 10px 12px 15px 12px;
             size: landscape;
         }
         body {
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 7.5px;
+            font-size: 6.8px;
             color: #111;
             margin: 0;
             padding: 0;
         }
         .header {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         .header h2 {
             margin: 0 0 2px 0;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
             color: #1a365d;
         }
         .header p {
             margin: 1px 0;
-            font-size: 8px;
+            font-size: 7.5px;
         }
         .table-data {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            table-layout: fixed;
         }
         .table-data th, .table-data td {
             border: 0.5px solid #aaa;
-            padding: 2px 3px;
+            padding: 1.5px 2px;
             text-align: left;
+            word-wrap: break-word;
+            overflow: hidden;
         }
         .table-data th {
             background-color: #2b5797;
             color: #ffffff;
             font-weight: bold;
             text-align: center;
-            font-size: 7px;
+            font-size: 6.2px;
+            line-height: 1.1;
+        }
+        .table-data th.col-planilla, .table-data td.col-planilla {
+            font-size: 5.5px;
+            padding: 1px;
+            text-align: center;
         }
         .table-data th.zoom-col, .table-data td.zoom-col {
             background-color: #fff2cc;
@@ -116,36 +125,36 @@
                 <th>IGTF</th>
             </tr>
             <tr>
-                <th>Nro.</th>
-                <th>FECHA</th>
-                <th>CEDULA O R.I.F.</th>
-                <th>NOMBRE O RAZÓN SOCIAL</th>
-                <th>Nº PLANILLA DE EXPORTACIÓN</th>
-                <th>TIPO DE DOCUMENTO</th>
-                <th>Nº FACTURA</th>
-                <th>Nº DE CONTROL</th>
-                <th>NUMERO DE REPORTE Z</th>
-                <th>Número de Factura inicial del Reporte Z</th>
-                <th>Número de Factura Final del Reporte Z</th>
-                <th>REG. MAQUINA</th>
-                <th>Nº NOTA DE DEBITO</th>
-                <th>Nº NOTA DE CREDITO</th>
-                <th>Nº FACTURA AFECTADA</th>
-                <th>TIPO DE TRANSACCION</th>
-                <th>TOTAL VENTAS INCLUYENDO IVA</th>
-                <th>VENTAS INTERNAS NO GRAVADAS</th>
-                <th>BASE IMPONIBLE</th>
-                <th>%IVA</th>
-                <th>IVA</th>
+                <th style="width: 2%;">Nro.</th>
+                <th style="width: 4%;">FECHA</th>
+                <th style="width: 5%;">CEDULA O R.I.F.</th>
+                <th style="width: 7%;">NOMBRE O RAZÓN SOCIAL</th>
+                <th class="col-planilla" style="width: 3.5%;">Nº PLANILLA DE EXPORT.</th>
+                <th style="width: 4.5%;">TIPO DE DOC.</th>
+                <th style="width: 4%;">Nº FACT.</th>
+                <th style="width: 4%;">Nº CONTROL</th>
+                <th style="width: 3.5%;">REP. Z</th>
+                <th style="width: 3.5%;">Fact. Inicial Z</th>
+                <th style="width: 3.5%;">Fact. Final Z</th>
+                <th style="width: 4.5%;">REG. MAQ.</th>
+                <th style="width: 3%;">NOTA DEB.</th>
+                <th style="width: 3%;">NOTA CRED.</th>
+                <th style="width: 3.5%;">FACT. AFECT.</th>
+                <th style="width: 3.8%;">TIPO TRANS.</th>
+                <th style="width: 4.8%;">TOTAL VENTAS</th>
+                <th style="width: 4.5%;">VENTAS NO GRAV.</th>
+                <th style="width: 4.5%;">BASE IMP.</th>
+                <th style="width: 2.5%;">%IVA</th>
+                <th style="width: 4.2%;">IVA</th>
                 @if($enableZoom)
-                    <th class="zoom-col">BASE IMPONIBLE</th>
-                    <th class="zoom-col">%IVA</th>
-                    <th class="zoom-col">IVA</th>
+                    <th class="zoom-col" style="width: 4.5%;">BASE ZOOM</th>
+                    <th class="zoom-col" style="width: 2.5%;">%IVA</th>
+                    <th class="zoom-col" style="width: 4.2%;">IVA ZOOM</th>
                 @endif
-                <th>IVA RETENIDO</th>
-                <th>Nº COMPROBANTE DE RETENCIÓN</th>
-                <th>FECHA DE RECEPCION COMPROBANTE DE RETENCIÓN</th>
-                <th>IGTF</th>
+                <th style="width: 4%;">IVA RET.</th>
+                <th style="width: 4.5%;">Nº COMP. RET.</th>
+                <th style="width: 3.8%;">FECHA RET.</th>
+                <th style="width: 3.5%;">IGTF</th>
             </tr>
         </thead>
         <tbody>
@@ -154,9 +163,9 @@
                     <td class="text-center">{{ $entry->operation_number }}</td>
                     <td class="text-center">{{ optional($entry->operation_date)->format('d/m/Y') }}</td>
                     <td>{{ $entry->identification }}</td>
-                    <td>{{ Str::limit($entry->client_name, 24) }}</td>
-                    <td>{{ $entry->export_planilla_number }}</td>
-                    <td class="text-center">{{ Str::limit($entry->document_type, 14) }}</td>
+                    <td>{{ Str::limit($entry->client_name, 18) }}</td>
+                    <td class="col-planilla">{{ $entry->export_planilla_number }}</td>
+                    <td class="text-center">{{ Str::limit($entry->document_type, 11) }}</td>
                     <td>{{ $entry->invoice_number }}</td>
                     <td>{{ $entry->control_number }}</td>
                     <td class="text-center">{{ $entry->z_report_number }}</td>
@@ -166,7 +175,7 @@
                     <td>{{ $entry->debit_note_number }}</td>
                     <td class="text-center">{{ $entry->credit_note_number }}</td>
                     <td class="text-center">{{ $entry->affected_invoice_number }}</td>
-                    <td class="text-center">{{ $entry->transaction_type }}</td>
+                    <td class="text-center">{{ str_replace(['-REGISTRO', 'REGISTRO'], ['-REG', 'REG'], $entry->transaction_type) }}</td>
                     <td class="text-right">{{ number_format((float)$entry->total_sales_with_vat, 2, ',', '.') }}</td>
                     <td class="text-right">{{ number_format((float)$entry->non_taxable_sales, 2, ',', '.') }}</td>
                     <td class="text-right">{{ number_format((float)$entry->taxpayer_taxable_base, 2, ',', '.') }}</td>
