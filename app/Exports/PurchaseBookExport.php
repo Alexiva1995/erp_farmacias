@@ -50,11 +50,12 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
         $periodText = "LIBRO DE COMPRAS DESDE {$this->book->start_date->format('d-m-Y')} HASTA {$this->book->end_date->format('d-m-Y')}";
 
         $headings = [
-            ['NOMBRE O RAZON SOCIAL: ' . ($this->settings->app_name ?: 'EMPRESA')],
-            ['R.I.F.: ' . ($this->settings->app_rif ?: $this->settings->rif ?: 'J-00000000-0')],
-            ['DIRECCIÓN FISCAL: ' . ($this->settings->address ?: 'N/A')],
-            [$periodText],
-            ['CONDICIÓN FISCAL: ' . $taxpayerType],
+            // Membrete en mayúsculas para uniformidad con Libro de Ventas
+            ['NOMBRE O RAZÓN SOCIAL: ' . mb_strtoupper($this->settings->app_name ?: 'EMPRESA', 'UTF-8')],
+            ['R.I.F.: ' . mb_strtoupper($this->settings->app_rif ?: $this->settings->rif ?: 'J-00000000-0', 'UTF-8')],
+            ['DIRECCIÓN FISCAL: ' . mb_strtoupper($this->settings->address ?: 'N/A', 'UTF-8')],
+            [mb_strtoupper($periodText, 'UTF-8')],
+            ['CONDICIÓN FISCAL: ' . mb_strtoupper($taxpayerType, 'UTF-8')],
         ];
 
         // Fila 6: Columnas principales directas (sin fila de datos generales)
@@ -166,11 +167,12 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
         $lastCol = $this->enableZoom ? 'W' : 'T';
 
         return [
-            1 => ['font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => '1E293B']]],
-            2 => ['font' => ['bold' => true, 'size' => 9.5, 'color' => ['rgb' => '334155']]],
-            3 => ['font' => ['bold' => false, 'size' => 8.5, 'color' => ['rgb' => '475569']]],
-            4 => ['font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '1E3A8A']]],
-            5 => ['font' => ['bold' => true, 'size' => 9, 'color' => ['rgb' => '0F766E']]],
+            // Membrete uniforme: mismo tamaño y estilo en todas las filas
+            1 => ['font' => ['bold' => true, 'size' => 9.5, 'color' => ['rgb' => '1E293B']]],
+            2 => ['font' => ['bold' => true, 'size' => 9.5, 'color' => ['rgb' => '1E293B']]],
+            3 => ['font' => ['bold' => true, 'size' => 9.5, 'color' => ['rgb' => '1E293B']]],
+            4 => ['font' => ['bold' => true, 'size' => 9.5, 'color' => ['rgb' => '1E293B']]],
+            5 => ['font' => ['bold' => true, 'size' => 9.5, 'color' => ['rgb' => '1E293B']]],
             6 => [
                 'font' => ['bold' => true, 'size' => 8, 'color' => ['rgb' => 'FFFFFF']],
                 'fill' => [
