@@ -126,7 +126,9 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
         }
 
         $row[] = (float) $entry->vat_withheld;
-        $row[] = $entry->withholding_receipt_number ?? '';
+        $row[] = $entry->withholding_receipt_number !== null && $entry->withholding_receipt_number !== ''
+            ? ' ' . (string) $entry->withholding_receipt_number
+            : '';
 
         return $row;
     }
@@ -427,6 +429,12 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
                 // Formato numérico para el cuadro de Resumen
                 $currencyFormat = '#,##0.00';
                 $sheet->getStyle("H" . ($headerRow + 1) . ":N{$r}")->getNumberFormat()->setFormatCode($currencyFormat);
+
+                // Forzar formato texto explícito en columna de Comprobante de Retención
+                $withholdingCol = $this->enableZoom ? 'W' : 'T';
+                $sheet->getStyle("{$withholdingCol}7:{$withholdingCol}{$totalRow}")
+                    ->getNumberFormat()
+                    ->setFormatCode(NumberFormat::FORMAT_TEXT);
             },
         ];
     }

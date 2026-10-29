@@ -15,6 +15,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
@@ -130,7 +131,9 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
         }
 
         $row[] = (float) $entry->vat_withheld;
-        $row[] = $entry->withholding_receipt_number ?? '';
+        $row[] = $entry->withholding_receipt_number !== null && $entry->withholding_receipt_number !== ''
+            ? ' ' . (string) $entry->withholding_receipt_number
+            : '';
         $row[] = $entry->withholding_receipt_date ? $entry->withholding_receipt_date->format('Y-m-d') : '';
         $row[] = (float) $entry->igtf_amount;
 
@@ -418,6 +421,12 @@ class SalesBookExport implements FromCollection, WithHeadings, WithMapping, With
                 $sheet->getStyle("N" . ($headerRow + 1) . ":N{$r}")->getNumberFormat()->setFormatCode($numberFormat);
                 $sheet->getStyle("Q" . ($headerRow + 1) . ":Q{$r}")->getNumberFormat()->setFormatCode($numberFormat);
                 $sheet->getStyle("T" . ($headerRow + 1) . ":T{$r}")->getNumberFormat()->setFormatCode($numberFormat);
+
+                // Forzar formato texto explícito en columna de Comprobante de Retención
+                $withholdingCol = $this->enableZoom ? 'Z' : 'W';
+                $sheet->getStyle("{$withholdingCol}7:{$withholdingCol}{$totalRow}")
+                    ->getNumberFormat()
+                    ->setFormatCode(NumberFormat::FORMAT_TEXT);
             },
         ];
     }
