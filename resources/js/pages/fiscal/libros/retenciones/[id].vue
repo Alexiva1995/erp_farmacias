@@ -173,16 +173,21 @@ onMounted(() => {
 
 <template>
   <div class="vat-retention-detail-page">
-    <!-- Encabezado con Botones de Acción y Navegación -->
+    <!-- Encabezado con Botones de Acción y Navegación Homologados al Estilo de Filtros -->
     <VCard class="mb-4 pa-4 rounded-lg">
       <div class="d-flex align-center justify-space-between flex-wrap gap-3">
         <div class="d-flex align-center gap-3">
           <VBtn
-            icon="tabler-arrow-left"
-            variant="text"
-            size="small"
+            icon
+            variant="tonal"
+            color="secondary"
+            size="38"
+            rounded="circle"
             @click="router.push('/fiscal/libros/retenciones')"
-          />
+          >
+            <VIcon icon="tabler-arrow-left" />
+            <VTooltip activator="parent" location="top">Volver a Retenciones</VTooltip>
+          </VBtn>
           <VAvatar color="primary" variant="tonal" rounded size="44">
             <VIcon icon="tabler-receipt-tax" size="26" />
           </VAvatar>
@@ -194,7 +199,8 @@ onMounted(() => {
               <VChip
                 size="small"
                 :color="book?.is_open ? 'success' : 'secondary'"
-                variant="flat"
+                variant="tonal"
+                class="font-weight-bold"
               >
                 {{ book?.is_open ? 'Abierto' : 'Cerrado' }}
               </VChip>
@@ -205,63 +211,79 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="d-flex align-center flex-wrap gap-2">
+        <!-- Grupo de botones estilizados como en AppFilterBase -->
+        <div class="d-flex align-center flex-wrap gap-1">
           <!-- Botón TXT SENIAT -->
           <VBtn
+            icon
             color="warning"
-            variant="flat"
-            prepend-icon="tabler-file-code"
+            variant="tonal"
+            size="38"
+            rounded="circle"
             :loading="downloadingTxt"
             :disabled="downloadingTxt"
             @click="handleExportTxt"
           >
-            TXT SENIAT
+            <VIcon icon="tabler-file-code" size="20" />
+            <VTooltip activator="parent" location="top">Exportar TXT SENIAT</VTooltip>
           </VBtn>
 
           <!-- Botón Excel -->
           <VBtn
+            icon
             color="success"
-            variant="flat"
-            prepend-icon="tabler-file-spreadsheet"
+            variant="tonal"
+            size="38"
+            rounded="circle"
             :loading="downloadingExcel"
             :disabled="downloadingExcel"
             @click="handleExportExcel"
           >
-            Excel
+            <VIcon icon="tabler-file-spreadsheet" size="20" />
+            <VTooltip activator="parent" location="top">Exportar Excel</VTooltip>
           </VBtn>
 
           <!-- Botón PDF -->
           <VBtn
+            icon
             color="error"
-            variant="flat"
-            prepend-icon="tabler-file-type-pdf"
+            variant="tonal"
+            size="38"
+            rounded="circle"
             :loading="downloadingPdf"
             :disabled="downloadingPdf"
             @click="handleExportPdf"
           >
-            PDF
+            <VIcon icon="tabler-file-type-pdf" size="20" />
+            <VTooltip activator="parent" location="top">Exportar PDF</VTooltip>
           </VBtn>
 
           <!-- Botón Cerrar / Reabrir -->
           <VBtn
             v-if="book?.is_open"
+            icon
             color="secondary"
-            variant="outlined"
-            prepend-icon="tabler-lock"
+            variant="tonal"
+            size="38"
+            rounded="circle"
             :loading="closing"
             :disabled="closing"
             @click="handleCloseBook"
           >
-            Cerrar Período
+            <VIcon icon="tabler-lock" size="20" />
+            <VTooltip activator="parent" location="top">Cerrar y Congelar Período</VTooltip>
           </VBtn>
           <VBtn
             v-else
+            icon
             color="primary"
-            variant="outlined"
-            prepend-icon="tabler-lock-open"
+            variant="tonal"
+            size="38"
+            rounded="circle"
             @click="handleReopenBook"
           >
-            Reabrir Período
+            <VIcon icon="tabler-lock-open" size="20" />
+            <VTooltip activator="parent" location="top">Reabrir Período para Ajustes</VTooltip>
           </VBtn>
         </div>
       </div>

@@ -15,6 +15,7 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -168,7 +169,7 @@ class VatRetentionBookExport implements FromCollection, WithHeadings, WithMappin
         $sheet->getColumnDimension('L')->setWidth(17);
         $sheet->getColumnDimension('M')->setWidth(17);
         $sheet->getColumnDimension('N')->setWidth(14);
-        $sheet->getColumnDimension('O')->setWidth(18);
+        $sheet->getColumnDimension('O')->setWidth(22);
         $sheet->getColumnDimension('P')->setWidth(15);
         $sheet->getColumnDimension('Q')->setWidth(12);
 
@@ -251,6 +252,18 @@ class VatRetentionBookExport implements FromCollection, WithHeadings, WithMappin
                         'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFFFF']],
                         'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']]],
                     ]);
+
+                    // Forzar columnas alfanuméricas/códigos largos (especialmente Nº Comprobante) como TYPE_STRING
+                    // para evitar que Excel los interprete como números y los abrevie a notación científica (ej. 2.0261E+13)
+                    for ($r = $startDataRow; $r <= $endDataRow; $r++) {
+                        foreach (['B', 'C', 'E', 'F', 'G', 'I', 'J', 'N', 'O'] as $textCol) {
+                            $cell = $sheet->getCell("{$textCol}{$r}");
+                            $val = (string) $cell->getValue();
+                            if ($val !== '') {
+                                $cell->setValueExplicit($val, DataType::TYPE_STRING);
+                            }
+                        }
+                    }
 
                     // Fila de Totales Consolidados
                     $totalRow = $endDataRow + 1;
