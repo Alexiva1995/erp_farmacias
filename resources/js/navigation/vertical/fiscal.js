@@ -77,6 +77,12 @@ export default [
         action: 'manage',
         subject: 'supervisor-or-admin',
       },
+      {
+        title: 'Reporte Retenciones',
+        to: 'fiscal-libros-retenciones',
+        action: 'manage',
+        subject: 'supervisor-or-admin',
+      },
     ],
   },
 ]

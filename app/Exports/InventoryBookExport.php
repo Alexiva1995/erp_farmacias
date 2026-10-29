@@ -286,11 +286,7 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
                     $sheet->getStyle("E{$totalRow}:P{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
 
-                // 5. Forzar cálculo automático y completo de fórmulas al abrir el archivo en Excel
-                $sheet->getParent()->setForceFullCalculation(true);
-                $sheet->getParent()->getCalculationEngine()->clearCalculationCache();
-
-                // 6. Configuración de impresión: Horizontal, 1 página de ancho
+                // 5. Configuración de impresión: Horizontal, 1 página de ancho
                 $sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_A4);
                 $sheet->getPageSetup()->setFitToWidth(1);

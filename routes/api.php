@@ -1298,6 +1298,19 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/{id}/export/pdf', [\App\Http\Controllers\Api\InventoryBookController::class, 'exportPdf']);
         Route::get('/{id}/export/acta-desincorporacion', [\App\Http\Controllers\Api\InventoryBookController::class, 'exportWithdrawalActPdf']);
     });
+
+    Route::prefix('vat-retention-books')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\VatRetentionBookController::class, 'index']);
+        Route::post('/generate-period', [\App\Http\Controllers\Api\VatRetentionBookController::class, 'generatePeriod']);
+        Route::get('/{id}', [\App\Http\Controllers\Api\VatRetentionBookController::class, 'show']);
+        Route::post('/{id}/sync', [\App\Http\Controllers\Api\VatRetentionBookController::class, 'sync']);
+        Route::put('/{id}/entries/{entryId}', [\App\Http\Controllers\Api\VatRetentionBookController::class, 'updateEntry']);
+        Route::post('/{id}/close', [\App\Http\Controllers\Api\VatRetentionBookController::class, 'close']);
+        Route::post('/{id}/reopen', [\App\Http\Controllers\Api\VatRetentionBookController::class, 'reopen']);
+        Route::get('/{id}/export/txt', [\App\Http\Controllers\Api\VatRetentionBookController::class, 'exportTxt']);
+        Route::get('/{id}/export/excel', [\App\Http\Controllers\Api\VatRetentionBookController::class, 'exportExcel']);
+        Route::get('/{id}/export/pdf', [\App\Http\Controllers\Api\VatRetentionBookController::class, 'exportPdf']);
+    });
 });
 
 
