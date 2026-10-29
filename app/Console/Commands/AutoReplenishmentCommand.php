@@ -194,23 +194,38 @@ class AutoReplenishmentCommand extends Command
         $productIds = collect($itemsFiltrados)->map(fn($it) => ($it->product ?? $it)->id)->unique()->values()->toArray();
         $minExpirationDate = now()->addMonths(6)->toDateString();
 
+        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 60 días)
+        $latestSupplierDatesSubquery = DB::table('product_suppliers')
+            ->select('supplier_id', DB::raw('MAX(DATE(created_at)) as max_date'))
+            ->where('created_at', '>=', now()->subDays(60))
+            ->groupBy('supplier_id');
+
+        if ($config->supplier_id) {
+            $latestSupplierDatesSubquery->where('supplier_id', $config->supplier_id);
+        }
+
         // 2. Obtener todas las ofertas activas vigentes de proveedores para estos productos en una sola consulta
         $hasProductSupplierIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
         $offersQuery = ProductSupplier::with('supplier')
+            ->joinSub($latestSupplierDatesSubquery, 'latest_supp', function ($join) {
+                $join->on('latest_supp.supplier_id', '=', 'product_suppliers.supplier_id')
+                     ->whereRaw('DATE(product_suppliers.created_at) = latest_supp.max_date');
+            })
             ->whereHas('supplier', fn($q) => $q->where('is_active', true))
-            ->whereIn('product_id', $productIds)
+            ->whereIn('product_suppliers.product_id', $productIds)
             ->where(function ($q) {
-                $q->where('created_at', '>=', now()->subDays(30))
-                  ->orWhere('updated_at', '>=', now()->subDays(30));
+                $q->where('product_suppliers.created_at', '>=', now()->subDays(60))
+                  ->orWhere('product_suppliers.updated_at', '>=', now()->subDays(60));
             })
             ->where(function ($q) use ($minExpirationDate) {
-                $q->whereNull('expiration')
-                  ->orWhere('expiration', '>', $minExpirationDate);
+                $q->whereNull('product_suppliers.expiration')
+                  ->orWhere('product_suppliers.expiration', '>', $minExpirationDate);
             })
             ->where(function ($q) {
-                $q->where('unit_cost_usd', '>', 0)
-                  ->orWhere('unit_cost_usd_with_discount', '>', 0);
-            });
+                $q->where('product_suppliers.unit_cost_usd', '>', 0)
+                  ->orWhere('product_suppliers.unit_cost_usd_with_discount', '>', 0);
+            })
+            ->select('product_suppliers.*');
 
         if ($hasProductSupplierIsActive) {
             $offersQuery->where('is_active', true);

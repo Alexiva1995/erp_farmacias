@@ -1080,7 +1080,21 @@ class SupplierQueryService
             $groupByColumns[] = 'product_suppliers.credit_days';
         }
 
+        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 60 días)
+        $latestSupplierDatesSubquery = DB::table('product_suppliers')
+            ->select('supplier_id', DB::raw('MAX(DATE(created_at)) as max_date'))
+            ->where('created_at', '>=', now()->subDays(60))
+            ->groupBy('supplier_id');
+
+        if ($supplierId) {
+            $latestSupplierDatesSubquery->where('supplier_id', $supplierId);
+        }
+
         $results = ProductSupplier::query()
+            ->joinSub($latestSupplierDatesSubquery, 'latest_supp', function ($join) {
+                $join->on('latest_supp.supplier_id', '=', 'product_suppliers.supplier_id')
+                     ->whereRaw('DATE(product_suppliers.created_at) = latest_supp.max_date');
+            })
             ->where(function ($q) {
                 $q->where('product_suppliers.updated_at', '>=', now()->subDays(60))
                   ->orWhere('product_suppliers.created_at', '>=', now()->subDays(60));

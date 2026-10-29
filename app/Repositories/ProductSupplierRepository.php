@@ -16,10 +16,10 @@ class ProductSupplierRepository
         $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
         $minExpirationDate = now()->addMonths(6)->toDateString();
 
-        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 30 días)
+        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 60 días)
         $latestSupplierDatesSubquery = DB::table('product_suppliers')
             ->select('supplier_id', DB::raw('MAX(DATE(created_at)) as max_date'))
-            ->where('created_at', '>=', now()->subDays(30))
+            ->where('created_at', '>=', now()->subDays(60))
             ->groupBy('supplier_id');
 
         // Obtener solo el ID más reciente por cada proveedor para este producto dentro de su último catálogo activo
@@ -33,8 +33,8 @@ class ProductSupplierRepository
             ->where('suppliers.is_active', true)
             ->where("product_suppliers.product_id", "=", $product_id)
             ->where(function ($q) {
-                $q->where('product_suppliers.created_at', '>=', now()->subDays(30))
-                  ->orWhere('product_suppliers.updated_at', '>=', now()->subDays(30));
+                $q->where('product_suppliers.created_at', '>=', now()->subDays(60))
+                  ->orWhere('product_suppliers.updated_at', '>=', now()->subDays(60));
             })
             ->where(function ($q) use ($minExpirationDate) {
                 $q->whereNull('product_suppliers.expiration')
@@ -68,10 +68,10 @@ class ProductSupplierRepository
     {
         $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
 
-        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 30 días)
+        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 60 días)
         $latestSupplierDatesSubquery = DB::table('product_suppliers')
             ->select('supplier_id', DB::raw('MAX(DATE(created_at)) as max_date'))
-            ->where('created_at', '>=', now()->subDays(30))
+            ->where('created_at', '>=', now()->subDays(60))
             ->groupBy('supplier_id');
 
         // Obtener solo el ID más reciente por cada proveedor para este producto dentro de su último catálogo activo
@@ -85,8 +85,8 @@ class ProductSupplierRepository
             ->where('suppliers.is_active', true)
             ->where("product_suppliers.product_id", "=", $product_id)
             ->where(function ($q) {
-                $q->where('product_suppliers.created_at', '>=', now()->subDays(30))
-                  ->orWhere('product_suppliers.updated_at', '>=', now()->subDays(30));
+                $q->where('product_suppliers.created_at', '>=', now()->subDays(60))
+                  ->orWhere('product_suppliers.updated_at', '>=', now()->subDays(60));
             });
 
         if ($hasIsActive) {
@@ -111,10 +111,10 @@ class ProductSupplierRepository
         $hasIsActive = \Illuminate\Support\Facades\Schema::hasColumn('product_suppliers', 'is_active');
         $minExpirationDate = now()->addMonths(6)->toDateString();
         
-        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 30 días)
+        // Subconsulta para obtener la fecha de catálogo más reciente por proveedor (máximo 60 días)
         $latestSupplierDatesSubquery = DB::table('product_suppliers')
             ->select('supplier_id', DB::raw('MAX(DATE(created_at)) as max_date'))
-            ->where('created_at', '>=', now()->subDays(30))
+            ->where('created_at', '>=', now()->subDays(60))
             ->groupBy('supplier_id');
 
         if ($supplierId) {
@@ -133,8 +133,8 @@ class ProductSupplierRepository
             ->where('suppliers.is_active', true)
             ->whereIn('product_suppliers.product_id', $productIds)
             ->where(function ($q) {
-                $q->where('product_suppliers.created_at', '>=', now()->subDays(30))
-                  ->orWhere('product_suppliers.updated_at', '>=', now()->subDays(30));
+                $q->where('product_suppliers.created_at', '>=', now()->subDays(60))
+                  ->orWhere('product_suppliers.updated_at', '>=', now()->subDays(60));
             })
             ->where(function ($q) use ($minExpirationDate) {
                 $q->whereNull('product_suppliers.expiration')
