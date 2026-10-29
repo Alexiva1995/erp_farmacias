@@ -71,6 +71,12 @@ export default [
         action: 'manage',
         subject: 'supervisor-or-admin',
       },
+      {
+        title: 'Libro de Inventario',
+        to: 'fiscal-libros-inventario',
+        action: 'manage',
+        subject: 'supervisor-or-admin',
+      },
     ],
   },
 ]

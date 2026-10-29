@@ -1279,6 +1279,20 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/{id}/export/excel', [\App\Http\Controllers\Api\SalesBookController::class, 'exportExcel']);
         Route::get('/{id}/export/pdf', [\App\Http\Controllers\Api\SalesBookController::class, 'exportPdf']);
     });
+
+    Route::prefix('inventory-books')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\InventoryBookController::class, 'index']);
+        Route::post('/generate-period', [\App\Http\Controllers\Api\InventoryBookController::class, 'generatePeriod']);
+        Route::get('/{id}', [\App\Http\Controllers\Api\InventoryBookController::class, 'show']);
+        Route::post('/{id}/sync', [\App\Http\Controllers\Api\InventoryBookController::class, 'sync']);
+        Route::put('/{id}/entries/{entryId}', [\App\Http\Controllers\Api\InventoryBookController::class, 'updateEntry']);
+        Route::post('/{id}/toggle-adjustments', [\App\Http\Controllers\Api\InventoryBookController::class, 'toggleAdjustments']);
+        Route::post('/{id}/close', [\App\Http\Controllers\Api\InventoryBookController::class, 'close']);
+        Route::post('/{id}/reopen', [\App\Http\Controllers\Api\InventoryBookController::class, 'reopen']);
+        Route::get('/{id}/export/excel', [\App\Http\Controllers\Api\InventoryBookController::class, 'exportExcel']);
+        Route::get('/{id}/export/pdf', [\App\Http\Controllers\Api\InventoryBookController::class, 'exportPdf']);
+        Route::get('/{id}/export/acta-desincorporacion', [\App\Http\Controllers\Api\InventoryBookController::class, 'exportWithdrawalActPdf']);
+    });
 });
 
 
