@@ -1,6 +1,38 @@
 <script setup>
 import { formatCurrency } from "@/utils/currencyFormatter";
 
+import { computed } from 'vue';
+
+const calculateInstallmentDates = (installmentsCount = 3) => {
+  const dates = [];
+  const now = new Date();
+  for (let i = 1; i <= installmentsCount; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + (i * 14));
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    dates.push(`${day}/${month}/${year}`);
+  }
+  return dates;
+};
+
+const setCasheaPresetPercentage = (payment, pct) => {
+  const totalBs = props.getConvertedRemainingAmount ? props.getConvertedRemainingAmount('BS') : (payment.amount || 0);
+  const currentTotal = totalBs + (parseFloat(payment.amount) || 0);
+  const baseTotal = currentTotal > 0 ? currentTotal : (payment.amount || 0);
+  
+  const initialFraction = pct / 100;
+  const initialAmount = Math.round(baseTotal * initialFraction * 100) / 100;
+  const financedAmount = Math.max(0, Math.round((baseTotal - initialAmount) * 100) / 100);
+
+  payment.initial_percentage = pct;
+  payment.initial_amount_bs = initialAmount;
+  payment.inputAmount = financedAmount.toString();
+  payment.amount = financedAmount;
+};
+
+
 
 const props = defineProps({
   selectedCurrency: String,
@@ -136,8 +168,149 @@ const emit = defineEmits([
                 </div>
               </div>
 
-              <!-- Formulario de edición: monto + referencia -->
-              <div v-if="payment._isInputActive" class="d-flex flex-column gap-2.5 pt-2 mt-1 border-t">
+              <!-- Formulario especial CASHEA (BNPL) -->
+              <div v-if="payment._isInputActive && payment.method === 'cashea'" class="d-flex flex-column gap-2.5 pt-2 mt-1 border-t bg-pink-lighten-5 pa-2 rounded-lg border">
+                <div class="d-flex align-center justify-space-between mb-1">
+                  <span class="text-caption font-weight-bold text-primary d-flex align-center gap-1">
+                    <VIcon icon="tabler-building-bank" size="15" />
+                    <span>Configuración de Inicial y Cuotas</span>
+                  </span>
+                  <VBtn
+                    icon="tabler-trash"
+                    size="24"
+                    color="error"
+                    variant="text"
+                    class="rounded"
+                    @click="emit('remove-payment', payments.indexOf(payment))"
+                  />
+                </div>
+
+                <!-- Botones rápidos de inicial -->
+                <div class="d-flex align-center gap-1.5 flex-wrap">
+                  <span class="text-tiny text-medium-emphasis font-weight-bold me-1">Inicial:</span>
+                  <VBtn
+                    size="x-small"
+                    :variant="payment.initial_percentage === 40 ? 'flat' : 'outlined'"
+                    color="primary"
+                    class="text-none rounded-pill font-weight-bold"
+                    @click="setCasheaPresetPercentage(payment, 40)"
+                  >
+                    40%
+                  </VBtn>
+                  <VBtn
+                    size="x-small"
+                    :variant="payment.initial_percentage === 50 ? 'flat' : 'outlined'"
+                    color="primary"
+                    class="text-none rounded-pill font-weight-bold"
+                    @click="setCasheaPresetPercentage(payment, 50)"
+                  >
+                    50%
+                  </VBtn>
+                  <VBtn
+                    size="x-small"
+                    :variant="payment.initial_percentage === 60 ? 'flat' : 'outlined'"
+                    color="primary"
+                    class="text-none rounded-pill font-weight-bold"
+                    @click="setCasheaPresetPercentage(payment, 60)"
+                  >
+                    60%
+                  </VBtn>
+                  <VBtn
+                    size="x-small"
+                    :variant="payment.initial_percentage === 0 ? 'flat' : 'outlined'"
+                    color="secondary"
+                    class="text-none rounded-pill font-weight-bold ms-auto"
+                    title="Todo el restante a Cashea"
+                    @click="setCasheaPresetPercentage(payment, 0)"
+                  >
+                    100% Saldo
+                  </VBtn>
+                </div>
+
+                <!-- Monto financiado (Crédito) -->
+                <div class="d-flex align-center justify-space-between gap-2 pt-1 border-t border-dashed">
+                  <div class="d-flex flex-column">
+                    <span class="text-caption font-weight-bold text-high-emphasis">Monto Financiado (Crédito):</span>
+                    <span class="text-tiny text-medium-emphasis">Irá a Créditos > Cashea</span>
+                  </div>
+                  <div class="d-flex align-center gap-1" style="max-inline-size: 140px;">
+                    <span class="text-caption font-weight-bold text-primary">BS</span>
+                    <input
+                      v-model="payment.inputAmount"
+                      type="number"
+                      step="any"
+                      class="payment-input-box text-right border rounded font-weight-bold w-100"
+                      placeholder="0.00"
+                      @input="payment.amount = parseFloat(payment.inputAmount) || 0"
+                    />
+                  </div>
+                </div>
+
+                <!-- Cantidad de cuotas -->
+                <div class="d-flex align-center justify-space-between gap-2">
+                  <span class="text-caption font-weight-bold text-high-emphasis">Cantidad de Cuotas:</span>
+                  <div class="d-flex align-center gap-1">
+                    <VBtn
+                      v-for="c in [1, 2, 3, 4, 6]"
+                      :key="c"
+                      size="x-small"
+                      :variant="(payment.installments_count || 3) === c ? 'flat' : 'tonal'"
+                      :color="(payment.installments_count || 3) === c ? 'primary' : 'secondary'"
+                      class="font-weight-bold rounded"
+                      style="min-inline-size: 24px; padding: 0 6px;"
+                      @click="payment.installments_count = c"
+                    >
+                      {{ c }}
+                    </VBtn>
+                  </div>
+                </div>
+
+                <!-- Cronograma orientativo de fechas -->
+                <div class="bg-surface pa-2 rounded border">
+                  <div class="text-tiny font-weight-bold text-medium-emphasis mb-1 uppercase letter-spacing-1 d-flex align-center justify-space-between">
+                    <span>Fechas de Pago (+14 días):</span>
+                    <span class="text-primary font-weight-bold">
+                      {{ payment.installments_count || 3 }} cuotas de {{ formatCurrency(((payment.amount || 0) / (payment.installments_count || 3)), 'BS') }}
+                    </span>
+                  </div>
+                  <div class="d-flex flex-column gap-1">
+                    <div
+                      v-for="(fDate, fIdx) in calculateInstallmentDates(payment.installments_count || 3)"
+                      :key="fIdx"
+                      class="d-flex justify-space-between align-center text-tiny"
+                    >
+                      <span class="text-medium-emphasis">Cuota #{{ fIdx + 1 }} ({{ fDate }}):</span>
+                      <strong class="text-high-emphasis">
+                        {{ formatCurrency(((payment.amount || 0) / (payment.installments_count || 3)), 'BS') }}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Referencia opcional y confirmación -->
+                <div class="d-flex align-center gap-2 pt-1">
+                  <input
+                    v-model="payment.reference"
+                    class="payment-input-box border rounded font-weight-medium flex-grow-1"
+                    placeholder="Ref. / Orden Cashea (Opcional)"
+                    @keydown.enter="emit('confirm-payment', payment)"
+                  />
+                  <VBtn
+                    color="success"
+                    size="small"
+                    variant="flat"
+                    prepend-icon="tabler-check"
+                    class="font-weight-bold text-none"
+                    :disabled="!(parseFloat(payment.inputAmount) > 0)"
+                    @click="emit('confirm-payment', payment)"
+                  >
+                    Confirmar
+                  </VBtn>
+                </div>
+              </div>
+
+              <!-- Formulario de edición: monto + referencia (Para metodos normales) -->
+              <div v-else-if="payment._isInputActive" class="d-flex flex-column gap-2.5 pt-2 mt-1 border-t">
                 <!-- Campo de monto -->
                 <div class="d-flex align-center gap-2">
                   <span class="text-caption font-weight-bold text-primary uppercase shrink-0" style="min-inline-size: 36px;">{{ payment.currency }}</span>

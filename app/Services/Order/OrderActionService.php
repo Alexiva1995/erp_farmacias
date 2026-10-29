@@ -1612,9 +1612,28 @@ class OrderActionService
 
                     if ($targetAmountUsd > 0) {
                         $generalSettings = \DB::table('general_settings')->first();
-                        $installmentsCount = $isCasheaCredit ? (int)($generalSettings->cashea_installments_count ?? 3) : 1;
+                        $installmentsCount = $isCasheaCredit ? (int)($targetPaymentItem['installments_count'] ?? ($generalSettings->cashea_installments_count ?? 3)) : 1;
                         $installmentDays = $isCasheaCredit ? (int)($generalSettings->cashea_installment_days ?? 14) : 0;
-                        $initialPaymentUsd = $isCasheaCredit ? (float)($targetPaymentItem['initial_payment_usd'] ?? ($request->cashea_initial_usd ?? 0)) : 0;
+                        $initialPaymentUsd = 0;
+                    if ($isCasheaCredit) {
+                        // Calcular suma en USD de todos los pagos que NO sean cashea
+                        $resourceService = app(ResourceService::class);
+                        foreach ($request->payments as $p) {
+                            if (strtolower((string)($p['method'] ?? '')) !== 'cashea') {
+                                $pAmt = (float)($p['amount'] ?? 0);
+                                $pCur = strtoupper($p['currency'] ?? 'USD');
+                                if ($pCur === 'USD') {
+                                    $initialPaymentUsd += $pAmt;
+                                } else {
+                                    $pRate = (float)($resourceService->getExchangeRate($pCur) ?: 1);
+                                    if ($pRate > 0) $initialPaymentUsd += round($pAmt / $pRate, 2);
+                                }
+                            }
+                        }
+                        if ($initialPaymentUsd <= 0 && isset($targetPaymentItem['initial_payment_usd'])) {
+                            $initialPaymentUsd = (float)$targetPaymentItem['initial_payment_usd'];
+                        }
+                    }
                         $nextDueDate = $isCasheaCredit ? Carbon::now()->addDays($installmentDays) : null;
 
                         $newCredit = Credit::create([

@@ -18,9 +18,12 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
   const isCredit = (value) => value === 'credit'
   const isCashMethod = (method) => !!method && (method === 'cash' || method.startsWith('cash_'))
 
+  const isCashea = (value) => value === 'cashea'
+
   const requiresReference = (method, currency) => {
     if (isCashMethod(method)) return false
     if (isCredit(method)) return false
+    if (method === 'cashea') return false
     if (method === 'balance') return false
     return true
   }
@@ -437,6 +440,7 @@ export function useTpvCheckoutCalculations(props, payments, brandingStore) {
     exchangeRates,
     ratesLoaded,
     isCredit,
+    isCashea,
     isCashMethod,
     requiresReference,
     roundToTwoDecimalPlaces,

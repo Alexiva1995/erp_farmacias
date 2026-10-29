@@ -126,7 +126,7 @@ class GeneralSettingResource extends JsonResource
         }
 
         // Inyectar método Cashea en BS y USD si no está presente en la estructura guardada
-        foreach (['BS', 'USD'] as $currKey) {
+        foreach (['BS'] as $currKey) {
             if (isset($paymentMethods[$currKey]['methods']) && is_array($paymentMethods[$currKey]['methods'])) {
                 $hasCashea = collect($paymentMethods[$currKey]['methods'])->contains(function ($m) {
                     return ($m['value'] ?? '') === 'cashea';

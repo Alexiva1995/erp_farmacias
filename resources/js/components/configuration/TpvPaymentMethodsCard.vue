@@ -42,11 +42,11 @@ const handleCurrencyToggle = async (currency, currentValue) => {
   emit('update:paymentMethods', props.paymentMethods)
 }
 
-const getFilteredMethods = (methods) => {
+const getFilteredMethods = (methods, currency) => {
   if (!Array.isArray(methods)) return []
   return methods.filter(m => {
     if (m.value === 'cashea') {
-      return Boolean(props.enableCashea)
+      return currency === 'BS' && Boolean(props.enableCashea)
     }
     return true
   })
@@ -146,7 +146,7 @@ const toggleDescription = (method) => {
 
               <div v-else class="d-flex flex-column gap-3">
                 <div
-                  v-for="(method, index) in getFilteredMethods(currencyData.methods)"
+                  v-for="(method, index) in getFilteredMethods(currencyData.methods, currency)"
                   :key="index"
                   class="pa-3 rounded-lg border bg-surface"
                 >

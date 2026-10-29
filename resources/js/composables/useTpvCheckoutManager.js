@@ -136,6 +136,23 @@ export function useTpvCheckoutManager({
       availablePayment.inputAmount = convertedCreditAmount
       availablePayment._isInputActive = false
       availablePayment._isReferenceActive = false
+    } else if (methodValue === 'cashea') {
+      const defaultInstallments = Number(brandingStore.settings?.cashea_installments_count) || 3
+      const totalOrderInBs = getConvertedRemainingAmount('BS')
+      // Si ya hay otros pagos en la orden, Cashea toma el restante. Si no, calcula por defecto el 60% financiado (inicial 40%)
+      const hasOtherPayments = payments.value.some(p => p !== availablePayment && p.amount > 0)
+      let initialPercentage = hasOtherPayments ? 0 : 40
+      let financedBs = hasOtherPayments ? totalOrderInBs : Math.round(totalOrderInBs * 0.60 * 100) / 100
+
+      availablePayment.amount = financedBs
+      availablePayment.inputAmount = financedBs.toString()
+      availablePayment.currency = 'BS'
+      availablePayment.installments_count = defaultInstallments
+      availablePayment.initial_percentage = initialPercentage
+      availablePayment.initial_amount_bs = Math.max(0, Math.round((totalOrderInBs - financedBs) * 100) / 100)
+      availablePayment._isInputActive = true
+      availablePayment._isReferenceActive = true
+      availablePayment.reference = ''
     } else {
       const isCash = isCashMethod(methodValue)
       const defaultAmount = isCash ? null : getConvertedRemainingAmount(targetCurrency)
@@ -308,6 +325,8 @@ export function useTpvCheckoutManager({
             amount: parseFloat(rawAmount),
             reference: p.reference || null,
             currency: p.currency || props.selectedCurrency || 'COP',
+            installments_count: p.installments_count || undefined,
+            initial_payment_usd: p.initial_amount_usd || undefined,
           }
         })
         .filter((p) => p.method && !isNaN(p.amount) && p.amount > 0)

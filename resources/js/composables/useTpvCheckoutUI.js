@@ -104,7 +104,13 @@ export function useTpvCheckoutUI({
       }
 
       const enabledMethods = rawMethods
-        .filter((m) => m.enabled !== false)
+        .filter((m) => {
+          if (m.enabled === false) return false
+          if (m.value === 'cashea') {
+            return currencyKey === 'BS' && Boolean(brandingStore.settings?.enable_cashea)
+          }
+          return true
+        })
         .map((m) => {
           const normalizedVal = normalizeMethodValue(m.value, currencyKey)
           return {
@@ -116,6 +122,10 @@ export function useTpvCheckoutUI({
 
       if (currencyKey === 'BS' && !rawMethods.some((m) => m.value === 'credit')) {
         enabledMethods.push({ label: 'Crédito', value: 'credit', enabled: true })
+      }
+
+      if (currencyKey === 'BS' && Boolean(brandingStore.settings?.enable_cashea) && !enabledMethods.some((m) => m.value === 'cashea')) {
+        enabledMethods.push({ label: 'Cashea (BNPL)', value: 'cashea', enabled: true })
       }
 
       if (currencyKey === 'USD' && props.orderData?.client?.balance > 0) {
