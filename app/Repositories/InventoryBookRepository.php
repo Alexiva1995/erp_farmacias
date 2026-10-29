@@ -172,69 +172,51 @@ class InventoryBookRepository implements InventoryBookContract
             $lastPurchaseCostBs[$pid] = $costBs;
         }
 
-        // 3. Salidas por ventas en el período (InventoryMovement type 'sale' y 'return')
-        $salesMovements = DB::table('inventory_movements')
+        // 3. Salidas por ventas en el período agrupadas a nivel de base de datos
+        $salesTotals = DB::table('inventory_movements')
             ->whereBetween('movement_date', [$startDateStr, $endDateStr])
             ->whereIn('movement_type', ['sale', 'return', 'Venta', 'Devolución'])
-            ->select('product_id', 'movement_type', 'quantity')
-            ->get();
+            ->groupBy('product_id')
+            ->select('product_id')
+            ->selectRaw("SUM(CASE WHEN LOWER(movement_type) IN ('sale', 'venta') THEN quantity WHEN LOWER(movement_type) IN ('return', 'devolución') THEN -quantity ELSE 0 END) as net_sales")
+            ->pluck('net_sales', 'product_id')
+            ->all();
 
-        $salesTotals = [];
-        foreach ($salesMovements as $sm) {
-            $pid = (int) $sm->product_id;
-            $qty = (float) $sm->quantity;
-            $type = strtolower((string) $sm->movement_type);
-
-            if ($type === 'sale' || $type === 'venta') {
-                $salesTotals[$pid] = ($salesTotals[$pid] ?? 0) + $qty;
-            } elseif ($type === 'return' || $type === 'devolución') {
-                $salesTotals[$pid] = ($salesTotals[$pid] ?? 0) - $qty;
-            }
-        }
-
-        // 4. Retiros (ajustes negativos, pérdidas, vencidos)
+        // 4. Retiros (ajustes negativos, pérdidas, vencidos) agrupados en SQL
         $withdrawalTotals = [];
         if ($book->include_negative_adjustments_as_withdrawals) {
-            $withdrawalMovements = DB::table('inventory_movements')
+            $withdrawalTotals = DB::table('inventory_movements')
                 ->whereBetween('movement_date', [$startDateStr, $endDateStr])
                 ->whereIn('movement_type', ['loss', 'expired', 'adjustment', 'Pérdida', 'Caducado', 'Ajuste'])
-                ->select('product_id', 'movement_type', 'quantity', 'stock_before', 'stock_after')
-                ->get();
-
-            foreach ($withdrawalMovements as $wm) {
-                $pid = (int) $wm->product_id;
-                $type = strtolower((string) $wm->movement_type);
-                $diff = (float) $wm->quantity;
-
-                // Si es ajuste con stock_before > stock_after o cantidad negativa
-                if ($type === 'adjustment' || $type === 'ajuste') {
-                    if ($wm->stock_before > $wm->stock_after) {
-                        $diff = (float) ($wm->stock_before - $wm->stock_after);
-                        $withdrawalTotals[$pid] = ($withdrawalTotals[$pid] ?? 0) + $diff;
-                    } elseif ($diff < 0) {
-                        $withdrawalTotals[$pid] = ($withdrawalTotals[$pid] ?? 0) + abs($diff);
-                    }
-                } else {
-                    $withdrawalTotals[$pid] = ($withdrawalTotals[$pid] ?? 0) + abs($diff);
-                }
-            }
+                ->groupBy('product_id')
+                ->select('product_id')
+                ->selectRaw("
+                    SUM(
+                        CASE 
+                            WHEN LOWER(movement_type) IN ('adjustment', 'ajuste') THEN 
+                                CASE WHEN stock_before > stock_after THEN (stock_before - stock_after)
+                                     WHEN quantity < 0 THEN ABS(quantity)
+                                     ELSE 0 END
+                            ELSE ABS(quantity)
+                        END
+                    ) as total_withdrawals
+                ")
+                ->pluck('total_withdrawals', 'product_id')
+                ->all();
         }
 
-        // 5. Autoconsumos
-        $selfConsumptionMovements = DB::table('inventory_movements')
+        // 5. Autoconsumos agrupados en SQL
+        $selfConsumptionTotals = DB::table('inventory_movements')
             ->whereBetween('movement_date', [$startDateStr, $endDateStr])
             ->whereIn('movement_type', ['consumption', 'autoconsumo', 'Autoconsumo'])
-            ->select('product_id', 'quantity')
-            ->get();
+            ->groupBy('product_id')
+            ->select('product_id')
+            ->selectRaw('SUM(ABS(quantity)) as total_consumption')
+            ->pluck('total_consumption', 'product_id')
+            ->all();
 
-        $selfConsumptionTotals = [];
-        foreach ($selfConsumptionMovements as $scm) {
-            $pid = (int) $scm->product_id;
-            $selfConsumptionTotals[$pid] = ($selfConsumptionTotals[$pid] ?? 0) + abs((float) $scm->quantity);
-        }
-
-        // 6. Cargar todos los productos activos o no eliminados
-        $products = Product::withoutGlobalScopes()
+        // 6. Cargar productos activos sin sobrecarga de hidratación Eloquent (toBase)
+        $products = DB::table('products')
             ->where('is_deleted', false)
             ->select('id', 'name', 'presentation', 'stock', 'unit_cost', 'iva')
             ->get();
