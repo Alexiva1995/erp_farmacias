@@ -42,7 +42,7 @@
             overflow: hidden;
         }
         .table-data th {
-            background-color: #2b5797;
+            background-color: #1e3a8a;
             color: #ffffff;
             font-weight: bold;
             text-align: center;
@@ -54,12 +54,12 @@
             padding: 1px;
             text-align: center;
         }
-        .table-data th.zoom-col, .table-data td.zoom-col {
-            background-color: #fff2cc;
-        }
         .table-data th.zoom-header {
-            background-color: #d4a017;
-            color: #fff;
+            background-color: #b45309;
+            color: #ffffff;
+        }
+        .table-data td.zoom-col {
+            background-color: #fef3c7;
         }
         .table-data .text-right {
             text-align: right;
@@ -137,9 +137,9 @@
                 <th style="width: 2.5%;">%IVA</th>
                 <th style="width: 4.2%;">IVA</th>
                 @if($enableZoom)
-                    <th class="zoom-col" style="width: 4.5%;">BASE ZOOM</th>
-                    <th class="zoom-col" style="width: 2.5%;">%IVA</th>
-                    <th class="zoom-col" style="width: 4.2%;">IVA ZOOM</th>
+                    <th class="zoom-header" style="width: 4.5%;">BASE ZOOM</th>
+                    <th class="zoom-header" style="width: 2.5%;">%IVA</th>
+                    <th class="zoom-header" style="width: 4.2%;">IVA ZOOM</th>
                 @endif
                 <th style="width: 4%;">IVA RET.</th>
                 <th style="width: 4.5%;">Nº COMP. RET.</th>
