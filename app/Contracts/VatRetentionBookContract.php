@@ -21,6 +21,11 @@ interface VatRetentionBookContract
     public function findOrCreateBook(int $year, int $month, ?int $fortnight = null): VatRetentionBook;
 
     /**
+     * Sincroniza y asegura que existan todos los períodos que tengan retenciones en la BD.
+     */
+    public function syncExistingRetentionPeriods(): void;
+
+    /**
      * Obtiene un reporte por ID con sus renglones y relaciones.
      */
     public function getBookById(int $id): VatRetentionBook;

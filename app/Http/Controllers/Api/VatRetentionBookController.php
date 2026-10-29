@@ -26,9 +26,9 @@ class VatRetentionBookController extends Controller
     public function index(IndexVatRetentionBookRequest $request): JsonResponse
     {
         try {
-            $this->vatRetentionBookService->findOrCreateCurrentBook();
+            $this->vatRetentionBookService->syncExistingRetentionPeriods();
         } catch (\Throwable $e) {
-            Log::warning("Error al inicializar período actual de retenciones de IVA: " . $e->getMessage());
+            Log::warning("Error al inicializar períodos de retenciones de IVA: " . $e->getMessage());
         }
 
         $filters = $request->validated();

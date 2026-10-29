@@ -1,4 +1,5 @@
 <script setup>
+import PurchaseBookFilters from "@/components/fiscal/PurchaseBookFilters.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { onMounted, reactive, ref } from "vue";
@@ -42,11 +43,6 @@ const months = [
 ];
 
 const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
-
-const statuses = [
-  { title: "Abierto", value: "open" },
-  { title: "Cerrado", value: "closed" },
-];
 
 const formatCurrency = (val) => {
   return Number(val || 0).toLocaleString("es-VE", {
@@ -155,7 +151,7 @@ onMounted(() => {
 
 <template>
   <div class="vat-retention-books-page">
-    <!-- Encabezado Principal -->
+    <!-- Encabezado con Estilo Homologado del ERP -->
     <VCard class="mb-4 pa-4 rounded-lg">
       <div class="d-flex align-center justify-space-between flex-wrap gap-3">
         <div class="d-flex align-center gap-3">
@@ -173,70 +169,34 @@ onMounted(() => {
         <div class="d-flex align-center gap-2">
           <VBtn
             color="primary"
-            prepend-icon="tabler-plus"
+            prepend-icon="tabler-calendar-plus"
             @click="showGenerateModal = true"
           >
-            Generar Período
+            Nuevo Período
+          </VBtn>
+          <VBtn
+            icon
+            variant="outlined"
+            color="secondary"
+            :loading="loading"
+            @click="fetchBooks"
+          >
+            <VIcon icon="tabler-refresh" />
           </VBtn>
         </div>
       </div>
     </VCard>
 
-    <!-- Filtros de Período -->
-    <VCard class="mb-4 pa-4 rounded-lg">
-      <VRow dense align="center">
-        <VCol cols="12" sm="3" md="3">
-          <VSelect
-            v-model="filters.year"
-            :items="years"
-            label="Año"
-            density="compact"
-            variant="outlined"
-            hide-details
-            @update:model-value="fetchBooks"
-          />
-        </VCol>
-        <VCol cols="12" sm="3" md="3">
-          <VSelect
-            v-model="filters.month"
-            :items="months"
-            item-title="title"
-            item-value="value"
-            label="Mes"
-            density="compact"
-            variant="outlined"
-            clearable
-            hide-details
-            @update:model-value="fetchBooks"
-          />
-        </VCol>
-        <VCol cols="12" sm="3" md="3">
-          <VSelect
-            v-model="filters.status"
-            :items="statuses"
-            item-title="title"
-            item-value="value"
-            label="Estado"
-            density="compact"
-            variant="outlined"
-            clearable
-            hide-details
-            @update:model-value="fetchBooks"
-          />
-        </VCol>
-        <VCol cols="12" sm="3" md="3" class="d-flex gap-2">
-          <VBtn
-            variant="outlined"
-            color="secondary"
-            prepend-icon="tabler-filter-off"
-            block
-            @click="handleClearFilters"
-          >
-            Limpiar
-          </VBtn>
-        </VCol>
-      </VRow>
-    </VCard>
+    <!-- Filtros de Búsqueda Homologados con AppFilterBase -->
+    <PurchaseBookFilters
+      v-model:year="filters.year"
+      v-model:month="filters.month"
+      v-model:status="filters.status"
+      :loading="loading"
+      @clear="handleClearFilters"
+      @create-period="showGenerateModal = true"
+      @refresh="fetchBooks"
+    />
 
     <!-- Tabla Principal de Períodos -->
     <VCard class="rounded-lg">
@@ -346,11 +306,11 @@ onMounted(() => {
       </VDataTableServer>
     </VCard>
 
-    <!-- Modal para Generar Período Manual -->
+    <!-- Modal para Nuevo Período Manual -->
     <VDialog v-model="showGenerateModal" max-width="480">
       <VCard class="pa-4 rounded-lg">
         <VCardTitle class="px-0 pt-0 d-flex align-center justify-space-between">
-          <span class="text-h6 font-weight-bold">Generar Período Fiscal</span>
+          <span class="text-h6 font-weight-bold">Nuevo Período Fiscal</span>
           <VBtn icon="tabler-x" variant="text" size="small" @click="showGenerateModal = false" />
         </VCardTitle>
         <VCardText class="px-0 py-3">
@@ -359,7 +319,7 @@ onMounted(() => {
               <VSelect
                 v-model="generateForm.year"
                 :items="years"
-                label="Año"
+                label="Año Fiscal"
                 variant="outlined"
                 density="compact"
               />
@@ -393,7 +353,7 @@ onMounted(() => {
             :disabled="isGenerating"
             @click="handleGeneratePeriod"
           >
-            Generar y Abrir
+            Crear Período
           </VBtn>
         </VCardActions>
       </VCard>

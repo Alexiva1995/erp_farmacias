@@ -40,6 +40,11 @@ class VatRetentionBookService
         return $this->repository->findOrCreateBook($now->year, $now->month, $fortnight);
     }
 
+    public function syncExistingRetentionPeriods(): void
+    {
+        $this->repository->syncExistingRetentionPeriods();
+    }
+
     public function getBookById(int $id): VatRetentionBook
     {
         return $this->repository->getBookById($id);

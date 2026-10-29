@@ -90,6 +90,32 @@ class VatRetentionBookRepository implements VatRetentionBookContract
         return $book->fresh(['entries', 'closedByUser']);
     }
 
+    public function syncExistingRetentionPeriods(): void
+    {
+        $this->findOrCreateBook((int) date('Y'), (int) date('n'), date('j') <= 15 ? 1 : 2);
+
+        try {
+            $periods = Retention::whereNotNull('date')
+                ->where(function ($q) {
+                    $q->where('type', 'iva')
+                      ->orWhere('type', 'IVA')
+                      ->orWhereNull('type')
+                      ->orWhere('type', '');
+                })
+                ->selectRaw('YEAR(date) as r_year, MONTH(date) as r_month, CASE WHEN DAY(date) <= 15 THEN 1 ELSE 2 END as r_fortnight')
+                ->distinct()
+                ->get();
+
+            foreach ($periods as $p) {
+                if (!empty($p->r_year) && !empty($p->r_month)) {
+                    $this->findOrCreateBook((int) $p->r_year, (int) $p->r_month, (int) $p->r_fortnight);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Error auto-descubriendo períodos de retenciones de IVA: " . $e->getMessage());
+        }
+    }
+
     public function getBookById(int $id): VatRetentionBook
     {
         return VatRetentionBook::with([
