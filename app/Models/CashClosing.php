@@ -39,6 +39,7 @@ class CashClosing extends Model
         'usd_binance',
         'usd_conversion',
         'usd_credit',
+        'usd_cashea_credit',
         'usd_balance',
         'usd_delivered',
         'cop_delivered',

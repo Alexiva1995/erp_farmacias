@@ -50,6 +50,7 @@ use App\Http\Controllers\Api\InventoryStockController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProcessAuditController;
 use App\Http\Controllers\Api\PendingPaymentsController;
+use App\Http\Controllers\Api\CasheaCreditController;
 use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpensesController;
@@ -518,6 +519,10 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/credits/payments', [CreditsController::class, 'payments']);
         Route::post('/credits/payments', [CreditsController::class, 'getPaymentHistory']);
         Route::delete('/credits/payments/{payment}', [CreditsController::class, 'destroyPayment']);
+        Route::get('/credits/cashea', [CasheaCreditController::class, 'index']);
+        Route::get('/credits/cashea/kpis', [CasheaCreditController::class, 'kpis']);
+        Route::get('/credits/cashea/schedule', [CasheaCreditController::class, 'schedule']);
+        Route::post('/credits/cashea/installments/{installment}/pay', [CasheaCreditController::class, 'payInstallment']);
         Route::get('/returns', [ReturnsController::class, 'index']);
         Route::post('/returns/search-orders', [ReturnsController::class, 'searchOrders']);
         Route::get('/returns/product/{productId}/lots', [ReturnsController::class, 'getProductLots']);

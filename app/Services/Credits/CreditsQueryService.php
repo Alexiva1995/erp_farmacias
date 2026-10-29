@@ -12,7 +12,7 @@ class CreditsQueryService
 {
     private function getBaseQuery(): Builder
     {
-        return Credit::query()->with('client');
+        return Credit::query()->where('credit_type', '!=', 'cashea')->with('client');
     }
 
     private function applySorting(Builder $query, ?string $sortBy, string $orderBy): Builder

@@ -1508,7 +1508,7 @@ class OrderActionService
             $hasCreditInRequest = filter_var($request->credit, FILTER_VALIDATE_BOOLEAN) || 
                 collect($request->payments)->contains(function ($payment) {
                     $method = is_array($payment) ? ($payment['method'] ?? '') : ($payment->method ?? '');
-                    return strtolower((string) $method) === 'credit';
+                    return in_array(strtolower((string) $method), ['credit', 'cashea']);
                 });
 
             // Si incluye crédito, sincronizar el renglón de crédito al monto exacto restante de la orden para evitar discrepancias por recálculo
@@ -1593,16 +1593,62 @@ class OrderActionService
                     }
                 }
 
-                if ($creditAmountUsd > 0) {
-                    Credit::create([
-                        'client_id' => $request->client_id ?? $orderId->client_id,
-                        'order_id' => $orderId->id,
-                        'credit_amount' => $creditAmountUsd,
-                        'pending_amount' => $creditAmountUsd,
-                        'credit_date' => Carbon::now(),
-                        'status' => 'Active'
-                    ]);
-                }
+                                    $casheaPaymentItem = collect($request->payments)->first(function ($p) {
+                        return strtolower((string)($p['method'] ?? '')) === 'cashea';
+                    });
+                    $isCasheaCredit = !empty($casheaPaymentItem);
+                    $targetPaymentItem = $casheaPaymentItem ?: $creditPaymentItem;
+                    
+                    $rawTargetAmount = $targetPaymentItem ? (float) ($targetPaymentItem['amount'] ?? 0) : (float) $orderId->total_amount;
+                    $targetCurrency = strtoupper($targetPaymentItem['currency'] ?? $orderId->currency ?? 'USD');
+                    $targetAmountUsd = $rawTargetAmount;
+                    if ($targetCurrency !== 'USD') {
+                        $resourceService = app(ResourceService::class);
+                        $rate = (float) ($resourceService->getExchangeRate($targetCurrency) ?: 1);
+                        if ($rate > 0) {
+                            $targetAmountUsd = round($rawTargetAmount / $rate, 2);
+                        }
+                    }
+
+                    if ($targetAmountUsd > 0) {
+                        $generalSettings = \DB::table('general_settings')->first();
+                        $installmentsCount = $isCasheaCredit ? (int)($generalSettings->cashea_installments_count ?? 3) : 1;
+                        $installmentDays = $isCasheaCredit ? (int)($generalSettings->cashea_installment_days ?? 14) : 0;
+                        $initialPaymentUsd = $isCasheaCredit ? (float)($targetPaymentItem['initial_payment_usd'] ?? ($request->cashea_initial_usd ?? 0)) : 0;
+                        $nextDueDate = $isCasheaCredit ? Carbon::now()->addDays($installmentDays) : null;
+
+                        $newCredit = Credit::create([
+                            'client_id' => $request->client_id ?? $orderId->client_id,
+                            'order_id' => $orderId->id,
+                            'credit_amount' => $targetAmountUsd,
+                            'pending_amount' => $targetAmountUsd,
+                            'credit_date' => Carbon::now(),
+                            'status' => 'Active',
+                            'credit_type' => $isCasheaCredit ? 'cashea' : 'standard',
+                            'cashea_order_reference' => $isCasheaCredit ? ($targetPaymentItem['reference'] ?? ($request->cashea_reference ?? null)) : null,
+                            'initial_payment_usd' => $initialPaymentUsd,
+                            'installments_count' => $installmentsCount,
+                            'next_due_date' => $nextDueDate,
+                        ]);
+
+                        if ($isCasheaCredit && $installmentsCount > 0) {
+                            $installmentAmountUsd = round($targetAmountUsd / $installmentsCount, 2);
+                            for ($i = 1; $i <= $installmentsCount; $i++) {
+                                $currentAmount = ($i === $installmentsCount) 
+                                    ? ($targetAmountUsd - ($installmentAmountUsd * ($installmentsCount - 1))) 
+                                    : $installmentAmountUsd;
+
+                                \App\Models\CreditInstallment::create([
+                                    'credit_id' => $newCredit->id,
+                                    'installment_number' => $i,
+                                    'amount_usd' => $currentAmount,
+                                    'paid_amount_usd' => 0,
+                                    'due_date' => Carbon::now()->addDays($i * $installmentDays),
+                                    'status' => 'Pending',
+                                ]);
+                            }
+                        }
+                    }
             }
 
 
@@ -1677,6 +1723,17 @@ class OrderActionService
                                 $rate = (float) ($resourceService->getExchangeRate($payCurr) ?: 1);
                                 $rawCred = $amount > 0 ? $amount : $orderTotal;
                                 $current_cash->usd_credit += ($rate > 0) ? round($rawCred / $rate, 2) : $rawCred;
+                            }
+                            break;
+                        case 'cashea':
+                            $payCurr = strtoupper($payment['currency'] ?? $orderCurrency);
+                            if ($payCurr === 'USD') {
+                                $current_cash->usd_cashea_credit += ($amount > 0 ? $amount : $orderTotal);
+                            } else {
+                                $resourceService = app(ResourceService::class);
+                                $rate = (float) ($resourceService->getExchangeRate($payCurr) ?: 1);
+                                $rawCred = $amount > 0 ? $amount : $orderTotal;
+                                $current_cash->usd_cashea_credit += ($rate > 0) ? round($rawCred / $rate, 2) : $rawCred;
                             }
                             break;
                         case 'cash_bs':

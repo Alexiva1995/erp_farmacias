@@ -59,6 +59,16 @@ const processedNavItems = computed(() => {
       if (copy.children && Array.isArray(copy.children)) {
         let childs = filterNav([...copy.children]);
         
+        // Filtrado dinámico de Créditos según enable_cashea
+        if (copy.title === 'Créditos') {
+          const enableCashea = Boolean(brandingStore.settings.enable_cashea);
+          if (!enableCashea) {
+            // Si Cashea está deshabilitado, dejar Créditos como acceso directo simple sin submenús
+            copy.children = undefined;
+            copy.to = 'tpv-credit';
+          }
+        }
+
         // Filtrado dinámico de submenús de Promociones según enabled_offer_types
         if (copy.title === 'Promociones') {
           const enabledOffers = brandingStore.settings.enabled_offer_types || ['general', 'individual', 'category', 'pack', 'company', 'doctor', 'prescription', 'expiration'];

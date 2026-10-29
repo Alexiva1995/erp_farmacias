@@ -7,6 +7,7 @@ import { useBrandingStore } from '@/stores/useBrandingStore'
 import TpvGeneralSettingsCard from '@/components/configuration/TpvGeneralSettingsCard.vue'
 import TpvPaymentMethodsCard from '@/components/configuration/TpvPaymentMethodsCard.vue'
 import TpvPromotionsCard from '@/components/configuration/TpvPromotionsCard.vue'
+import TpvCasheaSettingsCard from '@/components/configuration/TpvCasheaSettingsCard.vue'
 
 const ability = useAbility()
 const brandingStore = useBrandingStore()
@@ -23,6 +24,14 @@ const defaultSettings = {
   tpv_style: 'pharmacy',
   enable_flash_checkout: false,
   enable_zoom: false,
+  enable_cashea: false,
+  cashea_mode: 'manual',
+  cashea_environment: 'sandbox',
+  cashea_client_id: '',
+  cashea_public_key: '',
+  cashea_private_key: '',
+  cashea_installments_count: 3,
+  cashea_installment_days: 14,
   enable_quotations: true,
   quotation_style: 'pharmacy',
   tpv_rate_type: 'bcv',
@@ -63,6 +72,14 @@ const fetchSettings = async () => {
     'tpv_style',
     'enable_flash_checkout',
     'enable_zoom',
+    'enable_cashea',
+    'cashea_mode',
+    'cashea_environment',
+    'cashea_client_id',
+    'cashea_public_key',
+    'cashea_private_key',
+    'cashea_installments_count',
+    'cashea_installment_days',
     'enable_quotations',
     'quotation_style',
     'tpv_rate_type',
@@ -83,6 +100,14 @@ const fetchSettings = async () => {
       tpv_style: settings.tpv_style || 'pharmacy',
       enable_flash_checkout: !!settings.enable_flash_checkout,
       enable_zoom: !!settings.enable_zoom,
+      enable_cashea: !!settings.enable_cashea,
+      cashea_mode: settings.cashea_mode || 'manual',
+      cashea_environment: settings.cashea_environment || 'sandbox',
+      cashea_client_id: settings.cashea_client_id || '',
+      cashea_public_key: settings.cashea_public_key || '',
+      cashea_private_key: settings.cashea_private_key || '',
+      cashea_installments_count: settings.cashea_installments_count !== undefined ? Number(settings.cashea_installments_count) : 3,
+      cashea_installment_days: settings.cashea_installment_days !== undefined ? Number(settings.cashea_installment_days) : 14,
       enable_quotations: settings.enable_quotations !== undefined ? !!settings.enable_quotations : true,
       quotation_style: settings.quotation_style || 'pharmacy',
       tpv_rate_type: settings.tpv_rate_type || 'bcv',
@@ -153,6 +178,14 @@ const saveSettings = async () => {
       tpv_style: formState.tpv_style,
       enable_flash_checkout: formState.enable_flash_checkout,
       enable_zoom: formState.enable_zoom,
+      enable_cashea: formState.enable_cashea,
+      cashea_mode: formState.cashea_mode,
+      cashea_environment: formState.cashea_environment,
+      cashea_client_id: formState.cashea_client_id,
+      cashea_public_key: formState.cashea_public_key,
+      cashea_private_key: formState.cashea_private_key,
+      cashea_installments_count: formState.cashea_installments_count,
+      cashea_installment_days: formState.cashea_installment_days,
       enable_quotations: formState.enable_quotations,
       quotation_style: formState.quotation_style,
       tpv_rate_type: formState.tpv_rate_type,
@@ -310,6 +343,19 @@ onMounted(() => {
       />
 
       <!-- Métodos de Pago y Monedas -->
+      <TpvCasheaSettingsCard
+        v-model:enable-cashea="formState.enable_cashea"
+        v-model:cashea-mode="formState.cashea_mode"
+        v-model:cashea-environment="formState.cashea_environment"
+        v-model:cashea-client-id="formState.cashea_client_id"
+        v-model:cashea-public-key="formState.cashea_public_key"
+        v-model:cashea-private-key="formState.cashea_private_key"
+        v-model:cashea-installments-count="formState.cashea_installments_count"
+        v-model:cashea-installment-days="formState.cashea_installment_days"
+        :can-edit="canEdit"
+        :is-saving="isSaving"
+      />
+
       <TpvPaymentMethodsCard
         v-model:payment-methods="formState.tpv_payment_methods"
         :can-edit="canEdit"

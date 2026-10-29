@@ -16,6 +16,20 @@ class Credit extends Model
         'pending_amount',
         'credit_date',
         'status',
+        'credit_type',
+        'cashea_order_reference',
+        'initial_payment_usd',
+        'installments_count',
+        'next_due_date',
+    ];
+
+    protected $casts = [
+        'credit_amount' => 'decimal:2',
+        'pending_amount' => 'decimal:2',
+        'initial_payment_usd' => 'decimal:2',
+        'installments_count' => 'integer',
+        'next_due_date' => 'date',
+        'credit_date' => 'datetime',
     ];
 
     public function client()
@@ -31,5 +45,10 @@ class Credit extends Model
     public function payments()
     {
         return $this->hasMany(CreditPayment::class, 'client_id', 'client_id');
+    }
+
+    public function installments()
+    {
+        return $this->hasMany(CreditInstallment::class, 'credit_id');
     }
 }
