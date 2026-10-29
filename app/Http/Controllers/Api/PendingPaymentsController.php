@@ -392,7 +392,8 @@ class PendingPaymentsController extends Controller
             // 9. Si el proveedor es Dronena y se indicó banco/referencia, reportar el pago automáticamente en el portal
             $dronenaResult = null;
             $supplierName = strtoupper($invoices->first()?->supplier?->name ?? '');
-            if ((str_contains($supplierName, 'DRONENA') || str_contains($supplierName, 'NENA')) && !empty($request->reference) && !in_array($request->payment_method, ['CASH', 'CAMBISTA'])) {
+            $supplierId = $invoices->first()?->supplier_id;
+            if ((str_contains($supplierName, 'DRONENA') || str_contains($supplierName, 'NENA') || $supplierId === 1010) && !empty($request->reference)) {
                 try {
                     $dronenaService = app(\App\Contracts\Suppliers\DronenaScraperServiceInterface::class);
                     $dronenaResult = $dronenaService->submitPayment(
@@ -416,14 +417,14 @@ class PendingPaymentsController extends Controller
 
             // 10. Si el proveedor es Cobeca / Mafarta y se indicó banco/referencia, reportar el pago automáticamente en el portal SIC
             $mafartaResult = null;
-            if ((str_contains($supplierName, 'MAFARTA') || str_contains($supplierName, 'COBECA')) && !empty($request->reference) && !in_array($request->payment_method, ['CASH', 'CAMBISTA'])) {
+            if ((str_contains($supplierName, 'MAFARTA') || str_contains($supplierName, 'COBECA') || $supplierId === 1011 || $supplierId === 23) && !empty($request->reference)) {
                 try {
                     $mafartaService = app(\App\Contracts\Suppliers\MafartaScraperServiceInterface::class);
                     $mafartaResult = $mafartaService->submitPayment(
                         $invoices->pluck('invoice_number')->toArray(),
                         (float) $request->payment_amount,
                         (string) $request->reference,
-                        (string) ($request->destination_bank ?? '01020219190006814326'),
+                        (string) ($request->destination_bank ?: '01020219190006814326'),
                         $request->payment_date,
                         $request->photo_url,
                         (string) ($request->id_type ?? 'V'),
@@ -442,7 +443,7 @@ class PendingPaymentsController extends Controller
 
             // 11. Si el proveedor es Cristmedicals / Cristalmedicals y se indicó referencia, reportar el pago automáticamente en el portal
             $cristmedicalsResult = null;
-            if ((str_contains($supplierName, 'CRIST') || str_contains($supplierName, 'CRISTALMEDICALS')) && !empty($request->reference) && !in_array($request->payment_method, ['CASH', 'CAMBISTA'])) {
+            if ((str_contains($supplierName, 'CRIST') || str_contains($supplierName, 'CRISTALMEDICALS') || $supplierId === 1002) && !empty($request->reference)) {
                 try {
                     $cristmedicalsService = app(\App\Contracts\Suppliers\CristmedicalsScraperServiceInterface::class);
                     $cristmedicalsResult = $cristmedicalsService->submitPayment(
@@ -465,7 +466,7 @@ class PendingPaymentsController extends Controller
 
             // 12. Si el proveedor es Droguería Mega (Dromega) y se indicó referencia, reportar el pago automáticamente en el portal
             $dromegaResult = null;
-            if ((str_contains($supplierName, 'DROMEGA') || str_contains($supplierName, 'MEGA') || $invoices->first()?->supplier_id === 1005) && !empty($request->reference) && !in_array($request->payment_method, ['CASH', 'CAMBISTA'])) {
+            if ((str_contains($supplierName, 'DROMEGA') || str_contains($supplierName, 'MEGA') || $supplierId === 1005) && !empty($request->reference)) {
                 try {
                     $dromegaService = app(\App\Contracts\Suppliers\DromegaScraperServiceInterface::class);
                     $dromegaResult = $dromegaService->submitPayment(
