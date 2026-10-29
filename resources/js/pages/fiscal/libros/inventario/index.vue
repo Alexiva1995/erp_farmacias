@@ -65,16 +65,35 @@ const openBookDetail = (id) => {
   router.push(`/fiscal/libros/inventario/${id}`);
 };
 
+const downloadBlob = async (endpoint, defaultFilename) => {
+  try {
+    const res = await axios.get(endpoint, { responseType: "blob" });
+    const blob = new Blob([res.data]);
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.setAttribute("download", defaultFilename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+    toast.success("Archivo descargado exitosamente.");
+  } catch (err) {
+    console.error("Error al descargar archivo:", err);
+    toast.error("Ocurrió un error al descargar el archivo.");
+  }
+};
+
 const handleExportExcel = (id) => {
-  window.open(`/api/inventory-books/${id}/export/excel`, "_blank");
+  downloadBlob(`/inventory-books/${id}/export/excel`, `libro_inventario_${id}.xlsx`);
 };
 
 const handleExportPdf = (id) => {
-  window.open(`/api/inventory-books/${id}/export/pdf`, "_blank");
+  downloadBlob(`/inventory-books/${id}/export/pdf`, `libro_inventario_${id}.pdf`);
 };
 
 const handleExportActa = (id) => {
-  window.open(`/api/inventory-books/${id}/export/acta-desincorporacion`, "_blank");
+  downloadBlob(`/inventory-books/${id}/export/acta-desincorporacion`, `acta_desincorporacion_${id}.pdf`);
 };
 
 const handleGeneratePeriod = async (formData) => {

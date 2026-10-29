@@ -82,7 +82,8 @@ class InventoryBookService
     public function exportExcel(int $id): BinaryFileResponse
     {
         $book = $this->inventoryBookRepository->getBookById($id);
-        $periodSuffix = $book->period_type->value === 'fortnightly'
+        $periodTypeValue = is_object($book->period_type) ? $book->period_type->value : (string) $book->period_type;
+        $periodSuffix = ($periodTypeValue === 'fortnightly')
             ? "Q{$book->fortnight}_{$book->month}_{$book->year}"
             : "M{$book->month}_{$book->year}";
 
@@ -96,7 +97,8 @@ class InventoryBookService
         $book = $this->inventoryBookRepository->getBookById($id);
         $settings = GeneralSetting::first() ?? new GeneralSetting();
 
-        $periodSuffix = $book->period_type->value === 'fortnightly'
+        $periodTypeValue = is_object($book->period_type) ? $book->period_type->value : (string) $book->period_type;
+        $periodSuffix = ($periodTypeValue === 'fortnightly')
             ? "Q{$book->fortnight}_{$book->month}_{$book->year}"
             : "M{$book->month}_{$book->year}";
 
@@ -113,7 +115,8 @@ class InventoryBookService
         $book = $this->inventoryBookRepository->getBookById($id);
         $settings = GeneralSetting::first() ?? new GeneralSetting();
 
-        $periodSuffix = $book->period_type->value === 'fortnightly'
+        $periodTypeValue = is_object($book->period_type) ? $book->period_type->value : (string) $book->period_type;
+        $periodSuffix = ($periodTypeValue === 'fortnightly')
             ? "Q{$book->fortnight}_{$book->month}_{$book->year}"
             : "M{$book->month}_{$book->year}";
 

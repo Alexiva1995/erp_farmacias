@@ -245,30 +245,30 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
                         'font' => ['size' => 8],
                         'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]],
                     ]);
+
+                    // Fila de Totales
+                    $totalRow = $endDataRow + 1;
+                    $sheet->setCellValue("A{$totalRow}", 'TOTALES');
+                    $sheet->mergeCells("A{$totalRow}:D{$totalRow}");
+
+                    $columnsToSum = ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+                    foreach ($columnsToSum as $col) {
+                        $sheet->setCellValue("{$col}{$totalRow}", "=SUM({$col}{$startDataRow}:{$col}{$endDataRow})");
+                    }
+
+                    $sheet->getStyle("A{$totalRow}:P{$totalRow}")->applyFromArray([
+                        'font' => ['bold' => true, 'size' => 9, 'color' => ['rgb' => '0F172A']],
+                        'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2E8F0']],
+                        'borders' => [
+                            'top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '475569']],
+                            'bottom' => ['borderStyle' => Border::BORDER_DOUBLE, 'color' => ['rgb' => '0F172A']],
+                            'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']],
+                        ],
+                    ]);
+                    $sheet->getStyle("A{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle("E{$totalRow}:P{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
-
-                // Fila de Totales
-                $totalRow = $endDataRow + 1;
-                $sheet->setCellValue("A{$totalRow}", 'TOTALES');
-                $sheet->mergeCells("A{$totalRow}:D{$totalRow}");
-
-                $columnsToSum = ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
-                foreach ($columnsToSum as $col) {
-                    $sheet->setCellValue("{$col}{$totalRow}", "=SUM({$col}{$startDataRow}:{$col}{$endDataRow})");
-                }
-
-                $sheet->getStyle("A{$totalRow}:P{$totalRow}")->applyFromArray([
-                    'font' => ['bold' => true, 'size' => 9, 'color' => ['rgb' => '0F172A']],
-                    'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
-                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2E8F0']],
-                    'borders' => [
-                        'top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '475569']],
-                        'bottom' => ['borderStyle' => Border::BORDER_DOUBLE, 'color' => ['rgb' => '0F172A']],
-                        'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']],
-                    ],
-                ]);
-                $sheet->getStyle("A{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $sheet->getStyle("E{$totalRow}:P{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
                 // Configuración de impresión: Horizontal, 1 página de ancho
                 $sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);

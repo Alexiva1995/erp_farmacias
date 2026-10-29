@@ -12,6 +12,9 @@ const bookId = computed(() => route.params.id);
 const loading = ref(false);
 const closing = ref(false);
 const savingEntry = ref(false);
+const downloadingExcel = ref(false);
+const downloadingPdf = ref(false);
+const downloadingActa = ref(false);
 const book = ref(null);
 const entries = ref([]);
 const searchQuery = ref("");
@@ -106,17 +109,42 @@ const handleReopenBook = async () => {
   }
 };
 
-// Exportaciones
+// Exportaciones autenticadas vía Blob
+const downloadBlob = async (endpoint, defaultFilename, loadingRef) => {
+  if (loadingRef) loadingRef.value = true;
+  try {
+    const res = await axios.get(endpoint, { responseType: "blob" });
+    const blob = new Blob([res.data]);
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.setAttribute("download", defaultFilename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+    toast.success("Archivo descargado exitosamente.");
+  } catch (err) {
+    console.error("Error al descargar archivo:", err);
+    toast.error("Ocurrió un error al descargar el archivo.");
+  } finally {
+    if (loadingRef) loadingRef.value = false;
+  }
+};
+
 const handleExportExcel = () => {
-  window.open(`/api/inventory-books/${bookId.value}/export/excel`, "_blank");
+  const period = book.value?.period_label?.replace(/\s+/g, "_") || "periodo";
+  downloadBlob(`/inventory-books/${bookId.value}/export/excel`, `libro_inventario_${period}.xlsx`, downloadingExcel);
 };
 
 const handleExportPdf = () => {
-  window.open(`/api/inventory-books/${bookId.value}/export/pdf`, "_blank");
+  const period = book.value?.period_label?.replace(/\s+/g, "_") || "periodo";
+  downloadBlob(`/inventory-books/${bookId.value}/export/pdf`, `libro_inventario_${period}.pdf`, downloadingPdf);
 };
 
 const handleExportActa = () => {
-  window.open(`/api/inventory-books/${bookId.value}/export/acta-desincorporacion`, "_blank");
+  const period = book.value?.period_label?.replace(/\s+/g, "_") || "periodo";
+  downloadBlob(`/inventory-books/${bookId.value}/export/acta-desincorporacion`, `acta_desincorporacion_${period}.pdf`, downloadingActa);
 };
 
 // Abrir modal de edición
@@ -267,6 +295,7 @@ onMounted(() => {
             variant="tonal"
             size="38"
             rounded="circle"
+            :loading="downloadingExcel"
             @click="handleExportExcel"
           >
             <VIcon icon="tabler-file-spreadsheet" size="20" />
@@ -280,6 +309,7 @@ onMounted(() => {
             variant="tonal"
             size="38"
             rounded="circle"
+            :loading="downloadingPdf"
             @click="handleExportPdf"
           >
             <VIcon icon="tabler-file-type-pdf" size="20" />
@@ -294,6 +324,7 @@ onMounted(() => {
             variant="tonal"
             size="38"
             rounded="circle"
+            :loading="downloadingActa"
             @click="handleExportActa"
           >
             <VIcon icon="tabler-file-certificate" size="20" />

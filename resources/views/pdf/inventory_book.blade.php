@@ -98,7 +98,8 @@
             ? 'CONTRIBUYENTE ESPECIAL'
             : 'CONTRIBUYENTE ORDINARIO';
         $monthName = mb_strtoupper(\Carbon\Carbon::create($book->year, $book->month, 1)->locale('es')->monthName, 'UTF-8');
-        $periodRange = $book->period_type->value === 'fortnightly'
+        $periodTypeValue = is_object($book->period_type) ? $book->period_type->value : (string) $book->period_type;
+        $periodRange = ($periodTypeValue === 'fortnightly')
             ? ($book->fortnight == 1 ? "1RA QUINCENA (01 AL 15 DE {$monthName} DE {$book->year})" : "2DA QUINCENA (16 AL " . \Carbon\Carbon::parse($book->end_date)->format('d') . " DE {$monthName} DE {$book->year})")
             : "MES COMPLETO DE {$monthName} DE {$book->year}";
     @endphp
