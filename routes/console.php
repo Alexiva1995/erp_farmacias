@@ -171,3 +171,17 @@ try {
     // Silenciar advertencia sin interrumpir si la tabla no existe aún (ej. migraciones iniciales)
     \Log::warning('[AutoReplenishment] No se pudo cargar configs: ' . $e->getMessage());
 }
+
+// Generación y apertura automática periódica de libros fiscales (Compras, Ventas e Inventario Art. 177)
+Schedule::call(function () {
+    try {
+        app(\App\Services\Fiscal\PurchaseBookService::class)->findOrCreateCurrentBook();
+        app(\App\Services\Fiscal\SalesBookService::class)->findOrCreateCurrentBook();
+        app(\App\Services\Fiscal\InventoryBookService::class)->findOrCreateCurrentBook();
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::warning('[FiscalBooksAutoGenerate] Error generando libros del período: ' . $e->getMessage());
+    }
+})
+    ->dailyAt('00:05')
+    ->name('generate-fiscal-books-current-period')
+    ->withoutOverlapping();

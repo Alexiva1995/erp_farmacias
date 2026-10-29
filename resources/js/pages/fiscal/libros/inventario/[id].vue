@@ -10,7 +10,6 @@ const bookId = computed(() => route.params.id);
 
 // Estados reactivos
 const loading = ref(false);
-const syncing = ref(false);
 const closing = ref(false);
 const savingEntry = ref(false);
 const book = ref(null);
@@ -58,22 +57,6 @@ const fetchBook = async () => {
     toast.error("Ocurrió un error al cargar el libro de inventario.");
   } finally {
     loading.value = false;
-  }
-};
-
-// Sincronizar y recalcular
-const handleSync = async () => {
-  syncing.value = true;
-  try {
-    const res = await axios.post(`/inventory-books/${bookId.value}/sync`);
-    toast.success("Inventario sincronizado y recalculado exitosamente.");
-    book.value = res.data?.data || null;
-    entries.value = res.data?.data?.entries || [];
-  } catch (error) {
-    console.error("Error al sincronizar inventario:", error);
-    toast.error("Error al sincronizar transacciones.");
-  } finally {
-    syncing.value = false;
   }
 };
 
@@ -275,85 +258,75 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="d-flex align-center flex-wrap gap-2">
-          <!-- Switch Ajustes en Retiros -->
-          <VSwitch
-            v-if="book?.is_open"
-            :model-value="book.include_negative_adjustments_as_withdrawals"
-            color="primary"
-            density="compact"
-            hide-details
-            class="mr-2"
-            @update:model-value="handleToggleAdjustments"
-          >
-            <template #label>
-              <span class="text-caption font-weight-medium">Ajustes como Retiros</span>
-            </template>
-          </VSwitch>
-
-          <!-- Botón Sincronizar -->
-          <VBtn
-            v-if="book?.is_open"
-            variant="outlined"
-            color="primary"
-            prepend-icon="tabler-refresh"
-            :loading="syncing"
-            @click="handleSync"
-          >
-            Sincronizar
-          </VBtn>
-
-          <!-- Botón Cerrar / Congelar -->
-          <VBtn
-            v-if="book?.is_open"
-            color="success"
-            prepend-icon="tabler-lock"
-            :loading="closing"
-            @click="handleCloseBook"
-          >
-            Cerrar Libro
-          </VBtn>
-
-          <!-- Botón Reabrir -->
-          <VBtn
-            v-if="book?.is_closed"
-            variant="outlined"
-            color="warning"
-            prepend-icon="tabler-lock-open"
-            @click="handleReopenBook"
-          >
-            Reabrir Período
-          </VBtn>
-
+        <!-- Grupo de botones estilizados como en AppFilterBase -->
+        <div class="d-flex align-center flex-wrap gap-1">
           <!-- Exportar Excel -->
           <VBtn
+            icon
             color="success"
             variant="tonal"
-            prepend-icon="tabler-file-spreadsheet"
+            size="38"
+            rounded="circle"
             @click="handleExportExcel"
           >
-            Excel SENIAT
+            <VIcon icon="tabler-file-spreadsheet" size="20" />
+            <VTooltip activator="parent" location="top">Exportar Excel SENIAT</VTooltip>
           </VBtn>
 
-          <!-- Exportar PDF -->
+          <!-- Exportar PDF Libro -->
           <VBtn
+            icon
             color="error"
             variant="tonal"
-            prepend-icon="tabler-file-type-pdf"
+            size="38"
+            rounded="circle"
             @click="handleExportPdf"
           >
-            PDF Libro
+            <VIcon icon="tabler-file-type-pdf" size="20" />
+            <VTooltip activator="parent" location="top">Exportar PDF Libro Art. 177</VTooltip>
           </VBtn>
 
           <!-- Exportar Acta Desincorporación -->
           <VBtn
             v-if="Number(book?.total_withdrawal_units || 0) > 0"
+            icon
             color="warning"
-            variant="flat"
-            prepend-icon="tabler-file-certificate"
+            variant="tonal"
+            size="38"
+            rounded="circle"
             @click="handleExportActa"
           >
-            Acta Desincorporación IVA
+            <VIcon icon="tabler-file-certificate" size="20" />
+            <VTooltip activator="parent" location="top">Acta Desincorporación y Débito IVA</VTooltip>
+          </VBtn>
+
+          <!-- Cerrar Período / Congelar -->
+          <VBtn
+            v-if="book?.is_open"
+            icon
+            color="primary"
+            variant="tonal"
+            size="38"
+            rounded="circle"
+            :loading="closing"
+            @click="handleCloseBook"
+          >
+            <VIcon icon="tabler-lock" size="20" />
+            <VTooltip activator="parent" location="top">Cerrar y Congelar Período</VTooltip>
+          </VBtn>
+
+          <!-- Reabrir Período -->
+          <VBtn
+            v-if="book?.is_closed"
+            icon
+            color="warning"
+            variant="tonal"
+            size="38"
+            rounded="circle"
+            @click="handleReopenBook"
+          >
+            <VIcon icon="tabler-lock-open" size="20" />
+            <VTooltip activator="parent" location="top">Reabrir Período para Ajustes</VTooltip>
           </VBtn>
         </div>
       </div>
@@ -435,7 +408,7 @@ onMounted(() => {
     <!-- Barra de Filtros y Búsqueda de Productos -->
     <VCard class="mb-4 pa-3 rounded-lg">
       <VRow dense align="center">
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="5" md="4">
           <VTextField
             v-model="searchQuery"
             density="compact"
@@ -447,7 +420,7 @@ onMounted(() => {
           />
         </VCol>
 
-        <VCol cols="12" sm="6" md="4">
+        <VCol cols="12" sm="4" md="4">
           <VBtnToggle
             v-model="filterType"
             mandatory
@@ -461,8 +434,22 @@ onMounted(() => {
           </VBtnToggle>
         </VCol>
 
-        <VCol cols="12" sm="12" md="4" class="text-md-right text-caption text-medium-emphasis">
-          Mostrando {{ filteredEntries.length }} de {{ entries.length }} productos
+        <VCol cols="12" sm="3" md="4" class="d-flex align-center justify-end gap-3">
+          <VSwitch
+            v-if="book?.is_open"
+            :model-value="book.include_negative_adjustments_as_withdrawals"
+            color="primary"
+            density="compact"
+            hide-details
+            @update:model-value="handleToggleAdjustments"
+          >
+            <template #label>
+              <span class="text-caption font-weight-medium">Ajustes a Retiros</span>
+            </template>
+          </VSwitch>
+          <span class="text-caption text-medium-emphasis text-no-wrap">
+            {{ filteredEntries.length }} / {{ entries.length }}
+          </span>
         </VCol>
       </VRow>
     </VCard>

@@ -66,6 +66,11 @@ class InventoryBookController extends Controller
     {
         $book = $this->inventoryBookService->getBookById($id);
 
+        // Si el libro está abierto, sincronizar y refrescar automáticamente al consultar
+        if ($book->isOpen()) {
+            $book = $this->inventoryBookService->syncTransactions($id);
+        }
+
         return response()->json([
             'data' => new InventoryBookResource($book),
         ]);

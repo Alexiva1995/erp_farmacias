@@ -139,6 +139,20 @@ class InventoryBookRepository implements InventoryBookContract
             }
         }
 
+        // Obtener tasa BCV oficial vigente para conversiones de respaldo
+        $resourceService = app(\App\Services\Resources\ResourceService::class);
+        $bcvRate = (float) $resourceService->getExchangeRate('BS');
+        if ($bcvRate <= 0) {
+            $bcvRate = (float) $resourceService->getExchangeRate('BCV');
+        }
+        if ($bcvRate <= 0) {
+            $generalSetting = GeneralSetting::first();
+            $bcvRate = (float) ($generalSetting?->exchange_rate ?? 1.0);
+        }
+        if ($bcvRate <= 0) {
+            $bcvRate = 1.0;
+        }
+
         // 2. Entradas por compras en el período (InvoiceDetail de facturas del período)
         $purchaseDetails = DB::table('invoice_details')
             ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
@@ -164,13 +178,37 @@ class InventoryBookRepository implements InventoryBookContract
             $pid = (int) $pd->product_id;
             $purchaseTotals[$pid] = ($purchaseTotals[$pid] ?? 0) + (float) $pd->quantity;
 
-            $rate = (float) ($pd->exchange_rate > 0 ? $pd->exchange_rate : 1.0);
-            $costBs = strtoupper((string) $pd->currency) === 'USD'
-                ? ((float) $pd->unit_cost * $rate)
+            // Determinar costo en Bs al momento de la compra con la tasa de esa factura
+            $invRate = (float) $pd->exchange_rate;
+            if ($invRate <= 0) {
+                $invRate = $bcvRate;
+            }
+
+            $costBs = (strtoupper((string) $pd->currency) === 'USD' || $invRate > 1)
+                ? ((float) $pd->unit_cost * $invRate)
                 : (float) $pd->unit_cost;
 
             $lastPurchaseCostBs[$pid] = $costBs;
         }
+
+        // Últimas compras históricas registradas en facturas para productos sin compras en este período
+        $historicalPurchases = DB::table('invoice_details')
+            ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
+            ->where('invoices.status', '!=', 'cancelled')
+            ->where('invoices.is_expense', false)
+            ->where('invoices.created_invoice_date', '<=', $endDateOnly)
+            ->select(
+                'invoice_details.product_id',
+                'invoice_details.unit_cost',
+                'invoices.currency',
+                'invoices.exchange_rate',
+                'invoices.created_invoice_date'
+            )
+            ->orderBy('invoices.created_invoice_date', 'desc')
+            ->orderBy('invoice_details.id', 'desc')
+            ->get()
+            ->unique('product_id')
+            ->keyBy('product_id');
 
         // 3. Salidas por ventas en el período agrupadas a nivel de base de datos
         $salesTotals = DB::table('inventory_movements')
@@ -216,14 +254,22 @@ class InventoryBookRepository implements InventoryBookContract
             ->all();
 
         // 6. Cargar productos activos sin sobrecarga de hidratación Eloquent (toBase)
+        // EXCLUSIÓN ESTRICTA: Servicios, Zoom, fletes o códigos virtuales no inventariables
         $products = DB::table('products')
             ->where('is_deleted', false)
-            ->select('id', 'name', 'presentation', 'stock', 'unit_cost', 'iva')
+            ->where(function ($q) {
+                $q->whereNull('barcode')
+                  ->orWhere(function ($q2) {
+                      $q2->where('barcode', '!=', 'ZOOM-SERVICE')
+                         ->where('barcode', 'NOT LIKE', 'ZOOM%');
+                  });
+            })
+            ->where('name', 'NOT LIKE', '%SERVICIO ZOOM%')
+            ->where('name', 'NOT LIKE', '%ZOOM-SERVICE%')
+            ->where('name', 'NOT LIKE', 'SERVICIO %')
+            ->where('stock', '<', 500000)
+            ->select('id', 'name', 'presentation', 'stock', 'unit_cost', 'iva', 'barcode')
             ->get();
-
-        // Obtener tasa general de configuración o fallback para valoración
-        $generalSetting = GeneralSetting::first();
-        $defaultRate = 1.0;
 
         // Entradas manuales previas que la contadora pudo haber modificado en este libro
         $existingManualOverrides = InventoryBookEntry::where('inventory_book_id', $book->id)
@@ -236,6 +282,17 @@ class InventoryBookRepository implements InventoryBookContract
 
         foreach ($products as $product) {
             $pid = (int) $product->id;
+
+            // Filtro de seguridad adicional contra ítems de servicio o virtuales
+            $nameUpper = mb_strtoupper($product->name, 'UTF-8');
+            if (
+                str_contains($nameUpper, 'SERVICIO ZOOM') ||
+                str_contains($nameUpper, 'ZOOM-SERVICE') ||
+                $product->barcode === 'ZOOM-SERVICE' ||
+                (float) $product->stock >= 500000
+            ) {
+                continue;
+            }
 
             // Determinar existencia inicial
             $initialStock = isset($previousFinalStocks[$pid])
@@ -254,13 +311,23 @@ class InventoryBookRepository implements InventoryBookContract
                 $selfConsumptions = (float) $override->self_consumptions;
                 $unitCostBs = (float) $override->unit_cost_bs;
             } else {
-                // Regla de valoración: último costo en Bs del período; fallback a costo anterior o costo del producto
-                if (isset($lastPurchaseCostBs[$pid])) {
+                // Regla de valoración: siempre en Bolívares al momento de la compra
+                if (isset($lastPurchaseCostBs[$pid]) && $lastPurchaseCostBs[$pid] > 0) {
+                    // 1. Comprado en el período: costo en USD de la factura x tasa de esa factura
                     $unitCostBs = (float) $lastPurchaseCostBs[$pid];
-                } elseif (isset($previousCostsBs[$pid])) {
+                } elseif (isset($previousCostsBs[$pid]) && $previousCostsBs[$pid] > 0) {
+                    // 2. Costo en Bs del libro anterior
                     $unitCostBs = (float) $previousCostsBs[$pid];
+                } elseif (isset($historicalPurchases[$pid])) {
+                    // 3. Última compra histórica registrada en el ERP
+                    $hp = $historicalPurchases[$pid];
+                    $hpRate = (float) $hp->exchange_rate > 0 ? (float) $hp->exchange_rate : $bcvRate;
+                    $unitCostBs = (strtoupper((string) $hp->currency) === 'USD' || $hpRate > 1)
+                        ? ((float) $hp->unit_cost * $hpRate)
+                        : (float) $hp->unit_cost;
                 } else {
-                    $unitCostBs = (float) $product->unit_cost;
+                    // 4. Fallback: costo en USD del producto multiplicado por la tasa BCV del momento
+                    $unitCostBs = (float) $product->unit_cost * $bcvRate;
                 }
             }
 
