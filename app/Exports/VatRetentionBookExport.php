@@ -141,13 +141,13 @@ class VatRetentionBookExport implements FromCollection, WithHeadings, WithMappin
             'H' => NumberFormat::FORMAT_TEXT,
             'I' => NumberFormat::FORMAT_TEXT,
             'J' => NumberFormat::FORMAT_TEXT,
-            'K' => '#,##0.00',
-            'L' => '#,##0.00',
-            'M' => '#,##0.00',
+            'K' => '#,##0.00;-#,##0.00;"0.00"',
+            'L' => '#,##0.00;-#,##0.00;"0.00"',
+            'M' => '#,##0.00;-#,##0.00;"0.00"',
             'N' => NumberFormat::FORMAT_TEXT,
             'O' => NumberFormat::FORMAT_TEXT,
-            'P' => '#,##0.00',
-            'Q' => '#,##0.0',
+            'P' => '#,##0.00;-#,##0.00;"0.00"',
+            'Q' => '#,##0.0;-#,##0.0;"0.0"',
         ];
     }
 
@@ -259,7 +259,7 @@ class VatRetentionBookExport implements FromCollection, WithHeadings, WithMappin
                     $columnsToSum = ['K', 'L', 'M', 'P'];
                     foreach ($columnsToSum as $col) {
                         $sheet->setCellValue("{$col}{$totalRow}", "=SUM({$col}{$startDataRow}:{$col}{$endDataRow})");
-                        $sheet->getStyle("{$col}{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+                        $sheet->getStyle("{$col}{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.00;-#,##0.00;"0.00"');
                     }
 
                     $sheet->getRowDimension($totalRow)->setRowHeight(22);

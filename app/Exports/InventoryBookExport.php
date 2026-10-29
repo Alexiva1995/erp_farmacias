@@ -132,19 +132,19 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
             'A' => NumberFormat::FORMAT_NUMBER,
             'B' => NumberFormat::FORMAT_TEXT,
             'C' => NumberFormat::FORMAT_TEXT,
-            'D' => '#,##0.00',
-            'E' => '#,##0',
-            'F' => '#,##0',
-            'G' => '#,##0',
-            'H' => '#,##0',
-            'I' => '#,##0',
-            'J' => '#,##0',
-            'K' => '#,##0.00',
-            'L' => '#,##0.00',
-            'M' => '#,##0.00',
-            'N' => '#,##0.00',
-            'O' => '#,##0.00',
-            'P' => '#,##0.00',
+            'D' => '#,##0.00;-#,##0.00;"0.00"',
+            'E' => '#,##0;-#,##0;"0"',
+            'F' => '#,##0;-#,##0;"0"',
+            'G' => '#,##0;-#,##0;"0"',
+            'H' => '#,##0;-#,##0;"0"',
+            'I' => '#,##0;-#,##0;"0"',
+            'J' => '#,##0;-#,##0;"0"',
+            'K' => '#,##0.00;-#,##0.00;"0.00"',
+            'L' => '#,##0.00;-#,##0.00;"0.00"',
+            'M' => '#,##0.00;-#,##0.00;"0.00"',
+            'N' => '#,##0.00;-#,##0.00;"0.00"',
+            'O' => '#,##0.00;-#,##0.00;"0.00"',
+            'P' => '#,##0.00;-#,##0.00;"0.00"',
         ];
     }
 
@@ -261,14 +261,14 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
                     $unitCols = ['E', 'F', 'G', 'H', 'I', 'J'];
                     foreach ($unitCols as $col) {
                         $sheet->setCellValue("{$col}{$totalRow}", "=SUM({$col}{$startDataRow}:{$col}{$endDataRow})");
-                        $sheet->getStyle("{$col}{$totalRow}")->getNumberFormat()->setFormatCode('#,##0');
+                        $sheet->getStyle("{$col}{$totalRow}")->getNumberFormat()->setFormatCode('#,##0;-#,##0;"0"');
                     }
 
                     // Columnas de importes en Bs (Decimales con 2 dígitos)
                     $bsCols = ['K', 'L', 'M', 'N', 'O', 'P'];
                     foreach ($bsCols as $col) {
                         $sheet->setCellValue("{$col}{$totalRow}", "=SUM({$col}{$startDataRow}:{$col}{$endDataRow})");
-                        $sheet->getStyle("{$col}{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+                        $sheet->getStyle("{$col}{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.00;-#,##0.00;"0.00"');
                     }
 
                     $sheet->getRowDimension($totalRow)->setRowHeight(22);
