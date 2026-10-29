@@ -95,7 +95,7 @@ defineEmits([
         <VDivider />
         <VCardText class="pa-6">
           <VRow>
-            <VCol cols="12" md="6">
+            <VCol cols="12" :md="casheaMode === 'api' ? 6 : 12">
               <VSelect
                 :model-value="casheaMode"
                 label="Modo de Operación"
@@ -110,58 +110,62 @@ defineEmits([
               />
             </VCol>
 
-            <VCol cols="12" md="6">
-              <VSelect
-                :model-value="casheaEnvironment"
-                label="Entorno de Conexión"
-                :items="[
-                  { title: 'Sandbox (Pruebas)', value: 'sandbox' },
-                  { title: 'Producción (En vivo)', value: 'production' }
-                ]"
-                density="compact"
-                variant="outlined"
-                :disabled="!canEdit || isSaving"
-                @update:model-value="$emit('update:casheaEnvironment', $event)"
-              />
-            </VCol>
+            <!-- Campos exclusivos de la conexión por API oficial -->
+            <template v-if="casheaMode === 'api'">
+              <VCol cols="12" md="6">
+                <VSelect
+                  :model-value="casheaEnvironment"
+                  label="Entorno de Conexión"
+                  :items="[
+                    { title: 'Sandbox (Pruebas)', value: 'sandbox' },
+                    { title: 'Producción (En vivo)', value: 'production' }
+                  ]"
+                  density="compact"
+                  variant="outlined"
+                  :disabled="!canEdit || isSaving"
+                  @update:model-value="$emit('update:casheaEnvironment', $event)"
+                />
+              </VCol>
 
-            <VCol cols="12" md="4">
-              <VTextField
-                :model-value="casheaClientId"
-                label="ID de Tienda / Comercio (Store ID)"
-                placeholder="Ej. STORE-001"
-                density="compact"
-                variant="outlined"
-                :disabled="!canEdit || isSaving"
-                @update:model-value="$emit('update:casheaClientId', $event)"
-              />
-            </VCol>
+              <VCol cols="12" md="4">
+                <VTextField
+                  :model-value="casheaClientId"
+                  label="ID de Tienda / Comercio (Store ID)"
+                  placeholder="Ej. STORE-001"
+                  density="compact"
+                  variant="outlined"
+                  :disabled="!canEdit || isSaving"
+                  @update:model-value="$emit('update:casheaClientId', $event)"
+                />
+              </VCol>
 
-            <VCol cols="12" md="4">
-              <VTextField
-                :model-value="casheaPublicKey"
-                label="Public API Key"
-                placeholder="pk_live_..."
-                density="compact"
-                variant="outlined"
-                :disabled="!canEdit || isSaving"
-                @update:model-value="$emit('update:casheaPublicKey', $event)"
-              />
-            </VCol>
+              <VCol cols="12" md="4">
+                <VTextField
+                  :model-value="casheaPublicKey"
+                  label="Public API Key"
+                  placeholder="pk_live_..."
+                  density="compact"
+                  variant="outlined"
+                  :disabled="!canEdit || isSaving"
+                  @update:model-value="$emit('update:casheaPublicKey', $event)"
+                />
+              </VCol>
 
-            <VCol cols="12" md="4">
-              <VTextField
-                :model-value="casheaPrivateKey"
-                label="Private API Key"
-                type="password"
-                placeholder="sk_live_..."
-                density="compact"
-                variant="outlined"
-                :disabled="!canEdit || isSaving"
-                @update:model-value="$emit('update:casheaPrivateKey', $event)"
-              />
-            </VCol>
+              <VCol cols="12" md="4">
+                <VTextField
+                  :model-value="casheaPrivateKey"
+                  label="Private API Key"
+                  type="password"
+                  placeholder="sk_live_..."
+                  density="compact"
+                  variant="outlined"
+                  :disabled="!canEdit || isSaving"
+                  @update:model-value="$emit('update:casheaPrivateKey', $event)"
+                />
+              </VCol>
+            </template>
 
+            <!-- Parámetros de cuotas aplicables a ambos modos -->
             <VCol cols="12" md="6">
               <VTextField
                 :model-value="casheaInstallmentsCount"
