@@ -9,6 +9,8 @@ class Invoice extends Model
 {
     protected $fillable = [
         'supplier_id',
+        'source_drogueria_tenant_id',
+        'source_drogueria_order_id',
         'auto_order_id',
         'invoice_number',
         'control_number',

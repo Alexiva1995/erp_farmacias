@@ -18,7 +18,10 @@ class InvoicePayment extends Model
         'status',
         'payment_by',
         'photo_url',
-        'method'
+        'method',
+        'sync_status',
+        'remote_credit_payment_id',
+        'rejection_reason',
     ];
 
     protected $casts = [

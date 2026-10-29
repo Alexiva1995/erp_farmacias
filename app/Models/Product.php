@@ -79,6 +79,16 @@ class Product extends Model
         'sales_average_updated_at',
         'external_accumulated_sales',
         'external_sales_date',
+        'credit_days',
+        'allow_early_payment_discount',
+        'max_units_per_order',
+        'max_units_per_client_day',
+        'max_units_per_client_month',
+        'min_wholesale_units',
+        'units_per_inner_pack',
+        'units_per_master_box',
+        'requires_cold_chain',
+        'sanitary_registration',
     ];
 
     /**
@@ -118,6 +128,15 @@ class Product extends Model
         'external_accumulated_sales' => 'float',
         'sales_average' => 'float',
         'sales_average_weighted' => 'float',
+        'credit_days' => 'integer',
+        'allow_early_payment_discount' => 'boolean',
+        'max_units_per_order' => 'integer',
+        'max_units_per_client_day' => 'integer',
+        'max_units_per_client_month' => 'integer',
+        'min_wholesale_units' => 'integer',
+        'units_per_inner_pack' => 'integer',
+        'units_per_master_box' => 'integer',
+        'requires_cold_chain' => 'boolean',
     ];
 
 

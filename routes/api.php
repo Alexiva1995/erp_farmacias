@@ -597,6 +597,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::post('/general-settings', [GeneralSettingController::class, 'store']);
     Route::get('/general-settings/presets', [GeneralSettingController::class, 'presets']);
     Route::post('/general-settings/apply-preset', [GeneralSettingController::class, 'applyPreset']);
+    Route::post('/general-settings/custom-vertical', [GeneralSettingController::class, 'storeCustomPreset']);
 
     // Rutas de Configuración de Sincronización Gmail
     Route::prefix('configuration/email-sync')->group(function () {
@@ -1329,6 +1330,38 @@ Route::prefix('central/tenants')->group(function () {
 });
 
 // Rutas Públicas de Menú QR en Mesa (Fase 5)
+// Rutas de Vertical Droguería (Mayorista B2B, Cartera, Marketplace y WMS)
+Route::prefix('wholesale')->group(function () {
+    // Cartera y Asignaciones
+    Route::get('portfolio', [\App\Http\Controllers\Api\Wholesale\PortfolioController::class, 'index']);
+    Route::get('portfolio/metrics', [\App\Http\Controllers\Api\Wholesale\PortfolioController::class, 'metrics']);
+    Route::post('portfolio/assign', [\App\Http\Controllers\Api\Wholesale\PortfolioController::class, 'assign']);
+    Route::get('portfolio/commissions', [\App\Http\Controllers\Api\Wholesale\PortfolioController::class, 'commissions']);
+
+    // Toma de Pedidos B2B (Telemarketing y Asesores)
+    Route::post('orders', [\App\Http\Controllers\Api\Wholesale\TelemarketingOrderController::class, 'store']);
+    Route::post('orders/{orderId}/approve-credit', [\App\Http\Controllers\Api\Wholesale\TelemarketingOrderController::class, 'approveCredit']);
+
+    // Marketplace B2B & Portal de Estado de Cuenta
+    Route::get('marketplace/catalog', [\App\Http\Controllers\Api\Wholesale\B2BMarketplaceController::class, 'catalog']);
+    Route::get('marketplace/account-statement', [\App\Http\Controllers\Api\Wholesale\B2BMarketplaceController::class, 'accountStatement']);
+    Route::post('marketplace/orders', [\App\Http\Controllers\Api\Wholesale\B2BMarketplaceController::class, 'submitOrder']);
+    Route::post('marketplace/payments', [\App\Http\Controllers\Api\Wholesale\B2BMarketplaceController::class, 'submitPayment']);
+
+    // Conciliación de Cobranzas y Retenciones
+    Route::get('collections/pending-payments', [\App\Http\Controllers\Api\Wholesale\CollectionConciliationController::class, 'index']);
+    Route::post('collections/payments/{paymentId}/approve', [\App\Http\Controllers\Api\Wholesale\CollectionConciliationController::class, 'approve']);
+    Route::post('collections/payments/{paymentId}/reject', [\App\Http\Controllers\Api\Wholesale\CollectionConciliationController::class, 'reject']);
+
+    // Almacén Mayorista y Despacho (WMS & TMS)
+    Route::get('wms/orders', [\App\Http\Controllers\Api\Wholesale\WmsDispatchController::class, 'index']);
+    Route::get('wms/routes', [\App\Http\Controllers\Api\Wholesale\WmsDispatchController::class, 'routes']);
+    Route::post('wms/orders/{orderId}/start-picking', [\App\Http\Controllers\Api\Wholesale\WmsDispatchController::class, 'startPicking']);
+    Route::post('wms/orders/{orderId}/complete-picking', [\App\Http\Controllers\Api\Wholesale\WmsDispatchController::class, 'completePicking']);
+    Route::post('wms/orders/{orderId}/complete-packing', [\App\Http\Controllers\Api\Wholesale\WmsDispatchController::class, 'completePacking']);
+    Route::post('wms/orders/{orderId}/dispatch', [\App\Http\Controllers\Api\Wholesale\WmsDispatchController::class, 'dispatchOrder']);
+});
+
 Route::prefix('public/restaurant/qr')->group(function () {
     Route::get('table/{token}', [\App\Http\Controllers\Api\Restaurant\QrTableOrderController::class, 'showTable']);
     Route::post('table/{token}/order', [\App\Http\Controllers\Api\Restaurant\QrTableOrderController::class, 'submitOrder']);

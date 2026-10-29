@@ -50,7 +50,26 @@ class Client extends Model
         'is_spe',
         'status',
         'client_type',
-        'cne_verified_at'
+        'cne_verified_at',
+        'sales_rep_id',
+        'telemarketing_user_id',
+        'collector_user_id',
+        'credit_limit_usd',
+        'default_credit_days',
+        'max_monthly_purchase_limit_usd',
+        'max_order_units_limit',
+        'block_on_overdue',
+        'early_payment_discount_pct',
+        'commercial_discount_pct',
+        'sicm_code',
+        'sacs_permit_number',
+        'sacs_permit_expires_at',
+        'regent_pharmacist_name',
+        'regent_pharmacist_ci',
+        'regent_mpps_code',
+        'can_buy_psychotropics',
+        'delivery_route_id',
+        'linked_tenant_id',
     ];
 
     // Casts para los campos de fecha de la rama 5.0-CRM
@@ -58,11 +77,40 @@ class Client extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'cne_verified_at' => 'datetime',
+        'sacs_permit_expires_at' => 'date',
+        'can_buy_psychotropics' => 'boolean',
+        'block_on_overdue' => 'boolean',
+        'credit_limit_usd' => 'decimal:2',
+        'default_credit_days' => 'integer',
+        'max_monthly_purchase_limit_usd' => 'decimal:2',
+        'max_order_units_limit' => 'integer',
+        'early_payment_discount_pct' => 'decimal:2',
+        'commercial_discount_pct' => 'decimal:2',
     ];
 
     /**
      * Relación con el usuario creador
      */
+    public function salesRep()
+    {
+        return $this->belongsTo(User::class, 'sales_rep_id');
+    }
+
+    public function telemarketingUser()
+    {
+        return $this->belongsTo(User::class, 'telemarketing_user_id');
+    }
+
+    public function collectorUser()
+    {
+        return $this->belongsTo(User::class, 'collector_user_id');
+    }
+
+    public function deliveryRoute()
+    {
+        return $this->belongsTo(DeliveryRoute::class, 'delivery_route_id');
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');

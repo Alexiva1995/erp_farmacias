@@ -78,4 +78,30 @@ class GeneralSettingController extends Controller
             'data' => new GeneralSettingResource($setting),
         ]);
     }
+
+    /**
+     * Registrar una nueva vertical personalizada dinámica.
+     */
+    public function storeCustomPreset(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'key' => 'required|string|regex:/^[a-z0-9_]+$/|min:2|max:50',
+            'label' => 'required|string|min:2|max:150',
+            'description' => 'required|string|min:5|max:300',
+            'config' => 'required|array',
+        ]);
+
+        $custom = $this->presetService->registerCustomPreset(
+            $validated['key'],
+            $validated['label'],
+            $validated['description'],
+            $validated['config']
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Nueva vertical personalizada creada exitosamente.',
+            'data' => $custom,
+        ], 201);
+    }
 }

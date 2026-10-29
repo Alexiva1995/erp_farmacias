@@ -32,4 +32,22 @@ interface VerticalPresetServiceInterface
      * @return array<int, array{key: string, label: string, description: string}>
      */
     public function getAvailablePresets(): array;
+
+    /**
+     * Registrar una nueva vertical personalizada dinámica.
+     *
+     * @param string $key Clave única de la vertical (ej: 'veterinaria', 'ferreteria').
+     * @param string $label Nombre legible.
+     * @param string $description Descripción operativa.
+     * @param array<string, mixed> $config Parámetros y banderas operativas.
+     * @return array{key: string, label: string, description: string, config: array}
+     */
+    public function registerCustomPreset(string $key, string $label, string $description, array $config): array;
+
+    /**
+     * Obtener las verticales personalizadas registradas dinámicamente.
+     *
+     * @return array<string, array{key: string, label: string, description: string, config: array}>
+     */
+    public function getCustomPresets(): array;
 }

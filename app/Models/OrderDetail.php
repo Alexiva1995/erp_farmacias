@@ -32,6 +32,10 @@ class OrderDetail extends Model
         'course_number',
         'commanded_at',
         'prepared_at',
+        'product_lot_id',
+        'picked_quantity',
+        'checked_quantity',
+        'credit_days_applied',
     ];
     
     protected $casts = [
@@ -42,6 +46,9 @@ class OrderDetail extends Model
         'course_number' => 'integer',
         'commanded_at' => 'datetime',
         'prepared_at' => 'datetime',
+        'picked_quantity' => 'decimal:2',
+        'checked_quantity' => 'decimal:2',
+        'credit_days_applied' => 'integer',
     ];
 
     public function order(): BelongsTo
@@ -72,5 +79,10 @@ class OrderDetail extends Model
     public function modifiers(): HasMany
     {
         return $this->hasMany(OrderDetailModifier::class, 'order_detail_id');
+    }
+
+    public function lot(): BelongsTo
+    {
+        return $this->belongsTo(ProductLot::class, 'product_lot_id');
     }
 }

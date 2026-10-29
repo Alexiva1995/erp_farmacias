@@ -31,6 +31,7 @@ class Supplier extends Model
         'name',
         'social_reason',
         'rif',
+        'provider_tenant_id',
         'sales_phone',
         'collections_phone',
         'payment_email',

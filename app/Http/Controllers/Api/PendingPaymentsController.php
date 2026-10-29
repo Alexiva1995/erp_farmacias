@@ -338,6 +338,14 @@ class PendingPaymentsController extends Controller
                 ]);
             }
 
+            // Sincronización automática inter-tenant si el proveedor es una Droguería en este ecosistema ERP
+            try {
+                app(\App\Services\Tenancy\InterTenantB2BBridgeService::class)
+                    ->syncPaymentFromPharmacyToDrogueria($payment, $resolvedInvoiceIds);
+            } catch (\Throwable $bridgeEx) {
+                \Illuminate\Support\Facades\Log::warning("[InterTenantSync] Falló puente B2B automático: " . $bridgeEx->getMessage());
+            }
+
             // 6. Determinar estado de pago (Respetar la decisión del usuario en el checkbox)
             if ($request->payment_type === 'full') {
                 $paymentStatus = 1; // Pago Completo: se liquida la factura

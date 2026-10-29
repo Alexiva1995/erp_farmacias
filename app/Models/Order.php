@@ -43,6 +43,14 @@ class Order extends Model
         'service_charge_amount',
         'service_charge_amount_usd',
         'pre_bill_printed_at',
+        'b2b_workflow_status',
+        'delivery_route_id',
+        'packages_count',
+        'cold_boxes_count',
+        'assigned_picker_id',
+        'assigned_checker_id',
+        'parent_b2b_order_id',
+        'credit_term_days',
     ];
 
     protected $casts = [
@@ -58,6 +66,9 @@ class Order extends Model
         'service_charge_amount' => 'decimal:2',
         'service_charge_amount_usd' => 'decimal:2',
         'pre_bill_printed_at' => 'datetime',
+        'packages_count' => 'integer',
+        'cold_boxes_count' => 'integer',
+        'credit_term_days' => 'integer',
     ];
 
     public function client()
@@ -223,5 +234,30 @@ class Order extends Model
     public function childOrders()
     {
         return $this->hasMany(Order::class, 'parent_order_id');
+    }
+
+    public function deliveryRoute()
+    {
+        return $this->belongsTo(DeliveryRoute::class, 'delivery_route_id');
+    }
+
+    public function parentB2BOrder()
+    {
+        return $this->belongsTo(Order::class, 'parent_b2b_order_id');
+    }
+
+    public function childB2BOrders()
+    {
+        return $this->hasMany(Order::class, 'parent_b2b_order_id');
+    }
+
+    public function picker()
+    {
+        return $this->belongsTo(User::class, 'assigned_picker_id');
+    }
+
+    public function checker()
+    {
+        return $this->belongsTo(User::class, 'assigned_checker_id');
     }
 }

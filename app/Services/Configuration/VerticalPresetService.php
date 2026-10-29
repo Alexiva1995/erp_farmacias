@@ -23,10 +23,10 @@ class VerticalPresetService implements VerticalPresetServiceInterface
      */
     public function applyPreset(BusinessVerticalEnum|string $vertical, bool $preserveIdentity = true): GeneralSetting
     {
-        $enum = $this->resolveEnum($vertical);
-        $presetConfig = $this->getPresetConfig($enum);
+        $verticalKey = $vertical instanceof BusinessVerticalEnum ? $vertical->value : strtolower(trim((string) $vertical));
+        $presetConfig = $this->getPresetConfig($vertical);
 
-        return DB::transaction(function () use ($enum, $presetConfig, $preserveIdentity) {
+        return DB::transaction(function () use ($verticalKey, $presetConfig, $preserveIdentity) {
             $currentSettings = $this->settingRepository->getSettings();
 
             if ($preserveIdentity) {
@@ -69,7 +69,7 @@ class VerticalPresetService implements VerticalPresetServiceInterface
             if (function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant) {
                 try {
                     tenancy()->tenant->update([
-                        'vertical' => $enum->value,
+                        'vertical' => $verticalKey,
                     ]);
                 } catch (\Throwable $e) {
                     // Silencioso si ocurre error secundario en master
@@ -85,6 +85,14 @@ class VerticalPresetService implements VerticalPresetServiceInterface
      */
     public function getPresetConfig(BusinessVerticalEnum|string $vertical): array
     {
+        if (is_string($vertical)) {
+            $custom = $this->getCustomPresets();
+            $normalizedKey = strtolower(trim($vertical));
+            if (isset($custom[$normalizedKey])) {
+                return $custom[$normalizedKey]['config'];
+            }
+        }
+
         $enum = $this->resolveEnum($vertical);
 
         return match ($enum) {
@@ -313,6 +321,67 @@ class VerticalPresetService implements VerticalPresetServiceInterface
                     'generales',
                 ],
             ],
+
+            BusinessVerticalEnum::DROGUERIA => [
+                'business_type' => 'drogueria',
+                'tpv_mode' => 'complete',
+                'tpv_style' => 'pharmacy',
+                'quotation_style' => 'pharmacy',
+                'enable_dishes' => false,
+                'enable_tables' => false,
+                'enable_kds' => false,
+                'enable_modifiers' => false,
+                'enable_split_check' => false,
+                'enable_tips' => false,
+                'default_service_fee_pct' => 0.00,
+                'enable_sub_recipes' => false,
+                'enable_reservations' => false,
+                'enable_lots' => true,
+                'enable_expirations' => true,
+                'enable_groups' => true,
+                'enable_brand_groups' => true,
+                'enable_donations' => false,
+                'enable_locations' => true,
+                'enable_stock_control' => true,
+                'enable_optimization' => true,
+                'traceability_mode' => 'units',
+                'enable_flash_checkout' => false,
+                'product_form_fields' => [
+                    'active_ingredient',
+                    'laboratory',
+                    'credit_days',
+                    'sanitary_registration',
+                    'barcode',
+                    'presentation',
+                    'unit_of_measure',
+                    'requires_cold_chain',
+                ],
+                'enabled_product_types' => [
+                    'iva',
+                    'exento',
+                    'col',
+                    'pvp',
+                    'novaventa',
+                    'eliminados',
+                ],
+                'enabled_offer_types' => [
+                    'general',
+                    'individual',
+                    'category',
+                    'pack',
+                    'company',
+                    'expiration',
+                ],
+                'enabled_crm_views' => [
+                    'clients',
+                    'companies',
+                    'chronic',
+                ],
+                'enabled_telegram_views' => [
+                    'generales',
+                    'farmacia',
+                ],
+            ],
         };
     }
 
@@ -321,13 +390,65 @@ class VerticalPresetService implements VerticalPresetServiceInterface
      */
     public function getAvailablePresets(): array
     {
-        return array_map(function (BusinessVerticalEnum $case) {
+        $standard = array_map(function (BusinessVerticalEnum $case) {
             return [
                 'key' => $case->value,
                 'label' => $case->label(),
                 'description' => $case->description(),
+                'is_custom' => false,
             ];
         }, BusinessVerticalEnum::cases());
+
+        $custom = array_values(array_map(function ($item) {
+            return [
+                'key' => $item['key'],
+                'label' => $item['label'],
+                'description' => $item['description'],
+                'is_custom' => true,
+            ];
+        }, $this->getCustomPresets()));
+
+        return array_merge($standard, $custom);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function registerCustomPreset(string $key, string $label, string $description, array $config): array
+    {
+        $normalizedKey = strtolower(trim($key));
+        $customPresets = $this->getCustomPresets();
+
+        $entry = [
+            'key' => $normalizedKey,
+            'label' => $label,
+            'description' => $description,
+            'config' => array_merge([
+                'business_type' => $normalizedKey,
+                'tpv_mode' => 'complete',
+                'tpv_style' => 'pharmacy',
+                'quotation_style' => 'pharmacy',
+                'enable_lots' => true,
+                'enable_expirations' => true,
+                'enable_groups' => true,
+                'enable_locations' => true,
+                'enable_stock_control' => true,
+            ], $config),
+        ];
+
+        $customPresets[$normalizedKey] = $entry;
+
+        Cache::forever('custom_vertical_presets', $customPresets);
+
+        return $entry;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getCustomPresets(): array
+    {
+        return Cache::get('custom_vertical_presets', []);
     }
 
     /**
