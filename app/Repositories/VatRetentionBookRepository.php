@@ -48,17 +48,17 @@ class VatRetentionBookRepository implements VatRetentionBookContract
         );
 
         $periodType = $isSpecialTaxpayer
-            ? PurchaseBookPeriodType::Fortnightly
-            : PurchaseBookPeriodType::Monthly;
+            ? PurchaseBookPeriodType::FORTNIGHTLY
+            : PurchaseBookPeriodType::MONTHLY;
 
-        if ($periodType === PurchaseBookPeriodType::Fortnightly && $fortnight === null) {
+        if ($periodType === PurchaseBookPeriodType::FORTNIGHTLY && $fortnight === null) {
             $now = Carbon::now();
             $fortnight = ($now->year === $year && $now->month === $month)
                 ? ($now->day <= 15 ? 1 : 2)
                 : 1;
         }
 
-        if ($periodType === PurchaseBookPeriodType::Fortnightly) {
+        if ($periodType === PurchaseBookPeriodType::FORTNIGHTLY) {
             $startDate = Carbon::create($year, $month, $fortnight === 1 ? 1 : 16)->startOfDay();
             $endDate = ($fortnight === 1)
                 ? Carbon::create($year, $month, 15)->endOfDay()
@@ -79,7 +79,7 @@ class VatRetentionBookRepository implements VatRetentionBookContract
                 'period_type' => $periodType,
                 'start_date' => $startDate->toDateString(),
                 'end_date' => $endDate->toDateString(),
-                'status' => PurchaseBookStatus::Open,
+                'status' => PurchaseBookStatus::OPEN,
             ]
         );
 
@@ -142,6 +142,8 @@ class VatRetentionBookRepository implements VatRetentionBookContract
         $retentions = Retention::with(['supplier', 'invoices.supplier'])
             ->where(function ($q) {
                 $q->where('type', 'iva')
+                  ->orWhere('type', 'IVA')
+                  ->orWhere('type', 'Iva')
                   ->orWhereNull('type')
                   ->orWhere('type', '');
             })
@@ -327,7 +329,7 @@ class VatRetentionBookRepository implements VatRetentionBookContract
     public function closeBook(VatRetentionBook $book, int $userId): VatRetentionBook
     {
         $book->update([
-            'status' => PurchaseBookStatus::Closed,
+            'status' => PurchaseBookStatus::CLOSED,
             'closed_at' => now(),
             'closed_by' => $userId,
         ]);
@@ -338,7 +340,7 @@ class VatRetentionBookRepository implements VatRetentionBookContract
     public function reopenBook(VatRetentionBook $book): VatRetentionBook
     {
         $book->update([
-            'status' => PurchaseBookStatus::Open,
+            'status' => PurchaseBookStatus::OPEN,
             'closed_at' => null,
             'closed_by' => null,
         ]);

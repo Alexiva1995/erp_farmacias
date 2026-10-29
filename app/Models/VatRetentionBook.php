@@ -61,12 +61,12 @@ class VatRetentionBook extends Model
 
     public function isOpen(): bool
     {
-        return $this->status === PurchaseBookStatus::Open;
+        return $this->status === PurchaseBookStatus::OPEN;
     }
 
     public function isClosed(): bool
     {
-        return $this->status === PurchaseBookStatus::Closed;
+        return $this->status === PurchaseBookStatus::CLOSED;
     }
 
     public function getPeriodLabelAttribute(): string

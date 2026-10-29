@@ -7,6 +7,7 @@ const props = defineProps({
   month: { type: [Number, String, null], default: null },
   status: { type: [String, null], default: null },
   loading: { type: Boolean, default: false },
+  showAdd: { type: Boolean, default: true },
 });
 
 const emit = defineEmits([
@@ -50,7 +51,7 @@ const hasAdvancedFilters = computed(() => {
   <AppFilterBase
     :has-advanced-filters="hasAdvancedFilters"
     :loading="loading"
-    :show-add="true"
+    :show-add="showAdd"
     add-button-text="Nuevo Período"
     search-placeholder="Buscar períodos fiscales..."
     :show-export="false"

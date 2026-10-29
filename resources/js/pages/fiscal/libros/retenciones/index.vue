@@ -2,7 +2,7 @@
 import PurchaseBookFilters from "@/components/fiscal/PurchaseBookFilters.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
@@ -19,30 +19,14 @@ const filters = reactive({
   status: null,
 });
 
-const showGenerateModal = ref(false);
-const isGenerating = ref(false);
-const generateForm = reactive({
-  year: new Date().getFullYear(),
-  month: new Date().getMonth() + 1,
-  fortnight: new Date().getDate() <= 15 ? 1 : 2,
-});
-
-const months = [
-  { title: "Enero", value: 1 },
-  { title: "Febrero", value: 2 },
-  { title: "Marzo", value: 3 },
-  { title: "Abril", value: 4 },
-  { title: "Mayo", value: 5 },
-  { title: "Junio", value: 6 },
-  { title: "Julio", value: 7 },
-  { title: "Agosto", value: 8 },
-  { title: "Septiembre", value: 9 },
-  { title: "Octubre", value: 10 },
-  { title: "Noviembre", value: 11 },
-  { title: "Diciembre", value: 12 },
-];
-
-const years = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
+watch(
+  filters,
+  () => {
+    page.value = 1;
+    fetchBooks();
+  },
+  { deep: true }
+);
 
 const formatCurrency = (val) => {
   return Number(val || 0).toLocaleString("es-VE", {
@@ -126,24 +110,6 @@ const handleExportPdf = (item) => {
   downloadBlob(`/vat-retention-books/${item.id}/export/pdf`, `reporte_retenciones_iva_${item.year}_${item.month}${suffix}.pdf`);
 };
 
-const handleGeneratePeriod = async () => {
-  isGenerating.value = true;
-  try {
-    const res = await axios.post("/vat-retention-books/generate-period", generateForm);
-    toast.success("Período generado exitosamente.");
-    showGenerateModal.value = false;
-    await fetchBooks();
-    if (res.data?.data?.id) {
-      openBookDetail(res.data.data.id);
-    }
-  } catch (err) {
-    console.error("Error al generar período:", err);
-    toast.error(err.response?.data?.message || "No se pudo generar el período fiscal.");
-  } finally {
-    isGenerating.value = false;
-  }
-};
-
 onMounted(() => {
   fetchBooks();
 });
@@ -165,25 +131,6 @@ onMounted(() => {
             </p>
           </div>
         </div>
-
-        <div class="d-flex align-center gap-2">
-          <VBtn
-            color="primary"
-            prepend-icon="tabler-calendar-plus"
-            @click="showGenerateModal = true"
-          >
-            Nuevo Período
-          </VBtn>
-          <VBtn
-            icon
-            variant="outlined"
-            color="secondary"
-            :loading="loading"
-            @click="fetchBooks"
-          >
-            <VIcon icon="tabler-refresh" />
-          </VBtn>
-        </div>
       </div>
     </VCard>
 
@@ -193,8 +140,8 @@ onMounted(() => {
       v-model:month="filters.month"
       v-model:status="filters.status"
       :loading="loading"
+      :show-add="false"
       @clear="handleClearFilters"
-      @create-period="showGenerateModal = true"
       @refresh="fetchBooks"
     />
 
@@ -305,58 +252,5 @@ onMounted(() => {
         </template>
       </VDataTableServer>
     </VCard>
-
-    <!-- Modal para Nuevo Período Manual -->
-    <VDialog v-model="showGenerateModal" max-width="480">
-      <VCard class="pa-4 rounded-lg">
-        <VCardTitle class="px-0 pt-0 d-flex align-center justify-space-between">
-          <span class="text-h6 font-weight-bold">Nuevo Período Fiscal</span>
-          <VBtn icon="tabler-x" variant="text" size="small" @click="showGenerateModal = false" />
-        </VCardTitle>
-        <VCardText class="px-0 py-3">
-          <VRow dense>
-            <VCol cols="12" sm="6">
-              <VSelect
-                v-model="generateForm.year"
-                :items="years"
-                label="Año Fiscal"
-                variant="outlined"
-                density="compact"
-              />
-            </VCol>
-            <VCol cols="12" sm="6">
-              <VSelect
-                v-model="generateForm.month"
-                :items="months"
-                item-title="title"
-                item-value="value"
-                label="Mes"
-                variant="outlined"
-                density="compact"
-              />
-            </VCol>
-            <VCol cols="12">
-              <VRadioGroup v-model="generateForm.fortnight" inline label="Quincena">
-                <VRadio label="1ra Quincena (01 al 15)" :value="1" />
-                <VRadio label="2da Quincena (16 al fin de mes)" :value="2" />
-              </VRadioGroup>
-            </VCol>
-          </VRow>
-        </VCardText>
-        <VCardActions class="px-0 pb-0 justify-end gap-2">
-          <VBtn variant="outlined" color="secondary" @click="showGenerateModal = false">
-            Cancelar
-          </VBtn>
-          <VBtn
-            color="primary"
-            :loading="isGenerating"
-            :disabled="isGenerating"
-            @click="handleGeneratePeriod"
-          >
-            Crear Período
-          </VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
   </div>
 </template>
