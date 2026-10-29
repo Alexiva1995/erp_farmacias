@@ -53,11 +53,15 @@
         }
         .table-items {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-top: 0.5px solid #94a3b8;
+            border-left: 0.5px solid #94a3b8;
             margin-bottom: 14px;
         }
         .table-items th, .table-items td {
-            border: 0.5px solid #94a3b8;
+            border-right: 0.5px solid #94a3b8;
+            border-bottom: 0.5px solid #94a3b8;
             padding: 4px 5px;
             font-size: 8px;
         }

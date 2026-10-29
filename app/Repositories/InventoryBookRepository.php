@@ -210,15 +210,56 @@ class InventoryBookRepository implements InventoryBookContract
             ->unique('product_id')
             ->keyBy('product_id');
 
-        // 3. Salidas por ventas en el período agrupadas a nivel de base de datos
-        $salesTotals = DB::table('inventory_movements')
+        // 3. Salidas por ventas en el período:
+        // A) Fuente primaria: order_details + orders (órdenes completadas o cerradas en el período)
+        $orderSales = DB::table('order_details')
+            ->join('orders', 'orders.id', '=', 'order_details.order_id')
+            ->whereIn('orders.status', ['Completed', 'completed', 'closed', 'Closed'])
+            ->where(function ($q) use ($startDateStr, $endDateStr) {
+                $q->whereBetween('orders.created_at', [$startDateStr, $endDateStr])
+                  ->orWhereBetween('orders.order_date', [$startDateStr, $endDateStr]);
+            })
+            ->groupBy('order_details.product_id')
+            ->select('order_details.product_id')
+            ->selectRaw('SUM(order_details.quantity) as total_sold')
+            ->pluck('total_sold', 'order_details.product_id')
+            ->all();
+
+        // B) Fuente secundaria: inventory_movements con ABS() para ventas registradas por movimientos
+        $movementSales = DB::table('inventory_movements')
             ->whereBetween('movement_date', [$startDateStr, $endDateStr])
-            ->whereIn('movement_type', ['sale', 'return', 'Venta', 'Devolución'])
+            ->whereIn('movement_type', ['sale', 'Venta'])
             ->groupBy('product_id')
             ->select('product_id')
-            ->selectRaw("SUM(CASE WHEN LOWER(movement_type) IN ('sale', 'venta') THEN quantity WHEN LOWER(movement_type) IN ('return', 'devolución') THEN -quantity ELSE 0 END) as net_sales")
-            ->pluck('net_sales', 'product_id')
+            ->selectRaw('SUM(ABS(quantity)) as total_movement_sales')
+            ->pluck('total_movement_sales', 'product_id')
             ->all();
+
+        $salesTotals = [];
+        foreach ($orderSales as $pid => $qty) {
+            $salesTotals[(int) $pid] = (float) $qty;
+        }
+        foreach ($movementSales as $pid => $qty) {
+            $pidInt = (int) $pid;
+            $salesTotals[$pidInt] = max((float) ($salesTotals[$pidInt] ?? 0), (float) $qty);
+        }
+
+        // C) Descontar devoluciones de venta
+        $returnSales = DB::table('inventory_movements')
+            ->whereBetween('movement_date', [$startDateStr, $endDateStr])
+            ->whereIn('movement_type', ['return', 'Devolución'])
+            ->groupBy('product_id')
+            ->select('product_id')
+            ->selectRaw('SUM(ABS(quantity)) as total_returns')
+            ->pluck('total_returns', 'product_id')
+            ->all();
+
+        foreach ($returnSales as $pid => $retQty) {
+            $pidInt = (int) $pid;
+            if (isset($salesTotals[$pidInt])) {
+                $salesTotals[$pidInt] = max(0, $salesTotals[$pidInt] - (float) $retQty);
+            }
+        }
 
         // 4. Retiros (ajustes negativos, pérdidas, vencidos) agrupados en SQL
         $withdrawalTotals = [];

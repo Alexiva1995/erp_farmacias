@@ -40,11 +40,15 @@
         .text-center { text-align: center; }
         .table-data {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-top: 0.5px solid #94a3b8;
+            border-left: 0.5px solid #94a3b8;
             table-layout: fixed;
         }
         .table-data th, .table-data td {
-            border: 0.5px solid #94a3b8;
+            border-right: 0.5px solid #94a3b8;
+            border-bottom: 0.5px solid #94a3b8;
             padding: 2px 2px;
             word-wrap: break-word;
             overflow: hidden;

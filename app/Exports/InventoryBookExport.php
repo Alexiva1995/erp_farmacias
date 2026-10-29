@@ -19,6 +19,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
+use PhpOffice\PhpSpreadsheet\Worksheet\SheetView;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, WithColumnFormatting, WithStyles, WithEvents
@@ -27,14 +28,19 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
     protected int $rowCount = 0;
 
     public function __construct(
-        protected InventoryBook $book
+        protected InventoryBook $book,
+        ?GeneralSetting $settings = null
     ) {
-        $this->settings = GeneralSetting::first() ?? new GeneralSetting();
+        $this->settings = $settings ?? GeneralSetting::first() ?? new GeneralSetting();
     }
 
     public function collection()
     {
-        $collection = $this->book->entries()->orderBy('operation_number', 'asc')->get();
+        if ($this->book->relationLoaded('entries')) {
+            $collection = $this->book->entries;
+        } else {
+            $collection = $this->book->entries()->orderBy('operation_number', 'asc')->get();
+        }
         $this->rowCount = $collection->count();
         return $collection;
     }
@@ -275,7 +281,7 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
                 $sheet->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_A4);
                 $sheet->getPageSetup()->setFitToWidth(1);
                 $sheet->getPageSetup()->setFitToHeight(0);
-                $sheet->getSheetView()->setView(Worksheet::SHEETVIEW_NORMAL);
+                $sheet->getSheetView()->setView(SheetView::SHEETVIEW_NORMAL);
             },
         ];
     }

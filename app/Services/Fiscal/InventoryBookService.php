@@ -81,6 +81,9 @@ class InventoryBookService
 
     public function exportExcel(int $id): BinaryFileResponse
     {
+        ini_set('memory_limit', '1024M');
+        set_time_limit(300);
+
         $book = $this->inventoryBookRepository->getBookById($id);
         $periodTypeValue = is_object($book->period_type) ? $book->period_type->value : (string) $book->period_type;
         $periodSuffix = ($periodTypeValue === 'fortnightly')
@@ -94,6 +97,9 @@ class InventoryBookService
 
     public function exportPdf(int $id)
     {
+        ini_set('memory_limit', '1024M');
+        set_time_limit(300);
+
         $book = $this->inventoryBookRepository->getBookById($id);
         $settings = GeneralSetting::first() ?? new GeneralSetting();
 
@@ -112,6 +118,9 @@ class InventoryBookService
 
     public function exportWithdrawalActPdf(int $id)
     {
+        ini_set('memory_limit', '512M');
+        set_time_limit(180);
+
         $book = $this->inventoryBookRepository->getBookById($id);
         $settings = GeneralSetting::first() ?? new GeneralSetting();
 
