@@ -6,6 +6,10 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  enableCashea: {
+    type: Boolean,
+    default: false
+  },
   canEdit: {
     type: Boolean,
     default: true
@@ -38,9 +42,18 @@ const handleCurrencyToggle = async (currency, currentValue) => {
   emit('update:paymentMethods', props.paymentMethods)
 }
 
-const handleMethodToggle = (currency, methodIndex) => {
+const getFilteredMethods = (methods) => {
+  if (!Array.isArray(methods)) return []
+  return methods.filter(m => {
+    if (m.value === 'cashea') {
+      return Boolean(props.enableCashea)
+    }
+    return true
+  })
+}
+
+const handleMethodToggle = (currency, method) => {
   if (!props.canEdit || props.isSaving) return
-  const method = props.paymentMethods[currency].methods[methodIndex]
   method.enabled = !method.enabled
   emit('update:paymentMethods', props.paymentMethods)
 }
@@ -133,7 +146,7 @@ const toggleDescription = (method) => {
 
               <div v-else class="d-flex flex-column gap-3">
                 <div
-                  v-for="(method, index) in currencyData.methods"
+                  v-for="(method, index) in getFilteredMethods(currencyData.methods)"
                   :key="index"
                   class="pa-3 rounded-lg border bg-surface"
                 >
@@ -156,7 +169,7 @@ const toggleDescription = (method) => {
                       hide-details="auto"
                       color="primary"
                       :disabled="!canEdit || isSaving"
-                      @update:model-value="() => handleMethodToggle(currency, index)"
+                      @update:model-value="() => handleMethodToggle(currency, method)"
                     />
                   </div>
 

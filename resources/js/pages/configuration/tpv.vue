@@ -60,6 +60,21 @@ const canEdit = computed(() => {
   return ability.can('edit', 'Configuration') || ability.can('manage', 'all')
 })
 
+const handleEnableCasheaChange = (val) => {
+  formState.enable_cashea = val
+  if (!formState.tpv_payment_methods) return
+  // Sincronizar estado habilitado de Cashea en los métodos de pago
+  ;['BS', 'USD'].forEach(curr => {
+    const methods = formState.tpv_payment_methods[curr]?.methods
+    if (Array.isArray(methods)) {
+      const casheaMethod = methods.find(m => m.value === 'cashea')
+      if (casheaMethod) {
+        casheaMethod.enabled = Boolean(val)
+      }
+    }
+  })
+}
+
 // Carga optimizada de la configuración
 const fetchSettings = async () => {
   isLoading.value = true
@@ -345,6 +360,7 @@ onMounted(() => {
       <!-- Métodos de Pago y Monedas -->
       <TpvCasheaSettingsCard
         v-model:enable-cashea="formState.enable_cashea"
+        @update:enable-cashea="handleEnableCasheaChange"
         v-model:cashea-mode="formState.cashea_mode"
         v-model:cashea-environment="formState.cashea_environment"
         v-model:cashea-client-id="formState.cashea_client_id"
@@ -358,6 +374,7 @@ onMounted(() => {
 
       <TpvPaymentMethodsCard
         v-model:payment-methods="formState.tpv_payment_methods"
+        :enable-cashea="formState.enable_cashea"
         :can-edit="canEdit"
         :is-saving="isSaving"
       />
