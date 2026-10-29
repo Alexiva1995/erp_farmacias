@@ -56,61 +56,50 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
         $companyRif = mb_strtoupper($this->settings->app_rif ?: $this->settings->rif ?: 'J-00000000-0', 'UTF-8');
         $companyAddress = mb_strtoupper($this->settings->address ?: 'DIRECCIÓN PRINCIPAL', 'UTF-8');
 
+        $periodTypeValue = is_object($this->book->period_type) ? $this->book->period_type->value : (string) $this->book->period_type;
+        $periodLabel = ($periodTypeValue === 'fortnightly')
+            ? ($this->book->fortnight == 1 ? "1RA QUINCENA (01 AL 15)" : "2DA QUINCENA (16 AL FIN DE MES)")
+            : "MES COMPLETO";
+
         return [
             // Fila 1: Título Principal
-            ['Registro detallado de entrada y salida de inventario de mercancia'],
-            // Fila 2: Datos generales
+            ['REGISTRO DETALLADO DE ENTRADAS Y SALIDAS DE INVENTARIO DE MERCANCÍAS'],
+            // Fila 2: Base legal y condición fiscal
             [
-                'Mes: ' . $monthName,
-                '',
-                'Ejercicio Gravable: ' . $this->book->year,
-                '',
-                'Razón Social: ' . $companyName,
-                '',
-                '',
-                '',
-                'Rif. Del Contribuyente: ' . $companyRif,
+                'Cumplimiento según el artículo 177 de la Ley de Impuesto Sobre la Renta (LISR) - SENIAT',
+                '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+                'CONDICIÓN: ' . $taxpayerType,
             ],
-            // Fila 3: Dirección
-            ['DIRECCIÓN PRINCIPAL: ' . $companyAddress],
-            // Fila 4: Fundamento legal Art. 177 y condición fiscal
+            // Fila 3: Datos de la Empresa y Período
             [
-                'Movimiento de Unidades según el artículo 177 ley de impuesto sobre la renta.',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                $taxpayerType,
+                'RAZÓN SOCIAL: ' . $companyName,
+                '', '', '', '', '',
+                'RIF: ' . $companyRif,
+                '', '',
+                'MES: ' . $monthName . ' ' . $this->book->year,
+                '', '',
+                'PERÍODO: ' . $periodLabel,
             ],
-            // Fila 5: Agrupadores superiores
-            [
-                '', '', '', '',
-                'UNIDADES', '', '', '', '', '',
-                'BOLIVARES', '', '', '', '', '',
-            ],
-            // Fila 6: Columnas exactas del SENIAT
+            // Fila 4: Dirección fiscal
+            ['DIRECCIÓN FISCAL: ' . $companyAddress],
+            // Fila 5: Columnas del Libro de Inventario (Fondo blanco, sin fila agrupada intermedia)
             [
                 'Nº',
-                'CODIGO DEL PRODUCTO',
-                'DESCRIPCION DEL PRODUCTO',
-                'COSTO PROMEDIO UNITARIO',
+                'CÓDIGO DEL PRODUCTO',
+                'DESCRIPCIÓN DEL PRODUCTO',
+                'COSTO PROMEDIO UNITARIO (BS)',
                 'EXISTENCIA INICIAL',
-                'ENTRADA COMPRAS',
+                'ENTRADAS COMPRAS',
                 'SALIDAS VENTAS',
                 'RETIROS',
-                'AUTO CONSUMOS',
-                'EXISTENCIA',
-                'VALOR ANTERIOR EN BS',
-                'COSTOS ENTRADA COMPRAS',
-                'COSTOS SALIDAS VENTAS',
-                'COSTOS RETIROS',
-                'COSTOS AUTO CONSUMOS',
-                'VALOR DEL INVENTARIO',
+                'AUTOCONSUMOS',
+                'EXISTENCIA FINAL',
+                'VALOR ANTERIOR (BS)',
+                'COSTO ENTRADAS (BS)',
+                'COSTO SALIDAS (BS)',
+                'COSTO RETIROS (BS)',
+                'COSTO AUTOCONSUMOS (BS)',
+                'VALOR DEL INVENTARIO (BS)',
             ],
         ];
     }
@@ -121,19 +110,19 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
             $entry->operation_number,
             $entry->product_code,
             $entry->product_description,
-            (float) $entry->unit_cost_bs,
-            (float) $entry->initial_stock,
-            (float) $entry->purchase_entries,
-            (float) $entry->sales_exits,
-            (float) $entry->withdrawals,
-            (float) $entry->self_consumptions,
-            (float) $entry->final_stock,
-            (float) $entry->previous_value_bs,
-            (float) $entry->purchase_entries_cost_bs,
-            (float) $entry->sales_exits_cost_bs,
-            (float) $entry->withdrawals_cost_bs,
-            (float) $entry->self_consumptions_cost_bs,
-            (float) $entry->final_inventory_value_bs,
+            (float) ($entry->unit_cost_bs ?? 0),
+            (int) round((float) ($entry->initial_stock ?? 0)),
+            (int) round((float) ($entry->purchase_entries ?? 0)),
+            (int) round((float) ($entry->sales_exits ?? 0)),
+            (int) round((float) ($entry->withdrawals ?? 0)),
+            (int) round((float) ($entry->self_consumptions ?? 0)),
+            (int) round((float) ($entry->final_stock ?? 0)),
+            (float) ($entry->previous_value_bs ?? 0),
+            (float) ($entry->purchase_entries_cost_bs ?? 0),
+            (float) ($entry->sales_exits_cost_bs ?? 0),
+            (float) ($entry->withdrawals_cost_bs ?? 0),
+            (float) ($entry->self_consumptions_cost_bs ?? 0),
+            (float) ($entry->final_inventory_value_bs ?? 0),
         ];
     }
 
@@ -144,12 +133,12 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
             'B' => NumberFormat::FORMAT_TEXT,
             'C' => NumberFormat::FORMAT_TEXT,
             'D' => '#,##0.00',
-            'E' => '#,##0.00',
-            'F' => '#,##0.00',
-            'G' => '#,##0.00',
-            'H' => '#,##0.00',
-            'I' => '#,##0.00',
-            'J' => '#,##0.00',
+            'E' => '#,##0',
+            'F' => '#,##0',
+            'G' => '#,##0',
+            'H' => '#,##0',
+            'I' => '#,##0',
+            'J' => '#,##0',
             'K' => '#,##0.00',
             'L' => '#,##0.00',
             'M' => '#,##0.00',
@@ -161,10 +150,10 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
 
     public function styles(Worksheet $sheet)
     {
-        // Anchos de columna optimizados para impresión horizontal
+        // Anchos de columna optimizados para visualización e impresión horizontal
         $sheet->getColumnDimension('A')->setWidth(6);
-        $sheet->getColumnDimension('B')->setWidth(14);
-        $sheet->getColumnDimension('C')->setWidth(35);
+        $sheet->getColumnDimension('B')->setWidth(15);
+        $sheet->getColumnDimension('C')->setWidth(38);
         $sheet->getColumnDimension('D')->setWidth(16);
         $sheet->getColumnDimension('E')->setWidth(13);
         $sheet->getColumnDimension('F')->setWidth(13);
@@ -179,15 +168,16 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
         $sheet->getColumnDimension('O')->setWidth(16);
         $sheet->getColumnDimension('P')->setWidth(18);
 
-        // Alineación vertical y ajuste de texto
-        $sheet->getStyle('A1:P6')->getAlignment()->setWrapText(true);
+        // Alineación y ajuste de texto
+        $sheet->getStyle('A1:P5')->getAlignment()->setWrapText(true);
         $sheet->getStyle('C')->getAlignment()->setWrapText(true);
 
         return [
-            1 => ['font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => '1E3A8A']]],
-            4 => ['font' => ['bold' => true, 'italic' => true, 'size' => 9, 'color' => ['rgb' => '475569']]],
-            5 => ['font' => ['bold' => true, 'size' => 10]],
-            6 => ['font' => ['bold' => true, 'size' => 8]],
+            1 => ['font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => '000000']]],
+            2 => ['font' => ['size' => 8.5, 'color' => ['rgb' => '333333']]],
+            3 => ['font' => ['size' => 8.5, 'color' => ['rgb' => '000000']]],
+            4 => ['font' => ['size' => 8.5, 'color' => ['rgb' => '333333']]],
+            5 => ['font' => ['bold' => true, 'size' => 8, 'color' => ['rgb' => '000000']]],
         ];
     }
 
@@ -197,48 +187,57 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
 
-                // Combinaciones de cabecera
+                // 1. Combinaciones limpias de la Cabecera (Filas 1 a 4)
                 $sheet->mergeCells('A1:P1');
-                $sheet->mergeCells('A3:P3');
-                $sheet->mergeCells('A4:I4');
-                $sheet->mergeCells('J4:P4');
+                $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('A1')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+                $sheet->getRowDimension(1)->setRowHeight(24);
 
-                // Agrupadores de Fila 5: UNIDADES (E5:J5) y BOLIVARES (K5:P5)
-                $sheet->mergeCells('E5:J5');
-                $sheet->mergeCells('K5:P5');
+                $sheet->mergeCells('A2:L2');
+                $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                $sheet->mergeCells('M2:P2');
+                $sheet->getStyle('M2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                $sheet->getStyle('M2')->getFont()->setBold(true);
+                $sheet->getRowDimension(2)->setRowHeight(18);
 
-                $sheet->getStyle('E5:J5')->applyFromArray([
-                    'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
-                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A8A']],
+                $sheet->mergeCells('A3:F3');
+                $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                $sheet->mergeCells('G3:I3');
+                $sheet->getStyle('G3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                $sheet->mergeCells('J3:L3');
+                $sheet->getStyle('J3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->mergeCells('M3:P3');
+                $sheet->getStyle('M3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                $sheet->getRowDimension(3)->setRowHeight(20);
+
+                $sheet->mergeCells('A4:P4');
+                $sheet->getStyle('A4')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                $sheet->getRowDimension(4)->setRowHeight(18);
+
+                // Bordes delimitadores de la sección de cabecera
+                $sheet->getStyle('A1:P4')->applyFromArray([
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFFFF']],
                 ]);
 
-                $sheet->getStyle('K5:P5')->applyFromArray([
-                    'font' => ['bold' => true, 'color' => ['rgb' => '92400E'], 'size' => 10],
-                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEF3C7']],
+                // 2. Fila 5: Encabezados de Columnas (Fondo blanco para optimizar tinta, texto negro, bordes definidos)
+                $sheet->getRowDimension(5)->setRowHeight(30);
+                $sheet->getStyle('A5:P5')->applyFromArray([
+                    'font' => ['bold' => true, 'color' => ['rgb' => '000000'], 'size' => 8],
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_CENTER,
+                        'vertical' => Alignment::VERTICAL_CENTER,
+                        'wrapText' => true,
+                    ],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFFFF']],
+                    'borders' => [
+                        'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']],
+                        'top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '000000']],
+                        'bottom' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '000000']],
+                    ],
                 ]);
 
-                // Estilos de encabezados en Fila 6
-                $sheet->getStyle('A6:J6')->applyFromArray([
-                    'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 8],
-                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A8A']],
-                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']]],
-                ]);
-
-                $sheet->getStyle('K6:P6')->applyFromArray([
-                    'font' => ['bold' => true, 'color' => ['rgb' => '78350F'], 'size' => 8],
-                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FDE68A']],
-                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']]],
-                ]);
-
-                $sheet->getRowDimension(5)->setRowHeight(20);
-                $sheet->getRowDimension(6)->setRowHeight(28);
-
-                // Filas de datos
-                $startDataRow = 7;
+                // 3. Filas de Datos (Inicio en Fila 6)
+                $startDataRow = 6;
                 $endDataRow = $startDataRow + $this->rowCount - 1;
 
                 if ($this->rowCount > 0) {
@@ -248,35 +247,50 @@ class InventoryBookExport implements FromCollection, WithHeadings, WithMapping, 
                     $sheet->getStyle("D{$startDataRow}:P{$endDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
                     $sheet->getStyle("A{$startDataRow}:P{$endDataRow}")->applyFromArray([
-                        'font' => ['size' => 8],
-                        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]],
+                        'font' => ['size' => 8, 'color' => ['rgb' => '000000']],
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFFFF']],
+                        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']]],
                     ]);
 
-                    // Fila de Totales
+                    // 4. Fila de Totales Consolidados (Fondo blanco, texto negro, bordes dobles, totalización asegurada)
                     $totalRow = $endDataRow + 1;
-                    $sheet->setCellValue("A{$totalRow}", 'TOTALES');
+                    $sheet->setCellValue("A{$totalRow}", 'TOTALES CONSOLIDADOS');
                     $sheet->mergeCells("A{$totalRow}:D{$totalRow}");
 
-                    $columnsToSum = ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
-                    foreach ($columnsToSum as $col) {
+                    // Columnas de unidades (Enteros)
+                    $unitCols = ['E', 'F', 'G', 'H', 'I', 'J'];
+                    foreach ($unitCols as $col) {
                         $sheet->setCellValue("{$col}{$totalRow}", "=SUM({$col}{$startDataRow}:{$col}{$endDataRow})");
+                        $sheet->getStyle("{$col}{$totalRow}")->getNumberFormat()->setFormatCode('#,##0');
                     }
 
+                    // Columnas de importes en Bs (Decimales con 2 dígitos)
+                    $bsCols = ['K', 'L', 'M', 'N', 'O', 'P'];
+                    foreach ($bsCols as $col) {
+                        $sheet->setCellValue("{$col}{$totalRow}", "=SUM({$col}{$startDataRow}:{$col}{$endDataRow})");
+                        $sheet->getStyle("{$col}{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+                    }
+
+                    $sheet->getRowDimension($totalRow)->setRowHeight(22);
                     $sheet->getStyle("A{$totalRow}:P{$totalRow}")->applyFromArray([
-                        'font' => ['bold' => true, 'size' => 9, 'color' => ['rgb' => '0F172A']],
+                        'font' => ['bold' => true, 'size' => 8.5, 'color' => ['rgb' => '000000']],
                         'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
-                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2E8F0']],
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFFFF']],
                         'borders' => [
-                            'top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => '475569']],
-                            'bottom' => ['borderStyle' => Border::BORDER_DOUBLE, 'color' => ['rgb' => '0F172A']],
-                            'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']],
+                            'top' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '000000']],
+                            'bottom' => ['borderStyle' => Border::BORDER_DOUBLE, 'color' => ['rgb' => '000000']],
+                            'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '94A3B8']],
                         ],
                     ]);
                     $sheet->getStyle("A{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                     $sheet->getStyle("E{$totalRow}:P{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
 
-                // Configuración de impresión: Horizontal, 1 página de ancho
+                // 5. Forzar cálculo automático y completo de fórmulas al abrir el archivo en Excel
+                $sheet->getParent()->setForceFullCalculation(true);
+                $sheet->getParent()->getCalculationEngine()->clearCalculationCache();
+
+                // 6. Configuración de impresión: Horizontal, 1 página de ancho
                 $sheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_LANDSCAPE);
                 $sheet->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_A4);
                 $sheet->getPageSetup()->setFitToWidth(1);
