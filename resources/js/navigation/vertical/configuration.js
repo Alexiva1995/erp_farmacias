@@ -95,6 +95,10 @@ export default [
             to: 'configuration-import',
           },
           {
+            title: 'Droguería (Master)',
+            to: 'configuration-import-drogueria',
+          },
+          {
             title: 'Hybrid',
             to: 'configuration-import-hybrid',
           },

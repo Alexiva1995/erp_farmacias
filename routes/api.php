@@ -220,6 +220,13 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::post('/import-hybrid/analyze-sales', [\App\Http\Controllers\Api\DataImportController::class, 'analyzeSalesOrders']);
     Route::post('/import-hybrid/process-sales', [\App\Http\Controllers\Api\DataImportController::class, 'processSalesOrders']);
 
+    // Rutas de Importación de Catálogo Master para Droguería
+    Route::prefix('import/drogueria')->group(function () {
+        Route::get('/master-suppliers', [\App\Http\Controllers\Api\Import\DrogueriaCatalogImportController::class, 'getMasterSuppliers']);
+        Route::get('/master-suppliers/{supplierId}/preview', [\App\Http\Controllers\Api\Import\DrogueriaCatalogImportController::class, 'previewCatalog']);
+        Route::post('/execute', [\App\Http\Controllers\Api\Import\DrogueriaCatalogImportController::class, 'executeImport']);
+    });
+
     // Rutas de Integración a2 Softway Web (Protegidas)
     Route::prefix('configuration/data-import/a2')->group(function () {
         Route::post('/request-preview', [\App\Http\Controllers\Api\A2DataImportController::class, 'requestPreview']);

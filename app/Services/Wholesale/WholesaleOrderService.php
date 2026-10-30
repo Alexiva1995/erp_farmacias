@@ -122,8 +122,8 @@ class WholesaleOrderService
                     if ($missingQty > 0) {
                         ProductFailure::create([
                             'product_id' => $product->id,
-                            'quantity' => $missingQty,
-                            'reason' => 'Sin stock suficiente en droguería al emitir pedido B2B',
+                            'user_id' => $sellerId,
+                            'comment' => "Falla de {$missingQty} unidades: Sin stock suficiente en droguería al emitir pedido B2B",
                         ]);
 
                         $allFailures[] = [

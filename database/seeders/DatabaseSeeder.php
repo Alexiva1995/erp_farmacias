@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             SuppliersSqlImportSeeder::class,
             SupplierConnectionsSqlImportSeeder::class,
             TelegramCommandSeeder::class,
+            DrogueriaPresentationSeeder::class,
         ]);
     }
 }
