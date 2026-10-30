@@ -29,30 +29,113 @@ class DrogueriaMasterCatalogImportService
     }
 
     /**
+     * Resuelve los IDs de proveedor equivalentes (mismo ID, RIF o nombre) en una conexión dada.
+     *
+     * @param string $connection
+     * @param int $masterSupplierId
+     * @param object|null $supplier
+     * @return array<int>
+     */
+    protected function resolveMatchingSupplierIds(string $connection, int $masterSupplierId, ?object $supplier = null): array
+    {
+        $ids = [$masterSupplierId];
+
+        try {
+            if (!$supplier) {
+                $supplier = DB::connection($connection)->table('suppliers')->where('id', $masterSupplierId)->first();
+            }
+
+            if ($supplier) {
+                $aliasQuery = DB::connection($connection)->table('suppliers');
+                $hasCondition = false;
+
+                if (!empty($supplier->rif)) {
+                    $aliasQuery->where('rif', $supplier->rif);
+                    $hasCondition = true;
+                }
+
+                if (!empty($supplier->name)) {
+                    if ($hasCondition) {
+                        $aliasQuery->orWhere('name', $supplier->name);
+                    } else {
+                        $aliasQuery->where('name', $supplier->name);
+                        $hasCondition = true;
+                    }
+                }
+
+                if ($hasCondition) {
+                    $aliasIds = $aliasQuery->pluck('id')->map(fn($id) => (int) $id)->all();
+                    $ids = array_values(array_unique(array_merge($ids, $aliasIds)));
+                }
+            }
+        } catch (\Throwable) {
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Determina la conexión y los IDs donde residen los productos de un proveedor (Master o Tenant local).
+     *
+     * @param int $masterSupplierId
+     * @param object|null $supplier
+     * @return array{connection: string, supplier_ids: array<int>, count: int}
+     */
+    protected function resolveCatalogSource(int $masterSupplierId, ?object $supplier = null): array
+    {
+        $central = $this->getCentralConnectionName();
+        $isTenant = function_exists('tenancy') && tenancy()->initialized;
+        $local = $isTenant ? DB::getDefaultConnection() : null;
+
+        // 1. Probar en conexión central/Master
+        $centralIds = $this->resolveMatchingSupplierIds($central, $masterSupplierId, $supplier);
+        $centralCount = (int) DB::connection($central)->table('product_suppliers')->whereIn('supplier_id', $centralIds)->count();
+
+        if ($centralCount > 0) {
+            return [
+                'connection' => $central,
+                'supplier_ids' => $centralIds,
+                'count' => $centralCount,
+            ];
+        }
+
+        // 2. Si en central da 0 y estamos en un tenant, verificar conexión local del tenant
+        if ($local && $local !== $central) {
+            $localIds = $this->resolveMatchingSupplierIds($local, $masterSupplierId, $supplier);
+            $localCount = (int) DB::connection($local)->table('product_suppliers')->whereIn('supplier_id', $localIds)->count();
+
+            if ($localCount > 0) {
+                return [
+                    'connection' => $local,
+                    'supplier_ids' => $localIds,
+                    'count' => $localCount,
+                ];
+            }
+        }
+
+        return [
+            'connection' => $central,
+            'supplier_ids' => $centralIds,
+            'count' => 0,
+        ];
+    }
+
+    /**
      * Obtiene los proveedores del Master con el conteo de productos asociados en product_suppliers.
+     * Soporta tanto el catálogo de la base central como catálogos locales en el tenant y resolución de alias.
      *
      * @return array<int, array<string, mixed>>
      */
     public function getMasterSuppliersWithCatalogCount(): array
     {
-        $connection = $this->getCentralConnectionName();
+        $centralConnection = $this->getCentralConnectionName();
+        $isTenant = function_exists('tenancy') && tenancy()->initialized;
+        $localConnection = $isTenant ? DB::getDefaultConnection() : null;
 
-        // Obtener todos los proveedores registrados en la base central sin excluir por deleted_at
-        $rows = DB::connection($connection)
+        // 1. Obtener todos los proveedores de la base central
+        $suppliers = DB::connection($centralConnection)
             ->table('suppliers')
-            ->leftJoin('product_suppliers', function ($join) {
-                $join->on('suppliers.id', '=', 'product_suppliers.supplier_id');
-            })
             ->select(
-                'suppliers.id',
-                'suppliers.name',
-                'suppliers.social_reason',
-                'suppliers.rif',
-                'suppliers.credit_days',
-                'suppliers.is_active',
-                DB::raw('COUNT(product_suppliers.id) as catalog_items_count')
-            )
-            ->groupBy(
                 'suppliers.id',
                 'suppliers.name',
                 'suppliers.social_reason',
@@ -60,34 +143,119 @@ class DrogueriaMasterCatalogImportService
                 'suppliers.credit_days',
                 'suppliers.is_active'
             )
-            ->orderByDesc('catalog_items_count')
-            ->orderBy('suppliers.name')
             ->get();
 
-        // Incluir proveedores huérfanos que tengan productos en product_suppliers
-        $existingIds = $rows->pluck('id')->filter()->all();
-        $orphanSuppliers = DB::connection($connection)
+        // 2. Mapear conteos en base central
+        $centralCounts = DB::connection($centralConnection)
             ->table('product_suppliers')
             ->whereNotNull('supplier_id')
-            ->whereNotIn('supplier_id', $existingIds)
-            ->select('supplier_id', DB::raw('COUNT(id) as catalog_items_count'))
             ->groupBy('supplier_id')
-            ->get();
+            ->pluck(DB::raw('COUNT(id) as cnt'), 'supplier_id')
+            ->all();
 
-        foreach ($orphanSuppliers as $orphan) {
-            $rows->push((object) [
-                'id' => (int) $orphan->supplier_id,
-                'name' => "Proveedor Catálogo #{$orphan->supplier_id}",
+        // 3. Mapear conteos en tenant local (si aplica)
+        $localCounts = [];
+        if ($localConnection && $localConnection !== $centralConnection) {
+            try {
+                $localCounts = DB::connection($localConnection)
+                    ->table('product_suppliers')
+                    ->whereNotNull('supplier_id')
+                    ->groupBy('supplier_id')
+                    ->pluck(DB::raw('COUNT(id) as cnt'), 'supplier_id')
+                    ->all();
+            } catch (\Throwable) {
+            }
+        }
+
+        // Indexar proveedores por RIF y nombre normalizado para consolidar alias
+        $rifMap = [];
+        $nameMap = [];
+        foreach ($suppliers as $s) {
+            if (!empty($s->rif)) {
+                $rifKey = strtoupper(trim((string) $s->rif));
+                $rifMap[$rifKey][] = (int) $s->id;
+            }
+            if (!empty($s->name)) {
+                $nameKey = strtoupper(trim((string) $s->name));
+                $nameMap[$nameKey][] = (int) $s->id;
+            }
+        }
+
+        $resultRows = collect();
+
+        foreach ($suppliers as $supp) {
+            $suppId = (int) $supp->id;
+            $relatedIds = [$suppId];
+
+            if (!empty($supp->rif)) {
+                $rifKey = strtoupper(trim((string) $supp->rif));
+                if (isset($rifMap[$rifKey])) {
+                    $relatedIds = array_merge($relatedIds, $rifMap[$rifKey]);
+                }
+            }
+
+            if (!empty($supp->name)) {
+                $nameKey = strtoupper(trim((string) $supp->name));
+                if (isset($nameMap[$nameKey])) {
+                    $relatedIds = array_merge($relatedIds, $nameMap[$nameKey]);
+                }
+            }
+
+            $relatedIds = array_unique($relatedIds);
+
+            // Sumar conteos de los IDs relacionados en central y local
+            $cCount = 0;
+            foreach ($relatedIds as $rid) {
+                $cCount += (int) ($centralCounts[$rid] ?? 0);
+            }
+
+            $lCount = 0;
+            foreach ($relatedIds as $rid) {
+                $lCount += (int) ($localCounts[$rid] ?? 0);
+            }
+
+            $catalogItemsCount = max($cCount, $lCount);
+
+            $resultRows->push((object) [
+                'id' => $suppId,
+                'name' => $supp->name,
+                'social_reason' => $supp->social_reason,
+                'rif' => $supp->rif,
+                'credit_days' => $supp->credit_days,
+                'is_active' => $supp->is_active,
+                'catalog_items_count' => $catalogItemsCount,
+            ]);
+        }
+
+        // 4. Incluir proveedores huérfanos que tengan productos en product_suppliers
+        $existingIds = $resultRows->pluck('id')->filter()->all();
+
+        $allOrphans = collect();
+        foreach ($centralCounts as $sid => $cnt) {
+            if (!in_array((int) $sid, $existingIds, true)) {
+                $allOrphans[(int) $sid] = (int) $cnt;
+            }
+        }
+        foreach ($localCounts as $sid => $cnt) {
+            if (!in_array((int) $sid, $existingIds, true)) {
+                $allOrphans[(int) $sid] = max((int) ($allOrphans[(int) $sid] ?? 0), (int) $cnt);
+            }
+        }
+
+        foreach ($allOrphans as $orphanId => $orphanCount) {
+            $resultRows->push((object) [
+                'id' => (int) $orphanId,
+                'name' => "Proveedor Catálogo #{$orphanId}",
                 'social_reason' => null,
                 'rif' => null,
                 'credit_days' => 15,
                 'is_active' => true,
-                'catalog_items_count' => (int) $orphan->catalog_items_count,
+                'catalog_items_count' => (int) $orphanCount,
             ]);
         }
 
         // Ordenar con prioridad a los que tengan catálogo cargado
-        $sorted = $rows->sortByDesc('catalog_items_count')->values();
+        $sorted = $resultRows->sortByDesc('catalog_items_count')->values();
 
         return $sorted->map(function ($row) {
             return [
@@ -111,16 +279,17 @@ class DrogueriaMasterCatalogImportService
      */
     public function previewSupplierCatalog(int $masterSupplierId, int $limit = 20): array
     {
-        $connection = $this->getCentralConnectionName();
+        $central = $this->getCentralConnectionName();
 
-        $supplier = DB::connection($connection)
+        $supplier = DB::connection($central)
             ->table('suppliers')
             ->where('id', $masterSupplierId)
             ->first();
 
+        $source = $this->resolveCatalogSource($masterSupplierId, $supplier);
+
         if (!$supplier) {
-            $hasProducts = DB::connection($connection)->table('product_suppliers')->where('supplier_id', $masterSupplierId)->exists();
-            if ($hasProducts) {
+            if ($source['count'] > 0) {
                 $supplier = (object) [
                     'id' => $masterSupplierId,
                     'name' => "Proveedor Catálogo #{$masterSupplierId}",
@@ -136,9 +305,9 @@ class DrogueriaMasterCatalogImportService
             }
         }
 
-        $query = DB::connection($connection)
+        $query = DB::connection($source['connection'])
             ->table('product_suppliers')
-            ->where('supplier_id', $masterSupplierId);
+            ->whereIn('supplier_id', $source['supplier_ids']);
 
         $totalItems = (clone $query)->count();
         $withStockCount = (clone $query)->where('quantity', '>', 0)->count();
@@ -189,16 +358,17 @@ class DrogueriaMasterCatalogImportService
      */
     public function importCatalogToDrogueriaInventory(int $masterSupplierId, array $options): array
     {
-        $connection = $this->getCentralConnectionName();
+        $central = $this->getCentralConnectionName();
 
-        $supplier = DB::connection($connection)
+        $supplier = DB::connection($central)
             ->table('suppliers')
             ->where('id', $masterSupplierId)
             ->first();
 
+        $source = $this->resolveCatalogSource($masterSupplierId, $supplier);
+
         if (!$supplier) {
-            $hasProducts = DB::connection($connection)->table('product_suppliers')->where('supplier_id', $masterSupplierId)->exists();
-            if ($hasProducts) {
+            if ($source['count'] > 0) {
                 $supplier = (object) [
                     'id' => $masterSupplierId,
                     'name' => "Proveedor Catálogo #{$masterSupplierId}",
@@ -214,9 +384,9 @@ class DrogueriaMasterCatalogImportService
         $defaultStockIfZero = isset($options['default_stock_if_zero']) ? (float) $options['default_stock_if_zero'] : 100.0;
         $onlyWithStock = !empty($options['only_with_stock']);
 
-        $query = DB::connection($connection)
+        $query = DB::connection($source['connection'])
             ->table('product_suppliers')
-            ->where('supplier_id', $masterSupplierId);
+            ->whereIn('supplier_id', $source['supplier_ids']);
 
         if ($onlyWithStock) {
             $query->where('quantity', '>', 0);
