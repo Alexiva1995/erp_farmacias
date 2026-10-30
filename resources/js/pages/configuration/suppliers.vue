@@ -75,6 +75,7 @@ const supplierFormFieldOptions = [
 
 const expenseSupplierFormFieldOptions = [
   { label: 'Nombre Comercial', value: 'name', icon: 'tabler-building-store', required: true, tooltip: 'Nombre identificativo del prestador del servicio.' },
+  { label: 'Razón Social', value: 'social_reason', icon: 'tabler-building', required: false, tooltip: 'Nombre legal registrado ante las autoridades tributarias.' },
   { label: 'RIF / Identificación Fiscal', value: 'rif', icon: 'tabler-id', required: true, tooltip: 'Identificación fiscal obligatoria para egresos deducibles.' },
   { label: 'Dirección Física', value: 'address', icon: 'tabler-map-pin', required: false, tooltip: 'Dirección del prestador del servicio.' },
   { label: 'Teléfono de Ventas', value: 'sales_phone', icon: 'tabler-phone', required: false, tooltip: 'Teléfono comercial de atención.' },

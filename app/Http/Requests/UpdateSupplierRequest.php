@@ -19,6 +19,19 @@ class UpdateSupplierRequest extends FormRequest
     }
 
     /**
+     * Preparar datos antes de validar.
+     */
+    protected function prepareForValidation(): void
+    {
+        // Si se envió un nombre y la razón social quedó vacía, auto-completar con el nombre
+        if ($this->has('name') && empty($this->social_reason) && !empty($this->name)) {
+            $this->merge([
+                'social_reason' => $this->name,
+            ]);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, mixed>
@@ -48,9 +61,9 @@ class UpdateSupplierRequest extends FormRequest
         return [
             'type' => ['sometimes', Rule::enum(SupplierType::class)],
             'name' => 'sometimes|string|max:255',
-            'social_reason' => [Rule::requiredIf(fn() => $this->type === SupplierType::EXTERNO->value), 'sometimes', 'string', 'max:255'],
+            'social_reason' => ['sometimes', 'nullable', 'string', 'max:255'],
             'rif' => ['sometimes', 'string', 'max:20', Rule::unique('suppliers', 'rif')->ignore($this->route('supplier'))->whereNull('deleted_at')],
-            'address' => [Rule::requiredIf(fn() => $this->type === SupplierType::EXTERNO->value), 'sometimes', 'nullable', 'string'],
+            'address' => ['sometimes', 'nullable', 'string'],
             'sales_phone' => 'sometimes|nullable|string|max:50',
             'collections_phone' => 'sometimes|nullable|string|max:50',
             'payment_email' => 'sometimes|nullable|email|max:255',

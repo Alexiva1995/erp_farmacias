@@ -17,6 +17,31 @@ class StoreSupplierRequest extends FormRequest
     }
 
     /**
+     * Preparar datos antes de validar.
+     */
+    protected function prepareForValidation(): void
+    {
+        // Si no se proporcionó razón social pero sí el nombre, usar el nombre para evitar bloqueos
+        if (empty($this->social_reason) && !empty($this->name)) {
+            $this->merge([
+                'social_reason' => $this->name,
+            ]);
+        }
+
+        if (!$this->has('dispatch_days') || $this->dispatch_days === null) {
+            $this->merge([
+                'dispatch_days' => [],
+            ]);
+        }
+
+        if (!$this->has('order_days') || $this->order_days === null) {
+            $this->merge([
+                'order_days' => [],
+            ]);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
@@ -46,9 +71,9 @@ class StoreSupplierRequest extends FormRequest
         return [
             'type' => ['sometimes', 'string', Rule::enum(SupplierType::class)],
             'name' => ['required', 'string', 'max:255'],
-            'social_reason' => [Rule::requiredIf(fn() => $this->type === SupplierType::EXTERNO->value), 'string', 'max:255'],
+            'social_reason' => ['nullable', 'string', 'max:255'],
             'rif' => ['required', 'string', 'max:20', Rule::unique('suppliers', 'rif')->whereNull('deleted_at')],
-            'address' => [Rule::requiredIf(fn() => $this->type === SupplierType::EXTERNO->value), 'nullable', 'string'],
+            'address' => ['nullable', 'string'],
             'sales_phone' => ['nullable', 'string', 'max:50'],
             'collections_phone' => ['nullable', 'string', 'max:50'],
             'payment_email' => ['nullable', 'email', 'max:255'],

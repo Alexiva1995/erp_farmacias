@@ -25,6 +25,7 @@ export default defineConfig({
       },
 
       routesFolder: 'resources/js/pages',
+      dts: process.env.NODE_ENV === 'production' ? false : true,
     }),
     vue({
       template: {

@@ -21,6 +21,9 @@ const isExpenseSupplier = computed(() => formData.value.type === "externo" || fo
 
 // Determina visibilidad de campo según tipo de proveedor
 const isFieldVisible = (fieldKey) => {
+  if (fieldKey === "name" || fieldKey === "rif" || fieldKey === "social_reason") {
+    return true;
+  }
   if (isExpenseSupplier.value) {
     const expenseFields = brandingStore.settings.expense_supplier_form_fields;
     return !expenseFields || expenseFields.includes(fieldKey);
@@ -99,6 +102,12 @@ const submitForm = () => {
   const current = formData.value;
   const payload = {};
 
+  // Asegurar razón social por defecto si se colocó nombre comercial
+  if (!current.social_reason && current.name) {
+    current.social_reason = current.name;
+    formData.value.social_reason = current.name;
+  }
+
   if (isRestaurant.value) {
     Object.entries(current).forEach(([key, value]) => {
       const originalValue = original[key];
@@ -158,6 +167,10 @@ const submitForm = () => {
       emit("save", { ...current });
     }
   } else {
+    // Si la razón social tiene valor y no está en el payload, incluirla para consistencia
+    if (current.social_reason && payload.social_reason === undefined) {
+      payload.social_reason = current.social_reason;
+    }
     emit("save", payload);
   }
 };
@@ -346,7 +359,7 @@ watch(
                       <VCol cols="12" v-if="isFieldVisible('social_reason')">
                         <AppTextField
                           v-model="formData.social_reason"
-                          :label="'Razón Social' + ((isRestaurant || formData.type !== 'externo') ? '' : ' *')"
+                          label="Razón Social"
                           placeholder="Ej: Droguería Nena C.A."
                           prepend-inner-icon="tabler-certificate"
                           :error-messages="formErrors.social_reason"

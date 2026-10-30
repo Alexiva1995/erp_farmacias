@@ -461,6 +461,11 @@ class SupplierConnectionService
                 }
             }
 
+            // Fallback si el token fue colocado en el campo de usuario o token de cliente
+            if (empty($token) && !empty($connection->username) && strlen(trim($connection->username)) > 25) {
+                $token = trim($connection->username);
+            }
+
             // Productos
             $payloadDef = $this->buildPayload($connection, 'productos');
             $productData = [];

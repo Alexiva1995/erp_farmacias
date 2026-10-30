@@ -148,4 +148,36 @@ class SupplierInvoiceAndDebtTest extends TestCase
             'status' => 'pending',
         ]);
     }
+
+    /**
+     * Test de creación y actualización de proveedor externo sin error de razón social
+     */
+    public function test_can_create_and_update_external_supplier_without_social_reason(): void
+    {
+        $createResponse = $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/suppliers', [
+                'type' => 'externo',
+                'name' => 'Servicios Electricos C.A.',
+                'rif' => 'J-998877665',
+                'payment_due_type' => 'invoice_date',
+                'invoice_date_reference' => 'receipt_date',
+            ]);
+
+        $createResponse->assertStatus(201);
+        $supplierId = $createResponse->json('data.id');
+
+        $this->assertDatabaseHas('suppliers', [
+            'id' => $supplierId,
+            'name' => 'Servicios Electricos C.A.',
+            'type' => 'externo',
+            'social_reason' => 'Servicios Electricos C.A.',
+        ]);
+
+        $updateResponse = $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/suppliers/{$supplierId}", [
+                'sales_phone' => '04141234567',
+            ]);
+
+        $updateResponse->assertStatus(200);
+    }
 }
