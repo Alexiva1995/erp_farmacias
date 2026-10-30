@@ -1239,10 +1239,49 @@ class SupplierConnectionService
                     }
 
                     if ($isContinental) {
+                        $exchangeRate = floatval($currentHeader["exchange_rate"] ?? 0);
+                        if ($exchangeRate <= 0 && !empty($cols[4]) && is_numeric($cols[4])) {
+                            $exchangeRate = floatval($cols[4]);
+                            $currentHeader["exchange_rate"] = $exchangeRate;
+                        }
+
+                        // El número de control viene en col 2 si existe. Columna 12 es el código de cliente (ej. 37061)
+                        if (!empty($cols[2]) && trim($cols[2]) !== '') {
+                            $currentHeader["control_number"] = trim($cols[2]);
+                        } else {
+                            $currentHeader["control_number"] = null;
+                        }
+
+                        // Columna 8 es total_usd, Columna 10 es impuesto IVA en USD
                         $totalUSD = floatval($currentHeader["total_usd"] ?? 0);
-                        $totalAmt = floatval($currentHeader["total_amount"] ?? 0);
-                        if ($totalUSD > 0 && $totalAmt > 0) {
-                            $currentHeader["exchange_rate"] = round($totalAmt / $totalUSD, 4);
+                        if ($totalUSD <= 0 && !empty($cols[8]) && is_numeric($cols[8])) {
+                            $totalUSD = floatval($cols[8]);
+                            $currentHeader["total_usd"] = $totalUSD;
+                        }
+
+                        $taxUSD = floatval($currentHeader["tax_amount_usd"] ?? ($cols[10] ?? 0));
+
+                        if ($exchangeRate > 0) {
+                            $totalAmt = round($totalUSD * $exchangeRate, 2);
+                            $taxAmt = round($taxUSD * $exchangeRate, 2);
+                            $currentHeader["total_amount"] = $totalAmt;
+                            $currentHeader["tax_amount"] = $taxAmt;
+
+                            if ($taxUSD > 0) {
+                                $taxableBaseUsd = round($taxUSD / 0.16, 2);
+                                $taxableBase = round($taxableBaseUsd * $exchangeRate, 2);
+                                $exempt = round($totalAmt - $taxAmt - $taxableBase, 2);
+                                if ($exempt < 0) {
+                                    $exempt = 0.00;
+                                    $taxableBase = round($totalAmt - $taxAmt, 2);
+                                }
+                                $currentHeader["taxable_base"] = $taxableBase;
+                                $currentHeader["exempt_amount"] = $exempt;
+                            } else {
+                                $currentHeader["tax_amount"] = 0.00;
+                                $currentHeader["taxable_base"] = 0.00;
+                                $currentHeader["exempt_amount"] = $totalAmt;
+                            }
                         }
                     }
 

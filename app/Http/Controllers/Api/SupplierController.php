@@ -796,14 +796,12 @@ class SupplierController extends Controller
                     "header" => [
                         "0" => [ "field" => "tipo", "type" => "string" ],
                         "1" => [ "field" => "invoice_number", "type" => "string" ],
+                        "2" => [ "field" => "control_number", "type" => "string" ],
                         "3" => [ "field" => "created_invoice_date", "type" => "date", "format" => "d/m/Y" ],
-                        "4" => [ "field" => "total_amount", "type" => "decimal" ],
-                        "7" => [ "field" => "total_usd", "type" => "decimal" ],
-                        "8" => [ "field" => "net_amount", "type" => "decimal" ],
-                        "9" => [ "field" => "exempt_amount", "type" => "decimal" ],
-                        "10" => [ "field" => "taxable_base", "type" => "decimal" ],
-                        "12" => [ "field" => "control_number", "type" => "string" ],
-                        "13" => [ "field" => "tax_amount", "type" => "decimal" ]
+                        "4" => [ "field" => "exchange_rate", "type" => "decimal" ],
+                        "7" => [ "field" => "subtotal_usd", "type" => "decimal" ],
+                        "8" => [ "field" => "total_usd", "type" => "decimal" ],
+                        "10" => [ "field" => "tax_amount_usd", "type" => "decimal" ]
                     ],
                     "lines" => [
                         "0" => [ "field" => "tipo", "type" => "string" ],
