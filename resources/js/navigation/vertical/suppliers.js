@@ -1,5 +1,10 @@
 export default [
   {
+    title: "Auditoría Farmacias",
+    icon: { icon: "tabler-chart-histogram" },
+    to: "configuration-suppliers-tenant-audit",
+  },
+  {
     title: "Proveedores",
     icon: {
       is: "font-awesome-icon",
@@ -12,20 +17,18 @@ export default [
       {
         title: "Lista",
         to: "suppliers-list",
-        // action: "manage",
-        // subject: "suppliers-list",
+      },
+      {
+        title: "Auditoría por Farmacias",
+        to: "configuration-suppliers-tenant-audit",
       },
       {
         title: "Ordenes de Compra",
         to: "suppliers-purchase-orders-list",
-        // action: "manage",
-        // subject: "suppliers-purchase-orders-list",
       },
       {
         title: "Órdenes por Laboratorio",
         to: "suppliers-purchase-orders-laboratory-list",
-        // action: "manage",
-        // subject: "suppliers-purchase-orders-laboratory-list",
       },
     ],
   },
@@ -66,4 +69,3 @@ export default [
     ],
   },
 ];
-

@@ -47,6 +47,12 @@ export default [
         action: 'manage',
         subject: 'supervisor-or-admin',
       },
+      {
+        title: 'Auditoría Farmacias (Tenants)',
+        to: 'configuration-suppliers-tenant-audit',
+        action: 'manage',
+        subject: 'supervisor-or-admin',
+      },
     ],
   },
 ]
