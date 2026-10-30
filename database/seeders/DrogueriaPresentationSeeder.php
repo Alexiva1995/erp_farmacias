@@ -23,8 +23,10 @@ use App\Models\User;
 use App\Services\Import\DrogueriaMasterCatalogImportService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class DrogueriaPresentationSeeder extends Seeder
@@ -34,6 +36,18 @@ class DrogueriaPresentationSeeder extends Seeder
      */
     public function run(): void
     {
+        // Asegurar que las tablas de tenant necesarias existan
+        if (!Schema::hasTable('delivery_routes')) {
+            try {
+                Artisan::call('migrate', [
+                    '--path' => 'database/migrations/tenant',
+                    '--force' => true,
+                ]);
+            } catch (\Throwable) {
+                // Silencioso si la conexión o contexto no permite ejecutar migrate directamente
+            }
+        }
+
         $this->call(RolesSeeder::class);
 
         $this->seedConfiguration();
@@ -170,6 +184,10 @@ class DrogueriaPresentationSeeder extends Seeder
      */
     protected function seedDeliveryRoutes(): array
     {
+        if (!Schema::hasTable('delivery_routes')) {
+            return [];
+        }
+
         $routesData = [
             [
                 'code' => 'RUT-CCS-01',
@@ -452,7 +470,7 @@ class DrogueriaPresentationSeeder extends Seeder
                 'sales_rep_id' => $users['asesor_ccs']->id,
                 'telemarketing_user_id' => $users['telemarketing']->id,
                 'collector_user_id' => $users['cobranzas']->id,
-                'delivery_route_id' => $routes[0]->id,
+                'delivery_route_id' => $routes[0]?->id ?? null,
                 'linked_tenant_id' => 'farmacia_central', // Interconectada ERP
             ],
             [
@@ -471,7 +489,7 @@ class DrogueriaPresentationSeeder extends Seeder
                 'sales_rep_id' => $users['asesor_ccs']->id,
                 'telemarketing_user_id' => $users['telemarketing']->id,
                 'collector_user_id' => $users['cobranzas']->id,
-                'delivery_route_id' => $routes[0]->id,
+                'delivery_route_id' => $routes[0]?->id ?? null,
                 'linked_tenant_id' => null,
             ],
             [
@@ -490,7 +508,7 @@ class DrogueriaPresentationSeeder extends Seeder
                 'sales_rep_id' => $users['asesor_ccs']->id,
                 'telemarketing_user_id' => $users['telemarketing']->id,
                 'collector_user_id' => $users['cobranzas']->id,
-                'delivery_route_id' => $routes[1]->id,
+                'delivery_route_id' => $routes[1]?->id ?? null,
                 'linked_tenant_id' => null,
             ],
             // Solventes - Centro
@@ -510,7 +528,7 @@ class DrogueriaPresentationSeeder extends Seeder
                 'sales_rep_id' => $users['asesor_central']->id,
                 'telemarketing_user_id' => $users['telemarketing']->id,
                 'collector_user_id' => $users['cobranzas']->id,
-                'delivery_route_id' => $routes[2]->id,
+                'delivery_route_id' => $routes[2]?->id ?? null,
                 'linked_tenant_id' => 'farmacia_parral', // Interconectada ERP
             ],
             [
@@ -529,7 +547,7 @@ class DrogueriaPresentationSeeder extends Seeder
                 'sales_rep_id' => $users['asesor_central']->id,
                 'telemarketing_user_id' => $users['telemarketing']->id,
                 'collector_user_id' => $users['cobranzas']->id,
-                'delivery_route_id' => $routes[2]->id,
+                'delivery_route_id' => $routes[2]?->id ?? null,
                 'linked_tenant_id' => null,
             ],
             // Farmacias en Mora Activa (para alertas de crédito)
@@ -549,7 +567,7 @@ class DrogueriaPresentationSeeder extends Seeder
                 'sales_rep_id' => $users['asesor_central']->id,
                 'telemarketing_user_id' => $users['telemarketing']->id,
                 'collector_user_id' => $users['cobranzas']->id,
-                'delivery_route_id' => $routes[3]->id,
+                'delivery_route_id' => $routes[3]?->id ?? null,
                 'linked_tenant_id' => null,
             ],
             [
@@ -568,7 +586,7 @@ class DrogueriaPresentationSeeder extends Seeder
                 'sales_rep_id' => $users['asesor_central']->id,
                 'telemarketing_user_id' => $users['telemarketing']->id,
                 'collector_user_id' => $users['cobranzas']->id,
-                'delivery_route_id' => $routes[4]->id,
+                'delivery_route_id' => $routes[4]?->id ?? null,
                 'linked_tenant_id' => null,
             ],
         ];
@@ -613,7 +631,7 @@ class DrogueriaPresentationSeeder extends Seeder
             'status' => Order::PENDING,
             'b2b_workflow_status' => B2BOrderStatusEnum::APPROVED_CREDIT->value,
             'credit_term_days' => 0,
-            'delivery_route_id' => $routes[0]->id,
+            'delivery_route_id' => $routes[0]?->id ?? null,
             'packages_count' => 0,
             'cold_boxes_count' => 1,
             'payment_methods' => [],
@@ -648,7 +666,7 @@ class DrogueriaPresentationSeeder extends Seeder
             'b2b_workflow_status' => B2BOrderStatusEnum::PICKING->value,
             'credit_term_days' => 7,
             'parent_b2b_order_id' => $parentOrder->id,
-            'delivery_route_id' => $routes[0]->id,
+            'delivery_route_id' => $routes[0]?->id ?? null,
             'packages_count' => 1,
             'cold_boxes_count' => 0,
             'payment_methods' => [],
@@ -684,7 +702,7 @@ class DrogueriaPresentationSeeder extends Seeder
             'b2b_workflow_status' => B2BOrderStatusEnum::CHECKING->value,
             'credit_term_days' => 15,
             'parent_b2b_order_id' => $parentOrder->id,
-            'delivery_route_id' => $routes[0]->id,
+            'delivery_route_id' => $routes[0]?->id ?? null,
             'packages_count' => 2,
             'cold_boxes_count' => 0,
             'payment_methods' => [],
@@ -720,7 +738,7 @@ class DrogueriaPresentationSeeder extends Seeder
             'status' => Order::PENDING,
             'b2b_workflow_status' => B2BOrderStatusEnum::PENDING_CREDIT->value,
             'credit_term_days' => 7,
-            'delivery_route_id' => $routes[3]->id,
+            'delivery_route_id' => $routes[3]?->id ?? null,
             'packages_count' => 0,
             'cold_boxes_count' => 0,
             'payment_methods' => [],
@@ -741,7 +759,7 @@ class DrogueriaPresentationSeeder extends Seeder
             'status' => Order::PENDING,
             'b2b_workflow_status' => B2BOrderStatusEnum::PACKED->value,
             'credit_term_days' => 15,
-            'delivery_route_id' => $routes[2]->id,
+            'delivery_route_id' => $routes[2]?->id ?? null,
             'packages_count' => 4,
             'cold_boxes_count' => 1,
             'payment_methods' => [],
@@ -762,7 +780,7 @@ class DrogueriaPresentationSeeder extends Seeder
             'status' => Order::PENDING,
             'b2b_workflow_status' => B2BOrderStatusEnum::DISPATCHED->value,
             'credit_term_days' => 7,
-            'delivery_route_id' => $routes[0]->id,
+            'delivery_route_id' => $routes[0]?->id ?? null,
             'packages_count' => 3,
             'cold_boxes_count' => 0,
             'payment_methods' => [],
