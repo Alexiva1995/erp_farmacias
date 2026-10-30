@@ -32,8 +32,9 @@ class TenantManagementController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            // Garantizar que todo tenant tenga su registro de dominio en la tabla central de domains
+            // Garantizar que todo tenant tenga su registro de dominio y al menos su usuario administrador
             foreach ($tenants as $tenant) {
+                // 1. Auto-reparar dominio si falta en la tabla central de dominios
                 if ($tenant->domains->isEmpty() && !empty($tenant->id)) {
                     try {
                         $expectedDomain = "{$tenant->id}.tovaerp.com";
@@ -45,6 +46,49 @@ class TenantManagementController extends Controller
                     } catch (\Throwable $e) {
                         \Illuminate\Support\Facades\Log::warning("No se pudo asociar dominio automático para tenant {$tenant->id}: " . $e->getMessage());
                     }
+                }
+
+                // 2. Auto-reparar usuario Administrador si la tabla users del tenant está vacía
+                try {
+                    $tenant->run(function () use ($tenant) {
+                        if (\Illuminate\Support\Facades\Schema::hasTable('users')) {
+                            $userCount = \Illuminate\Support\Facades\DB::table('users')->count();
+                            if ($userCount === 0) {
+                                if (\Illuminate\Support\Facades\Schema::hasTable('roles')) {
+                                    \Illuminate\Support\Facades\DB::table('roles')->updateOrInsert(
+                                        ['id' => 1],
+                                        ['name' => 'Admin', 'created_at' => now(), 'updated_at' => now()]
+                                    );
+                                    \Illuminate\Support\Facades\DB::table('roles')->updateOrInsert(
+                                        ['id' => 2],
+                                        ['name' => 'Supervisor', 'created_at' => now(), 'updated_at' => now()]
+                                    );
+                                }
+
+                                \Illuminate\Support\Facades\DB::table('users')->insert([
+                                    'username'      => 'Administrador',
+                                    'email'         => "admin@{$tenant->id}.com",
+                                    'password_hash' => \Illuminate\Support\Facades\Hash::make('12345678'),
+                                    'role_id'       => 1,
+                                    'is_active'     => 1,
+                                    'created_at'    => now(),
+                                    'updated_at'    => now(),
+                                ]);
+
+                                \Illuminate\Support\Facades\DB::table('users')->insert([
+                                    'username'      => 'tienda',
+                                    'email'         => "tienda@{$tenant->id}.com",
+                                    'password_hash' => \Illuminate\Support\Facades\Hash::make('tienda123'),
+                                    'role_id'       => 2,
+                                    'is_active'     => 1,
+                                    'created_at'    => now(),
+                                    'updated_at'    => now(),
+                                ]);
+                            }
+                        }
+                    });
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("No se pudo auto-reparar usuario para tenant {$tenant->id}: " . $e->getMessage());
                 }
             }
 

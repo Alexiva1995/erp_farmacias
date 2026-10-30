@@ -74,29 +74,67 @@ class TenantProvisioningService
                 \Illuminate\Support\Facades\Log::warning("Error sembrando roles en tenant {$data['tenant_id']}: " . $e->getMessage());
             }
 
+            // Asegurar que exista el rol 1 (Admin) en la tabla roles
+            if (\Illuminate\Support\Facades\Schema::hasTable('roles')) {
+                \Illuminate\Support\Facades\DB::table('roles')->updateOrInsert(
+                    ['id' => 1],
+                    [
+                        'name' => 'Admin',
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
+                \Illuminate\Support\Facades\DB::table('roles')->updateOrInsert(
+                    ['id' => 2],
+                    [
+                        'name' => 'Supervisor',
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
+            }
+
             // 3.2 Crear o actualizar usuario Administrador principal
             $adminUsername = !empty($data['admin_name']) ? $data['admin_name'] : 'admin';
             $adminEmail = !empty($data['admin_email']) ? $data['admin_email'] : 'admin@tovaerp.com';
-            $password = !empty($data['password']) ? $data['password'] : '12345678';
+            $rawPassword = !empty($data['password']) ? $data['password'] : '12345678';
+            $hashedPassword = \Illuminate\Support\Facades\Hash::needsRehash($rawPassword)
+                ? \Illuminate\Support\Facades\Hash::make($rawPassword)
+                : $rawPassword;
 
-            User::updateOrCreate(
-                ['username' => $adminUsername],
-                [
-                    'email'         => $adminEmail,
-                    'password_hash' => $password,
-                    'role_id'       => 1, // Rol Admin
-                    'is_active'     => true,
-                    'token_login'   => null,
-                ]
-            );
+            try {
+                User::updateOrCreate(
+                    ['username' => $adminUsername],
+                    [
+                        'email'         => $adminEmail,
+                        'password_hash' => $hashedPassword,
+                        'role_id'       => 1, // Rol Admin
+                        'is_active'     => true,
+                        'token_login'   => null,
+                    ]
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Error creando usuario admin con Eloquent en {$data['tenant_id']}: " . $e->getMessage());
+                \Illuminate\Support\Facades\DB::table('users')->updateOrInsert(
+                    ['username' => $adminUsername],
+                    [
+                        'email'         => $adminEmail,
+                        'password_hash' => $hashedPassword,
+                        'role_id'       => 1,
+                        'is_active'     => 1,
+                        'created_at'    => now(),
+                        'updated_at'    => now(),
+                    ]
+                );
+            }
 
             // 3.3 Crear usuario por defecto de tienda / cliente
             try {
-                User::firstOrCreate(
+                User::updateOrCreate(
                     ['username' => 'tienda'],
                     [
                         'email'         => "tienda@{$data['tenant_id']}.com",
-                        'password_hash' => 'tienda123',
+                        'password_hash' => \Illuminate\Support\Facades\Hash::make('tienda123'),
                         'role_id'       => 2,
                         'is_active'     => true,
                         'token_login'   => null,
