@@ -46,11 +46,12 @@ const headers = computed(() => {
   if (activeTab.value === 'cheaper') {
     return [
       { title: 'PRODUCTO', key: 'name', sortable: false, minWidth: '320px' },
-      { title: 'NUESTRO PRECIO', key: 'our_price_usd', align: 'end', sortable: false, width: '130px' },
-      { title: 'MEJOR PRECIO MERCADO', key: 'best_market_price_usd', align: 'end', sortable: false, width: '160px' },
+      { title: 'NUESTRO PRECIO', key: 'our_price_usd', align: 'end', sortable: false, width: '120px' },
+      { title: 'MEJOR PRECIO MERCADO', key: 'best_market_price_usd', align: 'end', sortable: false, width: '150px' },
+      { title: '2° MEJOR MERCADO', key: 'second_best_market_price_usd', align: 'end', sortable: false, width: '150px' },
       { title: 'VENTAJA (%)', key: 'advantage', align: 'end', sortable: false, width: '120px' },
-      { title: 'COMPETIDORES', key: 'competitors_count', align: 'center', sortable: false, width: '130px' },
-      { title: 'STOCK', key: 'our_stock', align: 'center', sortable: false, width: '110px' },
+      { title: 'COMPETIDORES', key: 'competitors_count', align: 'center', sortable: false, width: '120px' },
+      { title: 'STOCK', key: 'our_stock', align: 'center', sortable: false, width: '100px' },
     ];
   }
 
@@ -457,7 +458,7 @@ onMounted(async () => {
         </VRow>
       </VCardText>
 
-      <!-- Tabla de Datos Servidor (Compacta, Encabezado Fijo, Sin Scroll Horizontal) -->
+      <!-- Tabla de Datos Servidor (Compacta, Sin Scroll Forzado) -->
       <VDataTableServer
         v-model:page="page"
         v-model:items-per-page="perPage"
@@ -467,26 +468,32 @@ onMounted(async () => {
         :items-length="totalItems"
         :loading="loadingItems"
         density="compact"
-        fixed-header
         hover
         class="elevation-0 text-no-wrap"
-        style="max-height: 520px;"
         @update:options="fetchItems"
       >
-        <!-- Producto en Una Sola Línea con Tooltip -->
+        <!-- Producto con Laboratorio al lado así como en inventario -->
         <template #item.name="{ item }">
-          <div class="d-flex align-center py-1">
+          <div class="d-flex align-center gap-1 py-1 min-width-0">
             <VTooltip location="top" :text="item.name">
               <template #activator="{ props: tooltipProps }">
                 <span
                   v-bind="tooltipProps"
                   class="text-truncate text-body-2 font-weight-medium text-high-emphasis cursor-pointer"
-                  style="max-width: 360px; display: inline-block;"
+                  style="max-width: 280px; display: inline-block;"
                 >
                   {{ item.name }}
                 </span>
               </template>
             </VTooltip>
+            <span
+              v-if="item.laboratory_name && item.laboratory_name !== 'N/A' && item.laboratory_name !== 'Generales'"
+              class="text-primary font-weight-black text-uppercase text-caption text-truncate flex-shrink-0"
+              style="max-width: 150px;"
+              :title="item.laboratory_name"
+            >
+              • {{ item.laboratory_name }}
+            </span>
           </div>
         </template>
 
@@ -503,11 +510,34 @@ onMounted(async () => {
           </span>
         </template>
 
-        <!-- Ventaja (Más Baratos) -->
+        <!-- 2° Mejor Mercado (Más Baratos) -->
+        <template #item.second_best_market_price_usd="{ item }">
+          <span v-if="item.second_best_market_price_usd && item.second_best_market_price_usd > item.best_market_price_usd" class="font-mono text-body-2 text-disabled font-weight-bold">
+            ${{ item.second_best_market_price_usd?.toFixed(2) }}
+          </span>
+          <span v-else-if="item.competitors_count > 1" class="font-mono text-caption text-disabled" title="Mismo precio en competidores">
+            ${{ item.best_market_price_usd?.toFixed(2) }} (empate)
+          </span>
+          <span v-else class="text-disabled text-caption font-mono">
+            —
+          </span>
+        </template>
+
+        <!-- Ventaja (Más Baratos: en referencia al 2° mejor competidor si existe) -->
         <template #item.advantage="{ item }">
-          <VChip size="small" color="success" variant="flat" class="font-weight-bold font-mono">
-            -{{ item.price_diff_pct?.toFixed(1) }}%
-          </VChip>
+          <VTooltip location="top" :text="item.second_best_market_price_usd > item.best_market_price_usd ? 'Ventaja calculada frente al 2° mejor competidor del mercado' : 'Ventaja calculada frente al mejor competidor'">
+            <template #activator="{ props: tooltipProps }">
+              <VChip
+                v-bind="tooltipProps"
+                size="small"
+                color="success"
+                variant="flat"
+                class="font-weight-bold font-mono"
+              >
+                -{{ item.price_diff_pct?.toFixed(1) }}%
+              </VChip>
+            </template>
+          </VTooltip>
         </template>
 
         <!-- Stock Propio (Más Baratos) -->

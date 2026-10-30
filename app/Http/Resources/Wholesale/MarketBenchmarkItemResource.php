@@ -26,6 +26,8 @@ class MarketBenchmarkItemResource extends JsonResource
             'our_stock' => isset($this->resource['our_stock']) ? (float) $this->resource['our_stock'] : 0.0,
             'our_margin_pct' => isset($this->resource['our_margin_pct']) ? round((float) $this->resource['our_margin_pct'], 2) : null,
             'best_market_price_usd' => isset($this->resource['best_market_price_usd']) ? round((float) $this->resource['best_market_price_usd'], 4) : 0.0,
+            'second_best_market_price_usd' => isset($this->resource['second_best_market_price_usd']) && $this->resource['second_best_market_price_usd'] !== null ? round((float) $this->resource['second_best_market_price_usd'], 4) : null,
+            'reference_market_price_usd' => isset($this->resource['reference_market_price_usd']) ? round((float) $this->resource['reference_market_price_usd'], 4) : 0.0,
             'avg_market_price_usd' => isset($this->resource['avg_market_price_usd']) ? round((float) $this->resource['avg_market_price_usd'], 4) : 0.0,
             'max_market_price_usd' => isset($this->resource['max_market_price_usd']) ? round((float) $this->resource['max_market_price_usd'], 4) : 0.0,
             'price_diff_usd' => isset($this->resource['price_diff_usd']) ? round((float) $this->resource['price_diff_usd'], 4) : 0.0,

@@ -55,6 +55,7 @@ class WholesaleMarketBenchmarkService
                 DB::raw("MIN(CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END) as best_market_price_usd"),
                 DB::raw("AVG(CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END) as avg_market_price_usd"),
                 DB::raw("MAX(CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END) as max_market_price_usd"),
+                DB::raw("GROUP_CONCAT(DISTINCT (CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END) ORDER BY (CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END) ASC SEPARATOR ',') as sorted_prices"),
                 DB::raw("COUNT(DISTINCT supplier_id) as competitors_count"),
                 DB::raw("SUM(COALESCE(quantity, 0)) as market_total_stock"),
                 DB::raw("MAX(name) as market_product_name"),
@@ -63,6 +64,14 @@ class WholesaleMarketBenchmarkService
             ->groupBy(DB::raw("TRIM(barcode_match)"));
 
         $masterItems = $queryMaster->get()->keyBy('barcode');
+
+        // Extraer mejor y segundo mejor precio del mercado
+        foreach ($masterItems as $mItem) {
+            $prices = array_map('floatval', array_filter(explode(',', (string) ($mItem->sorted_prices ?? ''))));
+            sort($prices, SORT_NUMERIC);
+            $mItem->best_market_price_usd = $prices[0] ?? (float) $mItem->best_market_price_usd;
+            $mItem->second_best_market_price_usd = isset($prices[1]) ? (float) $prices[1] : null;
+        }
 
         // 2. Si estamos en un tenant y la conexión local es distinta, consolidar con ofertas locales
         if ($localConnection && $localConnection !== $centralConnection) {
@@ -80,6 +89,7 @@ class WholesaleMarketBenchmarkService
                         DB::raw("MIN(CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END) as best_market_price_usd"),
                         DB::raw("AVG(CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END) as avg_market_price_usd"),
                         DB::raw("MAX(CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END) as max_market_price_usd"),
+                        DB::raw("GROUP_CONCAT(DISTINCT (CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END) ORDER BY (CASE WHEN unit_cost_usd_with_discount > 0 THEN unit_cost_usd_with_discount ELSE unit_cost_usd END) ASC SEPARATOR ',') as sorted_prices"),
                         DB::raw("COUNT(DISTINCT supplier_id) as competitors_count"),
                         DB::raw("SUM(COALESCE(quantity, 0)) as market_total_stock"),
                         DB::raw("MAX(name) as market_product_name"),
@@ -90,11 +100,22 @@ class WholesaleMarketBenchmarkService
                     ->keyBy('barcode');
 
                 foreach ($localItems as $barcode => $lItem) {
+                    $lPrices = array_map('floatval', array_filter(explode(',', (string) ($lItem->sorted_prices ?? ''))));
+                    sort($lPrices, SORT_NUMERIC);
+                    $lItem->second_best_market_price_usd = isset($lPrices[1]) ? (float) $lPrices[1] : null;
+
                     if (!$masterItems->has($barcode)) {
                         $masterItems->put($barcode, $lItem);
                     } else {
                         $mItem = $masterItems->get($barcode);
-                        $mItem->best_market_price_usd = min((float) $mItem->best_market_price_usd, (float) $lItem->best_market_price_usd);
+                        $combinedPrices = array_unique(array_merge(
+                            array_map('floatval', array_filter(explode(',', (string) ($mItem->sorted_prices ?? '')))),
+                            $lPrices
+                        ));
+                        sort($combinedPrices, SORT_NUMERIC);
+
+                        $mItem->best_market_price_usd = $combinedPrices[0] ?? min((float) $mItem->best_market_price_usd, (float) $lItem->best_market_price_usd);
+                        $mItem->second_best_market_price_usd = isset($combinedPrices[1]) ? (float) $combinedPrices[1] : null;
                         $mItem->avg_market_price_usd = ((float) $mItem->avg_market_price_usd + (float) $lItem->avg_market_price_usd) / 2;
                         $mItem->max_market_price_usd = max((float) $mItem->max_market_price_usd, (float) $lItem->max_market_price_usd);
                         $mItem->competitors_count = max((int) $mItem->competitors_count, (int) $lItem->competitors_count);
@@ -154,6 +175,9 @@ class WholesaleMarketBenchmarkService
 
             if ($marketItem) {
                 $bestMarket = (float) $marketItem->best_market_price_usd;
+                $secondBestMarket = isset($marketItem->second_best_market_price_usd) && $marketItem->second_best_market_price_usd !== null
+                    ? (float) $marketItem->second_best_market_price_usd
+                    : null;
                 $avgMarket = (float) $marketItem->avg_market_price_usd;
                 $maxMarket = (float) $marketItem->max_market_price_usd;
                 $competitorsCount = (int) $marketItem->competitors_count;
@@ -162,8 +186,10 @@ class WholesaleMarketBenchmarkService
                 if ($stock > 0) {
                     if ($priceUsd <= $bestMarket) {
                         // Más barato o igual (Competitivo)
-                        $diffUsd = $bestMarket - $priceUsd;
-                        $diffPct = $bestMarket > 0 ? ($diffUsd / $bestMarket) * 100 : 0.0;
+                        // Si existe un 2do mejor precio en el mercado mayor al mejor, calculamos la ventaja con referencia a ese 2do competidor
+                        $referencePrice = ($secondBestMarket !== null && $secondBestMarket > $priceUsd) ? $secondBestMarket : $bestMarket;
+                        $diffUsd = max(0.0, $referencePrice - $priceUsd);
+                        $diffPct = $referencePrice > 0 ? ($diffUsd / $referencePrice) * 100 : 0.0;
                         $marginPct = $costUsd > 0 ? (($priceUsd - $costUsd) / $costUsd) * 100 : 0.0;
 
                         $dataset->push([
@@ -177,6 +203,8 @@ class WholesaleMarketBenchmarkService
                             'our_stock' => $stock,
                             'our_margin_pct' => $marginPct,
                             'best_market_price_usd' => $bestMarket,
+                            'second_best_market_price_usd' => $secondBestMarket,
+                            'reference_market_price_usd' => $referencePrice,
                             'avg_market_price_usd' => $avgMarket,
                             'max_market_price_usd' => $maxMarket,
                             'price_diff_usd' => $diffUsd,
@@ -205,6 +233,8 @@ class WholesaleMarketBenchmarkService
                             'our_stock' => $stock,
                             'our_margin_pct' => $marginPct,
                             'best_market_price_usd' => $bestMarket,
+                            'second_best_market_price_usd' => $secondBestMarket,
+                            'reference_market_price_usd' => $bestMarket,
                             'avg_market_price_usd' => $avgMarket,
                             'max_market_price_usd' => $maxMarket,
                             'price_diff_usd' => $gapUsd,
@@ -229,6 +259,8 @@ class WholesaleMarketBenchmarkService
                         'our_stock' => 0.0,
                         'our_margin_pct' => null,
                         'best_market_price_usd' => $bestMarket,
+                        'second_best_market_price_usd' => $secondBestMarket,
+                        'reference_market_price_usd' => $bestMarket,
                         'avg_market_price_usd' => $avgMarket,
                         'max_market_price_usd' => $maxMarket,
                         'price_diff_usd' => 0.0,
@@ -247,6 +279,9 @@ class WholesaleMarketBenchmarkService
         foreach ($marketOffers as $barcode => $marketItem) {
             if (!isset($processedBarcodes[$barcode])) {
                 $bestMarket = (float) $marketItem->best_market_price_usd;
+                $secondBestMarket = isset($marketItem->second_best_market_price_usd) && $marketItem->second_best_market_price_usd !== null
+                    ? (float) $marketItem->second_best_market_price_usd
+                    : null;
                 $avgMarket = (float) $marketItem->avg_market_price_usd;
                 $maxMarket = (float) $marketItem->max_market_price_usd;
                 $competitorsCount = (int) $marketItem->competitors_count;
@@ -263,6 +298,8 @@ class WholesaleMarketBenchmarkService
                     'our_stock' => 0.0,
                     'our_margin_pct' => null,
                     'best_market_price_usd' => $bestMarket,
+                    'second_best_market_price_usd' => $secondBestMarket,
+                    'reference_market_price_usd' => $bestMarket,
                     'avg_market_price_usd' => $avgMarket,
                     'max_market_price_usd' => $maxMarket,
                     'price_diff_usd' => 0.0,
