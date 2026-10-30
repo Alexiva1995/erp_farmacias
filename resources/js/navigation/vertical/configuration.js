@@ -112,6 +112,10 @@ export default [
         title: 'Empresas (SaaS)',
         to: 'configuration-tenants',
       },
+      {
+        title: 'Auditoría Droguerías',
+        to: 'configuration-suppliers-tenant-audit',
+      },
     ],
   }, 
 ]

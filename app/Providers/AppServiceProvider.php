@@ -237,6 +237,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\Suppliers\SupplierAuditServiceInterface::class,
+            \App\Services\Suppliers\SupplierAuditService::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Repositories\GeneralSettingRepositoryInterface::class,
             \App\Repositories\Eloquent\GeneralSettingRepository::class
         );

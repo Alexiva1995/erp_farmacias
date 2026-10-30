@@ -329,15 +329,26 @@ onMounted(() => {
         </p>
       </div>
 
-      <VBtn
-        color="primary"
-        variant="flat"
-        prepend-icon="tabler-plus"
-        class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-        @click="openCreateDialog"
-      >
-        Nueva Empresa
-      </VBtn>
+      <div class="d-flex align-center ga-2">
+        <VBtn
+          color="info"
+          variant="outlined"
+          prepend-icon="tabler-chart-histogram"
+          to="/configuration/suppliers-tenant-audit"
+        >
+          Auditoría de Droguerías
+        </VBtn>
+
+        <VBtn
+          color="primary"
+          variant="flat"
+          prepend-icon="tabler-plus"
+          class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+          @click="openCreateDialog"
+        >
+          Nueva Empresa
+        </VBtn>
+      </div>
     </div>
 
     <!-- Alertas globales -->

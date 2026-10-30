@@ -1330,6 +1330,8 @@ Route::prefix('supervisor')->group(function () {
     Route::post('/cleaning-executions/{executionId}/cancel', [EmployeeCleaningActivityController::class, 'cancelExecution']);
 });
 
+Route::get('central/suppliers-audit', [\App\Http\Controllers\Api\Central\SupplierTenantAuditController::class, 'index']);
+
 Route::prefix('central/tenants')->group(function () {
     Route::get('/', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'index']);
     Route::post('/', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'store']);
