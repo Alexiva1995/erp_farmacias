@@ -1520,11 +1520,12 @@ class SupplierConnectionService
         }
 
         $method = strtolower($method);
+        $lastError = null;
 
         try {
             $http = Http::withHeaders($headers)
                 ->withoutVerifying()
-                ->timeout(120);
+                ->timeout(30);
 
             if ($method === 'post') {
                 $response = $http->post($path, is_array($data) ? $data : []);
@@ -1542,11 +1543,14 @@ class SupplierConnectionService
                     return $decoded;
                 }
             } else {
+                $bodyPreview = substr($response->body(), 0, 500);
+                $lastError = "HTTP {$response->status()}: {$bodyPreview}";
                 Log::warning("API Request returned status {$response->status()} for {$path}", [
-                    'body_preview' => substr($response->body(), 0, 500)
+                    'body_preview' => $bodyPreview
                 ]);
             }
         } catch (\Throwable $e) {
+            $lastError = $e->getMessage();
             Log::error("Http:: client error for {$path}: " . $e->getMessage());
         }
 
@@ -1559,13 +1563,23 @@ class SupplierConnectionService
             )->then(function (ResponseInterface $response) use (&$productResponse, $path) {
                 $body = (string) $response->getBody();
                 $productResponse = json_decode($body, true);
-            }, function (\Exception $e) use ($path) {
+            }, function (\Exception $e) use (&$lastError, $path) {
+                if (!$lastError) {
+                    $lastError = $e->getMessage();
+                }
                 Log::error('ReactPHP API Error: ' . $e->getMessage(), ['url' => $path]);
             });
 
             Loop::run();
         } catch (\Throwable $e) {
-            // silenciar
+            if (!$lastError) {
+                $lastError = $e->getMessage();
+            }
+        }
+
+        if (empty($productResponse) && !empty($lastError)) {
+            Log::error("❌ [API ERROR] Fallo al consultar {$path}: {$lastError}");
+            throw new Exception("Error al consultar API ({$path}): {$lastError}");
         }
 
         return $productResponse ?? [];
