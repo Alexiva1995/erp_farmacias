@@ -1,8 +1,10 @@
 import navItems from '@/navigation/vertical'
 import axios from '@/plugins/axios'
 import { computed, ref } from 'vue'
+import { useBrandingStore } from '@/stores/useBrandingStore'
 
 export function useRolePermissions() {
+  const brandingStore = useBrandingStore()
   const roles = ref([])
   const isLoading = ref(false)
   const isSaving = ref(false)
@@ -52,7 +54,26 @@ export function useRolePermissions() {
     })
   }
 
-  const menuTree = computed(() => buildMenuPermissionTree(navItems))
+  const filteredNavItems = computed(() => {
+    const currentVertical = (brandingStore.settings.vertical || brandingStore.settings.business_type || localStorage.getItem('vertical') || localStorage.getItem('business_type') || 'pharmacy').toLowerCase()
+    const isRestaurantVertical = currentVertical === 'restaurant' || currentVertical === 'fast_food'
+    const isDrogueriaVertical = currentVertical === 'drogueria'
+
+    return navItems.filter(item => {
+      const title = (item.title || '').toLowerCase()
+      const to = (item.to || '').toLowerCase()
+
+      if (title === 'restaurante' || title === 'operativa' || to.startsWith('restaurant-')) {
+        return isRestaurantVertical
+      }
+      if (title === 'droguería b2b' || title === 'drogueria b2b' || to.startsWith('wholesale-')) {
+        return isDrogueriaVertical
+      }
+      return true
+    })
+  })
+
+  const menuTree = computed(() => buildMenuPermissionTree(filteredNavItems.value))
 
   /**
    * Obtener todas las claves posibles del menú del sistema.

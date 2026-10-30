@@ -175,6 +175,9 @@ class GeneralSettingResource extends JsonResource
             'footer_text' => $this->footer_text ?? 'Todos los derechos reservados de Tova',
             'blind_cash_closure' => (bool) $this->blind_cash_closure,
             'business_type' => $this->business_type ?? 'pharmacy',
+            'vertical' => (function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant?->vertical)
+                ? tenancy()->tenant->vertical
+                : ($this->business_type ?? 'pharmacy'),
             'default_currency' => $this->default_currency ?? 'COP',
             'ecommerce_menu' => $this->ecommerce_menu ?? [],
             'ecommerce_default_category_id' => $this->ecommerce_default_category_id ? (int) $this->ecommerce_default_category_id : null,

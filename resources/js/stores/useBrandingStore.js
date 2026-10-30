@@ -16,6 +16,7 @@ export const useBrandingStore = defineStore('branding', () => {
     tertiary_color: '#F5C842',
     footer_text: 'Todos los derechos reservados de Tova',
     business_type: localStorage.getItem('business_type') || 'pharmacy',
+    vertical: localStorage.getItem('vertical') || localStorage.getItem('business_type') || 'pharmacy',
     default_currency: 'USD',
     enable_product_types: true,
     enabled_product_types: ['redundantes', 'col', 'iva', 'exento', 'novaventa', 'eliminados', 'pvp', 'ingredients', 'mixed'],
@@ -73,7 +74,15 @@ export const useBrandingStore = defineStore('branding', () => {
   const exchangeRates = ref([])
   let fetchPromise = null
 
-  const isRestaurant = computed(() => settings.value.business_type === 'restaurant')
+  const isRestaurant = computed(() => {
+    const v = (settings.value.vertical || settings.value.business_type || '').toLowerCase()
+    return v === 'restaurant' || v === 'fast_food'
+  })
+
+  const isDrogueria = computed(() => {
+    const v = (settings.value.vertical || settings.value.business_type || '').toLowerCase()
+    return v === 'drogueria'
+  })
 
   const labels = computed(() => {
     const isRest = isRestaurant.value
@@ -103,16 +112,22 @@ export const useBrandingStore = defineStore('branding', () => {
         if (response.data?.data?.business_type) {
           localStorage.setItem('business_type', response.data.data.business_type)
         }
+        if (response.data?.data?.vertical) {
+          settings.value.vertical = response.data.data.vertical
+          localStorage.setItem('vertical', response.data.data.vertical)
+        }
 
         // Obtener configuración de arranque de módulos
         try {
           const bootstrapResponse = await axios.get('/public/bootstrap-config')
           if (bootstrapResponse.data?.data) {
             settings.value.business_type = bootstrapResponse.data.data.business_type
+            settings.value.vertical = bootstrapResponse.data.data.vertical || bootstrapResponse.data.data.business_type
             settings.value.enabled_modules = bootstrapResponse.data.data.enabled_modules
             settings.value.is_tenant = Boolean(bootstrapResponse.data.data.is_tenant)
             settings.value.is_master = Boolean(bootstrapResponse.data.data.is_master)
             localStorage.setItem('business_type', bootstrapResponse.data.data.business_type)
+            localStorage.setItem('vertical', settings.value.vertical)
           }
         } catch (e) {
           console.warn('Error fetching bootstrap config:', e)
@@ -210,6 +225,13 @@ export const useBrandingStore = defineStore('branding', () => {
       if (response.data?.data) {
         settings.value = { ...settings.value, ...response.data.data }
         localStorage.setItem('business_type', response.data.data.business_type)
+        if (response.data.data.vertical) {
+          settings.value.vertical = response.data.data.vertical
+          localStorage.setItem('vertical', response.data.data.vertical)
+        } else {
+          settings.value.vertical = response.data.data.business_type
+          localStorage.setItem('vertical', response.data.data.business_type)
+        }
         applyThemeColors()
       }
       return response.data
@@ -224,6 +246,7 @@ export const useBrandingStore = defineStore('branding', () => {
     isLoading,
     isLoaded,
     isRestaurant,
+    isDrogueria,
     labels,
     fetchSettings,
     fetchExchangeRates,

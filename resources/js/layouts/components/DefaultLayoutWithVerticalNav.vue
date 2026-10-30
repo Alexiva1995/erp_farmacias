@@ -28,7 +28,11 @@ const processedNavItems = computed(() => {
   let items = [...navItems];
   const enabledModules = brandingStore.settings.enabled_modules || ['pharmacy'];
 
-  // Filtrado de alto nivel basado en módulos dinámicos configurados
+  const currentVertical = (brandingStore.settings.vertical || brandingStore.settings.business_type || localStorage.getItem('vertical') || localStorage.getItem('business_type') || 'pharmacy').toLowerCase();
+  const isRestaurantVertical = currentVertical === 'restaurant' || currentVertical === 'fast_food';
+  const isDrogueriaVertical = currentVertical === 'drogueria';
+
+  // Filtrado de alto nivel basado en módulos dinámicos configurados y vertical del tenant
   items = items.filter(item => {
     const title = (item.title || '').toLowerCase();
     const to = (item.to || '').toLowerCase();
@@ -41,14 +45,13 @@ const processedNavItems = computed(() => {
       return enabledModules.includes('lottery');
     }
     if (title === 'restaurante' || title === 'operativa' || to === 'restaurant-process-audit' || to === 'inventory-dishes' || to === 'restaurant-kds' || to === 'restaurant-stations') {
-      return enabledModules.includes('restaurant');
+      return isRestaurantVertical;
     }
     if (title === 'facturas' || to === 'invoice' || to.startsWith('invoice-')) {
       return brandingStore.settings.enable_invoices ?? true;
     }
     if (title === 'droguería b2b' || title === 'drogueria b2b' || to.startsWith('wholesale-')) {
-      const businessType = (brandingStore.settings.business_type || '').toLowerCase();
-      return businessType === 'drogueria' || enabledModules.includes('drogueria') || enabledModules.includes('wholesale');
+      return isDrogueriaVertical;
     }
     return true;
   });
@@ -267,9 +270,9 @@ const processedNavItems = computed(() => {
           childs = childs.filter((c) => c.to !== 'cyclics-cyclic');
         }
         
-        // Filtrar Platos / Menú usando el setting enable_dishes
+        // Filtrar Platos / Menú usando el setting enable_dishes y vertical
         const enableDishesSetting = brandingStore.settings.enable_dishes ?? true;
-        if (!enableDishesSetting) {
+        if (!isRestaurantVertical || !enableDishesSetting) {
           childs = childs.filter((c) => c.to !== 'inventory-dishes');
         }
 
@@ -393,6 +396,9 @@ const processedNavItems = computed(() => {
             'alquileres': 'telegram-alquileres',
           };
           childs = childs.filter(c => {
+            if (c.to === 'telegram-restaurante' && !isRestaurantVertical) {
+              return false;
+            }
             for (const [key, name] of Object.entries(telegramRouteMap)) {
               if (c.to === name) {
                 return enabledTelegram.includes(key);

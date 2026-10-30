@@ -280,6 +280,21 @@ router.beforeEach(async (to, from, next) => {
       }
     }
     
+    const currentVertical = (brandingStore.settings?.vertical || brandingStore.settings?.business_type || localStorage.getItem('vertical') || localStorage.getItem('business_type') || 'pharmacy').toLowerCase()
+    const isRestaurantVertical = currentVertical === 'restaurant' || currentVertical === 'fast_food'
+    const isDrogueriaVertical = currentVertical === 'drogueria'
+    const targetPath = to.path.toLowerCase()
+
+    if (!isRestaurantVertical && (targetPath.startsWith('/restaurant') || targetPath === '/inventory/dishes')) {
+      console.log('[ROUTER] Ruta de restaurante no disponible para esta vertical, redirigiendo')
+      return safeNext({ path: '/' })
+    }
+
+    if (!isDrogueriaVertical && targetPath.startsWith('/wholesale')) {
+      console.log('[ROUTER] Ruta de droguería no disponible para esta vertical, redirigiendo')
+      return safeNext({ path: '/' })
+    }
+
     const isMiniMarket = brandingStore.settings?.business_type === 'minimarket'
     if (isMiniMarket) {
       const path = to.path.toLowerCase()

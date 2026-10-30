@@ -17,10 +17,18 @@ class BootstrapConfigController extends Controller
 
         $isTenant = function_exists('tenancy') && tenancy()->initialized;
 
+        $tenantVertical = null;
+        if ($isTenant && tenancy()->tenant) {
+            $tenantVertical = tenancy()->tenant->vertical;
+        }
+
+        $vertical = $tenantVertical ?: $businessType;
+
         return response()->json([
             'status' => 'success',
             'data' => [
                 'business_type' => $businessType,
+                'vertical' => $vertical,
                 'enabled_modules' => $enabledModules,
                 'is_tenant' => $isTenant,
                 'is_master' => !$isTenant,
