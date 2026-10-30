@@ -56,13 +56,30 @@ class DrogueriaPresentationSeeder extends Seeder
             $setting = new GeneralSetting();
         }
 
-        $setting->business_type = 'drogueria';
         $setting->default_currency = 'USD';
         $setting->enable_lots = true;
         $setting->enable_expirations = true;
         $setting->enable_stock_control = true;
         $setting->tpv_mode = 'simple';
-        $setting->save();
+
+        try {
+            $setting->business_type = 'drogueria';
+            $setting->save();
+        } catch (\Throwable $e) {
+            if (DB::getDriverName() !== 'sqlite') {
+                try {
+                    DB::statement("ALTER TABLE general_settings MODIFY COLUMN business_type ENUM('pharmacy', 'restaurant', 'sports_rental', 'minimarket', 'drogueria') NOT NULL DEFAULT 'pharmacy'");
+                    $setting->business_type = 'drogueria';
+                    $setting->save();
+                } catch (\Throwable) {
+                    $setting->business_type = 'pharmacy';
+                    $setting->save();
+                }
+            } else {
+                $setting->business_type = 'pharmacy';
+                $setting->save();
+            }
+        }
     }
 
     /**
