@@ -42,6 +42,7 @@ const currentGroup = ref({ id: null, name: '', laboratory_ids: [] })
 
 const isSavingLab = ref(false)
 const isSavingGroup = ref(false)
+const isSyncingMaster = ref(false)
 
 const brandingStore = useBrandingStore()
 const isRestaurant = computed(() => false)
@@ -238,6 +239,45 @@ const deleteGroup = async (id) => {
   }
 }
 
+const syncFromMaster = async () => {
+  const result = await Swal.fire({
+    title: "¿Sincronizar del Master?",
+    text: "Se importarán los laboratorios de la base central y se reasignarán automáticamente los productos que estén en 'Generales' o sin laboratorio.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Sí, sincronizar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "primary",
+    reverseButtons: true,
+  })
+
+  if (!result.isConfirmed) return
+
+  isSyncingMaster.value = true
+  try {
+    const { data } = await axios.post('/inventory/laboratories-manage/sync-master')
+    await Swal.fire({
+      title: "Sincronización completada",
+      html: `
+        <div class="text-start">
+          <p class="mb-1"><b>Laboratorios nuevos importados:</b> ${data.imported_laboratories}</p>
+          <p class="mb-1"><b>Productos reasignados:</b> ${data.remapped_products}</p>
+          <p class="mb-1"><b>Productos restantes en Generales:</b> ${data.remaining_generales}</p>
+          <p class="mb-0"><b>Total productos evaluados:</b> ${data.total_evaluated}</p>
+        </div>
+      `,
+      icon: "success",
+      confirmButtonText: "Entendido",
+    })
+    await Promise.all([fetchLabs(), fetchAllLabsForSelect()])
+  } catch (error) {
+    console.error("Error al sincronizar desde master:", error)
+    toast.error(error.response?.data?.message || "Error al sincronizar con el Master.")
+  } finally {
+    isSyncingMaster.value = false
+  }
+}
+
 const updateTableOptions = o => {
   page.value = o.page
   itemsPerPage.value = o.itemsPerPage
@@ -296,7 +336,20 @@ onMounted(async () => {
           :add-button-text="isRestaurant ? 'Añadir Marca' : 'Añadir Laboratorio'"
           @clear="searchQuery = ''; fetchLabs()"
           @add="openLabEdit()"
-        />
+        >
+          <template #actions-extra>
+            <VBtn
+              variant="tonal"
+              color="primary"
+              prepend-icon="tabler-refresh"
+              :loading="isSyncingMaster"
+              class="me-1"
+              @click="syncFromMaster"
+            >
+              Sincronizar del Master
+            </VBtn>
+          </template>
+        </AppFilterBase>
 
         <VCard class="rounded-lg border shadow-sm mt-4 overflow-hidden">
           <!-- Cabecera Estándar -->

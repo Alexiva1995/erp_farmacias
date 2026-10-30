@@ -401,10 +401,43 @@ class DrogueriaMasterCatalogImportService
         // Caché en memoria de laboratorios locales para evitar consultas repetitivas
         $laboratoryCache = Laboratory::pluck('id', 'name')->toArray();
 
+        // Precarga de laboratorios y mapeos desde el Master para enriquecer productos sin laboratorio informado
+        $masterLabsById = DB::connection($central)
+            ->table('laboratories')
+            ->pluck('name', 'id')
+            ->toArray();
+
+        $masterProductsByBarcode = DB::connection($central)
+            ->table('products')
+            ->whereNotNull('laboratory_id')
+            ->whereNotNull('barcode')
+            ->whereRaw("TRIM(barcode) != ''")
+            ->pluck('laboratory_id', 'barcode')
+            ->toArray();
+
+        $masterProductsByName = DB::connection($central)
+            ->table('products')
+            ->whereNotNull('laboratory_id')
+            ->whereNotNull('name')
+            ->pluck('laboratory_id', 'name')
+            ->toArray();
+
+        $masterOtherSuppliersLabByBarcode = DB::connection($central)
+            ->table('product_suppliers')
+            ->whereNotNull('laboratory')
+            ->whereRaw("TRIM(laboratory) != ''")
+            ->whereNotNull('barcode_match')
+            ->pluck('laboratory', 'barcode_match')
+            ->toArray();
+
         $query->orderBy('id')->chunk(250, function (Collection $chunk) use (
             $marginPercentage,
             $defaultCreditDays,
             $defaultStockIfZero,
+            $masterLabsById,
+            $masterProductsByBarcode,
+            $masterProductsByName,
+            $masterOtherSuppliersLabByBarcode,
             &$createdProducts,
             &$updatedProducts,
             &$createdLots,
@@ -417,6 +450,10 @@ class DrogueriaMasterCatalogImportService
                 $marginPercentage,
                 $defaultCreditDays,
                 $defaultStockIfZero,
+                $masterLabsById,
+                $masterProductsByBarcode,
+                $masterProductsByName,
+                $masterOtherSuppliersLabByBarcode,
                 &$createdProducts,
                 &$updatedProducts,
                 &$createdLots,
@@ -431,7 +468,23 @@ class DrogueriaMasterCatalogImportService
                     }
 
                     $barcode = trim((string) ($row->barcode_match ?? ''));
-                    $labName = trim((string) ($row->laboratory ?? 'Generales'));
+                    $labName = trim((string) ($row->laboratory ?? ''));
+
+                    // Si el proveedor no informa laboratorio o es Generales, resolver desde el Master
+                    if (empty($labName) || strcasecmp($labName, 'Generales') === 0) {
+                        if (!empty($barcode) && isset($masterProductsByBarcode[$barcode])) {
+                            $mLabId = $masterProductsByBarcode[$barcode];
+                            $labName = $masterLabsById[$mLabId] ?? '';
+                        }
+                        if ((empty($labName) || strcasecmp($labName, 'Generales') === 0) && isset($masterProductsByName[$name])) {
+                            $mLabId = $masterProductsByName[$name];
+                            $labName = $masterLabsById[$mLabId] ?? '';
+                        }
+                        if ((empty($labName) || strcasecmp($labName, 'Generales') === 0) && !empty($barcode) && isset($masterOtherSuppliersLabByBarcode[$barcode])) {
+                            $labName = trim((string) $masterOtherSuppliersLabByBarcode[$barcode]);
+                        }
+                    }
+
                     if (empty($labName)) {
                         $labName = 'Generales';
                     }

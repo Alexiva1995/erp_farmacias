@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Inventory;
 use App\Http\Controllers\Controller;
 use App\Models\Laboratory;
 use App\Models\GroupsLaboratory;
+use App\Services\Inventory\MasterLaboratorySyncService;
 use App\Http\Requests\Inventory\StoreLaboratoryRequest;
 use App\Http\Requests\Inventory\StoreLaboratoryGroupRequest;
 use Illuminate\Http\Request;
@@ -170,5 +171,25 @@ class LaboratoryManagementController extends Controller
         $group->delete();
         
         return response()->json(['message' => 'Grupo eliminado correctamente']);
+    }
+
+    /**
+     * Sincronizar laboratorios del master y reasignar productos.
+     */
+    public function syncFromMaster(MasterLaboratorySyncService $syncService): JsonResponse
+    {
+        $syncResult = $syncService->syncLaboratoriesFromMaster();
+        $remapResult = $syncService->remapTenantProductsLaboratories();
+
+        \Cache::forget('resources.laboratories');
+
+        return response()->json([
+            'message' => 'Laboratorios sincronizados y productos reasignados con éxito.',
+            'imported_laboratories' => $syncResult['imported'],
+            'total_master_laboratories' => $syncResult['total_master'],
+            'remapped_products' => $remapResult['remapped'],
+            'remaining_generales' => $remapResult['remaining_generales'],
+            'total_evaluated' => $remapResult['total_evaluated'],
+        ]);
     }
 }

@@ -30,6 +30,7 @@ class MarketBenchmarkFilterRequest extends FormRequest
             'coverage_type' => ['nullable', 'string', 'in:all,not_created,zero_stock'],
             'price_diff_min' => ['nullable', 'numeric'],
             'price_diff_max' => ['nullable', 'numeric'],
+            'min_competitors' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:5', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
         ];

@@ -305,20 +305,40 @@ class WholesaleMarketBenchmarkService
             ? round((float) $moreExpensive->avg('price_diff_pct'), 1) 
             : 0.0;
 
+        // Mediana del sobreprecio para evitar distorsiones por valores atípicos
+        $moreExpensivePcts = $moreExpensive->pluck('price_diff_pct')->sort()->values();
+        $moreExpensiveTotal = $moreExpensivePcts->count();
+        if ($moreExpensiveTotal === 0) {
+            $medianOverpriceGapPct = 0.0;
+        } elseif ($moreExpensiveTotal % 2 === 1) {
+            $medianOverpriceGapPct = round((float) $moreExpensivePcts->get(intdiv($moreExpensiveTotal, 2)), 1);
+        } else {
+            $mid = intdiv($moreExpensiveTotal, 2);
+            $medianOverpriceGapPct = round(((float) $moreExpensivePcts->get($mid - 1) + (float) $moreExpensivePcts->get($mid)) / 2, 1);
+        }
+
         $notCreatedCount = $uncovered->where('coverage_sub_type', 'not_created')->count();
         $zeroStockCount = $uncovered->where('coverage_sub_type', 'zero_stock')->count();
+
+        // Productos de alta demanda no cubiertos: >= 3 droguerías ofertantes y stock de mercado > 0
+        $highDemandUncoveredCount = $uncovered->filter(function ($item) {
+            return ($item['competitors_count'] ?? 0) >= 3 && ($item['market_total_stock'] ?? 0) > 0;
+        })->count();
 
         return [
             'total_market_products' => $this->getAggregatedMarketOffers()->count(),
             'our_active_evaluated_count' => $activeEvaluated,
+            'comparable_total' => $activeEvaluated,
             'cheaper_count' => $cheaperCount,
             'cheaper_pct' => $cheaperPct,
             'more_expensive_count' => $moreExpensiveCount,
             'more_expensive_pct' => $moreExpensivePct,
             'avg_overprice_gap_pct' => $avgOverpriceGapPct,
+            'median_overprice_gap_pct' => $medianOverpriceGapPct,
             'uncovered_count' => $uncoveredCount,
             'uncovered_not_created_count' => $notCreatedCount,
             'uncovered_zero_stock_count' => $zeroStockCount,
+            'high_demand_uncovered_count' => $highDemandUncoveredCount,
             'competitiveness_index' => $activeEvaluated > 0 ? round(($cheaperCount / $activeEvaluated) * 100, 1) : 0.0,
         ];
     }
@@ -376,7 +396,13 @@ class WholesaleMarketBenchmarkService
             $filtered = $filtered->where('price_diff_pct', '<=', $max);
         }
 
-        // 6. Ordenamiento semántico según el segmento
+        // 6. Filtro de mínimo de competidores
+        if (isset($filters['min_competitors']) && is_numeric($filters['min_competitors'])) {
+            $minComp = (int) $filters['min_competitors'];
+            $filtered = $filtered->where('competitors_count', '>=', $minComp);
+        }
+
+        // 7. Ordenamiento semántico según el segmento
         if ($segment === 'cheaper') {
             $sorted = $filtered->sortByDesc('price_diff_pct')->values();
         } elseif ($segment === 'more_expensive') {
