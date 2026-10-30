@@ -48,14 +48,20 @@ class TenantProvisioningService
         ]);
 
         // 2. Asociar el dominio / subdominio
-        $domain = $data['domain'];
-        if (!str_contains($domain, '.')) {
-            $domain = "{$data['domain']}.tovaerp.com";
-        }
+        $rawDomain = !empty($data['domain']) ? (string) $data['domain'] : (string) ($data['tenant_id'] ?? '');
+        $domain = str_contains($rawDomain, '.') ? $rawDomain : "{$rawDomain}.tovaerp.com";
 
-        $tenant->domains()->create([
-            'domain' => $domain,
-        ]);
+        try {
+            \Stancl\Tenancy\Database\Models\Domain::where('domain', $domain)
+                ->orWhereIn('tenant_id', [$data['tenant_id'], '0'])
+                ->delete();
+
+            $tenant->domains()->create([
+                'domain' => $domain,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Error creando dominio {$domain} para tenant {$data['tenant_id']}: " . $e->getMessage());
+        }
 
         // 3. Sembrar datos maestros y configurar usuario administrador dentro del contexto del Tenant
         $tenant->run(function () use ($data) {

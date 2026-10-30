@@ -778,6 +778,17 @@ class DrogueriaPresentationSeeder extends Seeder
     {
         $now = Carbon::now();
 
+        // Caja de cobranzas activa para recepción de abonos
+        $cashClosing = \App\Models\CashClosing::create([
+            'seller_id' => $users['cobranzas']->id,
+            'closing_date' => $now,
+            'status' => \App\Models\CashClosing::OPEN,
+            'total_sales' => 0,
+            'total_usd' => 0,
+            'total_bs' => 0,
+            'total_cop' => 0,
+        ]);
+
         // 1. Factura Vigente (con descuento pronto pago activo)
         $creditActive = Credit::create([
             'client_id' => $clients[0]->id, // Farmacia San Antonio
@@ -801,7 +812,7 @@ class DrogueriaPresentationSeeder extends Seeder
         // 2. Factura Vencida (En Mora para reportes de Aging y Alertas)
         $creditOverdue = Credit::create([
             'client_id' => $clients[5]->id, // Farmacia La Milagrosa
-            'order_id' => null,
+            'order_id' => $orders[3]->id,
             'credit_amount' => 3200.00,
             'pending_amount' => 3200.00,
             'credit_date' => (clone $now)->subDays(25),
@@ -839,6 +850,9 @@ class DrogueriaPresentationSeeder extends Seeder
         CreditPayment::create([
             'client_id' => $clients[3]->id,
             'credit_id' => $creditPendingPayment->id,
+            'seller_id' => $users['asesor_central']->id,
+            'cash_closing_id' => $cashClosing->id,
+            'money_returns' => 0,
             'status' => PaymentVerificationStatusEnum::PENDING_VERIFICATION->value,
             'reference_number' => 'REF-BANESCO-892019',
             'bank_name' => 'Banesco Banco Universal (Pago Móvil)',
@@ -859,6 +873,9 @@ class DrogueriaPresentationSeeder extends Seeder
         CreditPayment::create([
             'client_id' => $clients[0]->id,
             'credit_id' => $creditActive->id,
+            'seller_id' => $users['asesor_ccs']->id,
+            'cash_closing_id' => $cashClosing->id,
+            'money_returns' => 0,
             'status' => PaymentVerificationStatusEnum::PENDING_VERIFICATION->value,
             'reference_number' => 'ERP-TRANSF-MERCANTIL-7788',
             'bank_name' => 'Banco Mercantil',
@@ -879,6 +896,8 @@ class DrogueriaPresentationSeeder extends Seeder
             'client_id' => $clients[0]->id,
             'credit_id' => $creditActive->id,
             'seller_id' => $users['asesor_ccs']->id,
+            'cash_closing_id' => $cashClosing->id,
+            'money_returns' => 0,
             'status' => PaymentVerificationStatusEnum::APPROVED->value,
             'reference_number' => 'REF-ZELLE-554433',
             'bank_name' => 'Zelle (Chase Bank)',
@@ -898,6 +917,8 @@ class DrogueriaPresentationSeeder extends Seeder
             'client_id' => $clients[3]->id,
             'credit_id' => $creditPendingPayment->id,
             'seller_id' => $users['asesor_central']->id,
+            'cash_closing_id' => $cashClosing->id,
+            'money_returns' => 0,
             'status' => PaymentVerificationStatusEnum::APPROVED->value,
             'reference_number' => 'REF-BNC-112233',
             'bank_name' => 'Banco Nacional de Crédito',

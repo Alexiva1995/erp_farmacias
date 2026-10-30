@@ -33,17 +33,28 @@ class TenantResource extends JsonResource
             }
         }
 
+        $domains = $this->whenLoaded('domains', function () {
+            if ($this->domains->isEmpty() && !empty($this->id)) {
+                return [
+                    [
+                        'id' => 0,
+                        'domain' => "{$this->id}.tovaerp.com",
+                    ],
+                ];
+            }
+
+            return $this->domains->map(fn($d) => [
+                'id' => $d->id,
+                'domain' => $d->domain,
+            ])->values()->all();
+        });
+
         return [
             'id' => $this->id,
             'company_name' => $this->company_name ?? $this->id,
             'vertical' => $vertical ?: 'pharmacy',
             'plan_id' => $this->plan_id,
-            'domains' => $this->whenLoaded('domains', function () {
-                return $this->domains->map(fn($d) => [
-                    'id' => $d->id,
-                    'domain' => $d->domain,
-                ]);
-            }),
+            'domains' => $domains,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

@@ -32,6 +32,22 @@ class TenantManagementController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
 
+            // Garantizar que todo tenant tenga su registro de dominio en la tabla central de domains
+            foreach ($tenants as $tenant) {
+                if ($tenant->domains->isEmpty() && !empty($tenant->id)) {
+                    try {
+                        $expectedDomain = "{$tenant->id}.tovaerp.com";
+                        \Stancl\Tenancy\Database\Models\Domain::where('domain', $expectedDomain)->delete();
+                        $tenant->domains()->create([
+                            'domain' => $expectedDomain,
+                        ]);
+                        $tenant->load('domains');
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning("No se pudo asociar dominio automático para tenant {$tenant->id}: " . $e->getMessage());
+                    }
+                }
+            }
+
             return TenantResource::collection($tenants);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Tenant fetch error: ' . $e->getMessage());
@@ -46,7 +62,8 @@ class TenantManagementController extends Controller
     {
         try {
             $validated = $request->validated();
-            $validated['domain'] = $validated['domain'] ?? $validated['tenant_id'];
+            $domain = !empty($validated['domain']) ? (string) $validated['domain'] : (string) ($validated['tenant_id'] ?? '');
+            $validated['domain'] = $domain;
 
             $tenant = $this->provisioningService->createTenant($validated);
             $tenant->load('domains');

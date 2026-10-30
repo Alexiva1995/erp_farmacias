@@ -32,6 +32,21 @@ const form = reactive({
   vertical: 'pharmacy',
 })
 
+// Helpers para resolución robusta de dominio y enlace
+const getTenantDomain = (item) => {
+  const doms = item?.domains ?? item?.raw?.domains
+  if (Array.isArray(doms) && doms.length > 0 && doms[0]?.domain) {
+    return doms[0].domain
+  }
+  const id = item?.id ?? item?.raw?.id
+  return id ? `${id}.tovaerp.com` : ''
+}
+
+const getTenantUrl = (item) => {
+  const domain = getTenantDomain(item)
+  return domain ? `https://${domain}` : '#'
+}
+
 // Catálogo base de verticales del sistema (incluye Droguería B2B)
 const defaultVerticalOptions = [
   {
@@ -228,6 +243,7 @@ const handleCreateTenant = async () => {
     const response = await axios.post('/central/tenants', {
       company_name: form.company_name,
       tenant_id: form.tenant_id,
+      domain: form.tenant_id,
       admin_name: form.admin_name,
       admin_email: form.admin_email,
       password: form.password,
@@ -424,7 +440,7 @@ onMounted(() => {
         <!-- Columna Dominios -->
         <template #item.domains="{ item }">
           <div v-if="(item.domains ?? item.raw?.domains)?.length > 0">
-            <div v-for="d in (item.domains ?? item.raw?.domains)" :key="d.id" class="d-flex align-center ga-1 my-1">
+            <div v-for="d in (item.domains ?? item.raw?.domains)" :key="d.id || d.domain" class="d-flex align-center ga-1 my-1">
               <a
                 :href="'https://' + d.domain"
                 target="_blank"
@@ -436,9 +452,17 @@ onMounted(() => {
               </a>
             </div>
           </div>
-          <span v-else class="text-caption text-medium-emphasis">
-            {{ item.id ?? item.raw?.id }}.tovaerp.com
-          </span>
+          <a
+            v-else-if="getTenantDomain(item)"
+            :href="getTenantUrl(item)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-decoration-none text-primary text-body-2 font-weight-bold d-inline-flex align-center ga-1"
+          >
+            <span>{{ getTenantDomain(item) }}</span>
+            <VIcon icon="tabler-external-link" size="14" />
+          </a>
+          <span v-else class="text-caption text-medium-emphasis">—</span>
         </template>
 
         <!-- Columna Fecha -->
@@ -452,8 +476,7 @@ onMounted(() => {
         <template #item.actions="{ item }">
           <div class="d-flex justify-end align-center ga-1">
             <VBtn
-              v-if="(item.domains ?? item.raw?.domains)?.length > 0"
-              :href="'https://' + (item.domains ?? item.raw?.domains)[0].domain"
+              :href="getTenantUrl(item)"
               target="_blank"
               variant="tonal"
               color="primary"
