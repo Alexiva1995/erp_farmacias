@@ -41,6 +41,12 @@ export default [
         action: 'manage',
         subject: 'supervisor-or-admin',
       },
+      {
+        title: 'Inteligencia de Mercado',
+        to: 'wholesale-market-benchmark',
+        action: 'manage',
+        subject: 'supervisor-or-admin',
+      },
     ],
   },
 ]

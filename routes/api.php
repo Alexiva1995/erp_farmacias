@@ -1368,6 +1368,11 @@ Route::prefix('wholesale')->group(function () {
     Route::post('wms/orders/{orderId}/complete-picking', [\App\Http\Controllers\Api\Wholesale\WmsDispatchController::class, 'completePicking']);
     Route::post('wms/orders/{orderId}/complete-packing', [\App\Http\Controllers\Api\Wholesale\WmsDispatchController::class, 'completePacking']);
     Route::post('wms/orders/{orderId}/dispatch', [\App\Http\Controllers\Api\Wholesale\WmsDispatchController::class, 'dispatchOrder']);
+
+    // Inteligencia y Posicionamiento de Mercado B2B
+    Route::get('market-benchmark/summary', [\App\Http\Controllers\Api\Wholesale\MarketBenchmarkController::class, 'getSummary']);
+    Route::get('market-benchmark/items', [\App\Http\Controllers\Api\Wholesale\MarketBenchmarkController::class, 'getItems']);
+    Route::patch('market-benchmark/products/{product}/price', [\App\Http\Controllers\Api\Wholesale\MarketBenchmarkController::class, 'updatePrice']);
 });
 
 Route::prefix('public/restaurant/qr')->group(function () {
