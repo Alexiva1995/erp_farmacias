@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Wholesale;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Wholesale\AssignPortfolioRequest;
+use App\Http\Requests\Wholesale\UpdateClientWholesaleTermsRequest;
+use App\Models\Client;
 use App\Services\Wholesale\WholesalePortfolioService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -58,17 +61,8 @@ class PortfolioController extends Controller
     /**
      * Asignación masiva de cartera a usuarios/rutas.
      */
-    public function assign(Request $request): JsonResponse
+    public function assign(AssignPortfolioRequest $request): JsonResponse
     {
-        $request->validate([
-            'client_ids' => 'required|array|min:1',
-            'client_ids.*' => 'integer|exists:clients,id',
-            'sales_rep_id' => 'nullable|integer|exists:users,id',
-            'telemarketing_user_id' => 'nullable|integer|exists:users,id',
-            'collector_user_id' => 'nullable|integer|exists:users,id',
-            'delivery_route_id' => 'nullable|integer|exists:delivery_routes,id',
-        ]);
-
         $assignments = $request->only([
             'sales_rep_id',
             'telemarketing_user_id',
@@ -82,6 +76,21 @@ class PortfolioController extends Controller
             'success' => true,
             'message' => "Se actualizaron con éxito {$updatedCount} clientes de la cartera.",
             'updated_count' => $updatedCount,
+        ]);
+    }
+
+    /**
+     * Actualiza cupos de crédito, días plazo, topes mensuales y permisos sanitarios SACS/SICM de una farmacia.
+     */
+    public function updateClientTerms(int $clientId, UpdateClientWholesaleTermsRequest $request): JsonResponse
+    {
+        $client = Client::findOrFail($clientId);
+        $client->update($request->validated());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Condiciones comerciales y de crédito actualizadas correctamente.',
+            'data'    => $client,
         ]);
     }
 

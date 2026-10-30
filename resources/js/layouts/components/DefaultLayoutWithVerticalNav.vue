@@ -46,6 +46,10 @@ const processedNavItems = computed(() => {
     if (title === 'facturas' || to === 'invoice' || to.startsWith('invoice-')) {
       return brandingStore.settings.enable_invoices ?? true;
     }
+    if (title === 'droguería b2b' || title === 'drogueria b2b' || to.startsWith('wholesale-')) {
+      const businessType = (brandingStore.settings.business_type || '').toLowerCase();
+      return businessType === 'drogueria' || enabledModules.includes('drogueria') || enabledModules.includes('wholesale');
+    }
     return true;
   });
 

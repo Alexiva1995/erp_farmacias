@@ -74,6 +74,20 @@ export const buildAbilityForRules = (user) => {
       can('manage', 'islr');
       can('manage', 'admin');
     }
+
+    // Permisos CASL para roles operativos de Droguería B2B (filtrados granularmente por menu_permissions)
+    const roleName = user.role?.name?.toLowerCase() || '';
+    const isDrogueriaRole = [6, 7, 8, 9].includes(Number(user.role_id))
+      || ['asesor comercial', 'telemarketing', 'cobranzas y crédito', 'almacén y despacho'].includes(roleName);
+
+    if (isDrogueriaRole) {
+      can('manage', 'wholesale');
+      can('manage', 'user');
+      can('manage', 'supervisor-or-admin');
+      can('manage', 'admin');
+      can('manage', 'finances-pending-payments');
+      can('manage', 'finances-payment-history');
+    }
   }
 
   // Si no hay usuario o rol, 'rules' será el array vacío inicial, lo cual es correcto.

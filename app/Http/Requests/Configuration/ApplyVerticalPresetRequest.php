@@ -25,11 +25,14 @@ class ApplyVerticalPresetRequest extends FormRequest
      */
     public function rules(): array
     {
+        $customKeys = array_keys(app(\App\Contracts\VerticalPresetServiceInterface::class)->getCustomPresets());
+        $allowedVerticals = array_values(array_unique(array_merge(BusinessVerticalEnum::values(), $customKeys)));
+
         return [
             'vertical' => [
                 'required',
                 'string',
-                Rule::in(BusinessVerticalEnum::values()),
+                Rule::in($allowedVerticals),
             ],
             'preserve_identity' => [
                 'nullable',

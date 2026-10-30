@@ -41,7 +41,7 @@ class ModuleServiceProvider extends ServiceProvider
     {
         $modulesString = env('ENABLED_MODULES');
         if (empty($modulesString) || app()->environment('testing')) {
-            $modulesString = 'pharmacy,restaurant,lottery,reservation,sports_rental,minimarket';
+            $modulesString = 'pharmacy,restaurant,lottery,reservation,sports_rental,minimarket,drogueria';
         }
         return array_values(array_unique(array_map('trim', explode(',', strtolower((string)$modulesString)))));
     }

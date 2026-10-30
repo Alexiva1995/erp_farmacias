@@ -25,6 +25,16 @@ class CreateTenantRequest extends FormRequest
      */
     public function rules(): array
     {
+        $customKeys = [];
+        try {
+            $customPresets = app(\App\Contracts\VerticalPresetServiceInterface::class)->getCustomPresets();
+            $customKeys = array_keys($customPresets);
+        } catch (\Throwable) {
+            $customKeys = [];
+        }
+
+        $allowedVerticals = array_unique(array_merge(BusinessVerticalEnum::values(), $customKeys));
+
         return [
             'tenant_id' => [
                 'required',
@@ -41,7 +51,7 @@ class CreateTenantRequest extends FormRequest
             'vertical' => [
                 'nullable',
                 'string',
-                Rule::in(BusinessVerticalEnum::values()),
+                Rule::in($allowedVerticals),
             ],
         ];
     }

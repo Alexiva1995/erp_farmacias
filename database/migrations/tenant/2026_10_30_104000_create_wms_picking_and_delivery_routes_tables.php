@@ -18,7 +18,7 @@ return new class extends Migration
                 $table->string('name', 150);
                 $table->string('zone_state', 100)->nullable();
                 $table->string('driver_name', 150)->nullable();
-                $table->vehicle_plate = $table->string('vehicle_plate', 50)->nullable();
+                $table->string('vehicle_plate', 50)->nullable();
                 $table->json('dispatch_days')->nullable();
                 $table->boolean('is_active')->default(true);
                 $table->timestamps();

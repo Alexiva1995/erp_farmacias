@@ -1336,6 +1336,7 @@ Route::prefix('wholesale')->group(function () {
     Route::get('portfolio', [\App\Http\Controllers\Api\Wholesale\PortfolioController::class, 'index']);
     Route::get('portfolio/metrics', [\App\Http\Controllers\Api\Wholesale\PortfolioController::class, 'metrics']);
     Route::post('portfolio/assign', [\App\Http\Controllers\Api\Wholesale\PortfolioController::class, 'assign']);
+    Route::put('portfolio/clients/{clientId}/terms', [\App\Http\Controllers\Api\Wholesale\PortfolioController::class, 'updateClientTerms']);
     Route::get('portfolio/commissions', [\App\Http\Controllers\Api\Wholesale\PortfolioController::class, 'commissions']);
 
     // Toma de Pedidos B2B (Telemarketing y Asesores)

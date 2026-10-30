@@ -23,7 +23,22 @@ class WholesaleOrderAndSplitTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(\Database\Seeders\RolesSeeder::class);
         $this->orderService = app(WholesaleOrderService::class);
+    }
+
+    public function test_drogueria_roles_are_seeded_with_default_menu_permissions(): void
+    {
+        $expectedRoles = [
+            'Asesor Comercial',
+            'Telemarketing',
+            'Cobranzas y Crédito',
+            'Almacén y Despacho',
+        ];
+
+        foreach ($expectedRoles as $roleName) {
+            $this->assertDatabaseHas('roles', ['name' => $roleName]);
+        }
     }
 
     public function test_wholesale_order_splits_into_suborders_by_credit_terms_option_a(): void
@@ -33,7 +48,12 @@ class WholesaleOrderAndSplitTest extends TestCase
 
         $client = Client::create([
             'name' => 'Farmacia La Salud C.A.',
-            'identification' => 'J-12345678-9',
+            'last_name' => 'B2B',
+            'identification' => '123456789',
+            'identification_type' => 'J-',
+            'email' => 'compras@lasalud.com',
+            'phone' => '04141234567',
+            'address' => 'Av. Bolívar',
             'credit_limit_usd' => 5000.00,
             'default_credit_days' => 15,
             'sales_rep_id' => $seller->id,
@@ -58,6 +78,7 @@ class WholesaleOrderAndSplitTest extends TestCase
             'product_id' => $prodCash->id,
             'lot_number' => 'LOT-CASH-01',
             'quantity' => 100,
+            'unit_cost' => 1.20,
             'expiration_date' => Carbon::now()->addMonths(12),
         ]);
 
@@ -75,6 +96,7 @@ class WholesaleOrderAndSplitTest extends TestCase
             'product_id' => $prod7->id,
             'lot_number' => 'LOT-7D-01',
             'quantity' => 50,
+            'unit_cost' => 3.00,
             'expiration_date' => Carbon::now()->addMonths(18),
         ]);
 
@@ -92,6 +114,7 @@ class WholesaleOrderAndSplitTest extends TestCase
             'product_id' => $prod15->id,
             'lot_number' => 'LOT-15D-01',
             'quantity' => 80,
+            'unit_cost' => 2.10,
             'expiration_date' => Carbon::now()->addMonths(24),
         ]);
 

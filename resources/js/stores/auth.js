@@ -13,6 +13,10 @@ export const useAuthStore = defineStore('auth', () => {
   const isSupervisor = computed(() => user.value?.role_id === 2 || user.value?.role?.name?.toLowerCase() === 'supervisor')
   const isVendedor = computed(() => user.value?.role_id === 3 || user.value?.role?.name?.toLowerCase() === 'employee' || user.value?.role?.name?.toLowerCase() === 'empleado')
   const isContador = computed(() => user.value?.role_id === 5 || user.value?.role?.name?.toLowerCase() === 'contador')
+  const isAsesorComercial = computed(() => user.value?.role_id === 6 || user.value?.role?.name?.toLowerCase() === 'asesor comercial')
+  const isTelemarketing = computed(() => user.value?.role_id === 7 || user.value?.role?.name?.toLowerCase() === 'telemarketing')
+  const isCobranzas = computed(() => user.value?.role_id === 8 || user.value?.role?.name?.toLowerCase() === 'cobranzas y crédito')
+  const isAlmacenDespacho = computed(() => user.value?.role_id === 9 || user.value?.role?.name?.toLowerCase() === 'almacén y despacho')
   const isLoaded = ref(false);
 
   /**
@@ -21,6 +25,18 @@ export const useAuthStore = defineStore('auth', () => {
   const defaultHomeRoute = computed(() => {
     if (isContador.value) {
       return '/fiscal/home'
+    }
+    if (isAsesorComercial.value) {
+      return '/wholesale/portfolio'
+    }
+    if (isTelemarketing.value) {
+      return '/wholesale/telemarketing/workstation'
+    }
+    if (isCobranzas.value) {
+      return '/wholesale/collections'
+    }
+    if (isAlmacenDespacho.value) {
+      return '/wholesale/wms/dispatch-board'
     }
     if (isAdmin.value) {
       return '/dashboard'

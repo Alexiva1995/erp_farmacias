@@ -15,6 +15,7 @@ import reservations from './reservations'
 import restaurant from './restaurant'
 import telegram from './telegram'
 import bots from './bots'
+import wholesale from './wholesale'
 
-export default [...home, ...inventory, ...cyclicInventory, ...restaurant, ...tpv, ...crm, ...rrhh, ...finances, ...fiscal, ...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations, ...telegram, ...bots]
+export default [...home, ...inventory, ...cyclicInventory, ...restaurant, ...wholesale, ...tpv, ...crm, ...rrhh, ...finances, ...fiscal, ...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations, ...telegram, ...bots]
 

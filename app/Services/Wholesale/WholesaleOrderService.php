@@ -84,6 +84,7 @@ class WholesaleOrderService
                     'parent_b2b_order_id' => $hasMultipleTerms ? $parentOrderId : null,
                     'delivery_route_id' => $payload['delivery_route_id'] ?? $client->delivery_route_id,
                     'payment_methods' => [],
+                    'money_returns' => 0,
                     'taxable_base' => 0,
                     'total_amount' => 0,
                     'total_amount_usd' => 0,
