@@ -37,6 +37,7 @@ class DrogueriaMasterCatalogImportService
     {
         $connection = $this->getCentralConnectionName();
 
+        // Obtener todos los proveedores registrados en la base central sin excluir por deleted_at
         $rows = DB::connection($connection)
             ->table('suppliers')
             ->leftJoin('product_suppliers', function ($join) {
@@ -48,27 +49,54 @@ class DrogueriaMasterCatalogImportService
                 'suppliers.social_reason',
                 'suppliers.rif',
                 'suppliers.credit_days',
+                'suppliers.is_active',
                 DB::raw('COUNT(product_suppliers.id) as catalog_items_count')
             )
-            ->whereNull('suppliers.deleted_at')
             ->groupBy(
                 'suppliers.id',
                 'suppliers.name',
                 'suppliers.social_reason',
                 'suppliers.rif',
-                'suppliers.credit_days'
+                'suppliers.credit_days',
+                'suppliers.is_active'
             )
             ->orderByDesc('catalog_items_count')
             ->orderBy('suppliers.name')
             ->get();
 
-        return $rows->map(function ($row) {
+        // Incluir proveedores huérfanos que tengan productos en product_suppliers
+        $existingIds = $rows->pluck('id')->filter()->all();
+        $orphanSuppliers = DB::connection($connection)
+            ->table('product_suppliers')
+            ->whereNotNull('supplier_id')
+            ->whereNotIn('supplier_id', $existingIds)
+            ->select('supplier_id', DB::raw('COUNT(id) as catalog_items_count'))
+            ->groupBy('supplier_id')
+            ->get();
+
+        foreach ($orphanSuppliers as $orphan) {
+            $rows->push((object) [
+                'id' => (int) $orphan->supplier_id,
+                'name' => "Proveedor Catálogo #{$orphan->supplier_id}",
+                'social_reason' => null,
+                'rif' => null,
+                'credit_days' => 15,
+                'is_active' => true,
+                'catalog_items_count' => (int) $orphan->catalog_items_count,
+            ]);
+        }
+
+        // Ordenar con prioridad a los que tengan catálogo cargado
+        $sorted = $rows->sortByDesc('catalog_items_count')->values();
+
+        return $sorted->map(function ($row) {
             return [
                 'id' => (int) $row->id,
-                'name' => (string) $row->name,
+                'name' => (string) ($row->name ?? "Proveedor #{$row->id}"),
                 'social_reason' => $row->social_reason ? (string) $row->social_reason : null,
                 'rif' => $row->rif ? (string) $row->rif : null,
                 'credit_days' => $row->credit_days !== null ? (int) $row->credit_days : null,
+                'is_active' => (bool) ($row->is_active ?? true),
                 'catalog_items_count' => (int) $row->catalog_items_count,
             ];
         })->toArray();
@@ -91,11 +119,21 @@ class DrogueriaMasterCatalogImportService
             ->first();
 
         if (!$supplier) {
-            return [
-                'success' => false,
-                'message' => 'Proveedor no encontrado en la base central.',
-                'data' => null,
-            ];
+            $hasProducts = DB::connection($connection)->table('product_suppliers')->where('supplier_id', $masterSupplierId)->exists();
+            if ($hasProducts) {
+                $supplier = (object) [
+                    'id' => $masterSupplierId,
+                    'name' => "Proveedor Catálogo #{$masterSupplierId}",
+                    'rif' => '',
+                    'credit_days' => 15,
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Proveedor no encontrado en la base central.',
+                    'data' => null,
+                ];
+            }
         }
 
         $query = DB::connection($connection)
@@ -159,7 +197,16 @@ class DrogueriaMasterCatalogImportService
             ->first();
 
         if (!$supplier) {
-            throw new \InvalidArgumentException('El proveedor especificado no existe en la base central.');
+            $hasProducts = DB::connection($connection)->table('product_suppliers')->where('supplier_id', $masterSupplierId)->exists();
+            if ($hasProducts) {
+                $supplier = (object) [
+                    'id' => $masterSupplierId,
+                    'name' => "Proveedor Catálogo #{$masterSupplierId}",
+                    'credit_days' => 15,
+                ];
+            } else {
+                throw new \InvalidArgumentException('El proveedor especificado no existe en la base central.');
+            }
         }
 
         $marginPercentage = isset($options['margin_percentage']) ? (float) $options['margin_percentage'] : 18.0;

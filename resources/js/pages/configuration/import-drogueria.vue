@@ -12,6 +12,7 @@ const suppliers = ref([])
 const selectedSupplierId = ref(null)
 const catalogPreview = ref(null)
 const importResult = ref(null)
+const showOnlyWithCatalog = ref(false)
 
 const form = reactive({
   margin_percentage: 18.0,
@@ -20,9 +21,30 @@ const form = reactive({
   only_with_stock: false,
 })
 
+const filteredSuppliers = computed(() => {
+  if (showOnlyWithCatalog.value) {
+    return suppliers.value.filter(s => Number(s.catalog_items_count) > 0)
+  }
+  return suppliers.value
+})
+
 const selectedSupplier = computed(() => {
   return suppliers.value.find(s => s.id === selectedSupplierId.value) || null
 })
+
+// Filtro multicriterio para encontrar droguerías por Nombre, RIF, Razón Social o ID
+const supplierFilter = (value, query, item) => {
+  if (!query) return true
+  const q = query.trim().toLowerCase()
+  const raw = item?.raw ?? {}
+
+  const matchId = String(raw.id ?? '').includes(q)
+  const matchName = String(raw.name ?? '').toLowerCase().includes(q)
+  const matchRif = String(raw.rif ?? '').toLowerCase().includes(q)
+  const matchSocial = String(raw.social_reason ?? '').toLowerCase().includes(q)
+
+  return matchId || matchName || matchRif || matchSocial
+}
 
 const fetchSuppliers = async () => {
   isLoadingSuppliers.value = true
@@ -131,18 +153,23 @@ onMounted(() => {
               Carga Directa de Inventario desde Droguerías del Master
             </VCardTitle>
             <VCardSubtitle class="text-body-2 text-medium-emphasis mt-1">
-              Selecciona una droguería proveedora del catálogo central para volcar automáticamente sus productos, lotes y costos a tu inventario.
+              Selecciona cualquier droguería proveedora de la base central para volcar automáticamente sus productos, lotes y costos a tu inventario.
             </VCardSubtitle>
           </div>
-          <VBtn
-            color="primary"
-            variant="tonal"
-            prepend-icon="tabler-reload"
-            :loading="isLoadingSuppliers"
-            @click="fetchSuppliers"
-          >
-            Actualizar Proveedores
-          </VBtn>
+          <div class="d-flex align-center gap-3">
+            <VChip color="primary" variant="tonal" size="small" class="font-weight-medium">
+              {{ suppliers.length }} Droguerías en el Master
+            </VChip>
+            <VBtn
+              color="primary"
+              variant="tonal"
+              prepend-icon="tabler-reload"
+              :loading="isLoadingSuppliers"
+              @click="fetchSuppliers"
+            >
+              Actualizar Proveedores
+            </VBtn>
+          </div>
         </div>
       </VCardItem>
     </VCard>
@@ -151,28 +178,38 @@ onMounted(() => {
     <VCard class="mb-4" elevation="1">
       <VCardText class="pa-5">
         <VRow>
-          <!-- Selector de Droguería / Proveedor Master -->
+          <!-- Selector de Droguería / Proveedor Master con filtro multicriterio -->
           <VCol cols="12" md="6">
             <VAutocomplete
               v-model="selectedSupplierId"
-              :items="suppliers"
+              :items="filteredSuppliers"
               :loading="isLoadingSuppliers"
-              item-title="name"
+              :custom-filter="supplierFilter"
               item-value="id"
+              :item-title="item => `#${item.id} - ${item.name}`"
               label="Seleccionar Droguería / Proveedor del Master"
-              placeholder="Buscar por nombre o RIF..."
+              placeholder="Buscar por ID, nombre o RIF (ej. 1016, Vick, Dronena)..."
               prepend-inner-icon="tabler-building-store"
               variant="outlined"
               density="comfortable"
               clearable
+              :menu-props="{ maxHeight: 420 }"
+              :input-attrs="{ autocomplete: 'off', autocapitalize: 'off', spellcheck: false }"
               @update:model-value="onSupplierSelected"
             >
               <template #item="{ props, item }">
-                <VListItem v-bind="props" :title="item.raw.name">
+                <VListItem v-bind="props" :title="`#${item.raw.id} - ${item.raw.name}`">
                   <template #subtitle>
-                    <div class="d-flex align-center gap-2 mt-1">
-                      <span v-if="item.raw.rif">{{ item.raw.rif }}</span>
-                      <VChip size="x-small" color="primary" variant="tonal">
+                    <div class="d-flex align-center gap-2 mt-1 flex-wrap">
+                      <span v-if="item.raw.rif" class="font-weight-medium">{{ item.raw.rif }}</span>
+                      <span v-if="item.raw.social_reason" class="text-caption text-medium-emphasis">
+                        {{ item.raw.social_reason }}
+                      </span>
+                      <VChip
+                        size="x-small"
+                        :color="item.raw.catalog_items_count > 0 ? 'primary' : 'secondary'"
+                        variant="tonal"
+                      >
                         {{ item.raw.catalog_items_count }} productos en catálogo
                       </VChip>
                       <VChip v-if="item.raw.credit_days" size="x-small" color="info" variant="outlined">
@@ -183,6 +220,20 @@ onMounted(() => {
                 </VListItem>
               </template>
             </VAutocomplete>
+
+            <!-- Switch para alternar filtro rápido -->
+            <div class="d-flex align-center justify-space-between mt-2 px-1">
+              <span class="text-caption text-medium-emphasis">
+                Mostrando {{ filteredSuppliers.length }} de {{ suppliers.length }} proveedores del Master
+              </span>
+              <VSwitch
+                v-model="showOnlyWithCatalog"
+                color="primary"
+                density="compact"
+                label="Solo con productos en catálogo"
+                hide-details
+              />
+            </div>
           </VCol>
 
           <!-- Margen Comercial Mayorista -->
