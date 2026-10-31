@@ -10,6 +10,12 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+Artisan::command('master-catalog:init {--clean : Vaciar las tablas del maestro antes de importar}', function () {
+    $this->call(\App\Console\Commands\InitMasterCatalogCommand::class, [
+        '--clean' => $this->option('clean'),
+    ]);
+})->purpose('Crea la estructura de tablas y puebla la base de datos tovaerp_master desde la base central');
+
 // Helper para ejecutar comandos tanto en BD local/central como en tenants si existen
 $scheduleTenantAware = function (string $command, callable $scheduleConfig) {
     // 1. Siempre registrar para la base de datos principal/independiente
