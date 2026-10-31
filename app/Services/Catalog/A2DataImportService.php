@@ -87,6 +87,7 @@ class A2DataImportService
         }
 
         return [
+            'task_id' => $extractedData['task_id'] ?? null,
             'summary' => [
                 'year' => $year,
                 'total_suppliers' => count($suppliersPreview['suppliers']),
@@ -379,6 +380,16 @@ class A2DataImportService
             $currentUserId = Auth::id() ?: 1;
             $suppliersData = $payload['suppliers'] ?? [];
             $clientsData = $payload['clients'] ?? [];
+            $productsData = $payload['products'] ?? [];
+
+            // Si vino un task_id y la sección es products_lots, extraer la lista completa extraída en la tarea
+            $taskId = !empty($payload['task_id']) ? (int)$payload['task_id'] : null;
+            if ($taskId) {
+                $task = A2SyncTask::find($taskId);
+                if ($task && !empty($task->extracted_data['products'])) {
+                    $productsData = $task->extracted_data['products'];
+                }
+            }
 
             $stats = [
                 'suppliers_created' => 0,
@@ -389,7 +400,131 @@ class A2DataImportService
                 'clients_linked' => 0,
                 'credits_created' => 0,
                 'credits_skipped' => 0,
+                'products_created' => 0,
+                'products_updated' => 0,
+                'products_matched_master' => 0,
             ];
+
+            // 0. Procesar Productos de a2 (Sinventario.dat)
+            if (!empty($productsData)) {
+                $barcodes = [];
+                foreach ($productsData as $p) {
+                    $c = trim((string)($p['code'] ?? ''));
+                    if (!empty($c)) {
+                        $barcodes[] = $c;
+                    }
+                }
+
+                $masterMap = [];
+                if (!empty($barcodes)) {
+                    try {
+                        $masterMap = $this->masterClient->lookupBulk(array_values(array_unique($barcodes)));
+                    } catch (\Throwable $e) {
+                        Log::warning('Error en lookupBulk Catálogo Maestro al importar: ' . $e->getMessage());
+                    }
+                }
+
+                $existingProducts = Product::withoutGlobalScope('not_deleted')
+                    ->withTrashed()
+                    ->whereIn('barcode', $barcodes)
+                    ->get()
+                    ->keyBy('barcode');
+
+                $existingLots = ProductLot::whereIn('product_id', $existingProducts->pluck('id'))
+                    ->get()
+                    ->keyBy('product_id');
+
+                $validCategoryIds   = DB::table('categories')->pluck('id')->flip()->toArray();
+                $validLaboratoryIds = DB::table('laboratories')->pluck('id')->flip()->toArray();
+                $validOriginIds     = DB::table('origins')->pluck('id')->flip()->toArray();
+
+                foreach ($productsData as $row) {
+                    $barcode = trim((string)($row['code'] ?? ''));
+                    $rawName = trim((string)($row['name'] ?? ''));
+                    if (empty($barcode) || empty($rawName)) {
+                        continue;
+                    }
+
+                    $stock = max(0, (int)round((float)($row['stock'] ?? 0)));
+                    $cost = max(0.0, (float)($row['cost_usd'] ?? 0));
+
+                    $masterProduct = $masterMap[$barcode] ?? null;
+                    $finalName = !empty($masterProduct['name']) ? trim((string)$masterProduct['name']) : $rawName;
+
+                    if ($masterProduct) {
+                        $stats['products_matched_master']++;
+                    }
+
+                    $product = $existingProducts->get($barcode);
+                    $isNew = !$product;
+
+                    $productData = [
+                        'name' => $finalName,
+                        'description' => $rawName,
+                        'barcode' => $barcode,
+                        'stock' => $stock,
+                        'unit_cost' => $cost,
+                        'sale_price' => $cost,
+                        'iva' => false,
+                        'is_colombian_origin' => false,
+                        'is_novaventa' => false,
+                        'psychotropic' => false,
+                        'is_active' => true,
+                        'is_deleted' => false,
+                        'is_favorite' => false,
+                        'no_pvp' => false,
+                        'lotification_completed' => true,
+                    ];
+
+                    if ($masterProduct) {
+                        if (!empty($masterProduct['laboratory_id']) && isset($validLaboratoryIds[(int)$masterProduct['laboratory_id']])) {
+                            $productData['laboratory_id'] = (int)$masterProduct['laboratory_id'];
+                        }
+                        if (!empty($masterProduct['category_id']) && isset($validCategoryIds[(int)$masterProduct['category_id']])) {
+                            $productData['category_id'] = (int)$masterProduct['category_id'];
+                        }
+                        if (!empty($masterProduct['origin_id']) && isset($validOriginIds[(int)$masterProduct['origin_id']])) {
+                            $productData['origin_id'] = (int)$masterProduct['origin_id'];
+                        }
+                        if (!empty($masterProduct['group_id'])) {
+                            $productData['group_id'] = $masterProduct['group_id'];
+                        }
+                    }
+
+                    if ($isNew) {
+                        $product = Product::create($productData);
+                        $existingProducts->put($barcode, $product);
+                        $stats['products_created']++;
+                    } else {
+                        if ($product->trashed()) {
+                            $product->restore();
+                        }
+                        $product->update($productData);
+                        $stats['products_updated']++;
+                    }
+
+                    $lot = $existingLots->get($product->id);
+                    if ($lot) {
+                        $lot->update([
+                            'quantity'   => $stock,
+                            'unit_cost'  => $cost,
+                            'amount_usd' => round($stock * $cost, 2),
+                        ]);
+                    } else {
+                        $lot = ProductLot::create([
+                            'product_id'   => $product->id,
+                            'lot_number'   => 'LOT-INICIAL',
+                            'quantity'     => $stock,
+                            'unit_cost'    => $cost,
+                            'amount_usd'   => round($stock * $cost, 2),
+                            'due_date'     => Carbon::now()->addYear()->format('Y-m-d'),
+                            'reception_date' => Carbon::now()->format('Y-m-d'),
+                            'is_active'    => true,
+                        ]);
+                        $existingLots->put($product->id, $lot);
+                    }
+                }
+            }
 
             // 1. Procesar Proveedores y sus Facturas CXP
             foreach ($suppliersData as $s) {

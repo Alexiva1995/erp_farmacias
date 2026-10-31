@@ -17,6 +17,7 @@ class ExecuteA2ImportRequest extends FormRequest
     {
         return [
             'task_id'     => 'nullable|integer|exists:a2_sync_tasks,id',
+            'section'     => 'nullable|string',
             'suppliers'   => 'nullable|array',
             'payables'    => 'nullable|array',
             'clients'     => 'nullable|array',

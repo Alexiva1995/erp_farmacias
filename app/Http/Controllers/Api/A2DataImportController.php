@@ -113,6 +113,7 @@ print(json.dumps(result))
     public function submitTaskResult(Request $request, A2SyncTask $task): JsonResponse
     {
         $data = $request->input('data', []);
+        $data['task_id'] = $task->id;
         $preview = $this->service->buildPreview($data, $task->year);
 
         $task->update([
