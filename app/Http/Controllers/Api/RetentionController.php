@@ -70,7 +70,10 @@ class RetentionController extends Controller
     public function bulkGenerate(BulkGenerateRequest $request)
     {
         try {
-            $retentions = $this->retentionService->generateRetentions($request->ids);
+            $retentions = $this->retentionService->generateRetentions(
+                $request->ids,
+                $request->input('retention_date')
+            );
             $count = count($retentions);
             $numbers = $retentions->pluck('number')->implode(', ');
             $firstRetention = $retentions->first();

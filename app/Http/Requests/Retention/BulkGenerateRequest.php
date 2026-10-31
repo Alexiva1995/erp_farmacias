@@ -16,6 +16,7 @@ class BulkGenerateRequest extends FormRequest
         return [
             'ids' => 'required|array',
             'ids.*' => 'exists:invoices,id',
+            'retention_date' => 'nullable|date',
         ];
     }
 }

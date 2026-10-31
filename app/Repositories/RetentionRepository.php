@@ -175,25 +175,11 @@ class RetentionRepository implements \App\Contracts\Retention
     }
 
     /**
-     * Calcula la fecha fiscal según reglas de negocio:
-     * 14-17 -> Día 15
-     * 30-31 -> Fin de mes actual
-     * 1-2   -> Fin de mes anterior
-     * Otros -> Fecha del día
+     * Calcula la fecha fiscal de emisión por defecto: la fecha en que se realiza la retención.
      */
     private function calculateFiscalDate(?string $endDate = null): \Carbon\Carbon
     {
-        if ($endDate) {
-            return \Carbon\Carbon::parse($endDate);
-        }
-
-        $now = now();
-        
-        if ($now->day <= 15) {
-            return $now->copy()->day(15);
-        }
-
-        return $now->copy()->endOfMonth();
+        return now()->startOfDay();
     }
 
     /**

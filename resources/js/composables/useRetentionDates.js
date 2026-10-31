@@ -97,29 +97,12 @@ export function useRetentionDates() {
     applyDatePreset("fortnight_current");
   };
 
-  // Obtiene la fecha fiscal prevista (formato YYYY-MM-DD)
+  // Obtiene la fecha fiscal prevista por defecto: la fecha en que se realiza la retención (formato YYYY-MM-DD)
   const getCalculatedFiscalDateIso = () => {
     const n = new Date();
-    const year = n.getFullYear();
-    const month = n.getMonth();
-    const day = n.getDate();
-
-    let fiscalDate;
-    if (day >= 14 && day <= 17) {
-      fiscalDate = new Date(year, month, 15);
-    } else if (day >= 30) {
-      fiscalDate = new Date(year, month + 1, 0);
-    } else if (day >= 1 && day <= 2) {
-      fiscalDate = new Date(year, month, 0);
-    } else if (day < 14) {
-      fiscalDate = new Date(year, month, 15);
-    } else {
-      fiscalDate = new Date(year, month + 1, 0);
-    }
-
-    const y = fiscalDate.getFullYear();
-    const m = String(fiscalDate.getMonth() + 1).padStart(2, "0");
-    const d = String(fiscalDate.getDate()).padStart(2, "0");
+    const y = n.getFullYear();
+    const m = String(n.getMonth() + 1).padStart(2, "0");
+    const d = String(n.getDate()).padStart(2, "0");
 
     return `${y}-${m}-${d}`;
   };
