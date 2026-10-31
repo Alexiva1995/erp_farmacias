@@ -12,15 +12,22 @@ use Illuminate\Support\Facades\Schema;
 class CategorySyncService
 {
     /**
-     * Obtiene las categorías de la base de datos central (master).
+     * Obtiene las categorías de la base de datos maestra (tovaerp_master).
      *
      * @return array<int, array<string, mixed>>
      */
     public function getMasterCategories(): array
     {
-        $centralConnection = config('tenancy.database.central_connection', 'mysql');
+        $masterConnection = 'master_catalog';
+        if (!Schema::connection($masterConnection)->hasTable('categories')) {
+            $masterConnection = config('tenancy.database.central_connection', 'mysql');
+        }
 
-        return DB::connection($centralConnection)
+        if (!Schema::connection($masterConnection)->hasTable('categories')) {
+            return [];
+        }
+
+        return DB::connection($masterConnection)
             ->table('categories')
             ->select(['id', 'name', 'created_at', 'updated_at'])
             ->get()
@@ -44,11 +51,22 @@ class CategorySyncService
         }
 
         $tenant->run(function () use ($categories) {
-            DB::table('categories')->upsert(
-                $categories,
-                ['id'],
-                ['name', 'updated_at']
-            );
+            if (!Schema::hasTable('categories')) {
+                return;
+            }
+
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            try {
+                foreach (array_chunk($categories, 500) as $chunk) {
+                    DB::table('categories')->upsert(
+                        $chunk,
+                        ['id'],
+                        ['name', 'updated_at']
+                    );
+                }
+            } finally {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            }
         });
 
         return count($categories);
@@ -83,12 +101,13 @@ class CategorySyncService
         foreach ($tenants as $tenant) {
             try {
                 $count = $this->syncTenant($tenant, $masterCategories);
-                $results[$tenant->id] = $count;
+                $results[(string) $tenant->id] = $count;
             } catch (\Throwable $e) {
-                Log::error("Error sincronizando categorías en tenant {$tenant->id}: " . $e->getMessage(), [
-                    'trace' => $e->getTraceAsString(),
+                Log::error("Error sincronizando categorías al tenant {$tenant->id}: " . $e->getMessage(), [
+                    'tenant_id' => $tenant->id,
+                    'exception' => $e,
                 ]);
-                $results[$tenant->id] = -1;
+                $results[(string) $tenant->id] = -1;
             }
         }
 

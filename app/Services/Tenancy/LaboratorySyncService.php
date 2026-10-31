@@ -12,19 +12,22 @@ use Illuminate\Support\Facades\Schema;
 class LaboratorySyncService
 {
     /**
-     * Obtiene los grupos de laboratorios de la base de datos central (master).
+     * Obtiene los grupos de laboratorios de la base de datos maestra (tovaerp_master).
      *
      * @return array<int, array<string, mixed>>
      */
     public function getMasterGroupsLaboratories(): array
     {
-        $centralConnection = config('tenancy.database.central_connection', 'mysql');
+        $masterConnection = 'master_catalog';
+        if (!Schema::connection($masterConnection)->hasTable('groups_laboratories')) {
+            $masterConnection = config('tenancy.database.central_connection', 'mysql');
+        }
 
-        if (!Schema::connection($centralConnection)->hasTable('groups_laboratories')) {
+        if (!Schema::connection($masterConnection)->hasTable('groups_laboratories')) {
             return [];
         }
 
-        return DB::connection($centralConnection)
+        return DB::connection($masterConnection)
             ->table('groups_laboratories')
             ->select(['id', 'name', 'created_at', 'updated_at'])
             ->get()
@@ -33,18 +36,25 @@ class LaboratorySyncService
     }
 
     /**
-     * Obtiene los laboratorios de la base de datos central (master).
+     * Obtiene los laboratorios de la base de datos maestra (tovaerp_master).
      *
      * @return array<int, array<string, mixed>>
      */
     public function getMasterLaboratories(): array
     {
-        $centralConnection = config('tenancy.database.central_connection', 'mysql');
+        $masterConnection = 'master_catalog';
+        if (!Schema::connection($masterConnection)->hasTable('laboratories')) {
+            $masterConnection = config('tenancy.database.central_connection', 'mysql');
+        }
 
-        $query = DB::connection($centralConnection)->table('laboratories');
+        if (!Schema::connection($masterConnection)->hasTable('laboratories')) {
+            return [];
+        }
+
+        $query = DB::connection($masterConnection)->table('laboratories');
         $columns = ['id', 'name', 'group_id', 'created_at', 'updated_at'];
 
-        if (Schema::connection($centralConnection)->hasColumn('laboratories', 'parent_id')) {
+        if (Schema::connection($masterConnection)->hasColumn('laboratories', 'parent_id')) {
             $columns[] = 'parent_id';
         }
 
@@ -84,7 +94,7 @@ class LaboratorySyncService
                 );
             }
 
-            // 2. Sincronizar laboratorios deshabilitando FK temporalmente para manejar parent_id / group_id de forma segura
+            // 2. Sincronizar laboratorios deshabilitando FK temporalmente
             if (!empty($labs) && Schema::hasTable('laboratories')) {
                 $hasParentId = Schema::hasColumn('laboratories', 'parent_id');
                 $updateColumns = ['name', 'group_id', 'updated_at'];
@@ -101,7 +111,6 @@ class LaboratorySyncService
 
                 DB::statement('SET FOREIGN_KEY_CHECKS = 0');
                 try {
-                    // Procesar en chunks para evitar límites de tamaño en query de MySQL
                     foreach (array_chunk($filteredLabs, 500) as $chunk) {
                         DB::table('laboratories')->upsert(
                             $chunk,

@@ -12,29 +12,24 @@ use Illuminate\Support\Facades\Schema;
 class GroupSyncService
 {
     /**
-     * Obtiene los grupos de productos de la base de datos central (master).
+     * Obtiene los grupos de productos de la base de datos maestra (tovaerp_master).
      *
      * @return array<int, array<string, mixed>>
      */
     public function getMasterGroups(): array
     {
-        $centralConnection = config('tenancy.database.central_connection', 'mysql');
+        $masterConnection = 'master_catalog';
+        if (!Schema::connection($masterConnection)->hasTable('groups_products')) {
+            $masterConnection = config('tenancy.database.central_connection', 'mysql');
+        }
 
-        if (!Schema::connection($centralConnection)->hasTable('groups_products')) {
+        if (!Schema::connection($masterConnection)->hasTable('groups_products')) {
             return [];
         }
 
-        $columns = ['id', 'name'];
-        if (Schema::connection($centralConnection)->hasColumn('groups_products', 'created_at')) {
-            $columns[] = 'created_at';
-        }
-        if (Schema::connection($centralConnection)->hasColumn('groups_products', 'updated_at')) {
-            $columns[] = 'updated_at';
-        }
-
-        return DB::connection($centralConnection)
+        return DB::connection($masterConnection)
             ->table('groups_products')
-            ->select($columns)
+            ->select(['id', 'name', 'created_at', 'updated_at'])
             ->get()
             ->map(fn ($item) => (array) $item)
             ->toArray();
@@ -60,23 +55,25 @@ class GroupSyncService
                 return;
             }
 
-            $updateColumns = ['name'];
-            if (Schema::hasColumn('groups_products', 'updated_at')) {
-                $updateColumns[] = 'updated_at';
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            try {
+                foreach (array_chunk($groups, 500) as $chunk) {
+                    DB::table('groups_products')->upsert(
+                        $chunk,
+                        ['id'],
+                        ['name', 'updated_at']
+                    );
+                }
+            } finally {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             }
-
-            DB::table('groups_products')->upsert(
-                $groups,
-                ['id'],
-                $updateColumns
-            );
         });
 
         return count($groups);
     }
 
     /**
-     * Sincroniza los grupos de productos del master hacia todos los tenants o uno en específico.
+     * Sincroniza los grupos del master hacia todos los tenants o uno en específico.
      *
      * @param string|null $tenantId
      * @return array<string, int> Resumen de tenants y cantidad sincronizada

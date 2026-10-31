@@ -5,22 +5,29 @@ declare(strict_types=1);
 namespace App\Services\Tenancy;
 
 use App\Models\Tenant;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class OriginSyncService
 {
     /**
-     * Obtiene los orígenes registrados en la base de datos central (master).
+     * Obtiene los orígenes de la base de datos maestra (tovaerp_master).
      *
      * @return array<int, array<string, mixed>>
      */
     public function getMasterOrigins(): array
     {
-        $centralConnection = config('tenancy.database.central_connection', 'mysql');
+        $masterConnection = 'master_catalog';
+        if (!Schema::connection($masterConnection)->hasTable('origins')) {
+            $masterConnection = config('tenancy.database.central_connection', 'mysql');
+        }
 
-        return DB::connection($centralConnection)
+        if (!Schema::connection($masterConnection)->hasTable('origins')) {
+            return [];
+        }
+
+        return DB::connection($masterConnection)
             ->table('origins')
             ->select(['id', 'name', 'created_at', 'updated_at'])
             ->get()
@@ -44,11 +51,22 @@ class OriginSyncService
         }
 
         $tenant->run(function () use ($origins) {
-            DB::table('origins')->upsert(
-                $origins,
-                ['id'],
-                ['name', 'updated_at']
-            );
+            if (!Schema::hasTable('origins')) {
+                return;
+            }
+
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            try {
+                foreach (array_chunk($origins, 500) as $chunk) {
+                    DB::table('origins')->upsert(
+                        $chunk,
+                        ['id'],
+                        ['name', 'updated_at']
+                    );
+                }
+            } finally {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            }
         });
 
         return count($origins);
@@ -63,7 +81,7 @@ class OriginSyncService
     public function syncAllTenants(?string $tenantId = null): array
     {
         $centralConnection = config('tenancy.database.central_connection', 'mysql');
-        if (!\Illuminate\Support\Facades\Schema::connection($centralConnection)->hasTable('tenants')) {
+        if (!Schema::connection($centralConnection)->hasTable('tenants')) {
             return [];
         }
 
@@ -83,12 +101,13 @@ class OriginSyncService
         foreach ($tenants as $tenant) {
             try {
                 $count = $this->syncTenant($tenant, $masterOrigins);
-                $results[$tenant->id] = $count;
+                $results[(string) $tenant->id] = $count;
             } catch (\Throwable $e) {
-                Log::error("Error sincronizando orígenes en tenant {$tenant->id}: " . $e->getMessage(), [
-                    'trace' => $e->getTraceAsString(),
+                Log::error("Error sincronizando orígenes al tenant {$tenant->id}: " . $e->getMessage(), [
+                    'tenant_id' => $tenant->id,
+                    'exception' => $e,
                 ]);
-                $results[$tenant->id] = -1;
+                $results[(string) $tenant->id] = -1;
             }
         }
 
