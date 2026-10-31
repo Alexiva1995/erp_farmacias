@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,17 +32,45 @@ class ProductLot extends Model
         'quantity',
         'location',
         'unit_cost',
-        'amount_usd'
+        'amount_usd',
     ];
-    protected $casts = [
-        'expiration_date' => 'datetime',
-        'quantity' => 'float',
-    ];
+
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
      *
      * @var array<string, string>
      */
+    protected $casts = [
+        'expiration_date' => 'datetime',
+        'quantity' => 'float',
+    ];
+
+    /**
+     * Normaliza alias como due_date y garantiza que expiration_date nunca quede vacío al llenar el modelo.
+     */
+    public function fill(array $attributes)
+    {
+        if (empty($attributes['expiration_date']) && !empty($attributes['due_date'])) {
+            $attributes['expiration_date'] = $attributes['due_date'];
+        }
+
+        return parent::fill($attributes);
+    }
+
+    /**
+     * Garantiza valores por defecto en inserción incluso si se ejecuta dentro de withoutEvents().
+     */
+    protected function performInsert(Builder $query): bool
+    {
+        if (empty($this->attributes['expiration_date'])) {
+            $this->attributes['expiration_date'] = now()->addYear()->format('Y-m-d');
+        }
+        if (empty($this->attributes['lot_number'])) {
+            $this->attributes['lot_number'] = 'LOT-INICIAL';
+        }
+
+        return parent::performInsert($query);
+    }
 
     /**
      * =================================================================================================
@@ -139,5 +168,4 @@ class ProductLot extends Model
             $q->where('is_active', true);
         });
     }
-
 }

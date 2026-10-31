@@ -12,49 +12,82 @@ return new class extends Migration
     public function up(): void
     {
         // 1. Campos de configuración para Cashea
-        Schema::table('general_settings', function (Blueprint $table) {
-            $table->boolean('enable_cashea')->default(false)->after('enable_zoom');
-            $table->string('cashea_mode')->default('manual')->after('enable_cashea'); // manual | api
-            $table->string('cashea_environment')->default('sandbox')->after('cashea_mode'); // sandbox | production
-            $table->string('cashea_client_id')->nullable()->after('cashea_environment');
-            $table->string('cashea_public_key')->nullable()->after('cashea_client_id');
-            $table->text('cashea_private_key')->nullable()->after('cashea_public_key');
-            $table->unsignedTinyInteger('cashea_installments_count')->default(3)->after('cashea_private_key');
-            $table->unsignedSmallInteger('cashea_installment_days')->default(14)->after('cashea_installments_count');
-        });
+        if (Schema::hasTable('general_settings')) {
+            Schema::table('general_settings', function (Blueprint $table) {
+                if (!Schema::hasColumn('general_settings', 'enable_cashea')) {
+                    $table->boolean('enable_cashea')->default(false)->after('enable_zoom');
+                }
+                if (!Schema::hasColumn('general_settings', 'cashea_mode')) {
+                    $table->string('cashea_mode')->default('manual')->after('enable_cashea'); // manual | api
+                }
+                if (!Schema::hasColumn('general_settings', 'cashea_environment')) {
+                    $table->string('cashea_environment')->default('sandbox')->after('cashea_mode'); // sandbox | production
+                }
+                if (!Schema::hasColumn('general_settings', 'cashea_client_id')) {
+                    $table->string('cashea_client_id')->nullable()->after('cashea_environment');
+                }
+                if (!Schema::hasColumn('general_settings', 'cashea_public_key')) {
+                    $table->string('cashea_public_key')->nullable()->after('cashea_client_id');
+                }
+                if (!Schema::hasColumn('general_settings', 'cashea_private_key')) {
+                    $table->text('cashea_private_key')->nullable()->after('cashea_public_key');
+                }
+                if (!Schema::hasColumn('general_settings', 'cashea_installments_count')) {
+                    $table->unsignedTinyInteger('cashea_installments_count')->default(3)->after('cashea_private_key');
+                }
+                if (!Schema::hasColumn('general_settings', 'cashea_installment_days')) {
+                    $table->unsignedSmallInteger('cashea_installment_days')->default(14)->after('cashea_installments_count');
+                }
+            });
+        }
 
         // 2. Columna informativa en CashClosings para arqueo de ventas Cashea
-        Schema::table('cash_closing', function (Blueprint $table) {
-            $table->decimal('usd_cashea_credit', 14, 2)->default(0)->after('usd_credit');
-        });
+        if (Schema::hasTable('cash_closing') && !Schema::hasColumn('cash_closing', 'usd_cashea_credit')) {
+            Schema::table('cash_closing', function (Blueprint $table) {
+                $table->decimal('usd_cashea_credit', 14, 2)->default(0)->after('usd_credit');
+            });
+        }
 
         // 3. Modificaciones en tabla de créditos para soporte de tipo de crédito y referencia Cashea
-        Schema::table('credits', function (Blueprint $table) {
-            $table->string('credit_type')->default('standard')->after('status'); // standard | cashea
-            $table->string('cashea_order_reference')->nullable()->after('credit_type');
-            $table->decimal('initial_payment_usd', 12, 2)->default(0)->after('cashea_order_reference');
-            $table->unsignedTinyInteger('installments_count')->default(1)->after('initial_payment_usd');
-            $table->date('next_due_date')->nullable()->after('installments_count');
-
-            $table->index('credit_type', 'idx_credit_type');
-        });
+        if (Schema::hasTable('credits')) {
+            Schema::table('credits', function (Blueprint $table) {
+                if (!Schema::hasColumn('credits', 'credit_type')) {
+                    $table->string('credit_type')->default('standard')->after('status'); // standard | cashea
+                    $table->index('credit_type', 'idx_credit_type');
+                }
+                if (!Schema::hasColumn('credits', 'cashea_order_reference')) {
+                    $table->string('cashea_order_reference')->nullable()->after('credit_type');
+                }
+                if (!Schema::hasColumn('credits', 'initial_payment_usd')) {
+                    $table->decimal('initial_payment_usd', 12, 2)->default(0)->after('cashea_order_reference');
+                }
+                if (!Schema::hasColumn('credits', 'installments_count')) {
+                    $table->unsignedTinyInteger('installments_count')->default(1)->after('initial_payment_usd');
+                }
+                if (!Schema::hasColumn('credits', 'next_due_date')) {
+                    $table->date('next_due_date')->nullable()->after('installments_count');
+                }
+            });
+        }
 
         // 4. Tabla de cuotas programadas de créditos
-        Schema::create('credit_installments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('credit_id')->constrained('credits')->onDelete('cascade');
-            $table->unsignedTinyInteger('installment_number');
-            $table->decimal('amount_usd', 12, 2);
-            $table->decimal('paid_amount_usd', 12, 2)->default(0);
-            $table->date('due_date');
-            $table->timestamp('paid_at')->nullable();
-            $table->string('payment_reference')->nullable();
-            $table->string('status')->default('Pending'); // Pending | Paid | Overdue
-            $table->timestamps();
+        if (!Schema::hasTable('credit_installments')) {
+            Schema::create('credit_installments', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('credit_id')->constrained('credits')->onDelete('cascade');
+                $table->unsignedTinyInteger('installment_number');
+                $table->decimal('amount_usd', 12, 2);
+                $table->decimal('paid_amount_usd', 12, 2)->default(0);
+                $table->date('due_date');
+                $table->timestamp('paid_at')->nullable();
+                $table->string('payment_reference')->nullable();
+                $table->string('status')->default('Pending'); // Pending | Paid | Overdue
+                $table->timestamps();
 
-            $table->index(['credit_id', 'status'], 'idx_installment_credit_status');
-            $table->index('due_date', 'idx_installment_due_date');
-        });
+                $table->index(['credit_id', 'status'], 'idx_installment_credit_status');
+                $table->index('due_date', 'idx_installment_due_date');
+            });
+        }
     }
 
     /**
@@ -64,32 +97,45 @@ return new class extends Migration
     {
         Schema::dropIfExists('credit_installments');
 
-        Schema::table('credits', function (Blueprint $table) {
-            $table->dropIndex('idx_credit_type');
-            $table->dropColumn([
-                'credit_type',
-                'cashea_order_reference',
-                'initial_payment_usd',
-                'installments_count',
-                'next_due_date',
-            ]);
-        });
+        if (Schema::hasTable('credits')) {
+            Schema::table('credits', function (Blueprint $table) {
+                $cols = array_filter([
+                    'credit_type',
+                    'cashea_order_reference',
+                    'initial_payment_usd',
+                    'installments_count',
+                    'next_due_date',
+                ], fn (string $col) => Schema::hasColumn('credits', $col));
 
-        Schema::table('cash_closing', function (Blueprint $table) {
-            $table->dropColumn('usd_cashea_credit');
-        });
+                if (!empty($cols)) {
+                    $table->dropColumn($cols);
+                }
+            });
+        }
 
-        Schema::table('general_settings', function (Blueprint $table) {
-            $table->dropColumn([
-                'enable_cashea',
-                'cashea_mode',
-                'cashea_environment',
-                'cashea_client_id',
-                'cashea_public_key',
-                'cashea_private_key',
-                'cashea_installments_count',
-                'cashea_installment_days',
-            ]);
-        });
+        if (Schema::hasTable('cash_closing') && Schema::hasColumn('cash_closing', 'usd_cashea_credit')) {
+            Schema::table('cash_closing', function (Blueprint $table) {
+                $table->dropColumn('usd_cashea_credit');
+            });
+        }
+
+        if (Schema::hasTable('general_settings')) {
+            Schema::table('general_settings', function (Blueprint $table) {
+                $cols = array_filter([
+                    'enable_cashea',
+                    'cashea_mode',
+                    'cashea_environment',
+                    'cashea_client_id',
+                    'cashea_public_key',
+                    'cashea_private_key',
+                    'cashea_installments_count',
+                    'cashea_installment_days',
+                ], fn (string $col) => Schema::hasColumn('general_settings', $col));
+
+                if (!empty($cols)) {
+                    $table->dropColumn($cols);
+                }
+            });
+        }
     }
 };
