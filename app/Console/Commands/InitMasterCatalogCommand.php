@@ -15,7 +15,9 @@ class InitMasterCatalogCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'master-catalog:init {--clean : Vaciar las tablas del maestro antes de importar}';
+    protected $signature = 'master-catalog:init 
+                            {--source-db= : Base de datos origen alternativa (ej: farmaciabs_erp2)}
+                            {--clean : Vaciar las tablas del maestro antes de importar}';
 
     /**
      * The console command description.
@@ -30,7 +32,18 @@ class InitMasterCatalogCommand extends Command
     public function handle(): int
     {
         $masterConn = 'master_catalog';
-        $centralConn = config('tenancy.database.central_connection', 'mysql');
+        $sourceDb = $this->option('source-db');
+
+        if ($sourceDb) {
+            config(['database.connections.source_custom' => array_merge(
+                config('database.connections.' . config('tenancy.database.central_connection', 'mysql')),
+                ['database' => $sourceDb]
+            )]);
+            $centralConn = 'source_custom';
+            $this->info("• Usando base de datos origen personalizada: <fg=yellow>{$sourceDb}</>");
+        } else {
+            $centralConn = config('tenancy.database.central_connection', 'mysql');
+        }
 
         $this->info('========================================================================');
         $this->info(' INICIALIZADOR DE CATÁLOGO MAESTRO (tovaerp_master)');

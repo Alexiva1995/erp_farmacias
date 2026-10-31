@@ -10,11 +10,12 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('master-catalog:init {--clean : Vaciar las tablas del maestro antes de importar}', function () {
+Artisan::command('master-catalog:init {--source-db= : Base de datos origen alternativa} {--clean : Vaciar las tablas del maestro antes de importar}', function () {
     $this->call(\App\Console\Commands\InitMasterCatalogCommand::class, [
+        '--source-db' => $this->option('source-db'),
         '--clean' => $this->option('clean'),
     ]);
-})->purpose('Crea la estructura de tablas y puebla la base de datos tovaerp_master desde la base central');
+})->purpose('Crea la estructura de tablas y puebla la base de datos tovaerp_master desde la base central o la base indicada');
 
 // Helper para ejecutar comandos tanto en BD local/central como en tenants si existen
 $scheduleTenantAware = function (string $command, callable $scheduleConfig) {
