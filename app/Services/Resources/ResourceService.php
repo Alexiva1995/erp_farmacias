@@ -23,7 +23,8 @@ class ResourceService
      */
     public function getLaboratories(): Collection
     {
-        return Cache::remember('resources.laboratories', now()->addDay(), function () {
+        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
+        return Cache::remember("resources.laboratories.{$conn}", now()->addDay(), function () {
             return Laboratory::withCount('products')
                 ->orderBy('name')
                 ->get(['id', 'name', 'group_id']);
@@ -35,7 +36,8 @@ class ResourceService
      */
     public function getLaboratoryGroups(): Collection
     {
-        return Cache::remember('resources.laboratory_groups', now()->addDay(), function () {
+        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
+        return Cache::remember("resources.laboratory_groups.{$conn}", now()->addDay(), function () {
             return GroupsLaboratory::orderBy('name')->get(['id', 'name']);
         });
     }
@@ -45,7 +47,8 @@ class ResourceService
      */
     public function getOrigins(): Collection
     {
-        return Cache::remember('resources.origins', now()->addDay(), function () {
+        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
+        return Cache::remember("resources.origins.{$conn}", now()->addDay(), function () {
             return Origin::orderBy('name')->get(['id', 'name']);
         });
     }
@@ -55,7 +58,8 @@ class ResourceService
      */
     public function getSuppliers(): Collection
     {
-        return Cache::remember('resources.suppliers', now()->addDay(), function () {
+        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
+        return Cache::remember("resources.suppliers.{$conn}", now()->addDay(), function () {
             return Supplier::orderBy('name')->get(['id', 'name']);
         });
     }
@@ -65,8 +69,9 @@ class ResourceService
      */
     public function getCategories(array $filters = []): Collection
     {
+        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
         if (isset($filters['type']) && $filters['type'] === 'dishes') {
-            return Cache::remember('resources.categories.dishes', now()->addDay(), function () {
+            return Cache::remember("resources.categories.dishes.{$conn}", now()->addDay(), function () {
                 return Category::whereHas('dishes')
                     ->orWhereDoesntHave('products')
                     ->orderBy('name')
@@ -74,14 +79,15 @@ class ResourceService
             });
         }
 
-        return Cache::remember('resources.categories', now()->addDay(), function () {
+        return Cache::remember("resources.categories.{$conn}", now()->addDay(), function () {
             return Category::orderBy('name')->get(['id', 'name']);
         });
     }
 
     public function getAllProducts(): Collection
     {
-        return Cache::remember('resources.products', now()->addDay(), function () {
+        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
+        return Cache::remember("resources.products.{$conn}", now()->addDay(), function () {
             return Product::orderBy('name')->get();
         });
     }

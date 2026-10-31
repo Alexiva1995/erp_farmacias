@@ -284,6 +284,13 @@ router.beforeEach(async (to, from, next) => {
     const isRestaurantVertical = currentVertical === 'restaurant' || currentVertical === 'fast_food'
     const isDrogueriaVertical = currentVertical === 'drogueria'
     const targetPath = to.path.toLowerCase()
+    const currentHost = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : ''
+    const isMasterAllowedDomain = currentHost.includes('farmaciabs.com') || currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost.endsWith('.test')
+
+    if (!isMasterAllowedDomain && targetPath.startsWith('/master')) {
+      console.log('[ROUTER] Ruta MASTER exclusiva para farmaciabs.com, redirigiendo')
+      return safeNext({ path: '/' })
+    }
 
     if (!isRestaurantVertical && (targetPath.startsWith('/restaurant') || targetPath === '/inventory/dishes')) {
       console.log('[ROUTER] Ruta de restaurante no disponible para esta vertical, redirigiendo')

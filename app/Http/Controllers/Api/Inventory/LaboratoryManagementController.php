@@ -98,6 +98,8 @@ class LaboratoryManagementController extends Controller
 
         // Limpiar la caché de laboratorios para que se actualice la lista en los selects
         \Cache::forget('resources.laboratories');
+        \Cache::forget('resources.laboratories.' . \Illuminate\Support\Facades\DB::getDefaultConnection());
+        \Cache::forget('resources.laboratory_groups.' . \Illuminate\Support\Facades\DB::getDefaultConnection());
 
         return response()->json(['message' => 'Laboratorio guardado correctamente', 'laboratory' => $lab]);
     }

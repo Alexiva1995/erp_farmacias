@@ -34,6 +34,11 @@ axiosInstance.interceptors.request.use(
         config.headers['X-XSRF-TOKEN'] = metaToken;
       }
     }
+
+    // 3. Si la vista actual pertenece al módulo MASTER (/master/*), activar el contexto de Catálogo Maestro
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/master')) {
+      config.headers['X-Master-Catalog-Context'] = '1';
+    }
     
     // Asegurar que las cookies de sesión se envíen
     config.withCredentials = true;

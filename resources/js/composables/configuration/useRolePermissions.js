@@ -58,11 +58,16 @@ export function useRolePermissions() {
     const currentVertical = (brandingStore.settings.vertical || brandingStore.settings.business_type || localStorage.getItem('vertical') || localStorage.getItem('business_type') || 'pharmacy').toLowerCase()
     const isRestaurantVertical = currentVertical === 'restaurant' || currentVertical === 'fast_food'
     const isDrogueriaVertical = currentVertical === 'drogueria'
+    const currentHost = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : ''
+    const isMasterAllowedDomain = currentHost.includes('farmaciabs.com') || currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost.endsWith('.test')
 
     return navItems.filter(item => {
       const title = (item.title || '').toLowerCase()
       const to = (item.to || '').toLowerCase()
 
+      if (title === 'master' || to.startsWith('master-')) {
+        return isMasterAllowedDomain
+      }
       if (title === 'restaurante' || title === 'operativa' || to.startsWith('restaurant-')) {
         return isRestaurantVertical
       }

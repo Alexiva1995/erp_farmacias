@@ -7,6 +7,7 @@ import fiscal from './fiscal'
 import home from './home'
 import inventory from './inventory'
 import invoice from './invoice'
+import master from './master'
 import productivity from './productivity'
 import rrhh from './rrhh'
 import suppliers from './suppliers'
@@ -17,5 +18,4 @@ import telegram from './telegram'
 import bots from './bots'
 import wholesale from './wholesale'
 
-export default [...home, ...inventory, ...cyclicInventory, ...restaurant, ...wholesale, ...tpv, ...crm, ...rrhh, ...finances, ...fiscal, ...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations, ...telegram, ...bots]
-
+export default [...home, ...master, ...inventory, ...cyclicInventory, ...restaurant, ...wholesale, ...tpv, ...crm, ...rrhh, ...finances, ...fiscal, ...suppliers, ...invoice, ...productivity, ...bi, ...configuration, ...reservations, ...telegram, ...bots]
