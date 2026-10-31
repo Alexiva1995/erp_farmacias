@@ -16,7 +16,7 @@ class RequestA2PreviewRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'section' => 'required|string|in:suppliers_payables,products_lots,operations,sales,all',
+            'section' => 'required|string|in:suppliers_payables,products_lots,clients,clients_receivables,receivables,operations,sales,all',
             'year'    => 'nullable|integer|min:2020|max:2030',
         ];
     }

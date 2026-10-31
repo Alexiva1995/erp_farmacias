@@ -138,7 +138,7 @@ const confirmAndExecuteA2Import = async () => {
           <p class="mb-1 text-info"><strong>Homologados con Master:</strong> ${stats.products_matched_master ?? 0}</p>
         </div>
       `
-    } else if (a2SelectedSection.value === 'clients_receivables') {
+    } else if (a2SelectedSection.value === 'clients' || a2SelectedSection.value === 'clients_receivables') {
       htmlContent = `
         <div style="text-align:left; font-size:0.95rem; line-height:1.6;">
           <p class="mb-1 text-success"><strong>Clientes Creados:</strong> ${stats.clients_created ?? 0}</p>

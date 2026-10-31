@@ -383,7 +383,7 @@ class A2DataImportService
 
             $shouldProcessProducts = ($section === 'products_lots' || empty($section));
             $shouldProcessSuppliers = ($section === 'suppliers_payables' || empty($section));
-            $shouldProcessClients = ($section === 'clients_receivables' || empty($section));
+            $shouldProcessClients = ($section === 'clients' || $section === 'clients_receivables' || empty($section));
 
             $suppliersData = $shouldProcessSuppliers ? ($payload['suppliers'] ?? []) : [];
             $clientsData = $shouldProcessClients ? ($payload['clients'] ?? []) : [];

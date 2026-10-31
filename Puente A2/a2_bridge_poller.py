@@ -84,7 +84,7 @@ def poll_and_process():
                     if section in ["operations", "sales", "all"]:
                         print(f" -> Extrayendo Operaciones del año {year}...")
                         extracted["operations"] = a2.extract_operations(data_dir, year)
-                    if section in ["clients", "receivables", "all"]:
+                    if section in ["clients", "receivables", "clients_receivables", "all"]:
                         print(" -> Extrayendo Clientes y Cuentas por Cobrar...")
                         extracted["clients"] = a2.extract_clients(data_dir)
                         extracted["receivables"] = a2.extract_receivables(data_dir, year)
