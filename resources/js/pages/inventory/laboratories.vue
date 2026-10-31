@@ -7,6 +7,7 @@ import AppMobilePagination from "@/components/AppMobilePagination.vue"
 import AppEmptyState from "@/components/AppEmptyState.vue"
 import LaboratoryEditDialog from "@/components/dialogs/LaboratoryEditDialog.vue"
 import LaboratoryGroupDialog from "@/components/dialogs/LaboratoryGroupDialog.vue"
+import LaboratoryMergeDialog from "@/components/dialogs/LaboratoryMergeDialog.vue"
 import LaboratoryMobileCard from "@/components/cards/LaboratoryMobileCard.vue"
 import { toast } from "@/plugins/sweetalert"
 import Swal from "sweetalert2"
@@ -36,6 +37,8 @@ const groupSearch = ref('')
 
 const isLabDialogOpen = ref(false)
 const isGroupDialogOpen = ref(false)
+const isMergeDialogOpen = ref(false)
+const mergeInitialLab = ref(null)
 
 const currentLab = ref({ id: null, name: '', group_id: null })
 const currentGroup = ref({ id: null, name: '', laboratory_ids: [] })
@@ -122,11 +125,27 @@ const fetchLabs = async () => {
 
 const fetchAllLabsForSelect = async () => {
   try {
-    const { data } = await axios.get('/laboratories')
-    allLaboratoriesForSelect.value = data
+    const { data } = await axios.get('/inventory/laboratories-manage', {
+      params: { itemsPerPage: 2500, sortBy: 'name', orderBy: 'asc' },
+    })
+    allLaboratoriesForSelect.value = Array.isArray(data?.data) ? data.data : []
   } catch (error) {
-    console.error("Error al cargar laboratorios para select:", error)
+    try {
+      const { data } = await axios.get('/laboratories')
+      allLaboratoriesForSelect.value = data
+    } catch (fallbackErr) {
+      console.error("Error al cargar laboratorios para select:", fallbackErr)
+    }
   }
+}
+
+const openMergeDialog = (lab = null) => {
+  mergeInitialLab.value = lab
+  isMergeDialogOpen.value = true
+}
+
+const handleLabsMerged = async () => {
+  await Promise.all([fetchLabs(), fetchAllLabsForSelect(), fetchGroups()])
 }
 
 const fetchGroups = async () => {
@@ -340,6 +359,15 @@ onMounted(async () => {
           <template #actions-extra>
             <VBtn
               variant="tonal"
+              color="warning"
+              prepend-icon="tabler-arrows-join-2"
+              class="me-1"
+              @click="openMergeDialog()"
+            >
+              Fusionar {{ isRestaurant ? 'Marcas' : 'Laboratorios' }}
+            </VBtn>
+            <VBtn
+              variant="tonal"
               color="primary"
               prepend-icon="tabler-refresh"
               :loading="isSyncingMaster"
@@ -431,6 +459,13 @@ onMounted(async () => {
                       </IconBtn>
                     </template>
                   </VTooltip>
+                  <VTooltip text="Fusionar laboratorios" location="top">
+                    <template #activator="{ props: tooltipProps }">
+                      <IconBtn v-bind="tooltipProps" @click="openMergeDialog(item)" color="primary" size="small">
+                        <VIcon icon="tabler-arrows-join-2" size="18" />
+                      </IconBtn>
+                    </template>
+                  </VTooltip>
                   <VTooltip text="Editar" location="top">
                     <template #activator="{ props: tooltipProps }">
                       <IconBtn v-bind="tooltipProps" @click="openLabEdit(item)" color="warning" size="small">
@@ -488,6 +523,7 @@ onMounted(async () => {
                 :enable-brand-groups="enableBrandGroups"
                 :can-delete="can('manage', 'admin')"
                 @view="goToProducts"
+                @merge="openMergeDialog"
                 @edit="openLabEdit"
                 @delete="deleteLab"
               />
@@ -735,6 +771,14 @@ onMounted(async () => {
       :laboratories="allLaboratoriesForSelect"
       :loading="isSavingGroup"
       @save="saveGroup"
+    />
+
+    <LaboratoryMergeDialog
+      v-model:is-dialog-visible="isMergeDialogOpen"
+      :laboratories="allLaboratoriesForSelect"
+      :initial-laboratory="mergeInitialLab"
+      :is-restaurant="isRestaurant"
+      @merged="handleLabsMerged"
     />
   </VContainer>
 </template>

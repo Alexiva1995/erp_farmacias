@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Laboratory;
 use App\Models\GroupsLaboratory;
 use App\Services\Inventory\MasterLaboratorySyncService;
+use App\Services\Tenancy\LaboratorySyncService;
+use App\Http\Requests\Inventory\MergeLaboratoriesRequest;
 use App\Http\Requests\Inventory\StoreLaboratoryRequest;
 use App\Http\Requests\Inventory\StoreLaboratoryGroupRequest;
 use Illuminate\Http\Request;
@@ -192,6 +194,32 @@ class LaboratoryManagementController extends Controller
             'remapped_products' => $remapResult['remapped'],
             'remaining_generales' => $remapResult['remaining_generales'],
             'total_evaluated' => $remapResult['total_evaluated'],
+        ]);
+    }
+
+    /**
+     * Fusiona uno o varios laboratorios duplicados en un laboratorio principal
+     * en el catálogo maestro, la base central y todos los tenants.
+     */
+    public function merge(
+        MergeLaboratoriesRequest $request,
+        LaboratorySyncService $laboratorySyncService
+    ): JsonResponse {
+        $validated = $request->validated();
+
+        $result = $laboratorySyncService->mergeLaboratoriesEverywhere(
+            (int) $validated['target_laboratory_id'],
+            $validated['source_laboratory_ids']
+        );
+
+        return response()->json([
+            'message' => sprintf(
+                'Fusión completada en %d base(s) de datos (%d producto(s) reasignado(s) a %s).',
+                $result['databases_updated'],
+                $result['products_reassigned'],
+                $result['target_laboratory_name']
+            ),
+            'data' => $result,
         ]);
     }
 }

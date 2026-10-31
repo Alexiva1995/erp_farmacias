@@ -5,7 +5,7 @@ const props = defineProps({
   canDelete: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["view", "edit", "delete"]);
+const emit = defineEmits(["view", "merge", "edit", "delete"]);
 
 const formatUnits = (units) => {
   const num = Number(units || 0);
@@ -73,6 +73,17 @@ const formatUnits = (units) => {
           @click="emit('view', item)"
         >
           Ver
+        </VBtn>
+        <VDivider vertical class="border-opacity-10" />
+        <VBtn
+          color="primary"
+          variant="text"
+          class="flex-grow-1 rounded-0"
+          height="36"
+          prepend-icon="tabler-arrows-join-2"
+          @click="emit('merge', item)"
+        >
+          Fusionar
         </VBtn>
         <VDivider vertical class="border-opacity-10" />
         <VBtn

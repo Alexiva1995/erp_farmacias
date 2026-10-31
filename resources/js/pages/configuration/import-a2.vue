@@ -128,29 +128,40 @@ const confirmAndExecuteA2Import = async () => {
     })
     const stats = res.data?.stats || {}
     a2PreviewModal.value = false
+
+    let htmlContent = ''
+    if (a2SelectedSection.value === 'products_lots') {
+      htmlContent = `
+        <div style="text-align:left; font-size:0.95rem; line-height:1.6;">
+          <p class="mb-1 text-success"><strong>Productos Creados:</strong> ${stats.products_created ?? 0}</p>
+          <p class="mb-1 text-primary"><strong>Productos Actualizados:</strong> ${stats.products_updated ?? 0}</p>
+          <p class="mb-1 text-info"><strong>Homologados con Master:</strong> ${stats.products_matched_master ?? 0}</p>
+        </div>
+      `
+    } else if (a2SelectedSection.value === 'clients_receivables') {
+      htmlContent = `
+        <div style="text-align:left; font-size:0.95rem; line-height:1.6;">
+          <p class="mb-1 text-success"><strong>Clientes Creados:</strong> ${stats.clients_created ?? 0}</p>
+          <p class="mb-1 text-primary"><strong>Clientes Vinculados:</strong> ${stats.clients_linked ?? 0}</p>
+          <p class="mb-1 text-success"><strong>Cuentas por Cobrar (CXC):</strong> ${stats.credits_created ?? 0}</p>
+          <p class="mb-1 text-medium-emphasis"><strong>CXC Omitidas (Duplicadas):</strong> ${stats.credits_skipped ?? 0}</p>
+        </div>
+      `
+    } else {
+      htmlContent = `
+        <div style="text-align:left; font-size:0.95rem; line-height:1.6;">
+          <p class="mb-1 text-success"><strong>Proveedores Creados:</strong> ${stats.suppliers_created ?? 0}</p>
+          <p class="mb-1 text-primary"><strong>Proveedores Vinculados Existentes:</strong> ${stats.suppliers_linked ?? 0}</p>
+          <p class="mb-1 text-success"><strong>Facturas CXP Importadas:</strong> ${stats.invoices_created ?? 0}</p>
+          <p class="mb-1 text-medium-emphasis"><strong>Facturas Omitidas (Duplicadas):</strong> ${stats.invoices_skipped ?? 0}</p>
+        </div>
+      `
+    }
+
     await Swal.fire({
       title: '¡Importación desde a2 Exitosa!',
       icon: 'success',
-      html: `
-        <div style="text-align:left; font-size:0.95rem; line-height:1.6;">
-          <template v-if="a2SelectedSection === 'products_lots'">
-            <p class="mb-1 text-success"><strong>Productos Creados:</strong> ${stats.products_created ?? 0}</p>
-            <p class="mb-1 text-primary"><strong>Productos Actualizados:</strong> ${stats.products_updated ?? 0}</p>
-            <p class="mb-1 text-info"><strong>Homologados con Master:</strong> ${stats.products_matched_master ?? 0}</p>
-          </template>
-          <template v-else-if="a2SelectedSection === 'clients'">
-            <p class="mb-1 text-success"><strong>Clientes Creados:</strong> ${stats.clients_created ?? 0}</p>
-            <p class="mb-1 text-primary"><strong>Clientes Vinculados:</strong> ${stats.clients_linked ?? 0}</p>
-            <p class="mb-1 text-success"><strong>Cuentas por Cobrar (CXC):</strong> ${stats.credits_created ?? 0}</p>
-          </template>
-          <template v-else>
-            <p class="mb-1 text-success"><strong>Proveedores Creados:</strong> ${stats.suppliers_created ?? 0}</p>
-            <p class="mb-1 text-primary"><strong>Proveedores Vinculados Existentes:</strong> ${stats.suppliers_linked ?? 0}</p>
-            <p class="mb-1 text-success"><strong>Facturas CXP Importadas:</strong> ${stats.invoices_created ?? 0}</p>
-            <p class="mb-1 text-medium-emphasis"><strong>Facturas Omitidas (Duplicadas):</strong> ${stats.invoices_skipped ?? 0}</p>
-          </template>
-        </div>
-      `,
+      html: htmlContent,
       confirmButtonText: 'Entendido',
       confirmButtonColor: '#E20074',
     })

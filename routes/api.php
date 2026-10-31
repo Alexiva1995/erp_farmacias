@@ -320,6 +320,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'index']);
         Route::get('/groups', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'groups']);
         Route::post('/sync-master', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'syncFromMaster']);
+        Route::post('/merge', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'merge']);
         Route::post('/', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'store']);
         Route::post('/groups', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'storeGroup']);
         Route::delete('/groups/{group}', [\App\Http\Controllers\Api\Inventory\LaboratoryManagementController::class, 'destroyGroup']);

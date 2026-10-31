@@ -144,15 +144,23 @@ print(json.dumps(result))
     public function executeImport(ExecuteA2ImportRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $stats = $this->service->executeImport($validated);
 
-        if (!empty($validated['task_id'])) {
-            A2SyncTask::where('id', $validated['task_id'])->update(['status' => 'imported']);
+        try {
+            $stats = $this->service->executeImport($validated);
+
+            if (!empty($validated['task_id'])) {
+                A2SyncTask::where('id', $validated['task_id'])->update(['status' => 'imported']);
+            }
+
+            return response()->json([
+                'message' => 'Datos importados exitosamente desde a2.',
+                'stats' => $stats,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error ejecutando importación a2: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return response()->json([
+                'message' => 'Error al procesar la importación: ' . $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json([
-            'message' => 'Datos importados exitosamente desde a2.',
-            'stats' => $stats,
-        ]);
     }
 }

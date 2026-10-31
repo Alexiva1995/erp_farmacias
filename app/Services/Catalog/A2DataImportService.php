@@ -374,17 +374,24 @@ class A2DataImportService
     public function executeImport(array $payload): array
     {
         @ini_set('memory_limit', '1024M');
-        @ini_set('max_execution_time', '900');
+        @set_time_limit(900);
+        @ignore_user_abort(true);
 
         return DB::transaction(function () use ($payload) {
             $currentUserId = Auth::id() ?: 1;
-            $suppliersData = $payload['suppliers'] ?? [];
-            $clientsData = $payload['clients'] ?? [];
-            $productsData = $payload['products'] ?? [];
+            $section = $payload['section'] ?? null;
 
-            // Si vino un task_id y la sección es products_lots, extraer la lista completa extraída en la tarea
+            $shouldProcessProducts = ($section === 'products_lots' || empty($section));
+            $shouldProcessSuppliers = ($section === 'suppliers_payables' || empty($section));
+            $shouldProcessClients = ($section === 'clients_receivables' || empty($section));
+
+            $suppliersData = $shouldProcessSuppliers ? ($payload['suppliers'] ?? []) : [];
+            $clientsData = $shouldProcessClients ? ($payload['clients'] ?? []) : [];
+            $productsData = $shouldProcessProducts ? ($payload['products'] ?? []) : [];
+
+            // Si vino un task_id y aplica productos, recuperar el listado completo extraído en la tarea
             $taskId = !empty($payload['task_id']) ? (int)$payload['task_id'] : null;
-            if ($taskId) {
+            if ($taskId && $shouldProcessProducts) {
                 $task = A2SyncTask::find($taskId);
                 if ($task && !empty($task->extracted_data['products'])) {
                     $productsData = $task->extracted_data['products'];
@@ -406,11 +413,11 @@ class A2DataImportService
             ];
 
             // 0. Procesar Productos de a2 (Sinventario.dat)
-            if (!empty($productsData)) {
+            if ($shouldProcessProducts && !empty($productsData)) {
                 $barcodes = [];
                 foreach ($productsData as $p) {
                     $c = trim((string)($p['code'] ?? ''));
-                    if (!empty($c)) {
+                    if ($c !== '') {
                         $barcodes[] = $c;
                     }
                 }
@@ -437,11 +444,12 @@ class A2DataImportService
                 $validCategoryIds   = DB::table('categories')->pluck('id')->flip()->toArray();
                 $validLaboratoryIds = DB::table('laboratories')->pluck('id')->flip()->toArray();
                 $validOriginIds     = DB::table('origins')->pluck('id')->flip()->toArray();
+                $validGroupIds      = DB::table('groups_products')->pluck('id')->flip()->toArray();
 
                 foreach ($productsData as $row) {
                     $barcode = trim((string)($row['code'] ?? ''));
                     $rawName = trim((string)($row['name'] ?? ''));
-                    if (empty($barcode) || empty($rawName)) {
+                    if ($barcode === '' || $rawName === '') {
                         continue;
                     }
 
@@ -474,6 +482,7 @@ class A2DataImportService
                         'is_favorite' => false,
                         'no_pvp' => false,
                         'lotification_completed' => true,
+                        'active_ingredient' => !empty($masterProduct['active_ingredient']) ? trim((string)$masterProduct['active_ingredient']) : 'N/A',
                     ];
 
                     if ($masterProduct) {
@@ -486,42 +495,44 @@ class A2DataImportService
                         if (!empty($masterProduct['origin_id']) && isset($validOriginIds[(int)$masterProduct['origin_id']])) {
                             $productData['origin_id'] = (int)$masterProduct['origin_id'];
                         }
-                        if (!empty($masterProduct['group_id'])) {
-                            $productData['group_id'] = $masterProduct['group_id'];
+                        if (!empty($masterProduct['group_id']) && isset($validGroupIds[(int)$masterProduct['group_id']])) {
+                            $productData['group_id'] = (int)$masterProduct['group_id'];
                         }
                     }
 
-                    if ($isNew) {
-                        $product = Product::create($productData);
-                        $existingProducts->put($barcode, $product);
-                        $stats['products_created']++;
-                    } else {
-                        if ($product->trashed()) {
-                            $product->restore();
+                    try {
+                        if ($isNew) {
+                            $product = Product::create($productData);
+                            $existingProducts->put($barcode, $product);
+                            $stats['products_created']++;
+                        } else {
+                            if ($product->trashed()) {
+                                $product->restore();
+                            }
+                            $product->update($productData);
+                            $stats['products_updated']++;
                         }
-                        $product->update($productData);
-                        $stats['products_updated']++;
-                    }
 
-                    $lot = $existingLots->get($product->id);
-                    if ($lot) {
-                        $lot->update([
-                            'quantity'   => $stock,
-                            'unit_cost'  => $cost,
-                            'amount_usd' => round($stock * $cost, 2),
-                        ]);
-                    } else {
-                        $lot = ProductLot::create([
-                            'product_id'   => $product->id,
-                            'lot_number'   => 'LOT-INICIAL',
-                            'quantity'     => $stock,
-                            'unit_cost'    => $cost,
-                            'amount_usd'   => round($stock * $cost, 2),
-                            'due_date'     => Carbon::now()->addYear()->format('Y-m-d'),
-                            'reception_date' => Carbon::now()->format('Y-m-d'),
-                            'is_active'    => true,
-                        ]);
-                        $existingLots->put($product->id, $lot);
+                        $lot = $existingLots->get($product->id);
+                        if ($lot) {
+                            $lot->update([
+                                'quantity'   => $stock,
+                                'unit_cost'  => $cost,
+                                'amount_usd' => round($stock * $cost, 2),
+                            ]);
+                        } else {
+                            $lot = ProductLot::create([
+                                'product_id'      => $product->id,
+                                'lot_number'      => 'LOT-INICIAL',
+                                'quantity'        => $stock,
+                                'unit_cost'       => $cost,
+                                'amount_usd'      => round($stock * $cost, 2),
+                                'expiration_date' => Carbon::now()->addYear()->format('Y-m-d'),
+                            ]);
+                            $existingLots->put($product->id, $lot);
+                        }
+                    } catch (\Throwable $pe) {
+                        Log::warning("Error importando producto {$barcode} ({$finalName}): " . $pe->getMessage());
                     }
                 }
             }

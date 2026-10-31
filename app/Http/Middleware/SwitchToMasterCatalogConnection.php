@@ -231,6 +231,11 @@ class SwitchToMasterCatalogConnection
     {
         $path = strtolower($request->path());
 
+        // La ruta de fusión de laboratorios ya sincroniza y elimina directamente en todas las bases
+        if (str_contains($path, '/merge')) {
+            return;
+        }
+
         try {
             if (str_contains($path, 'laboratories')) {
                 app(\App\Services\Tenancy\LaboratorySyncService::class)->syncAllTenants();
