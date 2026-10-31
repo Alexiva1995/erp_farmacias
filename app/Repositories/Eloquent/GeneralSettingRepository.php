@@ -43,6 +43,24 @@ class GeneralSettingRepository implements GeneralSettingRepositoryInterface
             }
         }
 
+        // Asegurar que las columnas de Cashea existan en la tabla actual (central o tenant)
+        if (array_key_exists('enable_cashea', $data) && !Schema::hasColumn('general_settings', 'enable_cashea')) {
+            try {
+                Schema::table('general_settings', function (Blueprint $table) {
+                    $table->boolean('enable_cashea')->default(false)->after('enable_zoom');
+                    $table->string('cashea_mode')->default('manual')->after('enable_cashea');
+                    $table->string('cashea_environment')->default('sandbox')->after('cashea_mode');
+                    $table->string('cashea_client_id')->nullable()->after('cashea_environment');
+                    $table->string('cashea_public_key')->nullable()->after('cashea_client_id');
+                    $table->text('cashea_private_key')->nullable()->after('cashea_public_key');
+                    $table->unsignedTinyInteger('cashea_installments_count')->default(3)->after('cashea_private_key');
+                    $table->unsignedSmallInteger('cashea_installment_days')->default(14)->after('cashea_installments_count');
+                });
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo crear automáticamente las columnas de Cashea en general_settings: ' . $e->getMessage());
+            }
+        }
+
         // Filtrar solo los campos que existan como columnas físicas en la tabla
         try {
             $existingColumns = Schema::getColumnListing('general_settings');

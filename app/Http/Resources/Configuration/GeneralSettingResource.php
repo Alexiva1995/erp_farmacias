@@ -126,7 +126,7 @@ class GeneralSettingResource extends JsonResource
         }
 
         // Inyectar método Cashea en BS y USD si no está presente en la estructura guardada
-        foreach (['BS'] as $currKey) {
+        foreach (['BS', 'USD'] as $currKey) {
             if (isset($paymentMethods[$currKey]['methods']) && is_array($paymentMethods[$currKey]['methods'])) {
                 $hasCashea = collect($paymentMethods[$currKey]['methods'])->contains(function ($m) {
                     return ($m['value'] ?? '') === 'cashea';
@@ -135,7 +135,7 @@ class GeneralSettingResource extends JsonResource
                     $paymentMethods[$currKey]['methods'][] = [
                         'label' => 'Cashea (BNPL)',
                         'value' => 'cashea',
-                        'enabled' => true,
+                        'enabled' => (bool) ($this->enable_cashea ?? false),
                         'description' => 'Pago financiado en cuotas con Cashea.',
                     ];
                 }
@@ -231,6 +231,14 @@ class GeneralSettingResource extends JsonResource
             'tpv_style' => $this->tpv_style ?? 'pharmacy',
             'enable_flash_checkout' => (bool) $this->enable_flash_checkout,
             'enable_zoom' => (bool) ($this->enable_zoom ?? false),
+            'enable_cashea' => (bool) ($this->enable_cashea ?? false),
+            'cashea_mode' => $this->cashea_mode ?? 'manual',
+            'cashea_environment' => $this->cashea_environment ?? 'sandbox',
+            'cashea_client_id' => $this->cashea_client_id ?? '',
+            'cashea_public_key' => $this->cashea_public_key ?? '',
+            'cashea_private_key' => $this->cashea_private_key ?? '',
+            'cashea_installments_count' => (int) ($this->cashea_installments_count ?? 3),
+            'cashea_installment_days' => (int) ($this->cashea_installment_days ?? 14),
             'tpv_payment_methods' => $paymentMethods,
             'tpv_rate_type' => $this->tpv_rate_type ?? 'bcv',
             'enabled_offer_types' => $this->enabled_offer_types ?? ['general', 'individual', 'category', 'pack', 'company', 'doctor', 'prescription', 'expiration'],
