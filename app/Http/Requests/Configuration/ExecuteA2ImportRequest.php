@@ -16,9 +16,12 @@ class ExecuteA2ImportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'task_id'   => 'nullable|integer|exists:a2_sync_tasks,id',
-            'suppliers' => 'nullable|array',
-            'products'  => 'nullable|array',
+            'task_id'     => 'nullable|integer|exists:a2_sync_tasks,id',
+            'suppliers'   => 'nullable|array',
+            'payables'    => 'nullable|array',
+            'clients'     => 'nullable|array',
+            'receivables' => 'nullable|array',
+            'products'    => 'nullable|array',
         ];
     }
 }

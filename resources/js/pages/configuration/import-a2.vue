@@ -15,6 +15,7 @@ const a2PreviewData = ref(null)
 const a2SelectedSection = ref('suppliers_payables')
 const a2YearFilter = ref(2026)
 const a2SuppliersEdit = ref([])
+const a2ClientsEdit = ref([])
 const existingSuppliersList = ref([])
 
 // Opciones dinámicas para el VSelect de proveedores
@@ -57,6 +58,7 @@ const onSupplierLinkChange = (sup, selectedId) => {
 const populatePreview = (data) => {
   a2PreviewData.value = data
   a2SuppliersEdit.value = JSON.parse(JSON.stringify(data.suppliers || []))
+  a2ClientsEdit.value = JSON.parse(JSON.stringify(data.clients || []))
   existingSuppliersList.value = data.existing_suppliers || []
   a2PreviewModal.value = true
 }
@@ -116,6 +118,7 @@ const confirmAndExecuteA2Import = async () => {
   try {
     const res = await axios.post('/configuration/data-import/a2/execute-import', {
       suppliers: a2SuppliersEdit.value,
+      clients: a2ClientsEdit.value,
     })
     const stats = res.data?.stats || {}
     a2PreviewModal.value = false
@@ -126,6 +129,12 @@ const confirmAndExecuteA2Import = async () => {
         <div style="text-align:left; font-size:0.95rem; line-height:1.6;">
           <p class="mb-1 text-success"><strong>Proveedores Creados:</strong> ${stats.suppliers_created ?? 0}</p>
           <p class="mb-1 text-primary"><strong>Proveedores Vinculados Existentes:</strong> ${stats.suppliers_linked ?? 0}</p>
+          <p class="mb-1 text-success"><strong>Facturas CXP Importadas:</strong> ${stats.invoices_created ?? 0}</p>
+          <p class="mb-1 text-medium-emphasis"><strong>Facturas Omitidas (Duplicadas):</strong> ${stats.invoices_skipped ?? 0}</p>
+          <hr class="my-2" />
+          <p class="mb-1 text-success"><strong>Clientes Creados:</strong> ${stats.clients_created ?? 0}</p>
+          <p class="mb-1 text-primary"><strong>Clientes Vinculados Existentes:</strong> ${stats.clients_linked ?? 0}</p>
+          <p class="mb-1 text-success"><strong>Cuentas por Cobrar (CXC) Registradas:</strong> ${stats.credits_created ?? 0}</p>
         </div>
       `,
       confirmButtonText: 'Entendido',
@@ -166,7 +175,7 @@ const confirmAndExecuteA2Import = async () => {
             <div class="d-flex flex-column gap-1">
               <span class="font-weight-bold">Conexión con el Puente Autónomo de a2:</span>
               <span class="text-caption">
-                Los datos se leen directamente desde las tablas `.dat` de a2 a través de su servicio local en Python. No se duplican proveedores ya registrados ni productos maestros.
+                Los datos se leen directamente desde las tablas `.dat` de a2 a través de su servicio local en Python. No se duplican proveedores ya registrados ni facturas existentes.
               </span>
             </div>
           </VAlert>
@@ -178,10 +187,10 @@ const confirmAndExecuteA2Import = async () => {
                 <VCardItem>
                   <VCardTitle class="d-flex align-center gap-2 text-subtitle-1">
                     <VIcon icon="tabler-building-bank" color="primary" />
-                    1. Proveedores y Compras (2026)
+                    1. Proveedores y Cuentas por Pagar (2026)
                   </VCardTitle>
                   <VCardSubtitle class="text-caption">
-                    Extrae proveedores de `Sproveedor.dat` y compras de `SOperacionInv.dat` del año 2026 sin duplicar droguerías del Master.
+                    Extrae proveedores de `Sproveedor.dat` y facturas con saldo pendiente de `Scuentasxpagar.dat` sin duplicar.
                   </VCardSubtitle>
                 </VCardItem>
                 <VSpacer />
@@ -229,16 +238,16 @@ const confirmAndExecuteA2Import = async () => {
               </VCard>
             </VCol>
 
-            <!-- Tarjeta 3: Directorio de Clientes -->
+            <!-- Tarjeta 3: Clientes y Cuentas por Cobrar -->
             <VCol cols="12" md="6" class="mt-4">
               <VCard variant="outlined" class="h-100 d-flex flex-column">
                 <VCardItem>
                   <VCardTitle class="d-flex align-center gap-2 text-subtitle-1">
                     <VIcon icon="tabler-users" color="primary" />
-                    3. Clientes (Directorio y Cédulas)
+                    3. Clientes y Cuentas por Cobrar (2026)
                   </VCardTitle>
                   <VCardSubtitle class="text-caption">
-                    Extrae clientes desde `Sclientes.dat` cruzando por cédula/RIF para no duplicar existentes.
+                    Extrae clientes desde `Sclientes.dat` y cuentas por cobrar pendientes desde `Scuentasxcobrar.dat`.
                   </VCardSubtitle>
                 </VCardItem>
                 <VSpacer />
@@ -313,55 +322,97 @@ const confirmAndExecuteA2Import = async () => {
             />
           </VCardTitle>
           <VCardSubtitle class="text-caption">
-            Verifique la homologación de proveedores y productos contra el Catálogo Maestro y Tenant antes de guardar.
+            Verifique la homologación de proveedores, facturas CXP y cuentas por cobrar antes de guardar.
           </VCardSubtitle>
         </VCardItem>
 
         <VCardText class="pt-2">
-          <!-- Resumen Métricas -->
-          <VRow class="mb-4">
-            <VCol cols="12" sm="4">
+          <!-- Resumen Métricas Proveedores y CXP -->
+          <VRow class="mb-4" v-if="a2SelectedSection === 'suppliers_payables'">
+            <VCol cols="12" sm="3">
               <div class="pa-3 bg-surface rounded text-center border">
                 <div class="text-caption text-medium-emphasis">Proveedores en a2</div>
                 <div class="text-h6 font-weight-bold text-primary">{{ a2PreviewData?.summary?.total_suppliers ?? 0 }}</div>
               </div>
             </VCol>
-            <VCol cols="12" sm="4">
+            <VCol cols="12" sm="3">
               <div class="pa-3 bg-surface rounded text-center border">
-                <div class="text-caption text-medium-emphasis">Vinculados a Existentes (Sin Duplicar)</div>
+                <div class="text-caption text-medium-emphasis">Vinculados Existentes</div>
                 <div class="text-h6 font-weight-bold text-success">{{ a2PreviewData?.summary?.suppliers_matched ?? 0 }}</div>
               </div>
             </VCol>
-            <VCol cols="12" sm="4">
+            <VCol cols="12" sm="3">
               <div class="pa-3 bg-surface rounded text-center border">
-                <div class="text-caption text-medium-emphasis">A Registrar como Nuevos</div>
-                <div class="text-h6 font-weight-bold text-warning">{{ a2PreviewData?.summary?.suppliers_new ?? 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Facturas CXP Pendientes</div>
+                <div class="text-h6 font-weight-bold text-info">{{ a2PreviewData?.summary?.total_payables ?? 0 }}</div>
+              </div>
+            </VCol>
+            <VCol cols="12" sm="3">
+              <div class="pa-3 bg-surface rounded text-center border">
+                <div class="text-caption text-medium-emphasis">Monto Total CXP (USD)</div>
+                <div class="text-h6 font-weight-bold text-warning">${{ Number(a2PreviewData?.summary?.total_payables_usd ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</div>
               </div>
             </VCol>
           </VRow>
 
-          <!-- Tabla de Proveedores a2 -->
-          <VCard variant="outlined" class="mb-4">
+          <!-- Resumen Métricas Clientes y CXC -->
+          <VRow class="mb-4" v-if="a2SelectedSection === 'clients'">
+            <VCol cols="12" sm="3">
+              <div class="pa-3 bg-surface rounded text-center border">
+                <div class="text-caption text-medium-emphasis">Clientes en a2</div>
+                <div class="text-h6 font-weight-bold text-primary">{{ a2PreviewData?.summary?.total_clients ?? 0 }}</div>
+              </div>
+            </VCol>
+            <VCol cols="12" sm="3">
+              <div class="pa-3 bg-surface rounded text-center border">
+                <div class="text-caption text-medium-emphasis">Clientes Coincidentes</div>
+                <div class="text-h6 font-weight-bold text-success">{{ a2PreviewData?.summary?.clients_matched ?? 0 }}</div>
+              </div>
+            </VCol>
+            <VCol cols="12" sm="3">
+              <div class="pa-3 bg-surface rounded text-center border">
+                <div class="text-caption text-medium-emphasis">Cuentas por Cobrar</div>
+                <div class="text-h6 font-weight-bold text-info">{{ a2PreviewData?.summary?.total_receivables ?? 0 }}</div>
+              </div>
+            </VCol>
+            <VCol cols="12" sm="3">
+              <div class="pa-3 bg-surface rounded text-center border">
+                <div class="text-caption text-medium-emphasis">Saldo por Cobrar (VES)</div>
+                <div class="text-h6 font-weight-bold text-warning">{{ Number(a2PreviewData?.summary?.total_receivables_ves ?? 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} Bs</div>
+              </div>
+            </VCol>
+          </VRow>
+
+          <!-- Tabla de Proveedores y Facturas CXP -->
+          <VCard variant="outlined" class="mb-4" v-if="a2SelectedSection === 'suppliers_payables'">
             <VCardItem class="pb-2">
               <VCardTitle class="text-subtitle-2 font-weight-bold">
-                Mapeo de Proveedores a2 ➔ ERP (Editable)
+                Mapeo de Proveedores y Cuentas por Pagar (CXP)
               </VCardTitle>
             </VCardItem>
             <VTable density="compact" class="text-caption">
               <thead>
                 <tr>
-                  <th style="width: 130px;">RIF a2</th>
-                  <th style="width: 250px;">Nombre a2</th>
-                  <th style="width: 140px;">Teléfono</th>
-                  <th style="width: 180px;">Estado de Coincidencia</th>
-                  <th style="min-width: 320px;">Vincular con Proveedor Existente o Nuevo</th>
+                  <th style="width: 120px;">RIF a2</th>
+                  <th style="width: 230px;">Nombre a2</th>
+                  <th style="width: 130px;">Facturas CXP</th>
+                  <th style="width: 150px;">Saldo Pendiente</th>
+                  <th style="width: 150px;">Coincidencia</th>
+                  <th style="min-width: 280px;">Destino en ERP</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(sup, idx) in a2SuppliersEdit" :key="idx">
                   <td>{{ sup.a2_rif || 'N/A' }}</td>
                   <td class="font-weight-medium">{{ sup.a2_name }}</td>
-                  <td>{{ sup.a2_phone || '-' }}</td>
+                  <td>
+                    <VChip size="x-small" color="info" variant="tonal">
+                      {{ (sup.invoices || []).length }} facturas
+                    </VChip>
+                  </td>
+                  <td class="font-weight-bold text-warning">
+                    ${{ Number(sup.total_pending_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+                  </td>
                   <td>
                     <VChip
                       size="x-small"
@@ -383,6 +434,51 @@ const confirmAndExecuteA2Import = async () => {
                       class="text-caption"
                       @update:model-value="(val) => onSupplierLinkChange(sup, val)"
                     />
+                  </td>
+                </tr>
+              </tbody>
+            </VTable>
+          </VCard>
+
+          <!-- Tabla de Clientes y Cuentas por Cobrar (CXC) -->
+          <VCard variant="outlined" class="mb-4" v-if="a2SelectedSection === 'clients'">
+            <VCardItem class="pb-2">
+              <VCardTitle class="text-subtitle-2 font-weight-bold">
+                Directorio de Clientes y Cuentas por Cobrar (CXC)
+              </VCardTitle>
+            </VCardItem>
+            <VTable density="compact" class="text-caption">
+              <thead>
+                <tr>
+                  <th style="width: 120px;">Código/Cédula</th>
+                  <th style="width: 250px;">Nombre Cliente</th>
+                  <th style="width: 120px;">Teléfono</th>
+                  <th style="width: 120px;">Documentos CXC</th>
+                  <th style="width: 150px;">Saldo Pendiente</th>
+                  <th style="width: 150px;">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(cli, idx) in a2ClientsEdit" :key="idx">
+                  <td>{{ cli.identification || cli.code }}</td>
+                  <td class="font-weight-medium">{{ cli.name }}</td>
+                  <td>{{ cli.phone || '-' }}</td>
+                  <td>
+                    <VChip size="x-small" color="info" variant="tonal">
+                      {{ (cli.receivables || []).length }} docs
+                    </VChip>
+                  </td>
+                  <td class="font-weight-bold text-warning">
+                    {{ Number(cli.total_pending_amount || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 }) }} Bs
+                  </td>
+                  <td>
+                    <VChip
+                      size="x-small"
+                      :color="cli.is_matched ? 'success' : 'primary'"
+                      variant="tonal"
+                    >
+                      {{ cli.is_matched ? 'Existente en ERP' : 'Nuevo Cliente' }}
+                    </VChip>
                   </td>
                 </tr>
               </tbody>

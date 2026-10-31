@@ -32,7 +32,6 @@ class A2DataImportController extends Controller
         // Si tenemos la carpeta local en el servidor, procesamos de inmediato
         $localDataDir = base_path('A2/GEST - copia/GEST - copia/Empre001/Data');
         if (file_exists($localDataDir)) {
-            $cmd = "python " . base_path('a2_extractor_service.py');
             // Usar extractor nativo directamente
             $extracted = [];
             $output = [];
@@ -45,12 +44,14 @@ data_dir = r'{$localDataDir}'
 result = {}
 if '{$section}' in ['suppliers_payables', 'all']:
     result['suppliers'] = a2.extract_suppliers(data_dir)
+    result['payables'] = a2.extract_payables(data_dir, {$year})
 if '{$section}' in ['products_lots', 'all']:
     result['products'] = a2.extract_products(data_dir)
-if '{$section}' in ['operations', 'suppliers_payables', 'all']:
+if '{$section}' in ['operations', 'sales', 'all']:
     result['operations'] = a2.extract_operations(data_dir, {$year})
-if '{$section}' in ['clients', 'all']:
+if '{$section}' in ['clients', 'receivables', 'all']:
     result['clients'] = a2.extract_clients(data_dir)
+    result['receivables'] = a2.extract_receivables(data_dir, {$year})
 if '{$section}' in ['sales', 'all']:
     result['sales'] = a2.extract_sales(data_dir, {$year})
 print(json.dumps(result))

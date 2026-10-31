@@ -75,14 +75,19 @@ def poll_and_process():
                     
                     extracted = {}
                     if section in ["suppliers_payables", "all"]:
-                        print(" -> Extrayendo Proveedores...")
+                        print(" -> Extrayendo Proveedores y Cuentas por Pagar...")
                         extracted["suppliers"] = a2.extract_suppliers(data_dir)
+                        extracted["payables"] = a2.extract_payables(data_dir, year)
                     if section in ["products_lots", "all"]:
                         print(" -> Extrayendo Productos e Inventario...")
                         extracted["products"] = a2.extract_products(data_dir)
-                    if section in ["operations", "suppliers_payables", "sales", "all"]:
+                    if section in ["operations", "sales", "all"]:
                         print(f" -> Extrayendo Operaciones del año {year}...")
                         extracted["operations"] = a2.extract_operations(data_dir, year)
+                    if section in ["clients", "receivables", "all"]:
+                        print(" -> Extrayendo Clientes y Cuentas por Cobrar...")
+                        extracted["clients"] = a2.extract_clients(data_dir)
+                        extracted["receivables"] = a2.extract_receivables(data_dir, year)
                         
                     # 2. Responder con los datos a la API para generar la previsualización
                     submit_endpoint = f"{api_url}/configuration/data-import/a2/submit-task/{task_id}"
