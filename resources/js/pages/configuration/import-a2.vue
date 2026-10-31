@@ -381,7 +381,7 @@ const confirmAndExecuteA2Import = async () => {
           </VRow>
 
           <!-- Resumen Métricas Clientes y CXC -->
-          <VRow class="mb-4" v-if="a2SelectedSection === 'clients'">
+          <VRow class="mb-4" v-if="a2SelectedSection === 'clients' || a2SelectedSection === 'clients_receivables'">
             <VCol cols="12" sm="3">
               <div class="pa-3 bg-surface rounded text-center border">
                 <div class="text-caption text-medium-emphasis">Clientes en a2</div>
@@ -527,7 +527,7 @@ const confirmAndExecuteA2Import = async () => {
           </VCard>
 
           <!-- Tabla de Clientes y Cuentas por Cobrar (CXC) -->
-          <VCard variant="outlined" class="mb-4" v-if="a2SelectedSection === 'clients'">
+          <VCard variant="outlined" class="mb-4" style="max-height: 480px; overflow-y: auto;" v-if="a2SelectedSection === 'clients' || a2SelectedSection === 'clients_receivables'">
             <VCardItem class="pb-2">
               <VCardTitle class="text-subtitle-2 font-weight-bold">
                 Directorio de Clientes y Cuentas por Cobrar (CXC)

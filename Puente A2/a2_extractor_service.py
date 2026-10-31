@@ -325,31 +325,63 @@ def extract_receivables(a2_data_dir: str, target_year: int = 2026):
     return receivables
 
 def extract_clients(a2_data_dir: str):
+    clients_map = {}
+
+    # 1. Clientes habituales / credito (Sclientes.dat)
     cli_path = os.path.join(a2_data_dir, "Sclientes.dat")
-    if not os.path.exists(cli_path):
-        return []
-    table = DBISAMTable(cli_path)
-    # Longitud de registro de clientes en a2
-    record_len = 3120
-    clients = []
-    with open(cli_path, "rb") as fp:
-        fp.seek(table.header_size)
-        while True:
-            rec = fp.read(record_len)
-            if len(rec) < record_len:
-                break
-            code = DBISAMTable.decode_str(rec, 25, 30)
-            name = DBISAMTable.decode_str(rec, 57, 100)
-            phone = DBISAMTable.decode_str(rec, 267, 40)
-            address = DBISAMTable.decode_str(rec, 239, 60)
-            if code or name:
-                clients.append({
-                    "code": code,
-                    "name": name,
-                    "phone": phone,
-                    "address": address
-                })
-    return clients
+    if os.path.exists(cli_path):
+        table = DBISAMTable(cli_path)
+        record_len = 3120
+        with open(cli_path, "rb") as fp:
+            fp.seek(table.header_size)
+            while True:
+                rec = fp.read(record_len)
+                if len(rec) < record_len:
+                    break
+                code = DBISAMTable.decode_str(rec, 25, 30)
+                name = DBISAMTable.decode_str(rec, 57, 100)
+                phone = DBISAMTable.decode_str(rec, 245, 40)
+                address = DBISAMTable.decode_str(rec, 285, 60)
+                if code or name:
+                    key = code.upper().replace("-", "").replace(".", "").replace(" ", "")
+                    clients_map[key] = {
+                        "code": code,
+                        "name": name,
+                        "phone": phone if phone != "N/S" else "",
+                        "address": address if address != "N/S" else ""
+                    }
+
+    # 2. Clientes eventuales / mostrador (SclientesEventuales.dat)
+    event_path = os.path.join(a2_data_dir, "SclientesEventuales.dat")
+    if os.path.exists(event_path):
+        table_ev = DBISAMTable(event_path)
+        rec_len = 544
+        with open(event_path, "rb") as fp:
+            fp.seek(table_ev.header_size)
+            while True:
+                rec = fp.read(rec_len)
+                if len(rec) < rec_len:
+                    break
+                code = rec[26:56].split(b"\x00")[0].decode("latin1", errors="ignore").strip()
+                name = rec[58:138].split(b"\x00")[0].decode("latin1", errors="ignore").strip()
+                address = rec[140:240].split(b"\x00")[0].decode("latin1", errors="ignore").strip()
+                phone = rec[392:432].split(b"\x00")[0].decode("latin1", errors="ignore").strip()
+                if code or name:
+                    key = code.upper().replace("-", "").replace(".", "").replace(" ", "")
+                    if key not in clients_map:
+                        clients_map[key] = {
+                            "code": code,
+                            "name": name,
+                            "phone": phone if phone != "N/S" else "",
+                            "address": address if address != "N/S" else ""
+                        }
+                    else:
+                        if not clients_map[key].get("phone") and phone and phone != "N/S":
+                            clients_map[key]["phone"] = phone
+                        if not clients_map[key].get("address") and address and address != "N/S":
+                            clients_map[key]["address"] = address
+
+    return list(clients_map.values())
 
 def extract_sales(a2_data_dir: str, target_year: int = 2026):
     # En SOperacionInv, op_type 1001 o 1002 corresponden a ventas

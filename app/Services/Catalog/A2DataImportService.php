@@ -645,86 +645,92 @@ class A2DataImportService
 
             // 2. Procesar Clientes y Cuentas por Cobrar (CXC en Credit)
             foreach ($clientsData as $c) {
-                $clientId = !empty($c['existing_id']) ? (int)$c['existing_id'] : null;
-                $cleanIdent = trim((string)($c['identification'] ?? ''));
-                $clientName = trim((string)($c['name'] ?? 'Cliente a2'));
+                try {
+                    $clientId = !empty($c['existing_id']) ? (int)$c['existing_id'] : null;
+                    $cleanIdent = trim((string)($c['identification'] ?? ($c['code'] ?? '')));
+                    $clientName = trim((string)($c['name'] ?? 'Cliente a2'));
 
-                if (!$clientId && !empty($cleanIdent)) {
-                    $existingClient = Client::where('identification', $cleanIdent)->first();
-                    if ($existingClient) {
-                        $clientId = $existingClient->id;
-                        $stats['clients_linked']++;
-                    } else {
-                        $identType = 'V-';
-                        if (str_starts_with($cleanIdent, 'J') || str_starts_with($cleanIdent, 'G')) {
-                            $identType = substr($cleanIdent, 0, 1) . '-';
+                    if (!$clientId && !empty($cleanIdent)) {
+                        $existingClient = Client::where('identification', $cleanIdent)->first();
+                        if ($existingClient) {
+                            $clientId = $existingClient->id;
+                            $stats['clients_linked']++;
+                        } else {
+                            $identType = 'V-';
+                            if (str_starts_with($cleanIdent, 'J') || str_starts_with($cleanIdent, 'G')) {
+                                $identType = substr($cleanIdent, 0, 1) . '-';
+                            } elseif (str_starts_with($cleanIdent, 'E')) {
+                                $identType = 'E-';
+                            }
+                            $client = Client::create([
+                                'identification_type' => $identType,
+                                'identification' => $cleanIdent,
+                                'name' => $clientName,
+                                'phone' => !empty($c['phone']) ? trim((string)$c['phone']) : null,
+                                'address' => !empty($c['address']) ? trim((string)$c['address']) : null,
+                                'client_type' => Client::CLIENT_TYPE_NUEVO,
+                                'status' => 1,
+                                'user_id' => $currentUserId,
+                                'balance' => 0.0,
+                                'is_spe' => false,
+                            ]);
+                            $clientId = $client->id;
+                            $stats['clients_created']++;
                         }
-                        $client = Client::create([
-                            'identification_type' => $identType,
-                            'identification' => $cleanIdent,
-                            'name' => $clientName,
-                            'phone' => !empty($c['phone']) ? trim((string)$c['phone']) : null,
-                            'address' => !empty($c['address']) ? trim((string)$c['address']) : null,
-                            'client_type' => Client::CLIENT_TYPE_NUEVO,
-                            'status' => 1,
-                            'user_id' => $currentUserId,
-                            'balance' => 0.0,
-                            'is_spe' => false,
+                    } elseif ($clientId) {
+                        $stats['clients_linked']++;
+                    }
+
+                    if (!$clientId) {
+                        continue;
+                    }
+
+                    // Cuentas por cobrar asociadas al cliente
+                    $receivables = $c['receivables'] ?? [];
+                    $addedBalance = 0.0;
+
+                    foreach ($receivables as $rcv) {
+                        $docNum = trim((string)($rcv['invoice_number'] ?? ''));
+                        if (empty($docNum)) {
+                            continue;
+                        }
+
+                        $exists = Credit::where('client_id', $clientId)
+                            ->where('invoice_number', $docNum)
+                            ->exists();
+
+                        if ($exists) {
+                            $stats['credits_skipped']++;
+                            continue;
+                        }
+
+                        $issueDate = !empty($rcv['issue_date']) ? Carbon::parse($rcv['issue_date'])->format('Y-m-d') : Carbon::now()->format('Y-m-d');
+                        $dueDate = !empty($rcv['due_date']) ? Carbon::parse($rcv['due_date'])->format('Y-m-d') : Carbon::parse($issueDate)->addDays(15)->format('Y-m-d');
+                        $totalAmt = (float)($rcv['total_amount'] ?? 0.0);
+                        $pendingAmt = (float)($rcv['pending_amount'] ?? $totalAmt);
+
+                        Credit::create([
+                            'client_id' => $clientId,
+                            'invoice_number' => $docNum,
+                            'credit_amount' => $totalAmt,
+                            'pending_amount' => $pendingAmt,
+                            'credit_date' => $issueDate,
+                            'next_due_date' => $dueDate,
+                            'status' => 'pending',
+                            'credit_type' => 'standard',
+                            'exchange_rate_issue' => 1.0,
+                            'is_indexed' => false,
                         ]);
-                        $clientId = $client->id;
-                        $stats['clients_created']++;
-                    }
-                } elseif ($clientId) {
-                    $stats['clients_linked']++;
-                }
 
-                if (!$clientId) {
-                    continue;
-                }
-
-                // Cuentas por cobrar asociadas al cliente
-                $receivables = $c['receivables'] ?? [];
-                $addedBalance = 0.0;
-
-                foreach ($receivables as $rcv) {
-                    $docNum = trim((string)($rcv['invoice_number'] ?? ''));
-                    if (empty($docNum)) {
-                        continue;
+                        $stats['credits_created']++;
+                        $addedBalance += $pendingAmt;
                     }
 
-                    $exists = Credit::where('client_id', $clientId)
-                        ->where('invoice_number', $docNum)
-                        ->exists();
-
-                    if ($exists) {
-                        $stats['credits_skipped']++;
-                        continue;
+                    if ($addedBalance > 0) {
+                        Client::where('id', $clientId)->increment('balance', $addedBalance);
                     }
-
-                    $issueDate = !empty($rcv['issue_date']) ? Carbon::parse($rcv['issue_date'])->format('Y-m-d') : Carbon::now()->format('Y-m-d');
-                    $dueDate = !empty($rcv['due_date']) ? Carbon::parse($rcv['due_date'])->format('Y-m-d') : Carbon::parse($issueDate)->addDays(15)->format('Y-m-d');
-                    $totalAmt = (float)($rcv['total_amount'] ?? 0.0);
-                    $pendingAmt = (float)($rcv['pending_amount'] ?? $totalAmt);
-
-                    Credit::create([
-                        'client_id' => $clientId,
-                        'invoice_number' => $docNum,
-                        'credit_amount' => $totalAmt,
-                        'pending_amount' => $pendingAmt,
-                        'credit_date' => $issueDate,
-                        'next_due_date' => $dueDate,
-                        'status' => 'pending',
-                        'credit_type' => 'standard',
-                        'exchange_rate_issue' => 1.0,
-                        'is_indexed' => false,
-                    ]);
-
-                    $stats['credits_created']++;
-                    $addedBalance += $pendingAmt;
-                }
-
-                if ($addedBalance > 0) {
-                    Client::where('id', $clientId)->increment('balance', $addedBalance);
+                } catch (\Throwable $ce) {
+                    Log::warning("Error importando cliente de a2: " . $ce->getMessage());
                 }
             }
 
