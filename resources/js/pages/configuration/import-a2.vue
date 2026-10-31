@@ -55,10 +55,13 @@ const onSupplierLinkChange = (sup, selectedId) => {
   }
 }
 
+const a2ProductsEdit = ref([])
+
 const populatePreview = (data) => {
   a2PreviewData.value = data
   a2SuppliersEdit.value = JSON.parse(JSON.stringify(data.suppliers || []))
   a2ClientsEdit.value = JSON.parse(JSON.stringify(data.clients || []))
+  a2ProductsEdit.value = JSON.parse(JSON.stringify(data.products_sample || data.products || []))
   existingSuppliersList.value = data.existing_suppliers || []
   a2PreviewModal.value = true
 }
@@ -434,6 +437,67 @@ const confirmAndExecuteA2Import = async () => {
                       class="text-caption"
                       @update:model-value="(val) => onSupplierLinkChange(sup, val)"
                     />
+                  </td>
+                </tr>
+              </tbody>
+            </VTable>
+          </VCard>
+
+          <!-- Resumen Métricas Productos e Inventario -->
+          <VRow class="mb-4" v-if="a2SelectedSection === 'products_lots'">
+            <VCol cols="12" sm="4">
+              <div class="pa-3 bg-surface rounded text-center border">
+                <div class="text-caption text-medium-emphasis">Productos en a2</div>
+                <div class="text-h6 font-weight-bold text-primary">{{ a2PreviewData?.summary?.total_products ?? 0 }}</div>
+              </div>
+            </VCol>
+            <VCol cols="12" sm="4">
+              <div class="pa-3 bg-surface rounded text-center border">
+                <div class="text-caption text-medium-emphasis">Homologados con Catálogo Maestro</div>
+                <div class="text-h6 font-weight-bold text-success">{{ a2PreviewData?.summary?.products_matched_master ?? 0 }}</div>
+              </div>
+            </VCol>
+            <VCol cols="12" sm="4">
+              <div class="pa-3 bg-surface rounded text-center border">
+                <div class="text-caption text-medium-emphasis">Nuevos por Registrar</div>
+                <div class="text-h6 font-weight-bold text-warning">
+                  {{ (a2PreviewData?.summary?.total_products ?? 0) - (a2PreviewData?.summary?.products_matched_master ?? 0) }}
+                </div>
+              </div>
+            </VCol>
+          </VRow>
+
+          <!-- Tabla de Productos a2 -->
+          <VCard variant="outlined" class="mb-4" v-if="a2SelectedSection === 'products_lots'">
+            <VCardItem class="pb-2">
+              <VCardTitle class="text-subtitle-2 font-weight-bold">
+                Muestra de Productos extraídos de Sinventario.dat
+              </VCardTitle>
+            </VCardItem>
+            <VTable density="compact" class="text-caption">
+              <thead>
+                <tr>
+                  <th style="width: 130px;">Código</th>
+                  <th style="min-width: 280px;">Nombre del Producto</th>
+                  <th style="width: 180px;">Categoría</th>
+                  <th style="width: 150px;">Laboratorio Master</th>
+                  <th style="width: 160px;">Estado de Coincidencia</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(p, idx) in a2ProductsEdit" :key="idx">
+                  <td class="font-weight-medium">{{ p.code }}</td>
+                  <td>{{ p.name }}</td>
+                  <td>{{ p.category || '-' }}</td>
+                  <td>{{ p.laboratory || '-' }}</td>
+                  <td>
+                    <VChip
+                      size="x-small"
+                      :color="p.master_matched ? 'success' : 'primary'"
+                      variant="tonal"
+                    >
+                      {{ p.master_matched ? 'Match Catálogo Maestro' : 'Producto Nuevo' }}
+                    </VChip>
                   </td>
                 </tr>
               </tbody>

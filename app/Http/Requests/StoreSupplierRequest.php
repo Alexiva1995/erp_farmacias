@@ -39,6 +39,13 @@ class StoreSupplierRequest extends FormRequest
                 'order_days' => [],
             ]);
         }
+
+        if (empty($this->payment_due_type)) {
+            $this->merge([
+                'payment_due_type' => 'invoice_date',
+                'invoice_date_reference' => 'issue_date',
+            ]);
+        }
     }
 
     /**
@@ -89,12 +96,10 @@ class StoreSupplierRequest extends FormRequest
             'payment_method' => ['nullable', 'in:Bs,Divisas'],
             'cash_payment' => ['boolean'],
             'charges_igtf' => ['boolean'],
-            //'supplier_payment_method' => 'required|string',
-            //'supplier_payment_days' => 'sometimes|numeric|min:0',
-            'payment_due_type' => 'required|in:invoice_date,early_payment,custom',
-            'custom_due_days' => 'nullable|required_if:payment_due_type,custom|integer|min:1',
-            'payment_due_reference' => 'required_if:payment_due_type,early_payment|in:issue_date,receipt_date',
-            'invoice_date_reference' => 'nullable|required_if:payment_due_type,invoice_date|in:receipt_date,expiration_date,issue_date',
+            'payment_due_type' => ['sometimes', 'nullable', 'in:invoice_date,early_payment,custom'],
+            'custom_due_days' => ['nullable', 'required_if:payment_due_type,custom', 'integer', 'min:1'],
+            'payment_due_reference' => ['nullable', 'required_if:payment_due_type,early_payment', 'in:issue_date,receipt_date'],
+            'invoice_date_reference' => ['nullable', 'required_if:payment_due_type,invoice_date', 'in:receipt_date,expiration_date,issue_date'],
         ];
     }
 

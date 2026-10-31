@@ -41,7 +41,7 @@ class SupplierResource extends JsonResource
             'latest_score_value' => $this->latest_score_value,
             'is_indexed' => (bool) $this->is_indexed,
             'is_active' => (bool) ($this->is_active ?? true),
-            'type' => $this->type,
+            'type' => $this->type instanceof \App\Enums\SupplierType ? $this->type->value : ($this->type ?? 'drogueria'),
             'score_breakdown' => $this->score_breakdown,
             'last_sync_at' => $this->connection?->last_connection ?? ($this->relationLoaded('connections') ? $this->connections->max('last_connection') : null),
             'created_at' => $this->created_at,

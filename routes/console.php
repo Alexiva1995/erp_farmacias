@@ -10,12 +10,14 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('master-catalog:init {--source-db= : Base de datos origen alternativa} {--clean : Vaciar las tablas del maestro antes de importar}', function () {
+Artisan::command('master-catalog:init {--source-db= : Base de datos origen alternativa} {--source-user= : Usuario MySQL opcional} {--source-pass= : Contraseña MySQL opcional} {--clean : Vaciar las tablas del maestro antes de importar}', function () {
     $this->call(\App\Console\Commands\InitMasterCatalogCommand::class, [
-        '--source-db' => $this->option('source-db'),
-        '--clean' => $this->option('clean'),
+        '--source-db'   => $this->option('source-db'),
+        '--source-user' => $this->option('source-user'),
+        '--source-pass' => $this->option('source-pass'),
+        '--clean'       => $this->option('clean'),
     ]);
-})->purpose('Crea la estructura de tablas y puebla la base de datos tovaerp_master desde la base central o la base indicada');
+})->purpose('Unifica en tovaerp_master los catálogos de la central y TODOS los tenants, y homologa todos los IDs y llaves foráneas en cascada');
 
 // Helper para ejecutar comandos tanto en BD local/central como en tenants si existen
 $scheduleTenantAware = function (string $command, callable $scheduleConfig) {

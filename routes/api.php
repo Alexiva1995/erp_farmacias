@@ -1341,7 +1341,7 @@ Route::prefix('central/tenants')->group(function () {
 
 // Rutas Públicas de Menú QR en Mesa (Fase 5)
 // Rutas de Vertical Droguería (Mayorista B2B, Cartera, Marketplace y WMS)
-Route::prefix('wholesale')->group(function () {
+Route::prefix('wholesale')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // Cartera y Asignaciones
     Route::get('portfolio', [\App\Http\Controllers\Api\Wholesale\PortfolioController::class, 'index']);
     Route::get('portfolio/metrics', [\App\Http\Controllers\Api\Wholesale\PortfolioController::class, 'metrics']);

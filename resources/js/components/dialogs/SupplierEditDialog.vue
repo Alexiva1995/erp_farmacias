@@ -158,14 +158,12 @@ const submitForm = () => {
   }
 
   if (isNewSupplier.value) {
+    const cleanData = { ...current };
+    delete cleanData.id;
     if (isRestaurant.value) {
-      emit("save", {
-        ...current,
-        type: "externo",
-      });
-    } else {
-      emit("save", { ...current });
+      cleanData.type = "externo";
     }
+    emit("save", cleanData);
   } else {
     // Si la razón social tiene valor y no está en el payload, incluirla para consistencia
     if (current.social_reason && payload.social_reason === undefined) {

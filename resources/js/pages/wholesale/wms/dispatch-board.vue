@@ -79,6 +79,8 @@ const fetchOrders = async () => {
     const { data } = await axios.get('/wholesale/wms/orders', { params })
     orders.value = data.data?.data || data.data || []
   } catch (error) {
+    console.error('Error al cargar órdenes WMS:', error)
+    orders.value = []
     toast.error('Error al cargar el tablero de almacén WMS')
   } finally {
     isLoading.value = false
@@ -113,12 +115,13 @@ const openOperationModal = (order, mode) => {
   packingForm.packages_count = Number(order.packages_count || 1) || 1
   packingForm.cold_boxes_count = Number(order.cold_boxes_count || 0)
   packingForm.delivery_route_id = order.delivery_route_id || null
-  packingForm.items = (order.order_details || []).map(detail => ({
+  const details = order.order_details || order.details || []
+  packingForm.items = details.map(detail => ({
     order_detail_id: detail.id,
-    product_name: detail.product?.name || `Producto #${detail.product_id}`,
-    barcode: detail.product?.barcode || 'S/C',
-    lot_number: detail.product_lot?.lot_number || 'FEFO Automático',
-    expiration_date: detail.product_lot?.expiration_date || 'N/A',
+    product_name: detail.product?.name || detail.product_name || `Producto #${detail.product_id}`,
+    barcode: detail.product?.barcode || detail.barcode || 'S/C',
+    lot_number: detail.product_lot?.lot_number || detail.lot?.lot_number || 'FEFO Automático',
+    expiration_date: detail.product_lot?.expiration_date || detail.lot?.expiration_date || 'N/A',
     requested_quantity: Number(detail.quantity),
     picked_quantity: Number(detail.picked_quantity || detail.quantity),
     checked_quantity: Number(detail.checked_quantity || detail.picked_quantity || detail.quantity),
@@ -281,7 +284,7 @@ onMounted(async () => {
                   {{ order.client?.name || 'Farmacia Cliente' }}
                 </div>
                 <div class="text-caption text-medium-emphasis">
-                  {{ order.client?.identification_number }}
+                  {{ order.client?.identification || order.client?.identification_number || '' }}
                 </div>
               </td>
               <td>
@@ -293,7 +296,7 @@ onMounted(async () => {
                 {{ order.delivery_route?.name || 'Por asignar ruta' }}
               </td>
               <td class="text-center">
-                <div>{{ (order.order_details || []).length }} ítems</div>
+                <div>{{ (order.order_details || order.details || []).length }} ítems</div>
                 <div v-if="order.packages_count > 0" class="text-caption font-weight-medium text-primary">
                   {{ order.packages_count }} cajas / {{ order.cold_boxes_count || 0 }} cavas
                 </div>
@@ -304,7 +307,7 @@ onMounted(async () => {
                 </VChip>
               </td>
               <td class="text-right font-weight-bold">
-                ${{ Number(order.total || 0).toFixed(2) }}
+                ${{ Number(order.total || order.total_amount || 0).toFixed(2) }}
               </td>
               <td class="text-center">
                 <VBtn

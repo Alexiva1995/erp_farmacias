@@ -79,12 +79,24 @@ class SupplierController extends Controller
      */
     public function store(StoreSupplierRequest $request)
     {
-        $supplier = $this->supplierActionService->createSupplier($request->validated());
+        try {
+            $supplier = $this->supplierActionService->createSupplier($request->validated());
 
-        return (new SupplierResource($supplier))
-            ->additional(['message' => 'Proveedor creado con éxito.'])
-            ->response()
-            ->setStatusCode(201);
+            return (new SupplierResource($supplier))
+                ->additional(['message' => 'Proveedor creado con éxito.'])
+                ->response()
+                ->setStatusCode(201);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error al registrar proveedor: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->all(),
+            ]);
+
+            return response()->json([
+                'message' => 'Hubo un error al registrar el proveedor: ' . $e->getMessage(),
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

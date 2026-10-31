@@ -1,5 +1,5 @@
 {
-    "api_base_url": "https://erp_farmacias.test/api",
+    "api_base_url": "https://alkosto.tovaerp.com/api",
     "api_token": "",
     "a2_data_dir": "C:\\laragon\\www\\erp_farmacias\\A2\\GEST - copia\\GEST - copia\\Empre001\\Data",
     "polling_interval": 3,
