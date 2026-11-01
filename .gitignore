@@ -96,3 +96,7 @@ famco.sql
 /scratch
 *.xls
 *.xlsx
+
+# Python PyInstaller artifacts
+/build/
+*.spec
