@@ -208,7 +208,7 @@ const getProductLocations = (item) => {
       <!-- Modo Maestro: sin barra ni categoría -->
 
       <!-- Caja compacta de Stock y P.V.P -->
-      <div v-else class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
+      <div v-if="mode !== 'master'" class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
         <div class="d-flex align-center gap-2">
           <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Stock:</span>
           <span :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'" class="text-xs font-weight-bold">
