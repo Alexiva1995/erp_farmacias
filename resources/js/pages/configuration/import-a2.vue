@@ -56,12 +56,14 @@ const onSupplierLinkChange = (sup, selectedId) => {
 }
 
 const a2ProductsEdit = ref([])
+const a2SalesEdit = ref([])
 
 const populatePreview = (data) => {
   a2PreviewData.value = data
   a2SuppliersEdit.value = JSON.parse(JSON.stringify(data.suppliers || []))
   a2ClientsEdit.value = JSON.parse(JSON.stringify(data.clients || []))
   a2ProductsEdit.value = JSON.parse(JSON.stringify(data.products_sample || data.products || []))
+  a2SalesEdit.value = JSON.parse(JSON.stringify(data.sales_sample || data.operations_sample || []))
   existingSuppliersList.value = data.existing_suppliers || []
   a2PreviewModal.value = true
 }
@@ -145,6 +147,14 @@ const confirmAndExecuteA2Import = async () => {
           <p class="mb-1 text-primary"><strong>Clientes Vinculados:</strong> ${stats.clients_linked ?? 0}</p>
           <p class="mb-1 text-success"><strong>Cuentas por Cobrar (CXC):</strong> ${stats.credits_created ?? 0}</p>
           <p class="mb-1 text-medium-emphasis"><strong>CXC Omitidas (Duplicadas):</strong> ${stats.credits_skipped ?? 0}</p>
+        </div>
+      `
+    } else if (a2SelectedSection.value === 'sales' || a2SelectedSection.value === 'operations') {
+      htmlContent = `
+        <div style="text-align:left; font-size:0.95rem; line-height:1.6;">
+          <p class="mb-1 text-success"><strong>Operaciones 2026 Auditadas:</strong> ${a2PreviewData.value?.summary?.total_operations_year ?? 0}</p>
+          <p class="mb-1 text-primary"><strong>Ventas Facturadas:</strong> ${a2PreviewData.value?.summary?.total_sales_year ?? 0}</p>
+          <p class="mb-1 text-info"><strong>Estado:</strong> Transacciones validadas en el puente</p>
         </div>
       `
     } else {
@@ -347,7 +357,7 @@ const confirmAndExecuteA2Import = async () => {
             />
           </VCardTitle>
           <VCardSubtitle class="text-caption">
-            Verifique la homologación de proveedores, facturas CXP y cuentas por cobrar antes de guardar.
+            Verifique los datos extraídos de a2 Softway para su homologación y registro en el ERP.
           </VCardSubtitle>
         </VCardItem>
 
@@ -489,6 +499,30 @@ const confirmAndExecuteA2Import = async () => {
             </VCol>
           </VRow>
 
+          <!-- Resumen Métricas Ventas y Transacciones -->
+          <VRow class="mb-4" v-if="a2SelectedSection === 'sales' || a2SelectedSection === 'operations'">
+            <VCol cols="12" sm="4">
+              <div class="pa-3 bg-surface rounded text-center border">
+                <div class="text-caption text-medium-emphasis">Total Operaciones (2026)</div>
+                <div class="text-h6 font-weight-bold text-primary">{{ a2PreviewData?.summary?.total_operations_year ?? 0 }}</div>
+              </div>
+            </VCol>
+            <VCol cols="12" sm="4">
+              <div class="pa-3 bg-surface rounded text-center border">
+                <div class="text-caption text-medium-emphasis">Ventas Facturadas</div>
+                <div class="text-h6 font-weight-bold text-success">{{ a2PreviewData?.summary?.total_sales_year ?? 0 }}</div>
+              </div>
+            </VCol>
+            <VCol cols="12" sm="4">
+              <div class="pa-3 bg-surface rounded text-center border">
+                <div class="text-caption text-medium-emphasis">Compras y Movimientos</div>
+                <div class="text-h6 font-weight-bold text-info">
+                  {{ (a2PreviewData?.summary?.total_operations_year ?? 0) - (a2PreviewData?.summary?.total_sales_year ?? 0) }}
+                </div>
+              </div>
+            </VCol>
+          </VRow>
+
           <!-- Tabla de Productos a2 -->
           <VCard variant="outlined" class="mb-4" v-if="a2SelectedSection === 'products_lots'">
             <VCardItem class="pb-2">
@@ -565,6 +599,50 @@ const confirmAndExecuteA2Import = async () => {
                     >
                       {{ cli.is_matched ? 'Existente en ERP' : 'Nuevo Cliente' }}
                     </VChip>
+                  </td>
+                </tr>
+              </tbody>
+            </VTable>
+          </VCard>
+
+          <!-- Tabla de Ventas y Transacciones 2026 -->
+          <VCard variant="outlined" class="mb-4" style="max-height: 480px; overflow-y: auto;" v-if="a2SelectedSection === 'sales' || a2SelectedSection === 'operations'">
+            <VCardItem class="pb-2">
+              <VCardTitle class="text-subtitle-2 font-weight-bold">
+                Muestra de Ventas y Transacciones (Año 2026)
+              </VCardTitle>
+            </VCardItem>
+            <VTable density="compact" class="text-caption">
+              <thead>
+                <tr>
+                  <th style="width: 140px;">N° Documento</th>
+                  <th style="width: 130px;">Fecha</th>
+                  <th style="width: 180px;">Tipo de Operación</th>
+                  <th style="width: 150px;">Monto Total</th>
+                  <th style="width: 140px;">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(op, idx) in a2SalesEdit" :key="idx">
+                  <td class="font-weight-medium">{{ op.document || 'N/A' }}</td>
+                  <td>{{ op.date || '-' }}</td>
+                  <td>
+                    <VChip size="x-small" :color="op.op_type === 2817 ? 'success' : 'info'" variant="tonal">
+                      {{ op.op_type === 2817 ? 'Venta Facturada' : (op.op_type === 1537 ? 'Compra' : 'Operación ' + (op.op_type || '')) }}
+                    </VChip>
+                  </td>
+                  <td class="font-weight-bold text-warning">
+                    ${{ Number(op.total_cost || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+                  </td>
+                  <td>
+                    <VChip size="x-small" color="primary" variant="tonal">
+                      Auditada
+                    </VChip>
+                  </td>
+                </tr>
+                <tr v-if="!a2SalesEdit.length">
+                  <td colspan="5" class="text-center py-4 text-medium-emphasis">
+                    No se encontraron transacciones registradas para el año seleccionado.
                   </td>
                 </tr>
               </tbody>

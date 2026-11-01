@@ -66,7 +66,9 @@ class A2DataImportService
             return str_starts_with((string)$date, (string)$year);
         }));
 
-        $salesRaw = $extractedData['sales'] ?? $operationsFiltered;
+        $salesRaw = !empty($extractedData['sales'])
+            ? array_values(array_filter($extractedData['sales'], fn($op) => str_starts_with((string)($op['date'] ?? ''), (string)$year)))
+            : array_values(array_filter($operationsFiltered, fn($op) => ($op['op_type'] ?? 0) === 2817));
 
         $totalPayablesCount = 0;
         $totalPayablesAmountUsd = 0.0;
@@ -410,7 +412,18 @@ class A2DataImportService
                 'products_created' => 0,
                 'products_updated' => 0,
                 'products_matched_master' => 0,
+                'operations_count' => 0,
+                'sales_count' => 0,
             ];
+
+            $shouldProcessSales = ($section === 'sales' || $section === 'operations' || empty($section));
+            if ($taskId && $shouldProcessSales) {
+                $task = $task ?? A2SyncTask::find($taskId);
+                if ($task && !empty($task->extracted_data['operations'])) {
+                    $stats['operations_count'] = count($task->extracted_data['operations']);
+                    $stats['sales_count'] = count(array_filter($task->extracted_data['operations'], fn($op) => ($op['op_type'] ?? 0) === 2817));
+                }
+            }
 
             // 0. Procesar Productos de a2 (Sinventario.dat)
             if ($shouldProcessProducts && !empty($productsData)) {

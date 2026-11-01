@@ -7,6 +7,7 @@ echo           INICIANDO PUENTE AUTONOMO a2 SOFTWAY - TOVA ERP
 echo ======================================================================
 echo.
 
+:loop
 if not exist "%~dp0a2_bridge_poller.py" (
     echo [ERROR] No se encontro el archivo a2_bridge_poller.py en este directorio.
     pause
@@ -16,6 +17,6 @@ if not exist "%~dp0a2_bridge_poller.py" (
 python "%~dp0a2_bridge_poller.py"
 
 echo.
-echo [AVISO] El servicio se ha detenido. Reiniciando en 5 segundos...
-timeout /t 5
-goto :eof
+echo [AVISO] El servicio se ha detenido. Reiniciando en 3 segundos...
+timeout /t 3
+goto :loop

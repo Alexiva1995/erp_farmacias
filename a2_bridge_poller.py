@@ -4,6 +4,7 @@ import time
 import json
 import requests
 import urllib3
+import importlib
 import a2_extractor_service as a2
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -73,6 +74,11 @@ def poll_and_process():
                     year = task.get("year", target_year)
                     print(f"\n[SOLICITUD RECIBIDA] Tarea #{task_id} - Seccion: {section} - Año: {year}")
                     
+                    try:
+                        importlib.reload(a2)
+                    except Exception:
+                        pass
+                    
                     extracted = {}
                     if section in ["suppliers_payables", "all"]:
                         print(" -> Extrayendo Proveedores y Cuentas por Pagar...")
@@ -83,7 +89,9 @@ def poll_and_process():
                         extracted["products"] = a2.extract_products(data_dir)
                     if section in ["operations", "sales", "all"]:
                         print(f" -> Extrayendo Operaciones del año {year}...")
-                        extracted["operations"] = a2.extract_operations(data_dir, year)
+                        all_ops = a2.extract_operations(data_dir, year)
+                        extracted["operations"] = all_ops
+                        extracted["sales"] = [op for op in all_ops if op.get("op_type") == 2817]
                     if section in ["clients", "receivables", "clients_receivables", "all"]:
                         print(" -> Extrayendo Clientes y Cuentas por Cobrar...")
                         extracted["clients"] = a2.extract_clients(data_dir)
