@@ -61,6 +61,7 @@ const isFieldEnabled = (fieldKey) => {
                   accept="image/*"
                   variant="outlined"
                   placeholder="Imagen del Producto"
+                  :prepend-icon="null"
                   prepend-inner-icon="tabler-camera"
                   clearable
                   :error-messages="formErrors.photo_url"
@@ -84,9 +85,7 @@ const isFieldEnabled = (fieldKey) => {
 
             <!-- Nombre del Producto -->
             <VCol v-if="isFieldEnabled('name')" cols="12" :md="isFieldEnabled('photo_url') ? 8 : 12">
-              <AppTextField
-                v-model="formData.name"
-                placeholder="Nombre del Producto"
+              <VTextField v-model="formData.name" label="Nombre del Producto"
                 variant="outlined"
                 density="comfortable"
                 :error-messages="formErrors.name"
@@ -97,9 +96,7 @@ const isFieldEnabled = (fieldKey) => {
 
             <!-- Código de Barras -->
             <VCol v-if="isFieldEnabled('barcode')" cols="12" md="4">
-              <AppTextField
-                v-model="formData.barcode"
-                placeholder="Código de Barras (SCAN O MANUAL)"
+              <VTextField v-model="formData.barcode" label="Código de Barras (SCAN O MANUAL)"
                 variant="outlined"
                 density="comfortable"
                 :loading="isMasterSearching"
@@ -120,14 +117,12 @@ const isFieldEnabled = (fieldKey) => {
                     ID #{{ masterFoundProduct?.id }}
                   </VChip>
                 </template>
-              </AppTextField>
+              </VTextField>
             </VCol>
 
             <!-- Principio Activo -->
             <VCol v-if="!isRestaurant && !isMiniMarket && !isSportsRental && isFieldEnabled('active_ingredient')" cols="12" md="4">
-              <AppTextField
-                v-model="formData.active_ingredient"
-                placeholder="Principio Activo"
+              <VTextField v-model="formData.active_ingredient" label="Principio Activo"
                 variant="outlined"
                 density="comfortable"
                 :error-messages="formErrors.active_ingredient"
@@ -138,9 +133,7 @@ const isFieldEnabled = (fieldKey) => {
 
             <!-- Laboratorio / Marca -->
             <VCol v-if="isFieldEnabled('laboratory_id')" cols="12" :md="!isRestaurant && !isMiniMarket && !isSportsRental ? 4 : 4">
-              <AppSelect
-                v-model="formData.laboratory_id"
-                :placeholder="isRestaurant || isMiniMarket || isSportsRental ? 'Marca' : 'Laboratorio'"
+              <VAutocomplete v-model="formData.laboratory_id" :label="isRestaurant || isMiniMarket || isSportsRental ? 'Marca' : 'Laboratorio'"
                 :items="laboratories"
                 item-title="name"
                 item-value="id"
@@ -161,14 +154,12 @@ const isFieldEnabled = (fieldKey) => {
                     @click.stop="emit('open-lab-dialog')"
                   />
                 </template>
-              </AppSelect>
+              </VAutocomplete>
             </VCol>
 
             <!-- Categoría -->
             <VCol v-if="isFieldEnabled('category_id')" cols="12" :md="!isRestaurant && !isMiniMarket && !isSportsRental ? 4 : 4">
-              <AppSelect
-                v-model="formData.category_id"
-                placeholder="Categoría"
+              <VAutocomplete v-model="formData.category_id" label="Categoría"
                 :items="categories"
                 item-title="name"
                 item-value="id"
@@ -183,9 +174,7 @@ const isFieldEnabled = (fieldKey) => {
 
             <!-- Origen -->
             <VCol v-if="!isRestaurant && !isMiniMarket && !isSportsRental && isFieldEnabled('origin_id')" cols="12" md="4">
-              <AppSelect
-                v-model="formData.origin_id"
-                placeholder="Origen"
+              <VAutocomplete v-model="formData.origin_id" label="Origen"
                 :items="origins"
                 item-title="name"
                 item-value="id"
@@ -200,9 +189,7 @@ const isFieldEnabled = (fieldKey) => {
 
             <!-- Proveedor -->
             <VCol v-if="(isRestaurant || isSportsRental) && isFieldEnabled('supplier_id')" cols="12" md="4">
-              <AppSelect
-                v-model="formData.supplier_id"
-                placeholder="Proveedor"
+              <VAutocomplete v-model="formData.supplier_id" label="Proveedor"
                 :items="suppliers"
                 item-title="name"
                 item-value="id"
@@ -217,9 +204,7 @@ const isFieldEnabled = (fieldKey) => {
 
             <!-- Presentación -->
             <VCol v-if="isRestaurant && isFieldEnabled('presentation')" cols="12" md="4">
-              <AppTextField
-                v-model="formData.presentation"
-                placeholder="Presentación"
+              <VTextField v-model="formData.presentation" label="Presentación"
                 type="number"
                 step="any"
                 variant="outlined"
@@ -232,9 +217,7 @@ const isFieldEnabled = (fieldKey) => {
 
             <!-- Unidad de Medida -->
             <VCol v-if="isRestaurant && isFieldEnabled('unit_of_measure')" cols="12" md="4">
-              <AppSelect
-                v-model="formData.unit_of_measure"
-                placeholder="Unidad de Medida"
+              <VSelect v-model="formData.unit_of_measure" label="Unidad de Medida"
                 :items="[
                   { title: 'Gramos (g)', value: 'g' },
                   { title: 'Mililitros (ml)', value: 'ml' },
@@ -253,9 +236,7 @@ const isFieldEnabled = (fieldKey) => {
 
             <!-- Descripción -->
             <VCol v-if="isFieldEnabled('description')" cols="12">
-              <AppTextarea
-                v-model="formData.description"
-                placeholder="Descripción del Producto"
+              <VTextarea v-model="formData.description" label="Descripción del Producto"
                 variant="outlined"
                 density="comfortable"
                 rows="1"

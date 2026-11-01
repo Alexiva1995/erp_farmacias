@@ -12,6 +12,7 @@ use App\Http\Requests\Product\BulkActionsProductRequest;
 use App\Http\Requests\Product\SearchBarcodeProductRequest;
 use App\Http\Requests\Product\MergeProductsRequest;
 use App\Models\Product;
+use App\Services\Catalog\MasterCatalogBranchService;
 use App\Services\Products\ProductActionService;
 use App\Services\Products\ProductQueryService;
 use App\Services\Products\ProductStatsService;

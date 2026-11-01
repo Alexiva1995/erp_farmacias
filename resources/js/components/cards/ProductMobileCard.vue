@@ -167,12 +167,12 @@ const getProductLocations = (item) => {
             >
               ID: {{ item.id }}
             </a>
-            <template v-if="mode !== 'master' && !isMiniMarket && item.laboratory?.name">
+            <template v-if="!isMiniMarket && item.laboratory?.name">
               <span class="text-primary font-weight-bold text-super-xs text-uppercase truncate" style="max-inline-size: 140px;">
                 {{ item.laboratory.name }}
               </span>
             </template>
-            <template v-else-if="mode !== 'master' && isMiniMarket && item.category?.name">
+            <template v-else-if="isMiniMarket && item.category?.name">
               <span class="text-primary font-weight-bold text-super-xs text-uppercase truncate" style="max-inline-size: 140px;">
                 {{ item.category.name }}
               </span>
@@ -205,7 +205,23 @@ const getProductLocations = (item) => {
         </div>
       </div>
 
-      <!-- Modo Maestro: sin barra ni categoría -->
+      <!-- Modo Maestro: Sucursales activas -->
+      <div v-if="mode === 'master'" class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
+        <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Sucursales:</span>
+        <div v-if="item.active_branches && item.active_branches.length > 0" class="d-flex flex-wrap gap-1">
+          <VChip
+            v-for="branch in item.active_branches"
+            :key="branch.id || branch.name"
+            size="x-small"
+            variant="tonal"
+            color="success"
+            class="font-weight-bold text-uppercase text-super-xs"
+          >
+            {{ branch.name || branch.id }}
+          </VChip>
+        </div>
+        <span v-else class="text-xs text-disabled">Sin sucursales</span>
+      </div>
 
       <!-- Caja compacta de Stock y P.V.P -->
       <div v-if="mode !== 'master'" class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">

@@ -116,7 +116,7 @@ const headers = computed(() => {
         sortable: true,
         visible: true,
         cellClass: "font-weight-black text-primary",
-        width: "80px",
+        width: "70px",
       },
       {
         title: "Producto",
@@ -125,10 +125,20 @@ const headers = computed(() => {
         visible: true,
       },
       {
-        title: "Principio Activo",
-        key: "active_ingredient",
-        sortable: true,
+        title: "Sucursales",
+        key: "active_branches",
+        sortable: false,
+        align: "center",
         visible: true,
+        width: "200px",
+      },
+      {
+        title: "Estado",
+        key: "is_active",
+        sortable: true,
+        align: "center",
+        visible: true,
+        width: "100px",
       },
       {
         title: "Acciones",
@@ -459,6 +469,43 @@ const getMergedLots = (lots) => {
           <span v-else class="text-disabled text-xs">—</span>
         </template>
 
+                <template #item.active_branches="{ item }">
+          <div v-if="item.active_branches && item.active_branches.length > 0" class="d-flex flex-wrap align-center justify-center gap-1">
+            <template v-if="item.active_branches.length <= 2">
+              <VChip
+                v-for="branch in item.active_branches"
+                :key="branch.id || branch.name"
+                size="x-small"
+                variant="tonal"
+                color="success"
+                class="font-weight-bold text-uppercase"
+              >
+                {{ branch.name || branch.id }}
+              </VChip>
+            </template>
+            <template v-else>
+              <VChip
+                size="x-small"
+                variant="tonal"
+                color="success"
+                class="font-weight-bold"
+              >
+                {{ item.active_branches.length }} sucursales
+                <VTooltip activator="parent" location="top">
+                  <div class="text-xs py-1">
+                    <div v-for="b in item.active_branches" :key="b.id || b.name" class="font-weight-bold">
+                      • {{ b.name || b.id }}
+                    </div>
+                  </div>
+                </VTooltip>
+              </VChip>
+            </template>
+          </div>
+          <VChip v-else size="x-small" variant="tonal" color="secondary" class="text-disabled font-weight-medium">
+            Sin sucursales
+          </VChip>
+        </template>
+
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-2 py-2">
             <!-- Corazón interactivo de favorito para administración -->
@@ -492,7 +539,7 @@ const getMergedLots = (lots) => {
                 <span v-if="!isMasterMode && (item.is_colombian_origin == 1 || item.is_colombian_origin === true)" class="text-xs text-disabled font-weight-regular"> (COL)</span>
                 <span v-if="item.is_unified_group == 1 || item.is_unified_group === true" class="text-xs text-info font-weight-bold"> (UNIF)</span>
               </span>
-              <div v-if="!isMasterMode" class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
+              <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
                 <span v-if="!isRestaurant" class="text-disabled font-weight-normal truncate" style="max-inline-size: 240px;">{{ item.active_ingredient || '—' }}</span>
                 <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
                 <span v-if="isRestaurant && item.presentation && isFieldEnabled('presentation')" class="text-disabled font-weight-normal truncate" style="max-inline-size: 240px;">

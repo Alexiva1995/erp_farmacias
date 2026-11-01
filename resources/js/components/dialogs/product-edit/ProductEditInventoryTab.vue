@@ -193,10 +193,7 @@ const lotHeaders = [
 
           <!-- Días de Duración del Tratamiento Crónico -->
           <VCol v-if="formData.is_chronic" cols="12" md="6" class="mt-2 mb-2">
-            <AppTextField
-              v-model="formData.treatment_duration_days"
-              label="Días de tratamiento por unidad"
-              placeholder="Ej: 30"
+            <VTextField v-model="formData.treatment_duration_days" label="Días de tratamiento por unidad"
               type="number"
               variant="outlined"
               density="comfortable"
@@ -209,9 +206,7 @@ const lotHeaders = [
 
           <!-- Costo de Compra -->
           <VCol v-if="isFieldEnabled('unit_cost')" cols="12" :md="isNewProduct ? 4 : 6" class="mt-4">
-            <AppTextField
-              v-model="formData.unit_cost"
-              placeholder="Costo de Compra"
+            <VTextField v-model="formData.unit_cost" label="Costo de Compra"
               type="number"
               prefix="$"
               variant="outlined"
@@ -225,9 +220,7 @@ const lotHeaders = [
 
           <!-- Precio de Venta -->
           <VCol v-if="isFieldEnabled('sale_price')" cols="12" :md="isNewProduct ? 4 : 6" class="mt-4">
-            <AppTextField
-              v-model="formData.sale_price"
-              placeholder="Precio de Venta"
+            <VTextField v-model="formData.sale_price" label="Precio de Venta"
               type="number"
               prefix="$"
               variant="outlined"
@@ -241,9 +234,7 @@ const lotHeaders = [
 
           <!-- Stock Inicial -->
           <VCol v-if="isNewProduct && isFieldEnabled('stock')" cols="12" md="4" class="mt-4">
-            <AppTextField
-              v-model="formData.initial_stock"
-              placeholder="Stock Inicial"
+            <VTextField v-model="formData.initial_stock" label="Stock Inicial"
               type="number"
               variant="outlined"
               density="comfortable"
