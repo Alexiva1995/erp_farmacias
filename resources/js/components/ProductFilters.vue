@@ -79,14 +79,24 @@ const productTypeOptions = computed(() => {
   ];
 });
 
-const sortOptions = [
-  { title: "Precio mayor",    icon: "tabler-arrow-up",      key: "sale_price",      order: "desc" },
-  { title: "Precio Menor",    icon: "tabler-arrow-down",    key: "sale_price",      order: "asc"  },
-  { title: "Más Vendidos",    icon: "tabler-trending-up",   key: "most_sold",       order: "desc" },
-  { title: "Mayor Cantidad",  icon: "tabler-arrow-up",      key: "valid_stock",     order: "desc" },
-  { title: "Menor Cantidad",  icon: "tabler-arrow-down",    key: "valid_stock",     order: "asc"  },
-  { title: "Pronto a Vencer", icon: "tabler-calendar-time", key: "next_expiration", order: "asc"  },
-];
+const sortOptions = computed(() => {
+  if (props.mode === 'master') {
+    return [
+      { title: "Nombre (A-Z)", icon: "tabler-sort-ascending-letters", key: "name", order: "asc" },
+      { title: "Nombre (Z-A)", icon: "tabler-sort-descending-letters", key: "name", order: "desc" },
+      { title: "ID Mayor", icon: "tabler-arrow-up", key: "id", order: "desc" },
+      { title: "ID Menor", icon: "tabler-arrow-down", key: "id", order: "asc" },
+    ];
+  }
+  return [
+    { title: "Precio mayor",    icon: "tabler-arrow-up",      key: "sale_price",      order: "desc" },
+    { title: "Precio Menor",    icon: "tabler-arrow-down",    key: "sale_price",      order: "asc"  },
+    { title: "Más Vendidos",    icon: "tabler-trending-up",   key: "most_sold",       order: "desc" },
+    { title: "Mayor Cantidad",  icon: "tabler-arrow-up",      key: "valid_stock",     order: "desc" },
+    { title: "Menor Cantidad",  icon: "tabler-arrow-down",    key: "valid_stock",     order: "asc"  },
+    { title: "Pronto a Vencer", icon: "tabler-calendar-time", key: "next_expiration", order: "asc"  },
+  ];
+});
 
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
@@ -103,7 +113,7 @@ const loadSavedSort = () => {
     const saved = localStorage.getItem(getStorageKey());
     if (saved) {
       const parsedSort = JSON.parse(saved);
-      const isValidSort = sortOptions.find(opt => opt.key === parsedSort.key && opt.order === parsedSort.order);
+      const isValidSort = sortOptions.value.find(opt => opt.key === parsedSort.key && opt.order === parsedSort.order);
       if (isValidSort) {
         selectedSort.value = parsedSort;
         emit("sort", parsedSort);
@@ -178,7 +188,7 @@ const showExport = computed(() => props.mode === 'products');
   >
     <template #prepend-actions>
       <VBtn
-        v-if="brandingStore.settings.enable_bulk_toggle_active !== false"
+        v-if="props.mode !== 'master' && brandingStore.settings.enable_bulk_toggle_active !== false"
         icon
         variant="tonal"
         color="warning"
@@ -251,8 +261,8 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Categorías (Solo Mini Market) -->
-      <VCol v-if="isMiniMarket" cols="12" sm="6" md="2">
+      <!-- Categorías (Mini Market o Master) -->
+      <VCol v-if="isMiniMarket || props.mode === 'master'" cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedCategory"
           :items="props.categories"
@@ -319,7 +329,7 @@ const showExport = computed(() => props.mode === 'products');
       </VCol>
 
       <!-- Estado Stock -->
-      <VCol cols="12" sm="6" md="2">
+      <VCol v-if="props.mode !== 'master'" cols="12" sm="6" md="2">
         <VSelect
           :model-value="props.stockStatusFilter"
           placeholder="Estado Stock"

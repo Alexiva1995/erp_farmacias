@@ -245,8 +245,12 @@ class ProductObserver
     public static function notifyStockoutToTelegram(Product $product): void
     {
         try {
-            $targetChatId = config('services.telegram.failures_chat_id') ?: config('services.telegram.admin_chat_id');
-            $botToken = config('services.telegram.bot_token');
+            $telegram = resolve(\App\Services\TelegramService::class);
+            if (!$telegram->isModuleEnabled('farmacia')) {
+                return;
+            }
+            $botToken = $telegram->getToken();
+            $targetChatId = $telegram->getTargetChatIdForCommand('/fallas', 'farmacia') ?: $telegram->getAdminChatId();
 
             if (!$targetChatId || !$botToken) {
                 return;

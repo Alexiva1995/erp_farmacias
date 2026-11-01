@@ -1,5 +1,5 @@
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faBoxesStacked , faFileInvoice} from '@fortawesome/free-solid-svg-icons'
+import { faBoxesStacked, faFileInvoice, faDatabase } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 import {
@@ -39,7 +39,8 @@ library.add(
   faArrowsRotate,
   faChartBar,
   faChartLine,
-  faCalendarDays
+  faCalendarDays,
+  faDatabase
 )
 
 export default function (app) {

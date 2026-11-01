@@ -38,13 +38,25 @@ class EcommerceMailService
     }
 
     /**
+     * Verifica si el servidor SMTP está configurado con credenciales mínimas válidas.
+     */
+    public function isMailConfigured(?GeneralSetting $setting = null): bool
+    {
+        $setting = $setting ?? GeneralSetting::first();
+        return !empty($setting?->mail_host) && !empty($setting?->mail_username);
+    }
+
+    /**
      * Aplica dinámicamente la configuración SMTP guardada en GeneralSetting.
      */
     public function applySmtpConfiguration(?GeneralSetting $setting = null): void
     {
         $setting = $setting ?? GeneralSetting::first();
 
-        if (!$setting || empty($setting->mail_host) || empty($setting->mail_username)) {
+        if (!$this->isMailConfigured($setting)) {
+            // Si la instalación no tiene correo configurado, desactivar envíos externos asignando 'log'
+            config(['mail.default' => 'log']);
+            Mail::purge('smtp');
             return;
         }
 
@@ -80,6 +92,12 @@ class EcommerceMailService
     {
         try {
             $setting = GeneralSetting::first();
+
+            if (!$this->isMailConfigured($setting)) {
+                Log::info("[ECOMMERCE_MAIL] Notificación cancelada: El servidor de correo (SMTP) no está configurado en esta instalación.");
+                return false;
+            }
+
             $this->applySmtpConfiguration($setting);
 
             if (is_int($order)) {
@@ -338,6 +356,14 @@ HTML;
     {
         try {
             $setting = GeneralSetting::first();
+
+            if (!$this->isMailConfigured($setting)) {
+                return [
+                    'success' => false,
+                    'message' => 'El servidor de correo (SMTP) no está configurado en esta instalación. Debes ingresar un Servidor (Host) y Usuario SMTP válidos.',
+                ];
+            }
+
             $this->applySmtpConfiguration($setting);
 
             $subject = 'Correo de Prueba - Configuración SMTP Exitosa';

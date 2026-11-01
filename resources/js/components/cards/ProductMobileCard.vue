@@ -141,7 +141,7 @@ const getProductLocations = (item) => {
       <div class="d-flex gap-2 align-start">
         <!-- Corazón interactivo de favorito para móvil -->
         <VBtn
-          v-if="((!isRestaurant && !isSportsRental) || isMiniMarket) && brandingStore.settings.enable_favorites"
+          v-if="mode !== 'master' && ((!isRestaurant && !isSportsRental) || isMiniMarket) && brandingStore.settings.enable_favorites"
           icon
           variant="text"
           density="compact"
@@ -153,7 +153,14 @@ const getProductLocations = (item) => {
         </VBtn>
         <div class="flex-grow-1 min-width-0">
           <div class="d-flex align-center gap-1 mb-1">
+            <span
+              v-if="mode === 'master'"
+              class="text-primary font-weight-black text-super-xs bg-primary-lighten-5 px-1-5 py-0-5 rounded flex-shrink-0"
+            >
+              ID: {{ item.id }}
+            </span>
             <a
+              v-else
               :href="'/inventory/traceability?q=' + item.id"
               target="_blank"
               class="text-decoration-none text-primary font-weight-black text-super-xs bg-primary-lighten-5 px-1-5 py-0-5 rounded flex-shrink-0"
@@ -198,8 +205,22 @@ const getProductLocations = (item) => {
         </div>
       </div>
 
+      <!-- Caja compacta de Catálogo Maestro -->
+      <div v-if="mode === 'master'" class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
+        <div class="d-flex align-center gap-1">
+          <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Barra:</span>
+          <span class="text-xs font-weight-bold text-high-emphasis">{{ item.barcode || 'S/C' }}</span>
+        </div>
+        <div class="d-flex align-center gap-1">
+          <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Cat:</span>
+          <span class="text-xs font-weight-medium text-secondary truncate" style="max-inline-size: 140px;">
+            {{ item.category?.name || 'S/C' }}
+          </span>
+        </div>
+      </div>
+
       <!-- Caja compacta de Stock y P.V.P -->
-      <div class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
+      <div v-else class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
         <div class="d-flex align-center gap-2">
           <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Stock:</span>
           <span :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'" class="text-xs font-weight-bold">
@@ -264,6 +285,40 @@ const getProductLocations = (item) => {
         <VDivider v-if="authStore.isAdmin && brandingStore.settings.enable_merge" vertical class="border-opacity-10" />
         <VBtn 
           v-if="authStore.isAdmin && brandingStore.settings.enable_merge" 
+          color="info" 
+          variant="text" 
+          class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
+          height="38"
+          @click="emit('merge', item)"
+        >
+          <VIcon icon="tabler-package" size="18" />
+        </VBtn>
+        <VDivider v-if="authStore.isAdmin" vertical class="border-opacity-10" />
+        <VBtn 
+          v-if="authStore.isAdmin" 
+          color="error" 
+          variant="text" 
+          class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
+          height="38"
+          @click="emit('delete', item.id)"
+        >
+          <VIcon icon="tabler-trash" size="18" />
+        </VBtn>
+      </template>
+
+      <template v-else-if="mode === 'master'">
+        <VBtn 
+          color="warning" 
+          variant="text" 
+          class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 
+          height="38"
+          @click="emit('edit', item)"
+        >
+          <VIcon icon="tabler-edit" size="18" />
+        </VBtn>
+        <VDivider v-if="authStore.isAdmin && brandingStore.settings.enable_merge !== false" vertical class="border-opacity-10" />
+        <VBtn 
+          v-if="authStore.isAdmin && brandingStore.settings.enable_merge !== false" 
           color="info" 
           variant="text" 
           class="flex-grow-1 rounded-0 mobile-action-btn d-flex align-center justify-center" 

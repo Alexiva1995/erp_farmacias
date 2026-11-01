@@ -25,6 +25,7 @@ const props = defineProps({
   allProducts: { type: Array, default: () => [] },
   errors: { type: Object, default: () => ({}) },
   isSaving: { type: Boolean, default: false },
+  isMaster: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -67,6 +68,12 @@ const isLabDialogVisible = ref(false);
 const activeTab = ref(0);
 
 const handleNextTab = () => {
+  if (props.isMaster) {
+    if (activeTab.value === 0) {
+      activeTab.value = 2;
+    }
+    return;
+  }
   if (activeTab.value === 0) {
     activeTab.value = brandingStore.settings?.enable_variations ? 3 : 1;
   } else if (activeTab.value === 3) {
@@ -425,14 +432,14 @@ const imagePreviewUrl = computed(() => {
           </VAvatar>
           <div class="d-flex flex-column leading-none">
             <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 uppercase">
-              {{ isNewProduct ? "Añadir Nuevo Producto" : "Editar Producto" }}
+              {{ isNewProduct ? (props.isMaster ? "Añadir Producto al Master" : "Añadir Nuevo Producto") : (props.isMaster ? "Editar Ficha Maestra" : "Editar Producto") }}
             </h2>
             <div class="d-flex align-center gap-2 mt-1">
               <span
                 class="text-white opacity-75 uppercase font-weight-bold"
                 style="font-size: 0.6rem; letter-spacing: 0.05em;"
               >
-                {{ isNewProduct ? "Registro Maestro" : "Gestión de Ficha" }} de Producto
+                {{ props.isMaster ? "Catálogo Maestro Global (tovaerp_master)" : (isNewProduct ? "Registro Maestro" : "Gestión de Ficha") + " de Producto" }}
               </span>
             </div>
           </div>
@@ -472,11 +479,11 @@ const imagePreviewUrl = computed(() => {
             <VIcon icon="tabler-info-circle" class="me-2" size="18" />
             General
           </VTab>
-          <VTab v-if="brandingStore.settings?.enable_variations" :value="3" class="text-button font-weight-black">
+          <VTab v-if="brandingStore.settings?.enable_variations && !props.isMaster" :value="3" class="text-button font-weight-black">
             <VIcon icon="tabler-palette" class="me-2" size="18" />
             Variaciones
           </VTab>
-          <VTab :value="1" class="text-button font-weight-black">
+          <VTab v-if="!props.isMaster" :value="1" class="text-button font-weight-black">
             <VIcon icon="tabler-database" class="me-2" size="18" />
             Inventario
           </VTab>

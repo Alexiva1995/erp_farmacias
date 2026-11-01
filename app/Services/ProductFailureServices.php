@@ -49,7 +49,7 @@ class ProductFailureServices implements ProductFailureContract
         }
 
         $failuresChatId = $this->telegramService->getTargetChatIdForCommand('/fallas', 'farmacia')
-            ?: (config('services.telegram.failures_chat_id') ?: $this->telegramService->getChatId());
+            ?: ( $this->telegramService->getChatId());
         if (empty($failuresChatId)) {
             return;
         }

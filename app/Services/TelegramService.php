@@ -10,30 +10,18 @@ use Illuminate\Support\Facades\Log;
 
 class TelegramService
 {
-    protected ?string $token;
-    protected ?string $chatId;
-    protected ?string $adminChatId;
-    protected bool $isActive = true;
+    protected ?string $token = null;
+    protected ?string $chatId = null;
+    protected ?string $adminChatId = null;
+    protected bool $isActive = false;
 
     public function __construct()
     {
-        $dbConfig = null;
-        try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('telegram_configs')) {
-                $dbConfig = TelegramConfig::first();
-            }
-        } catch (\Throwable $e) {
-            // Manejo seguro en entorno de testing previo a migraciones
-        }
-
-        $this->token = $dbConfig?->bot_token ?: config('services.telegram.bot_token');
-        $this->chatId = $dbConfig?->chat_id ?: config('services.telegram.chat_id');
-        $this->adminChatId = $dbConfig?->admin_chat_id ?: (config('services.telegram.admin_chat_id') ?: $this->chatId);
-        $this->isActive = $dbConfig ? (bool) $dbConfig->is_active : true;
+        $this->refreshConfig();
     }
 
     /**
-     * Recargar configuración en caliente.
+     * Recargar configuración en caliente desde la base de datos de la instalación activa.
      */
     public function refreshConfig(): void
     {
@@ -43,18 +31,23 @@ class TelegramService
                 $dbConfig = TelegramConfig::first();
             }
         } catch (\Throwable $e) {
-            // Manejo seguro en entorno de testing
+            // Manejo seguro en entorno previo a migraciones o testing
         }
 
-        $this->token = $dbConfig?->bot_token ?: config('services.telegram.bot_token');
-        $this->chatId = $dbConfig?->chat_id ?: config('services.telegram.chat_id');
-        $this->adminChatId = $dbConfig?->admin_chat_id ?: (config('services.telegram.admin_chat_id') ?: $this->chatId);
-        $this->isActive = $dbConfig ? (bool) $dbConfig->is_active : true;
+        $this->token = !empty($dbConfig?->bot_token) ? trim($dbConfig->bot_token) : null;
+        $this->chatId = !empty($dbConfig?->chat_id) ? trim((string) $dbConfig->chat_id) : null;
+        $this->adminChatId = !empty($dbConfig?->admin_chat_id) ? trim((string) $dbConfig->admin_chat_id) : $this->chatId;
+        $this->isActive = $dbConfig ? (bool) $dbConfig->is_active : false;
+
+        // Si no hay token de bot registrado en la base de datos de esta instalación, permanece inactivo
+        if (empty($this->token)) {
+            $this->isActive = false;
+        }
     }
 
     public function isGloballyActive(): bool
     {
-        return $this->isActive;
+        return $this->isActive && !empty($this->token);
     }
 
     public function getToken(): ?string
@@ -77,15 +70,15 @@ class TelegramService
      */
     public function sendMessage(string $message, string|int|null $customChatId = null, ?array $replyMarkup = null): bool
     {
-        if (!$this->isActive) {
-            Log::info('[TelegramService] Envío cancelado: Notificaciones desactivadas globalmente en la configuración.');
+        if (!$this->isGloballyActive()) {
+            Log::info('[TelegramService] Envío cancelado: Telegram no configurado o desactivado en esta instalación.');
             return false;
         }
 
         $targetChatId = $customChatId ? (string) $customChatId : $this->chatId;
 
         if (empty($this->token) || empty($targetChatId)) {
-            Log::warning('[TelegramService] Bot token o Chat ID no configurados');
+            Log::info('[TelegramService] Envío cancelado: Bot token o Chat ID no configurados en esta instalación.');
             return false;
         }
 
@@ -131,7 +124,7 @@ class TelegramService
     public function downloadFile(string $fileId): ?string
     {
         if (empty($this->token)) {
-            Log::warning('[TelegramService] Bot token no configurado para descarga');
+            Log::info('[TelegramService] Bot token no configurado en esta instalación para descarga.');
             return null;
         }
 
@@ -174,15 +167,15 @@ class TelegramService
      */
     public function sendDocument(string $filePath, string|int|null $customChatId = null, ?string $caption = null): bool
     {
-        if (!$this->isActive) {
-            Log::info('[TelegramService] Envío de documento cancelado: Notificaciones desactivadas globalmente en la configuración.');
+        if (!$this->isGloballyActive()) {
+            Log::info('[TelegramService] Envío de documento cancelado: Telegram no configurado o desactivado en esta instalación.');
             return false;
         }
 
         $targetChatId = $customChatId ? (string) $customChatId : $this->chatId;
 
         if (empty($this->token) || empty($targetChatId) || !file_exists($filePath)) {
-            Log::warning('[TelegramService] No se puede enviar documento: Token o ChatID no configurado, o archivo no existe.');
+            Log::info('[TelegramService] No se puede enviar documento: Token o ChatID no configurado en esta instalación, o archivo no existe.');
             return false;
         }
 
@@ -215,7 +208,7 @@ class TelegramService
      */
     public function isModuleEnabled(string $module): bool
     {
-        if (!$this->isActive) {
+        if (!$this->isGloballyActive()) {
             return false;
         }
 
@@ -251,7 +244,7 @@ class TelegramService
      */
     public function isCommandActive(string $command, ?string $module = null): bool
     {
-        if (!$this->isActive) {
+        if (!$this->isGloballyActive()) {
             return false;
         }
 
@@ -272,7 +265,6 @@ class TelegramService
                 }
                 $cmd = $query->first();
                 if ($cmd !== null) {
-                    // Si el módulo del comando no está habilitado en enabled_telegram_views, retornar false
                     if (!$this->isModuleEnabled((string) $cmd->module)) {
                         return false;
                     }

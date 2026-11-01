@@ -2,38 +2,39 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Telegram\TelegramWebhookService;
 use Illuminate\Console\Command;
+use App\Services\Telegram\TelegramWebhookService;
 
 class SendUpcomingPaymentsTelegram extends Command
 {
     /**
-     * The name and signature of the console command.
+     * El nombre y la firma del comando de consola.
      *
      * @var string
      */
     protected $signature = 'telegram:send-upcoming-payments';
 
     /**
-     * The console command description.
+     * Descripción del comando de consola.
      *
      * @var string
      */
     protected $description = 'Envía el reporte de pagos vencidos diariamente al administrador de Telegram';
 
     /**
-     * Execute the console command.
+     * Ejecuta el comando de consola.
      */
     public function handle(TelegramWebhookService $webhookService): int
     {
+        $telegram = resolve(\App\Services\TelegramService::class);
+        $adminChatId = $telegram->getAdminChatId() ?: $telegram->getChatId();
 
-        $adminChatId = config('services.telegram.admin_chat_id') ?: config('services.telegram.chat_id');
-        if (empty($adminChatId)) {
-            $this->warn('TELEGRAM_ADMIN_CHAT_ID o TELEGRAM_CHAT_ID no configurados. Omitiendo envío.');
+        if (empty($adminChatId) || empty($telegram->getToken())) {
+            $this->warn('Telegram no configurado en esta instalación. Omitiendo envío.');
             return Command::SUCCESS;
         }
 
-        if (!resolve(\App\Services\TelegramService::class)->isCommandActive('/pagos_pendientes', 'farmacia')) {
+        if (!$telegram->isCommandActive('/pagos_pendientes', 'farmacia')) {
             $this->info('Comando omitido: El módulo de farmacia o el comando /pagos_pendientes está desactivado en Telegram.');
             return Command::SUCCESS;
         }

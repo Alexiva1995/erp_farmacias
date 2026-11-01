@@ -49,6 +49,10 @@ class EmailConfigurationService
         }
 
         $setting->update($data);
+        $setting->refresh();
+
+        // Aplicar la nueva configuración SMTP inmediatamente en tiempo de ejecución
+        $this->mailService->applySmtpConfiguration($setting);
 
         return $setting;
     }

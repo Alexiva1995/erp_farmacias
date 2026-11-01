@@ -502,6 +502,12 @@ class PendingPaymentsController extends Controller
             $paymentEmail = $supplier?->payment_email ?? $supplier?->email;
 
             if (!empty($paymentEmail)) {
+                $ecommerceMailService = app(\App\Services\Ecommerce\EcommerceMailService::class);
+            if (!$ecommerceMailService->isMailConfigured()) {
+                Log::info("[PendingPayments] Envío de correo a {$paymentEmail} omitido: El servidor de correo no está configurado en esta instalación.");
+                $portalWarning .= " (Servidor de correo no configurado en esta instalación)";
+            } else {
+                $ecommerceMailService->applySmtpConfiguration();
                 try {
                     $paymentPayload = [
                         'payment_date'          => $request->payment_date,
@@ -528,6 +534,7 @@ class PendingPaymentsController extends Controller
                 } catch (\Throwable $mailEx) {
                     Log::error("[PendingPayments] Error enviando correo de pago a {$paymentEmail}: " . $mailEx->getMessage());
                     $portalWarning .= " (No se pudo enviar correo a {$paymentEmail}: " . $mailEx->getMessage() . ")";
+                }
                 }
             } else {
                 $portalWarning .= " (Proveedor sin correo configurado)";
@@ -678,6 +685,12 @@ class PendingPaymentsController extends Controller
             if (empty($targetEmail) || !filter_var($targetEmail, FILTER_VALIDATE_EMAIL)) {
                 return ApiResponse::error('El proveedor no tiene un correo electrónico válido configurado.', 422);
             }
+
+            $ecommerceMailService = app(\App\Services\Ecommerce\EcommerceMailService::class);
+            if (!$ecommerceMailService->isMailConfigured()) {
+                return ApiResponse::error('El servidor de correo no está configurado en esta instalación. Debes configurarlo en Configuración -> Correos.', 422);
+            }
+            $ecommerceMailService->applySmtpConfiguration();
 
             $paymentPayload = [
                 'payment_date'          => $payment->payment_date ? ($payment->payment_date instanceof \DateTimeInterface ? $payment->payment_date->toDateString() : substr((string)$payment->payment_date, 0, 10)) : now()->toDateString(),

@@ -38,31 +38,16 @@ class TelegramConfigController extends Controller
         $config = TelegramConfig::with(['channels'])->firstOrCreate(
             ['id' => 1],
             [
-                'bot_token' => config('services.telegram.bot_token'),
-                'chat_id' => config('services.telegram.chat_id'),
-                'admin_chat_id' => config('services.telegram.admin_chat_id'),
+                'bot_token' => null,
+                'chat_id' => null,
+                'admin_chat_id' => null,
                 'webhook_url' => rtrim(config('app.url'), '/') . '/api/public/telegram/webhook',
-                'is_active' => true,
+                'is_active' => false,
             ]
         );
 
-        // Si existen campos vacíos en la BD, auto-completar con la configuración del .env
-        $updates = [];
-        if (empty($config->bot_token) && config('services.telegram.bot_token')) {
-            $updates['bot_token'] = config('services.telegram.bot_token');
-        }
-        if (empty($config->chat_id) && config('services.telegram.chat_id')) {
-            $updates['chat_id'] = config('services.telegram.chat_id');
-        }
-        if (empty($config->admin_chat_id) && config('services.telegram.admin_chat_id')) {
-            $updates['admin_chat_id'] = config('services.telegram.admin_chat_id');
-        }
         if (empty($config->webhook_url)) {
-            $updates['webhook_url'] = rtrim(config('app.url'), '/') . '/api/public/telegram/webhook';
-        }
-
-        if (!empty($updates)) {
-            $config->update($updates);
+            $config->update(['webhook_url' => rtrim(config('app.url'), '/') . '/api/public/telegram/webhook']);
             $config->refresh();
         }
 
@@ -90,49 +75,45 @@ class TelegramConfigController extends Controller
     // ==================== GESTIÓN DE CANALES DE TELEGRAM ====================
 
     /**
-     * Obtener todos los canales de Telegram registrados (auto-sincroniza canales existentes del .env si no existen).
+     * Obtener todos los canales de Telegram registrados.
      */
     public function getChannels(): AnonymousResourceCollection
     {
         $config = TelegramConfig::firstOrCreate(['id' => 1]);
 
-        $channelsToSync = [
-            [
+        $channelsToSync = [];
+        if (!empty($config->chat_id)) {
+            $channelsToSync[] = [
                 'name' => 'Canal General / Tasas',
-                'chat_id' => $config->chat_id ?: config('services.telegram.chat_id'),
+                'chat_id' => $config->chat_id,
                 'module' => 'generales',
                 'description' => 'Canal principal asignado a las notificaciones de tasas cambiarias y alertas globales.',
-            ],
-            [
+            ];
+        }
+        if (!empty($config->admin_chat_id)) {
+            $channelsToSync[] = [
                 'name' => 'Canal de Cierres / Admin',
-                'chat_id' => $config->admin_chat_id ?: config('services.telegram.admin_chat_id'),
+                'chat_id' => $config->admin_chat_id,
                 'module' => 'generales',
                 'description' => 'Canal administrativo donde se envían los cierres de caja y reportes consolidados.',
-            ],
-            [
-                'name' => 'Canal de Fallas de Stock',
-                'chat_id' => config('services.telegram.failures_chat_id'),
-                'module' => 'farmacia',
-                'description' => 'Canal asignado a las alertas y reportes de fallas de inventario y mostrador.',
-            ],
-        ];
-
-        foreach ($channelsToSync as $chData) {
-            if (!empty($chData['chat_id'])) {
-                TelegramChannel::firstOrCreate(
-                    ['chat_id' => (string) $chData['chat_id']],
-                    [
-                        'telegram_config_id' => $config->id,
-                        'name' => $chData['name'],
-                        'module' => $chData['module'],
-                        'description' => $chData['description'],
-                        'is_active' => true,
-                    ]
-                );
-            }
+            ];
         }
 
-        $channels = TelegramChannel::orderBy('id', 'asc')->get();
+        foreach ($channelsToSync as $chData) {
+            TelegramChannel::firstOrCreate(
+                ['chat_id' => (string) $chData['chat_id']],
+                [
+                    'telegram_config_id' => $config->id,
+                    'name' => $chData['name'],
+                    'module' => $chData['module'],
+                    'description' => $chData['description'],
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        $channels = TelegramChannel::orderBy('name')->get();
+
         return TelegramChannelResource::collection($channels);
     }
 
@@ -268,7 +249,7 @@ class TelegramConfigController extends Controller
         $chatId = $command->channel?->chat_id;
         if (!$chatId) {
             $config = TelegramConfig::first();
-            $chatId = $config?->chat_id ?: config('services.telegram.chat_id');
+            $chatId = $config?->chat_id;
         }
 
         if (!$chatId) {

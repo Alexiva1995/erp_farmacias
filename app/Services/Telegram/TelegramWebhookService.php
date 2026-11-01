@@ -34,6 +34,14 @@ class TelegramWebhookService
     }
 
     /**
+     * Obtener el Token del bot configurado en la instalacion actual.
+     */
+    protected function getBotToken(): ?string
+    {
+        return $this->telegramService->getToken();
+    }
+
+    /**
      * Procesar la petición entrante del Webhook de Telegram.
      */
     public function handleWebhook(array $update): void
@@ -59,7 +67,7 @@ class TelegramWebhookService
         $fromId = $message['from']['id'] ?? null;
 
         // Verificar que el mensaje venga del administrador autorizado
-        $adminChatId = $this->telegramService->getAdminChatId() ?: config('services.telegram.admin_chat_id');
+        $adminChatId = $this->telegramService->getAdminChatId();
 
         if (!$adminChatId || (string)$fromId !== (string)$adminChatId) {
             return;
@@ -683,7 +691,7 @@ class TelegramWebhookService
             $this->answerCallback($callbackQueryId);
             Cache::forget('telegram_debts_queue_' . $fromId);
             if ($messageId) {
-                $token = config('services.telegram.bot_token');
+                $token = $this->getBotToken();
                 Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
                     'chat_id' => $chatId,
                     'message_id' => $messageId,
@@ -784,7 +792,7 @@ class TelegramWebhookService
                 
                 $typeInfo = $isInformal ? " [Informal 📝]" : "";
                 
-                Http::post("https://api.telegram.org/bot" . config('services.telegram.bot_token') . "/editMessageText", [
+                Http::post("https://api.telegram.org/bot" . $this->getBotToken() . "/editMessageText", [
                     'chat_id' => $chatId,
                     'message_id' => $messageId,
                     'text' => "✅ *[FACTURA REGISTRADA]*{$typeInfo}\n\n"
@@ -852,7 +860,7 @@ class TelegramWebhookService
                     ]
                 ];
 
-                Http::post("https://api.telegram.org/bot" . config('services.telegram.bot_token') . "/editMessageText", [
+                Http::post("https://api.telegram.org/bot" . $this->getBotToken() . "/editMessageText", [
                     'chat_id' => $chatId,
                     'message_id' => $messageId,
                     'text' => $msg,
@@ -873,7 +881,7 @@ class TelegramWebhookService
             Cache::forget('telegram_pending_invoice_' . $fromId);
 
             $this->answerCallback($callbackQueryId, 'Proceso cancelado.');
-            Http::post("https://api.telegram.org/bot" . config('services.telegram.bot_token') . "/editMessageText", [
+            Http::post("https://api.telegram.org/bot" . $this->getBotToken() . "/editMessageText", [
                 'chat_id' => $chatId,
                 'message_id' => $messageId,
                 'text' => "❌ *[PROCESO CANCELADO]*\n\nLa factura o la creación del proveedor fue cancelada.",
@@ -922,7 +930,7 @@ class TelegramWebhookService
 
     protected function answerCallback(string $callbackQueryId, ?string $text = null, bool $showAlert = false): void
     {
-        $token = config('services.telegram.bot_token');
+        $token = $this->getBotToken();
         if ($token) {
             $payload = [
                 'callback_query_id' => $callbackQueryId,
@@ -941,7 +949,7 @@ class TelegramWebhookService
      */
     protected function updateMessageToCanceled(int $chatId, int $messageId, Reservation $reservation): void
     {
-        $token = config('services.telegram.bot_token');
+        $token = $this->getBotToken();
         if (!$token) return;
 
         $today = $reservation->date->toDateString();
@@ -1284,7 +1292,7 @@ class TelegramWebhookService
             Cache::forget('telegram_state_' . $fromId);
 
             // Enviar mensaje con botones interactivos de aprobación
-            $token = config('services.telegram.bot_token');
+            $token = $this->getBotToken();
             $msg = "✅ *[FACTURA DE FRUTAS CARGADA]*\n\n"
                  . "🏢 *Proveedor:* {$supplier->name}\n"
                  . "🔢 *Factura Nº:* `{$invoiceNumber}`\n"
@@ -1339,7 +1347,7 @@ class TelegramWebhookService
 
             $this->answerCallback($callbackQueryId, 'Factura aprobada con éxito.');
 
-            $token = config('services.telegram.bot_token');
+            $token = $this->getBotToken();
             $msg = "✅ *[FACTURA DE FRUTAS APROBADA]*\n\n"
                  . "🏢 *Proveedor:* {$invoice->supplier->name}\n"
                  . "🔢 *Factura Nº:* `{$invoice->invoice_number}`\n"
@@ -1374,7 +1382,7 @@ class TelegramWebhookService
 
         $this->answerCallback($callbackQueryId, 'Se conservó en estado cargada.');
 
-        $token = config('services.telegram.bot_token');
+        $token = $this->getBotToken();
         $msg = "📁 *[FACTURA CONSERVADA EN CARGADA]*\n\n"
              . "🏢 *Proveedor:* {$invoice->supplier->name}\n"
              . "🔢 *Factura Nº:* `{$invoice->invoice_number}`\n"
@@ -1568,7 +1576,7 @@ class TelegramWebhookService
         if (!$queue || !isset($queue['suppliers']) || $queue['index'] >= count($queue['suppliers'])) {
             $msg = "✅ *[PAGOS COMPLETADOS]*\n\nNo quedan más proveedores con deudas pendientes por revisar en tu cola actual.";
             if ($editMessageId) {
-                $token = config('services.telegram.bot_token');
+                $token = $this->getBotToken();
                 \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
                     'chat_id' => $chatId,
                     'message_id' => $editMessageId,
@@ -1611,7 +1619,7 @@ class TelegramWebhookService
         ];
 
         if ($editMessageId) {
-            $token = config('services.telegram.bot_token');
+            $token = $this->getBotToken();
             \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
                 'chat_id' => $chatId,
                 'message_id' => $editMessageId,
@@ -1667,7 +1675,7 @@ class TelegramWebhookService
             ]
         ];
 
-        $token = config('services.telegram.bot_token');
+        $token = $this->getBotToken();
         \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
             'chat_id' => $chatId,
             'message_id' => $messageId,
@@ -1702,7 +1710,7 @@ class TelegramWebhookService
         Cache::forget('telegram_state_' . $fromId);
         $this->answerCallback($callbackQueryId, 'Flujo cancelado.');
 
-        $token = config('services.telegram.bot_token');
+        $token = $this->getBotToken();
         \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
             'chat_id' => $chatId,
             'message_id' => $messageId,
@@ -1752,7 +1760,7 @@ class TelegramWebhookService
         }
         $buttons[] = [['text' => '❌ Cancelar', 'callback_data' => 'exit_payments']];
 
-        $token = config('services.telegram.bot_token');
+        $token = $this->getBotToken();
         \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
             'chat_id' => $chatId,
             'message_id' => $messageId,
@@ -1786,7 +1794,7 @@ class TelegramWebhookService
              . "💳 *Método:* `{$method}`\n\n"
              . "Por favor, escribe el **monto a pagar** (envíalo como mensaje de texto, ej: `150` o `150.50`):";
 
-        $token = config('services.telegram.bot_token');
+        $token = $this->getBotToken();
         \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
             'chat_id' => $chatId,
             'message_id' => $messageId,
@@ -1912,7 +1920,7 @@ class TelegramWebhookService
             ]
         ];
 
-        $token = config('services.telegram.bot_token');
+        $token = $this->getBotToken();
         \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
             'chat_id' => $chatId,
             'message_id' => $messageId,
@@ -1959,7 +1967,7 @@ class TelegramWebhookService
         $msg = "📝 *[REFERENCIA DE TRANSACCIÓN]*\n\n"
              . "Por favor, escribe el **número de referencia** de la transacción (o escribe `ninguno` si no aplica):";
 
-        $token = config('services.telegram.bot_token');
+        $token = $this->getBotToken();
         \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
             'chat_id' => $chatId,
             'message_id' => $messageId,
@@ -2620,7 +2628,7 @@ class TelegramWebhookService
 
         $replyMarkup = ['inline_keyboard' => $buttons];
 
-        $token = config('services.telegram.bot_token');
+        $token = $this->getBotToken();
         if ($messageId) {
             Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
                 'chat_id' => $chatId,
@@ -2743,7 +2751,7 @@ class TelegramWebhookService
             $this->answerCallback($callbackQueryId, '🗑️ Horario fijo eliminado permanentemente.');
             
             // Editar mensaje para reflejar la eliminación
-            $token = config('services.telegram.bot_token');
+            $token = $this->getBotToken();
             Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
                 'chat_id' => $chatId,
                 'message_id' => $messageId,
@@ -2794,7 +2802,7 @@ class TelegramWebhookService
         ];
 
         $replyMarkup = ['inline_keyboard' => $buttons];
-        $token = config('services.telegram.bot_token');
+        $token = $this->getBotToken();
 
         Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
             'chat_id' => $chatId,
@@ -3114,7 +3122,7 @@ class TelegramWebhookService
             $this->answerCallback($callbackQueryId, '🛒 Pedido confirmado exitosamente.');
 
             if ($messageId) {
-                $token = config('services.telegram.bot_token');
+                $token = $this->getBotToken();
                 Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
                     'chat_id' => $chatId,
                     'message_id' => $messageId,
@@ -3431,7 +3439,7 @@ class TelegramWebhookService
             // Limpiar o actualizar mensaje original si es posible
             if ($originalMessageId) {
                 try {
-                    $token = config('services.telegram.bot_token');
+                    $token = $this->getBotToken();
                     Http::post("https://api.telegram.org/bot{$token}/editMessageText", [
                         'chat_id' => $chatId,
                         'message_id' => $originalMessageId,

@@ -29,6 +29,6 @@ import InventoryProductsPage from '@/pages/inventory/products/index.vue'
       </div>
     </v-alert>
 
-    <InventoryProductsPage />
+    <InventoryProductsPage :is-master="true" />
   </div>
 </template>

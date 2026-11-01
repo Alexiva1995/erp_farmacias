@@ -8,12 +8,20 @@ import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import Swal from "sweetalert2";
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch, computed } from "vue";
 import { useRoute } from "vue-router";
+
+const props = defineProps({
+  isMaster: {
+    type: Boolean,
+    default: false,
+  },
+});
 
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
 const route = useRoute();
+const isMasterMode = computed(() => props.isMaster || route.path.startsWith('/master'));
 
 const products = ref([]);
 const totalProduct = ref(0);
@@ -442,6 +450,7 @@ const handleSort = sortOptions => {
       :suppliers="suppliers"
       :categories="categories"
       :loading="isLoadingFilters"
+      :mode="isMasterMode ? 'master' : 'products'"
       :showAddButton="!!authStore.user"
       @clear="handleClearFilters"
       @export="handleExport"
@@ -460,6 +469,7 @@ const handleSort = sortOptions => {
       :page="page"
       :sort-by="sortBy"
       :order-by="orderBy"
+      :mode="isMasterMode ? 'master' : 'products'"
       :only-deleted="productTypeFilter === 'eliminados'"
       :categories="categories"
       @update:options="updateTableOptions"
@@ -480,6 +490,7 @@ const handleSort = sortOptions => {
       :all-products="products"
       :errors="productFormErrors"
       :is-saving="isSavingProduct"
+      :is-master="isMasterMode"
       @save="handleSaveProduct"
       @clear-errors="clearFormErrors"
       @laboratory-created="fetchSelectOptions"

@@ -105,7 +105,74 @@ const props = defineProps({
   categories: { type: Array, default: () => [] },
 });
 
-const headers = computed(() => [
+const isMasterMode = computed(() => props.mode === "master");
+
+const headers = computed(() => {
+  if (isMasterMode.value) {
+    return [
+      {
+        title: "ID",
+        key: "id",
+        sortable: true,
+        visible: true,
+        cellClass: "font-weight-black text-primary",
+        width: "70px",
+      },
+      {
+        title: "Código Barra",
+        key: "barcode",
+        sortable: true,
+        visible: true,
+        width: "140px",
+      },
+      {
+        title: "Producto",
+        key: "name",
+        sortable: true,
+        visible: true,
+      },
+      {
+        title: "Laboratorio",
+        key: "laboratory.name",
+        sortable: true,
+        visible: true,
+      },
+      {
+        title: "Categoría",
+        key: "category.name",
+        sortable: true,
+        visible: true,
+        cellClass: "d-none d-lg-table-cell",
+        headerClass: "d-none d-lg-table-cell",
+      },
+      {
+        title: "Origen",
+        key: "origin.name",
+        sortable: true,
+        visible: true,
+        cellClass: "d-none d-xl-table-cell",
+        headerClass: "d-none d-xl-table-cell",
+      },
+      {
+        title: "Presentación",
+        key: "presentation",
+        sortable: false,
+        visible: true,
+        cellClass: "d-none d-md-table-cell",
+        headerClass: "d-none d-md-table-cell",
+      },
+      {
+        title: "Acciones",
+        key: "actions",
+        sortable: false,
+        align: "center",
+        visible: true,
+        width: "120px",
+      },
+    ];
+  }
+
+  return [
   {
     title: "ID",
     key: "id",
@@ -157,7 +224,8 @@ const headers = computed(() => [
     align: "center",
     visible: true,
   },
-]);
+  ];
+});
 
 const visibleHeaders = computed(() => headers.value.filter((header) => header.visible));
 
@@ -361,7 +429,7 @@ const getMergedLots = (lots) => {
         :sort-by="props.sortBy ? [{ key: props.sortBy, order: props.orderBy || 'asc' }] : []"
         class="text-no-wrap"
         density="compact"
-        :show-select="props.mode === 'products'"
+        :show-select="props.mode === 'products' || isMasterMode"
         item-value="id"
         @update:options="(options) => emit('update:options', options)"
       >
@@ -374,13 +442,52 @@ const getMergedLots = (lots) => {
         </template>
 
         <template #item.id="{ item }">
+          <span v-if="isMasterMode" class="font-weight-black text-primary">
+            {{ item.id }}
+          </span>
           <a
+            v-else
             :href="'/inventory/traceability?q=' + item.id"
             target="_blank"
             class="text-decoration-none font-weight-black text-primary"
           >
             {{ item.id }}
           </a>
+        </template>
+
+        <template #item.barcode="{ item }">
+          <span v-if="item.barcode" class="font-weight-mono text-xs text-high-emphasis">
+            {{ item.barcode }}
+          </span>
+          <span v-else class="text-disabled text-xs">—</span>
+        </template>
+
+        <template #item.laboratory.name="{ item }">
+          <span v-if="item.laboratory?.name" class="text-xs font-weight-black text-uppercase text-primary">
+            {{ item.laboratory.name }}
+          </span>
+          <span v-else class="text-disabled text-xs">—</span>
+        </template>
+
+        <template #item.category.name="{ item }">
+          <VChip v-if="item.category?.name" size="x-small" variant="tonal" color="secondary" class="font-weight-medium">
+            {{ item.category.name }}
+          </VChip>
+          <span v-else class="text-disabled text-xs">—</span>
+        </template>
+
+        <template #item.origin.name="{ item }">
+          <span v-if="item.origin?.name" class="text-xs text-medium-emphasis">
+            {{ item.origin.name }}
+          </span>
+          <span v-else class="text-disabled text-xs">—</span>
+        </template>
+
+        <template #item.presentation="{ item }">
+          <span v-if="item.presentation || item.unit_of_measure" class="text-xs text-medium-emphasis">
+            {{ item.presentation || '' }} {{ item.unit_of_measure ? `(${item.unit_of_measure})` : '' }}
+          </span>
+          <span v-else class="text-disabled text-xs">—</span>
         </template>
 
         <template #item.name="{ item }">
@@ -564,6 +671,31 @@ const getMergedLots = (lots) => {
               >
                 <VIcon icon="tabler-trash" size="18" />
                 <VTooltip activator="parent">Eliminar</VTooltip>
+              </IconBtn>
+            </template>
+
+            <template v-else-if="mode === 'master'">
+              <IconBtn @click="emit('edit-product', item)" color="warning" size="small">
+                <VIcon icon="tabler-edit" size="18" />
+                <VTooltip activator="parent">Editar Ficha Maestra</VTooltip>
+              </IconBtn>
+              <IconBtn
+                v-if="authStore.isAdmin && brandingStore.settings.enable_merge !== false"
+                color="info"
+                size="small"
+                @click="openMergeModal(item)"
+              >
+                <VIcon icon="tabler-package" size="18" />
+                <VTooltip activator="parent">Fusionar Productos</VTooltip>
+              </IconBtn>
+              <IconBtn
+                v-if="authStore.isAdmin"
+                color="error"
+                size="small"
+                @click="emit('delete-product', item.id)"
+              >
+                <VIcon icon="tabler-trash" size="18" />
+                <VTooltip activator="parent">Eliminar del Master</VTooltip>
               </IconBtn>
             </template>
 
