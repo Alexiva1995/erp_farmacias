@@ -14,13 +14,16 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # ==============================================================================
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "a2_bridge_config.json")
+CHECKPOINT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "a2_stream_checkpoint.json")
 
 def load_config():
     default_config = {
-        "api_base_url": "https://ensalud.tovaerp.com/api",
+        "api_base_url": "https://alkosto.tovaerp.com/api",
         "api_token": "",
         "a2_data_dir": r"C:\laragon\www\erp_farmacias\A2\GEST - copia\GEST - copia\Empre001\Data",
         "polling_interval": 3,
+        "stream_interval": 15,
+        "stream_enabled": True,
         "filter_year": 2026
     }
     if os.path.exists(CONFIG_FILE):
@@ -28,7 +31,7 @@ def load_config():
             with open(CONFIG_FILE, "r") as f:
                 saved = json.load(f)
                 default_config.update(saved)
-        except:
+        except Exception:
             pass
     return default_config
 
@@ -36,7 +39,29 @@ def save_config(cfg):
     try:
         with open(CONFIG_FILE, "w") as f:
             json.dump(cfg, f, indent=4)
-    except:
+    except Exception:
+        pass
+
+def load_checkpoint():
+    default_cp = {
+        "last_sale_doc": "",
+        "last_sync_time": "",
+        "stream_enabled": True
+    }
+    if os.path.exists(CHECKPOINT_FILE):
+        try:
+            with open(CHECKPOINT_FILE, "r") as f:
+                saved = json.load(f)
+                default_cp.update(saved)
+        except Exception:
+            pass
+    return default_cp
+
+def save_checkpoint(cp):
+    try:
+        with open(CHECKPOINT_FILE, "w") as f:
+            json.dump(cp, f, indent=4)
+    except Exception:
         pass
 
 def poll_and_process():
@@ -45,6 +70,7 @@ def poll_and_process():
     api_url = cfg["api_base_url"].rstrip('/')
     token = cfg.get("api_token", "")
     target_year = cfg.get("filter_year", 2026)
+    stream_interval = cfg.get("stream_interval", 15)
     
     headers = {
         "Accept": "application/json",
@@ -57,11 +83,14 @@ def poll_and_process():
     print(f"Directorio de Datos a2: {data_dir}")
     print(f"Conectando con: {api_url}")
     print(f"Filtro Año Operativo: {target_year}")
-    print("Esperando solicitudes de extracción desde la nube o sincronización...")
+    print(f"Streaming en tiempo real activo: cada {stream_interval}s")
+    print("Esperando solicitudes de extracción o nuevas ventas en a2...")
+
+    last_stream_time = 0
 
     while True:
         try:
-            # 1. Consultar tareas pendientes solicitadas desde la vista de Importar Datos
+            # 1. Consultar tareas manuales solicitadas desde la interfaz web (previsualización/importación)
             poll_endpoint = f"{api_url}/configuration/data-import/a2/poll-tasks"
             resp = requests.get(poll_endpoint, headers=headers, timeout=10, verify=False)
             
@@ -97,7 +126,7 @@ def poll_and_process():
                         extracted["clients"] = a2.extract_clients(data_dir)
                         extracted["receivables"] = a2.extract_receivables(data_dir, year)
                         
-                    # 2. Responder con los datos a la API para generar la previsualización
+                    # Responder con los datos a la API para generar la previsualización
                     submit_endpoint = f"{api_url}/configuration/data-import/a2/submit-task/{task_id}"
                     sub_resp = requests.post(
                         submit_endpoint,
@@ -113,7 +142,44 @@ def poll_and_process():
         except requests.exceptions.ConnectionError:
             pass
         except Exception as e:
-            print(f"[ERROR] En loop de polling: {e}")
+            print(f"[ERROR] En loop de tareas manuales: {e}")
+
+        # 2. Polling continuo de Streaming en segundo plano (ventas, clientes, stock)
+        now = time.time()
+        if now - last_stream_time >= stream_interval:
+            last_stream_time = now
+            cp = load_checkpoint()
+            if cp.get("stream_enabled", True) and cfg.get("stream_enabled", True):
+                last_doc = cp.get("last_sale_doc", "")
+                try:
+                    new_sales = a2.extract_sales_stream(data_dir, target_year, min_doc=last_doc)
+                    if new_sales:
+                        # Limitar por batch para no saturar memoria en transferencias masivas
+                        batch_sales = new_sales[:100]
+                        print(f"\n[STREAM DETECTADO] Sincronizando {len(batch_sales)} ventas nuevas desde doc #{batch_sales[0]['document']} hasta #{batch_sales[-1]['document']}...")
+                        stream_endpoint = f"{api_url}/configuration/data-import/a2/stream-sync"
+                        stream_resp = requests.post(
+                            stream_endpoint,
+                            json={
+                                "sales": batch_sales,
+                                "checkpoint": {"last_doc": batch_sales[-1]["document"]}
+                            },
+                            headers=headers,
+                            timeout=60,
+                            verify=False
+                        )
+                        if stream_resp.status_code == 200:
+                            last_synced_doc = batch_sales[-1]["document"]
+                            cp["last_sale_doc"] = last_synced_doc
+                            cp["last_sync_time"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                            save_checkpoint(cp)
+                            res_data = stream_resp.json().get("data", {})
+                            stats = res_data.get("stats", {})
+                            print(f" -> [OK STREAM] Ventas sincronizadas: {stats.get('sales_synced', 0)} | Items creados: {stats.get('order_details_created', 0)} | Omitidas: {stats.get('sales_skipped', 0)}")
+                        else:
+                            print(f" -> [ERROR STREAM] Servidor respondio {stream_resp.status_code}: {stream_resp.text[:150]}")
+                except Exception as se:
+                    print(f" -> [ERROR STREAM] Error procesando streaming: {se}")
             
         time.sleep(cfg.get("polling_interval", 3))
 

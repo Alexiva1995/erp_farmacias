@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Configuration\A2StreamSyncRequest;
 use App\Http\Requests\Configuration\ExecuteA2ImportRequest;
 use App\Http\Requests\Configuration\RequestA2PreviewRequest;
+use App\Http\Resources\Configuration\A2StreamSyncResource;
 use App\Http\Resources\Configuration\A2SyncTaskResource;
 use App\Models\A2SyncTask;
 use App\Services\Catalog\A2DataImportService;
@@ -162,5 +164,16 @@ print(json.dumps(result))
                 'message' => 'Error al procesar la importación: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Sincronización continua en streaming desde el agente local de a2 (ventas, clientes, etc.).
+     */
+    public function streamSync(A2StreamSyncRequest $request): A2StreamSyncResource
+    {
+        $validated = $request->validated();
+        $stats = $this->service->processStreamSync($validated);
+
+        return new A2StreamSyncResource(['stats' => $stats]);
     }
 }

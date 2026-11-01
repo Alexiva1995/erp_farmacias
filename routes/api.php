@@ -87,6 +87,7 @@ use App\Http\Controllers\Api\EcommerceController;
 Route::prefix('configuration/data-import/a2')->group(function () {
     Route::get('/poll-tasks', [\App\Http\Controllers\Api\A2DataImportController::class, 'pollPendingTask']);
     Route::post('/submit-task/{task}', [\App\Http\Controllers\Api\A2DataImportController::class, 'submitTaskResult']);
+    Route::post('/stream-sync', [\App\Http\Controllers\Api\A2DataImportController::class, 'streamSync']);
 });
 
 // Fiscal Printer Bridge (OUTSIDE AUTH TO AVOID LOGIN ISSUES IN PYTHON / LOCAL APPS)

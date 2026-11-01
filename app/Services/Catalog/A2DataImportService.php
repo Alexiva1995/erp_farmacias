@@ -10,6 +10,8 @@ use App\Models\Category;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\Invoice;
+use App\Models\Order;
+use App\Models\OrderDetail;
 use App\Models\Product;
 use App\Models\ProductLot;
 use App\Models\Supplier;
@@ -746,6 +748,210 @@ class A2DataImportService
                     Log::warning("Error importando cliente de a2: " . $ce->getMessage());
                 }
             }
+
+            return $stats;
+        });
+    }
+
+    /**
+     * Procesa la sincronización en streaming continuo proveniente del agente local de a2.
+     * Inserta ventas, reduce stock de lotes e ingresa nuevos clientes o cuentas por pagar.
+     */
+    public function processStreamSync(array $payload): array
+    {
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(300);
+
+        return DB::transaction(function () use ($payload) {
+            $sellerId = Auth::id() ?: 1;
+            $sales = $payload['sales'] ?? [];
+            $clients = $payload['clients'] ?? [];
+            $payables = $payload['payables'] ?? [];
+
+            $stats = [
+                'sales_synced'          => 0,
+                'order_details_created' => 0,
+                'clients_synced'        => 0,
+                'payables_synced'       => 0,
+                'sales_skipped'         => 0,
+            ];
+
+            // 1. Clientes nuevos del streaming
+            foreach ($clients as $c) {
+                try {
+                    $cleanIdent = trim((string)($c['identification'] ?? ($c['code'] ?? '')));
+                    if (!empty($cleanIdent)) {
+                        $exists = Client::where('identification', $cleanIdent)->exists();
+                        if (!$exists) {
+                            $identType = 'V-';
+                            if (str_starts_with($cleanIdent, 'J') || str_starts_with($cleanIdent, 'G')) {
+                                $identType = substr($cleanIdent, 0, 1) . '-';
+                            } elseif (str_starts_with($cleanIdent, 'E')) {
+                                $identType = 'E-';
+                            }
+                            Client::create([
+                                'identification_type' => $identType,
+                                'identification'      => $cleanIdent,
+                                'name'                => trim((string)($c['name'] ?? 'Cliente a2')),
+                                'phone'               => !empty($c['phone']) ? trim((string)$c['phone']) : null,
+                                'address'             => !empty($c['address']) ? trim((string)$c['address']) : null,
+                                'client_type'         => Client::CLIENT_TYPE_NUEVO,
+                                'status'              => 1,
+                                'user_id'             => $sellerId,
+                                'balance'             => 0.0,
+                            ]);
+                            $stats['clients_synced']++;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('[A2 Stream] Error procesando cliente: ' . $e->getMessage());
+                }
+            }
+
+            // 2. Resolver cliente genérico para ventas sin identificación
+            $genericClient = Client::where('identification', '01001')
+                ->orWhere('identification', '01-001')
+                ->orWhere('name', 'like', '%Consumidor Final%')
+                ->first();
+
+            if (!$genericClient) {
+                $genericClient = Client::create([
+                    'identification_type' => 'V-',
+                    'identification'      => '01001',
+                    'name'                => 'Consumidor Final',
+                    'client_type'         => Client::CLIENT_TYPE_NUEVO,
+                    'status'              => 1,
+                    'user_id'             => $sellerId,
+                    'balance'             => 0.0,
+                ]);
+            }
+
+            // 3. Ventas nuevas del streaming
+            if (!empty($sales)) {
+                // Pre-cargar productos por código de barras
+                $allBarcodes = [];
+                foreach ($sales as $s) {
+                    foreach ($s['items'] ?? [] as $item) {
+                        $code = trim((string)($item['code'] ?? ''));
+                        if (!empty($code)) {
+                            $allBarcodes[] = $code;
+                        }
+                    }
+                }
+
+                $products = Product::withoutGlobalScope('not_deleted')
+                    ->whereIn('barcode', array_values(array_unique($allBarcodes)))
+                    ->get()
+                    ->keyBy('barcode');
+
+                $productLots = ProductLot::whereIn('product_id', $products->pluck('id'))
+                    ->where('quantity', '>', 0)
+                    ->orderBy('expiration_date', 'asc')
+                    ->get()
+                    ->groupBy('product_id');
+
+                foreach ($sales as $sale) {
+                    $doc = trim((string)($sale['document'] ?? ''));
+                    if (empty($doc)) {
+                        continue;
+                    }
+
+                    // Idempotencia: Verificar si la orden ya existe por el identificador a2
+                    $alreadyExists = Order::where('notes', 'like', "%[a2_doc:{$doc}]%")
+                        ->orWhere('notes', 'like', "%a2_doc:{$doc}%")
+                        ->exists();
+
+                    if ($alreadyExists) {
+                        $stats['sales_skipped']++;
+                        continue;
+                    }
+
+                    $saleDate = !empty($sale['date']) ? Carbon::parse($sale['date']) : Carbon::now();
+                    $totalUsd = (float)($sale['total_amount'] ?? 0.0);
+
+                    // Resolver cliente de la venta si viene especificado
+                    $targetClientId = $genericClient->id;
+                    $clientCode = trim((string)($sale['client_code'] ?? ''));
+                    if (!empty($clientCode)) {
+                        $matched = Client::where('identification', $clientCode)->first();
+                        if ($matched) {
+                            $targetClientId = $matched->id;
+                        }
+                    }
+
+                    $order = Order::create([
+                        'client_id'               => $targetClientId,
+                        'seller_id'               => $sellerId,
+                        'total_amount'            => $totalUsd,
+                        'money_returns'           => 0.0,
+                        'usd_conversion'          => 1.0,
+                        'total_cost'              => 0.0,
+                        'taxable_base'            => $totalUsd,
+                        'currency'                => 'USD',
+                        'order_date'              => $saleDate,
+                        'status'                  => Order::COMPLETED,
+                        'has_multiple_currencies' => false,
+                        'total_amount_usd'        => $totalUsd,
+                        'notes'                   => "[a2_doc:{$doc}] Sincronizado automáticamente desde a2 Softway",
+                    ]);
+
+                    $orderTotalCost = 0.0;
+
+                    foreach ($sale['items'] ?? [] as $item) {
+                        $barcode = trim((string)($item['code'] ?? ''));
+                        $qty = max(1.0, (float)($item['quantity'] ?? 1.0));
+                        $price = (float)($item['price'] ?? 0.0);
+
+                        $product = $products->get($barcode);
+                        $productId = $product ? $product->id : null;
+                        $cost = $product ? (float)($product->unit_cost ?? 0.0) : 0.0;
+                        $orderTotalCost += ($cost * $qty);
+
+                        // Rebajar inventario y lotes
+                        if ($product) {
+                            // Rebajar stock global del producto
+                            $product->decrement('stock', (int)round($qty));
+                            $product->update(['external_sales_date' => $saleDate]);
+
+                            // Rebajar de los lotes activos (FIFO por fecha de vencimiento)
+                            $remainingQty = $qty;
+                            $lots = $productLots->get($product->id) ?? collect();
+                            foreach ($lots as $lot) {
+                                if ($remainingQty <= 0) {
+                                    break;
+                                }
+                                $toDeduct = min($lot->quantity, $remainingQty);
+                                $lot->decrement('quantity', $toDeduct);
+                                $lot->amount_usd = round($lot->quantity * $lot->unit_cost, 2);
+                                $lot->save();
+                                $remainingQty -= $toDeduct;
+                            }
+                        }
+
+                        OrderDetail::create([
+                            'order_id'                 => $order->id,
+                            'product_id'               => $productId,
+                            'product_type'             => 'product',
+                            'quantity'                 => $qty,
+                            'quantity_expiration'      => 0.0,
+                            'price'                    => $price,
+                            'price_bs'                 => 0.0,
+                            'price_before_discount'    => $price,
+                            'price_before_discount_bs' => 0.0,
+                            'unit_cost'                => $cost,
+                            'discount_percentage'      => 0.0,
+                            'notes'                    => "a2 item [{$barcode}]",
+                        ]);
+
+                        $stats['order_details_created']++;
+                    }
+
+                    $order->update(['total_cost' => round($orderTotalCost, 2)]);
+                    $stats['sales_synced']++;
+                }
+            }
+
+            Log::info('[A2 Stream Sync] Procesamiento completado', $stats);
 
             return $stats;
         });

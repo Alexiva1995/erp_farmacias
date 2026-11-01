@@ -383,8 +383,79 @@ def extract_clients(a2_data_dir: str):
 
     return list(clients_map.values())
 
+import os
+import struct
+import re
+
 def extract_sales(a2_data_dir: str, target_year: int = 2026):
-    # En SOperacionInv, op_type 1001 o 1002 corresponden a ventas
     all_ops = extract_operations(a2_data_dir, target_year)
-    sales = [op for op in all_ops if op.get("op_type") in [1001, 1002, 1025, 1537]]
+    sales = [op for op in all_ops if op.get("op_type") == 2817 or op.get("op_type") in [1001, 1002, 1025, 1537]]
     return sales
+
+def extract_sales_stream(a2_data_dir: str, target_year: int = 2026, min_doc: str = ""):
+    """
+    Extrae ventas completas con sus items de SDetalleVenta.dat y SOperacionInv.dat
+    posteriores al documento min_doc para sincronizacion incremental y continua.
+    """
+    det_path = os.path.join(a2_data_dir, "SDetalleVenta.dat")
+    items_by_doc = {}
+    if os.path.exists(det_path):
+        table_det = DBISAMTable(det_path)
+        with open(det_path, "rb") as fp:
+            fp.seek(table_det.header_size)
+            rec_len = 976
+            while True:
+                rec = fp.read(rec_len)
+                if len(rec) < rec_len:
+                    break
+                raw_doc = rec[77:107].split(b"\x00")[0].decode("latin1", errors="ignore").strip()
+                doc = re.sub(r"^[^\w]+", "", raw_doc)
+                if min_doc and doc <= min_doc:
+                    continue
+                raw_code = rec[30:60].split(b"\x00")[0].decode("latin1", errors="ignore").strip()
+                code = re.sub(r"^[^\w]+", "", raw_code)
+                if doc and code:
+                    price = struct.unpack("<d", rec[197:205])[0] if len(rec) >= 205 else 0.0
+                    qty = struct.unpack("<d", rec[206:214])[0] if len(rec) >= 214 else 0.0
+                    items_by_doc.setdefault(doc, []).append({
+                        "code": code,
+                        "price": round(price, 4),
+                        "quantity": round(qty, 2)
+                    })
+
+    op_path = os.path.join(a2_data_dir, "SOperacionInv.dat")
+    if not os.path.exists(op_path):
+        return []
+
+    table_op = DBISAMTable(op_path)
+    sales = []
+    with open(op_path, "rb") as fp:
+        fp.seek(table_op.header_size)
+        rec_len = 3040
+        while True:
+            rec = fp.read(rec_len)
+            if len(rec) < rec_len:
+                break
+            op_type = struct.unpack("<I", rec[62:66])[0] if len(rec) >= 66 else 0
+            if op_type != 2817:
+                continue
+            doc = DBISAMTable.decode_str(rec, 30, 30)
+            if min_doc and doc <= min_doc:
+                continue
+            date_str = DBISAMTable.decode_date(rec[76:84])
+            if target_year and date_str and not date_str.startswith(str(target_year)):
+                continue
+            total = DBISAMTable.decode_double(rec[119:127])
+            client_code = rec[383:413].split(b"\x00")[0].decode("latin1", errors="ignore").strip()
+            items = items_by_doc.get(doc, [])
+            sales.append({
+                "document": doc,
+                "date": date_str,
+                "total_amount": total,
+                "client_code": client_code,
+                "items": items
+            })
+
+    sales.sort(key=lambda x: x["document"])
+    return sales
+
