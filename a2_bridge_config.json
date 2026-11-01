@@ -3,5 +3,8 @@
     "api_token": "",
     "a2_data_dir": "C:\\laragon\\www\\erp_farmacias\\A2\\GEST - copia\\GEST - copia\\Empre001\\Data",
     "polling_interval": 3,
-    "filter_year": 2026
+    "stream_interval": 15,
+    "stream_enabled": true,
+    "filter_year": 2026,
+    "theme": "dark"
 }

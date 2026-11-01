@@ -45,7 +45,8 @@ BASE_DIR = get_base_dir()
 CONFIG_FILE = os.path.join(BASE_DIR, "a2_bridge_config.json")
 CHECKPOINT_FILE = os.path.join(BASE_DIR, "a2_stream_checkpoint.json")
 ICON_FILE = os.path.join(BASE_DIR, "tova.ico")
-LOGO_FILE = os.path.join(BASE_DIR, "logo.png")
+ICON_PNG_FILE = os.path.join(BASE_DIR, "icon.png")
+LOGO_FILE = os.path.join(BASE_DIR, "icon.png")
 
 def load_config():
     default_cfg = {
@@ -149,18 +150,14 @@ class TovaModernBridgeApp(ctk.CTk):
         left_box = ctk.CTkFrame(header, fg_color="transparent")
         left_box.pack(side="left", padx=24, pady=12)
 
-        # Intentar cargar el logo corporativo de Tova (PNG con fondo transparente)
+        # Cargar el isotipo corporativo de Tova (PNG 96x96 con fondo transparente)
         has_logo = False
-        if os.path.exists(LOGO_FILE):
+        if os.path.exists(ICON_PNG_FILE):
             try:
-                raw_img = Image.open(LOGO_FILE)
-                # Mantener proporción aproximada
-                aspect = raw_img.width / raw_img.height
-                target_h = 32
-                target_w = int(target_h * aspect)
-                logo_ctk = ctk.CTkImage(light_image=raw_img, dark_image=raw_img, size=(target_w, target_h))
+                raw_img = Image.open(ICON_PNG_FILE)
+                logo_ctk = ctk.CTkImage(light_image=raw_img, dark_image=raw_img, size=(38, 38))
                 logo_label = ctk.CTkLabel(left_box, image=logo_ctk, text="")
-                logo_label.pack(side="left", padx=(0, 16))
+                logo_label.pack(side="left", padx=(0, 14))
                 has_logo = True
             except Exception:
                 pass
@@ -168,11 +165,11 @@ class TovaModernBridgeApp(ctk.CTk):
         if not has_logo:
             fallback_logo = ctk.CTkLabel(
                 left_box,
-                text="tova",
+                text="T",
                 font=ctk.CTkFont(family="Segoe UI", size=24, weight="bold"),
                 text_color=COLOR_PRIMARY
             )
-            fallback_logo.pack(side="left", padx=(0, 16))
+            fallback_logo.pack(side="left", padx=(0, 14))
 
         # Divisor vertical sutil
         div_bar = ctk.CTkFrame(left_box, width=1, height=36, fg_color=COLOR_CARD_BORDER)

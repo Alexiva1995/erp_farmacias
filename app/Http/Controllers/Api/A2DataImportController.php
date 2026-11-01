@@ -169,11 +169,18 @@ print(json.dumps(result))
     /**
      * Sincronización continua en streaming desde el agente local de a2 (ventas, clientes, etc.).
      */
-    public function streamSync(A2StreamSyncRequest $request): A2StreamSyncResource
+    public function streamSync(A2StreamSyncRequest $request)
     {
-        $validated = $request->validated();
-        $stats = $this->service->processStreamSync($validated);
+        try {
+            $validated = $request->validated();
+            $stats = $this->service->processStreamSync($validated);
 
-        return new A2StreamSyncResource(['stats' => $stats]);
+            return new A2StreamSyncResource(['stats' => $stats]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[A2 Stream Sync Controller] Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return response()->json([
+                'message' => 'Error procesando sincronización: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

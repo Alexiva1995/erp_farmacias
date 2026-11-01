@@ -856,10 +856,8 @@ class A2DataImportService
                         continue;
                     }
 
-                    // Idempotencia: Verificar si la orden ya existe por el identificador a2
-                    $alreadyExists = Order::where('notes', 'like', "%[a2_doc:{$doc}]%")
-                        ->orWhere('notes', 'like', "%a2_doc:{$doc}%")
-                        ->exists();
+                    // Idempotencia: Verificar si la orden ya existe por el identificador a2 en los detalles
+                    $alreadyExists = OrderDetail::where('notes', 'like', "%[a2_doc:{$doc}]%")->exists();
 
                     if ($alreadyExists) {
                         $stats['sales_skipped']++;
@@ -891,8 +889,14 @@ class A2DataImportService
                         'order_date'              => $saleDate,
                         'status'                  => Order::COMPLETED,
                         'has_multiple_currencies' => false,
+                        'payment_methods'         => [
+                            [
+                                'type'     => 'efectivo',
+                                'document' => $doc,
+                                'amount'   => $totalUsd,
+                            ],
+                        ],
                         'total_amount_usd'        => $totalUsd,
-                        'notes'                   => "[a2_doc:{$doc}] Sincronizado automáticamente desde a2 Softway",
                     ]);
 
                     $orderTotalCost = 0.0;
@@ -940,7 +944,7 @@ class A2DataImportService
                             'price_before_discount_bs' => 0.0,
                             'unit_cost'                => $cost,
                             'discount_percentage'      => 0.0,
-                            'notes'                    => "a2 item [{$barcode}]",
+                            'notes'                    => "[a2_doc:{$doc}] item [{$barcode}]",
                         ]);
 
                         $stats['order_details_created']++;
