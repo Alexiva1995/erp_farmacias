@@ -244,8 +244,8 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Laboratorio / Marca (Para restaurante, Mini Market y Sports Rental es Marca) -->
-      <VCol cols="12" sm="6" md="2">
+      <!-- Laboratorio / Marca -->
+      <VCol v-if="props.mode !== 'master'" cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedLaboratory"
           :items="props.laboratories"
@@ -262,7 +262,7 @@ const showExport = computed(() => props.mode === 'products');
       </VCol>
 
       <!-- Categorías (Mini Market o Master) -->
-      <VCol v-if="isMiniMarket || props.mode === 'master'" cols="12" sm="6" md="2">
+      <VCol v-if="isMiniMarket && props.mode !== 'master'" cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedCategory"
           :items="props.categories"
@@ -278,8 +278,8 @@ const showExport = computed(() => props.mode === 'products');
         />
       </VCol>
 
-      <!-- Origen (Oculto en Restaurante, Mini Market y Sports Rental) -->
-      <VCol v-if="!isRestaurant && !isMiniMarket && !isSportsRental" cols="12" sm="6" md="2">
+      <!-- Origen (Oculto en Restaurante, Mini Market, Sports Rental y Master) -->
+      <VCol v-if="props.mode !== 'master' && !isRestaurant && !isMiniMarket && !isSportsRental" cols="12" sm="6" md="2">
         <VAutocomplete
           :model-value="props.selectedOrigin"
           :items="props.origins"

@@ -167,12 +167,12 @@ const getProductLocations = (item) => {
             >
               ID: {{ item.id }}
             </a>
-            <template v-if="!isMiniMarket && item.laboratory?.name">
+            <template v-if="mode !== 'master' && !isMiniMarket && item.laboratory?.name">
               <span class="text-primary font-weight-bold text-super-xs text-uppercase truncate" style="max-inline-size: 140px;">
                 {{ item.laboratory.name }}
               </span>
             </template>
-            <template v-else-if="isMiniMarket && item.category?.name">
+            <template v-else-if="mode !== 'master' && isMiniMarket && item.category?.name">
               <span class="text-primary font-weight-bold text-super-xs text-uppercase truncate" style="max-inline-size: 140px;">
                 {{ item.category.name }}
               </span>
@@ -184,7 +184,7 @@ const getProductLocations = (item) => {
           <h3 class="product-mobile-title font-weight-black text-high-emphasis text-uppercase truncate-2-lines mb-1 text-body-2">
             {{ item.name.toUpperCase() }}
             <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
-            <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
+            <span v-if="mode !== 'master' && (item.is_colombian_origin == 1 || item.is_colombian_origin === true)" class="text-xs text-disabled font-weight-regular"> (COL)</span>
             <span v-if="item.is_unified_group == 1 || item.is_unified_group === true" class="text-xs text-info font-weight-bold"> (UNIF)</span>
           </h3>
           
@@ -205,19 +205,7 @@ const getProductLocations = (item) => {
         </div>
       </div>
 
-      <!-- Caja compacta de Catálogo Maestro -->
-      <div v-if="mode === 'master'" class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
-        <div class="d-flex align-center gap-1">
-          <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Barra:</span>
-          <span class="text-xs font-weight-bold text-high-emphasis">{{ item.barcode || 'S/C' }}</span>
-        </div>
-        <div class="d-flex align-center gap-1">
-          <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Cat:</span>
-          <span class="text-xs font-weight-medium text-secondary truncate" style="max-inline-size: 140px;">
-            {{ item.category?.name || 'S/C' }}
-          </span>
-        </div>
-      </div>
+      <!-- Modo Maestro: sin barra ni categoría -->
 
       <!-- Caja compacta de Stock y P.V.P -->
       <div v-else class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">

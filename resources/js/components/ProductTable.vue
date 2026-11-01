@@ -116,14 +116,7 @@ const headers = computed(() => {
         sortable: true,
         visible: true,
         cellClass: "font-weight-black text-primary",
-        width: "70px",
-      },
-      {
-        title: "Código Barra",
-        key: "barcode",
-        sortable: true,
-        visible: true,
-        width: "140px",
+        width: "80px",
       },
       {
         title: "Producto",
@@ -132,34 +125,10 @@ const headers = computed(() => {
         visible: true,
       },
       {
-        title: "Laboratorio",
-        key: "laboratory.name",
+        title: "Principio Activo",
+        key: "active_ingredient",
         sortable: true,
         visible: true,
-      },
-      {
-        title: "Categoría",
-        key: "category.name",
-        sortable: true,
-        visible: true,
-        cellClass: "d-none d-lg-table-cell",
-        headerClass: "d-none d-lg-table-cell",
-      },
-      {
-        title: "Origen",
-        key: "origin.name",
-        sortable: true,
-        visible: true,
-        cellClass: "d-none d-xl-table-cell",
-        headerClass: "d-none d-xl-table-cell",
-      },
-      {
-        title: "Presentación",
-        key: "presentation",
-        sortable: false,
-        visible: true,
-        cellClass: "d-none d-md-table-cell",
-        headerClass: "d-none d-md-table-cell",
       },
       {
         title: "Acciones",
@@ -495,7 +464,7 @@ const getMergedLots = (lots) => {
             <!-- Corazón interactivo de favorito para administración -->
             <VBtn
               v-slot:default
-              v-if="((!isRestaurant && !isSportsRental) || isMiniMarket) && brandingStore.settings.enable_favorites"
+              v-if="!isMasterMode && ((!isRestaurant && !isSportsRental) || isMiniMarket) && brandingStore.settings.enable_favorites"
               icon
               variant="text"
               density="compact"
@@ -520,10 +489,10 @@ const getMergedLots = (lots) => {
               >
                 {{ item.name?.toUpperCase() || "—" }}
                 <span v-if="item.iva == 1 || item.iva === true" class="text-xs text-disabled font-weight-regular"> (G)</span>
-                <span v-if="item.is_colombian_origin == 1 || item.is_colombian_origin === true" class="text-xs text-disabled font-weight-regular"> (COL)</span>
+                <span v-if="!isMasterMode && (item.is_colombian_origin == 1 || item.is_colombian_origin === true)" class="text-xs text-disabled font-weight-regular"> (COL)</span>
                 <span v-if="item.is_unified_group == 1 || item.is_unified_group === true" class="text-xs text-info font-weight-bold"> (UNIF)</span>
               </span>
-              <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
+              <div v-if="!isMasterMode" class="d-flex align-center flex-wrap gap-1 text-super-xs mt-0-5">
                 <span v-if="!isRestaurant" class="text-disabled font-weight-normal truncate" style="max-inline-size: 240px;">{{ item.active_ingredient || '—' }}</span>
                 <span v-if="!isRestaurant" class="text-disabled mx-1">|</span>
                 <span v-if="isRestaurant && item.presentation && isFieldEnabled('presentation')" class="text-disabled font-weight-normal truncate" style="max-inline-size: 240px;">
