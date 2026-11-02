@@ -133,14 +133,6 @@ const headers = computed(() => {
         width: "200px",
       },
       {
-        title: "Estado",
-        key: "is_active",
-        sortable: true,
-        align: "center",
-        visible: true,
-        width: "100px",
-      },
-      {
         title: "Acciones",
         key: "actions",
         sortable: false,

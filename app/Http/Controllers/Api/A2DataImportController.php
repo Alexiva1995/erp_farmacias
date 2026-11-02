@@ -32,7 +32,8 @@ class A2DataImportController extends Controller
         $section = (string)$validated['section'];
 
         // Si tenemos la carpeta local en el servidor, procesamos de inmediato
-        $localDataDir = base_path('A2/GEST - copia/GEST - copia/Empre001/Data');
+        $localDataDir = config('services.a2.data_dir');
+        $extractorDir = config('services.a2.extractor_dir');
         if (file_exists($localDataDir)) {
             // Usar extractor nativo directamente
             $extracted = [];
@@ -41,7 +42,9 @@ class A2DataImportController extends Controller
             
             // Generar payload
             $script = "
-import json, a2_extractor_service as a2
+import sys, json
+sys.path.insert(0, r'{$extractorDir}')
+import a2_extractor_service as a2
 data_dir = r'{$localDataDir}'
 result = {}
 if '{$section}' in ['suppliers_payables', 'all']:

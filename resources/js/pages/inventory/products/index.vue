@@ -110,10 +110,12 @@ const fetchProducts = async () => {
     isStrictSearch: isStrictSearch.value || undefined,
     ...(productTypeFilter.value && { productType: productTypeFilter.value }),
     ...(selectedRestaurantType.value && { restaurantType: selectedRestaurantType.value }),
+    ...(isMasterMode.value ? { is_master: 1 } : {}),
   };
 
   try {
-    const response = await axios.get("/products", { params });
+    const config = isMasterMode.value ? { params, headers: { 'X-Master-Catalog-Context': '1' } } : { params };
+    const response = await axios.get("/products", config);
     products.value = response.data.data;
     totalProduct.value = response.data.total;
   } catch (error) {

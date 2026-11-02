@@ -25,12 +25,17 @@ class ProductController extends Controller
     public function __construct(
         private ProductQueryService $productQueryService,
         private ProductActionService $productActionService,
-        private ProductStatsService $productStatsService
+        private ProductStatsService $productStatsService,
+        private MasterCatalogBranchService $masterCatalogBranchService
     ) {
     }
 
     public function index(Request $request)
     {
+        $isMasterContext = $request->header('X-Master-Catalog-Context') === '1'
+            || $request->boolean('is_master')
+            || config('database.default') === 'master_catalog';
+
         // Búsqueda directa por ID: evita filtros (q, hasStock, is_deleted, etc.)
         // Acepta product_id (snake_case) y productId (camelCase)
         $productId = $request->input('product_id') ?? $request->input('productId') ?? $request->input('id');
@@ -39,6 +44,9 @@ class ProductController extends Controller
                 ->find((int) $productId);
             if ($product) {
                 $product->stock_calculado = $product->lots->sum('quantity');
+                if ($isMasterContext) {
+                    $this->masterCatalogBranchService->attachActiveBranches([$product]);
+                }
                 return response()->json(['data' => [new \App\Http\Resources\ProductResource($product)], 'total' => 1]);
             }
             return response()->json(['data' => [], 'total' => 0]);
@@ -49,9 +57,15 @@ class ProductController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
+            if ($isMasterContext) {
+                $this->masterCatalogBranchService->attachActiveBranches($items);
+            }
             return response()->json(['data' => \App\Http\Resources\ProductResource::collection($items), 'total' => $items->count()]);
         }
         $paginatedResult = $query->paginate($perPage);
+        if ($isMasterContext) {
+            $this->masterCatalogBranchService->attachActiveBranches($paginatedResult->items());
+        }
         return response()->json([
             'data' => \App\Http\Resources\ProductResource::collection($paginatedResult->items()),
             'total' => $paginatedResult->total()

@@ -23,7 +23,7 @@ class ImportNotionCategories extends Command
      */
     public function handle()
     {
-        $filePath = base_path('produc.csv');
+        $filePath = base_path('tools/data/produc.csv');
 
         if (!file_exists($filePath)) {
             $this->error("❌ El archivo {$filePath} no existe.");

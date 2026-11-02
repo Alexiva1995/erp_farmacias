@@ -219,6 +219,19 @@ class Supplier extends Model
             ?? $conns->first();
     }
 
+    /**
+     * Formatear RIF para asegurar formato estándar (ej: J-08518977-7).
+     */
+    public function getRifAttribute($value): ?string
+    {
+        return PurchaseBookEntry::formatRif($value);
+    }
+
+    public function setRifAttribute($value): void
+    {
+        $this->attributes['rif'] = PurchaseBookEntry::formatRif($value);
+    }
+
     public function paymentDate()
     {
         return $this->hasOne(SupplierPaymentMethod::class);

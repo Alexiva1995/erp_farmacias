@@ -265,6 +265,20 @@ const formatNumber = (val) => {
   const num = Number(val) || 0
   return new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num)
 }
+
+const formatRif = (rif) => {
+  if (!rif || rif === 'N/A') return rif || ''
+  const clean = String(rif).toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const m = clean.match(/^([A-Z])(\d+)(\d)$/)
+  if (m) {
+    return `${m[1]}-${m[2]}-${m[3]}`
+  }
+  return rif
+}
+
+const onRifBlur = () => {
+  entryForm.rif = formatRif(entryForm.rif)
+}
 </script>
 
 <template>
@@ -423,7 +437,7 @@ const formatNumber = (val) => {
             >
               <td class="text-center font-weight-bold">{{ entry.operation_number }}</td>
               <td class="text-no-wrap">{{ entry.operation_date }}</td>
-              <td class="text-no-wrap font-weight-medium">{{ entry.rif }}</td>
+              <td class="text-no-wrap font-weight-medium">{{ formatRif(entry.rif) }}</td>
               <td class="text-truncate" style="max-width: 220px;" :title="entry.supplier_name">
                 {{ entry.supplier_name }}
               </td>
@@ -601,7 +615,13 @@ const formatNumber = (val) => {
                 <VTextField v-model="entryForm.operation_date" type="date" label="Fecha" variant="outlined" density="compact" />
               </VCol>
               <VCol cols="12" sm="4">
-                <VTextField v-model="entryForm.rif" label="R.I.F." variant="outlined" density="compact" />
+                <VTextField
+                  v-model="entryForm.rif"
+                  label="R.I.F."
+                  variant="outlined"
+                  density="compact"
+                  @blur="onRifBlur"
+                />
               </VCol>
               <VCol cols="12" sm="4">
                 <VTextField v-model="entryForm.supplier_name" label="Razón Social / Proveedor" variant="outlined" density="compact" />

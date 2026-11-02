@@ -59,4 +59,10 @@ return [
         'secret_key' => env('FTP_SECRET_KEY', 'e6891c6c01292c1b82b8f999e8ef65102ff683994cbc2534eca0e47aa0cad0c3'),
     ],
 
+    // Extractor local de datos A2 (herramienta en tools/)
+    'a2' => [
+        'data_dir' => env('A2_DATA_DIR', base_path('tools/data/A2/GEST - copia/GEST - copia/Empre001/Data')),
+        'extractor_dir' => env('A2_EXTRACTOR_DIR', base_path('tools/puentes/a2')),
+    ],
+
 ];

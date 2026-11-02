@@ -70,4 +70,32 @@ class PurchaseBookEntry extends Model
     {
         return $this->belongsTo(Retention::class);
     }
+
+    /**
+     * Formatear RIF para asegurar formato estándar (ej: J-08518977-7).
+     */
+    public static function formatRif(?string $rif): ?string
+    {
+        if (empty($rif) || strtoupper(trim((string) $rif)) === 'N/A') {
+            return $rif;
+        }
+
+        $clean = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $rif));
+
+        if (preg_match('/^([A-Z])(\d+)(\d)$/', $clean, $matches)) {
+            return "{$matches[1]}-{$matches[2]}-{$matches[3]}";
+        }
+
+        return $rif;
+    }
+
+    public function getRifAttribute($value): ?string
+    {
+        return static::formatRif($value);
+    }
+
+    public function setRifAttribute($value): void
+    {
+        $this->attributes['rif'] = static::formatRif($value);
+    }
 }

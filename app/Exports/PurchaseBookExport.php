@@ -6,12 +6,14 @@ namespace App\Exports;
 
 use App\Models\GeneralSetting;
 use App\Models\PurchaseBook;
+use App\Models\PurchaseBookEntry;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -21,7 +23,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\SheetView;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, WithColumnFormatting, WithStyles, WithEvents
+class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, WithColumnFormatting, WithStyles, WithEvents, WithStrictNullComparison
 {
     protected GeneralSetting $settings;
     protected bool $enableZoom;
@@ -101,7 +103,7 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
         $row = [
             $entry->operation_number,
             $entry->operation_date ? $entry->operation_date->format('Y-m-d') : '',
-            $entry->rif,
+            PurchaseBookEntry::formatRif($entry->rif),
             $entry->supplier_name,
             $entry->import_planilla_number ?? '',
             $entry->import_dossier_number ?? '',
@@ -348,6 +350,21 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
                         ],
                     ],
                 ]);
+
+                // Formato numérico explícito (#,##0.00) en datos y fila de total para que ceros muestren 0,00
+                $currencyFormat = '#,##0.00';
+                $numCols = $this->enableZoom
+                    ? ['N', 'O', 'P', 'R', 'S', 'U', 'V']
+                    : ['N', 'O', 'P', 'R', 'S'];
+
+                foreach ($numCols as $c) {
+                    $sheet->getStyle("{$c}7:{$c}{$totalRow}")->getNumberFormat()->setFormatCode($currencyFormat);
+                }
+
+                $percentCols = $this->enableZoom ? ['Q', 'T'] : ['Q'];
+                foreach ($percentCols as $c) {
+                    $sheet->getStyle("{$c}7:{$c}{$lastDataRow}")->getNumberFormat()->setFormatCode('0.00%');
+                }
 
                 // Cuadro RESUMEN LIBRO DE COMPRAS
                 $summaryStart = $totalRow + 3;

@@ -15,8 +15,8 @@ class ImportLegacyOnboardingCommand extends Command
      * @var string
      */
     protected $signature = 'catalog:import-legacy-onboarding
-                            {--products=Listado de Productos 03-10-2026.xls : Ruta del archivo general de productos}
-                            {--lots=Listado de Productos lotes 03-10-2026.xls : Ruta del archivo de lotes}
+                            {--products=tools/data/Listado de Productos 03-10-2026.xls : Ruta del archivo general de productos}
+                            {--lots=tools/data/Listado de Productos lotes 03-10-2026.xls : Ruta del archivo de lotes}
                             {--no-master : Omitir homologación y registro en el Catálogo Maestro}';
 
     /**

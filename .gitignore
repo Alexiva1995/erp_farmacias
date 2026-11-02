@@ -100,3 +100,25 @@ famco.sql
 # Python PyInstaller artifacts
 /build/
 *.spec
+
+# --- tools/: utilidades fuera del producto ---
+/tools/data/
+/tools/referencia-template/
+/tools/inspeccion/scratch/
+/tools/puentes/**/*.exe
+/tools/puentes/**/*.rar
+/tools/puentes/**/*.zip
+/tools/puentes/a2/a2_stream_checkpoint.json
+/tools/puentes/a2/a2_bridge_config.raiz.json
+__pycache__/
+*.pyc
+
+# Artefactos generados / temporales
+/dist/
+/playwright-report/
+/test-results/
+/tmp/
+/temp_extract.py
+
+# SDK de terceros (The Factory HKA), solo local
+/tools/puentes/factory/FACTORY/
