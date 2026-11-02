@@ -109,4 +109,31 @@ class PurchaseBookEntry extends Model
 
         return !empty($socialReason) ? $socialReason : ($value ?: 'PROVEEDOR VARIOS');
     }
+
+    /**
+     * Si la entrada es una retención y no tiene control_number explícito,
+     * obtener dinámicamente el número de control de la(s) factura(s) afectada(s).
+     */
+    public function getControlNumberAttribute($value): ?string
+    {
+        if (!empty($value)) {
+            return $value;
+        }
+
+        if ($this->retention_id) {
+            $invoices = $this->retention?->invoices;
+            if ($invoices && $invoices->isNotEmpty()) {
+                $ctrl = $invoices->pluck('control_number')->filter()->implode(', ');
+                if (!empty($ctrl)) {
+                    return $ctrl;
+                }
+            }
+        }
+
+        if ($this->invoice_id && $this->relationLoaded('invoice')) {
+            return $this->invoice?->control_number;
+        }
+
+        return $value;
+    }
 }

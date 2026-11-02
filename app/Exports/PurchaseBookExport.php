@@ -41,7 +41,7 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
     public function collection()
     {
         return $this->book->entries()
-            ->with(['invoice.supplier', 'retention.supplier'])
+            ->with(['invoice.supplier', 'retention.supplier', 'retention.invoices'])
             ->orderBy('operation_number', 'asc')
             ->get();
     }

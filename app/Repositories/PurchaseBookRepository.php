@@ -106,7 +106,7 @@ class PurchaseBookRepository implements PurchaseBookContract
     public function getBookById(int $id): PurchaseBook
     {
         return PurchaseBook::with([
-            'entries' => fn($q) => $q->with(['invoice.supplier', 'retention.supplier'])->orderBy('operation_number', 'asc'),
+            'entries' => fn($q) => $q->with(['invoice.supplier', 'retention.supplier', 'retention.invoices'])->orderBy('operation_number', 'asc'),
             'closedByUser:id,name',
         ])->findOrFail($id);
     }
@@ -207,7 +207,10 @@ class PurchaseBookRepository implements PurchaseBookContract
             foreach ($retentions as $ret) {
                 $affectedInvoices = $ret->invoices;
                 $affectedInvoiceNum = $affectedInvoices->isNotEmpty()
-                    ? $affectedInvoices->pluck('invoice_number')->implode(', ')
+                    ? $affectedInvoices->pluck('invoice_number')->filter()->implode(', ')
+                    : null;
+                $affectedControlNum = $affectedInvoices->isNotEmpty()
+                    ? $affectedInvoices->pluck('control_number')->filter()->implode(', ')
                     : null;
 
                 $rawRows->push([
@@ -220,7 +223,7 @@ class PurchaseBookRepository implements PurchaseBookContract
                     'import_planilla_number' => null,
                     'import_dossier_number' => null,
                     'invoice_number' => null,
-                    'control_number' => null,
+                    'control_number' => $affectedControlNum ?: null,
                     'debit_note_number' => null,
                     'credit_note_number' => null,
                     'affected_invoice_number' => $affectedInvoiceNum,
