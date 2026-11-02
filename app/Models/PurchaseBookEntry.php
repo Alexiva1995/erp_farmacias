@@ -98,4 +98,15 @@ class PurchaseBookEntry extends Model
     {
         $this->attributes['rif'] = static::formatRif($value);
     }
+
+    /**
+     * Priorizar la razón social del proveedor sobre el nombre comercial.
+     */
+    public function getSupplierNameAttribute($value): string
+    {
+        $socialReason = $this->invoice?->supplier?->social_reason
+            ?? $this->retention?->supplier?->social_reason;
+
+        return !empty($socialReason) ? $socialReason : ($value ?: 'PROVEEDOR VARIOS');
+    }
 }

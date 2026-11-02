@@ -40,7 +40,10 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
 
     public function collection()
     {
-        return $this->book->entries()->orderBy('operation_number', 'asc')->get();
+        return $this->book->entries()
+            ->with(['invoice.supplier', 'retention.supplier'])
+            ->orderBy('operation_number', 'asc')
+            ->get();
     }
 
     public function headings(): array

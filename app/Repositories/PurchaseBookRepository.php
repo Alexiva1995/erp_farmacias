@@ -106,7 +106,7 @@ class PurchaseBookRepository implements PurchaseBookContract
     public function getBookById(int $id): PurchaseBook
     {
         return PurchaseBook::with([
-            'entries' => fn($q) => $q->orderBy('operation_number', 'asc'),
+            'entries' => fn($q) => $q->with(['invoice.supplier', 'retention.supplier'])->orderBy('operation_number', 'asc'),
             'closedByUser:id,name',
         ])->findOrFail($id);
     }
@@ -180,7 +180,7 @@ class PurchaseBookRepository implements PurchaseBookContract
                     'invoice_id' => $inv->id,
                     'retention_id' => null,
                     'rif' => $inv->supplier?->rif ?? 'N/A',
-                    'supplier_name' => $inv->supplier?->name ?: ($inv->supplier?->social_reason ?: 'PROVEEDOR VARIOS'),
+                    'supplier_name' => $inv->supplier?->social_reason ?: ($inv->supplier?->name ?: 'PROVEEDOR VARIOS'),
                     'import_planilla_number' => null,
                     'import_dossier_number' => null,
                     'invoice_number' => (string) $inv->invoice_number,
@@ -216,7 +216,7 @@ class PurchaseBookRepository implements PurchaseBookContract
                     'invoice_id' => $affectedInvoices->first()?->id,
                     'retention_id' => $ret->id,
                     'rif' => $ret->supplier?->rif ?? 'N/A',
-                    'supplier_name' => $ret->supplier?->name ?: ($ret->supplier?->social_reason ?: 'PROVEEDOR VARIOS'),
+                    'supplier_name' => $ret->supplier?->social_reason ?: ($ret->supplier?->name ?: 'PROVEEDOR VARIOS'),
                     'import_planilla_number' => null,
                     'import_dossier_number' => null,
                     'invoice_number' => null,
