@@ -41,6 +41,7 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
     public function collection()
     {
         return $this->book->entries()
+            ->whereRaw('UPPER(supplier_name) NOT LIKE ?', ['%INFORMAL%'])
             ->with(['invoice.supplier', 'retention.supplier', 'retention.invoices'])
             ->orderBy('operation_number', 'asc')
             ->get();

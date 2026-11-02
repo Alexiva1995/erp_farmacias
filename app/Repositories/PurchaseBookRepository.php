@@ -106,7 +106,9 @@ class PurchaseBookRepository implements PurchaseBookContract
     public function getBookById(int $id): PurchaseBook
     {
         return PurchaseBook::with([
-            'entries' => fn($q) => $q->with(['invoice.supplier', 'retention.supplier', 'retention.invoices'])->orderBy('operation_number', 'asc'),
+            'entries' => fn($q) => $q->whereRaw('UPPER(supplier_name) NOT LIKE ?', ['%INFORMAL%'])
+                ->with(['invoice.supplier', 'retention.supplier', 'retention.invoices'])
+                ->orderBy('operation_number', 'asc'),
             'closedByUser:id,name',
         ])->findOrFail($id);
     }
@@ -121,15 +123,23 @@ class PurchaseBookRepository implements PurchaseBookContract
             $startDate = $book->start_date->format('Y-m-d');
             $endDate = $book->end_date->format('Y-m-d');
 
-            // 1. Obtener Facturas válidas dentro del rango de fecha de emisión
+            // 1. Obtener Facturas válidas dentro del rango de fecha de emisión (excluyendo proveedores informales)
             $invoices = Invoice::with(['supplier'])
+                ->whereDoesntHave('supplier', function ($q) {
+                    $q->whereRaw('UPPER(name) LIKE ?', ['%INFORMAL%'])
+                      ->orWhereRaw('UPPER(social_reason) LIKE ?', ['%INFORMAL%']);
+                })
                 ->whereBetween('created_invoice_date', [$startDate, $endDate])
                 ->orderBy('created_invoice_date', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();
 
-            // 2. Obtener Retenciones de IVA emitidas dentro del rango del libro
+            // 2. Obtener Retenciones de IVA emitidas dentro del rango del libro (excluyendo proveedores informales)
             $retentions = Retention::with(['supplier', 'invoices'])
+                ->whereDoesntHave('supplier', function ($q) {
+                    $q->whereRaw('UPPER(name) LIKE ?', ['%INFORMAL%'])
+                      ->orWhereRaw('UPPER(social_reason) LIKE ?', ['%INFORMAL%']);
+                })
                 ->where(function ($q) {
                     $q->where('type', 'iva')
                       ->orWhere('type', 'IVA')
@@ -140,16 +150,28 @@ class PurchaseBookRepository implements PurchaseBookContract
                 ->orderBy('id', 'asc')
                 ->get();
 
-            // Guardar entradas manuales que el usuario haya modificado explícitamente
-            $manualEntries = $book->entries()->where('is_manual_override', true)->get();
+            // Guardar entradas manuales que el usuario haya modificado explícitamente (excluyendo proveedores informales)
+            $manualEntries = $book->entries()
+                ->where('is_manual_override', true)
+                ->whereRaw('UPPER(supplier_name) NOT LIKE ?', ['%INFORMAL%'])
+                ->get();
 
-            // Eliminar entradas no protegidas para recrear la sincronización limpia
-            $book->entries()->where('is_manual_override', false)->delete();
+            // Eliminar entradas no protegidas o con proveedor informal para recrear la sincronización limpia
+            $book->entries()->where(function ($q) {
+                $q->where('is_manual_override', false)
+                  ->orWhereRaw('UPPER(supplier_name) LIKE ?', ['%INFORMAL%']);
+            })->delete();
 
             $rawRows = collect();
 
             // Agregar Facturas como 01-REG
             foreach ($invoices as $inv) {
+                $supplierNameUpper = strtoupper(trim((string) ($inv->supplier?->name ?? '')));
+                $supplierSocialUpper = strtoupper(trim((string) ($inv->supplier?->social_reason ?? '')));
+                if (str_contains($supplierNameUpper, 'INFORMAL') || str_contains($supplierSocialUpper, 'INFORMAL')) {
+                    continue;
+                }
+
                 // Verificar si esta factura de Zoom tiene alícuota reducida (ej. 8%)
                 $isZoomSupplier = str_contains(strtoupper((string) $inv->supplier?->name), 'ZOOM') ||
                     str_contains(strtoupper((string) $inv->supplier?->social_reason), 'ZOOM');
@@ -205,6 +227,12 @@ class PurchaseBookRepository implements PurchaseBookContract
 
             // Agregar Comprobantes de Retención de IVA como 05-RET
             foreach ($retentions as $ret) {
+                $retSupplierNameUpper = strtoupper(trim((string) ($ret->supplier?->name ?? '')));
+                $retSupplierSocialUpper = strtoupper(trim((string) ($ret->supplier?->social_reason ?? '')));
+                if (str_contains($retSupplierNameUpper, 'INFORMAL') || str_contains($retSupplierSocialUpper, 'INFORMAL')) {
+                    continue;
+                }
+
                 $affectedInvoices = $ret->invoices;
                 $affectedInvoiceNum = $affectedInvoices->isNotEmpty()
                     ? $affectedInvoices->pluck('invoice_number')->filter()->implode(', ')
@@ -374,6 +402,7 @@ class PurchaseBookRepository implements PurchaseBookContract
     public function recalculateTotals(PurchaseBook $book): void
     {
         $totals = $book->entries()
+            ->whereRaw('UPPER(supplier_name) NOT LIKE ?', ['%INFORMAL%'])
             ->selectRaw('
                 COALESCE(SUM(total_purchases_with_vat), 0) as total_purchases_with_vat,
                 COALESCE(SUM(exempt_purchases), 0) as total_exempt_purchases,
