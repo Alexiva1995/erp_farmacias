@@ -629,4 +629,69 @@ class InvoiceActionService
             return $invoice->fresh();
         });
     }
+
+    public function bulkMarkAsOrdered(array $filters = [], ?int $userId = null): int
+    {
+        return DB::transaction(function () use ($filters, $userId) {
+            $query = Invoice::query()->where('status', 'to_order');
+
+            if (!empty($filters['invoice_ids'])) {
+                $query->whereIn('id', $filters['invoice_ids']);
+            } else {
+                if (!empty($filters['supplierId'])) {
+                    $query->where('supplier_id', $filters['supplierId']);
+                }
+                if (!empty($filters['startDate'])) {
+                    $query->whereDate('created_invoice_date', '>=', $filters['startDate']);
+                }
+                if (!empty($filters['endDate'])) {
+                    $query->whereDate('created_invoice_date', '<=', $filters['endDate']);
+                }
+                if (!empty($filters['q'])) {
+                    $search = trim((string) $filters['q']);
+                    $query->where(function ($q) use ($search) {
+                        $q->where('invoice_number', 'like', "%{$search}%")
+                            ->orWhere('control_number', 'like', "%{$search}%");
+                    });
+                }
+            }
+
+            $invoices = $query->with('details')->get();
+            if ($invoices->isEmpty()) {
+                return 0;
+            }
+
+            $user = $userId ?? Auth::id();
+            $count = 0;
+
+            foreach ($invoices as $invoice) {
+                foreach ($invoice->details as $detail) {
+                    $location = !empty($detail->location) ? $detail->location : 'N/A';
+                    if (empty($detail->location)) {
+                        $detail->update(['location' => $location]);
+                    }
+
+                    // Actualizar ubicación en el lote correspondiente si existe y no tiene ubicación
+                    $productLot = ProductLot::where('product_id', $detail->product_id)
+                        ->where('lot_number', $detail->lot_number)
+                        ->where('expiration_date', $detail->expiration_date)
+                        ->where('supplier_id', $invoice->supplier_id)
+                        ->first();
+
+                    if ($productLot && empty($productLot->location)) {
+                        $productLot->update(['location' => $location]);
+                    }
+                }
+
+                $invoice->update([
+                    'status' => 'ordered',
+                    'ordered_by' => $user,
+                ]);
+
+                $count++;
+            }
+
+            return $count;
+        });
+    }
 }

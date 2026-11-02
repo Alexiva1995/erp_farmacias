@@ -12,6 +12,8 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   showAdd: { type: Boolean, default: true },
   showBulkDelete: { type: Boolean, default: false },
+  showBulkOrder: { type: Boolean, default: false },
+  isOrderingAll: { type: Boolean, default: false },
   showSyncAll: { type: Boolean, default: true },
   isSyncingAll: { type: Boolean, default: false },
   // Props heredados para compatibilidad
@@ -35,6 +37,7 @@ const emit = defineEmits([
   "clear",
   "create-invoice",
   "bulk-delete",
+  "bulk-order",
   "sync-all",
   "sync-dronena",
   "sync-mafarta",
@@ -61,6 +64,20 @@ const hasAdvancedFilters = computed(
     @add="emit('create-invoice')"
   >
     <template #prepend-actions>
+      <!-- Botón Pasar todas a ordenadas -->
+      <VBtn
+        v-if="props.showBulkOrder"
+        color="success"
+        variant="tonal"
+        class="text-none font-weight-medium"
+        :loading="props.isOrderingAll"
+        prepend-icon="tabler-checks"
+        @click="emit('bulk-order')"
+      >
+        Pasar a ordenadas
+        <VTooltip activator="parent" location="top">Pasar todas las facturas de esta sección a ordenadas</VTooltip>
+      </VBtn>
+
       <!-- Botón Único Unificado para Todos los Bots / Scrapers -->
       <VBtn
         v-if="props.showSyncAll"

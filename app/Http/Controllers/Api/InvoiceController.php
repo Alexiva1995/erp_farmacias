@@ -18,6 +18,7 @@ use App\Http\Requests\Invoice\UploadInvoicePhotoRequest;
 use App\Http\Requests\Invoice\NextSequenceRequest;
 use App\Http\Requests\Invoices\ApproveInvoiceRequest;
 use App\Http\Requests\Invoices\BulkDeleteInvoicesRequest;
+use App\Http\Requests\Invoices\BulkMarkAsOrderedRequest;
 use App\Http\Requests\Invoices\IndexInvoiceRequest;
 
 class InvoiceController extends Controller
@@ -129,6 +130,27 @@ class InvoiceController extends Controller
             return response()->json([
                 'message' => 'Error al procesar la eliminación masiva de facturas.',
                 'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    public function bulkMarkAsOrdered(BulkMarkAsOrderedRequest $request)
+    {
+        try {
+            $count = $this->invoiceActionService->bulkMarkAsOrdered(
+                $request->validated(),
+                $request->user()?->id
+            );
+
+            return response()->json([
+                'message' => "Se pasaron {$count} factura(s) a ordenadas con éxito.",
+                'ordered_count' => $count,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en InvoiceController@bulkMarkAsOrdered: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Error al procesar el cambio a ordenadas: ' . $e->getMessage(),
             ], 500);
         }
     }

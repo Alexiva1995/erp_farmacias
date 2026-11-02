@@ -26,6 +26,7 @@ const sortBy = ref();
 const orderBy = ref();
 const availablePaymentRules = ref([]);
 const isApproving = ref(false);
+const isOrderingAll = ref(false);
 
 const { isAdmin } = useAuthStore();
 
@@ -213,6 +214,61 @@ const handleReturnInvoice = async (invoiceId) => {
     }
   }
 };
+const handleBulkOrder = async () => {
+  if (totalInvoices.value === 0) {
+    toast.info("No hay facturas por ordenar.");
+    return;
+  }
+
+  const result = await Swal.fire({
+    title: "¿Estás seguro?",
+    text: `Se pasarán las facturas de esta sección (${totalInvoices.value} factura(s)) al estado ordenadas.`,
+    icon: "question",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Sí, pasar a ordenadas",
+    confirmButtonColor: "#28a745",
+    reverseButtons: true,
+    didOpen: () => {
+      const actions = Swal.getActions();
+      const confirmButton = Swal.getConfirmButton();
+      const cancelButton = Swal.getCancelButton();
+
+      actions.style.display = "flex";
+      actions.style.gap = "10px";
+      actions.style.width = "100%";
+      actions.style.padding = "0 20px";
+
+      confirmButton.style.flex = "1";
+      confirmButton.style.width = "50%";
+
+      cancelButton.style.flex = "1";
+      cancelButton.style.width = "50%";
+    },
+  });
+
+  if (result.isConfirmed) {
+    isOrderingAll.value = true;
+    try {
+      const payload = {
+        supplierId: selectedSupplier.value,
+        startDate: startDate.value,
+        endDate: endDate.value,
+        q: searchQuery.value,
+      };
+
+      const response = await axios.post("/invoices/bulk-mark-as-ordered", payload);
+      toast.success(response.data.message || "Facturas pasadas a ordenadas con éxito.");
+      fetchInvoices();
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "No se pudieron pasar las facturas a ordenadas."
+      );
+    } finally {
+      isOrderingAll.value = false;
+    }
+  }
+};
 </script>
 
 <template>
@@ -226,6 +282,10 @@ const handleReturnInvoice = async (invoiceId) => {
         :suppliers="suppliers"
         :loading="isLoadingFilters"
         :show-add="false"
+        :show-sync-all="false"
+        :show-bulk-order="true"
+        :is-ordering-all="isOrderingAll"
+        @bulk-order="handleBulkOrder"
         @clear="handleClearFilters"
         class="mb-6"
       />
