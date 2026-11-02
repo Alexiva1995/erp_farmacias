@@ -56,6 +56,11 @@ interface PurchaseBookContract
     public function recalculateTotals(PurchaseBook $book): void;
 
     /**
+     * Reordena cronológicamente todas las operaciones del libro y reasigna números correlativos continuos.
+     */
+    public function reorderOperations(PurchaseBook $book): void;
+
+    /**
      * Busca facturas por número o número de control para facilitar su incorporación manual.
      */
     public function searchInvoices(string $term): \Illuminate\Support\Collection;

@@ -105,6 +105,11 @@ class PurchaseBookRepository implements PurchaseBookContract
 
     public function getBookById(int $id): PurchaseBook
     {
+        $book = PurchaseBook::findOrFail($id);
+        if ($book->isOpen()) {
+            $this->reorderOperations($book);
+        }
+
         return PurchaseBook::with([
             'entries' => fn($q) => $q->whereRaw('UPPER(supplier_name) NOT LIKE ?', ['%INFORMAL%'])
                 ->with(['invoice.supplier', 'retention.supplier', 'retention.invoices'])
@@ -309,17 +314,13 @@ class PurchaseBookRepository implements PurchaseBookContract
                 ]);
             }
 
-            // Reincorporar entradas manuales si existían
-            foreach ($manualEntries as $mEntry) {
-                $mEntry->update(['operation_number' => $opNum++]);
-            }
-
             // Actualizar snapshot de enable_zoom según configuración actual
             $generalSetting = GeneralSetting::first();
             $book->update([
                 'enable_zoom_snapshot' => (bool) ($generalSetting?->enable_zoom ?? false),
             ]);
 
+            $this->reorderOperations($book);
             $this->recalculateTotals($book);
         });
 
@@ -337,6 +338,7 @@ class PurchaseBookRepository implements PurchaseBookContract
         $data['is_manual_override'] = true;
         $entry->update($data);
 
+        $this->reorderOperations($book);
         $this->recalculateTotals($book);
 
         return $entry->fresh();
@@ -348,15 +350,15 @@ class PurchaseBookRepository implements PurchaseBookContract
             throw new \DomainException("No se puede agregar entradas a un libro cerrado.");
         }
 
-        $nextOpNumber = ($book->entries()->max('operation_number') ?? 0) + 1;
         $data['purchase_book_id'] = $book->id;
-        $data['operation_number'] = $nextOpNumber;
+        $data['operation_number'] = 999999;
         $data['is_manual_override'] = true;
 
         $entry = PurchaseBookEntry::create($data);
+        $this->reorderOperations($book);
         $this->recalculateTotals($book);
 
-        return $entry;
+        return $entry->fresh();
     }
 
     public function deleteEntry(PurchaseBook $book, int $entryId): bool
@@ -368,16 +370,26 @@ class PurchaseBookRepository implements PurchaseBookContract
         $entry = $book->entries()->where('id', $entryId)->firstOrFail();
         $deleted = $entry->delete();
 
-        // Reordenar correlativos
-        $entries = $book->entries()->orderBy('operation_number', 'asc')->get();
-        $op = 1;
-        foreach ($entries as $e) {
-            $e->update(['operation_number' => $op++]);
-        }
-
+        $this->reorderOperations($book);
         $this->recalculateTotals($book);
 
         return $deleted;
+    }
+
+    public function reorderOperations(PurchaseBook $book): void
+    {
+        $entries = $book->entries()
+            ->orderBy('operation_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $op = 1;
+        foreach ($entries as $e) {
+            if ($e->operation_number !== $op) {
+                $e->update(['operation_number' => $op]);
+            }
+            $op++;
+        }
     }
 
     public function closeBook(PurchaseBook $book, int $userId): PurchaseBook

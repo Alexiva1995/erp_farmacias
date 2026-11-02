@@ -248,7 +248,7 @@ const selectInvoice = (inv) => {
   entryForm.vat_withheld = inv.vat_withheld || 0
   entryForm.withholding_receipt_number = inv.withholding_receipt_number || ''
 
-  if (inv.created_invoice_date && !entryForm.operation_date) {
+  if (inv.created_invoice_date) {
     entryForm.operation_date = inv.created_invoice_date
   }
 
