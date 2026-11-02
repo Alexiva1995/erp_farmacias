@@ -207,7 +207,63 @@ const openCreateModal = () => {
     withholding_receipt_date: '',
     igtf_amount: 0,
   })
+  searchZQuery.value = ''
+  foundZReports.value = []
   showEditModal.value = true
+}
+
+// Búsqueda de Reporte Z registrado para autocompletar en el libro
+const searchZQuery = ref('')
+const isSearchingZ = ref(false)
+const foundZReports = ref([])
+
+const searchZReport = async () => {
+  const query = (searchZQuery.value || '').trim()
+  if (!query) {
+    toast.error('Ingresa un número de Reporte Z o número de factura para buscar.')
+    return
+  }
+
+  isSearchingZ.value = true
+  foundZReports.value = []
+  try {
+    const res = await axios.get('/sales-books/search-z-reports', {
+      params: { query },
+    })
+    const data = res.data?.data || []
+    foundZReports.value = data
+    if (data.length === 0) {
+      toast.info('No se encontraron Reportes Z con ese número.')
+    } else if (data.length === 1) {
+      selectZReport(data[0])
+    }
+  } catch (err) {
+    console.error('Error al buscar Reporte Z:', err)
+    toast.error('Error al consultar los reportes Z del sistema.')
+  } finally {
+    isSearchingZ.value = false
+  }
+}
+
+const selectZReport = (z) => {
+  entryForm.operation_date = z.operation_date || entryForm.operation_date
+  entryForm.document_type = z.document_type || 'REPORTE Z'
+  entryForm.transaction_type = z.transaction_type || '01-REG'
+  entryForm.identification = z.identification || '0'
+  entryForm.client_name = z.client_name || 'CLIENTES VARIOS'
+  entryForm.z_report_number = z.z_report_number || ''
+  entryForm.z_first_invoice = z.z_first_invoice || ''
+  entryForm.z_last_invoice = z.z_last_invoice || ''
+  entryForm.machine_serial = z.machine_serial || entryForm.machine_serial
+  entryForm.non_taxable_sales = z.non_taxable_sales || 0
+  entryForm.taxpayer_taxable_base = z.taxpayer_taxable_base || 0
+  entryForm.taxpayer_aliquot = z.taxpayer_aliquot || 0.16
+  entryForm.taxpayer_vat = z.taxpayer_vat || 0
+  entryForm.total_sales_with_vat = z.total_sales_with_vat || 0
+  entryForm.igtf_amount = z.igtf_amount || 0
+
+  foundZReports.value = []
+  toast.success(`Datos del Reporte Z N° ${z.z_report_number} cargados al formulario.`)
 }
 
 const saveEntry = async () => {
@@ -669,6 +725,67 @@ const formatNumber = (val) => {
         <VDivider />
         <VCardText class="pa-4">
           <VForm @submit.prevent="saveEntry">
+            <!-- Buscador de Reporte Z registrado para autocompletar -->
+            <VCard v-if="isCreatingRow" variant="tonal" color="primary" class="pa-3 mb-4 rounded-lg">
+              <div class="d-flex align-center gap-2 mb-2">
+                <VIcon icon="tabler-file-search" size="20" />
+                <span class="text-subtitle-2 font-weight-bold">
+                  Buscar Reporte Z Registrado en el Sistema
+                </span>
+              </div>
+              <p class="text-caption text-medium-emphasis mb-2">
+                Ingresa el número de Reporte Z o factura para autocompletar montos e intervalos, o llena los campos manualmente a continuación. Al guardar, se ubicará automáticamente según su fecha.
+              </p>
+              <VRow density="compact" class="align-center">
+                <VCol cols="12" sm="8">
+                  <VTextField
+                    v-model="searchZQuery"
+                    label="N° de Reporte Z o Factura (ej. 14592)"
+                    placeholder="Escribe el número y pulsa Buscar..."
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    clearable
+                    @keydown.enter.prevent="searchZReport"
+                  />
+                </VCol>
+                <VCol cols="12" sm="4">
+                  <VBtn
+                    color="primary"
+                    variant="elevated"
+                    density="compact"
+                    block
+                    :loading="isSearchingZ"
+                    @click="searchZReport"
+                  >
+                    <VIcon start>tabler-search</VIcon>
+                    Buscar y Cargar
+                  </VBtn>
+                </VCol>
+              </VRow>
+
+              <!-- Lista de Reportes Z Encontrados -->
+              <div v-if="foundZReports.length > 0" class="mt-3">
+                <span class="text-caption font-weight-bold d-block mb-1">
+                  Resultados coincidentes (haz clic para cargar):
+                </span>
+                <div class="d-flex flex-wrap gap-2">
+                  <VChip
+                    v-for="z in foundZReports"
+                    :key="z.id"
+                    size="small"
+                    color="primary"
+                    variant="elevated"
+                    class="cursor-pointer"
+                    @click="selectZReport(z)"
+                  >
+                    <VIcon start size="14">tabler-check</VIcon>
+                    Reporte Z N° {{ z.z_report_number }} ({{ z.operation_date || 'Sin fecha' }}) | Facturas {{ z.z_first_invoice }} - {{ z.z_last_invoice }}
+                  </VChip>
+                </div>
+              </div>
+            </VCard>
+
             <VRow density="compact">
               <VCol cols="12" sm="4">
                 <VTextField v-model="entryForm.operation_date" type="date" label="Fecha" variant="outlined" density="compact" />

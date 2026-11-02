@@ -133,4 +133,14 @@ class SalesBookController extends Controller
     {
         return $this->salesBookService->exportPdf($id);
     }
+
+    public function searchZReports(Request $request): JsonResponse
+    {
+        $term = (string) ($request->query('query') ?? $request->query('term') ?? '');
+        $results = $this->salesBookService->searchZReports($term);
+
+        return response()->json([
+            'data' => $results,
+        ]);
+    }
 }

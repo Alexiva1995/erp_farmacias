@@ -105,6 +105,11 @@ class SalesBookRepository implements SalesBookContract
 
     public function getBookById(int $id): SalesBook
     {
+        $book = SalesBook::findOrFail($id);
+        if ($book->isOpen()) {
+            $this->reorderOperations($book);
+        }
+
         return SalesBook::with([
             'entries' => fn($q) => $q->orderBy('operation_number', 'asc'),
             'closedByUser:id,name',
@@ -317,15 +322,11 @@ class SalesBookRepository implements SalesBookContract
                 ]);
             }
 
-            // Reincorporar entradas manuales
-            foreach ($manualEntries as $mEntry) {
-                $mEntry->update(['operation_number' => $opNum++]);
-            }
-
             $book->update([
                 'enable_zoom_snapshot' => (bool) ($generalSetting?->enable_zoom ?? false),
             ]);
 
+            $this->reorderOperations($book);
             $this->recalculateTotals($book);
         });
 
@@ -342,6 +343,7 @@ class SalesBookRepository implements SalesBookContract
         $data['is_manual_override'] = true;
         $entry->update($data);
 
+        $this->reorderOperations($book);
         $this->recalculateTotals($book);
 
         return $entry->fresh();
@@ -353,15 +355,15 @@ class SalesBookRepository implements SalesBookContract
             throw new \DomainException("No se puede agregar entradas a un libro de ventas cerrado.");
         }
 
-        $nextOpNumber = ($book->entries()->max('operation_number') ?? 0) + 1;
         $data['sales_book_id'] = $book->id;
-        $data['operation_number'] = $nextOpNumber;
+        $data['operation_number'] = 999999;
         $data['is_manual_override'] = true;
 
         $entry = SalesBookEntry::create($data);
+        $this->reorderOperations($book);
         $this->recalculateTotals($book);
 
-        return $entry;
+        return $entry->fresh();
     }
 
     public function deleteEntry(SalesBook $book, int $entryId): bool
@@ -373,16 +375,77 @@ class SalesBookRepository implements SalesBookContract
         $entry = $book->entries()->where('id', $entryId)->firstOrFail();
         $deleted = $entry->delete();
 
-        // Reordenar correlativos
-        $entries = $book->entries()->orderBy('operation_number', 'asc')->get();
-        $op = 1;
-        foreach ($entries as $e) {
-            $e->update(['operation_number' => $op++]);
-        }
-
+        $this->reorderOperations($book);
         $this->recalculateTotals($book);
 
         return $deleted;
+    }
+
+    public function reorderOperations(SalesBook $book): void
+    {
+        $entries = $book->entries()
+            ->orderBy('operation_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $op = 1;
+        foreach ($entries as $e) {
+            if ($e->operation_number !== $op) {
+                $e->update(['operation_number' => $op]);
+            }
+            $op++;
+        }
+    }
+
+    public function searchZReports(string $term): \Illuminate\Support\Collection
+    {
+        $cleanTerm = trim($term);
+        if (empty($cleanTerm)) {
+            return collect();
+        }
+
+        $generalSetting = GeneralSetting::first();
+        $defaultSerial = $generalSetting?->fiscal_printer_serial ?: 'Z1F0000379';
+
+        return FiscalZReport::query()
+            ->where(function ($q) use ($cleanTerm) {
+                $q->where('report_number', 'LIKE', "%{$cleanTerm}%")
+                  ->orWhere('first_invoice_number', 'LIKE', "%{$cleanTerm}%")
+                  ->orWhere('last_invoice_number', 'LIKE', "%{$cleanTerm}%");
+            })
+            ->orderBy('report_date', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($z) use ($defaultSerial) {
+                $exempt = (float) $z->exempt_amount;
+                $base16 = (float) $z->base_16_amount;
+                $iva16 = (float) $z->iva_amount;
+                $igtf = (float) ($z->igtf_amount > 0 ? $z->igtf_amount : ($z->igtf_base_amount ?? 0));
+                $totalWithVat = (float) $z->total_amount;
+
+                if ($totalWithVat <= 0) {
+                    $totalWithVat = round($exempt + $base16 + $iva16, 2);
+                }
+
+                return [
+                    'id' => $z->id,
+                    'operation_date' => $z->report_date ? $z->report_date->format('Y-m-d') : null,
+                    'document_type' => 'REPORTE Z',
+                    'transaction_type' => '01-REG',
+                    'identification' => '0',
+                    'client_name' => 'CLIENTES VARIOS',
+                    'z_report_number' => (string) $z->report_number,
+                    'z_first_invoice' => (string) ($z->first_invoice_number ?? ''),
+                    'z_last_invoice' => (string) ($z->last_invoice_number ?? ''),
+                    'machine_serial' => $defaultSerial,
+                    'non_taxable_sales' => $exempt,
+                    'taxpayer_taxable_base' => $base16,
+                    'taxpayer_aliquot' => $base16 > 0 ? 0.16 : 0.00,
+                    'taxpayer_vat' => $iva16,
+                    'total_sales_with_vat' => $totalWithVat,
+                    'igtf_amount' => $igtf,
+                ];
+            });
     }
 
     public function closeBook(SalesBook $book, int $userId): SalesBook

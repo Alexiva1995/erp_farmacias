@@ -54,4 +54,14 @@ interface SalesBookContract
      * Recalcula los totales acumulados de un libro de ventas.
      */
     public function recalculateTotals(SalesBook $book): void;
+
+    /**
+     * Reordena cronológicamente todas las operaciones del libro de ventas y reasigna correlativos continuos.
+     */
+    public function reorderOperations(SalesBook $book): void;
+
+    /**
+     * Busca Reportes Z registrados para autocompletar su inclusión manual.
+     */
+    public function searchZReports(string $term): \Illuminate\Support\Collection;
 }

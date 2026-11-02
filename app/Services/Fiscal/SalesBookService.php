@@ -120,4 +120,9 @@ class SalesBookService
 
         return $pdf->download("libro_ventas_{$periodSuffix}.pdf");
     }
+
+    public function searchZReports(string $term): \Illuminate\Support\Collection
+    {
+        return $this->salesBookRepository->searchZReports($term);
+    }
 }

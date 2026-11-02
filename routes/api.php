@@ -1287,6 +1287,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
 
     Route::prefix('sales-books')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\SalesBookController::class, 'index']);
+        Route::get('/search-z-reports', [\App\Http\Controllers\Api\SalesBookController::class, 'searchZReports']);
         Route::post('/generate-period', [\App\Http\Controllers\Api\SalesBookController::class, 'generatePeriod']);
         Route::get('/{id}', [\App\Http\Controllers\Api\SalesBookController::class, 'show']);
         Route::post('/{id}/sync', [\App\Http\Controllers\Api\SalesBookController::class, 'sync']);
