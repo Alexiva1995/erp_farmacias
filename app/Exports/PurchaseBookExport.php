@@ -140,7 +140,7 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
 
     public function columnFormats(): array
     {
-        $currencyFormat = '#,##0.00';
+        $currencyFormat = '#,##0.00;-#,##0.00;0.00';
 
         $formats = [
             'B' => NumberFormat::FORMAT_TEXT, // Fecha de Operación (DD/MM/AAAA)
@@ -152,13 +152,13 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
             'N' => $currencyFormat,           // Total Compras incluyendo IVA
             'O' => $currencyFormat,           // Compras sin derecho a Crédito
             'P' => $currencyFormat,           // Base Imponible
-            'Q' => '0.00%',                   // % Alicuota
+            'Q' => '0.00%;-0.00%;0.00%',      // % Alicuota
             'R' => $currencyFormat,           // IVA General
         ];
 
         if ($this->enableZoom) {
             $formats['S'] = $currencyFormat;  // Base Imponible Zoom
-            $formats['T'] = '0.00%';          // % Alicuota Zoom
+            $formats['T'] = '0.00%;-0.00%;0.00%'; // % Alicuota Zoom
             $formats['U'] = $currencyFormat;  // IVA General Zoom
             $formats['V'] = $currencyFormat;  // Iva Retenido
             $formats['W'] = NumberFormat::FORMAT_TEXT; // Número de Comprobante
@@ -362,19 +362,41 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
                     ],
                 ]);
 
-                // Formato numérico explícito (#,##0.00) en datos y fila de total para que ceros muestren 0,00
-                $currencyFormat = '#,##0.00';
+                // Forzar visualización de ceros en la hoja
+                $sheet->getSheetView()->setShowZeros(true);
+
+                // Garantizar explícitamente que ninguna celda numérica quede null o vacía en el cuerpo de datos
+                $currencyFormat = '#,##0.00;-#,##0.00;0.00';
                 $numCols = $this->enableZoom
                     ? ['N', 'O', 'P', 'R', 'S', 'U', 'V']
                     : ['N', 'O', 'P', 'R', 'S'];
+
+                $percentCols = $this->enableZoom ? ['Q', 'T'] : ['Q'];
+
+                for ($r = 7; $r <= $lastDataRow; $r++) {
+                    foreach ($numCols as $c) {
+                        $cell = $sheet->getCell("{$c}{$r}");
+                        $val = $cell->getValue();
+                        if ($val === null || $val === '' || !is_numeric($val)) {
+                            $cell->setValue(0.0);
+                        }
+                    }
+
+                    foreach ($percentCols as $c) {
+                        $cell = $sheet->getCell("{$c}{$r}");
+                        $val = $cell->getValue();
+                        if ($val === null || $val === '' || !is_numeric($val)) {
+                            $cell->setValue(0.0);
+                        }
+                    }
+                }
 
                 foreach ($numCols as $c) {
                     $sheet->getStyle("{$c}7:{$c}{$totalRow}")->getNumberFormat()->setFormatCode($currencyFormat);
                 }
 
-                $percentCols = $this->enableZoom ? ['Q', 'T'] : ['Q'];
                 foreach ($percentCols as $c) {
-                    $sheet->getStyle("{$c}7:{$c}{$lastDataRow}")->getNumberFormat()->setFormatCode('0.00%');
+                    $sheet->getStyle("{$c}7:{$c}{$lastDataRow}")->getNumberFormat()->setFormatCode('0.00%;-0.00%;0.00%');
                 }
 
                 // Cuadro RESUMEN LIBRO DE COMPRAS

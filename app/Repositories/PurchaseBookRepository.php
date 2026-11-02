@@ -292,7 +292,7 @@ class PurchaseBookRepository implements PurchaseBookContract
             $this->recalculateTotals($book);
         });
 
-        return $book->fresh(['entries']);
+        return $this->getBookById($book->id);
     }
 
     public function updateEntry(PurchaseBook $book, int $entryId, array $data): PurchaseBookEntry

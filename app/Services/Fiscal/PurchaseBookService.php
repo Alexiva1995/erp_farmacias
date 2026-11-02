@@ -11,6 +11,7 @@ use App\Models\PurchaseBook;
 use App\Models\PurchaseBookEntry;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -44,9 +45,19 @@ class PurchaseBookService
         return $this->purchaseBookRepository->findOrCreateBook($year, $month, $fortnight);
     }
 
-    public function getBookById(int $id): PurchaseBook
+    public function getBookById(int $id, bool $autoSync = true): PurchaseBook
     {
-        return $this->purchaseBookRepository->getBookById($id);
+        $book = $this->purchaseBookRepository->getBookById($id);
+
+        if ($autoSync && $book->isOpen()) {
+            try {
+                $book = $this->purchaseBookRepository->syncTransactions($book);
+            } catch (\Throwable $e) {
+                Log::warning("No se pudo auto-sincronizar el libro de compras {$id}: {$e->getMessage()}");
+            }
+        }
+
+        return $book;
     }
 
     public function syncTransactions(int $id): PurchaseBook
@@ -81,7 +92,7 @@ class PurchaseBookService
 
     public function exportExcel(int $id): BinaryFileResponse
     {
-        $book = $this->purchaseBookRepository->getBookById($id);
+        $book = $this->getBookById($id);
         $periodSuffix = $book->period_type->value === 'fortnightly'
             ? "Q{$book->fortnight}_{$book->month}_{$book->year}"
             : "M{$book->month}_{$book->year}";
@@ -93,7 +104,7 @@ class PurchaseBookService
 
     public function exportPdf(int $id)
     {
-        $book = $this->purchaseBookRepository->getBookById($id);
+        $book = $this->getBookById($id);
         $settings = GeneralSetting::first() ?? new GeneralSetting();
         $enableZoom = $book->isClosed()
             ? (bool) $book->enable_zoom_snapshot
