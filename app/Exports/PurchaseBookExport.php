@@ -52,7 +52,7 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
             ? 'CONTRIBUYENTE ESPECIAL'
             : 'CONTRIBUYENTE ORDINARIO';
 
-        $periodText = "LIBRO DE COMPRAS DESDE {$this->book->start_date->format('d-m-Y')} HASTA {$this->book->end_date->format('d-m-Y')}";
+        $periodText = "LIBRO DE COMPRAS DESDE {$this->book->start_date->format('d/m/Y')} HASTA {$this->book->end_date->format('d/m/Y')}";
 
         $headings = [
             // Membrete en mayúsculas para uniformidad con Libro de Ventas
@@ -105,7 +105,7 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
 
         $row = [
             $entry->operation_number,
-            $entry->operation_date ? $entry->operation_date->format('Y-m-d') : '',
+            $entry->operation_date ? $entry->operation_date->format('d/m/Y') : '',
             PurchaseBookEntry::formatRif($entry->rif),
             $entry->supplier_name,
             $entry->import_planilla_number ?? '',
@@ -143,6 +143,7 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
         $currencyFormat = '#,##0.00';
 
         $formats = [
+            'B' => NumberFormat::FORMAT_TEXT, // Fecha de Operación (DD/MM/AAAA)
             'G' => NumberFormat::FORMAT_TEXT, // Número de Factura
             'H' => NumberFormat::FORMAT_TEXT, // Número de Control
             'I' => NumberFormat::FORMAT_TEXT, // Número de Nota Débito
@@ -198,6 +199,13 @@ class PurchaseBookExport implements FromCollection, WithHeadings, WithMapping, W
                 'alignment' => [
                     'vertical' => Alignment::VERTICAL_CENTER,
                     'wrapText' => true,
+                ],
+            ],
+            // Alineación centrada para Fecha de Operación (B)
+            "B7:B500" => [
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER,
                 ],
             ],
             // Alineación a la derecha para Número de Factura (G) y Número de Control (H)

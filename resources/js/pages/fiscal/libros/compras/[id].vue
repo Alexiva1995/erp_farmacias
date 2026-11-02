@@ -279,6 +279,16 @@ const formatRif = (rif) => {
 const onRifBlur = () => {
   entryForm.rif = formatRif(entryForm.rif)
 }
+
+const formatDate = (val) => {
+  if (!val) return '-'
+  const clean = String(val).split('T')[0]
+  const parts = clean.split('-')
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`
+  }
+  return val
+}
 </script>
 
 <template>
@@ -320,13 +330,42 @@ const onRifBlur = () => {
               </VChip>
             </div>
             <p class="text-caption text-medium-emphasis mb-0 mt-1">
-              Período: <strong>{{ book?.start_date }}</strong> al <strong>{{ book?.end_date }}</strong>
+              Período: <strong>{{ formatDate(book?.start_date) }}</strong> al <strong>{{ formatDate(book?.end_date) }}</strong>
               &nbsp;|&nbsp; Condición: <strong>{{ book?.company_info?.taxpayer_type }}</strong>
             </p>
           </div>
         </div>
 
         <div class="d-flex align-center gap-1 flex-wrap">
+          <!-- Sincronizar Facturas y Retenciones -->
+          <VBtn
+            v-if="book?.is_open"
+            icon
+            color="primary"
+            variant="tonal"
+            size="38"
+            rounded="circle"
+            :loading="syncing"
+            @click="handleSync"
+          >
+            <VIcon icon="tabler-refresh" />
+            <VTooltip activator="parent" location="top">Sincronizar Facturas y Retenciones</VTooltip>
+          </VBtn>
+
+          <!-- Agregar Operación Manual -->
+          <VBtn
+            v-if="book?.is_open"
+            icon
+            color="info"
+            variant="tonal"
+            size="38"
+            rounded="circle"
+            @click="openCreateModal"
+          >
+            <VIcon icon="tabler-plus" />
+            <VTooltip activator="parent" location="top">Agregar Operación Manual</VTooltip>
+          </VBtn>
+
           <!-- Menú Exportar Homologado con AppFilterBase -->
           <VMenu>
             <template #activator="{ props: menuProps }">
@@ -436,7 +475,7 @@ const onRifBlur = () => {
               :class="{ 'row-manual': entry.is_manual_override }"
             >
               <td class="text-center font-weight-bold">{{ entry.operation_number }}</td>
-              <td class="text-no-wrap">{{ entry.operation_date }}</td>
+              <td class="text-no-wrap text-center font-tabular">{{ formatDate(entry.operation_date) }}</td>
               <td class="text-no-wrap font-weight-medium">{{ formatRif(entry.rif) }}</td>
               <td class="text-truncate" style="max-width: 220px;" :title="entry.supplier_name">
                 {{ entry.supplier_name }}
