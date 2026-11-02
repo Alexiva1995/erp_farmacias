@@ -44,9 +44,18 @@ class SalesBookService
         return $this->salesBookRepository->findOrCreateBook($year, $month, $fortnight);
     }
 
-    public function getBookById(int $id): SalesBook
+    public function getBookById(int $id, bool $autoSync = true): SalesBook
     {
-        return $this->salesBookRepository->getBookById($id);
+        $book = $this->salesBookRepository->getBookById($id);
+        if ($autoSync && $book->isOpen()) {
+            try {
+                $book = $this->salesBookRepository->syncTransactions($book);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Error al sincronizar transacciones del libro de ventas ID {$id}: " . $e->getMessage());
+            }
+        }
+
+        return $book;
     }
 
     public function syncTransactions(int $id): SalesBook

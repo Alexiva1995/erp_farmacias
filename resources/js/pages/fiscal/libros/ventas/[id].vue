@@ -359,6 +359,32 @@ const formatNumber = (val) => {
             </VList>
           </VMenu>
 
+          <!-- Botón Actualizar / Sincronizar -->
+          <VBtn
+            v-if="book?.is_open"
+            color="primary"
+            variant="elevated"
+            class="font-weight-medium"
+            :loading="syncing"
+            @click="handleSync"
+          >
+            <VIcon start>tabler-refresh</VIcon>
+            Actualizar
+            <VTooltip activator="parent" location="top">Actualizar y sincronizar libro de ventas</VTooltip>
+          </VBtn>
+
+          <!-- Botón Agregar Operación Manual -->
+          <VBtn
+            v-if="book?.is_open"
+            color="info"
+            variant="tonal"
+            class="font-weight-medium"
+            @click="openCreateModal"
+          >
+            <VIcon start>tabler-plus</VIcon>
+            Agregar Operación
+          </VBtn>
+
           <!-- Cerrar Libro -->
           <VBtn
             v-if="book?.is_open"

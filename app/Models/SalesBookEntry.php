@@ -77,4 +77,17 @@ class SalesBookEntry extends Model
     {
         return $this->belongsTo(FiscalCommand::class);
     }
+
+    /**
+     * Priorizar el serial de la máquina fiscal configurado en Datos de Farmacia
+     */
+    public function getMachineSerialAttribute($value): ?string
+    {
+        $configuredSerial = GeneralSetting::first()?->fiscal_printer_serial;
+        if (!empty($configuredSerial)) {
+            return $configuredSerial;
+        }
+
+        return $value ?: 'Z1F0000379';
+    }
 }
