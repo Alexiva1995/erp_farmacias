@@ -90,4 +90,20 @@ class SalesBookEntry extends Model
 
         return $value ?: 'Z1F0000379';
     }
+
+    /**
+     * El total de ventas incluyendo IVA es estrictamente No Gravadas + Base Gravada + IVA (excluye IGTF).
+     */
+    public function getTotalSalesWithVatAttribute($value): float
+    {
+        $nonTaxable = (float) ($this->attributes['non_taxable_sales'] ?? 0);
+        $taxpayerBase = (float) ($this->attributes['taxpayer_taxable_base'] ?? 0);
+        $taxpayerVat = (float) ($this->attributes['taxpayer_vat'] ?? 0);
+        $nonTaxpayerBase = (float) ($this->attributes['non_taxpayer_taxable_base'] ?? 0);
+        $nonTaxpayerVat = (float) ($this->attributes['non_taxpayer_vat'] ?? 0);
+
+        $computed = round($nonTaxable + $taxpayerBase + $taxpayerVat + $nonTaxpayerBase + $nonTaxpayerVat, 2);
+
+        return $computed > 0 ? $computed : (float) $value;
+    }
 }

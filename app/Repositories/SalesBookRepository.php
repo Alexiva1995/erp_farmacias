@@ -108,6 +108,7 @@ class SalesBookRepository implements SalesBookContract
         $book = SalesBook::findOrFail($id);
         if ($book->isOpen()) {
             $this->reorderOperations($book);
+            $this->recalculateTotals($book);
         }
 
         return SalesBook::with([
@@ -167,12 +168,9 @@ class SalesBookRepository implements SalesBookContract
                 $base16 = (float) $z->base_16_amount;
                 $iva16 = (float) $z->iva_amount;
                 $igtf = (float) ($z->igtf_amount > 0 ? $z->igtf_amount : ($z->igtf_base_amount ?? 0));
-                $totalWithVat = (float) $z->total_amount;
 
-                // Si total_amount viene en 0 o no cuadra, calcular suma de no gravadas + gravadas + iva
-                if ($totalWithVat <= 0) {
-                    $totalWithVat = round($exempt + $base16 + $iva16, 2);
-                }
+                // En SENIAT: Total ventas con IVA = No Gravadas + Base Gravada + Débito Fiscal (sin IGTF)
+                $totalWithVat = round($exempt + $base16 + $iva16, 2);
 
                 $rawRows->push([
                     'type' => 'z_report',
@@ -421,11 +419,8 @@ class SalesBookRepository implements SalesBookContract
                 $base16 = (float) $z->base_16_amount;
                 $iva16 = (float) $z->iva_amount;
                 $igtf = (float) ($z->igtf_amount > 0 ? $z->igtf_amount : ($z->igtf_base_amount ?? 0));
-                $totalWithVat = (float) $z->total_amount;
-
-                if ($totalWithVat <= 0) {
-                    $totalWithVat = round($exempt + $base16 + $iva16, 2);
-                }
+                // Total ventas con IVA = No Gravadas + Base Gravada + IVA (excluye IGTF)
+                $totalWithVat = round($exempt + $base16 + $iva16, 2);
 
                 return [
                     'id' => $z->id,
@@ -469,9 +464,24 @@ class SalesBookRepository implements SalesBookContract
 
     public function recalculateTotals(SalesBook $book): void
     {
+        // Sanear cualquier registro existente cuyo total_sales_with_vat incluya IGTF
+        $book->entries()->where('is_manual_override', false)->each(function ($entry) {
+            $correctTotal = round(
+                (float) $entry->non_taxable_sales +
+                (float) $entry->taxpayer_taxable_base +
+                (float) $entry->taxpayer_vat +
+                (float) $entry->non_taxpayer_taxable_base +
+                (float) $entry->non_taxpayer_vat,
+                2
+            );
+            if (abs((float)$entry->total_sales_with_vat - $correctTotal) > 0.001) {
+                $entry->update(['total_sales_with_vat' => $correctTotal]);
+            }
+        });
+
         $totals = $book->entries()
             ->selectRaw('
-                COALESCE(SUM(total_sales_with_vat), 0) as total_sales_with_vat,
+                COALESCE(SUM(non_taxable_sales + taxpayer_taxable_base + taxpayer_vat + non_taxpayer_taxable_base + non_taxpayer_vat), 0) as total_sales_with_vat,
                 COALESCE(SUM(non_taxable_sales), 0) as total_non_taxable_sales,
                 COALESCE(SUM(taxpayer_taxable_base), 0) as total_taxpayer_taxable_base,
                 COALESCE(SUM(taxpayer_vat), 0) as total_taxpayer_vat,
