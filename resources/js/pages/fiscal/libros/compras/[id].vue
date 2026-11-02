@@ -191,7 +191,69 @@ const openCreateModal = () => {
     vat_withheld: 0,
     withholding_receipt_number: '',
   })
+  searchInvoiceQuery.value = ''
+  foundInvoices.value = []
   showEditModal.value = true
+}
+
+// Búsqueda de factura registrada para autocompletar en el libro
+const searchInvoiceQuery = ref('')
+const isSearchingInvoice = ref(false)
+const foundInvoices = ref([])
+
+const searchInvoice = async () => {
+  const query = (searchInvoiceQuery.value || '').trim()
+  if (!query) {
+    toast.error('Ingresa un número de factura o número de control para buscar.')
+    return
+  }
+
+  isSearchingInvoice.value = true
+  foundInvoices.value = []
+  try {
+    const res = await axios.get('/purchase-books/search-invoices', {
+      params: { query },
+    })
+    const data = res.data?.data || []
+    foundInvoices.value = data
+    if (data.length === 0) {
+      toast.info('No se encontraron facturas registradas con ese número.')
+    } else if (data.length === 1) {
+      selectInvoice(data[0])
+    }
+  } catch (err) {
+    console.error('Error al buscar factura:', err)
+    toast.error('Error al consultar las facturas del sistema.')
+  } finally {
+    isSearchingInvoice.value = false
+  }
+}
+
+const selectInvoice = (inv) => {
+  entryForm.invoice_id = inv.id
+  entryForm.rif = inv.rif || entryForm.rif
+  entryForm.supplier_name = inv.supplier_name || entryForm.supplier_name
+  entryForm.invoice_number = inv.invoice_number || ''
+  entryForm.control_number = inv.control_number || ''
+  entryForm.document_type = inv.document_type || 'FACTURA'
+  entryForm.transaction_type = inv.transaction_type || '01-REG'
+  entryForm.total_purchases_with_vat = inv.total_purchases_with_vat || 0
+  entryForm.exempt_purchases = inv.exempt_purchases || 0
+  entryForm.general_taxable_base = inv.general_taxable_base || 0
+  entryForm.general_aliquot = inv.general_aliquot || 0.16
+  entryForm.general_vat = inv.general_vat || 0
+  entryForm.reduced_taxable_base = inv.reduced_taxable_base || 0
+  entryForm.reduced_aliquot = inv.reduced_aliquot || 0.08
+  entryForm.reduced_vat = inv.reduced_vat || 0
+  entryForm.vat_withheld = inv.vat_withheld || 0
+  entryForm.withholding_receipt_number = inv.withholding_receipt_number || ''
+
+  if (inv.created_invoice_date && !entryForm.operation_date) {
+    entryForm.operation_date = inv.created_invoice_date
+  }
+
+  foundInvoices.value = []
+  toast.success(`Datos de factura N° ${inv.invoice_number} cargados al formulario.`)
 }
 
 const saveEntry = async () => {
@@ -649,6 +711,67 @@ const formatDate = (val) => {
         <VDivider />
         <VCardText class="pa-4">
           <VForm @submit.prevent="saveEntry">
+            <!-- Buscador de factura registrada para autocompletar en el libro -->
+            <VCard v-if="isCreatingRow" variant="tonal" color="primary" class="pa-3 mb-4 rounded-lg">
+              <div class="d-flex align-center gap-2 mb-2">
+                <VIcon icon="tabler-file-search" size="20" />
+                <span class="text-subtitle-2 font-weight-bold">
+                  Buscar Factura Registrada en el Sistema
+                </span>
+              </div>
+              <p class="text-caption text-medium-emphasis mb-2">
+                Ingresa el número de factura o de control. El sistema autocompletará los datos (proveedor, RIF, montos, IVA) para incorporar la factura en este libro.
+              </p>
+              <VRow density="compact" class="align-center">
+                <VCol cols="12" sm="8">
+                  <VTextField
+                    v-model="searchInvoiceQuery"
+                    label="N° de Factura o N° de Control (ej. 00440481)"
+                    placeholder="Escribe el número y pulsa Buscar..."
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    clearable
+                    @keydown.enter.prevent="searchInvoice"
+                  />
+                </VCol>
+                <VCol cols="12" sm="4">
+                  <VBtn
+                    color="primary"
+                    variant="elevated"
+                    density="compact"
+                    block
+                    :loading="isSearchingInvoice"
+                    @click="searchInvoice"
+                  >
+                    <VIcon start>tabler-search</VIcon>
+                    Buscar y Cargar
+                  </VBtn>
+                </VCol>
+              </VRow>
+
+              <!-- Lista de Facturas Encontradas -->
+              <div v-if="foundInvoices.length > 0" class="mt-3">
+                <span class="text-caption font-weight-bold d-block mb-1">
+                  Resultados coincidentes (haz clic para cargar):
+                </span>
+                <div class="d-flex flex-wrap gap-2">
+                  <VChip
+                    v-for="inv in foundInvoices"
+                    :key="inv.id"
+                    size="small"
+                    color="primary"
+                    variant="elevated"
+                    class="cursor-pointer"
+                    @click="selectInvoice(inv)"
+                  >
+                    <VIcon start size="14">tabler-check</VIcon>
+                    N° {{ inv.invoice_number }} | {{ inv.supplier_name }} ({{ inv.created_invoice_date || 'Sin fecha' }})
+                  </VChip>
+                </div>
+              </div>
+            </VCard>
+
             <VRow density="compact">
               <VCol cols="12" sm="4">
                 <VTextField v-model="entryForm.operation_date" type="date" label="Fecha" variant="outlined" density="compact" />

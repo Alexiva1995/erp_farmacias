@@ -1273,6 +1273,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
 
     Route::prefix('purchase-books')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\PurchaseBookController::class, 'index']);
+        Route::get('/search-invoices', [\App\Http\Controllers\Api\PurchaseBookController::class, 'searchInvoices']);
         Route::post('/generate-period', [\App\Http\Controllers\Api\PurchaseBookController::class, 'generatePeriod']);
         Route::get('/{id}', [\App\Http\Controllers\Api\PurchaseBookController::class, 'show']);
         Route::post('/{id}/sync', [\App\Http\Controllers\Api\PurchaseBookController::class, 'sync']);

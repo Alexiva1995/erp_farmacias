@@ -134,4 +134,14 @@ class PurchaseBookController extends Controller
     {
         return $this->purchaseBookService->exportPdf($id);
     }
+
+    public function searchInvoices(Request $request): JsonResponse
+    {
+        $term = (string) ($request->query('query') ?? $request->query('term') ?? '');
+        $results = $this->purchaseBookService->searchInvoices($term);
+
+        return response()->json([
+            'data' => $results,
+        ]);
+    }
 }

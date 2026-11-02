@@ -54,4 +54,9 @@ interface PurchaseBookContract
      * Recalcula los totales y el cuadro resumen de un libro.
      */
     public function recalculateTotals(PurchaseBook $book): void;
+
+    /**
+     * Busca facturas por número o número de control para facilitar su incorporación manual.
+     */
+    public function searchInvoices(string $term): \Illuminate\Support\Collection;
 }

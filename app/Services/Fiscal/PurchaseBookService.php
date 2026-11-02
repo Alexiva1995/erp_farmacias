@@ -122,4 +122,9 @@ class PurchaseBookService
 
         return $pdf->download("libro_compras_{$periodSuffix}.pdf");
     }
+
+    public function searchInvoices(string $term): \Illuminate\Support\Collection
+    {
+        return $this->purchaseBookRepository->searchInvoices($term);
+    }
 }

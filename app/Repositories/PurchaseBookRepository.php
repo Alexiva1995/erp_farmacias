@@ -424,4 +424,70 @@ class PurchaseBookRepository implements PurchaseBookContract
             'total_vat_withheld' => $totals->total_vat_withheld,
         ]);
     }
+
+    public function searchInvoices(string $term): \Illuminate\Support\Collection
+    {
+        $cleanTerm = trim($term);
+        if (empty($cleanTerm)) {
+            return collect();
+        }
+
+        return Invoice::with(['supplier', 'retention'])
+            ->whereDoesntHave('supplier', function ($q) {
+                $q->whereRaw('UPPER(name) LIKE ?', ['%INFORMAL%'])
+                  ->orWhereRaw('UPPER(social_reason) LIKE ?', ['%INFORMAL%']);
+            })
+            ->where(function ($q) use ($cleanTerm) {
+                $q->where('invoice_number', 'LIKE', "%{$cleanTerm}%")
+                  ->orWhere('control_number', 'LIKE', "%{$cleanTerm}%");
+            })
+            ->orderBy('created_invoice_date', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($inv) {
+                $supplier = $inv->supplier;
+                $isZoom = str_contains(strtoupper((string) $supplier?->name), 'ZOOM') ||
+                    str_contains(strtoupper((string) $supplier?->social_reason), 'ZOOM');
+
+                $taxableBase = (float) ($inv->taxable_base ?? 0);
+                $taxAmount = (float) ($inv->tax_amount ?? 0);
+                $exemptAmount = (float) ($inv->exempt_amount ?? 0);
+                $totalAmount = (float) ($inv->total_amount ?? 0);
+
+                $hasReduced = false;
+                $reducedBase = 0.00;
+                $reducedVat = 0.00;
+                $generalBase = $taxableBase;
+                $generalVat = $taxAmount;
+
+                if ($isZoom || ($taxableBase > 0 && round($taxAmount / $taxableBase, 2) === 0.08)) {
+                    $hasReduced = true;
+                    $reducedBase = $taxableBase;
+                    $reducedVat = $taxAmount;
+                    $generalBase = 0.00;
+                    $generalVat = 0.00;
+                }
+
+                return [
+                    'id' => $inv->id,
+                    'invoice_number' => (string) $inv->invoice_number,
+                    'control_number' => (string) ($inv->control_number ?? ''),
+                    'created_invoice_date' => $inv->created_invoice_date ? $inv->created_invoice_date->format('Y-m-d') : null,
+                    'rif' => PurchaseBookEntry::formatRif($supplier?->rif),
+                    'supplier_name' => $supplier?->social_reason ?: ($supplier?->name ?: 'PROVEEDOR VARIOS'),
+                    'document_type' => 'FACTURA',
+                    'transaction_type' => '01-REG',
+                    'total_purchases_with_vat' => $totalAmount > 0 ? $totalAmount : round($exemptAmount + $taxableBase + $taxAmount, 2),
+                    'exempt_purchases' => $exemptAmount,
+                    'general_taxable_base' => $generalBase,
+                    'general_aliquot' => $generalBase > 0 ? 0.16 : 0.00,
+                    'general_vat' => $generalVat,
+                    'reduced_taxable_base' => $reducedBase,
+                    'reduced_aliquot' => $hasReduced ? 0.08 : 0.00,
+                    'reduced_vat' => $reducedVat,
+                    'vat_withheld' => (float) ($inv->retention?->total_withheld_amount ?? 0),
+                    'withholding_receipt_number' => (string) ($inv->retention?->number ?? ''),
+                ];
+            });
+    }
 }
