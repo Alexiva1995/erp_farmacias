@@ -102,6 +102,8 @@ const getVerticalBadge = (key) => {
       return { label: 'Comida Rápida', color: 'warning', icon: 'tabler-burger' }
     case 'minimarket':
       return { label: 'Minimarket', color: 'secondary', icon: 'tabler-building-store' }
+    case 'orphan':
+      return { label: 'BD Huérfana', color: 'error', icon: 'tabler-database-off' }
     case 'pharmacy':
       return { label: 'Farmacia', color: 'primary', icon: 'tabler-pill' }
     default: {
@@ -283,10 +285,13 @@ const handleDeleteTenant = async () => {
   if (!tenantToDelete.value) return
   
   const id = tenantToDelete.value.id ?? tenantToDelete.value.raw?.id
+  const database = tenantToDelete.value.database ?? tenantToDelete.value.raw?.database
   isDeleting.value = true
   try {
-    const response = await axios.delete(`/central/tenants/${id}`)
-    showAlert('success', response.data.message || 'Empresa eliminada exitosamente')
+    const response = await axios.delete(`/central/tenants/${id}`, {
+      params: { database }
+    })
+    showAlert('success', response.data.message || 'Empresa y base de datos eliminadas exitosamente')
     isDeleteDialogOpen.value = false
     tenantToDelete.value = null
     await fetchTenants()
@@ -422,7 +427,7 @@ onMounted(() => {
                 {{ item.company_name ?? item.raw?.company_name }}
               </div>
               <span class="text-caption text-medium-emphasis">
-                BD: tovaerp_tenant_{{ item.id ?? item.raw?.id }}
+                BD: {{ item.database ?? item.raw?.database ?? ('tovaerp_tenant_' + (item.id ?? item.raw?.id)) }}
               </span>
             </div>
           </div>
@@ -487,6 +492,7 @@ onMounted(() => {
         <template #item.actions="{ item }">
           <div class="d-flex justify-end align-center ga-1">
             <VBtn
+              v-if="!(item.is_orphan ?? item.raw?.is_orphan)"
               :href="getTenantUrl(item)"
               target="_blank"
               variant="tonal"
@@ -553,8 +559,11 @@ onMounted(() => {
               ¿Estás seguro de que deseas eliminar permanentemente a
               <strong class="text-error">{{ tenantToDelete?.company_name ?? tenantToDelete?.raw?.company_name ?? tenantToDelete?.id ?? tenantToDelete?.raw?.id }}</strong>?
             </p>
+            <p v-if="tenantToDelete?.database ?? tenantToDelete?.raw?.database" class="text-caption font-weight-bold text-error mb-2">
+              Base de datos que se destruirá en MySQL: {{ tenantToDelete?.database ?? tenantToDelete?.raw?.database }}
+            </p>
             <p class="text-caption text-medium-emphasis mb-0">
-              Esta acción eliminará el subdominio, sus configuraciones y destruirá su base de datos aislada. Esta operación no se puede deshacer.
+              Esta acción eliminará el subdominio, sus configuraciones y destruirá completamente su base de datos física en MySQL. Esta operación no se puede deshacer.
             </p>
           </VCard>
         </VCardText>

@@ -52,6 +52,7 @@ class TenantResource extends JsonResource
         return [
             'id' => $this->id,
             'company_name' => $this->company_name ?? $this->id,
+            'database' => $this->database()->getName(),
             'vertical' => $vertical ?: 'pharmacy',
             'plan_id' => $this->plan_id,
             'domains' => $domains,

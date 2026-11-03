@@ -8,91 +8,44 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Central\CreateTenantRequest;
 use App\Http\Resources\TenantResource;
 use App\Models\Tenant;
+use App\Services\Tenancy\TenantManagementService;
 use App\Services\Tenancy\TenantProvisioningService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Request;
 
 class TenantManagementController extends Controller
 {
     public function __construct(
-        protected TenantProvisioningService $provisioningService
+        protected TenantProvisioningService $provisioningService,
+        protected TenantManagementService $managementService
     ) {}
 
     /**
-     * Listado de tenants registrados con sus dominios asociados.
+     * Listado de tenants registrados y bases de datos físicas en MySQL (incluyendo huérfanas).
      */
-    public function index(): JsonResponse|AnonymousResourceCollection
+    public function index(): JsonResponse
     {
         try {
-            if (!\Illuminate\Support\Facades\Schema::hasTable('tenants')) {
-                return response()->json(['data' => []]);
-            }
-
-            $tenants = Tenant::with('domains')
-                ->orderBy('created_at', 'desc')
-                ->get();
-
-            // Garantizar que todo tenant tenga su registro de dominio y al menos su usuario administrador
-            foreach ($tenants as $tenant) {
-                // 1. Auto-reparar dominio si falta en la tabla central de dominios
-                if ($tenant->domains->isEmpty() && !empty($tenant->id)) {
-                    try {
-                        $expectedDomain = "{$tenant->id}.tovaerp.com";
-                        \Stancl\Tenancy\Database\Models\Domain::where('domain', $expectedDomain)->delete();
-                        $tenant->domains()->create([
-                            'domain' => $expectedDomain,
-                        ]);
-                        $tenant->load('domains');
-                    } catch (\Throwable $e) {
-                        \Illuminate\Support\Facades\Log::warning("No se pudo asociar dominio automático para tenant {$tenant->id}: " . $e->getMessage());
+            // Auto-reparar registros y usuarios si aplica antes del listado
+            if (\Illuminate\Support\Facades\Schema::hasTable('tenants')) {
+                $tenants = Tenant::with('domains')->get();
+                foreach ($tenants as $tenant) {
+                    if ($tenant->domains->isEmpty() && !empty($tenant->id)) {
+                        try {
+                            $expectedDomain = "{$tenant->id}.tovaerp.com";
+                            \Stancl\Tenancy\Database\Models\Domain::where('domain', $expectedDomain)->delete();
+                            $tenant->domains()->create(['domain' => $expectedDomain]);
+                        } catch (\Throwable) {
+                        }
                     }
                 }
-
-                // 2. Auto-reparar usuario Administrador si la tabla users del tenant está vacía
-                try {
-                    $tenant->run(function () use ($tenant) {
-                        if (\Illuminate\Support\Facades\Schema::hasTable('users')) {
-                            $userCount = \Illuminate\Support\Facades\DB::table('users')->count();
-                            if ($userCount === 0) {
-                                if (\Illuminate\Support\Facades\Schema::hasTable('roles')) {
-                                    \Illuminate\Support\Facades\DB::table('roles')->updateOrInsert(
-                                        ['id' => 1],
-                                        ['name' => 'Admin', 'created_at' => now(), 'updated_at' => now()]
-                                    );
-                                    \Illuminate\Support\Facades\DB::table('roles')->updateOrInsert(
-                                        ['id' => 2],
-                                        ['name' => 'Supervisor', 'created_at' => now(), 'updated_at' => now()]
-                                    );
-                                }
-
-                                \Illuminate\Support\Facades\DB::table('users')->insert([
-                                    'username'      => 'Administrador',
-                                    'email'         => "admin@{$tenant->id}.com",
-                                    'password_hash' => \Illuminate\Support\Facades\Hash::make('12345678'),
-                                    'role_id'       => 1,
-                                    'is_active'     => 1,
-                                    'created_at'    => now(),
-                                    'updated_at'    => now(),
-                                ]);
-
-                                \Illuminate\Support\Facades\DB::table('users')->insert([
-                                    'username'      => 'tienda',
-                                    'email'         => "tienda@{$tenant->id}.com",
-                                    'password_hash' => \Illuminate\Support\Facades\Hash::make('tienda123'),
-                                    'role_id'       => 2,
-                                    'is_active'     => 1,
-                                    'created_at'    => now(),
-                                    'updated_at'    => now(),
-                                ]);
-                            }
-                        }
-                    });
-                } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning("No se pudo auto-reparar usuario para tenant {$tenant->id}: " . $e->getMessage());
-                }
             }
 
-            return TenantResource::collection($tenants);
+            $allTenants = $this->managementService->listAllTenantsAndOrphans();
+
+            return response()->json([
+                'data' => $allTenants,
+            ]);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Tenant fetch error: ' . $e->getMessage());
             return response()->json(['data' => []]);
@@ -129,33 +82,15 @@ class TenantManagementController extends Controller
     }
 
     /**
-     * Eliminar un Tenant, sus dominios y su base de datos asociada.
+     * Eliminar un Tenant, sus dominios y su base de datos física de MySQL.
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
         try {
-            $tenant = Tenant::find($id);
+            $databaseName = $request->input('database');
+            $result = $this->managementService->deleteTenantAndDatabase($id, $databaseName ? (string) $databaseName : null);
 
-            // 1. Eliminar dominios asociados
-            \Stancl\Tenancy\Database\Models\Domain::where('tenant_id', $id)->delete();
-
-            // 2. Eliminar base de datos física si existe
-            $dbPrefix = config('tenancy.database.prefix', 'tovaerp_tenant_');
-            $dbName = $dbPrefix . $id;
-            try {
-                \Illuminate\Support\Facades\DB::statement("DROP DATABASE IF EXISTS `{$dbName}`");
-            } catch (\Throwable) {}
-
-            // 3. Eliminar registro del tenant
-            if ($tenant) {
-                $tenant->delete();
-            } else {
-                Tenant::where('id', $id)->delete();
-            }
-
-            return response()->json([
-                'message' => "Empresa '{$id}' y su base de datos fueron eliminadas correctamente.",
-            ]);
+            return response()->json($result);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Error eliminando tenant {$id}: " . $e->getMessage());
 
