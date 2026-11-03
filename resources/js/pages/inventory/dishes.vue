@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -60,6 +60,7 @@ const currentDish = ref({
 
 const formErrors = ref({});
 const isSaving = ref(false);
+const isRecalculating = ref(false);
 
 // Agregar ingrediente
 const productSearch = ref("");
@@ -453,6 +454,46 @@ const handleDeleteDish = async (dish) => {
   }
 };
 
+// Eliminar costo fijo e imprevisto de todos los platos y recalcular costos sin alterar el precio de venta
+const handleRemoveFixedCostsAndRecalculate = async () => {
+  const result = await Swal.fire({
+    title: "¿Eliminar costo fijo e imprevisto?",
+    text: "Se eliminarán el costo fijo y el imprevisto de todas las recetas y se recalcularán todos los costos sin modificar el precio de venta.",
+    icon: "warning",
+    showCancelButton: true,
+    cancelButtonText: "Cancelar",
+    confirmButtonText: "Sí, recalcular",
+    reverseButtons: true,
+    customClass: {
+      confirmButton:
+        "v-btn v-btn--variant-flat bg-warning text-white h-auto py-2 px-6 rounded-lg font-weight-black uppercase",
+      cancelButton:
+        "v-btn v-btn--variant-tonal text-secondary h-auto py-2 px-6 rounded-lg font-weight-black uppercase",
+    },
+  });
+
+  if (!result.isConfirmed) return;
+
+  isRecalculating.value = true;
+  try {
+    const { data } = await axios.post("/dishes/remove-fixed-costs-recalculate");
+    const responseData = data?.data || data;
+    toast.success(
+      responseData?.message ||
+        "Costos fijos e imprevistos eliminados y costos recalculados con éxito."
+    );
+    fetchDishes();
+  } catch (error) {
+    console.error("Error al recalcular costos de platos:", error);
+    toast.error(
+      error.response?.data?.message ||
+        "No se pudieron recalcular los costos de los platos."
+    );
+  } finally {
+    isRecalculating.value = false;
+  }
+};
+
 const getStatusChipColor = (status) => {
   if (status === 1) return "success";
   if (status === 2) return "info";
@@ -472,6 +513,11 @@ onMounted(() => {
   fetchKitchenStations();
   fetchDishes();
 });
+
+onUnmounted(() => {
+  clearTimeout(debounceTimer);
+  clearTimeout(searchDebounce);
+});
 </script>
 
 <template>
@@ -488,6 +534,24 @@ onMounted(() => {
       @clear="searchQuery = ''; selectedCategory = null; selectedStatus = null; fetchDishes()"
       @add="handleAddDish"
     >
+      <template #actions-extra>
+        <VBtn
+          icon
+          color="warning"
+          variant="tonal"
+          size="38"
+          rounded="circle"
+          :loading="isRecalculating"
+          :disabled="isRecalculating || loading"
+          @click="handleRemoveFixedCostsAndRecalculate"
+        >
+          <VIcon icon="tabler-calculator-off" />
+          <VTooltip activator="parent" location="top">
+            Eliminar Costo Fijo e Imprevisto y Recalcular Costos
+          </VTooltip>
+        </VBtn>
+      </template>
+
       <template #advanced-filters>
         <VCol cols="12" sm="6" md="4">
           <VSelect

@@ -12,4 +12,5 @@ interface Dish
     public function create(array $data): ModelDish;
     public function update(ModelDish $dish, array $data): ModelDish;
     public function delete(ModelDish $dish): bool;
+    public function removeFixedCostsAndRecalculate(): array;
 }

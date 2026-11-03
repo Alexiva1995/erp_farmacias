@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dish\StoreDishRequest;
 use App\Http\Requests\Dish\UpdateDishRequest;
+use App\Http\Resources\DishRecalculationResource;
 use App\Http\Resources\DishResource;
 use App\Contracts\Dish as DishContract;
 use Illuminate\Http\Request;
@@ -84,5 +85,14 @@ class DishController extends Controller
         return response()->json([
             'message' => 'Plato eliminado con éxito.'
         ]);
+    }
+
+    /**
+     * Eliminar costo fijo e imprevisto de todas las recetas y recalcular costos sin alterar precios de venta.
+     */
+    public function removeFixedCostsAndRecalculate(): DishRecalculationResource
+    {
+        $result = $this->dishService->removeFixedCostsAndRecalculate();
+        return new DishRecalculationResource($result);
     }
 }

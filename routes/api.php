@@ -339,6 +339,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::post("/origins", [ResourceController::class, "storeOrigin"]);
     Route::get("/categories", [ResourceController::class, "getCategories"]);
     Route::apiResource("locations", LocationController::class);
+    Route::post("dishes/remove-fixed-costs-recalculate", [DishController::class, "removeFixedCostsAndRecalculate"]);
     Route::apiResource("dishes", DishController::class);
     Route::apiResource("modifier-groups", ModifierGroupController::class);
     Route::apiResource("kitchen-stations", \App\Http\Controllers\Api\KitchenStationController::class);

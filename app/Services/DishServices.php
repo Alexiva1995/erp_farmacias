@@ -196,4 +196,100 @@ class DishServices implements DishContract
             return (bool) $dish->delete();
         });
     }
+
+    /**
+     * Eliminar ingredientes de costo fijo e imprevisto de todos los platos
+     * y recalcular todos los costos sin modificar el precio de venta (designated_price).
+     */
+    public function removeFixedCostsAndRecalculate(): array
+    {
+        return DB::transaction(function () {
+            // Identificar productos cuyos nombres correspondan a costo fijo o imprevisto
+            $targetProductIds = DB::table('products')
+                ->where(function ($query) {
+                    $query->whereRaw('LOWER(name) LIKE ?', ['%costo fijo%'])
+                        ->orWhereRaw('LOWER(name) LIKE ?', ['%costos fijos%'])
+                        ->orWhereRaw('LOWER(name) LIKE ?', ['%costo_fijo%'])
+                        ->orWhereRaw('LOWER(name) LIKE ?', ['%gasto fijo%'])
+                        ->orWhereRaw('LOWER(name) LIKE ?', ['%gastos fijos%'])
+                        ->orWhereRaw('LOWER(name) LIKE ?', ['%imprevisto%']);
+                })
+                ->pluck('id')
+                ->toArray();
+
+            $removedRelationsCount = 0;
+            if (!empty($targetProductIds)) {
+                $removedRelationsCount = DB::table('dish_ingredients')
+                    ->whereIn('product_id', $targetProductIds)
+                    ->delete();
+            }
+
+            // Cargar todos los platos con sus ingredientes restantes para recalcular costos
+            $dishes = Dish::select([
+                'id',
+                'cost_price',
+                'cpv',
+                'suggested_price',
+                'designated_price',
+                'percentage_profit',
+            ])->with([
+                'ingredients' => function ($query) {
+                    $query->select([
+                        'products.id',
+                        'products.name',
+                        'products.unit_cost',
+                        'products.presentation',
+                    ]);
+                },
+            ])->get();
+
+            $recalculatedDishesCount = 0;
+
+            foreach ($dishes as $dish) {
+                $newCostPrice = 0.0;
+
+                foreach ($dish->ingredients as $ingredient) {
+                    $portion = (float) ($ingredient->pivot?->portion ?? 0);
+                    $designatedCost = (float) ($ingredient->pivot?->designated_cost ?? 0);
+                    $unitCost = (float) ($ingredient->unit_cost ?? 0);
+                    $presentation = (float) ($ingredient->presentation ?? 1);
+
+                    // Si el costo asignado de la porción es 0 y el insumo posee costo unitario, calcularlo
+                    if ($designatedCost <= 0 && $unitCost > 0 && $portion > 0) {
+                        $safePresentation = $presentation > 0 ? $presentation : 1.0;
+                        $designatedCost = round(($portion * $unitCost) / $safePresentation, 2);
+
+                        if ($ingredient->pivot?->id) {
+                            DB::table('dish_ingredients')
+                                ->where('id', $ingredient->pivot->id)
+                                ->update(['designated_cost' => $designatedCost]);
+                        }
+                    }
+
+                    $newCostPrice += $designatedCost;
+                }
+
+                $newCostPrice = round($newCostPrice, 2);
+                $profitMultiplier = (float) ($dish->percentage_profit ?? 0);
+                $newSuggestedPrice = round($newCostPrice * $profitMultiplier, 2);
+
+                // Actualizar únicamente costos y sugerido, manteniendo intacto designated_price (precio de venta)
+                $dish->update([
+                    'cost_price' => $newCostPrice,
+                    'cpv' => $newCostPrice,
+                    'suggested_price' => $newSuggestedPrice,
+                ]);
+
+                $recalculatedDishesCount++;
+            }
+
+            \Cache::forget('resources.categories.dishes');
+
+            return [
+                'removed_ingredients_count' => $removedRelationsCount,
+                'recalculated_dishes_count' => $recalculatedDishesCount,
+                'message' => "Se eliminaron {$removedRelationsCount} registros de costo fijo/imprevisto y se recalcularon los costos de {$recalculatedDishesCount} platos sin modificar su precio de venta.",
+            ];
+        });
+    }
 }
