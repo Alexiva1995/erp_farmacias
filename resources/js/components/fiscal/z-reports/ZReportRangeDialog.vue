@@ -51,10 +51,23 @@ const handleSave = async () => {
   }
 
   isSaving.value = true;
-  form.recalculate = autoRecalculate.value;
+
+  const payload = {
+    first_invoice_number: form.first_invoice_number,
+    last_invoice_number: form.last_invoice_number,
+    recalculate: autoRecalculate.value,
+  };
+
+  if (!autoRecalculate.value) {
+    payload.exempt_amount = Number(form.exempt_amount) || 0;
+    payload.base_16_amount = Number(form.base_16_amount) || 0;
+    payload.iva_amount = Number(form.iva_amount) || 0;
+    payload.igtf_amount = Number(form.igtf_amount) || 0;
+    payload.total_amount = Number(form.total_amount) || 0;
+  }
 
   try {
-    const response = await axios.put(`/fiscal/z-reports/${props.report.id}/range`, form);
+    const response = await axios.put(`/fiscal/z-reports/${props.report.id}/range`, payload);
     const updated = response.data?.data;
     toast.success("Rango de facturas actualizado y Libro de Ventas recalculado.");
     emit("saved", updated);

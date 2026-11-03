@@ -239,6 +239,7 @@ const handleDownloadImages = async () => {
       :page="page"
       @update:options="updateTableOptions"
       @view-detail="handleViewDetail"
+      @refresh="fetchZReports"
     />
 
     <!-- Modal de Ticket Corte Z -->

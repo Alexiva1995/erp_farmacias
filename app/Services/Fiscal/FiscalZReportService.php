@@ -592,19 +592,31 @@ class FiscalZReportService
         $invoicesCount = (int) $report->invoices_count;
 
         if ($shouldRecalculate) {
-            // Buscar comprobantes fiscales en FiscalHistory dentro del rango especificado
-            $query = FiscalHistory::query();
+            $reportDate = $report->report_date ? \Carbon\Carbon::parse($report->report_date)->format('Y-m-d') : null;
 
-            if ($cleanFirst > 0 && $cleanLast >= $cleanFirst) {
-                $query->whereRaw("CAST(REGEXP_REPLACE(COALESCE(invoice_number, fiscal_id, '0'), '[^0-9]', '') AS UNSIGNED) BETWEEN ? AND ?", [$cleanFirst, $cleanLast]);
-            } else {
-                $query->where(function ($q) use ($firstInvoice, $lastInvoice, $report) {
-                    $q->whereBetween('invoice_number', [$firstInvoice, $lastInvoice])
-                      ->orWhereDate('invoice_date', $report->report_date);
-                });
-            }
+            // Consultar facturas en ventana de fechas o por coincidencia directa de rango
+            $candidates = FiscalHistory::query()
+                ->where(function ($q) use ($reportDate, $firstInvoice, $lastInvoice) {
+                    if ($reportDate) {
+                        $startWindow = \Carbon\Carbon::parse($reportDate)->subDays(3)->startOfDay();
+                        $endWindow = \Carbon\Carbon::parse($reportDate)->addDays(3)->endOfDay();
+                        $q->whereBetween('invoice_date', [$startWindow, $endWindow])
+                          ->orWhereBetween('created_at', [$startWindow, $endWindow]);
+                    }
+                    if (!empty($firstInvoice) && !empty($lastInvoice)) {
+                        $q->orWhereBetween('invoice_number', [$firstInvoice, $lastInvoice]);
+                    }
+                })
+                ->get();
 
-            $records = $query->orderBy('id', 'asc')->get();
+            $records = $candidates->filter(function ($row) use ($cleanFirst, $cleanLast, $firstInvoice, $lastInvoice) {
+                $rawInv = (string) ($row->invoice_number ?: $row->fiscal_id ?: '');
+                $num = (int) preg_replace('/\D/', '', $rawInv);
+                if ($cleanFirst > 0 && $cleanLast >= $cleanFirst) {
+                    return ($num >= $cleanFirst && $num <= $cleanLast);
+                }
+                return (!empty($rawInv) && $rawInv >= $firstInvoice && $rawInv <= $lastInvoice);
+            });
 
             if ($records->isNotEmpty()) {
                 $invoicesCount = $records->count();
@@ -614,25 +626,25 @@ class FiscalZReportService
                 $igtf = round((float) $records->sum('spe_surcharge_amount'), 2);
                 $total = round($exempt + $base16 + $iva16 + $igtf, 2);
             }
-        }
-
-        // Si se suministraron montos explícitos en los datos, utilizarlos
-        if (isset($data['exempt_amount'])) {
-            $exempt = round((float) $data['exempt_amount'], 2);
-        }
-        if (isset($data['base_16_amount'])) {
-            $base16 = round((float) $data['base_16_amount'], 2);
-        }
-        if (isset($data['iva_amount'])) {
-            $iva16 = round((float) $data['iva_amount'], 2);
-        }
-        if (isset($data['igtf_amount'])) {
-            $igtf = round((float) $data['igtf_amount'], 2);
-        }
-        if (isset($data['total_amount'])) {
-            $total = round((float) $data['total_amount'], 2);
         } else {
-            $total = round($exempt + $base16 + $iva16 + $igtf, 2);
+            // Solo si se desactiva el recálculo automático se toman los montos manuales
+            if (isset($data['exempt_amount'])) {
+                $exempt = round((float) $data['exempt_amount'], 2);
+            }
+            if (isset($data['base_16_amount'])) {
+                $base16 = round((float) $data['base_16_amount'], 2);
+            }
+            if (isset($data['iva_amount'])) {
+                $iva16 = round((float) $data['iva_amount'], 2);
+            }
+            if (isset($data['igtf_amount'])) {
+                $igtf = round((float) $data['igtf_amount'], 2);
+            }
+            if (isset($data['total_amount'])) {
+                $total = round((float) $data['total_amount'], 2);
+            } else {
+                $total = round($exempt + $base16 + $iva16 + $igtf, 2);
+            }
         }
 
         $report->update([

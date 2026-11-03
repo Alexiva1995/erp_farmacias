@@ -14,7 +14,7 @@ const props = defineProps({
   page: { type: Number, required: true },
 });
 
-const emit = defineEmits(["update:options", "view-detail"]);
+const emit = defineEmits(["update:options", "view-detail", "refresh"]);
 
 const fileInput = ref(null);
 const verifyingId = ref(null);
@@ -38,6 +38,7 @@ const handleRangeSaved = (updated) => {
       Object.assign(props.reports[index], updated);
     }
   }
+  emit("refresh");
 };
 
 const openPhotoPreview = (item) => {
