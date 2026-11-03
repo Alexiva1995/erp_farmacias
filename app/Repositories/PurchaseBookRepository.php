@@ -379,6 +379,7 @@ class PurchaseBookRepository implements PurchaseBookContract
     public function reorderOperations(PurchaseBook $book): void
     {
         $entries = $book->entries()
+            ->reorder()
             ->orderBy('operation_date', 'asc')
             ->orderBy('id', 'asc')
             ->get();

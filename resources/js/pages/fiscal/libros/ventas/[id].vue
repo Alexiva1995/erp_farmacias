@@ -144,6 +144,7 @@ const openEditModal = (entry) => {
   isCreatingRow.value = false
   Object.assign(entryForm, {
     id: entry.id,
+    operation_number: entry.operation_number,
     operation_date: entry.operation_date || '',
     identification: entry.identification || '',
     client_name: entry.client_name || '',
@@ -159,20 +160,30 @@ const openEditModal = (entry) => {
     credit_note_number: entry.credit_note_number || '',
     affected_invoice_number: entry.affected_invoice_number || '',
     transaction_type: entry.transaction_type ? entry.transaction_type.replace('REGISTRO', 'REG') : '01-REG',
-    total_sales_with_vat: entry.total_sales_with_vat || 0,
-    non_taxable_sales: entry.non_taxable_sales || 0,
-    taxpayer_taxable_base: entry.taxpayer_taxable_base || 0,
+    total_sales_with_vat: Math.abs(parseFloat(entry.total_sales_with_vat) || 0),
+    non_taxable_sales: Math.abs(parseFloat(entry.non_taxable_sales) || 0),
+    taxpayer_taxable_base: Math.abs(parseFloat(entry.taxpayer_taxable_base) || 0),
     taxpayer_aliquot: entry.taxpayer_aliquot ?? 0.16,
-    taxpayer_vat: entry.taxpayer_vat || 0,
-    non_taxpayer_taxable_base: entry.non_taxpayer_taxable_base || 0,
+    taxpayer_vat: Math.abs(parseFloat(entry.taxpayer_vat) || 0),
+    non_taxpayer_taxable_base: Math.abs(parseFloat(entry.non_taxpayer_taxable_base) || 0),
     non_taxpayer_aliquot: entry.non_taxpayer_aliquot ?? 0.08,
-    non_taxpayer_vat: entry.non_taxpayer_vat || 0,
-    vat_withheld: entry.vat_withheld || 0,
+    non_taxpayer_vat: Math.abs(parseFloat(entry.non_taxpayer_vat) || 0),
+    vat_withheld: parseFloat(entry.vat_withheld) || 0,
     withholding_receipt_number: entry.withholding_receipt_number || '',
     withholding_receipt_date: entry.withholding_receipt_date || '',
-    igtf_amount: entry.igtf_amount || 0,
+    igtf_amount: parseFloat(entry.igtf_amount) || 0,
   })
   showEditModal.value = true
+}
+
+const onDocumentTypeChange = (val) => {
+  if (val && (val.includes('CRÉDITO') || val.includes('CREDITO'))) {
+    entryForm.transaction_type = '03-REG'
+  } else if (val && val.includes('RETENCI')) {
+    entryForm.transaction_type = '05-RET'
+  } else if (entryForm.transaction_type === '03-REG' || entryForm.transaction_type === '05-RET') {
+    entryForm.transaction_type = '01-REG'
+  }
 }
 
 const openCreateModal = () => {
@@ -716,7 +727,7 @@ const formatNumber = (val) => {
       <VCard class="rounded-lg">
         <VCardTitle class="d-flex align-center justify-space-between pa-4">
           <span class="text-h6 font-weight-bold">
-            {{ isCreatingRow ? 'Agregar Operación al Libro' : `Editar Operación N° ${entryForm.id}` }}
+            {{ isCreatingRow ? 'Agregar Nueva Operación al Libro' : `Editar Operación N° ${entryForm.operation_number || entryForm.id} (${entryForm.document_type})` }}
           </span>
           <VBtn icon variant="text" size="small" @click="showEditModal = false">
             <VIcon>tabler-x</VIcon>
@@ -799,10 +810,11 @@ const formatNumber = (val) => {
               <VCol cols="12" sm="4">
                 <VSelect
                   v-model="entryForm.document_type"
-                  :items="['REPORTE Z', 'FACTURA', 'NOTA DE DEBITO', 'NOTA DE CREDITO', 'RETENCIÓN']"
+                  :items="['REPORTE Z', 'NOTA DE CRÉDITO', 'NOTA DE CREDITO', 'FACTURA', 'NOTA DE DÉBITO', 'NOTA DE DEBITO', 'RETENCIÓN']"
                   label="Tipo Documento"
                   variant="outlined"
                   density="compact"
+                  @update:model-value="onDocumentTypeChange"
                 />
               </VCol>
               <VCol cols="12" sm="4">
@@ -873,7 +885,9 @@ const formatNumber = (val) => {
 
             <div class="d-flex justify-end gap-2 mt-4">
               <VBtn variant="text" color="secondary" @click="showEditModal = false">Cancelar</VBtn>
-              <VBtn color="primary" type="submit" :loading="isSavingRow">Guardar Operación</VBtn>
+              <VBtn color="primary" type="submit" :loading="isSavingRow">
+                {{ isCreatingRow ? 'Guardar Nueva Operación' : 'Actualizar Operación' }}
+              </VBtn>
             </div>
           </VForm>
         </VCardText>

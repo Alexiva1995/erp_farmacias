@@ -157,13 +157,23 @@ class SalesBookRepository implements SalesBookContract
             // Preservar entradas manuales (como comprobantes de retención de clientes u overrides)
             $manualEntries = $book->entries()->where('is_manual_override', true)->get();
 
+            // Identificadores de registros manuales para no duplicar en sincronizaciones
+            $manualZIds = $manualEntries->pluck('fiscal_z_report_id')->filter()->all();
+            $manualZNums = $manualEntries->pluck('z_report_number')->filter()->map(fn($v) => (string)$v)->all();
+            $manualCommandIds = $manualEntries->pluck('fiscal_command_id')->filter()->all();
+            $manualCNNums = $manualEntries->pluck('credit_note_number')->filter()->map(fn($v) => (string)$v)->all();
+
             // Eliminar entradas no protegidas
             $book->entries()->where('is_manual_override', false)->delete();
 
             $rawRows = collect();
 
-            // Agregar Reportes Z
+            // Agregar Reportes Z que no hayan sido editados o ingresados manualmente
             foreach ($zReports as $z) {
+                if (in_array($z->id, $manualZIds, true) || in_array((string) $z->report_number, $manualZNums, true)) {
+                    continue;
+                }
+
                 $exempt = (float) $z->exempt_amount;
                 $base16 = (float) $z->base_16_amount;
                 $iva16 = (float) $z->iva_amount;
@@ -240,6 +250,11 @@ class SalesBookRepository implements SalesBookContract
                     $cnNum = (string) $m[1];
                 } else {
                     $cnNum = (string) $cn->id;
+                }
+
+                // Si esta Nota de Crédito ya fue editada o registrada manualmente, no duplicarla
+                if (in_array($cn->id, $manualCommandIds, true) || ($cnNum && in_array((string) $cnNum, $manualCNNums, true))) {
+                    continue;
                 }
 
                 $rawRows->push([
@@ -339,6 +354,34 @@ class SalesBookRepository implements SalesBookContract
 
         $entry = $book->entries()->where('id', $entryId)->firstOrFail();
         $data['is_manual_override'] = true;
+
+        // Normalizar montos de Notas de Crédito a valores negativos para su resta fiscal
+        if (
+            ($data['transaction_type'] ?? $entry->transaction_type) === '03-REG' ||
+            str_contains(strtoupper($data['document_type'] ?? $entry->document_type ?? ''), 'CRÉDITO') ||
+            str_contains(strtoupper($data['document_type'] ?? $entry->document_type ?? ''), 'CREDITO')
+        ) {
+            $data['transaction_type'] = '03-REG';
+            if (isset($data['total_sales_with_vat'])) {
+                $data['total_sales_with_vat'] = -abs((float)$data['total_sales_with_vat']);
+            }
+            if (isset($data['non_taxable_sales'])) {
+                $data['non_taxable_sales'] = -abs((float)$data['non_taxable_sales']);
+            }
+            if (isset($data['taxpayer_taxable_base'])) {
+                $data['taxpayer_taxable_base'] = -abs((float)$data['taxpayer_taxable_base']);
+            }
+            if (isset($data['taxpayer_vat'])) {
+                $data['taxpayer_vat'] = -abs((float)$data['taxpayer_vat']);
+            }
+            if (isset($data['non_taxpayer_taxable_base'])) {
+                $data['non_taxpayer_taxable_base'] = -abs((float)$data['non_taxpayer_taxable_base']);
+            }
+            if (isset($data['non_taxpayer_vat'])) {
+                $data['non_taxpayer_vat'] = -abs((float)$data['non_taxpayer_vat']);
+            }
+        }
+
         $entry->update($data);
 
         $this->reorderOperations($book);
@@ -356,6 +399,33 @@ class SalesBookRepository implements SalesBookContract
         $data['sales_book_id'] = $book->id;
         $data['operation_number'] = 999999;
         $data['is_manual_override'] = true;
+
+        // Normalizar montos de Notas de Crédito a valores negativos para su resta fiscal
+        if (
+            ($data['transaction_type'] ?? '') === '03-REG' ||
+            str_contains(strtoupper($data['document_type'] ?? ''), 'CRÉDITO') ||
+            str_contains(strtoupper($data['document_type'] ?? ''), 'CREDITO')
+        ) {
+            $data['transaction_type'] = '03-REG';
+            if (isset($data['total_sales_with_vat'])) {
+                $data['total_sales_with_vat'] = -abs((float)$data['total_sales_with_vat']);
+            }
+            if (isset($data['non_taxable_sales'])) {
+                $data['non_taxable_sales'] = -abs((float)$data['non_taxable_sales']);
+            }
+            if (isset($data['taxpayer_taxable_base'])) {
+                $data['taxpayer_taxable_base'] = -abs((float)$data['taxpayer_taxable_base']);
+            }
+            if (isset($data['taxpayer_vat'])) {
+                $data['taxpayer_vat'] = -abs((float)$data['taxpayer_vat']);
+            }
+            if (isset($data['non_taxpayer_taxable_base'])) {
+                $data['non_taxpayer_taxable_base'] = -abs((float)$data['non_taxpayer_taxable_base']);
+            }
+            if (isset($data['non_taxpayer_vat'])) {
+                $data['non_taxpayer_vat'] = -abs((float)$data['non_taxpayer_vat']);
+            }
+        }
 
         $entry = SalesBookEntry::create($data);
         $this->reorderOperations($book);
@@ -381,8 +451,16 @@ class SalesBookRepository implements SalesBookContract
 
     public function reorderOperations(SalesBook $book): void
     {
+        // Usar reorder() para anular el orderBy('operation_number') predeterminado de la relación hasMany
         $entries = $book->entries()
+            ->reorder()
             ->orderBy('operation_date', 'asc')
+            ->orderByRaw("CASE 
+                WHEN document_type = 'REPORTE Z' THEN 1 
+                WHEN document_type LIKE '%FACTURA%' THEN 2 
+                WHEN document_type LIKE '%NOTA%CR%' THEN 3 
+                ELSE 4 
+            END ASC")
             ->orderBy('id', 'asc')
             ->get();
 
