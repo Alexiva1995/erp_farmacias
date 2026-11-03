@@ -727,6 +727,11 @@ const formatCurrency = (price) => {
   return formatRawCurrency(numPrice, currency)
 }
 
+const cleanIngredientName = (name) => {
+  if (!name) return ''
+  return String(name).replace(/\s*\[.*?\]\s*/g, ' ').trim()
+}
+
 // Pestaña activa (por defecto en Sub-recetas para que el usuario vea de inmediato las sub-recetas creadas)
 const activeTab = ref('sub_recipes')
 
@@ -873,7 +878,8 @@ const selectedIngredient = ref(null)
 const ingredientPortion = ref(1)
 
 const subRecipeTotalCost = computed(() => {
-  return subRecipeForm.ingredients.reduce((acc, ing) => acc + (Number(ing.designated_cost) || 0), 0)
+  const raw = subRecipeForm.ingredients.reduce((acc, ing) => acc + (Number(ing.designated_cost) || 0), 0)
+  return parseFloat((raw * 1.05).toFixed(2)) // Sumar 5% por Imprevisto
 })
 
 const subRecipeUnitCost = computed(() => {
@@ -887,7 +893,10 @@ const searchIngredients = async (query = '') => {
     const { data } = await axios.get('/products/autocomplete', {
       params: { q: query },
     })
-    ingredientOptions.value = (data.data || []).filter(item => !item.is_base_dish)
+    ingredientOptions.value = (data.data || []).filter(item => !item.is_base_dish).map(item => ({
+      ...item,
+      name: cleanIngredientName(item.name),
+    }))
   } catch (error) {
     console.error('Error al buscar ingredientes:', error)
   } finally {
@@ -918,7 +927,7 @@ const addIngredientToSubRecipe = () => {
   } else {
     subRecipeForm.ingredients.push({
       product_id: selectedIngredient.value.id,
-      name: selectedIngredient.value.name,
+      name: cleanIngredientName(selectedIngredient.value.name),
       portion: portion,
       unit_cost: unitCost,
       presentation: presentation,

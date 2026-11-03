@@ -175,19 +175,20 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             $unitMeasure = !empty($data['unit_of_measure']) ? trim($data['unit_of_measure']) : 'porción';
             $shelfLife = (int) ($data['shelf_life_days'] ?? 7);
 
-            // Calcular costo total sumando los insumos de la receta
-            $totalCost = 0.0;
+            // Calcular costo total sumando los insumos de la receta + 5% por imprevisto
+            $rawCost = 0.0;
             $ingredientsData = $data['ingredients'] ?? [];
             foreach ($ingredientsData as $ing) {
-                $totalCost += (float) ($ing['designated_cost'] ?? 0);
+                $rawCost += (float) ($ing['designated_cost'] ?? 0);
             }
+            $totalCost = round($rawCost * 1.05, 2);
 
             // Costo unitario por cada unidad/porción resultante
             $unitCost = $yieldQty > 0 ? round($totalCost / $yieldQty, 4) : $totalCost;
 
             // 1. Crear producto de inventario de salida marcado como sub-receta
             $productData = [
-                'name' => trim($data['name']) . ' [Preparación Cocina]',
+                'name' => trim($data['name']),
                 'category_id' => $data['category_id'] ?? null,
                 'sale_price' => $unitCost,
                 'stock' => 0,

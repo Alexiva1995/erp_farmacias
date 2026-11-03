@@ -61,6 +61,11 @@ const formatCurrency = (price) => {
   return formatRawCurrency(numPrice, currency);
 };
 
+const cleanIngredientName = (name) => {
+  if (!name) return "";
+  return String(name).replace(/\s*\[.*?\]\s*/g, " ").trim();
+};
+
 // Listado de platos
 const dishes = ref([]);
 const totalDishes = ref(0);
@@ -118,31 +123,57 @@ const isRecalculating = ref(false);
 const isDuplicatedDish = ref(false);
 
 // Valor editable de Precio Menú (Venta) expresado en la moneda principal configurada
-const displayDesignatedPrice = computed({
-  get() {
-    const usdVal = Number(currentDish.value.designated_price || 0);
-    if (defaultCurrency.value === "USD") return usdVal;
-    const rate = activeExchangeRate.value;
-    if (defaultCurrency.value === "COP") {
-      const rawCop = usdVal * rate;
-      return rawCop >= 100 ? Math.ceil(rawCop / 100) * 100 : Math.round(rawCop);
-    }
-    return parseFloat((usdVal * rate).toFixed(2));
-  },
-  set(newVal) {
-    const numVal = parseFloat(newVal);
-    if (isNaN(numVal)) {
-      currentDish.value.designated_price = 0;
-      return;
-    }
-    if (defaultCurrency.value === "USD") {
-      currentDish.value.designated_price = numVal;
-      return;
-    }
-    const rate = activeExchangeRate.value || 1;
-    currentDish.value.designated_price = parseFloat((numVal / rate).toFixed(4));
-  },
-});
+const inputDesignatedPrice = ref("0");
+
+// Sincronizar el campo de texto con el valor del modelo sin redondear mientras escribe
+const syncInputPriceFromModel = () => {
+  const usdVal = Number(currentDish.value.designated_price || 0);
+  if (defaultCurrency.value === "USD") {
+    inputDesignatedPrice.value = usdVal ? String(usdVal) : "0";
+    return;
+  }
+  const rate = activeExchangeRate.value || 1;
+  if (defaultCurrency.value === "COP") {
+    const rawCop = usdVal * rate;
+    const rounded = rawCop >= 100 ? Math.ceil(rawCop / 100) * 100 : Math.round(rawCop);
+    inputDesignatedPrice.value = String(rounded);
+    return;
+  }
+  inputDesignatedPrice.value = String(parseFloat((usdVal * rate).toFixed(2)));
+};
+
+// Mientras el usuario escribe: permitir tecleo libre sin redondeo en vivo
+const onPriceInput = (val) => {
+  inputDesignatedPrice.value = val;
+  const numVal = parseFloat(val);
+  if (isNaN(numVal) || numVal < 0) {
+    currentDish.value.designated_price = 0;
+    return;
+  }
+  const rate = activeExchangeRate.value || 1;
+  currentDish.value.designated_price = parseFloat((numVal / rate).toFixed(4));
+};
+
+// Al salir del campo (blur) o presionar Enter: aplicar el redondeo final
+const onPriceBlur = () => {
+  const numVal = parseFloat(inputDesignatedPrice.value);
+  if (isNaN(numVal) || numVal <= 0) {
+    inputDesignatedPrice.value = "0";
+    currentDish.value.designated_price = 0;
+    return;
+  }
+
+  const rate = activeExchangeRate.value || 1;
+  if (defaultCurrency.value === "COP") {
+    const rounded = numVal >= 100 ? Math.ceil(numVal / 100) * 100 : Math.round(numVal);
+    inputDesignatedPrice.value = String(rounded);
+    currentDish.value.designated_price = parseFloat((rounded / rate).toFixed(4));
+  } else {
+    const rounded = parseFloat(numVal.toFixed(2));
+    inputDesignatedPrice.value = String(rounded);
+    currentDish.value.designated_price = parseFloat((rounded / rate).toFixed(4));
+  }
+};
 
 // Agregar ingrediente
 const productSearch = ref("");
@@ -240,7 +271,7 @@ const searchProducts = async (query) => {
     const items = data.data || [];
     productOptions.value = items.map((p) => ({
       id: p.id,
-      name: p.name,
+      name: cleanIngredientName(p.name),
       unit_cost: parseFloat(p.unit_cost || 0),
       presentation: parseFloat(p.presentation || 1),
       unit_of_measure: p.unit_of_measure || "und",
@@ -377,20 +408,24 @@ const removeIngredient = (index) => {
 
 // Recalcular costo total y sugerido
 const recalculateDishTotals = () => {
-  let cost = 0;
+  let rawCost = 0;
   currentDish.value.ingredients.forEach((ing) => {
-    cost += parseFloat(ing.designated_cost);
+    rawCost += parseFloat(ing.designated_cost || 0);
   });
 
-  currentDish.value.cost_price = parseFloat(cost.toFixed(2));
+  // Sumar 5% del costo por Imprevisto
+  const totalCost = parseFloat((rawCost * 1.05).toFixed(2));
+
+  currentDish.value.cost_price = totalCost;
   
   // Calcular sugerido = costo * porcentaje_ganancia
   const profitMultiplier = parseFloat(currentDish.value.percentage_profit || 0);
-  currentDish.value.suggested_price = parseFloat((cost * profitMultiplier).toFixed(2));
+  currentDish.value.suggested_price = parseFloat((totalCost * profitMultiplier).toFixed(2));
   
   // Por defecto, igualar precio designado al sugerido si es un plato nuevo (no duplicado)
   if (!currentDish.value.id && !isDuplicatedDish.value) {
     currentDish.value.designated_price = currentDish.value.suggested_price;
+    syncInputPriceFromModel();
   }
 };
 
@@ -465,6 +500,7 @@ const handleAddDish = () => {
   isBaseDish.value = false;
   dishStatus.value = 1;
   formErrors.value = {};
+  syncInputPriceFromModel();
   isEditDialogVisible.value = true;
 };
 
@@ -489,7 +525,7 @@ const handleEditDish = async (dish) => {
       kitchen_station_id: details.kitchen_station_id || null,
       ingredients: details.ingredients.map((ing) => ({
         product_id: ing.id,
-        name: ing.name,
+        name: cleanIngredientName(ing.name),
         portion: ing.portion,
         unit_cost: ing.unit_cost,
         presentation: ing.presentation,
@@ -502,6 +538,7 @@ const handleEditDish = async (dish) => {
     isBaseDish.value = details.status === 3;
     dishStatus.value = details.status === 3 ? 1 : details.status;
     formErrors.value = {};
+    syncInputPriceFromModel();
     isEditDialogVisible.value = true;
   } catch (error) {
     console.error("Error al cargar detalles del plato:", error);
@@ -531,7 +568,7 @@ const handleDuplicateDish = async (dish) => {
       kitchen_station_id: details.kitchen_station_id || null,
       ingredients: details.ingredients.map((ing) => ({
         product_id: ing.id,
-        name: ing.name,
+        name: cleanIngredientName(ing.name),
         portion: ing.portion,
         unit_cost: ing.unit_cost,
         presentation: ing.presentation,
@@ -544,6 +581,7 @@ const handleDuplicateDish = async (dish) => {
     isBaseDish.value = details.status === 3;
     dishStatus.value = details.status === 3 ? 1 : details.status;
     formErrors.value = {};
+    syncInputPriceFromModel();
     isEditDialogVisible.value = true;
     toast.info(`Plato "${details.name}" cargado para duplicar.`);
   } catch (error) {
@@ -553,6 +591,7 @@ const handleDuplicateDish = async (dish) => {
 };
 
 const handleSaveDish = async () => {
+  onPriceBlur();
   if (currentDish.value.ingredients.length === 0) {
     toast.warning("Debes agregar al menos un ingrediente al plato.");
     return;
@@ -1123,7 +1162,10 @@ onUnmounted(() => {
                   </VCol>
                   <VCol cols="6">
                     <VTextField
-                      v-model="displayDesignatedPrice"
+                      :model-value="inputDesignatedPrice"
+                      @update:model-value="onPriceInput"
+                      @blur="onPriceBlur"
+                      @keyup.enter="onPriceBlur"
                       label="Precio Menú (Venta)"
                       type="number"
                       :step="defaultCurrency === 'COP' ? '100' : '0.01'"
@@ -1237,7 +1279,7 @@ onUnmounted(() => {
                   <tbody>
                     <tr v-for="(ing, index) in currentDish.ingredients" :key="index">
                       <td>
-                        <span class="text-xs font-weight-bold text-high-emphasis uppercase">{{ ing.name }}</span>
+                        <span class="text-xs font-weight-bold text-high-emphasis uppercase">{{ cleanIngredientName(ing.name) }}</span>
                       </td>
                       <td class="text-center">
                         <span class="text-xs">{{ ing.portion }} {{ ing.unit_of_measure }}</span>

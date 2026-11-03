@@ -95,7 +95,8 @@ class DishServices implements DishContract
                 $currentDishCost += $freshDesignatedCost;
             }
 
-            $currentDishCost = round($currentDishCost, 2);
+            // Sumar 5% del costo por Imprevisto
+            $currentDishCost = round($currentDishCost * 1.05, 2);
             $profitMultiplier = (float) ($dish->percentage_profit ?? 0);
             $freshSuggestedPrice = round($currentDishCost * $profitMultiplier, 2);
             $designatedPrice = (float) ($dish->designated_price ?? 0);
@@ -206,16 +207,18 @@ class DishServices implements DishContract
     public function create(array $data): Dish
     {
         return DB::transaction(function () use ($data) {
-            // Calcular costos si no vienen calculados del frontend
-            $costPrice = 0;
+            // Calcular costos si no vienen calculados del frontend (sumando 5% por imprevisto)
+            $rawCost = 0;
             $ingredientsData = $data['ingredients'] ?? [];
             
             foreach ($ingredientsData as $ing) {
-                $costPrice += (float) ($ing['designated_cost'] ?? 0);
+                $rawCost += (float) ($ing['designated_cost'] ?? 0);
             }
 
-            // Si no se envía cost_price, usar el calculado
-            $data['cost_price'] = $data['cost_price'] ?? $costPrice;
+            $costPrice = round($rawCost * 1.05, 2);
+
+            // Si no se envía cost_price, usar el calculado con imprevisto
+            $data['cost_price'] = isset($data['cost_price']) ? (float) $data['cost_price'] : $costPrice;
 
             $cpvDeduction = 0;
             foreach ($ingredientsData as $ing) {
@@ -289,14 +292,16 @@ class DishServices implements DishContract
     public function update(Dish $dish, array $data): Dish
     {
         return DB::transaction(function () use ($dish, $data) {
-            $costPrice = 0;
+            $rawCost = 0;
             $ingredientsData = $data['ingredients'] ?? [];
             
             foreach ($ingredientsData as $ing) {
-                $costPrice += (float) ($ing['designated_cost'] ?? 0);
+                $rawCost += (float) ($ing['designated_cost'] ?? 0);
             }
 
-            $data['cost_price'] = $data['cost_price'] ?? $costPrice;
+            $costPrice = round($rawCost * 1.05, 2);
+
+            $data['cost_price'] = isset($data['cost_price']) ? (float) $data['cost_price'] : $costPrice;
 
             $cpvDeduction = 0;
             foreach ($ingredientsData as $ing) {
