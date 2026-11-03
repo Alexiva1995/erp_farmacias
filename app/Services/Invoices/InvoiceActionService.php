@@ -138,9 +138,12 @@ class InvoiceActionService
                 $invoiceData['has_islr_retention'] = (bool)$data['has_islr_retention'];
             }
 
+            if (Auth::check()) {
+                $invoiceData['registered_by'] = Auth::id();
+            }
             $invoice->update($invoiceData);
 
-            return $invoice->fresh(['details.product', 'supplier']);
+            return $invoice->fresh(['details.product', 'supplier', 'uploadedBy', 'registeredBy', 'loadedBy', 'orderedBy']);
         });
     }
     public function saveInvoiceDetails(Invoice $invoice, array $data): Invoice
@@ -150,7 +153,11 @@ class InvoiceActionService
         }
 
         return DB::transaction(function () use ($invoice, $data) {
-            $invoice->update($data['invoice']);
+            $invoiceUpdateData = $data['invoice'] ?? [];
+            if (Auth::check()) {
+                $invoiceUpdateData['registered_by'] = Auth::id();
+            }
+            $invoice->update($invoiceUpdateData);
 
             $generalDiscountId = $data['invoice']['supplier_discount_id'] ?? null;
             $discountPercentage = 0;
@@ -296,7 +303,7 @@ class InvoiceActionService
                 }
             }
 
-            return $invoice->fresh(['details.product', 'supplier', 'returns.product']);
+            return $invoice->fresh(['details.product', 'supplier', 'returns.product', 'uploadedBy', 'registeredBy', 'loadedBy', 'orderedBy']);
         });
     }
     public function finalizeInvoice(Invoice $invoice): Invoice
@@ -306,10 +313,14 @@ class InvoiceActionService
         }
 
         return DB::transaction(function () use ($invoice) {
-            $invoice->update([
+            $finalizeData = [
                 'status' => 'loaded',
-                'loaded_by' => Auth::id()
-            ]);
+                'loaded_by' => Auth::id() ?? $invoice->loaded_by,
+            ];
+            if (Auth::check()) {
+                $finalizeData['registered_by'] = Auth::id();
+            }
+            $invoice->update($finalizeData);
 
             // Activar productos suspendidos (is_deleted = 1) al finalizar la carga
             foreach ($invoice->details as $detail) {
@@ -318,7 +329,7 @@ class InvoiceActionService
                 }
             }
 
-            return $invoice->fresh(['details.product', 'supplier']);
+            return $invoice->fresh(['details.product', 'supplier', 'uploadedBy', 'registeredBy', 'loadedBy', 'orderedBy']);
         });
     }
     public function approveInvoice(Invoice $invoice, array $data): Invoice
@@ -332,7 +343,9 @@ class InvoiceActionService
             $finalStatus = $enableInvoiceLocations ? 'to_order' : 'ordered';
 
             $updateData = ['status' => $finalStatus];
-            if (!$enableInvoiceLocations) {
+            if (Auth::check()) {
+                $updateData['ordered_by'] = Auth::id();
+            } elseif (!$enableInvoiceLocations) {
                 $updateData['ordered_by'] = Auth::id();
             }
             $paymentRule = null;
@@ -399,7 +412,7 @@ class InvoiceActionService
                 \App\Observers\ProductLotObserver::$skipMovementCreation = false;
             }
 
-            return $invoice->fresh(['details.product', 'supplier']);
+            return $invoice->fresh(['details.product', 'supplier', 'uploadedBy', 'registeredBy', 'loadedBy', 'orderedBy']);
         });
     }
 
@@ -414,7 +427,7 @@ class InvoiceActionService
                 'status' => 'pending'
             ]);
 
-            return $invoice->fresh(['details.product', 'supplier']);
+            return $invoice->fresh(['details.product', 'supplier', 'uploadedBy', 'registeredBy', 'loadedBy', 'orderedBy']);
         });
     }
 
@@ -567,7 +580,7 @@ class InvoiceActionService
                 'ordered_by' => Auth::id()
             ]);
 
-            return $invoice->fresh(['details.product', 'supplier']);
+            return $invoice->fresh(['details.product', 'supplier', 'uploadedBy', 'registeredBy', 'loadedBy', 'orderedBy']);
         });
     }
 

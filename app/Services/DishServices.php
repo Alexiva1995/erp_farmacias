@@ -29,6 +29,10 @@ class DishServices implements DishContract
             $relations[] = 'kitchenStation';
         }
 
+        if (Schema::hasColumn('dishes', 'output_product_id')) {
+            $relations[] = 'outputProduct';
+        }
+
         return $relations;
     }
 

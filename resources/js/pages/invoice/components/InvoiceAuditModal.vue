@@ -35,44 +35,64 @@ const formatDate = (dateString) => {
   }
 }
 
-const steps = computed(() => [
-  {
-    step: 1,
-    title: '1. Subida / Registro Inicial',
-    description: 'Creación del registro de la factura en el sistema.',
-    icon: 'tabler-cloud-upload',
-    user: props.invoice?.uploaded_by_user?.name || props.invoice?.uploaded_by_user?.username || 'admin',
-    date: formatDate(props.invoice?.created_at || props.invoice?.created_invoice_date),
-    isDone: Boolean(props.invoice?.uploaded_by_user || props.invoice?.id),
-  },
-  {
-    step: 2,
-    title: '2. Carga / Registro de Productos',
-    description: 'Ingreso y homologación de renglones, cantidades y costos.',
-    icon: 'tabler-list-check',
-    user: props.invoice?.registered_by_user?.name || props.invoice?.registered_by_user?.username || (props.invoice?.registered_by ? 'admin' : null),
-    date: formatDate(props.invoice?.received_date || (props.invoice?.registered_by_user ? props.invoice?.updated_at : null)),
-    isDone: Boolean(props.invoice?.registered_by_user || props.invoice?.registered_by),
-  },
-  {
-    step: 3,
-    title: '3. Verificación y Ubicación Física',
-    description: 'Asignación de ubicaciones de almacén y validación de lotes.',
-    icon: 'tabler-box-margin',
-    user: props.invoice?.loaded_by_user?.name || props.invoice?.loaded_by_user?.username || (props.invoice?.loaded_by ? 'admin' : null),
-    date: formatDate(props.invoice?.loaded_by_user ? props.invoice?.updated_at : null),
-    isDone: Boolean(props.invoice?.loaded_by_user || props.invoice?.loaded_by),
-  },
-  {
-    step: 4,
-    title: '4. Aprobación y Orden de Compra',
-    description: 'Validación final financiera y aprobación administrativa.',
-    icon: 'tabler-circle-check',
-    user: props.invoice?.ordered_by_user?.name || props.invoice?.ordered_by_user?.username || (props.invoice?.ordered_by ? 'admin' : null),
-    date: formatDate(props.invoice?.payment_date || (props.invoice?.ordered_by_user ? props.invoice?.updated_at : null)),
-    isDone: Boolean(props.invoice?.ordered_by_user || props.invoice?.ordered_by),
-  },
-])
+const steps = computed(() => {
+  const inv = props.invoice || {}
+
+  // 1. Subida / Registro inicial
+  const uploader = inv.uploaded_by_user?.name || inv.uploaded_by_user?.username || (inv.uploaded_by ? `Operador #${inv.uploaded_by}` : 'Sistema / Bot')
+
+  // 2. Carga / Registro y homologación de productos (operador que edita y guarda renglones)
+  const registrar = inv.registered_by_user?.name || inv.registered_by_user?.username || (inv.registered_by ? `Operador #${inv.registered_by}` : null)
+
+  // 3. Verificación física / almacén
+  const loader = inv.loaded_by_user?.name || inv.loaded_by_user?.username || (inv.loaded_by ? `Operador #${inv.loaded_by}` : null)
+
+  // 4. Aprobación final y orden de compra (administrador)
+  const approver = inv.ordered_by_user?.name || inv.ordered_by_user?.username || (inv.ordered_by ? `Administrador #${inv.ordered_by}` : null)
+
+  return [
+    {
+      step: 1,
+      roleLabel: 'Registrado por:',
+      title: '1. Subida / Registro Inicial',
+      description: 'Creación del registro de la factura en el sistema.',
+      icon: 'tabler-cloud-upload',
+      user: uploader,
+      date: formatDate(inv.created_at || inv.created_invoice_date),
+      isDone: Boolean(inv.id),
+    },
+    {
+      step: 2,
+      roleLabel: 'Operador (Edición/Productos):',
+      title: '2. Carga / Registro de Productos',
+      description: 'Ingreso, edición y homologación de renglones, cantidades y costos.',
+      icon: 'tabler-list-check',
+      user: registrar || (Boolean(inv.registered_by) ? `Operador #${inv.registered_by}` : 'Sin registrar por operador'),
+      date: formatDate(inv.received_date || (inv.registered_by ? inv.updated_at : null)),
+      isDone: Boolean(inv.registered_by || (inv.details && inv.details.length > 0 && inv.status !== 'pending')),
+    },
+    {
+      step: 3,
+      roleLabel: 'Verificado por:',
+      title: '3. Verificación y Ubicación Física',
+      description: 'Asignación de ubicaciones de almacén y validación de lotes.',
+      icon: 'tabler-box-margin',
+      user: loader || (['loaded', 'to_order', 'ordered'].includes(inv.status) ? (registrar || 'Almacén') : 'Pendiente'),
+      date: formatDate(inv.loaded_by ? inv.updated_at : null),
+      isDone: Boolean(inv.loaded_by || ['loaded', 'to_order', 'ordered'].includes(inv.status)),
+    },
+    {
+      step: 4,
+      roleLabel: 'Aprobado por:',
+      title: '4. Aprobación y Orden de Compra',
+      description: 'Validación final financiera y aprobación administrativa.',
+      icon: 'tabler-circle-check',
+      user: approver || (['ordered', 'approved'].includes(inv.status) ? 'Administrador' : 'Pendiente de Aprobación'),
+      date: formatDate(inv.payment_date || (['ordered', 'approved'].includes(inv.status) ? inv.updated_at : null)),
+      isDone: Boolean(inv.ordered_by || ['ordered', 'approved'].includes(inv.status)),
+    },
+  ]
+})
 </script>
 
 <template>
@@ -192,7 +212,7 @@ const steps = computed(() => [
               <div class="d-flex align-center gap-4 text-caption text-medium-emphasis flex-wrap" style="font-size: 11px;">
                 <div class="d-flex align-center gap-1">
                   <VIcon icon="tabler-user" size="14" class="text-medium-emphasis" />
-                  <span>Operador:</span>
+                  <span>{{ st.roleLabel || 'Operador:' }}</span>
                   <strong :class="st.user ? 'text-high-emphasis' : 'text-disabled'">
                     {{ st.user || 'No asignado' }}
                   </strong>

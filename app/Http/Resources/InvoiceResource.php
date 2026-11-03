@@ -45,24 +45,28 @@ class InvoiceResource extends JsonResource
                 'rif' => $this->supplier?->rif,
                 'address' => $this->supplier?->address,
             ],
-            'uploaded_by_user' => $this->relationLoaded('uploadedBy') && $this->uploadedBy ? [
+            'uploaded_by' => $this->uploaded_by,
+            'registered_by' => $this->registered_by,
+            'loaded_by' => $this->loaded_by,
+            'ordered_by' => $this->ordered_by,
+            'uploaded_by_user' => $this->uploadedBy ? [
                 'id' => $this->uploadedBy->id,
-                'name' => $this->uploadedBy->username,
+                'name' => $this->uploadedBy->name ?: $this->uploadedBy->username,
                 'username' => $this->uploadedBy->username,
             ] : null,
-            'registered_by_user' => $this->relationLoaded('registeredBy') && $this->registeredBy ? [
+            'registered_by_user' => $this->registeredBy ? [
                 'id' => $this->registeredBy->id,
-                'name' => $this->registeredBy->username,
+                'name' => $this->registeredBy->name ?: $this->registeredBy->username,
                 'username' => $this->registeredBy->username,
             ] : null,
-            'loaded_by_user' => $this->relationLoaded('loadedBy') && $this->loadedBy ? [
+            'loaded_by_user' => $this->loadedBy ? [
                 'id' => $this->loadedBy->id,
-                'name' => $this->loadedBy->username,
+                'name' => $this->loadedBy->name ?: $this->loadedBy->username,
                 'username' => $this->loadedBy->username,
             ] : null,
-            'ordered_by_user' => $this->relationLoaded('orderedBy') && $this->orderedBy ? [
+            'ordered_by_user' => $this->orderedBy ? [
                 'id' => $this->orderedBy->id,
-                'name' => $this->orderedBy->username,
+                'name' => $this->orderedBy->name ?: $this->orderedBy->username,
                 'username' => $this->orderedBy->username,
             ] : null,
             'invoice_photo' => $this->invoice_photo,

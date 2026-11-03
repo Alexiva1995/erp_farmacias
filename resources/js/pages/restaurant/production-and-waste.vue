@@ -1,6 +1,6 @@
 <template>
   <div class="restaurant-production-waste-view pb-12">
-    <!-- Header / Título -->
+    <!-- Header / Título Principal -->
     <v-card class="mb-4" elevation="1">
       <v-card-text class="d-flex flex-wrap align-center justify-space-between gap-3 py-3">
         <div class="d-flex align-center gap-2">
@@ -15,9 +15,13 @@
 
         <div class="d-flex align-center gap-2">
           <v-tabs v-model="activeTab" density="compact" color="primary">
+            <v-tab value="sub_recipes">
+              <v-icon start size="18">tabler-clipboard-list</v-icon>
+              Sub-Recetas / Bases
+            </v-tab>
             <v-tab value="production">
               <v-icon start size="18">tabler-packages</v-icon>
-              Órdenes de Producción
+              Lotes Producidos
             </v-tab>
             <v-tab value="waste">
               <v-icon start size="18">tabler-trash-x</v-icon>
@@ -28,18 +32,175 @@
       </v-card-text>
     </v-card>
 
-    <!-- PESTAÑA 1: PRODUCCIÓN DE SUB-RECETAS -->
-    <div v-if="activeTab === 'production'">
+    <!-- PESTAÑA 1: SUB-RECETAS / PREPARACIONES BASE (MISMO DISEÑO Y FILTROS QUE DISHES) -->
+    <div v-if="activeTab === 'sub_recipes'">
+      <!-- Filtros Premium utilizando AppFilterBase idéntico a Dishes -->
+      <AppFilterBase
+        v-model:search="subRecipeSearch"
+        search-placeholder="Buscar sub-receta o preparación base..."
+        :show-add="true"
+        add-button-text="Nueva Sub-Receta"
+        :show-advanced="true"
+        :has-advanced-filters="!!selectedCategory || selectedStatus !== null"
+        @clear="subRecipeSearch = ''; selectedCategory = null; selectedStatus = null; fetchSubRecipes()"
+        @add="openSubRecipeModal"
+      >
+        <template #advanced-filters>
+          <VCol cols="12" sm="6" md="4">
+            <VSelect
+              v-model="selectedCategory"
+              :items="categories"
+              item-title="name"
+              item-value="id"
+              placeholder="Filtrar por Categoría"
+              clearable
+              density="compact"
+              hide-details
+            />
+          </VCol>
+          <VCol cols="12" sm="6" md="4">
+            <VSelect
+              v-model="selectedStatus"
+              :items="statusOptions"
+              placeholder="Filtrar por Estado"
+              clearable
+              density="compact"
+              hide-details
+            />
+          </VCol>
+        </template>
+      </AppFilterBase>
+
+      <!-- Tabla Principal de Sub-Recetas -->
+      <VCard variant="flat" class="border rounded-lg bg-surface overflow-hidden">
+        <!-- Loading State con Skeleton Loader en carga inicial -->
+        <div v-if="loadingSubRecipes && subRecipes.length === 0" class="pa-6">
+          <VSkeletonLoader
+            type="table-row-divider@5"
+            class="bg-transparent"
+          />
+        </div>
+
+        <!-- Empty State -->
+        <div v-else-if="!loadingSubRecipes && subRecipes.length === 0" class="pa-16 text-center text-disabled">
+          <VIcon icon="tabler-clipboard-x" size="64" class="mb-4 opacity-20" />
+          <h3 class="text-h6 font-weight-black opacity-50 uppercase">No hay sub-recetas registradas</h3>
+          <p>Crea tu primera sub-receta o preparación base para utilizarla en tus platillos</p>
+          <VBtn color="primary" prepend-icon="tabler-plus" class="mt-2" @click="openSubRecipeModal">
+            Crear Sub-Receta
+          </VBtn>
+        </div>
+
+        <!-- Desktop Table view -->
+        <div v-else>
+          <VDataTableServer
+            :items-per-page="subRecipeItemsPerPage"
+            :page="subRecipePage"
+            :items="subRecipes"
+            :items-length="totalSubRecipes"
+            :loading="loadingSubRecipes"
+            :sort-by="[{ key: subRecipeSortBy, order: subRecipeOrderBy }]"
+            :must-sort="true"
+            class="premium-table text-no-wrap"
+            @update:options="updateSubRecipeTableOptions"
+            :headers="[
+              { title: 'ID', key: 'id', sortable: true },
+              { title: 'Sub-Receta / Preparación', key: 'name', sortable: true },
+              { title: 'Categoría', key: 'category.name', sortable: false },
+              { title: 'Costo Total', key: 'cost_price', sortable: true, align: 'end' },
+              { title: 'Rendimiento', key: 'expected_yield_quantity', sortable: true, align: 'center' },
+              { title: 'Costo Unitario', key: 'unit_cost', sortable: false, align: 'end' },
+              { title: 'Stock Insumo', key: 'output_product.stock', sortable: false, align: 'center' },
+              { title: 'Vida Útil', key: 'shelf_life_days', sortable: false, align: 'center' },
+              { title: 'Estado', key: 'status', sortable: true, align: 'center' },
+              { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+            ]"
+          >
+            <template #item.id="{ item }">
+              <span class="font-weight-black text-primary">{{ item.id }}</span>
+            </template>
+
+            <template #item.name="{ item }">
+              <div class="d-flex flex-column py-1">
+                <span class="font-weight-bold text-high-emphasis uppercase text-xs">{{ item.name }}</span>
+                <span v-if="item.output_product?.name" class="text-super-xs text-disabled">
+                  Insumo: {{ item.output_product.name }}
+                </span>
+              </div>
+            </template>
+
+            <template #item.category.name="{ item }">
+              <span class="text-xs uppercase text-disabled">{{ item.category?.name || 'S/C' }}</span>
+            </template>
+
+            <template #item.cost_price="{ item }">
+              <span class="text-xs font-weight-bold text-high-emphasis">{{ formatCurrency(item.cost_price) }}</span>
+            </template>
+
+            <template #item.expected_yield_quantity="{ item }">
+              <span class="text-xs font-weight-black text-secondary">
+                {{ item.expected_yield_quantity || 1 }} {{ item.output_product?.unit_of_measure || 'porción' }}
+              </span>
+            </template>
+
+            <template #item.unit_cost="{ item }">
+              <span class="text-xs font-weight-black text-success">
+                {{ formatCurrency((Number(item.expected_yield_quantity) || 1) > 0 ? ((Number(item.cost_price) || 0) / (Number(item.expected_yield_quantity) || 1)) : item.cost_price) }}
+              </span>
+            </template>
+
+            <template #item.output_product.stock="{ item }">
+              <VChip
+                size="x-small"
+                :color="(item.output_product?.stock || 0) > 0 ? 'success' : 'warning'"
+                variant="tonal"
+                class="font-weight-bold"
+              >
+                {{ item.output_product?.stock || 0 }} {{ item.output_product?.unit_of_measure || 'und' }}
+              </VChip>
+            </template>
+
+            <template #item.shelf_life_days="{ item }">
+              <span class="text-xs text-medium-emphasis">{{ item.shelf_life_days || 7 }} días</span>
+            </template>
+
+            <template #item.status="{ item }">
+              <VChip :color="getStatusChipColor(item.status)" size="x-small" label class="font-weight-black uppercase">
+                {{ getStatusLabel(item.status) }}
+              </VChip>
+            </template>
+
+            <template #item.actions="{ item }">
+              <div class="d-flex gap-2 justify-end">
+                <IconBtn
+                  color="primary"
+                  class="bg-primary-light"
+                  title="Producir Lote de esta Sub-Receta"
+                  @click="openProduceFromSubRecipe(item)"
+                >
+                  <VIcon icon="tabler-packages" size="18" />
+                  <VTooltip activator="parent" location="top">Producir Lote</VTooltip>
+                </IconBtn>
+                <IconBtn
+                  color="error"
+                  class="bg-error-light"
+                  title="Eliminar Sub-Receta"
+                  @click="handleDeleteSubRecipe(item)"
+                >
+                  <VIcon icon="tabler-trash" size="18" />
+                  <VTooltip activator="parent" location="top">Eliminar</VTooltip>
+                </IconBtn>
+              </div>
+            </template>
+          </VDataTableServer>
+        </div>
+      </VCard>
+    </div>
+
+    <!-- PESTAÑA 2: ÓRDENES DE PRODUCCIÓN / LOTES PRODUCIDOS -->
+    <div v-else-if="activeTab === 'production'">
       <v-row class="mb-4" dense>
         <v-col cols="12" class="d-flex justify-end gap-2">
-          <v-btn
-            color="secondary"
-            variant="tonal"
-            prepend-icon="tabler-clipboard-plus"
-            @click="openSubRecipeModal"
-          >
-            Nueva Sub-Receta / Preparación Base
-          </v-btn>
           <v-btn
             color="primary"
             prepend-icon="tabler-plus"
@@ -50,8 +211,8 @@
         </v-col>
       </v-row>
 
-      <v-card elevation="1">
-        <v-table density="comfortable" hover>
+      <VCard variant="flat" class="border rounded-lg bg-surface overflow-hidden">
+        <v-table density="comfortable" hover class="premium-table text-no-wrap">
           <thead>
             <tr>
               <th>Código</th>
@@ -68,22 +229,22 @@
           </thead>
           <tbody>
             <tr v-for="order in productionOrders" :key="order.id">
-              <td class="font-weight-bold">{{ order.code }}</td>
-              <td>{{ order.dish?.name }}</td>
+              <td class="font-weight-bold text-primary">{{ order.code }}</td>
+              <td class="font-weight-bold text-xs uppercase">{{ order.dish?.name }}</td>
               <td>
-                <span class="font-weight-medium">{{ order.output_product?.name || 'Insumo Base' }}</span>
+                <span class="font-weight-medium text-xs">{{ order.output_product?.name || 'Insumo Base' }}</span>
               </td>
-              <td class="text-center">{{ order.batch_multiplier }}x</td>
-              <td class="text-center font-weight-bold text-success">{{ order.actual_quantity }}</td>
-              <td class="text-right">{{ formatCurrency(order.unit_cost_calculated) }}</td>
-              <td class="text-right font-weight-bold text-primary">{{ formatCurrency(order.total_production_cost) }}</td>
+              <td class="text-center text-xs font-weight-black text-secondary">{{ order.batch_multiplier }}x</td>
+              <td class="text-center font-weight-bold text-success text-xs">{{ order.actual_quantity }}</td>
+              <td class="text-right text-xs font-weight-bold">{{ formatCurrency(order.unit_cost_calculated) }}</td>
+              <td class="text-right font-weight-bold text-primary text-xs">{{ formatCurrency(order.total_production_cost) }}</td>
               <td>
-                <v-chip size="x-small" color="primary" variant="tonal">
+                <v-chip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
                   {{ order.lot_number || 'N/A' }}
                 </v-chip>
               </td>
               <td>
-                <v-chip size="small" color="success">
+                <v-chip size="small" color="success" class="font-weight-bold uppercase">
                   {{ order.status_label || order.status }}
                 </v-chip>
               </td>
@@ -96,10 +257,10 @@
             </tr>
           </tbody>
         </v-table>
-      </v-card>
+      </VCard>
     </div>
 
-    <!-- PESTAÑA 2: CONTROL DE MERMAS Y DESPERDICIOS -->
+    <!-- PESTAÑA 3: CONTROL DE MERMAS Y DESPERDICIOS -->
     <div v-else>
       <v-row class="mb-4" dense>
         <v-col cols="12" class="d-flex justify-end">
@@ -113,8 +274,8 @@
         </v-col>
       </v-row>
 
-      <v-card elevation="1">
-        <v-table density="comfortable" hover>
+      <VCard variant="flat" class="border rounded-lg bg-surface overflow-hidden">
+        <v-table density="comfortable" hover class="premium-table text-no-wrap">
           <thead>
             <tr>
               <th>Tipo</th>
@@ -131,19 +292,19 @@
           <tbody>
             <tr v-for="waste in kitchenWastes" :key="waste.id">
               <td>
-                <v-chip size="x-small" :color="waste.item_type === 'dish' ? 'warning' : 'info'">
+                <v-chip size="x-small" :color="waste.item_type === 'dish' ? 'warning' : 'info'" class="font-weight-bold">
                   {{ waste.item_type === 'dish' ? 'Platillo' : 'Insumo' }}
                 </v-chip>
               </td>
-              <td class="font-weight-medium">{{ waste.item_name }}</td>
-              <td>{{ waste.station_name }}</td>
-              <td class="text-center font-weight-bold text-error">{{ waste.quantity }}</td>
-              <td class="text-right">{{ formatCurrency(waste.unit_cost) }}</td>
-              <td class="text-right font-weight-bold text-error">
+              <td class="font-weight-bold text-xs uppercase">{{ waste.item_name }}</td>
+              <td class="text-xs text-medium-emphasis">{{ waste.station_name }}</td>
+              <td class="text-center font-weight-bold text-error text-xs">{{ waste.quantity }}</td>
+              <td class="text-right text-xs">{{ formatCurrency(waste.unit_cost) }}</td>
+              <td class="text-right font-weight-bold text-error text-xs">
                 -{{ formatCurrency(waste.total_loss_usd) }}
               </td>
               <td>
-                <v-chip size="small" color="error" variant="outlined">
+                <v-chip size="small" color="error" variant="outlined" class="font-weight-bold">
                   {{ waste.reason_label || waste.reason }}
                 </v-chip>
               </td>
@@ -157,16 +318,17 @@
             </tr>
           </tbody>
         </v-table>
-      </v-card>
+      </VCard>
     </div>
 
-    <!-- DIÁLOGO: CREAR NUEVA SUB-RECETA (RECETA BASE PARA PLATOS) -->
-    <v-dialog v-model="showSubRecipeModal" max-width="850px" persistent scrollable>
+    <!-- DIÁLOGO: CREAR SUB-RECETA / PREPARACIÓN BASE -->
+    <v-dialog v-model="showSubRecipeModal" max-width="850">
       <v-card class="rounded-lg overflow-hidden">
+        <!-- Cabecera Estandarizada del Sistema con Gradiente Institucional -->
         <v-card-title class="pa-0">
           <div class="header-gradient pa-4 d-flex align-center shadow-sm text-white">
-            <v-avatar color="white" variant="flat" size="44" class="me-4 elevation-2">
-              <v-icon icon="tabler-clipboard-list" color="primary" size="26" />
+            <v-avatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+              <v-icon icon="tabler-clipboard-list" color="primary" size="22" />
             </v-avatar>
             <div class="flex-grow-1 text-white">
               <h2 class="text-h6 font-weight-black mb-0 text-uppercase text-white" style="color: #ffffff !important;">
@@ -226,10 +388,8 @@
                   <v-text-field
                     v-model.number="subRecipeForm.shelf_life_days"
                     type="number"
-                    step="1"
                     min="1"
                     label="Días de Vida Útil (Caducidad)"
-                    placeholder="7"
                     density="compact"
                     variant="outlined"
                   />
@@ -237,80 +397,91 @@
               </v-row>
             </v-card>
 
-            <!-- Buscador e Insumos -->
+            <!-- Sección de Insumos -->
             <v-card variant="flat" class="pa-4 bg-white border rounded-lg mb-4">
-              <div class="mb-3">
-                <h3 class="text-subtitle-2 font-weight-bold text-uppercase mb-0">Insumos que componen esta Receta</h3>
+              <div class="d-flex align-center justify-space-between mb-3">
+                <h3 class="text-subtitle-2 font-weight-bold text-uppercase mb-0">Insumos que Componen esta Receta</h3>
               </div>
 
-              <v-row dense align="center">
-                <v-col cols="12" sm="7">
+              <!-- Fila para agregar ingrediente -->
+              <v-row dense class="align-center mb-2">
+                <v-col cols="12" sm="6">
                   <v-autocomplete
                     v-model="selectedIngredient"
                     v-model:search="ingredientSearch"
                     :items="ingredientOptions"
-                    :loading="loadingIngredients"
                     item-title="name"
                     return-object
-                    label="Buscar Insumo / Ingrediente"
-                    placeholder="Escribe para buscar (harina, azúcar, tomate...)"
+                    :loading="loadingIngredients"
+                    placeholder="Buscar Insumo / Ingrediente"
                     density="compact"
                     variant="outlined"
-                    hide-details
-                    :no-filter="true"
                     clearable
-                  />
+                    hide-details
+                  >
+                    <template #item="{ props, item }">
+                      <v-list-item v-bind="props" :title="item.raw.name">
+                        <template #subtitle>
+                          <span>Costo: {{ formatCurrency(item.raw.unit_cost) }} / {{ item.raw.presentation }} {{ item.raw.unit_of_measure }}</span>
+                        </template>
+                      </v-list-item>
+                    </template>
+                  </v-autocomplete>
                 </v-col>
-
-                <v-col cols="9" sm="4">
+                <v-col cols="9" sm="5">
                   <v-text-field
                     v-model.number="ingredientPortion"
-                    label="Cantidad / Porción"
                     type="number"
-                    step="0.01"
-                    min="0.001"
+                    step="0.0001"
+                    min="0.0001"
+                    label="Cantidad / Porción"
+                    :suffix="selectedIngredient ? selectedIngredient.unit_of_measure : 'und'"
                     density="compact"
                     variant="outlined"
                     hide-details
-                    :suffix="selectedIngredient?.unit_of_measure || 'und'"
                   />
                 </v-col>
-
                 <v-col cols="3" sm="1" class="d-flex align-center justify-center">
                   <v-btn
                     color="primary"
-                    icon
                     variant="flat"
+                    icon="tabler-plus"
                     height="40"
                     width="40"
-                    class="rounded-lg shadow-primary"
+                    class="rounded-lg"
                     :disabled="!selectedIngredient || !ingredientPortion"
                     @click="addIngredientToSubRecipe"
-                  >
-                    <v-icon size="20">tabler-plus</v-icon>
-                  </v-btn>
+                  />
                 </v-col>
               </v-row>
 
               <!-- Tabla de Insumos Agregados -->
-              <v-table density="compact" class="mt-4 border rounded">
+              <v-table density="compact" class="border rounded-lg mt-3">
                 <thead>
-                  <tr class="bg-light">
+                  <tr>
                     <th>Insumo</th>
                     <th class="text-center">Porción Requerida</th>
                     <th class="text-right">Costo Unit.</th>
                     <th class="text-right">Costo Total</th>
-                    <th class="text-center" style="width: 60px;">Acción</th>
+                    <th class="text-center">Acción</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(ing, idx) in subRecipeForm.ingredients" :key="idx">
-                    <td class="font-weight-medium">{{ ing.name }}</td>
-                    <td class="text-center">{{ ing.portion }} {{ ing.unit_of_measure }}</td>
-                    <td class="text-right">{{ formatCurrency(ing.unit_cost) }}</td>
-                    <td class="text-right font-weight-bold text-primary">{{ formatCurrency(ing.designated_cost) }}</td>
+                  <tr v-for="(item, index) in subRecipeForm.ingredients" :key="item.product_id">
+                    <td class="font-weight-medium">{{ item.name }}</td>
+                    <td class="text-center">{{ item.portion }} {{ item.unit_of_measure }}</td>
+                    <td class="text-right">{{ formatCurrency(item.unit_cost) }}</td>
+                    <td class="text-right font-weight-bold text-error">
+                      {{ formatCurrency(item.designated_cost) }}
+                    </td>
                     <td class="text-center">
-                      <v-btn icon size="x-small" color="error" variant="text" @click="subRecipeForm.ingredients.splice(idx, 1)">
+                      <v-btn
+                        icon
+                        size="x-small"
+                        color="error"
+                        variant="text"
+                        @click="subRecipeForm.ingredients.splice(index, 1)"
+                      >
                         <v-icon size="16">tabler-trash</v-icon>
                       </v-btn>
                     </td>
@@ -323,30 +494,28 @@
                 </tbody>
               </v-table>
 
-              <!-- Resumen de Costos de la Receta -->
-              <div class="d-flex flex-wrap justify-space-between align-center mt-3 pa-3 bg-light rounded border">
-                <div class="d-flex align-center">
-                  <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">COSTO TOTAL:</span>
-                  <strong class="ms-2 text-subtitle-1 font-weight-black text-primary">{{ formatCurrency(subRecipeTotalCost) }}</strong>
-                </div>
-                <div class="d-flex align-center">
-                  <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">COSTO UNITARIO:</span>
-                  <strong class="ms-2 text-subtitle-1 font-weight-black text-success">{{ formatCurrency(subRecipeUnitCost) }}</strong>
-                </div>
+              <!-- Resumen de Costo -->
+              <div class="d-flex justify-space-between align-center mt-3 pt-3 border-t">
+                <span class="text-caption font-weight-bold">
+                  COSTO TOTAL: <strong class="text-error">{{ formatCurrency(subRecipeTotalCost) }}</strong>
+                </span>
+                <span class="text-caption font-weight-bold">
+                  COSTO UNITARIO:
+                  <strong class="text-success">{{ formatCurrency(subRecipeUnitCost) }}</strong>
+                </span>
               </div>
             </v-card>
 
             <v-btn
               type="submit"
               color="primary"
-              size="large"
               block
-              height="48"
-              class="font-weight-bold shadow-primary text-uppercase"
+              size="large"
+              class="font-weight-bold"
               :loading="submittingSubRecipe"
               :disabled="!subRecipeForm.name || !subRecipeForm.ingredients.length"
             >
-              Guardar Sub-Receta y Habilitar en Platos
+              Guardar Sub-Receta Y Habilitar En Platos
             </v-btn>
           </v-form>
         </v-card-text>
@@ -354,16 +523,16 @@
     </v-dialog>
 
     <!-- DIÁLOGO: CREAR ORDEN DE PRODUCCIÓN -->
-    <v-dialog v-model="showProductionModal" max-width="550">
+    <v-dialog v-model="showProductionModal" max-width="600">
       <v-card class="rounded-lg overflow-hidden">
         <v-card-title class="pa-0">
-          <div class="header-gradient pa-4 d-flex align-center shadow-sm text-white">
+          <div class="bg-primary pa-4 d-flex align-center shadow-sm text-white">
             <v-avatar color="white" variant="flat" size="40" class="me-3 elevation-2">
-              <v-icon icon="tabler-tools-kitchen-2" color="primary" size="22" />
+              <v-icon icon="tabler-packages" color="primary" size="22" />
             </v-avatar>
             <div class="flex-grow-1 text-white">
               <h2 class="text-subtitle-1 font-weight-black mb-0 text-uppercase text-white" style="color: #ffffff !important;">
-                Nueva Producción de Sub-Receta
+                Nueva Orden de Producción
               </h2>
             </div>
             <v-spacer />
@@ -379,7 +548,7 @@
               :items="subRecipeDishes"
               item-title="name"
               item-value="id"
-              label="Seleccionar Sub-Receta Base"
+              label="Seleccionar Sub-Receta / Preparación Base"
               density="compact"
               variant="outlined"
               class="mb-3"
@@ -392,11 +561,10 @@
                   type="number"
                   step="0.1"
                   min="0.1"
-                  label="Multiplicador de Tanda"
+                  label="Multiplicador de Lote"
                   density="compact"
                   variant="outlined"
                   class="mb-3"
-                  required
                 />
               </v-col>
               <v-col cols="6">
@@ -507,8 +675,10 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import axios from '@axios'
 import { toast } from '@/plugins/sweetalert'
+import Swal from 'sweetalert2'
 import { useBrandingStore } from '@/stores/useBrandingStore'
 import { formatCurrency as formatRawCurrency } from '@/utils/currencyFormatter'
+import AppFilterBase from '@/components/AppFilterBase.vue'
 
 const brandingStore = useBrandingStore()
 
@@ -557,7 +727,122 @@ const formatCurrency = (price) => {
   return formatRawCurrency(numPrice, currency)
 }
 
-const activeTab = ref('production')
+// Pestaña activa (por defecto en Sub-recetas para que el usuario vea de inmediato las sub-recetas creadas)
+const activeTab = ref('sub_recipes')
+
+// Estado para Sub-Recetas (Mismo diseño y reactividad que /inventory/dishes)
+const subRecipes = ref([])
+const totalSubRecipes = ref(0)
+const loadingSubRecipes = ref(false)
+const subRecipePage = ref(1)
+const subRecipeItemsPerPage = ref(10)
+const subRecipeSortBy = ref('id')
+const subRecipeOrderBy = ref('desc')
+const subRecipeSearch = ref('')
+const selectedCategory = ref(null)
+const selectedStatus = ref(null)
+
+const statusOptions = [
+  { title: 'Base (Sub-receta)', value: 3 },
+  { title: 'Activo', value: 1 },
+  { title: 'Inactivo', value: 0 },
+]
+
+const getStatusChipColor = (status) => {
+  if (status === 1) return 'success'
+  if (status === 2) return 'info'
+  if (status === 3) return 'warning'
+  return 'error'
+}
+
+const getStatusLabel = (status) => {
+  if (status === 1) return 'Activo'
+  if (status === 2) return 'En Revisión'
+  if (status === 3) return 'Base'
+  return 'Inactivo'
+}
+
+// Consultar listado de sub-recetas
+const fetchSubRecipes = async () => {
+  loadingSubRecipes.value = true
+  try {
+    const params = {
+      q: subRecipeSearch.value,
+      category_id: selectedCategory.value,
+      status: selectedStatus.value !== null ? selectedStatus.value : 3, // Por defecto filtrar las sub-recetas (status 3)
+      page: subRecipePage.value,
+      itemsPerPage: subRecipeItemsPerPage.value,
+      sortBy: subRecipeSortBy.value,
+      orderBy: subRecipeOrderBy.value,
+    }
+    const response = await axios.get('/dishes', { params })
+    subRecipes.value = response.data.data || []
+    totalSubRecipes.value = response.data.meta?.total || subRecipes.value.length
+  } catch (error) {
+    console.error('Error al cargar sub-recetas:', error)
+    toast.error('No se pudieron cargar las sub-recetas.')
+  } finally {
+    loadingSubRecipes.value = false
+  }
+}
+
+const updateSubRecipeTableOptions = (options) => {
+  subRecipePage.value = options.page
+  subRecipeItemsPerPage.value = options.itemsPerPage
+  if (options.sortBy && options.sortBy.length > 0) {
+    subRecipeSortBy.value = options.sortBy[0].key
+    subRecipeOrderBy.value = options.sortBy[0].order
+  }
+}
+
+// Watchers con debounce para recarga reactiva de sub-recetas
+let subRecipeDebounceTimer
+watch([subRecipeSearch, selectedCategory, selectedStatus], () => {
+  subRecipePage.value = 1
+})
+
+watch(
+  [subRecipePage, subRecipeItemsPerPage, subRecipeSortBy, subRecipeOrderBy, subRecipeSearch, selectedCategory, selectedStatus],
+  () => {
+    clearTimeout(subRecipeDebounceTimer)
+    subRecipeDebounceTimer = setTimeout(() => fetchSubRecipes(), 300)
+  }
+)
+
+// Eliminar Sub-receta
+const handleDeleteSubRecipe = async (dish) => {
+  const result = await Swal.fire({
+    title: `¿Eliminar sub-receta "${dish.name}"?`,
+    text: 'Esta acción desactivará la preparación base del recetario.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+  })
+
+  if (result.isConfirmed) {
+    try {
+      await axios.delete(`/dishes/${dish.id}`)
+      toast.success('Sub-receta eliminada con éxito.')
+      fetchSubRecipes()
+      loadData()
+    } catch (error) {
+      console.error('Error al eliminar sub-receta:', error)
+      toast.error(error.response?.data?.message || 'No se pudo eliminar la sub-receta.')
+    }
+  }
+}
+
+// Abrir modal de producción directamente para una sub-receta
+const openProduceFromSubRecipe = (dish) => {
+  productionForm.dish_id = dish.id
+  productionForm.batch_multiplier = 1.0
+  productionForm.actual_quantity = dish.expected_yield_quantity || 1.0
+  showProductionModal.value = true
+}
+
+// Estado para Lotes y Mermas
 const productionOrders = ref([])
 const kitchenWastes = ref([])
 const subRecipeDishes = ref([])
@@ -645,7 +930,7 @@ const addIngredientToSubRecipe = () => {
   selectedIngredient.value = null
   ingredientPortion.value = 1
   ingredientSearch.value = ''
-  toast.success('Insumo añadido a la receta.')
+  ingredientOptions.value = []
 }
 
 const openSubRecipeModal = () => {
@@ -656,17 +941,14 @@ const openSubRecipeModal = () => {
   subRecipeForm.unit_of_measure = 'porción'
   subRecipeForm.shelf_life_days = 7
   subRecipeForm.ingredients = []
-  searchIngredients('')
+  selectedIngredient.value = null
+  ingredientPortion.value = 1
   showSubRecipeModal.value = true
 }
 
 const submitSubRecipe = async () => {
-  if (!subRecipeForm.name.trim()) {
-    toast.error('El nombre de la sub-receta es obligatorio.')
-    return
-  }
   if (!subRecipeForm.ingredients.length) {
-    toast.error('Debes agregar al menos un insumo a la sub-receta.')
+    toast.warning('Debes agregar al menos un insumo a la sub-receta.')
     return
   }
 
@@ -675,6 +957,7 @@ const submitSubRecipe = async () => {
     const { data } = await axios.post('/restaurant/production/sub-recipes', subRecipeForm)
     toast.success(data.message || 'Sub-receta creada con éxito.')
     showSubRecipeModal.value = false
+    await fetchSubRecipes()
     await loadData()
   } catch (error) {
     toast.error(error.response?.data?.message || 'Error al guardar la sub-receta.')
@@ -745,6 +1028,7 @@ const submitProduction = async () => {
     toast.success(res.data?.message || 'Producción completada.')
     showProductionModal.value = false
     await loadData()
+    await fetchSubRecipes()
   } catch (err) {
     toast.error(err.response?.data?.message || 'Error en orden de producción.')
   } finally {
@@ -772,6 +1056,7 @@ const submitWaste = async () => {
 
 onMounted(() => {
   brandingStore.fetchSettings?.()
+  fetchSubRecipes()
   loadData()
 })
 </script>
@@ -784,16 +1069,23 @@ onMounted(() => {
   background-color: #f8fafc !important;
 }
 .header-gradient {
-  background: linear-gradient(135deg, #7A0099 0%, #E20074 100%) !important;
+  background: linear-gradient(135deg, #7A0099, #E20074) !important;
 }
-.shadow-sm {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+.premium-table :deep(th) {
+  background-color: #f8fafc !important;
+  text-transform: uppercase !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
 }
-.shadow-primary {
-  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+.bg-primary-light {
+  background-color: rgba(var(--v-theme-primary), 0.1) !important;
+}
+.bg-error-light {
+  background-color: rgba(var(--v-theme-error), 0.1) !important;
 }
 .text-super-xs {
-  font-size: 0.7rem !important;
-  letter-spacing: 0.5px;
+  font-size: 0.62rem !important;
+  line-height: normal;
 }
 </style>
