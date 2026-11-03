@@ -220,14 +220,22 @@ class DishServices implements DishContract
         }
 
         if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', $filters['status']);
+            $statusVal = (int) $filters['status'];
+            if ($statusVal === 3 && Schema::hasColumn('dishes', 'output_product_id')) {
+                $query->where(function ($q) {
+                    $q->where('status', 3)
+                      ->orWhereNotNull('output_product_id');
+                });
+            } else {
+                $query->where('status', $filters['status']);
+            }
         }
 
         if (!empty($filters['category_id'])) {
             $query->where('category_id', $filters['category_id']);
         }
 
-        $itemsPerPage = (int) ($filters['itemsPerPage'] ?? 15);
+        $itemsPerPage = (int) ($filters['itemsPerPage'] ?? ($filters['per_page'] ?? 15));
         if ($itemsPerPage <= 0 || $itemsPerPage > 500) {
             $itemsPerPage = 100;
         }
@@ -421,6 +429,39 @@ class DishServices implements DishContract
             // Limpiar caché de categorías de platos
             \Cache::forget('resources.categories.dishes');
 
+            // Si es un plato base / sub-receta (status = 3) y no tiene output_product_id, crearlo y vincularlo
+            if ((int) $dish->status === 3 && Schema::hasColumn('dishes', 'output_product_id') && empty($dish->output_product_id)) {
+                $productData = [
+                    'name' => trim($dish->name),
+                    'category_id' => $dish->category_id,
+                    'sale_price' => (float) $dish->cost_price,
+                    'stock' => 0,
+                    'presentation' => 1,
+                    'unit_of_measure' => 'porciones',
+                    'is_active' => true,
+                    'is_deleted' => false,
+                    'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)),
+                    'active_ingredient' => 'Sub-receta / Insumo Cocina',
+                    'iva' => false,
+                ];
+
+                if (Schema::hasColumn('products', 'unit_cost')) {
+                    $productData['unit_cost'] = (float) $dish->cost_price;
+                }
+                if (Schema::hasColumn('products', 'cost_price')) {
+                    $productData['cost_price'] = (float) $dish->cost_price;
+                }
+                if (Schema::hasColumn('products', 'is_sub_recipe')) {
+                    $productData['is_sub_recipe'] = true;
+                }
+                if (Schema::hasColumn('products', 'yield_percentage')) {
+                    $productData['yield_percentage'] = 100.00;
+                }
+
+                $outputProduct = Product::create($productData);
+                $dish->update(['output_product_id' => $outputProduct->id]);
+            }
+
             return $dish->load($this->getAvailableRelations());
         });
     }
@@ -505,6 +546,39 @@ class DishServices implements DishContract
 
             // Limpiar caché de categorías de platos
             \Cache::forget('resources.categories.dishes');
+
+            // Si es un plato base / sub-receta (status = 3) y no tiene output_product_id, crearlo y vincularlo
+            if ((int) $dish->status === 3 && Schema::hasColumn('dishes', 'output_product_id') && empty($dish->output_product_id)) {
+                $productData = [
+                    'name' => trim($dish->name),
+                    'category_id' => $dish->category_id,
+                    'sale_price' => (float) $dish->cost_price,
+                    'stock' => 0,
+                    'presentation' => 1,
+                    'unit_of_measure' => 'porciones',
+                    'is_active' => true,
+                    'is_deleted' => false,
+                    'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)),
+                    'active_ingredient' => 'Sub-receta / Insumo Cocina',
+                    'iva' => false,
+                ];
+
+                if (Schema::hasColumn('products', 'unit_cost')) {
+                    $productData['unit_cost'] = (float) $dish->cost_price;
+                }
+                if (Schema::hasColumn('products', 'cost_price')) {
+                    $productData['cost_price'] = (float) $dish->cost_price;
+                }
+                if (Schema::hasColumn('products', 'is_sub_recipe')) {
+                    $productData['is_sub_recipe'] = true;
+                }
+                if (Schema::hasColumn('products', 'yield_percentage')) {
+                    $productData['yield_percentage'] = 100.00;
+                }
+
+                $outputProduct = Product::create($productData);
+                $dish->update(['output_product_id' => $outputProduct->id]);
+            }
 
             return $dish->load($this->getAvailableRelations());
         });

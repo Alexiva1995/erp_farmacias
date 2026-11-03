@@ -32,7 +32,12 @@ class ProductLotObserver
      */
     public function updated(ProductLot $productLot): void
     {
-        if ($productLot->isDirty('quantity') || $productLot->isDirty('unit_cost')) {
+        if (
+            $productLot->isDirty('quantity')
+            || $productLot->isDirty('unit_cost')
+            || $productLot->wasChanged('quantity')
+            || $productLot->wasChanged('unit_cost')
+        ) {
             $this->updateProductStockAndPrice($productLot->product);
         }
     }
@@ -71,7 +76,14 @@ class ProductLotObserver
         }
 
         $totalStock = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
-        $product->updateQuietly(['stock' => $totalStock]);
+        $latestLot = $product->lots()->where('unit_cost', '>', 0)->orderBy('id', 'desc')->first();
+
+        $updateData = ['stock' => $totalStock];
+        if ($latestLot && abs((float)($product->unit_cost ?? 0) - (float)$latestLot->unit_cost) > 0.0001) {
+            $updateData['unit_cost'] = (float)$latestLot->unit_cost;
+        }
+
+        $product->update($updateData);
         \App\Services\Inventory\StockoutService::syncStockout($product, $totalStock);
     }
 }

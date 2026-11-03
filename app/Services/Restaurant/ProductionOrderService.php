@@ -38,10 +38,40 @@ class ProductionOrderService implements ProductionOrderServiceInterface
 
             $outputProductId = $data['output_product_id'] ?? $dish->output_product_id;
             if (!$outputProductId) {
-                throw new InvalidArgumentException('La receta debe tener un producto de inventario de salida asignado.');
-            }
+                // Auto-crear o vincular producto de inventario para la sub-receta si no existe
+                $productData = [
+                    'name' => trim($dish->name),
+                    'category_id' => $dish->category_id,
+                    'sale_price' => (float) $dish->cost_price,
+                    'stock' => 0,
+                    'presentation' => 1,
+                    'unit_of_measure' => 'porciones',
+                    'is_active' => true,
+                    'is_deleted' => false,
+                    'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)),
+                    'active_ingredient' => 'Sub-receta / Insumo Cocina',
+                    'iva' => false,
+                ];
 
-            $outputProduct = Product::findOrFail($outputProductId);
+                if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'unit_cost')) {
+                    $productData['unit_cost'] = (float) $dish->cost_price;
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'cost_price')) {
+                    $productData['cost_price'] = (float) $dish->cost_price;
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'is_sub_recipe')) {
+                    $productData['is_sub_recipe'] = true;
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'yield_percentage')) {
+                    $productData['yield_percentage'] = 100.00;
+                }
+
+                $outputProduct = Product::create($productData);
+                $dish->update(['output_product_id' => $outputProduct->id]);
+                $outputProductId = $outputProduct->id;
+            } else {
+                $outputProduct = Product::findOrFail($outputProductId);
+            }
             $multiplier = (float) ($data['batch_multiplier'] ?? 1.0);
             if ($multiplier <= 0) {
                 throw new InvalidArgumentException('El multiplicador de lote debe ser mayor a cero.');

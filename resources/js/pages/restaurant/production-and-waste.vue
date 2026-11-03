@@ -551,6 +551,7 @@
               label="Seleccionar Sub-Receta / Preparación Base"
               density="compact"
               variant="outlined"
+              no-data-text="No hay sub-recetas base disponibles"
               class="mb-3"
               required
             />
@@ -1002,33 +1003,73 @@ const wasteReasons = [
   { label: 'Caída / Accidente', value: 'dropped' },
 ]
 
-const loadData = async () => {
+const loadSubRecipeDishes = async () => {
   try {
-    const [resProd, resWaste, resDishes, resCats] = await Promise.all([
-      axios.get('/restaurant/production/orders'),
-      axios.get('/restaurant/waste/records'),
-      axios.get('/dishes?per_page=100'),
-      axios.get('/categories', { params: { type: 'dishes' } }),
-    ])
-    productionOrders.value = resProd.data?.data || []
-    kitchenWastes.value = resWaste.data?.data || []
-    subRecipeDishes.value = (resDishes.data?.data || []).map(d => ({
+    const res = await axios.get('/dishes', {
+      params: {
+        status: 3,
+        itemsPerPage: 500,
+      },
+    })
+    subRecipeDishes.value = (res.data?.data || []).map(d => ({
       id: d.id,
       name: d.name,
       status: d.status,
+      expected_yield_quantity: Number(d.expected_yield_quantity) || 1.0,
+      unit_of_measure: d.unit_of_measure || 'porciones',
     }))
-    categories.value = resCats.data || []
+  } catch (e) {
+    console.error('Error cargando sub-recetas para producción:', e)
+  }
+}
+
+const loadData = async () => {
+  try {
+    const [resProd, resWaste, resCats] = await Promise.allSettled([
+      axios.get('/restaurant/production/orders'),
+      axios.get('/restaurant/waste/records'),
+      axios.get('/categories', { params: { type: 'dishes' } }),
+    ])
+    if (resProd.status === 'fulfilled') productionOrders.value = resProd.value.data?.data || []
+    if (resWaste.status === 'fulfilled') kitchenWastes.value = resWaste.value.data?.data || []
+    if (resCats.status === 'fulfilled') categories.value = resCats.value.data || []
+
+    await loadSubRecipeDishes()
   } catch (err) {
     console.error('Error cargando producción/mermas:', err)
   }
 }
 
-const openProductionModal = () => {
+const openProductionModal = async () => {
+  await loadSubRecipeDishes()
   if (subRecipeDishes.value.length) {
-    productionForm.dish_id = subRecipeDishes.value[0].id
+    if (!productionForm.dish_id || !subRecipeDishes.value.some(d => d.id === productionForm.dish_id)) {
+      const first = subRecipeDishes.value[0]
+      productionForm.dish_id = first.id
+      productionForm.batch_multiplier = 1.0
+      productionForm.actual_quantity = first.expected_yield_quantity
+    }
   }
   showProductionModal.value = true
 }
+
+watch(() => productionForm.dish_id, (newId) => {
+  if (newId) {
+    const found = subRecipeDishes.value.find(d => d.id === newId)
+    if (found) {
+      const mult = Number(productionForm.batch_multiplier) || 1.0
+      productionForm.actual_quantity = parseFloat(((found.expected_yield_quantity || 1.0) * mult).toFixed(2))
+    }
+  }
+})
+
+watch(() => productionForm.batch_multiplier, (newMult) => {
+  const mult = Number(newMult) || 1.0
+  const found = subRecipeDishes.value.find(d => d.id === productionForm.dish_id)
+  if (found) {
+    productionForm.actual_quantity = parseFloat(((found.expected_yield_quantity || 1.0) * mult).toFixed(2))
+  }
+})
 
 const submitProduction = async () => {
   submitting.value = true

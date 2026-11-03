@@ -199,9 +199,14 @@ class OrderActionService
                                 $pres = $option->product->presentation > 0 ? $option->product->presentation : 1;
                                 $extraCostUsd += ($modPortion * ($option->product->unit_cost ?? 0)) / $pres;
                             }
-                        } elseif ($modType === 'remove' && $option && $option->product) {
-                            $pres = $option->product->presentation > 0 ? $option->product->presentation : 1;
-                            $extraCostUsd -= ($modPortion * ($option->product->unit_cost ?? 0)) / $pres;
+                        } elseif ($modType === 'remove') {
+                            $targetProduct = $option?->product ?: ($modProductId ? \App\Models\Product::find($modProductId) : null);
+                            if ($targetProduct) {
+                                $pres = $targetProduct->presentation > 0 ? (float)$targetProduct->presentation : 1.0;
+                                $dishIng = $dish->ingredients->firstWhere('id', $targetProduct->id);
+                                $portionToRemove = $modPortion > 0 ? $modPortion : (float)($dishIng?->pivot?->portion ?? 0);
+                                $extraCostUsd -= ($portionToRemove * (float)($targetProduct->unit_cost ?? 0)) / $pres;
+                            }
                         }
 
                         $normalizedModifiers[] = [
@@ -215,9 +220,19 @@ class OrderActionService
                     }
                 }
 
-                // Derivar precio total en USD (base + modificadores)
+                // Calcular costo dinámico actual de los ingredientes de la receta (+ 5% de imprevisto)
+                $dishLiveRawCost = 0.0;
+                foreach ($dish->ingredients as $dishIng) {
+                    $ingPortion = (float)($dishIng->pivot?->portion ?? 0);
+                    $ingCost = (float)($dishIng->unit_cost ?? 0);
+                    $ingPres = (float)($dishIng->presentation ?? 1) > 0 ? (float)$dishIng->presentation : 1.0;
+                    $dishLiveRawCost += ($ingPortion * $ingCost) / $ingPres;
+                }
+                $dishBaseCost = $dishLiveRawCost > 0 ? round($dishLiveRawCost * 1.05, 4) : (float)($dish->cost_price ?? 0);
+
+                // Derivar precio total en USD (base + modificadores) y costo unitario neto descontando ingredientes quitados
                 $price_usd = (float)($dish->designated_price ?? 0) + $extraPriceUsd;
-                $unitCost = max(0, (float)($dish->cost_price ?? 0) + $extraCostUsd);
+                $unitCost = max(0, round($dishBaseCost + $extraCostUsd, 4));
 
                 $targetCurrency = $order->currency;
                 if ($targetCurrency === 'USD') {
