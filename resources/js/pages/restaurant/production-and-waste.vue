@@ -716,7 +716,7 @@ const formatCurrency = (price) => {
 
   if (currency === 'COP') {
     const rawCop = numPrice * rate
-    const rounded = rawCop >= 100 ? Math.ceil(rawCop / 100) * 100 : Math.round(rawCop)
+    const rounded = Math.round(rawCop / 100) * 100
     return formatRawCurrency(rounded, 'COP')
   }
 

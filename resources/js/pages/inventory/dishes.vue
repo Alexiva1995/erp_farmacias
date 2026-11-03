@@ -50,7 +50,7 @@ const formatCurrency = (price) => {
 
   if (currency === "COP") {
     const rawCop = numPrice * rate;
-    const rounded = rawCop >= 100 ? Math.ceil(rawCop / 100) * 100 : Math.round(rawCop);
+    const rounded = Math.round(rawCop / 100) * 100;
     return formatRawCurrency(rounded, "COP");
   }
 
@@ -135,7 +135,7 @@ const syncInputPriceFromModel = () => {
   const rate = activeExchangeRate.value || 1;
   if (defaultCurrency.value === "COP") {
     const rawCop = usdVal * rate;
-    const rounded = rawCop >= 100 ? Math.ceil(rawCop / 100) * 100 : Math.round(rawCop);
+    const rounded = Math.round(rawCop / 100) * 100;
     inputDesignatedPrice.value = String(rounded);
     return;
   }
@@ -151,7 +151,7 @@ const onPriceInput = (val) => {
     return;
   }
   const rate = activeExchangeRate.value || 1;
-  currentDish.value.designated_price = parseFloat((numVal / rate).toFixed(4));
+  currentDish.value.designated_price = parseFloat((numVal / rate).toFixed(6));
 };
 
 // Al salir del campo (blur) o presionar Enter: aplicar el redondeo final
@@ -165,9 +165,9 @@ const onPriceBlur = () => {
 
   const rate = activeExchangeRate.value || 1;
   if (defaultCurrency.value === "COP") {
-    const rounded = numVal >= 100 ? Math.ceil(numVal / 100) * 100 : Math.round(numVal);
+    const rounded = Math.round(numVal / 100) * 100;
     inputDesignatedPrice.value = String(rounded);
-    currentDish.value.designated_price = parseFloat((rounded / rate).toFixed(4));
+    currentDish.value.designated_price = parseFloat((rounded / rate).toFixed(6));
   } else {
     const rounded = parseFloat(numVal.toFixed(2));
     inputDesignatedPrice.value = String(rounded);
