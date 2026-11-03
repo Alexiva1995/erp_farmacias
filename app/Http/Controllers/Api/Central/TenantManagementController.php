@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Central;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Central\AddTenantDomainRequest;
 use App\Http\Requests\Central\CreateTenantRequest;
 use App\Http\Requests\Central\LinkTenantRequest;
 use App\Http\Resources\TenantResource;
@@ -116,6 +117,43 @@ class TenantManagementController extends Controller
 
             return response()->json([
                 'message' => 'Error al eliminar la empresa: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Agregar un dominio a un tenant existente.
+     */
+    public function addDomain(AddTenantDomainRequest $request, string $id): JsonResponse
+    {
+        try {
+            $domain = (string) $request->validated('domain');
+            $result = $this->managementService->addDomain($id, $domain);
+
+            return response()->json($result, 201);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error agregando dominio a tenant {$id}: " . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Error al agregar el dominio: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Eliminar un dominio de un tenant existente.
+     */
+    public function removeDomain(string $id, string $domainId): JsonResponse
+    {
+        try {
+            $result = $this->managementService->removeDomain($id, $domainId);
+
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error eliminando dominio {$domainId} de tenant {$id}: " . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Error al eliminar el dominio: ' . $e->getMessage(),
             ], 422);
         }
     }

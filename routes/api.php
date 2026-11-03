@@ -1344,6 +1344,8 @@ Route::prefix('central/tenants')->group(function () {
     Route::get('/', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'index']);
     Route::post('/', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'store']);
     Route::post('/link', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'link']);
+    Route::post('/{id}/domains', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'addDomain']);
+    Route::delete('/{id}/domains/{domainId}', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'removeDomain']);
     Route::delete('/{id}', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'destroy']);
 });
 

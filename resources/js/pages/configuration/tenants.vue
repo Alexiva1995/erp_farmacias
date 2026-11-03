@@ -319,6 +319,73 @@ const confirmDeleteTenant = (tenant) => {
   isDeleteDialogOpen.value = true
 }
 
+// Estado para gestión de dominios del tenant
+const isManageDomainsDialogOpen = ref(false)
+const isAddingDomain = ref(false)
+const isDeletingDomain = ref(false)
+const tenantForDomains = ref(null)
+const newDomainInput = ref('')
+const domainError = ref('')
+
+const openManageDomainsDialog = (tenant) => {
+  tenantForDomains.value = tenant
+  newDomainInput.value = ''
+  domainError.value = ''
+  isManageDomainsDialogOpen.value = true
+}
+
+const handleAddDomain = async () => {
+  const domain = newDomainInput.value.trim().toLowerCase()
+  if (!domain) {
+    domainError.value = 'Ingresa un dominio o subdominio válido'
+    return
+  }
+
+  const tenantId = tenantForDomains.value?.id ?? tenantForDomains.value?.raw?.id
+  if (!tenantId) return
+
+  isAddingDomain.value = true
+  domainError.value = ''
+  try {
+    const response = await axios.post(`/central/tenants/${tenantId}/domains`, { domain })
+    showAlert('success', response.data.message || 'Dominio agregado exitosamente')
+    newDomainInput.value = ''
+    
+    await fetchTenants()
+    const updated = tenants.value.find(t => (t.id ?? t.raw?.id) === tenantId)
+    if (updated) {
+      tenantForDomains.value = updated
+    }
+  } catch (error) {
+    domainError.value = error.response?.data?.errors?.domain?.[0] || error.response?.data?.message || 'Error al agregar el dominio'
+    showAlert('error', domainError.value)
+  } finally {
+    isAddingDomain.value = false
+  }
+}
+
+const handleRemoveDomain = async (domainItem) => {
+  const tenantId = tenantForDomains.value?.id ?? tenantForDomains.value?.raw?.id
+  const domainId = domainItem.id || domainItem.domain
+  if (!tenantId || !domainId) return
+
+  isDeletingDomain.value = true
+  try {
+    const response = await axios.delete(`/central/tenants/${tenantId}/domains/${domainId}`)
+    showAlert('success', response.data.message || 'Dominio eliminado exitosamente')
+    
+    await fetchTenants()
+    const updated = tenants.value.find(t => (t.id ?? t.raw?.id) === tenantId)
+    if (updated) {
+      tenantForDomains.value = updated
+    }
+  } catch (error) {
+    showAlert('error', error.response?.data?.message || 'Error al eliminar el dominio')
+  } finally {
+    isDeletingDomain.value = false
+  }
+}
+
 const handleDeleteTenant = async () => {
   if (!tenantToDelete.value) return
   
@@ -493,30 +560,45 @@ onMounted(() => {
 
         <!-- Columna Dominios -->
         <template #item.domains="{ item }">
-          <div v-if="(item.domains ?? item.raw?.domains)?.length > 0">
-            <div v-for="d in (item.domains ?? item.raw?.domains)" :key="d.id || d.domain" class="d-flex align-center ga-1 my-1">
-              <a
-                :href="'https://' + d.domain"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-decoration-none text-primary text-body-2 font-weight-bold d-inline-flex align-center ga-1"
+          <div class="d-flex flex-column ga-1 my-1">
+            <div v-if="(item.domains ?? item.raw?.domains)?.length > 0">
+              <div v-for="d in (item.domains ?? item.raw?.domains)" :key="d.id || d.domain" class="d-flex align-center ga-1 my-1">
+                <a
+                  :href="'https://' + d.domain"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-decoration-none text-primary text-body-2 font-weight-bold d-inline-flex align-center ga-1"
+                >
+                  <span>{{ d.domain }}</span>
+                  <VIcon icon="tabler-external-link" size="14" />
+                </a>
+              </div>
+            </div>
+            <a
+              v-else-if="getTenantDomain(item)"
+              :href="getTenantUrl(item)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-decoration-none text-primary text-body-2 font-weight-bold d-inline-flex align-center ga-1"
+            >
+              <span>{{ getTenantDomain(item) }}</span>
+              <VIcon icon="tabler-external-link" size="14" />
+            </a>
+            <span v-else class="text-caption text-medium-emphasis">—</span>
+
+            <div v-if="!(item.is_orphan ?? item.raw?.is_orphan)">
+              <VBtn
+                variant="text"
+                color="primary"
+                size="x-small"
+                class="px-1 text-caption font-weight-bold"
+                prepend-icon="tabler-plus"
+                @click="openManageDomainsDialog(item)"
               >
-                <span>{{ d.domain }}</span>
-                <VIcon icon="tabler-external-link" size="14" />
-              </a>
+                + Dominio
+              </VBtn>
             </div>
           </div>
-          <a
-            v-else-if="getTenantDomain(item)"
-            :href="getTenantUrl(item)"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-decoration-none text-primary text-body-2 font-weight-bold d-inline-flex align-center ga-1"
-          >
-            <span>{{ getTenantDomain(item) }}</span>
-            <VIcon icon="tabler-external-link" size="14" />
-          </a>
-          <span v-else class="text-caption text-medium-emphasis">—</span>
         </template>
 
         <!-- Columna Fecha -->
@@ -553,6 +635,16 @@ onMounted(() => {
             >
               Ingresar
             </VBtn>
+
+            <VBtn
+              v-if="!(item.is_orphan ?? item.raw?.is_orphan)"
+              icon="tabler-world"
+              variant="text"
+              color="info"
+              size="small"
+              title="Gestionar dominios personalizados"
+              @click="openManageDomainsDialog(item)"
+            />
 
             <VBtn
               icon="tabler-trash"
@@ -1030,6 +1122,133 @@ onMounted(() => {
               </VBtn>
             </VCol>
           </VRow>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Modal de Gestión de Dominios Personalizados -->
+    <VDialog
+      v-model="isManageDomainsDialogOpen"
+      max-width="560"
+      transition="dialog-bottom-transition"
+    >
+      <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12 rounded-xl">
+        <VCardTitle class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+              <VIcon icon="tabler-world" color="primary" size="24" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+                Gestionar Dominios
+              </h2>
+              <span class="text-caption text-white opacity-80">
+                {{ tenantForDomains?.company_name ?? tenantForDomains?.raw?.company_name ?? tenantForDomains?.id }}
+              </span>
+            </div>
+            <VSpacer />
+            <VBtn
+              icon="tabler-x"
+              variant="text"
+              color="white"
+              size="small"
+              class="rounded-lg"
+              @click="isManageDomainsDialogOpen = false"
+            />
+          </div>
+        </VCardTitle>
+
+        <VDivider />
+
+        <VCardText class="pa-4 pa-sm-6">
+          <!-- Lista de Dominios Actuales -->
+          <div class="mb-4">
+            <h4 class="text-subtitle-2 font-weight-bold text-high-emphasis mb-2">
+              Dominios y subdominios activos:
+            </h4>
+            <div v-if="(tenantForDomains?.domains ?? tenantForDomains?.raw?.domains)?.length > 0" class="d-flex flex-column ga-2">
+              <div
+                v-for="d in (tenantForDomains?.domains ?? tenantForDomains?.raw?.domains)"
+                :key="d.id || d.domain"
+                class="d-flex align-center justify-space-between pa-3 border rounded-lg bg-light"
+              >
+                <div class="d-flex align-center ga-2">
+                  <VIcon icon="tabler-world" size="18" color="primary" />
+                  <a
+                    :href="'https://' + d.domain"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-decoration-none text-primary font-weight-bold text-body-2"
+                  >
+                    {{ d.domain }}
+                  </a>
+                </div>
+                <VBtn
+                  v-if="(tenantForDomains?.domains ?? tenantForDomains?.raw?.domains)?.length > 1"
+                  icon="tabler-trash"
+                  size="x-small"
+                  variant="text"
+                  color="error"
+                  :disabled="isDeletingDomain"
+                  @click="handleRemoveDomain(d)"
+                />
+              </div>
+            </div>
+            <div v-else class="text-caption text-medium-emphasis">
+              No hay dominios explícitos configurados. Responde por defecto a {{ tenantForDomains?.id }}.tovaerp.com.
+            </div>
+          </div>
+
+          <VDivider class="my-4" />
+
+          <!-- Formulario para Agregar Nuevo Dominio -->
+          <div>
+            <h4 class="text-subtitle-2 font-weight-bold text-high-emphasis mb-2">
+              Agregar nuevo dominio personalizado:
+            </h4>
+            <p class="text-caption text-medium-emphasis mb-3">
+              Puedes registrar un dominio completo (ej. <strong>toffle.co</strong> o <strong>www.toffle.co</strong>).
+            </p>
+            <VRow dense>
+              <VCol cols="12">
+                <VTextField
+                  v-model="newDomainInput"
+                  label="Nuevo Dominio o Subdominio"
+                  placeholder="toffle.co"
+                  variant="outlined"
+                  density="comfortable"
+                  prepend-inner-icon="tabler-plus"
+                  :error-messages="domainError"
+                  @keyup.enter="handleAddDomain"
+                />
+              </VCol>
+            </VRow>
+          </div>
+        </VCardText>
+
+        <VDivider />
+
+        <VCardActions class="pa-4 bg-light border-t">
+          <VSpacer />
+          <VBtn
+            variant="outlined"
+            color="secondary"
+            class="rounded-lg font-weight-bold"
+            @click="isManageDomainsDialogOpen = false"
+          >
+            Cerrar
+          </VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            class="rounded-lg font-weight-bold"
+            :loading="isAddingDomain"
+            :disabled="isAddingDomain || !newDomainInput.trim()"
+            @click="handleAddDomain"
+          >
+            <VIcon icon="tabler-plus" size="16" class="me-1" />
+            Agregar Dominio
+          </VBtn>
         </VCardActions>
       </VCard>
     </VDialog>

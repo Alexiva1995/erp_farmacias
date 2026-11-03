@@ -171,4 +171,60 @@ class TenantManagementService
             'tenant' => (new TenantResource($tenant))->resolve(),
         ];
     }
+
+    /**
+     * Agregar un dominio a un tenant existente.
+     *
+     * @param string $tenantId
+     * @param string $rawDomain
+     * @return array<string, mixed>
+     */
+    public function addDomain(string $tenantId, string $rawDomain): array
+    {
+        $tenant = Tenant::findOrFail($tenantId);
+        $cleanDomain = strtolower(trim($rawDomain));
+        $domain = str_contains($cleanDomain, '.') ? $cleanDomain : "{$cleanDomain}.tovaerp.com";
+
+        $createdDomain = Domain::create([
+            'tenant_id' => $tenant->id,
+            'domain' => $domain,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => "Dominio '{$domain}' agregado exitosamente a la empresa '{$tenant->id}'.",
+            'domain' => [
+                'id' => $createdDomain->id,
+                'domain' => $createdDomain->domain,
+            ],
+        ];
+    }
+
+    /**
+     * Eliminar un dominio de un tenant.
+     *
+     * @param string $tenantId
+     * @param string|int $domainId
+     * @return array<string, mixed>
+     */
+    public function removeDomain(string $tenantId, string|int $domainId): array
+    {
+        $domain = Domain::where('tenant_id', $tenantId)
+            ->where(function ($query) use ($domainId) {
+                if (is_numeric($domainId)) {
+                    $query->where('id', (int) $domainId);
+                } else {
+                    $query->where('domain', $domainId);
+                }
+            })
+            ->firstOrFail();
+
+        $domainName = $domain->domain;
+        $domain->delete();
+
+        return [
+            'success' => true,
+            'message' => "Dominio '{$domainName}' eliminado exitosamente.",
+        ];
+    }
 }
