@@ -130,4 +130,45 @@ class TenantManagementService
             'message' => "La empresa '{$id}' y su base de datos '{$dbName}' fueron eliminadas permanentemente.",
         ];
     }
+
+    /**
+     * Vincular una base de datos física existente a un tenant sin recrearla.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public function linkExistingDatabase(array $data): array
+    {
+        $tenantId = strtolower(trim((string) $data['tenant_id']));
+        $dbName = trim((string) $data['database']);
+        $companyName = !empty($data['company_name']) ? (string) $data['company_name'] : ucfirst($tenantId);
+        $vertical = !empty($data['vertical']) ? (string) $data['vertical'] : \App\Enums\BusinessVerticalEnum::PHARMACY->value;
+        $rawDomain = !empty($data['domain']) ? (string) $data['domain'] : "{$tenantId}.tovaerp.com";
+        $domain = str_contains($rawDomain, '.') ? $rawDomain : "{$rawDomain}.tovaerp.com";
+
+        // 1. Crear o actualizar Tenant suprimiendo eventos destructivos
+        /** @var Tenant $tenant */
+        $tenant = Tenant::withoutEvents(function () use ($tenantId, $companyName, $dbName, $vertical) {
+            return Tenant::updateOrCreate(
+                ['id' => $tenantId],
+                [
+                    'company_name' => $companyName,
+                    'tenancy_db_name' => $dbName,
+                    'vertical' => $vertical,
+                ]
+            );
+        });
+
+        // 2. Asociar dominio en tabla central
+        Domain::updateOrCreate(
+            ['tenant_id' => $tenantId],
+            ['domain' => $domain]
+        );
+
+        return [
+            'success' => true,
+            'message' => "La empresa '{$companyName}' fue vinculada exitosamente a la base de datos '{$dbName}'.",
+            'tenant' => (new TenantResource($tenant))->resolve(),
+        ];
+    }
 }

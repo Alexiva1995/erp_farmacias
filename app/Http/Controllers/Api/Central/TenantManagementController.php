@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Central;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Central\CreateTenantRequest;
+use App\Http\Requests\Central\LinkTenantRequest;
 use App\Http\Resources\TenantResource;
 use App\Models\Tenant;
 use App\Services\Tenancy\TenantManagementService;
@@ -77,6 +78,25 @@ class TenantManagementController extends Controller
 
             return response()->json([
                 'message' => 'Error al aprovisionar la empresa: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Vincular una base de datos física existente a un tenant.
+     */
+    public function link(LinkTenantRequest $request): JsonResponse
+    {
+        try {
+            $validated = $request->validated();
+            $result = $this->managementService->linkExistingDatabase($validated);
+
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error vinculando tenant: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Error al vincular la empresa: ' . $e->getMessage(),
             ], 422);
         }
     }

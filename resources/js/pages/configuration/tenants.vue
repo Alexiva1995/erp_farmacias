@@ -276,6 +276,44 @@ const isDeleteDialogOpen = ref(false)
 const isDeleting = ref(false)
 const tenantToDelete = ref(null)
 
+// Estado para modal de vinculación de base de datos existente
+const isLinkDialogOpen = ref(false)
+const isLinking = ref(false)
+const linkForm = reactive({
+  company_name: '',
+  tenant_id: '',
+  database: '',
+  domain: '',
+  vertical: 'pharmacy',
+})
+
+const openLinkDialog = (item) => {
+  const rawId = item.id ?? item.raw?.id ?? ''
+  const rawDb = item.database ?? item.raw?.database ?? ''
+  linkForm.company_name = (item.company_name ?? item.raw?.company_name ?? rawId).replace(/^BD Huérfana \((.*?)\)$/, '$1')
+  linkForm.tenant_id = rawId
+  linkForm.database = rawDb
+  linkForm.domain = rawId ? `${rawId}.tovaerp.com` : ''
+  linkForm.vertical = 'pharmacy'
+  isLinkDialogOpen.value = true
+}
+
+const handleLinkTenant = async () => {
+  if (!linkForm.tenant_id || !linkForm.database) return
+
+  isLinking.value = true
+  try {
+    const response = await axios.post('/central/tenants/link', linkForm)
+    showAlert('success', response.data.message || 'Empresa vinculada exitosamente')
+    isLinkDialogOpen.value = false
+    await fetchTenants()
+  } catch (error) {
+    showAlert('error', error.response?.data?.message || 'Error al vincular la empresa')
+  } finally {
+    isLinking.value = false
+  }
+}
+
 const confirmDeleteTenant = (tenant) => {
   tenantToDelete.value = tenant
   isDeleteDialogOpen.value = true
@@ -492,7 +530,19 @@ onMounted(() => {
         <template #item.actions="{ item }">
           <div class="d-flex justify-end align-center ga-1">
             <VBtn
-              v-if="!(item.is_orphan ?? item.raw?.is_orphan)"
+              v-if="item.is_orphan ?? item.raw?.is_orphan"
+              variant="tonal"
+              color="success"
+              size="small"
+              class="rounded-lg font-weight-bold"
+              prepend-icon="tabler-link"
+              @click="openLinkDialog(item)"
+            >
+              Vincular
+            </VBtn>
+
+            <VBtn
+              v-else
               :href="getTenantUrl(item)"
               target="_blank"
               variant="tonal"
@@ -600,6 +650,129 @@ onMounted(() => {
               >
                 <VIcon icon="tabler-trash" size="18" class="me-2" />
                 {{ isDeleting ? 'Eliminando...' : 'Eliminar Empresa' }}
+              </VBtn>
+            </VCol>
+          </VRow>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Modal de Vinculación de Base de Datos Huérfana -->
+    <VDialog
+      v-model="isLinkDialogOpen"
+      max-width="560"
+      persistent
+      transition="dialog-bottom-transition"
+    >
+      <VCard class="detail-dialog-card overflow-hidden border-0 elevation-12 rounded-xl">
+        <VCardTitle class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+            <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+              <VIcon icon="tabler-link" color="primary" size="24" />
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+                Vincular Empresa a Base de Datos
+              </h2>
+              <span class="text-caption text-white opacity-80">
+                Activa la base de datos existente como un tenant oficial del SaaS
+              </span>
+            </div>
+            <VSpacer />
+            <VBtn
+              icon="tabler-x"
+              variant="text"
+              color="white"
+              size="small"
+              class="rounded-lg"
+              :disabled="isLinking"
+              @click="isLinkDialogOpen = false"
+            />
+          </div>
+        </VCardTitle>
+
+        <VDivider />
+
+        <VCardText class="pa-4 pa-sm-6">
+          <VRow dense>
+            <VCol cols="12" class="mb-2">
+              <VTextField
+                v-model="linkForm.company_name"
+                label="Nombre Comercial de la Empresa"
+                placeholder="Ej. Farmacia Zorca Salud"
+                variant="outlined"
+                density="comfortable"
+                prepend-inner-icon="tabler-building"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" class="mb-2">
+              <VTextField
+                v-model="linkForm.tenant_id"
+                label="Identificador (ID)"
+                placeholder="Ej. zorca"
+                variant="outlined"
+                density="comfortable"
+                prepend-inner-icon="tabler-id"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" class="mb-2">
+              <VTextField
+                v-model="linkForm.database"
+                label="Base de Datos Física (MySQL)"
+                readonly
+                disabled
+                variant="outlined"
+                density="comfortable"
+                prepend-inner-icon="tabler-database"
+              />
+            </VCol>
+
+            <VCol cols="12" class="mb-2">
+              <VTextField
+                v-model="linkForm.domain"
+                label="Dominio o Subdominio de Acceso"
+                placeholder="zorca.tovaerp.com"
+                variant="outlined"
+                density="comfortable"
+                prepend-inner-icon="tabler-world"
+              />
+            </VCol>
+          </VRow>
+        </VCardText>
+
+        <VDivider />
+
+        <VCardActions class="pa-4 bg-light border-t">
+          <VRow no-gutters>
+            <VCol cols="12" sm="6" class="pa-1">
+              <VBtn
+                variant="outlined"
+                color="secondary"
+                size="large"
+                block
+                height="48"
+                class="font-weight-black rounded-lg text-button uppercase"
+                :disabled="isLinking"
+                @click="isLinkDialogOpen = false"
+              >
+                Cancelar
+              </VBtn>
+            </VCol>
+            <VCol cols="12" sm="6" class="pa-1">
+              <VBtn
+                color="primary"
+                variant="flat"
+                size="large"
+                block
+                height="48"
+                class="font-weight-black rounded-lg text-button uppercase"
+                :loading="isLinking"
+                :disabled="isLinking || !linkForm.tenant_id"
+                @click="handleLinkTenant"
+              >
+                Vincular y Activar
               </VBtn>
             </VCol>
           </VRow>
@@ -860,6 +1033,7 @@ onMounted(() => {
         </VCardActions>
       </VCard>
     </VDialog>
+
   </div>
 </template>
 
