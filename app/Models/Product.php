@@ -89,6 +89,9 @@ class Product extends Model
         'units_per_master_box',
         'requires_cold_chain',
         'sanitary_registration',
+        'cost_price',
+        'is_sub_recipe',
+        'yield_percentage',
     ];
 
     /**

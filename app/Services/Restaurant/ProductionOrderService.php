@@ -87,18 +87,32 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             $shelfLife = $dish->shelf_life_days ?: 7;
             $lotCode = 'SUB-' . date('Ymd') . '-' . strtoupper(Str::random(4));
             
-            $newLot = ProductLot::create([
+            $lotData = [
                 'product_id' => $outputProduct->id,
                 'lot_number' => $lotCode,
                 'quantity' => $actualQty,
-                'unit_cost' => $unitCostCalculated,
                 'expiration_date' => Carbon::now()->addDays($shelfLife)->toDateString(),
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('product_lots', 'unit_cost')) {
+                $lotData['unit_cost'] = $unitCostCalculated;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('product_lots', 'cost_price')) {
+                $lotData['cost_price'] = $unitCostCalculated;
+            }
+
+            $newLot = ProductLot::create($lotData);
 
             // Aumentar stock del producto elaborado
             $outputProduct->stock = (float) $outputProduct->stock + $actualQty;
-            $outputProduct->unit_cost = $unitCostCalculated;
-            $outputProduct->is_sub_recipe = true;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'unit_cost')) {
+                $outputProduct->unit_cost = $unitCostCalculated;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'cost_price')) {
+                $outputProduct->cost_price = $unitCostCalculated;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'is_sub_recipe')) {
+                $outputProduct->is_sub_recipe = true;
+            }
             $outputProduct->save();
 
             // Registrar Orden de Producción
@@ -172,22 +186,34 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             $unitCost = $yieldQty > 0 ? round($totalCost / $yieldQty, 4) : $totalCost;
 
             // 1. Crear producto de inventario de salida marcado como sub-receta
-            $outputProduct = Product::create([
+            $productData = [
                 'name' => trim($data['name']) . ' [Preparación Cocina]',
                 'category_id' => $data['category_id'] ?? null,
-                'unit_cost' => $unitCost,
                 'sale_price' => $unitCost,
                 'stock' => 0,
                 'presentation' => 1,
                 'unit_of_measure' => $unitMeasure,
                 'is_active' => true,
                 'is_deleted' => false,
-            ]);
+                'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(Str::random(6)),
+                'active_ingredient' => 'Sub-receta / Insumo Cocina',
+                'iva' => false,
+            ];
 
-            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'is_sub_recipe')) {
-                $outputProduct->is_sub_recipe = true;
-                $outputProduct->save();
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'unit_cost')) {
+                $productData['unit_cost'] = $unitCost;
             }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'cost_price')) {
+                $productData['cost_price'] = $unitCost;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'is_sub_recipe')) {
+                $productData['is_sub_recipe'] = true;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'yield_percentage')) {
+                $productData['yield_percentage'] = 100.00;
+            }
+
+            $outputProduct = Product::create($productData);
 
             // 2. Crear el plato configurado como plato base (status=3) y vinculado a su producto de salida
             $dishAttributes = [
@@ -195,11 +221,23 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 'cost_price' => round($totalCost, 2),
                 'suggested_price' => round($totalCost, 2),
                 'designated_price' => round($totalCost, 2),
-                'percentage_profit' => 1.0,
+                'percentage_profit' => '1.00',
                 'category_id' => $data['category_id'] ?? null,
                 'status' => 3, // Base Dish / Sub-receta
             ];
 
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'cpv')) {
+                $dishAttributes['cpv'] = round($totalCost, 2);
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'iva')) {
+                $dishAttributes['iva'] = false;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'tax_rate')) {
+                $dishAttributes['tax_rate'] = 0.00;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'preparation_time_minutes')) {
+                $dishAttributes['preparation_time_minutes'] = 15;
+            }
             if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'kitchen_station_id')) {
                 $dishAttributes['kitchen_station_id'] = $data['kitchen_station_id'] ?? null;
             }
@@ -231,7 +269,12 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             // Limpiar caché de categorías de platos
             \Cache::forget('resources.categories.dishes');
 
-            return $dish->load(['ingredients', 'outputProduct', 'category']);
+            $relations = ['ingredients', 'category'];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'output_product_id')) {
+                $relations[] = 'outputProduct';
+            }
+
+            return $dish->load($relations);
         });
     }
 }
