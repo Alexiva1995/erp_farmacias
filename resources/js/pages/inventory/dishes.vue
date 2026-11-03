@@ -408,7 +408,7 @@ watch([searchQuery, selectedCategory, selectedStatus], () => {
 });
 
 watch(
-  [page, itemsPerPage, searchQuery, selectedCategory, selectedStatus],
+  [page, itemsPerPage, sortBy, orderBy, searchQuery, selectedCategory, selectedStatus],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchDishes(), 300);
@@ -696,8 +696,8 @@ onUnmounted(() => {
 
     <!-- Listado Principal -->
     <VCard variant="flat" class="border rounded-lg bg-surface overflow-hidden">
-      <!-- Loading State con Skeleton Loader -->
-      <div v-if="loading" class="pa-6">
+      <!-- Loading State con Skeleton Loader en carga inicial -->
+      <div v-if="loading && dishes.length === 0" class="pa-6">
         <VSkeletonLoader
           type="table-row-divider@5"
           class="bg-transparent"
@@ -705,7 +705,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="dishes.length === 0" class="pa-16 text-center text-disabled">
+      <div v-else-if="!loading && dishes.length === 0" class="pa-16 text-center text-disabled">
         <VIcon icon="tabler-meat" size="64" class="mb-4 opacity-20" />
         <h3 class="text-h6 font-weight-black opacity-50 uppercase">No hay platos registrados</h3>
         <p>Registra un nuevo plato o ajusta tus filtros</p>
@@ -719,22 +719,24 @@ onUnmounted(() => {
           :items="dishes"
           :items-length="totalDishes"
           :loading="loading"
+          :sort-by="[{ key: sortBy, order: orderBy }]"
+          :must-sort="true"
           class="premium-table text-no-wrap"
           @update:options="updateTableOptions"
           :headers="[
             { title: 'ID', key: 'id', sortable: true },
             { title: 'Nombre', key: 'name', sortable: true },
             { title: 'Categoría', key: 'category.name', sortable: false },
-            { title: 'Costo', key: 'cost_price', align: 'end' },
-            { title: 'Ganancia', key: 'percentage_profit', align: 'end' },
-            { title: 'Sugerido', key: 'suggested_price', align: 'end' },
-            { title: 'Designado', key: 'designated_price', align: 'end' },
-            { title: 'Estado', key: 'status', align: 'center' },
+            { title: 'Costo', key: 'cost_price', sortable: true, align: 'end' },
+            { title: 'Ganancia', key: 'percentage_profit', sortable: true, align: 'end' },
+            { title: 'Sugerido', key: 'suggested_price', sortable: true, align: 'end' },
+            { title: 'Designado', key: 'designated_price', sortable: true, align: 'end' },
+            { title: 'Estado', key: 'status', sortable: true, align: 'center' },
             { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
           ]"
         >
           <template #item.id="{ item }">
-            <span class="font-weight-black text-primary">#{{ item.id }}</span>
+            <span class="font-weight-black text-primary">{{ item.id }}</span>
           </template>
 
           <template #item.name="{ item }">
@@ -794,7 +796,7 @@ onUnmounted(() => {
                 <div class="flex-grow-1 min-width-0">
                   <div class="d-flex align-center gap-1 mb-1">
                     <h3 class="text-sm font-weight-black text-high-emphasis text-uppercase leading-tight truncate-2-lines">
-                      <span class="text-primary text-xs">#{{ item.id }}</span>
+                      <span class="text-primary text-xs">{{ item.id }}</span>
                       <span class="mx-1 text-disabled">|</span>
                       {{ item.name.toUpperCase() }}
                     </h3>

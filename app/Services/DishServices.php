@@ -62,9 +62,21 @@ class DishServices implements DishContract
             $itemsPerPage = 100;
         }
         
-        // Ordenar
-        $sortBy = $filters['sortBy'] ?? 'id';
-        $orderBy = $filters['orderBy'] ?? 'desc';
+        // Ordenar con validación de columnas permitidas
+        $allowedSortColumns = [
+            'id',
+            'name',
+            'cost_price',
+            'percentage_profit',
+            'suggested_price',
+            'designated_price',
+            'status',
+            'created_at',
+        ];
+        $sortBy = in_array($filters['sortBy'] ?? 'id', $allowedSortColumns, true)
+            ? $filters['sortBy']
+            : 'id';
+        $orderBy = strtolower((string) ($filters['orderBy'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $orderBy);
 
         return $query->paginate($itemsPerPage);
