@@ -92,11 +92,10 @@ class DishServices implements DishContract
 
                 $freshDesignatedCost = round(($portion * $unitCost) / $safePresentation, 4);
 
-                if ($ingredient->pivot?->id && abs((float) $ingredient->pivot->designated_cost - $freshDesignatedCost) > 0.0001) {
-                    DB::table('dish_ingredients')
-                        ->where('id', $ingredient->pivot->id)
-                        ->update(['designated_cost' => $freshDesignatedCost]);
-                }
+                DB::table('dish_ingredients')
+                    ->where('dish_id', $subRecipe->id)
+                    ->where('product_id', $ingredient->id)
+                    ->update(['designated_cost' => $freshDesignatedCost]);
 
                 $currentCost += $freshDesignatedCost;
             }
@@ -148,11 +147,10 @@ class DishServices implements DishContract
 
                 $freshDesignatedCost = round(($portion * $unitCost) / $safePresentation, 4);
 
-                if ($ingredient->pivot?->id && abs((float) $ingredient->pivot->designated_cost - $freshDesignatedCost) > 0.0001) {
-                    DB::table('dish_ingredients')
-                        ->where('id', $ingredient->pivot->id)
-                        ->update(['designated_cost' => $freshDesignatedCost]);
-                }
+                DB::table('dish_ingredients')
+                    ->where('dish_id', $dish->id)
+                    ->where('product_id', $ingredient->id)
+                    ->update(['designated_cost' => $freshDesignatedCost]);
 
                 $currentDishCost += $freshDesignatedCost;
             }
@@ -200,9 +198,8 @@ class DishServices implements DishContract
      */
     public function getAll(array $filters): LengthAwarePaginator
     {
-        // Al entrar o paginar la lista principal de platos (página 1 sin búsqueda específica),
-        // sincronizar costos frescos de inventario y marcar platos en revisión si los costos subieron
-        if (empty($filters['q']) && (int) ($filters['page'] ?? 1) === 1) {
+        // Al consultar la página 1 de platos o sub-recetas, sincronizar costos frescos de inventario
+        if ((int) ($filters['page'] ?? 1) === 1) {
             try {
                 $this->syncCostsAndFlagUnprofitableDishes();
             } catch (\Throwable $e) {
@@ -284,10 +281,12 @@ class DishServices implements DishContract
 
             $freshDesignatedCost = round(($portion * $unitCost) / $safePresentation, 4);
 
-            if ($ingredient->pivot?->id && abs((float) $ingredient->pivot->designated_cost - $freshDesignatedCost) > 0.0001) {
-                DB::table('dish_ingredients')
-                    ->where('id', $ingredient->pivot->id)
-                    ->update(['designated_cost' => $freshDesignatedCost]);
+            DB::table('dish_ingredients')
+                ->where('dish_id', $dish->id)
+                ->where('product_id', $ingredient->id)
+                ->update(['designated_cost' => $freshDesignatedCost]);
+
+            if ($ingredient->pivot) {
                 $ingredient->pivot->designated_cost = $freshDesignatedCost;
             }
 

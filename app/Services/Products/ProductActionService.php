@@ -261,6 +261,23 @@ class ProductActionService
 
         $product->update($validatedData);
 
+        // Si cambió el costo o presentación del producto, sincronizar recetas vinculadas
+        if ($product->wasChanged('unit_cost') || $product->wasChanged('cost_price') || $product->wasChanged('presentation')) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('dish_ingredients')) {
+                    $isIngredient = \Illuminate\Support\Facades\DB::table('dish_ingredients')
+                        ->where('product_id', $product->id)
+                        ->exists();
+
+                    if ($isIngredient) {
+                        app(\App\Contracts\Dish::class)->syncCostsAndFlagUnprofitableDishes();
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('No se pudo sincronizar costos de recetas tras actualizar producto: ' . $e->getMessage());
+            }
+        }
+
         if ($supplierIds !== null) {
             $currentSupplierIds = $product->productSuppliers()->pluck('supplier_id')->toArray();
             

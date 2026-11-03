@@ -14,12 +14,53 @@ class DishResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $rawCost = 0.0;
+        $hasIngredients = $this->relationLoaded('ingredients') && $this->ingredients && $this->ingredients->isNotEmpty();
+
+        $ingredientsData = [];
+        if ($hasIngredients) {
+            foreach ($this->ingredients as $product) {
+                $portion = (float) ($product->pivot?->portion ?? 0);
+                $unitCost = (float) ($product->unit_cost ?? 0);
+                $presentation = (float) ($product->presentation ?? 1);
+                $safePresentation = $presentation > 0 ? $presentation : 1.0;
+
+                // Calcular costo dinámico del ingrediente según el costo del insumo en inventario
+                $freshDesignatedCost = $unitCost > 0
+                    ? round(($portion * $unitCost) / $safePresentation, 4)
+                    : (float) ($product->pivot?->designated_cost ?? 0);
+
+                $rawCost += $freshDesignatedCost;
+
+                $ingredientsData[] = [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'unit_cost' => $unitCost,
+                    'presentation' => $presentation,
+                    'unit_of_measure' => $product->unit_of_measure,
+                    'portion' => $portion,
+                    'designated_cost' => $freshDesignatedCost,
+                    'is_removable' => (bool) ($product->pivot?->is_removable ?? false),
+                ];
+            }
+        }
+
+        // Si tiene ingredientes calculados, usar el costo dinámico sumando el 5% de imprevisto
+        $costPrice = ($hasIngredients && $rawCost > 0)
+            ? round($rawCost * 1.05, 2)
+            : (float) $this->cost_price;
+
+        $profitMultiplier = (float) ($this->percentage_profit ?? 0);
+        $suggestedPrice = ($hasIngredients && $rawCost > 0)
+            ? round($costPrice * $profitMultiplier, 2)
+            : (float) $this->suggested_price;
+
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'cost_price' => (float) $this->cost_price,
-            'cpv' => (float) $this->cpv,
-            'suggested_price' => (float) $this->suggested_price,
+            'cost_price' => $costPrice,
+            'cpv' => (float) ($this->cpv ?? $costPrice),
+            'suggested_price' => $suggestedPrice,
             'designated_price' => (float) $this->designated_price,
             'percentage_profit' => (float) $this->percentage_profit,
             'category_id' => $this->category_id,
@@ -39,18 +80,7 @@ class DishResource extends JsonResource
                 'color' => $this->kitchenStation->color,
                 'icon' => $this->kitchenStation->icon,
             ] : null,
-            'ingredients' => $this->ingredients ? $this->ingredients->map(function ($product) {
-                return [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'unit_cost' => (float) $product->unit_cost,
-                    'presentation' => (float) $product->presentation,
-                    'unit_of_measure' => $product->unit_of_measure,
-                    'portion' => (float) ($product->pivot?->portion ?? 0),
-                    'designated_cost' => (float) ($product->pivot?->designated_cost ?? 0),
-                    'is_removable' => (bool) ($product->pivot?->is_removable ?? false),
-                ];
-            }) : [],
+            'ingredients' => $ingredientsData,
             'modifier_groups' => $this->whenLoaded('modifierGroups', function () {
                 return $this->modifierGroups->map(function ($group) {
                     return [

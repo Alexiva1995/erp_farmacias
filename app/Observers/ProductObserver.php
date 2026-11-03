@@ -19,7 +19,14 @@ class ProductObserver
      */
     public function updated(Product $product): void
     {
-        if ($product->isDirty('unit_cost') || $product->isDirty('cost_price') || $product->isDirty('presentation')) {
+        if (
+            $product->wasChanged('unit_cost')
+            || $product->wasChanged('cost_price')
+            || $product->wasChanged('presentation')
+            || $product->isDirty('unit_cost')
+            || $product->isDirty('cost_price')
+            || $product->isDirty('presentation')
+        ) {
             try {
                 if (\Illuminate\Support\Facades\Schema::hasTable('dish_ingredients')) {
                     $isIngredient = \Illuminate\Support\Facades\DB::table('dish_ingredients')
