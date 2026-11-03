@@ -15,10 +15,26 @@ class ProductObserver
 {
     /**
      * Handle the Product "updated" event.
-     * Gestiona únicamente alertas de stockouts y sincronización de lote único.
+     * Gestiona alertas de stockouts, sincronización de lote único y actualización de recetas.
      */
     public function updated(Product $product): void
     {
+        if ($product->isDirty('unit_cost') || $product->isDirty('cost_price') || $product->isDirty('presentation')) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('dish_ingredients')) {
+                    $isIngredient = \Illuminate\Support\Facades\DB::table('dish_ingredients')
+                        ->where('product_id', $product->id)
+                        ->exists();
+
+                    if ($isIngredient) {
+                        app(\App\Contracts\Dish::class)->syncCostsAndFlagUnprofitableDishes();
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('No se pudo sincronizar costos de recetas tras actualizar producto: ' . $e->getMessage());
+            }
+        }
+
         if ($product->isDirty('stock')) {
             $newStock = (float) ($product->stock ?? 0);
             $oldStock = (float) ($product->getOriginal('stock') ?? 0);

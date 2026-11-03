@@ -122,10 +122,12 @@ class DishServices implements DishContract
             if (!empty($subRecipe->output_product_id)) {
                 $yield = (float) ($subRecipe->expected_yield_quantity ?? 1);
                 $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
-                Product::where('id', $subRecipe->output_product_id)->update([
-                    'unit_cost' => $unitCostProduct,
-                    'sale_price' => $unitCostProduct,
-                ]);
+                Product::withoutEvents(function () use ($subRecipe, $unitCostProduct) {
+                    Product::where('id', $subRecipe->output_product_id)->update([
+                        'unit_cost' => $unitCostProduct,
+                        'sale_price' => $unitCostProduct,
+                    ]);
+                });
             }
         }
 
@@ -325,10 +327,12 @@ class DishServices implements DishContract
             if (!empty($dish->output_product_id)) {
                 $yield = (float) ($dish->expected_yield_quantity ?? 1);
                 $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
-                Product::where('id', $dish->output_product_id)->update([
-                    'unit_cost' => $unitCostProduct,
-                    'sale_price' => $unitCostProduct,
-                ]);
+                Product::withoutEvents(function () use ($dish, $unitCostProduct) {
+                    Product::where('id', $dish->output_product_id)->update([
+                        'unit_cost' => $unitCostProduct,
+                        'sale_price' => $unitCostProduct,
+                    ]);
+                });
             }
         }
 

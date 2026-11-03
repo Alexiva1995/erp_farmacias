@@ -523,21 +523,31 @@ const handleEditDish = async (dish) => {
       tax_rate: details.tax_rate !== null && details.tax_rate !== undefined ? details.tax_rate : 16.0,
       preparation_time_minutes: details.preparation_time_minutes || 15,
       kitchen_station_id: details.kitchen_station_id || null,
-      ingredients: details.ingredients.map((ing) => ({
-        product_id: ing.id,
-        name: cleanIngredientName(ing.name),
-        portion: ing.portion,
-        unit_cost: ing.unit_cost,
-        presentation: ing.presentation,
-        unit_of_measure: ing.unit_of_measure,
-        designated_cost: ing.designated_cost,
-        is_removable: Boolean(ing.is_removable),
-        cpv_deductible: false, // Opcional
-      })),
+      ingredients: details.ingredients.map((ing) => {
+        const portion = parseFloat(ing.portion || 0);
+        const unitCost = parseFloat(ing.unit_cost || 0);
+        const presentation = parseFloat(ing.presentation || 1) || 1;
+        const livePortionCost = unitCost > 0
+          ? parseFloat(((portion * unitCost) / presentation).toFixed(4))
+          : parseFloat(ing.designated_cost || 0);
+
+        return {
+          product_id: ing.id,
+          name: cleanIngredientName(ing.name),
+          portion: ing.portion,
+          unit_cost: ing.unit_cost,
+          presentation: ing.presentation,
+          unit_of_measure: ing.unit_of_measure,
+          designated_cost: livePortionCost,
+          is_removable: Boolean(ing.is_removable),
+          cpv_deductible: false,
+        };
+      }),
     };
     isBaseDish.value = details.status === 3;
     dishStatus.value = details.status === 3 ? 1 : details.status;
     formErrors.value = {};
+    recalculateDishTotals();
     syncInputPriceFromModel();
     isEditDialogVisible.value = true;
   } catch (error) {
@@ -566,21 +576,31 @@ const handleDuplicateDish = async (dish) => {
       tax_rate: details.tax_rate !== null && details.tax_rate !== undefined ? details.tax_rate : 16.0,
       preparation_time_minutes: details.preparation_time_minutes || 15,
       kitchen_station_id: details.kitchen_station_id || null,
-      ingredients: details.ingredients.map((ing) => ({
-        product_id: ing.id,
-        name: cleanIngredientName(ing.name),
-        portion: ing.portion,
-        unit_cost: ing.unit_cost,
-        presentation: ing.presentation,
-        unit_of_measure: ing.unit_of_measure,
-        designated_cost: ing.designated_cost,
-        is_removable: Boolean(ing.is_removable),
-        cpv_deductible: false,
-      })),
+      ingredients: details.ingredients.map((ing) => {
+        const portion = parseFloat(ing.portion || 0);
+        const unitCost = parseFloat(ing.unit_cost || 0);
+        const presentation = parseFloat(ing.presentation || 1) || 1;
+        const livePortionCost = unitCost > 0
+          ? parseFloat(((portion * unitCost) / presentation).toFixed(4))
+          : parseFloat(ing.designated_cost || 0);
+
+        return {
+          product_id: ing.id,
+          name: cleanIngredientName(ing.name),
+          portion: ing.portion,
+          unit_cost: ing.unit_cost,
+          presentation: ing.presentation,
+          unit_of_measure: ing.unit_of_measure,
+          designated_cost: livePortionCost,
+          is_removable: Boolean(ing.is_removable),
+          cpv_deductible: false,
+        };
+      }),
     };
     isBaseDish.value = details.status === 3;
     dishStatus.value = details.status === 3 ? 1 : details.status;
     formErrors.value = {};
+    recalculateDishTotals();
     syncInputPriceFromModel();
     isEditDialogVisible.value = true;
     toast.info(`Plato "${details.name}" cargado para duplicar.`);
