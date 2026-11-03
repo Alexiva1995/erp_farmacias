@@ -908,12 +908,13 @@ onUnmounted(() => {
                   </VChip>
                 </div>
 
-                <AppTextField
+                <VTextField
                   v-model="currentDish.name"
                   label="Nombre del Plato"
                   placeholder="Ej: Hamburguesa Doble Bacon"
                   :error-messages="formErrors.name"
                   density="compact"
+                  hide-details="auto"
                   required
                 />
 
@@ -975,7 +976,7 @@ onUnmounted(() => {
 
                 <VRow dense>
                   <VCol cols="12" sm="6">
-                    <AppTextField
+                    <VTextField
                       v-model="currentDish.preparation_time_minutes"
                       label="Tiempo Cocina"
                       type="number"
@@ -985,7 +986,7 @@ onUnmounted(() => {
                       prepend-inner-icon="tabler-clock-hour-4"
                       placeholder="15"
                       density="compact"
-                      hide-details
+                      hide-details="auto"
                       :error-messages="formErrors.preparation_time_minutes"
                     />
                   </VCol>
@@ -1026,44 +1027,48 @@ onUnmounted(() => {
 
                 <VRow dense>
                   <VCol cols="6">
-                    <AppTextField
+                    <VTextField
                       v-model="currentDish.percentage_profit"
                       label="Ganancia (x Costo)"
                       type="number"
                       step="0.01"
                       placeholder="1.8"
                       density="compact"
+                      hide-details="auto"
                       :error-messages="formErrors.percentage_profit"
                       required
                     />
                   </VCol>
                   <VCol cols="6">
-                    <AppTextField
+                    <VTextField
                       :model-value="formatCurrency(currentDish.cost_price)"
                       label="Costo Receta"
                       readonly
                       density="compact"
+                      hide-details="auto"
                     />
                   </VCol>
                 </VRow>
 
                 <VRow dense>
                   <VCol cols="6">
-                    <AppTextField
+                    <VTextField
                       :model-value="formatCurrency(currentDish.suggested_price)"
                       label="Sugerido (Matemático)"
                       readonly
                       density="compact"
+                      hide-details="auto"
                     />
                   </VCol>
                   <VCol cols="6">
-                    <AppTextField
+                    <VTextField
                       v-model="displayDesignatedPrice"
                       label="Precio Menú (Venta)"
                       type="number"
                       :step="defaultCurrency === 'COP' ? '100' : '0.01'"
                       :prefix="currencyPrefix"
                       density="compact"
+                      hide-details="auto"
                       :error-messages="formErrors.designated_price"
                       required
                     />
@@ -1092,7 +1097,8 @@ onUnmounted(() => {
                       :loading="loadingProducts"
                       item-title="name"
                       return-object
-                      placeholder="Buscar insumo (carne, pan, queso, salsa...)"
+                      label="Buscar insumo"
+                      placeholder="Carne, pan, queso, salsa..."
                       clearable
                       density="compact"
                       hide-details
@@ -1111,7 +1117,7 @@ onUnmounted(() => {
 
                 <VRow dense align="center" v-if="selectedProduct" class="mt-2">
                   <VCol cols="12" sm="4">
-                    <AppTextField
+                    <VTextField
                       v-model="ingredientPortion"
                       :label="selectedProduct.is_base_dish ? 'Cantidad Base' : 'Porción'"
                       type="number"
@@ -1122,7 +1128,7 @@ onUnmounted(() => {
                     />
                   </VCol>
                   <VCol cols="12" sm="4">
-                    <AppTextField
+                    <VTextField
                       :model-value="formatCurrency(calculatedPortionCost)"
                       label="Costo Porción"
                       readonly
