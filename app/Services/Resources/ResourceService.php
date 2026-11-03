@@ -65,23 +65,24 @@ class ResourceService
     }
 
     /**
-     * Obtiene una lista de todas las categorías, utilizando caché y filtros.
+     * Obtiene una lista de todas las categorías aplicando filtros solicitados.
      */
     public function getCategories(array $filters = []): Collection
     {
-        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
         if (isset($filters['type']) && $filters['type'] === 'dishes') {
-            return Cache::remember("resources.categories.dishes.{$conn}", now()->addDay(), function () {
-                return Category::whereHas('dishes')
-                    ->orWhereDoesntHave('products')
-                    ->orderBy('name')
-                    ->get(['id', 'name']);
-            });
+            $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+
+            if ($isRestaurant) {
+                return Category::orderBy('name')->get(['id', 'name']);
+            }
+
+            return Category::whereHas('dishes')
+                ->orWhereDoesntHave('products')
+                ->orderBy('name')
+                ->get(['id', 'name']);
         }
 
-        return Cache::remember("resources.categories.{$conn}", now()->addDay(), function () {
-            return Category::orderBy('name')->get(['id', 'name']);
-        });
+        return Category::orderBy('name')->get(['id', 'name']);
     }
 
     public function getAllProducts(): Collection

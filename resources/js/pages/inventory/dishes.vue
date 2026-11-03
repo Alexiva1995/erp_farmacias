@@ -3,9 +3,63 @@ import { ref, onMounted, onUnmounted, watch, computed } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
-import { formatPrice as formatCurrency } from "@/utils/formatters";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+import { formatCurrency as formatRawCurrency } from "@/utils/currencyFormatter";
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+
+const brandingStore = useBrandingStore();
+
+const defaultCurrency = computed(() => brandingStore.settings?.default_currency || "USD");
+
+const activeExchangeRate = computed(() => {
+  const currency = defaultCurrency.value;
+  if (currency === "USD") return 1;
+
+  const rates = Array.isArray(brandingStore.exchangeRates) ? brandingStore.exchangeRates : [];
+
+  if (currency === "COP") {
+    const copObj = rates.find((r) => r && (r.currency_code === "COP" || r.currency_code === "COPC"));
+    return Number(copObj?.rate || 4000);
+  }
+
+  if (currency === "BS" || currency === "Bs") {
+    const bsObj = rates.find((r) => r && r.currency_code === "BS");
+    return Number(bsObj?.rate || 1);
+  }
+
+  return 1;
+});
+
+const currencyPrefix = computed(() => {
+  if (defaultCurrency.value === "COP") return "COP";
+  if (defaultCurrency.value === "BS" || defaultCurrency.value === "Bs") return "Bs";
+  return "$";
+});
+
+const formatCurrency = (price) => {
+  const numPrice = Number(price);
+  if (isNaN(numPrice)) return "—";
+
+  const currency = defaultCurrency.value;
+  if (currency === "USD") {
+    return formatRawCurrency(numPrice, "USD");
+  }
+
+  const rate = activeExchangeRate.value;
+
+  if (currency === "COP") {
+    const rawCop = numPrice * rate;
+    const rounded = rawCop >= 100 ? Math.ceil(rawCop / 100) * 100 : Math.round(rawCop);
+    return formatRawCurrency(rounded, "COP");
+  }
+
+  if (currency === "BS" || currency === "Bs") {
+    return formatRawCurrency(numPrice * rate, "BS");
+  }
+
+  return formatRawCurrency(numPrice, currency);
+};
 
 // Listado de platos
 const dishes = ref([]);
@@ -62,6 +116,33 @@ const formErrors = ref({});
 const isSaving = ref(false);
 const isRecalculating = ref(false);
 
+// Valor editable de Precio Menú (Venta) expresado en la moneda principal configurada
+const displayDesignatedPrice = computed({
+  get() {
+    const usdVal = Number(currentDish.value.designated_price || 0);
+    if (defaultCurrency.value === "USD") return usdVal;
+    const rate = activeExchangeRate.value;
+    if (defaultCurrency.value === "COP") {
+      const rawCop = usdVal * rate;
+      return rawCop >= 100 ? Math.ceil(rawCop / 100) * 100 : Math.round(rawCop);
+    }
+    return parseFloat((usdVal * rate).toFixed(2));
+  },
+  set(newVal) {
+    const numVal = parseFloat(newVal);
+    if (isNaN(numVal)) {
+      currentDish.value.designated_price = 0;
+      return;
+    }
+    if (defaultCurrency.value === "USD") {
+      currentDish.value.designated_price = numVal;
+      return;
+    }
+    const rate = activeExchangeRate.value || 1;
+    currentDish.value.designated_price = parseFloat((numVal / rate).toFixed(4));
+  },
+});
+
 // Agregar ingrediente
 const productSearch = ref("");
 const productOptions = ref([]);
@@ -78,6 +159,39 @@ const fetchCategories = async () => {
     categories.value = data;
   } catch (error) {
     console.error("Error al obtener categorías:", error);
+  }
+};
+
+// Creación rápida de categoría desde el modal de plato
+const handleQuickCreateCategory = async () => {
+  const { value: categoryName } = await Swal.fire({
+    title: "Nueva Categoría de Platos",
+    input: "text",
+    inputPlaceholder: "Ej: Adicionales, Entradas, Postres...",
+    showCancelButton: true,
+    confirmButtonText: "Guardar",
+    cancelButtonText: "Cancelar",
+    inputValidator: (value) => {
+      if (!value || !value.trim()) {
+        return "El nombre de la categoría es obligatorio";
+      }
+    },
+  });
+
+  if (categoryName && categoryName.trim()) {
+    try {
+      const { data } = await axios.post("/inventory/categories-manage", {
+        id: null,
+        name: categoryName.trim(),
+      });
+      await fetchCategories();
+      if (data?.category?.id) {
+        currentDish.value.category_id = data.category.id;
+      }
+      toast.success("Categoría creada correctamente");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "No se pudo crear la categoría");
+    }
   }
 };
 
@@ -301,10 +415,11 @@ watch(
   }
 );
 
-// Cargar la lista inicial de productos para ingredientes al abrir el diálogo
+// Cargar la lista inicial de productos y categorías al abrir el diálogo
 watch(isEditDialogVisible, (val) => {
   if (val) {
     searchProducts("");
+    fetchCategories();
   }
 });
 
@@ -509,6 +624,7 @@ const getStatusLabel = (status) => {
 };
 
 onMounted(() => {
+  brandingStore.fetchSettings();
   fetchCategories();
   fetchKitchenStations();
   fetchDishes();
@@ -800,7 +916,7 @@ onUnmounted(() => {
                 />
 
                 <VRow dense>
-                  <VCol cols="12" sm="7">
+                  <VCol cols="12" sm="7" class="d-flex align-center gap-1">
                     <VSelect
                       v-model="currentDish.category_id"
                       :items="categories"
@@ -812,7 +928,18 @@ onUnmounted(() => {
                       density="compact"
                       hide-details
                       required
+                      class="flex-grow-1"
                     />
+                    <VBtn
+                      icon
+                      size="small"
+                      color="primary"
+                      variant="tonal"
+                      title="Crear nueva categoría"
+                      @click="handleQuickCreateCategory"
+                    >
+                      <VIcon icon="tabler-plus" size="18" />
+                    </VBtn>
                   </VCol>
                   <VCol cols="12" sm="5">
                     <VSelect
@@ -910,10 +1037,9 @@ onUnmounted(() => {
                   </VCol>
                   <VCol cols="6">
                     <AppTextField
-                      v-model="currentDish.cost_price"
+                      :model-value="formatCurrency(currentDish.cost_price)"
                       label="Costo Receta"
                       readonly
-                      prefix="$"
                       density="compact"
                     />
                   </VCol>
@@ -922,20 +1048,19 @@ onUnmounted(() => {
                 <VRow dense>
                   <VCol cols="6">
                     <AppTextField
-                      v-model="currentDish.suggested_price"
+                      :model-value="formatCurrency(currentDish.suggested_price)"
                       label="Sugerido (Matemático)"
                       readonly
-                      prefix="$"
                       density="compact"
                     />
                   </VCol>
                   <VCol cols="6">
                     <AppTextField
-                      v-model="currentDish.designated_price"
+                      v-model="displayDesignatedPrice"
                       label="Precio Menú (Venta)"
                       type="number"
-                      step="0.01"
-                      prefix="$"
+                      :step="defaultCurrency === 'COP' ? '100' : '0.01'"
+                      :prefix="currencyPrefix"
                       density="compact"
                       :error-messages="formErrors.designated_price"
                       required
@@ -996,9 +1121,8 @@ onUnmounted(() => {
                   </VCol>
                   <VCol cols="12" sm="4">
                     <AppTextField
-                      :model-value="calculatedPortionCost"
+                      :model-value="formatCurrency(calculatedPortionCost)"
                       label="Costo Porción"
-                      prefix="$"
                       readonly
                       density="compact"
                       hide-details

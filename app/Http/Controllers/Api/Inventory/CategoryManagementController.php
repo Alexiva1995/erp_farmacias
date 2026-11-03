@@ -68,9 +68,12 @@ class CategoryManagementController extends Controller
             ['name' => $request->name]
         );
 
-        // Limpiar cachés de recursos
+        // Limpiar cachés de recursos (incluyendo llave por conexión de tenant)
+        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
         \Cache::forget('resources.categories');
         \Cache::forget('resources.categories.dishes');
+        \Cache::forget("resources.categories.{$conn}");
+        \Cache::forget("resources.categories.dishes.{$conn}");
 
         return response()->json([
             'message' => 'Categoría guardada correctamente.',
@@ -139,9 +142,12 @@ class CategoryManagementController extends Controller
 
         $category->delete();
 
-        // Limpiar cachés de recursos
+        // Limpiar cachés de recursos (incluyendo llave por conexión de tenant)
+        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
         \Cache::forget('resources.categories');
         \Cache::forget('resources.categories.dishes');
+        \Cache::forget("resources.categories.{$conn}");
+        \Cache::forget("resources.categories.dishes.{$conn}");
 
         return response()->json([
             'message' => 'Categoría eliminada y elementos desvinculados correctamente.',
