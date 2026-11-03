@@ -31,8 +31,8 @@ class DishResource extends JsonResource
             'iva' => (bool) $this->iva,
             'tax_rate' => (float) ($this->tax_rate ?? 16.0),
             'preparation_time_minutes' => (int) ($this->preparation_time_minutes ?? 15),
-            'kitchen_station_id' => $this->kitchen_station_id,
-            'kitchen_station' => $this->kitchenStation ? [
+            'kitchen_station_id' => $this->kitchen_station_id ?? null,
+            'kitchen_station' => ($this->relationLoaded('kitchenStation') && $this->kitchenStation) ? [
                 'id' => $this->kitchenStation->id,
                 'name' => $this->kitchenStation->name,
                 'code' => $this->kitchenStation->code,

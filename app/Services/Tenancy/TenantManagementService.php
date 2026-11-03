@@ -165,6 +165,16 @@ class TenantManagementService
             ['domain' => $domain]
         );
 
+        // 3. Ejecutar migraciones pendientes en la base de datos vinculada
+        try {
+            \Illuminate\Support\Facades\Artisan::call('tenants:migrate', [
+                '--tenants' => [$tenant->id],
+                '--force' => true,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("Advertencia al migrar base de datos vinculada '{$dbName}': " . $e->getMessage());
+        }
+
         return [
             'success' => true,
             'message' => "La empresa '{$companyName}' fue vinculada exitosamente a la base de datos '{$dbName}'.",

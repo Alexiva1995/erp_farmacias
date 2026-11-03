@@ -197,13 +197,14 @@ class OrderQueryService
                 $join->on(DB::raw('(TIMESTAMPDIFF(MONTH, CURDATE(), pl.expiration_date) + 1)'), '<=', 'eo.months_to_expiration')
                      ->where('pl.quantity', '>', 0);
             })
-            ->leftJoin('expiration_offer_excluded_products as eoep', function ($join) {
-                $join->on('eo.id', '=', 'eoep.expiration_offer_id')
-                     ->on('pl.product_id', '=', 'eoep.product_id');
+            ->when(\Illuminate\Support\Facades\Schema::hasTable('expiration_offer_excluded_products'), function ($q) {
+                $q->leftJoin('expiration_offer_excluded_products as eoep', function ($join) {
+                    $join->on('eo.id', '=', 'eoep.expiration_offer_id')
+                         ->on('pl.product_id', '=', 'eoep.product_id');
+                })->whereNull('eoep.id');
             })
             ->select('pl.product_id', DB::raw('MAX(eo.discount_percentage) as max_discount'))
             ->where('eo.is_active', 1)
-            ->whereNull('eoep.id')
             ->groupBy('pl.product_id');
 
         // 1. Consulta de PRODUCTOS
@@ -249,8 +250,10 @@ class OrderQueryService
                 $q->whereNull('products.is_deleted')->orWhere('products.is_deleted', 0);
             })
             ->whereNotNull('products.name')
-            ->whereRaw("TRIM(products.name) NOT IN ('', '.')")
-            ->where('products.no_pvp', 0);
+            ->whereRaw("TRIM(products.name) NOT IN ('', '.')");
+        if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'no_pvp')) {
+            $productsQuery->where('products.no_pvp', 0);
+        }
 
         // 2. Consulta de PACKS
         $packsQuery = DB::table('product_packs')
@@ -277,8 +280,11 @@ class OrderQueryService
                 DB::raw('NULL as location'),
                 DB::raw('NULL as discount_percentage'),
                 DB::raw('NULL as discount_type'),
-            ])->where('product_packs.is_active', true)
-            ->whereNull('product_packs.deleted_at')
+            ])->where('product_packs.is_active', true);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('product_packs', 'deleted_at')) {
+            $packsQuery->whereNull('product_packs.deleted_at');
+        }
+        $packsQuery = $packsQuery
             ->where(function ($q) {
                 $q->whereNull('product_packs.max_sale_date')
                     ->orWhere('product_packs.max_sale_date', '>=', DB::raw("'" . now()->toDateString() . "'"));

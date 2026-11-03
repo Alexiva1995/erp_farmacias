@@ -48,8 +48,13 @@ class Dish extends Model
 
     public function ingredients(): BelongsToMany
     {
+        $pivotColumns = ['id', 'portion', 'designated_cost'];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('dish_ingredients', 'is_removable')) {
+            $pivotColumns[] = 'is_removable';
+        }
+
         return $this->belongsToMany(Product::class, 'dish_ingredients', 'dish_id', 'product_id')
-            ->withPivot('id', 'portion', 'designated_cost', 'is_removable')
+            ->withPivot($pivotColumns)
             ->withTimestamps();
     }
 

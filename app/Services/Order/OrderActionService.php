@@ -2147,6 +2147,9 @@ class OrderActionService
     public function applyGeneralPromotions(Order $order): void
     {
         // 1. Obtener todas las promociones generales activas
+        if (!\Illuminate\Support\Facades\Schema::hasTable('general_promotions')) {
+            return;
+        }
         $promotions = \App\Models\GeneralPromotion::where('is_active', true)->get();
         if ($promotions->isEmpty()) {
             // Si no hay promociones activas, restaurar precios normales si tenían descuento general anterior
@@ -2404,6 +2407,9 @@ class OrderActionService
      */
     public function applyGeneralPromotionsToProducts($products)
     {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('general_promotions')) {
+            return $products;
+        }
         $promotions = \App\Models\GeneralPromotion::where('is_active', true)->get();
         if ($promotions->isEmpty()) {
             return $products;

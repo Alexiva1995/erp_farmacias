@@ -8,15 +8,36 @@ use App\Contracts\Dish as DishContract;
 use App\Models\Dish;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DishServices implements DishContract
 {
+    /**
+     * Construir arreglo de relaciones disponibles según el esquema de base de datos.
+     *
+     * @return array<int, string>
+     */
+    private function getAvailableRelations(): array
+    {
+        $relations = ['category', 'ingredients'];
+
+        if (Schema::hasTable('modifier_groups') && Schema::hasTable('dish_modifier_group')) {
+            $relations[] = 'modifierGroups.options.product';
+        }
+
+        if (Schema::hasTable('kitchen_stations') && Schema::hasColumn('dishes', 'kitchen_station_id')) {
+            $relations[] = 'kitchenStation';
+        }
+
+        return $relations;
+    }
+
     /**
      * Obtener todos los platos con filtros y paginación.
      */
     public function getAll(array $filters): LengthAwarePaginator
     {
-        $query = Dish::with(['category', 'ingredients', 'modifierGroups.options.product']);
+        $query = Dish::with($this->getAvailableRelations());
 
         if (!empty($filters['q'])) {
             $search = $filters['q'];
@@ -54,7 +75,7 @@ class DishServices implements DishContract
      */
     public function find(int $id): ?Dish
     {
-        return Dish::with(['category', 'ingredients', 'modifierGroups.options.product'])->find($id);
+        return Dish::with($this->getAvailableRelations())->find($id);
     }
 
     /**
@@ -82,40 +103,61 @@ class DishServices implements DishContract
             }
             $data['cpv'] = $data['cpv'] ?? ($data['cost_price'] - $cpvDeduction);
 
-            // Crear plato
-            $dish = Dish::create([
+            $dishAttributes = [
                 'name' => $data['name'],
                 'cost_price' => $data['cost_price'],
-                'cpv' => $data['cpv'],
                 'suggested_price' => $data['suggested_price'],
                 'designated_price' => $data['designated_price'],
                 'percentage_profit' => $data['percentage_profit'],
                 'category_id' => $data['category_id'] ?? null,
                 'status' => $data['status'] ?? 1,
-                'iva' => $data['iva'] ?? false,
-                'tax_rate' => $data['tax_rate'] ?? 16.00,
-                'preparation_time_minutes' => $data['preparation_time_minutes'] ?? 15,
-                'kitchen_station_id' => $data['kitchen_station_id'] ?? null,
-            ]);
+            ];
 
-            // Vincular ingredientes
-            foreach ($ingredientsData as $ing) {
-                $dish->ingredients()->attach($ing['product_id'], [
-                    'portion' => $ing['portion'],
-                    'designated_cost' => $ing['designated_cost'],
-                    'is_removable' => !empty($ing['is_removable']),
-                ]);
+            if (Schema::hasColumn('dishes', 'cpv')) {
+                $dishAttributes['cpv'] = $data['cpv'];
+            }
+            if (Schema::hasColumn('dishes', 'iva')) {
+                $dishAttributes['iva'] = $data['iva'] ?? false;
+            }
+            if (Schema::hasColumn('dishes', 'tax_rate')) {
+                $dishAttributes['tax_rate'] = $data['tax_rate'] ?? 16.00;
+            }
+            if (Schema::hasColumn('dishes', 'preparation_time_minutes')) {
+                $dishAttributes['preparation_time_minutes'] = $data['preparation_time_minutes'] ?? 15;
+            }
+            if (Schema::hasColumn('dishes', 'kitchen_station_id')) {
+                $dishAttributes['kitchen_station_id'] = $data['kitchen_station_id'] ?? null;
             }
 
-            // Vincular grupos de modificadores si vienen en la petición
-            if (isset($data['modifier_group_ids']) && is_array($data['modifier_group_ids'])) {
+            // Crear plato
+            $dish = Dish::create($dishAttributes);
+
+            // Vincular ingredientes
+            $hasIsRemovable = Schema::hasColumn('dish_ingredients', 'is_removable');
+            foreach ($ingredientsData as $ing) {
+                $pivotData = [
+                    'portion' => $ing['portion'],
+                    'designated_cost' => $ing['designated_cost'],
+                ];
+                if ($hasIsRemovable) {
+                    $pivotData['is_removable'] = !empty($ing['is_removable']);
+                }
+                $dish->ingredients()->attach($ing['product_id'], $pivotData);
+            }
+
+            // Vincular grupos de modificadores si vienen en la petición y existe la tabla
+            if (
+                isset($data['modifier_group_ids'])
+                && is_array($data['modifier_group_ids'])
+                && Schema::hasTable('dish_modifier_group')
+            ) {
                 $dish->modifierGroups()->sync($data['modifier_group_ids']);
             }
 
             // Limpiar caché de categorías de platos
             \Cache::forget('resources.categories.dishes');
 
-            return $dish->load(['category', 'ingredients', 'modifierGroups.options.product']);
+            return $dish->load($this->getAvailableRelations());
         });
     }
 
@@ -142,42 +184,63 @@ class DishServices implements DishContract
             }
             $data['cpv'] = $data['cpv'] ?? ($data['cost_price'] - $cpvDeduction);
 
-            // Actualizar plato
-            $dish->update([
+            $dishAttributes = [
                 'name' => $data['name'],
                 'cost_price' => $data['cost_price'],
-                'cpv' => $data['cpv'],
                 'suggested_price' => $data['suggested_price'],
                 'designated_price' => $data['designated_price'],
                 'percentage_profit' => $data['percentage_profit'],
                 'category_id' => $data['category_id'] ?? null,
                 'status' => $data['status'] ?? 1,
-                'iva' => $data['iva'] ?? $dish->iva,
-                'tax_rate' => $data['tax_rate'] ?? $dish->tax_rate,
-                'preparation_time_minutes' => $data['preparation_time_minutes'] ?? $dish->preparation_time_minutes,
-                'kitchen_station_id' => $data['kitchen_station_id'] ?? $dish->kitchen_station_id,
-            ]);
+            ];
+
+            if (Schema::hasColumn('dishes', 'cpv')) {
+                $dishAttributes['cpv'] = $data['cpv'];
+            }
+            if (Schema::hasColumn('dishes', 'iva')) {
+                $dishAttributes['iva'] = $data['iva'] ?? $dish->iva;
+            }
+            if (Schema::hasColumn('dishes', 'tax_rate')) {
+                $dishAttributes['tax_rate'] = $data['tax_rate'] ?? $dish->tax_rate;
+            }
+            if (Schema::hasColumn('dishes', 'preparation_time_minutes')) {
+                $dishAttributes['preparation_time_minutes'] = $data['preparation_time_minutes'] ?? $dish->preparation_time_minutes;
+            }
+            if (Schema::hasColumn('dishes', 'kitchen_station_id')) {
+                $dishAttributes['kitchen_station_id'] = $data['kitchen_station_id'] ?? $dish->kitchen_station_id;
+            }
+
+            // Actualizar plato
+            $dish->update($dishAttributes);
 
             // Sincronizar ingredientes
+            $hasIsRemovable = Schema::hasColumn('dish_ingredients', 'is_removable');
             $syncData = [];
             foreach ($ingredientsData as $ing) {
-                $syncData[$ing['product_id']] = [
+                $pivotData = [
                     'portion' => $ing['portion'],
                     'designated_cost' => $ing['designated_cost'],
-                    'is_removable' => !empty($ing['is_removable']),
                 ];
+                if ($hasIsRemovable) {
+                    $pivotData['is_removable'] = !empty($ing['is_removable']);
+                }
+                $syncData[$ing['product_id']] = $pivotData;
             }
             $dish->ingredients()->sync($syncData);
 
-            // Sincronizar grupos de modificadores si vienen en la petición
-            if (isset($data['modifier_group_ids']) && is_array($data['modifier_group_ids'])) {
+            // Sincronizar grupos de modificadores si vienen en la petición y existe la tabla
+            if (
+                isset($data['modifier_group_ids'])
+                && is_array($data['modifier_group_ids'])
+                && Schema::hasTable('dish_modifier_group')
+            ) {
                 $dish->modifierGroups()->sync($data['modifier_group_ids']);
             }
 
             // Limpiar caché de categorías de platos
             \Cache::forget('resources.categories.dishes');
 
-            return $dish->load(['category', 'ingredients', 'modifierGroups.options.product']);
+            return $dish->load($this->getAvailableRelations());
         });
     }
 
@@ -188,7 +251,9 @@ class DishServices implements DishContract
     {
         return DB::transaction(function () use ($dish) {
             $dish->ingredients()->detach();
-            $dish->modifierGroups()->detach();
+            if (Schema::hasTable('dish_modifier_group')) {
+                $dish->modifierGroups()->detach();
+            }
             
             // Limpiar caché de categorías de platos
             \Cache::forget('resources.categories.dishes');
@@ -224,15 +289,20 @@ class DishServices implements DishContract
                     ->delete();
             }
 
-            // Cargar todos los platos con sus ingredientes restantes para recalcular costos
-            $dishes = Dish::select([
+            $hasCpvColumn = Schema::hasColumn('dishes', 'cpv');
+            $dishSelectColumns = [
                 'id',
                 'cost_price',
-                'cpv',
                 'suggested_price',
                 'designated_price',
                 'percentage_profit',
-            ])->with([
+            ];
+            if ($hasCpvColumn) {
+                $dishSelectColumns[] = 'cpv';
+            }
+
+            // Cargar todos los platos con sus ingredientes restantes para recalcular costos
+            $dishes = Dish::select($dishSelectColumns)->with([
                 'ingredients' => function ($query) {
                     $query->select([
                         'products.id',
@@ -274,11 +344,15 @@ class DishServices implements DishContract
                 $newSuggestedPrice = round($newCostPrice * $profitMultiplier, 2);
 
                 // Actualizar únicamente costos y sugerido, manteniendo intacto designated_price (precio de venta)
-                $dish->update([
+                $updateFields = [
                     'cost_price' => $newCostPrice,
-                    'cpv' => $newCostPrice,
                     'suggested_price' => $newSuggestedPrice,
-                ]);
+                ];
+                if ($hasCpvColumn) {
+                    $updateFields['cpv'] = $newCostPrice;
+                }
+
+                $dish->update($updateFields);
 
                 $recalculatedDishesCount++;
             }

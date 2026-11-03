@@ -7,6 +7,7 @@ namespace App\Services\Restaurant;
 use App\Contracts\KitchenStationServiceInterface;
 use App\Models\KitchenStation;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Schema;
 
 class KitchenStationService implements KitchenStationServiceInterface
 {
@@ -15,7 +16,16 @@ class KitchenStationService implements KitchenStationServiceInterface
      */
     public function getAll(): Collection
     {
-        return KitchenStation::withCount('dishes')
+        if (!Schema::hasTable('kitchen_stations')) {
+            return new Collection();
+        }
+
+        $query = KitchenStation::query();
+        if (Schema::hasTable('dishes') && Schema::hasColumn('dishes', 'kitchen_station_id')) {
+            $query->withCount('dishes');
+        }
+
+        return $query
             ->orderBy('sort_order', 'asc')
             ->orderBy('id', 'asc')
             ->get();
@@ -26,7 +36,16 @@ class KitchenStationService implements KitchenStationServiceInterface
      */
     public function find(int $id): ?KitchenStation
     {
-        return KitchenStation::withCount('dishes')->find($id);
+        if (!Schema::hasTable('kitchen_stations')) {
+            return null;
+        }
+
+        $query = KitchenStation::query();
+        if (Schema::hasTable('dishes') && Schema::hasColumn('dishes', 'kitchen_station_id')) {
+            $query->withCount('dishes');
+        }
+
+        return $query->find($id);
     }
 
     /**
