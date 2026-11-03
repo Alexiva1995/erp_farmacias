@@ -25,6 +25,15 @@ class Product extends Model
         static::addGlobalScope('not_deleted', function ($builder) {
             $builder->where('is_deleted', false);
         });
+
+        static::saving(function ($product) {
+            $checkColumns = ['is_chronic', 'treatment_duration_days', 'consumption_type'];
+            foreach ($checkColumns as $col) {
+                if (array_key_exists($col, $product->attributes) && !\Illuminate\Support\Facades\Schema::hasColumn('products', $col)) {
+                    unset($product->attributes[$col]);
+                }
+            }
+        });
     }
 
     /**
@@ -101,8 +110,6 @@ class Product extends Model
      */
     protected $attributes = [
         'stock' => 0,
-        'is_chronic' => false,
-        'treatment_duration_days' => 30,
     ];
 
     protected $appends = ['formatted_details', 'price_bs', 'price_cop', 'sale_price_cop', 'unit_cost_cop', 'discount_percentage', 'discount_type', 'discount_source_id'];
@@ -585,7 +592,17 @@ class Product extends Model
     /**
      * Obtener las ubicaciones únicas de los lotes del producto.
      */
-    public function getLotLocationsAttribute(): array
+    public function getIsChronicAttribute($value): bool
+    {
+        return (bool) $value;
+    }
+
+    public function getTreatmentDurationDaysAttribute($value): int
+    {
+        return (int) ($value ?: 30);
+    }
+
+        public function getLotLocationsAttribute(): array
     {
         $locations = [];
         if ($this->relationLoaded('lots')) {
