@@ -145,4 +145,93 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             return true;
         });
     }
+
+    /**
+     * Crear una sub-receta (plato base status=3) y generar automáticamente su producto de inventario elaborado
+     * para que pueda ser utilizado como insumo en cualquier otro plato del menú.
+     */
+    public function createSubRecipe(array $data): Dish
+    {
+        return DB::transaction(function () use ($data) {
+            $yieldQty = (float) ($data['expected_yield_quantity'] ?? 1.0);
+            if ($yieldQty <= 0) {
+                $yieldQty = 1.0;
+            }
+
+            $unitMeasure = !empty($data['unit_of_measure']) ? trim($data['unit_of_measure']) : 'porción';
+            $shelfLife = (int) ($data['shelf_life_days'] ?? 7);
+
+            // Calcular costo total sumando los insumos de la receta
+            $totalCost = 0.0;
+            $ingredientsData = $data['ingredients'] ?? [];
+            foreach ($ingredientsData as $ing) {
+                $totalCost += (float) ($ing['designated_cost'] ?? 0);
+            }
+
+            // Costo unitario por cada unidad/porción resultante
+            $unitCost = $yieldQty > 0 ? round($totalCost / $yieldQty, 4) : $totalCost;
+
+            // 1. Crear producto de inventario de salida marcado como sub-receta
+            $outputProduct = Product::create([
+                'name' => trim($data['name']) . ' [Preparación Cocina]',
+                'category_id' => $data['category_id'] ?? null,
+                'unit_cost' => $unitCost,
+                'sale_price' => $unitCost,
+                'stock' => 0,
+                'presentation' => 1,
+                'unit_of_measure' => $unitMeasure,
+                'is_active' => true,
+                'is_deleted' => false,
+            ]);
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'is_sub_recipe')) {
+                $outputProduct->is_sub_recipe = true;
+                $outputProduct->save();
+            }
+
+            // 2. Crear el plato configurado como plato base (status=3) y vinculado a su producto de salida
+            $dishAttributes = [
+                'name' => trim($data['name']),
+                'cost_price' => round($totalCost, 2),
+                'suggested_price' => round($totalCost, 2),
+                'designated_price' => round($totalCost, 2),
+                'percentage_profit' => 1.0,
+                'category_id' => $data['category_id'] ?? null,
+                'status' => 3, // Base Dish / Sub-receta
+            ];
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'kitchen_station_id')) {
+                $dishAttributes['kitchen_station_id'] = $data['kitchen_station_id'] ?? null;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'output_product_id')) {
+                $dishAttributes['output_product_id'] = $outputProduct->id;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'expected_yield_quantity')) {
+                $dishAttributes['expected_yield_quantity'] = $yieldQty;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'shelf_life_days')) {
+                $dishAttributes['shelf_life_days'] = $shelfLife;
+            }
+
+            $dish = Dish::create($dishAttributes);
+
+            // 3. Vincular los ingredientes a la sub-receta
+            $hasIsRemovable = \Illuminate\Support\Facades\Schema::hasColumn('dish_ingredients', 'is_removable');
+            foreach ($ingredientsData as $ing) {
+                $pivotData = [
+                    'portion' => $ing['portion'],
+                    'designated_cost' => $ing['designated_cost'],
+                ];
+                if ($hasIsRemovable) {
+                    $pivotData['is_removable'] = false;
+                }
+                $dish->ingredients()->attach($ing['product_id'], $pivotData);
+            }
+
+            // Limpiar caché de categorías de platos
+            \Cache::forget('resources.categories.dishes');
+
+            return $dish->load(['ingredients', 'outputProduct', 'category']);
+        });
+    }
 }

@@ -379,6 +379,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::prefix("restaurant/production")->group(function () {
         Route::get("orders", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "listProduction"]);
         Route::post("orders", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "storeProduction"]);
+        Route::post("sub-recipes", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "storeSubRecipe"]);
         Route::delete("orders/{productionOrder}", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "cancelProduction"]);
     });
 

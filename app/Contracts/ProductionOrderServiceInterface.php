@@ -2,6 +2,7 @@
 
 namespace App\Contracts;
 
+use App\Models\Dish;
 use App\Models\ProductionOrder;
 
 interface ProductionOrderServiceInterface
@@ -11,4 +12,6 @@ interface ProductionOrderServiceInterface
     public function createAndExecute(array $data, int $userId): ProductionOrder;
 
     public function cancelOrder(ProductionOrder $productionOrder): bool;
+
+    public function createSubRecipe(array $data): Dish;
 }

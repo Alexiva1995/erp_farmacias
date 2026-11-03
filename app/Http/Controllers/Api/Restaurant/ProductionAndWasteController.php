@@ -7,8 +7,10 @@ use App\Contracts\ProductionOrderServiceInterface;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Restaurant\StoreKitchenWasteRequest;
 use App\Http\Requests\Restaurant\StoreProductionOrderRequest;
+use App\Http\Requests\Restaurant\StoreSubRecipeRequest;
 use App\Http\Resources\Restaurant\KitchenWasteResource;
 use App\Http\Resources\Restaurant\ProductionOrderResource;
+use App\Http\Resources\Restaurant\SubRecipeResource;
 use App\Models\ProductionOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,6 +43,16 @@ class ProductionAndWasteController extends Controller
     {
         $this->productionService->cancelOrder($productionOrder);
         return response()->json(['message' => 'Orden de producción cancelada.']);
+    }
+
+    public function storeSubRecipe(StoreSubRecipeRequest $request): JsonResponse
+    {
+        $subRecipe = $this->productionService->createSubRecipe($request->validated());
+
+        return response()->json([
+            'message' => 'Sub-receta creada y producto de inventario configurado exitosamente.',
+            'data' => new SubRecipeResource($subRecipe),
+        ], 201);
     }
 
     public function listWaste(Request $request): JsonResponse
