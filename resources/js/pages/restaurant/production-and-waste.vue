@@ -60,7 +60,7 @@
               <th class="text-center">Multiplicador</th>
               <th class="text-center">Cantidad Real</th>
               <th class="text-right">Costo Unit. Calculado</th>
-              <th class="text-right">Costo Total USD</th>
+              <th class="text-right">Costo Total</th>
               <th>Lote Generado</th>
               <th>Estado</th>
               <th>Fecha</th>
@@ -75,8 +75,8 @@
               </td>
               <td class="text-center">{{ order.batch_multiplier }}x</td>
               <td class="text-center font-weight-bold text-success">{{ order.actual_quantity }}</td>
-              <td class="text-right">${{ Number(order.unit_cost_calculated || 0).toFixed(4) }}</td>
-              <td class="text-right font-weight-bold">${{ Number(order.total_production_cost || 0).toFixed(2) }}</td>
+              <td class="text-right">{{ formatCurrency(order.unit_cost_calculated) }}</td>
+              <td class="text-right font-weight-bold text-primary">{{ formatCurrency(order.total_production_cost) }}</td>
               <td>
                 <v-chip size="x-small" color="primary" variant="tonal">
                   {{ order.lot_number || 'N/A' }}
@@ -122,7 +122,7 @@
               <th>Estación</th>
               <th class="text-center">Cantidad</th>
               <th class="text-right">Costo Unitario</th>
-              <th class="text-right">Pérdida Total USD</th>
+              <th class="text-right">Pérdida Total</th>
               <th>Motivo de Baja</th>
               <th>Reportado Por</th>
               <th>Fecha</th>
@@ -138,9 +138,9 @@
               <td class="font-weight-medium">{{ waste.item_name }}</td>
               <td>{{ waste.station_name }}</td>
               <td class="text-center font-weight-bold text-error">{{ waste.quantity }}</td>
-              <td class="text-right">${{ Number(waste.unit_cost || 0).toFixed(2) }}</td>
+              <td class="text-right">{{ formatCurrency(waste.unit_cost) }}</td>
               <td class="text-right font-weight-bold text-error">
-                -${{ Number(waste.total_loss_usd || 0).toFixed(2) }}
+                -{{ formatCurrency(waste.total_loss_usd) }}
               </td>
               <td>
                 <v-chip size="small" color="error" variant="outlined">
@@ -163,14 +163,24 @@
     <!-- DIÁLOGO: CREAR NUEVA SUB-RECETA (RECETA BASE PARA PLATOS) -->
     <v-dialog v-model="showSubRecipeModal" max-width="850px" persistent scrollable>
       <v-card class="rounded-lg overflow-hidden">
-        <v-card-title class="bg-primary text-white py-3 px-4 d-flex align-center justify-space-between">
-          <div class="d-flex align-center gap-2">
-            <v-icon>tabler-clipboard-list</v-icon>
-            <span class="text-h6 font-weight-bold">Crear Sub-Receta / Preparación Base</span>
+        <v-card-title class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm text-white">
+            <v-avatar color="white" variant="flat" size="44" class="me-4 elevation-2">
+              <v-icon icon="tabler-clipboard-list" color="primary" size="26" />
+            </v-avatar>
+            <div class="flex-grow-1 text-white">
+              <h2 class="text-h6 font-weight-black mb-0 text-uppercase text-white" style="color: #ffffff !important;">
+                Crear Sub-Receta / Preparación Base
+              </h2>
+              <span class="text-super-xs opacity-75 uppercase font-weight-bold text-white" style="color: #ffffff !important;">
+                Configuración de ingredientes y rendimiento de producción
+              </span>
+            </div>
+            <v-spacer />
+            <v-btn icon variant="tonal" color="white" size="small" class="rounded-lg ms-3" @click="showSubRecipeModal = false">
+              <v-icon>tabler-x</v-icon>
+            </v-btn>
           </div>
-          <v-btn icon variant="text" color="white" size="small" @click="showSubRecipeModal = false">
-            <v-icon>tabler-x</v-icon>
-          </v-btn>
         </v-card-title>
 
         <v-card-text class="pa-4 bg-light" style="max-height: 78vh; overflow-y: auto;">
@@ -179,7 +189,7 @@
             <v-card variant="flat" class="pa-4 bg-white border rounded-lg mb-4">
               <h3 class="text-subtitle-2 font-weight-bold text-uppercase mb-3">Información de la Preparación</h3>
               <v-row dense>
-                <v-col cols="12" sm="8">
+                <v-col cols="12">
                   <v-text-field
                     v-model="subRecipeForm.name"
                     label="Nombre de la Receta / Preparación"
@@ -187,19 +197,6 @@
                     density="compact"
                     variant="outlined"
                     required
-                  />
-                </v-col>
-                <v-col cols="12" sm="4">
-                  <v-select
-                    v-model="subRecipeForm.category_id"
-                    :items="categories"
-                    item-title="name"
-                    item-value="id"
-                    label="Categoría"
-                    placeholder="Seleccionar"
-                    density="compact"
-                    variant="outlined"
-                    clearable
                   />
                 </v-col>
 
@@ -242,13 +239,12 @@
 
             <!-- Buscador e Insumos -->
             <v-card variant="flat" class="pa-4 bg-white border rounded-lg mb-4">
-              <div class="d-flex align-center justify-space-between mb-3">
+              <div class="mb-3">
                 <h3 class="text-subtitle-2 font-weight-bold text-uppercase mb-0">Insumos que componen esta Receta</h3>
-                <span class="text-caption text-medium-emphasis">Se descontarán al producir lotes</span>
               </div>
 
               <v-row dense align="center">
-                <v-col cols="12" sm="6">
+                <v-col cols="12" sm="7">
                   <v-autocomplete
                     v-model="selectedIngredient"
                     v-model:search="ingredientSearch"
@@ -266,7 +262,7 @@
                   />
                 </v-col>
 
-                <v-col cols="6" sm="3">
+                <v-col cols="9" sm="4">
                   <v-text-field
                     v-model.number="ingredientPortion"
                     label="Cantidad / Porción"
@@ -280,17 +276,18 @@
                   />
                 </v-col>
 
-                <v-col cols="6" sm="3">
+                <v-col cols="3" sm="1" class="d-flex align-center justify-center">
                   <v-btn
-                    color="success"
-                    block
-                    height="40"
+                    color="primary"
+                    icon
                     variant="flat"
-                    prepend-icon="tabler-plus"
+                    height="40"
+                    width="40"
+                    class="rounded-lg shadow-primary"
                     :disabled="!selectedIngredient || !ingredientPortion"
                     @click="addIngredientToSubRecipe"
                   >
-                    Añadir Insumo
+                    <v-icon size="20">tabler-plus</v-icon>
                   </v-btn>
                 </v-col>
               </v-row>
@@ -310,8 +307,8 @@
                   <tr v-for="(ing, idx) in subRecipeForm.ingredients" :key="idx">
                     <td class="font-weight-medium">{{ ing.name }}</td>
                     <td class="text-center">{{ ing.portion }} {{ ing.unit_of_measure }}</td>
-                    <td class="text-right">${{ Number(ing.unit_cost || 0).toFixed(2) }}</td>
-                    <td class="text-right font-weight-bold text-primary">${{ Number(ing.designated_cost || 0).toFixed(2) }}</td>
+                    <td class="text-right">{{ formatCurrency(ing.unit_cost) }}</td>
+                    <td class="text-right font-weight-bold text-primary">{{ formatCurrency(ing.designated_cost) }}</td>
                     <td class="text-center">
                       <v-btn icon size="x-small" color="error" variant="text" @click="subRecipeForm.ingredients.splice(idx, 1)">
                         <v-icon size="16">tabler-trash</v-icon>
@@ -328,13 +325,13 @@
 
               <!-- Resumen de Costos de la Receta -->
               <div class="d-flex flex-wrap justify-space-between align-center mt-3 pa-3 bg-light rounded border">
-                <div>
-                  <span class="text-caption text-medium-emphasis">Costo Total de Preparación:</span>
-                  <strong class="ms-2 text-primary">${{ subRecipeTotalCost.toFixed(2) }} USD</strong>
+                <div class="d-flex align-center">
+                  <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">COSTO TOTAL:</span>
+                  <strong class="ms-2 text-subtitle-1 font-weight-black text-primary">{{ formatCurrency(subRecipeTotalCost) }}</strong>
                 </div>
-                <div>
-                  <span class="text-caption text-medium-emphasis">Costo Unitario por {{ subRecipeForm.unit_of_measure }}:</span>
-                  <strong class="ms-2 text-success">${{ subRecipeUnitCost.toFixed(4) }} USD</strong>
+                <div class="d-flex align-center">
+                  <span class="text-caption font-weight-bold text-uppercase text-medium-emphasis">COSTO UNITARIO:</span>
+                  <strong class="ms-2 text-subtitle-1 font-weight-black text-success">{{ formatCurrency(subRecipeUnitCost) }}</strong>
                 </div>
               </div>
             </v-card>
@@ -345,9 +342,14 @@
               size="large"
               block
               height="48"
-              class="font-weight-bold"
+              class="font-weight-bold shadow-primary text-uppercase"
               :loading="submittingSubRecipe"
               :disabled="!subRecipeForm.name || !subRecipeForm.ingredients.length"
+            >
+              Guardar Sub-Receta y Habilitar en Platos
+            </v-btn>
+          </v-form>
+        </v-card-text>
             >
               Guardar Sub-Receta y Habilitar en Platos
             </v-btn>
@@ -358,15 +360,22 @@
 
     <!-- DIÁLOGO: CREAR ORDEN DE PRODUCCIÓN -->
     <v-dialog v-model="showProductionModal" max-width="550">
-      <v-card>
-        <v-card-title class="bg-primary text-white py-3 px-4 d-flex align-center justify-space-between">
-          <div class="d-flex align-center gap-2">
-            <v-icon>tabler-tools-kitchen-2</v-icon>
-            <span>Nueva Producción de Sub-Receta</span>
+      <v-card class="rounded-lg overflow-hidden">
+        <v-card-title class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm text-white">
+            <v-avatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+              <v-icon icon="tabler-tools-kitchen-2" color="primary" size="22" />
+            </v-avatar>
+            <div class="flex-grow-1 text-white">
+              <h2 class="text-subtitle-1 font-weight-black mb-0 text-uppercase text-white" style="color: #ffffff !important;">
+                Nueva Producción de Sub-Receta
+              </h2>
+            </div>
+            <v-spacer />
+            <v-btn icon variant="tonal" color="white" size="small" class="rounded-lg" @click="showProductionModal = false">
+              <v-icon>tabler-x</v-icon>
+            </v-btn>
           </div>
-          <v-btn icon variant="text" color="white" size="small" @click="showProductionModal = false">
-            <v-icon>tabler-x</v-icon>
-          </v-btn>
         </v-card-title>
         <v-card-text class="pa-4">
           <v-form @submit.prevent="submitProduction">
@@ -426,15 +435,22 @@
 
     <!-- DIÁLOGO: REGISTRAR MERMA -->
     <v-dialog v-model="showWasteModal" max-width="500">
-      <v-card>
-        <v-card-title class="bg-error text-white py-3 px-4 d-flex align-center justify-space-between">
-          <div class="d-flex align-center gap-2">
-            <v-icon>tabler-trash-x</v-icon>
-            <span>Registrar Merma / Desperdicio</span>
+      <v-card class="rounded-lg overflow-hidden">
+        <v-card-title class="pa-0">
+          <div class="bg-error pa-4 d-flex align-center shadow-sm text-white">
+            <v-avatar color="white" variant="flat" size="40" class="me-3 elevation-2">
+              <v-icon icon="tabler-trash-x" color="error" size="22" />
+            </v-avatar>
+            <div class="flex-grow-1 text-white">
+              <h2 class="text-subtitle-1 font-weight-black mb-0 text-uppercase text-white" style="color: #ffffff !important;">
+                Registrar Merma / Desperdicio
+              </h2>
+            </div>
+            <v-spacer />
+            <v-btn icon variant="tonal" color="white" size="small" class="rounded-lg" @click="showWasteModal = false">
+              <v-icon>tabler-x</v-icon>
+            </v-btn>
           </div>
-          <v-btn icon variant="text" color="white" size="small" @click="showWasteModal = false">
-            <v-icon>tabler-x</v-icon>
-          </v-btn>
         </v-card-title>
         <v-card-text class="pa-4">
           <v-form @submit.prevent="submitWaste">
@@ -496,6 +512,55 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import axios from '@axios'
 import { toast } from '@/plugins/sweetalert'
+import { useBrandingStore } from '@/stores/useBrandingStore'
+import { formatCurrency as formatRawCurrency } from '@/utils/currencyFormatter'
+
+const brandingStore = useBrandingStore()
+
+const defaultCurrency = computed(() => brandingStore.settings?.default_currency || 'USD')
+
+const activeExchangeRate = computed(() => {
+  const currency = defaultCurrency.value
+  if (currency === 'USD') return 1
+
+  const rates = Array.isArray(brandingStore.exchangeRates) ? brandingStore.exchangeRates : []
+
+  if (currency === 'COP') {
+    const copObj = rates.find((r) => r && (r.currency_code === 'COP' || r.currency_code === 'COPC'))
+    return Number(copObj?.rate || 4000)
+  }
+
+  if (currency === 'BS' || currency === 'Bs') {
+    const bsObj = rates.find((r) => r && r.currency_code === 'BS')
+    return Number(bsObj?.rate || 1)
+  }
+
+  return 1
+})
+
+const formatCurrency = (price) => {
+  const numPrice = Number(price)
+  if (isNaN(numPrice)) return '—'
+
+  const currency = defaultCurrency.value
+  if (currency === 'USD') {
+    return formatRawCurrency(numPrice, 'USD')
+  }
+
+  const rate = activeExchangeRate.value
+
+  if (currency === 'COP') {
+    const rawCop = numPrice * rate
+    const rounded = rawCop >= 100 ? Math.ceil(rawCop / 100) * 100 : Math.round(rawCop)
+    return formatRawCurrency(rounded, 'COP')
+  }
+
+  if (currency === 'BS' || currency === 'Bs') {
+    return formatRawCurrency(numPrice * rate, 'BS')
+  }
+
+  return formatRawCurrency(numPrice, currency)
+}
 
 const activeTab = ref('production')
 const productionOrders = ref([])
@@ -711,6 +776,7 @@ const submitWaste = async () => {
 }
 
 onMounted(() => {
+  brandingStore.fetchSettings?.()
   loadData()
 })
 </script>
@@ -721,5 +787,18 @@ onMounted(() => {
 }
 .bg-light {
   background-color: #f8fafc !important;
+}
+.header-gradient {
+  background: linear-gradient(135deg, #7A0099 0%, #E20074 100%) !important;
+}
+.shadow-sm {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+.text-super-xs {
+  font-size: 0.7rem !important;
+  letter-spacing: 0.5px;
 }
 </style>
