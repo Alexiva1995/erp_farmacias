@@ -115,6 +115,7 @@ const currentDish = ref({
 const formErrors = ref({});
 const isSaving = ref(false);
 const isRecalculating = ref(false);
+const isDuplicatedDish = ref(false);
 
 // Valor editable de Precio Menú (Venta) expresado en la moneda principal configurada
 const displayDesignatedPrice = computed({
@@ -387,8 +388,8 @@ const recalculateDishTotals = () => {
   const profitMultiplier = parseFloat(currentDish.value.percentage_profit || 0);
   currentDish.value.suggested_price = parseFloat((cost * profitMultiplier).toFixed(2));
   
-  // Por defecto, igualar precio designado al sugerido si es un plato nuevo
-  if (!currentDish.value.id) {
+  // Por defecto, igualar precio designado al sugerido si es un plato nuevo (no duplicado)
+  if (!currentDish.value.id && !isDuplicatedDish.value) {
     currentDish.value.designated_price = currentDish.value.suggested_price;
   }
 };
@@ -445,6 +446,7 @@ const updateTableOptions = (options) => {
 
 // Acciones de dialogos
 const handleAddDish = () => {
+  isDuplicatedDish.value = false;
   currentDish.value = {
     id: null,
     name: "",
@@ -468,6 +470,7 @@ const handleAddDish = () => {
 
 const handleEditDish = async (dish) => {
   try {
+    isDuplicatedDish.value = false;
     const { data } = await axios.get(`/dishes/${dish.id}`);
     const details = data.data;
 
@@ -503,6 +506,49 @@ const handleEditDish = async (dish) => {
   } catch (error) {
     console.error("Error al cargar detalles del plato:", error);
     toast.error("No se pudo cargar la información del plato.");
+  }
+};
+
+// Duplicar un plato existente precargando todos sus ingredientes y precios en el modal
+const handleDuplicateDish = async (dish) => {
+  try {
+    isDuplicatedDish.value = true;
+    const { data } = await axios.get(`/dishes/${dish.id}`);
+    const details = data.data;
+
+    currentDish.value = {
+      id: null,
+      name: `${details.name} (Copia)`,
+      category_id: details.category_id,
+      percentage_profit: details.percentage_profit,
+      cost_price: details.cost_price,
+      suggested_price: details.suggested_price,
+      designated_price: details.designated_price,
+      status: details.status,
+      iva: Boolean(details.iva),
+      tax_rate: details.tax_rate !== null && details.tax_rate !== undefined ? details.tax_rate : 16.0,
+      preparation_time_minutes: details.preparation_time_minutes || 15,
+      kitchen_station_id: details.kitchen_station_id || null,
+      ingredients: details.ingredients.map((ing) => ({
+        product_id: ing.id,
+        name: ing.name,
+        portion: ing.portion,
+        unit_cost: ing.unit_cost,
+        presentation: ing.presentation,
+        unit_of_measure: ing.unit_of_measure,
+        designated_cost: ing.designated_cost,
+        is_removable: Boolean(ing.is_removable),
+        cpv_deductible: false,
+      })),
+    };
+    isBaseDish.value = details.status === 3;
+    dishStatus.value = details.status === 3 ? 1 : details.status;
+    formErrors.value = {};
+    isEditDialogVisible.value = true;
+    toast.info(`Plato "${details.name}" cargado para duplicar.`);
+  } catch (error) {
+    console.error("Error al duplicar plato:", error);
+    toast.error("No se pudo cargar la información del plato para duplicar.");
   }
 };
 
@@ -771,10 +817,13 @@ onUnmounted(() => {
 
           <template #item.actions="{ item }">
             <div class="d-flex gap-2 justify-end">
-              <IconBtn color="warning" class="bg-warning-light" @click="handleEditDish(item)">
+              <IconBtn color="info" class="bg-info-light" title="Duplicar plato" @click="handleDuplicateDish(item)">
+                <VIcon icon="tabler-copy" />
+              </IconBtn>
+              <IconBtn color="warning" class="bg-warning-light" title="Editar plato" @click="handleEditDish(item)">
                 <VIcon icon="tabler-edit" />
               </IconBtn>
-              <IconBtn color="error" class="bg-error-light" @click="handleDeleteDish(item)">
+              <IconBtn color="error" class="bg-error-light" title="Eliminar plato" @click="handleDeleteDish(item)">
                 <VIcon icon="tabler-trash" />
               </IconBtn>
             </div>
@@ -833,11 +882,22 @@ onUnmounted(() => {
             <!-- Acciones Rectangulares al 100% -->
             <div class="d-flex border-t border-opacity-10">
               <VBtn 
+                color="info" 
+                variant="text" 
+                class="flex-grow-1 rounded-0" 
+                height="40"
+                icon="tabler-copy"
+                title="Duplicar plato"
+                @click="handleDuplicateDish(item)"
+              />
+              <VDivider vertical class="border-opacity-10" />
+              <VBtn 
                 color="warning" 
                 variant="text" 
                 class="flex-grow-1 rounded-0" 
                 height="40"
                 icon="tabler-edit" 
+                title="Editar plato"
                 @click="handleEditDish(item)"
               />
               <VDivider vertical class="border-opacity-10" />
@@ -847,6 +907,7 @@ onUnmounted(() => {
                 class="flex-grow-1 rounded-0" 
                 height="40"
                 icon="tabler-trash" 
+                title="Eliminar plato"
                 @click="handleDeleteDish(item)"
               />
             </div>
@@ -1309,6 +1370,10 @@ onUnmounted(() => {
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase;
+}
+
+.bg-info-light {
+  background-color: rgba(var(--v-theme-info), 0.1) !important;
 }
 
 .bg-warning-light {
