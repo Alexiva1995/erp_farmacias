@@ -350,11 +350,6 @@
             </v-btn>
           </v-form>
         </v-card-text>
-            >
-              Guardar Sub-Receta y Habilitar en Platos
-            </v-btn>
-          </v-form>
-        </v-card-text>
       </v-card>
     </v-dialog>
 
