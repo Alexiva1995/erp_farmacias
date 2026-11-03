@@ -113,22 +113,28 @@ class OrderActionService
                 ]);
             }
 
+            $detailsWith = [
+                'product' => function ($q) {
+                    $q->with('laboratory')
+                        ->withSum('lots', 'quantity');
+                },
+            ];
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('dishes')) {
+                $detailsWith['dish'] = function ($q) {
+                    $q->with('category');
+                };
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('courts')) {
+                $detailsWith[] = 'court';
+            }
+
             $withRelations = [
                 'client',
                 'seller',
-                'details' => function ($query) {
-                    $query->with([
-                        'product' => function ($q) {
-                            $q->with('laboratory')
-                                ->withSum('lots', 'quantity');
-                        },
-                        // Cargar relación de plato para ítems de menú de restaurante
-                        'dish' => function ($q) {
-                            $q->with('category');
-                        },
-                        // Cargar relación de cancha para alquiler deportivo
-                        'court',
-                    ]);
+                'details' => function ($query) use ($detailsWith) {
+                    $query->with($detailsWith);
                 }
             ];
 
@@ -372,7 +378,7 @@ class OrderActionService
                     $orderItem->quantity = $requestedQuantity;
                     // Pack price handling (unit price)
                     $orderItem->price = $unitPriceAtOrder;
-                    $orderItem->unit_cost = $product->unit_cost; 
+                    $orderItem->unit_cost = $product->unit_cost ?? 0;
                     $orderItem->unit_price_usd = $price_usd;
                     $orderItem->save();
                 } else {
@@ -380,7 +386,7 @@ class OrderActionService
                         'product_id' => $validatedData['product_id'],
                         'quantity' => $requestedQuantity,
                         'price' => $unitPriceAtOrder,
-                        'unit_cost' => $product->unit_cost, 
+                        'unit_cost' => $product->unit_cost ?? 0,
                         'unit_price_usd' => $price_usd,
                         'pack_id' => $packId,
                         'product_type' => 'pack',
@@ -393,7 +399,9 @@ class OrderActionService
                         $q->withSum('lots', 'quantity');
                     }
                 ]);
-                $orderItem->product->valid_stock_sum = $orderItem->product->lots_sum_quantity;
+                if ($orderItem->product) {
+                    $orderItem->product->valid_stock_sum = $orderItem->product->lots_sum_quantity ?? 0;
+                }
                 return $orderItem;
             }
 
@@ -417,15 +425,18 @@ class OrderActionService
             $now = Carbon::now();
 
             // Individual Offer
-            $individualOffer = IndividualOffer::where('product_id', $product->id)
-                ->where('start_date', '<=', $now)
-                ->where('end_date', '>=', $now)
-                ->orderBy('discount_percent', 'desc')
-                ->first();
+            $individualOffer = null;
+            if (\Illuminate\Support\Facades\Schema::hasTable('individual_offers')) {
+                $individualOffer = IndividualOffer::where('product_id', $product->id)
+                    ->where('start_date', '<=', $now)
+                    ->where('end_date', '>=', $now)
+                    ->orderBy('discount_percent', 'desc')
+                    ->first();
+            }
 
             // Category Offer
             $categoryOffer = null;
-            if ($product->category_id) {
+            if ($product->category_id && \Illuminate\Support\Facades\Schema::hasTable('category_offers')) {
                 $categoryOffer = CategoryOffer::where('category_id', $product->category_id)
                     ->where('is_active', true)
                     ->where('start_date', '<=', $now)
@@ -450,7 +461,7 @@ class OrderActionService
             $promoUnitsRemaining = null; // null means unlimited
             
             if ($individualOffer) {
-                if ($individualOffer->one_per_customer) {
+                if (!empty($individualOffer->one_per_customer)) {
                     $hasBought = false;
                     if ($order->client_id) {
                         $hasBought = \App\Models\Order::where('client_id', $order->client_id)
@@ -484,9 +495,12 @@ class OrderActionService
             }
 
             // 2. Fetch Rules and Lots
-            $expirationOffers = \App\Models\ExpirationOffer::where('is_active', true)
-                ->orderBy('months_to_expiration', 'asc')
-                ->get();
+            $expirationOffers = collect();
+            if (\Illuminate\Support\Facades\Schema::hasTable('expiration_offers')) {
+                $expirationOffers = \App\Models\ExpirationOffer::where('is_active', true)
+                    ->orderBy('months_to_expiration', 'asc')
+                    ->get();
+            }
 
             $lots = $product->lots()->where('quantity', '>', 0)->orderBy('expiration_date', 'asc')->get();
 
@@ -502,9 +516,13 @@ class OrderActionService
                 $remainingQty -= $take;
 
                 $matchedRule = null;
-                if ($lot->expiration_date && $expirationOffers->isNotEmpty()) {
+                $expDate = $lot->expiration_date instanceof \Carbon\Carbon 
+                    ? $lot->expiration_date 
+                    : (is_string($lot->expiration_date) ? \Carbon\Carbon::tryParse($lot->expiration_date) : null);
+
+                if ($expDate && $expirationOffers->isNotEmpty()) {
                     $now = now();
-                    $diffMonths = ($lot->expiration_date->year - $now->year) * 12 + $lot->expiration_date->month - $now->month + 1;
+                    $diffMonths = ($expDate->year - $now->year) * 12 + $expDate->month - $now->month + 1;
                     $monthsToExpiry = max(1, $diffMonths);
                     foreach ($expirationOffers as $offer) {
                         if ($monthsToExpiry <= $offer->months_to_expiration) {
@@ -603,7 +621,7 @@ class OrderActionService
                     'product_id' => $validatedData['product_id'],
                     'quantity' => $qty,
                     'price' => $calculatedUnitPrice,
-                    'unit_cost' => $product->unit_cost, // Costo real del producto (siempre en moneda base USD de costos)
+                    'unit_cost' => $product->unit_cost ?? 0, // Costo real del producto (siempre en moneda base USD de costos)
                     'unit_price_usd' => $discountPct > 0 ? ($price_usd * (1 - ($discountPct / 100))) : $price_usd,
                     'pack_id' => null,
                     'product_type' => $rule ? 'offer' : 'normal', // Keep 'offer' if expiration involved, or maybe 'discounted'? Leaving as is for now.
@@ -627,7 +645,9 @@ class OrderActionService
                         $q->withSum('lots', 'quantity');
                     }
                 ]);
-                $mainItem->product->valid_stock_sum = $mainItem->product->lots_sum_quantity;
+                if ($mainItem->product) {
+                    $mainItem->product->valid_stock_sum = $mainItem->product->lots_sum_quantity ?? 0;
+                }
                 return $mainItem;
             }
 
@@ -1206,7 +1226,11 @@ class OrderActionService
 
             // Bloqueo anti-overselling: cargar y bloquear los lotes de los productos de la orden
             // También cargamos la relación dish para los ítems de tipo plato (restaurante)
-            $orderId->load(['details.product', 'details.dish']);
+            $completeLoad = ['details.product'];
+            if (\Illuminate\Support\Facades\Schema::hasTable('dishes')) {
+                $completeLoad[] = 'details.dish';
+            }
+            $orderId->load($completeLoad);
             $productIds = $orderId->details->whereNotIn('product_type', ['dish', 'court'])->pluck('product_id')->unique()->filter()->values()->all();
             
             // Si hay platos, extraer todos los product_id de sus ingredientes y modificadores
@@ -1843,7 +1867,14 @@ class OrderActionService
                 $newPendingOrder = $reservedOrder;
             }*/
 
-            $orderId->load(['seller', 'client', 'details.product', 'details.dish', 'details.court']);
+            $finalLoad = ['seller', 'client', 'details.product'];
+            if (\Illuminate\Support\Facades\Schema::hasTable('dishes')) {
+                $finalLoad[] = 'details.dish';
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('courts')) {
+                $finalLoad[] = 'details.court';
+            }
+            $orderId->load($finalLoad);
             DB::commit();
             return [
                 //'order' => $newPendingOrder,
@@ -2150,10 +2181,16 @@ class OrderActionService
         if (!\Illuminate\Support\Facades\Schema::hasTable('general_promotions')) {
             return;
         }
+
+        $detailRelations = ['product'];
+        if (\Illuminate\Support\Facades\Schema::hasTable('dishes')) {
+            $detailRelations[] = 'dish';
+        }
+
         $promotions = \App\Models\GeneralPromotion::where('is_active', true)->get();
         if ($promotions->isEmpty()) {
             // Si no hay promociones activas, restaurar precios normales si tenían descuento general anterior
-            $details = $order->details()->with(['product', 'dish'])->get();
+            $details = $order->details()->with($detailRelations)->get();
             foreach ($details as $detail) {
                 if ($detail->discount_type === 'general') {
                     $detail->discount_percentage = null;
@@ -2167,7 +2204,7 @@ class OrderActionService
         }
 
         // Cargar los detalles de la orden
-        $details = $order->details()->with(['product', 'dish'])->get();
+        $details = $order->details()->with($detailRelations)->get();
 
         // 2. Primero restaurar los detalles que tengan descuento general viejo, para tener base limpia
         foreach ($details as $detail) {

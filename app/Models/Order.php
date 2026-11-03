@@ -147,7 +147,19 @@ class Order extends Model
         app(\App\Services\Order\OrderActionService::class)->applyGeneralPromotions($this);
 
         // Sumamos (precio unitario * cantidad) de los detalles vinculados incluyendo IVA en productos o platos gravados
-        $details = $this->details()->with(['product:id,iva', 'dish:id,iva,tax_rate'])->get();
+        $withRelations = ['product:id,iva'];
+        if (\Illuminate\Support\Facades\Schema::hasTable('dishes')) {
+            $dishColumns = ['id'];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'iva')) {
+                $dishColumns[] = 'iva';
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'tax_rate')) {
+                $dishColumns[] = 'tax_rate';
+            }
+            $withRelations[] = 'dish:' . implode(',', $dishColumns);
+        }
+
+        $details = $this->details()->with($withRelations)->get();
         $newTotal = 0;
         $totalCost = 0;
 
@@ -176,7 +188,7 @@ class Order extends Model
             $taxRatePct = 16.0;
 
             if ($detail->product_type === 'dish') {
-                if ($detail->dish && (bool) $detail->dish->iva) {
+                if ($detail->dish && (bool) ($detail->dish->iva ?? false)) {
                     $isTaxable = true;
                     $taxRatePct = (float) ($detail->dish->tax_rate ?? 16.0);
                 }
