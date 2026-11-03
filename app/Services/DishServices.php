@@ -54,8 +54,14 @@ class DishServices implements DishContract
         if ($hasCpvColumn) {
             $dishSelectColumns[] = 'cpv';
         }
+        if (Schema::hasColumn('dishes', 'output_product_id')) {
+            $dishSelectColumns[] = 'output_product_id';
+        }
+        if (Schema::hasColumn('dishes', 'expected_yield_quantity')) {
+            $dishSelectColumns[] = 'expected_yield_quantity';
+        }
 
-        $dishes = Dish::select($dishSelectColumns)->with([
+        $ingredientsRelation = [
             'ingredients' => function ($query) {
                 $query->select([
                     'products.id',
@@ -64,17 +70,72 @@ class DishServices implements DishContract
                     'products.presentation',
                 ]);
             },
-        ])->get();
+        ];
 
         $updatedCount = 0;
         $flaggedUnderReviewCount = 0;
 
-        foreach ($dishes as $dish) {
-            // No alterar platos base (status = 3)
-            if ((int) $dish->status === 3) {
-                continue;
+        // Paso 1: Actualizar primero las sub-recetas / preparaciones base (status = 3)
+        $subRecipes = Dish::select($dishSelectColumns)
+            ->where('status', 3)
+            ->with($ingredientsRelation)
+            ->get();
+
+        foreach ($subRecipes as $subRecipe) {
+            $currentCost = 0.0;
+
+            foreach ($subRecipe->ingredients as $ingredient) {
+                $portion = (float) ($ingredient->pivot?->portion ?? 0);
+                $unitCost = (float) ($ingredient->unit_cost ?? 0);
+                $presentation = (float) ($ingredient->presentation ?? 1);
+                $safePresentation = $presentation > 0 ? $presentation : 1.0;
+
+                $freshDesignatedCost = round(($portion * $unitCost) / $safePresentation, 4);
+
+                if ($ingredient->pivot?->id && abs((float) $ingredient->pivot->designated_cost - $freshDesignatedCost) > 0.0001) {
+                    DB::table('dish_ingredients')
+                        ->where('id', $ingredient->pivot->id)
+                        ->update(['designated_cost' => $freshDesignatedCost]);
+                }
+
+                $currentCost += $freshDesignatedCost;
             }
 
+            $currentCost = round($currentCost * 1.05, 2);
+
+            $updateFields = [];
+            if (abs((float) $subRecipe->cost_price - $currentCost) > 0.001) {
+                $updateFields['cost_price'] = $currentCost;
+                $updateFields['suggested_price'] = $currentCost;
+                $updateFields['designated_price'] = $currentCost;
+                if ($hasCpvColumn) {
+                    $updateFields['cpv'] = $currentCost;
+                }
+            }
+
+            if (!empty($updateFields)) {
+                $subRecipe->update($updateFields);
+                $updatedCount++;
+            }
+
+            // Actualizar el costo unitario del producto generado por la sub-receta
+            if (!empty($subRecipe->output_product_id)) {
+                $yield = (float) ($subRecipe->expected_yield_quantity ?? 1);
+                $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
+                Product::where('id', $subRecipe->output_product_id)->update([
+                    'unit_cost' => $unitCostProduct,
+                    'sale_price' => $unitCostProduct,
+                ]);
+            }
+        }
+
+        // Paso 2: Actualizar platos de menú (status != 3) con los costos frescos (incluyendo sub-recetas actualizadas)
+        $dishes = Dish::select($dishSelectColumns)
+            ->where('status', '!=', 3)
+            ->with($ingredientsRelation)
+            ->get();
+
+        foreach ($dishes as $dish) {
             $currentDishCost = 0.0;
 
             foreach ($dish->ingredients as $ingredient) {
@@ -83,7 +144,6 @@ class DishServices implements DishContract
                 $presentation = (float) ($ingredient->presentation ?? 1);
                 $safePresentation = $presentation > 0 ? $presentation : 1.0;
 
-                // Calcular costo dinámico del ingrediente según el costo del producto en inventario
                 $freshDesignatedCost = round(($portion * $unitCost) / $safePresentation, 4);
 
                 if ($ingredient->pivot?->id && abs((float) $ingredient->pivot->designated_cost - $freshDesignatedCost) > 0.0001) {
@@ -194,11 +254,87 @@ class DishServices implements DishContract
     }
 
     /**
-     * Encontrar un plato por ID.
+     * Encontrar un plato por ID y sincronizar costos actuales.
      */
     public function find(int $id): ?Dish
     {
-        return Dish::with($this->getAvailableRelations())->find($id);
+        $dish = Dish::with($this->getAvailableRelations())->find($id);
+        if ($dish) {
+            $this->syncSingleDishCost($dish);
+        }
+        return $dish;
+    }
+
+    /**
+     * Sincronizar costos frescos de un único plato.
+     */
+    public function syncSingleDishCost(Dish $dish): void
+    {
+        $currentCost = 0.0;
+        $hasCpvColumn = Schema::hasColumn('dishes', 'cpv');
+        $isSubRecipe = ((int) $dish->status === 3);
+
+        foreach ($dish->ingredients as $ingredient) {
+            $portion = (float) ($ingredient->pivot?->portion ?? 0);
+            $unitCost = (float) ($ingredient->unit_cost ?? 0);
+            $presentation = (float) ($ingredient->presentation ?? 1);
+            $safePresentation = $presentation > 0 ? $presentation : 1.0;
+
+            $freshDesignatedCost = round(($portion * $unitCost) / $safePresentation, 4);
+
+            if ($ingredient->pivot?->id && abs((float) $ingredient->pivot->designated_cost - $freshDesignatedCost) > 0.0001) {
+                DB::table('dish_ingredients')
+                    ->where('id', $ingredient->pivot->id)
+                    ->update(['designated_cost' => $freshDesignatedCost]);
+                $ingredient->pivot->designated_cost = $freshDesignatedCost;
+            }
+
+            $currentCost += $freshDesignatedCost;
+        }
+
+        $currentCost = round($currentCost * 1.05, 2);
+        $profitMultiplier = (float) ($dish->percentage_profit ?? 0);
+        $freshSuggestedPrice = round($currentCost * $profitMultiplier, 2);
+        $designatedPrice = (float) ($dish->designated_price ?? 0);
+
+        $updateFields = [];
+        if (abs((float) $dish->cost_price - $currentCost) > 0.001) {
+            $updateFields['cost_price'] = $currentCost;
+            $dish->cost_price = $currentCost;
+            if ($hasCpvColumn) {
+                $updateFields['cpv'] = $currentCost;
+                $dish->cpv = $currentCost;
+            }
+        }
+
+        if (!$isSubRecipe) {
+            if (abs((float) $dish->suggested_price - $freshSuggestedPrice) > 0.001) {
+                $updateFields['suggested_price'] = $freshSuggestedPrice;
+                $dish->suggested_price = $freshSuggestedPrice;
+            }
+            if ($designatedPrice < $freshSuggestedPrice && (int) $dish->status !== 2) {
+                $updateFields['status'] = 2;
+                $dish->status = 2;
+            }
+        } else {
+            $updateFields['suggested_price'] = $currentCost;
+            $updateFields['designated_price'] = $currentCost;
+            $dish->suggested_price = $currentCost;
+            $dish->designated_price = $currentCost;
+
+            if (!empty($dish->output_product_id)) {
+                $yield = (float) ($dish->expected_yield_quantity ?? 1);
+                $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
+                Product::where('id', $dish->output_product_id)->update([
+                    'unit_cost' => $unitCostProduct,
+                    'sale_price' => $unitCostProduct,
+                ]);
+            }
+        }
+
+        if (!empty($updateFields)) {
+            $dish->update($updateFields);
+        }
     }
 
     /**

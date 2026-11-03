@@ -39,7 +39,7 @@ $scheduleTenantAware = function (string $command, callable $scheduleConfig) {
 };
 
 $scheduleTenantAware('app:update-exchange-rate', fn ($event) => $event->dailyAt('00:10'));
-$scheduleTenantAware('dishes:sync-costs-and-review', fn ($event) => $event->hourly());
+$scheduleTenantAware('dishes:sync-costs-and-review', fn ($event) => $event->dailyAt('02:00'));
 $scheduleTenantAware('app:close-cash', fn ($event) => $event->dailyAt('23:59'));
 Schedule::command('app:clear-expired-reservations')->everyMinute();
 Schedule::command('products:ai-categorize')
