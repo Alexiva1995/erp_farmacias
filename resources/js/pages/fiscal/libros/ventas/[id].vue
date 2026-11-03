@@ -429,27 +429,30 @@ const formatNumber = (val) => {
           <!-- Botón Actualizar / Sincronizar -->
           <VBtn
             v-if="book?.is_open"
+            icon
             color="primary"
-            variant="elevated"
-            class="font-weight-medium"
+            variant="tonal"
+            size="38"
+            rounded="circle"
             :loading="syncing"
             @click="handleSync"
           >
-            <VIcon start>tabler-refresh</VIcon>
-            Actualizar
-            <VTooltip activator="parent" location="top">Actualizar y sincronizar libro de ventas</VTooltip>
+            <VIcon icon="tabler-refresh" />
+            <VTooltip activator="parent" location="top">Actualizar y sincronizar transacciones</VTooltip>
           </VBtn>
 
           <!-- Botón Agregar Operación Manual -->
           <VBtn
             v-if="book?.is_open"
+            icon
             color="info"
             variant="tonal"
-            class="font-weight-medium"
+            size="38"
+            rounded="circle"
             @click="openCreateModal"
           >
-            <VIcon start>tabler-plus</VIcon>
-            Agregar Operación
+            <VIcon icon="tabler-plus" />
+            <VTooltip activator="parent" location="top">Agregar Operación al Libro</VTooltip>
           </VBtn>
 
           <!-- Cerrar Libro -->
