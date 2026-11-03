@@ -33,10 +33,116 @@ class DishServices implements DishContract
     }
 
     /**
+     * Sincronizar costos actuales de los insumos de inventario en las recetas de los platos.
+     * Si el precio de venta (designated_price) es menor al precio sugerido, pasa automáticamente a 'En Revisión' (status = 2).
+     */
+    public function syncCostsAndFlagUnprofitableDishes(): array
+    {
+        $hasCpvColumn = Schema::hasColumn('dishes', 'cpv');
+        $dishSelectColumns = [
+            'id',
+            'cost_price',
+            'suggested_price',
+            'designated_price',
+            'percentage_profit',
+            'status',
+        ];
+        if ($hasCpvColumn) {
+            $dishSelectColumns[] = 'cpv';
+        }
+
+        $dishes = Dish::select($dishSelectColumns)->with([
+            'ingredients' => function ($query) {
+                $query->select([
+                    'products.id',
+                    'products.name',
+                    'products.unit_cost',
+                    'products.presentation',
+                ]);
+            },
+        ])->get();
+
+        $updatedCount = 0;
+        $flaggedUnderReviewCount = 0;
+
+        foreach ($dishes as $dish) {
+            // No alterar platos base (status = 3)
+            if ((int) $dish->status === 3) {
+                continue;
+            }
+
+            $currentDishCost = 0.0;
+
+            foreach ($dish->ingredients as $ingredient) {
+                $portion = (float) ($ingredient->pivot?->portion ?? 0);
+                $unitCost = (float) ($ingredient->unit_cost ?? 0);
+                $presentation = (float) ($ingredient->presentation ?? 1);
+                $safePresentation = $presentation > 0 ? $presentation : 1.0;
+
+                // Calcular costo dinámico del ingrediente según el costo del producto en inventario
+                $freshDesignatedCost = round(($portion * $unitCost) / $safePresentation, 4);
+
+                if ($ingredient->pivot?->id && abs((float) $ingredient->pivot->designated_cost - $freshDesignatedCost) > 0.0001) {
+                    DB::table('dish_ingredients')
+                        ->where('id', $ingredient->pivot->id)
+                        ->update(['designated_cost' => $freshDesignatedCost]);
+                }
+
+                $currentDishCost += $freshDesignatedCost;
+            }
+
+            $currentDishCost = round($currentDishCost, 2);
+            $profitMultiplier = (float) ($dish->percentage_profit ?? 0);
+            $freshSuggestedPrice = round($currentDishCost * $profitMultiplier, 2);
+            $designatedPrice = (float) ($dish->designated_price ?? 0);
+
+            $updateFields = [];
+
+            if (abs((float) $dish->cost_price - $currentDishCost) > 0.001) {
+                $updateFields['cost_price'] = $currentDishCost;
+                if ($hasCpvColumn) {
+                    $updateFields['cpv'] = $currentDishCost;
+                }
+            }
+
+            if (abs((float) $dish->suggested_price - $freshSuggestedPrice) > 0.001) {
+                $updateFields['suggested_price'] = $freshSuggestedPrice;
+            }
+
+            // Si el precio de venta asignado es menor al precio sugerido por aumento de costos en inventario,
+            // pasar el plato a 'En Revisión' (status = 2)
+            if ($designatedPrice < $freshSuggestedPrice && (int) $dish->status !== 2) {
+                $updateFields['status'] = 2; // En Revisión
+                $flaggedUnderReviewCount++;
+            }
+
+            if (!empty($updateFields)) {
+                $dish->update($updateFields);
+                $updatedCount++;
+            }
+        }
+
+        return [
+            'updated_count' => $updatedCount,
+            'flagged_under_review_count' => $flaggedUnderReviewCount,
+        ];
+    }
+
+    /**
      * Obtener todos los platos con filtros y paginación.
      */
     public function getAll(array $filters): LengthAwarePaginator
     {
+        // Al entrar o paginar la lista principal de platos (página 1 sin búsqueda específica),
+        // sincronizar costos frescos de inventario y marcar platos en revisión si los costos subieron
+        if (empty($filters['q']) && (int) ($filters['page'] ?? 1) === 1) {
+            try {
+                $this->syncCostsAndFlagUnprofitableDishes();
+            } catch (\Throwable $e) {
+                \Log::warning('No se pudo sincronizar costos de platos al listar: ' . $e->getMessage());
+            }
+        }
+
         $query = Dish::with($this->getAvailableRelations());
 
         if (!empty($filters['q'])) {

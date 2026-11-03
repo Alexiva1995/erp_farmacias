@@ -692,7 +692,7 @@ onUnmounted(() => {
       :show-add="true"
       add-button-text="Crear Plato"
       :show-advanced="true"
-      :has-advanced-filters="!!selectedCategory || !!selectedStatus"
+      :has-advanced-filters="!!selectedCategory || selectedStatus !== null"
       @clear="searchQuery = ''; selectedCategory = null; selectedStatus = null; fetchDishes()"
       @add="handleAddDish"
     >
