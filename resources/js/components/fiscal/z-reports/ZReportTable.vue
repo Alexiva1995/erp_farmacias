@@ -1,6 +1,7 @@
 <script setup>
 import DialogCloseBtn from "@core/components/DialogCloseBtn.vue";
 import AppEmptyState from "@/components/AppEmptyState.vue";
+import ZReportRangeDialog from "@/components/fiscal/z-reports/ZReportRangeDialog.vue";
 import { ref } from "vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -21,6 +22,23 @@ const activeReportId = ref(null);
 
 const isPhotoModalOpen = ref(false);
 const previewReport = ref(null);
+
+const isRangeModalOpen = ref(false);
+const editingReport = ref(null);
+
+const openRangeEdit = (item) => {
+  editingReport.value = { ...item };
+  isRangeModalOpen.value = true;
+};
+
+const handleRangeSaved = (updated) => {
+  if (updated) {
+    const index = props.reports.findIndex((r) => r.id === updated.id);
+    if (index !== -1) {
+      Object.assign(props.reports[index], updated);
+    }
+  }
+};
 
 const openPhotoPreview = (item) => {
   previewReport.value = item;
@@ -391,6 +409,22 @@ const formatCurrency = (value) => {
                 </template>
               </VTooltip>
 
+              <!-- Editar Rango de Facturas y Recalcular -->
+              <VTooltip location="top" text="Editar Rango de Facturas y Recalcular">
+                <template #activator="{ props: tooltipProps }">
+                  <VBtn
+                    v-bind="tooltipProps"
+                    icon
+                    size="small"
+                    variant="text"
+                    color="warning"
+                    @click="openRangeEdit(item)"
+                  >
+                    <VIcon icon="tabler-adjustments-alt" size="20" />
+                  </VBtn>
+                </template>
+              </VTooltip>
+
               <!-- Ver Foto Z si existe -->
               <VTooltip v-if="resolveImageUrl(item)" location="top" text="Ver Foto del Reporte Z">
                 <template #activator="{ props: tooltipProps }">
@@ -589,6 +623,15 @@ const formatCurrency = (value) => {
               Ticket Z
             </VBtn>
             <VBtn
+              variant="tonal"
+              color="warning"
+              size="small"
+              icon
+              @click="openRangeEdit(item)"
+            >
+              <VIcon icon="tabler-adjustments-alt" size="18" />
+            </VBtn>
+            <VBtn
               v-if="resolveImageUrl(item)"
               variant="tonal"
               color="success"
@@ -689,6 +732,13 @@ const formatCurrency = (value) => {
         </VCardActions>
       </VCard>
     </VDialog>
+
+    <!-- Modal Editar Rango de Facturas y Recalcular -->
+    <ZReportRangeDialog
+      v-model="isRangeModalOpen"
+      :report="editingReport"
+      @saved="handleRangeSaved"
+    />
   </div>
 </template>
 

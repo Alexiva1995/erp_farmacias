@@ -565,4 +565,127 @@ class FiscalZReportService
 
         return $zipPath;
     }
+
+    /**
+     * Edita el rango de facturas de un Reporte Z, recalcula montos basados en dicho rango
+     * y propaga automáticamente la actualización al Libro de Ventas abierto.
+     */
+    public function updateRangeAndRecalculate(int $id, array $data): FiscalZReport
+    {
+        $report = $this->repository->findById($id);
+        if (!$report) {
+            throw new \DomainException("Reporte Z no encontrado con ID {$id}.");
+        }
+
+        $firstInvoice = trim((string) ($data['first_invoice_number'] ?? ''));
+        $lastInvoice = trim((string) ($data['last_invoice_number'] ?? ''));
+        $shouldRecalculate = (bool) ($data['recalculate'] ?? true);
+
+        $cleanFirst = (int) preg_replace('/\D/', '', $firstInvoice);
+        $cleanLast = (int) preg_replace('/\D/', '', $lastInvoice);
+
+        $exempt = (float) $report->exempt_amount;
+        $base16 = (float) $report->base_16_amount;
+        $iva16 = (float) $report->iva_amount;
+        $igtf = (float) $report->igtf_amount;
+        $total = (float) $report->total_amount;
+        $invoicesCount = (int) $report->invoices_count;
+
+        if ($shouldRecalculate) {
+            // Buscar comprobantes fiscales en FiscalHistory dentro del rango especificado
+            $query = FiscalHistory::query();
+
+            if ($cleanFirst > 0 && $cleanLast >= $cleanFirst) {
+                $query->whereRaw("CAST(REGEXP_REPLACE(COALESCE(invoice_number, fiscal_id, '0'), '[^0-9]', '') AS UNSIGNED) BETWEEN ? AND ?", [$cleanFirst, $cleanLast]);
+            } else {
+                $query->where(function ($q) use ($firstInvoice, $lastInvoice, $report) {
+                    $q->whereBetween('invoice_number', [$firstInvoice, $lastInvoice])
+                      ->orWhereDate('invoice_date', $report->report_date);
+                });
+            }
+
+            $records = $query->orderBy('id', 'asc')->get();
+
+            if ($records->isNotEmpty()) {
+                $invoicesCount = $records->count();
+                $exempt = round((float) $records->sum('exempt_amount'), 2);
+                $base16 = round((float) $records->sum('taxable_amount'), 2);
+                $iva16 = round((float) $records->sum('iva_amount'), 2);
+                $igtf = round((float) $records->sum('spe_surcharge_amount'), 2);
+                $total = round($exempt + $base16 + $iva16 + $igtf, 2);
+            }
+        }
+
+        // Si se suministraron montos explícitos en los datos, utilizarlos
+        if (isset($data['exempt_amount'])) {
+            $exempt = round((float) $data['exempt_amount'], 2);
+        }
+        if (isset($data['base_16_amount'])) {
+            $base16 = round((float) $data['base_16_amount'], 2);
+        }
+        if (isset($data['iva_amount'])) {
+            $iva16 = round((float) $data['iva_amount'], 2);
+        }
+        if (isset($data['igtf_amount'])) {
+            $igtf = round((float) $data['igtf_amount'], 2);
+        }
+        if (isset($data['total_amount'])) {
+            $total = round((float) $data['total_amount'], 2);
+        } else {
+            $total = round($exempt + $base16 + $iva16 + $igtf, 2);
+        }
+
+        $report->update([
+            'first_invoice_number' => $firstInvoice ?: $report->first_invoice_number,
+            'last_invoice_number'  => $lastInvoice ?: $report->last_invoice_number,
+            'invoices_count'       => $invoicesCount,
+            'exempt_amount'        => $exempt,
+            'base_16_amount'       => $base16,
+            'iva_amount'           => $iva16,
+            'igtf_amount'          => $igtf,
+            'total_amount'         => $total,
+        ]);
+
+        // Propagación inmediata a las entradas del Libro de Ventas en períodos abiertos
+        $salesEntries = \App\Models\SalesBookEntry::where(function ($q) use ($report) {
+            $q->where('fiscal_z_report_id', $report->id)
+              ->orWhere(function ($q2) use ($report) {
+                  $q2->where('z_report_number', (string) $report->report_number)
+                     ->where('document_type', 'REPORTE Z');
+              });
+        })->get();
+
+        $affectedBooks = collect();
+
+        foreach ($salesEntries as $entry) {
+            $book = $entry->salesBook;
+            if ($book && $book->isOpen()) {
+                // Total ventas con IVA en SENIAT excluye IGTF
+                $totalSalesWithVat = round($exempt + $base16 + $iva16, 2);
+
+                $entry->update([
+                    'z_first_invoice'           => $firstInvoice ?: $entry->z_first_invoice,
+                    'z_last_invoice'            => $lastInvoice ?: $entry->z_last_invoice,
+                    'non_taxable_sales'         => $exempt,
+                    'taxpayer_taxable_base'     => $base16,
+                    'taxpayer_aliquot'          => $base16 > 0 ? 0.16 : 0.00,
+                    'taxpayer_vat'              => $iva16,
+                    'total_sales_with_vat'      => $totalSalesWithVat,
+                    'igtf_amount'               => $igtf,
+                ]);
+
+                if (!$affectedBooks->contains('id', $book->id)) {
+                    $affectedBooks->push($book);
+                }
+            }
+        }
+
+        // Recalcular totales en cada libro de ventas impactado
+        $salesRepo = app(\App\Contracts\SalesBookContract::class);
+        foreach ($affectedBooks as $affectedBook) {
+            $salesRepo->recalculateTotals($affectedBook);
+        }
+
+        return $report->fresh();
+    }
 }

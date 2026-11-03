@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Fiscal\FiscalZReportFilterRequest;
+use App\Http\Requests\Fiscal\UpdateFiscalZReportRangeRequest;
 use App\Http\Resources\Fiscal\FiscalZReportResource;
 use App\Services\Fiscal\FiscalZReportService;
 use Illuminate\Http\JsonResponse;
@@ -68,6 +69,26 @@ class FiscalZReportController extends Controller
             'message' => 'Reporte Z procesado exitosamente.',
             'data'    => new FiscalZReportResource($report),
         ]);
+    }
+
+    /**
+     * Actualizar rango de facturas y recalcular montos del Reporte Z y del Libro de Ventas.
+     */
+    public function updateRange(UpdateFiscalZReportRangeRequest $request, int $id): JsonResponse
+    {
+        try {
+            $report = $this->zReportService->updateRangeAndRecalculate($id, $request->validated());
+
+            return response()->json([
+                'message' => 'Rango de facturas actualizado y libro de ventas recalculado exitosamente.',
+                'data'    => new FiscalZReportResource($report),
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error al actualizar rango de Reporte Z ID {$id}: " . $e->getMessage());
+            return response()->json([
+                'message' => $e->getMessage() ?: 'Error al actualizar rango del Reporte Z.',
+            ], 422);
+        }
     }
 
     /**

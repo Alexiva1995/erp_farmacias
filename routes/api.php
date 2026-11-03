@@ -800,6 +800,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get("/", [FiscalZReportController::class, "index"]);
         Route::get("/download-images", [FiscalZReportController::class, "downloadImages"]);
         Route::get("/{id}", [FiscalZReportController::class, "show"]);
+        Route::put("/{id}/range", [FiscalZReportController::class, "updateRange"]);
         Route::post("/generate", [FiscalZReportController::class, "generate"]);
         Route::post("/{id}/verify", [FiscalZReportController::class, "verifyImage"]);
     });
