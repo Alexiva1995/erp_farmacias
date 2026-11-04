@@ -236,6 +236,8 @@ const handleRestoreProduct = async id => {
 };
 
 const handleSaveProduct = async productFormData => {
+  if (isSavingProduct.value) return;
+
   const isNewProduct = !currentProduct.value.id;
   const url = isNewProduct ? "/products" : `/products/${currentProduct.value.id}`;
 

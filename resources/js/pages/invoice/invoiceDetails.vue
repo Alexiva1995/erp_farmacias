@@ -828,7 +828,12 @@ const handleShowProductSearch = () => {
   fetchProducts();
 };
 
+let isSavingInvoiceProduct = false;
+
 const handleSaveProduct = async (productFormData, { onSuccess, onError }) => {
+  if (isSavingInvoiceProduct) return;
+  isSavingInvoiceProduct = true;
+
   const url = "/products";
   try {
     const response = await axios.post(url, productFormData, {
@@ -850,9 +855,12 @@ const handleSaveProduct = async (productFormData, { onSuccess, onError }) => {
       if (onError) onError(error.response.data.errors);
       toast.error("Por favor, corrige los errores en el formulario.");
     } else {
+      if (onError) onError({});
       console.error("Error al guardar el producto:", error);
       toast.error("Hubo un error al guardar el producto.");
     }
+  } finally {
+    isSavingInvoiceProduct = false;
   }
 };
 

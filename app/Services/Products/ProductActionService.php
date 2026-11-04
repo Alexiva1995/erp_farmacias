@@ -148,6 +148,24 @@ class ProductActionService
         $initialStock = (float) ($validatedData['initial_stock'] ?? $validatedData['stock'] ?? 0);
         unset($validatedData['stock'], $validatedData['initial_stock']);
 
+        // Evitar duplicación por doble envío concurrente (idéntica solicitud en ventana de 2 segundos)
+        $recentDuplicate = Product::withoutGlobalScopes()
+            ->where('name', $validatedData['name'])
+            ->where('created_at', '>=', now()->subSeconds(2))
+            ->when(!empty($validatedData['barcode']), function ($q) use ($validatedData) {
+                return $q->where('barcode', $validatedData['barcode']);
+            })
+            ->when(!empty($validatedData['laboratory_id']), function ($q) use ($validatedData) {
+                return $q->where('laboratory_id', $validatedData['laboratory_id']);
+            })
+            ->latest('id')
+            ->first();
+
+        if ($recentDuplicate) {
+            Log::info("Petición de creación duplicada concurrente evitada para '{$validatedData['name']}' (ID #{$recentDuplicate->id}).");
+            return $recentDuplicate;
+        }
+
         $createdWithCandidateId = !empty($validatedData['id']);
         try {
             $product = Product::create($validatedData);
@@ -156,6 +174,10 @@ class ProductActionService
             if ($createdWithCandidateId && str_contains($e->getMessage(), 'products.PRIMARY')) {
                 unset($validatedData['id']);
                 $product = Product::create($validatedData);
+            } elseif (str_contains(strtolower($e->getMessage()), 'barcode') || str_contains(strtolower($e->getMessage()), 'products_barcode_unique')) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'barcode' => ["El código de barras ya está asignado a otro producto."],
+                ]);
             } else {
                 throw $e;
             }

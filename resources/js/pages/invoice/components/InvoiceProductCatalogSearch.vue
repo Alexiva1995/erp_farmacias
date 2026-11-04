@@ -64,6 +64,7 @@ const searchQueryModel = defineModel("searchQuery", { type: String, default: "" 
 const isBarcodeModalVisible = ref(false);
 const isEditDialogVisible = ref(false);
 const searchingBarcode = ref(false);
+const isSavingProduct = ref(false);
 const currentProduct = ref({});
 const productFormErrors = ref({});
 const barcodeModalRef = ref(null);
@@ -71,15 +72,21 @@ const barcodeModalRef = ref(null);
 const handleAddNewProduct = () => {
   currentProduct.value = {};
   productFormErrors.value = {};
+  isSavingProduct.value = false;
   isEditDialogVisible.value = true;
 };
 
 const handleSaveProductInternal = async (formData) => {
+  if (isSavingProduct.value) return;
+
+  isSavingProduct.value = true;
   emit("save-product", formData, {
     onSuccess: () => {
+      isSavingProduct.value = false;
       isEditDialogVisible.value = false;
     },
     onError: (errors) => {
+      isSavingProduct.value = false;
       productFormErrors.value = errors;
     },
   });
@@ -153,6 +160,7 @@ defineExpose({
       :origins="origins"
       :categories="categories"
       :errors="productFormErrors"
+      :is-saving="isSavingProduct"
       @save="handleSaveProductInternal"
       @clear-errors="productFormErrors = {}"
       @laboratory-created="emit('laboratory-created')"

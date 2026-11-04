@@ -38,6 +38,7 @@ const emit = defineEmits([
 const formData = ref({});
 const imageFile = ref(null);
 const formErrors = ref({});
+const isSubmitting = ref(false);
 
 // --- Cropper de imagen ---
 const cropperOpen = ref(false);
@@ -99,8 +100,18 @@ watch(
   () => props.errors,
   (newErrors) => {
     formErrors.value = newErrors || {};
+    isSubmitting.value = false;
   },
   { deep: true, immediate: true }
+);
+
+watch(
+  () => props.isSaving,
+  (newSaving) => {
+    if (!newSaving) {
+      isSubmitting.value = false;
+    }
+  }
 );
 
 // Inicializar formData al cambiar el producto seleccionado
@@ -303,10 +314,16 @@ const removeVariantRow = (index) => {
 const closeDialog = () => {
   emit("update:modelValue", false);
   formErrors.value = {};
+  isSubmitting.value = false;
   emit("clearErrors");
 };
 
 const submitForm = () => {
+  if (props.isSaving || isSubmitting.value) {
+    return;
+  }
+  isSubmitting.value = true;
+
   formErrors.value = {};
   emit("clearErrors");
 
@@ -581,8 +598,8 @@ const imagePreviewUrl = computed(() => {
               :height="xs ? 44 : 50"
               block
               class="font-weight-black rounded-lg shadow-primary text-button uppercase"
-              :loading="props.isSaving"
-              :disabled="props.isSaving"
+              :loading="props.isSaving || isSubmitting"
+              :disabled="props.isSaving || isSubmitting"
               @click="isNewProduct && activeTab !== 2 ? handleNextTab() : submitForm()"
             >
               <VIcon
