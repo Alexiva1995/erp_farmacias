@@ -154,6 +154,7 @@ const submitForm = () => {
   const payload = new FormData();
 
   Object.keys(formData.value).forEach((key) => {
+    if (key === "photo_url") return;
     const value = formData.value[key];
     if (
       value !== null &&

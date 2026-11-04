@@ -313,7 +313,7 @@ const submitForm = () => {
   const payload = new FormData();
 
   Object.keys(formData.value).forEach((key) => {
-    if (key === "unit_cost" || key === "sale_price" || key === "variants" || key === "initial_stock") {
+    if (key === "unit_cost" || key === "sale_price" || key === "variants" || key === "initial_stock" || key === "photo_url") {
       return;
     }
 

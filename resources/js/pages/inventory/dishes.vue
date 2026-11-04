@@ -95,7 +95,6 @@ const statusOptionsWithoutBase = [
   { title: "En Revisión", value: 2 },
 ];
 
-const isBaseDish = ref(false);
 const dishStatus = ref(1);
 
 // Diálogo de edición / creación
@@ -122,30 +121,39 @@ const isSaving = ref(false);
 const isRecalculating = ref(false);
 const isDuplicatedDish = ref(false);
 
-// Valor editable de Precio Menú (Venta) expresado en la moneda principal configurada
+// Valor editable de Precio Menú (Venta) formateado como el campo adyacente
 const inputDesignatedPrice = ref("0");
 
-// Sincronizar el campo de texto con el valor del modelo sin redondear mientras escribe
+// Sincronizar el campo de texto con el valor del modelo formateado
 const syncInputPriceFromModel = () => {
   const usdVal = Number(currentDish.value.designated_price || 0);
-  if (defaultCurrency.value === "USD") {
-    inputDesignatedPrice.value = usdVal ? String(usdVal) : "0";
-    return;
-  }
+  inputDesignatedPrice.value = formatCurrency(usdVal);
+};
+
+// Al enfocar el campo: mostrar únicamente el valor numérico limpio y seleccionarlo todo para editar fácil
+const onPriceFocus = (e) => {
+  const usdVal = Number(currentDish.value.designated_price || 0);
   const rate = activeExchangeRate.value || 1;
   if (defaultCurrency.value === "COP") {
     const rawCop = usdVal * rate;
     const rounded = Math.round(rawCop / 100) * 100;
-    inputDesignatedPrice.value = String(rounded);
-    return;
+    inputDesignatedPrice.value = rounded > 0 ? String(rounded) : "";
+  } else if (defaultCurrency.value === "USD") {
+    inputDesignatedPrice.value = usdVal > 0 ? String(usdVal) : "";
+  } else {
+    inputDesignatedPrice.value = usdVal > 0 ? String(parseFloat((usdVal * rate).toFixed(2))) : "";
   }
-  inputDesignatedPrice.value = String(parseFloat((usdVal * rate).toFixed(2)));
+
+  setTimeout(() => {
+    e?.target?.select?.();
+  }, 50);
 };
 
 // Mientras el usuario escribe: permitir tecleo libre sin redondeo en vivo
 const onPriceInput = (val) => {
   inputDesignatedPrice.value = val;
-  const numVal = parseFloat(val);
+  const cleanVal = String(val || "").replace(/[^\d.,]/g, "").replace(",", ".");
+  const numVal = parseFloat(cleanVal);
   if (isNaN(numVal) || numVal < 0) {
     currentDish.value.designated_price = 0;
     return;
@@ -154,25 +162,25 @@ const onPriceInput = (val) => {
   currentDish.value.designated_price = parseFloat((numVal / rate).toFixed(6));
 };
 
-// Al salir del campo (blur) o presionar Enter: aplicar el redondeo final
+// Al salir del campo (blur) o presionar Enter: redondear y formatear igual que el precio sugerido
 const onPriceBlur = () => {
-  const numVal = parseFloat(inputDesignatedPrice.value);
+  const cleanVal = String(inputDesignatedPrice.value || "").replace(/[^\d.,]/g, "").replace(",", ".");
+  const numVal = parseFloat(cleanVal);
   if (isNaN(numVal) || numVal <= 0) {
-    inputDesignatedPrice.value = "0";
     currentDish.value.designated_price = 0;
+    inputDesignatedPrice.value = formatCurrency(0);
     return;
   }
 
   const rate = activeExchangeRate.value || 1;
   if (defaultCurrency.value === "COP") {
     const rounded = Math.round(numVal / 100) * 100;
-    inputDesignatedPrice.value = String(rounded);
     currentDish.value.designated_price = parseFloat((rounded / rate).toFixed(6));
   } else {
     const rounded = parseFloat(numVal.toFixed(2));
-    inputDesignatedPrice.value = String(rounded);
     currentDish.value.designated_price = parseFloat((rounded / rate).toFixed(4));
   }
+  inputDesignatedPrice.value = formatCurrency(currentDish.value.designated_price);
 };
 
 // Agregar ingrediente
@@ -497,7 +505,6 @@ const handleAddDish = () => {
     kitchen_station_id: null,
     ingredients: [],
   };
-  isBaseDish.value = false;
   dishStatus.value = 1;
   formErrors.value = {};
   syncInputPriceFromModel();
@@ -544,7 +551,6 @@ const handleEditDish = async (dish) => {
         };
       }),
     };
-    isBaseDish.value = details.status === 3;
     dishStatus.value = details.status === 3 ? 1 : details.status;
     formErrors.value = {};
     recalculateDishTotals();
@@ -597,7 +603,6 @@ const handleDuplicateDish = async (dish) => {
         };
       }),
     };
-    isBaseDish.value = details.status === 3;
     dishStatus.value = details.status === 3 ? 1 : details.status;
     formErrors.value = {};
     recalculateDishTotals();
@@ -617,7 +622,7 @@ const handleSaveDish = async () => {
     return;
   }
 
-  currentDish.value.status = isBaseDish.value ? 3 : dishStatus.value;
+  currentDish.value.status = dishStatus.value;
   isSaving.value = true;
   formErrors.value = {};
 
@@ -1069,7 +1074,6 @@ onUnmounted(() => {
                       v-model="dishStatus"
                       :items="statusOptionsWithoutBase"
                       label="Estado"
-                      :disabled="isBaseDish"
                       :error-messages="formErrors.status"
                       density="compact"
                       hide-details
@@ -1125,15 +1129,6 @@ onUnmounted(() => {
                     />
                   </VCol>
                 </VRow>
-
-                <div class="d-flex align-center pt-1">
-                  <VCheckbox
-                    v-model="isBaseDish"
-                    label="Marcar como Plato Base (Subreceta)"
-                    density="compact"
-                    hide-details
-                  />
-                </div>
               </VCard>
 
               <!-- Tarjeta 2: Rentabilidad y Precios -->
@@ -1184,12 +1179,10 @@ onUnmounted(() => {
                     <VTextField
                       :model-value="inputDesignatedPrice"
                       @update:model-value="onPriceInput"
+                      @focus="onPriceFocus"
                       @blur="onPriceBlur"
                       @keyup.enter="onPriceBlur"
                       label="Precio Menú (Venta)"
-                      type="number"
-                      :step="defaultCurrency === 'COP' ? '100' : '0.01'"
-                      :prefix="currencyPrefix"
                       density="compact"
                       hide-details="auto"
                       :error-messages="formErrors.designated_price"

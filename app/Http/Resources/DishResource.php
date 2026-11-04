@@ -102,12 +102,18 @@ class DishResource extends JsonResource
                     ];
                 });
             }),
+            'expected_yield_quantity' => (float) ($this->expected_yield_quantity ?? 1.0),
+            'unit_cost' => (float) ($this->expected_yield_quantity ?? 1.0) > 0
+                ? round($costPrice / (float) ($this->expected_yield_quantity ?? 1.0), 4)
+                : $costPrice,
             'output_product_id' => $this->output_product_id,
             'output_product' => ($this->relationLoaded('outputProduct') && $this->outputProduct) ? [
                 'id' => $this->outputProduct->id,
                 'name' => $this->outputProduct->name,
                 'stock' => (float) $this->outputProduct->stock,
-                'unit_cost' => (float) $this->outputProduct->unit_cost,
+                'unit_cost' => (float) ($this->expected_yield_quantity ?? 1.0) > 0
+                    ? round($costPrice / (float) ($this->expected_yield_quantity ?? 1.0), 4)
+                    : (float) $this->outputProduct->unit_cost,
                 'unit_of_measure' => $this->outputProduct->unit_of_measure,
             ] : null,
             'expected_yield_quantity' => (float) ($this->expected_yield_quantity ?: 1.0),

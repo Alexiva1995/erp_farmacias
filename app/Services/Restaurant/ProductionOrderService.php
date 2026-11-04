@@ -103,7 +103,13 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                     $lot->save();
 
                     $remainingToDeduct -= $deductFromLot;
-                    $totalProductionCost += ($deductFromLot * (float) ($lot->unit_cost ?: $ingredient->unit_cost));
+                    $lotCost = (float) ($lot->unit_cost ?: ($ingredient->unit_cost ?: 0));
+                    $totalProductionCost += ($deductFromLot * $lotCost);
+                }
+
+                // Si queda cantidad por descontar (sin lotes suficientes), calcular el costo con el unit_cost de inventario
+                if ($remainingToDeduct > 0) {
+                    $totalProductionCost += ($remainingToDeduct * (float) ($ingredient->unit_cost ?: 0));
                 }
 
                 // Descontar stock general del producto ingrediente
@@ -111,7 +117,15 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 $ingredient->save();
             }
 
-            $unitCostCalculated = $actualQty > 0 ? round($totalProductionCost / $actualQty, 4) : 0.0;
+            // Sumar 5% de imprevisto al costo de producción
+            $totalProductionCost = round($totalProductionCost * 1.05, 4);
+
+            // Si por alguna razón el costo calculado es 0, usar el costo de la receta
+            if ($totalProductionCost <= 0) {
+                $totalProductionCost = round((float) $dish->cost_price * $multiplier, 4);
+            }
+
+            $unitCostCalculated = $actualQty > 0 ? round($totalProductionCost / $actualQty, 4) : round((float) $dish->cost_price / ($dish->expected_yield_quantity ?: 1.0), 4);
 
             // Generar nuevo Lote para el producto resultante elaborado
             $shelfLife = $dish->shelf_life_days ?: 7;
@@ -285,16 +299,12 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             $dish = Dish::create($dishAttributes);
 
             // 3. Vincular los ingredientes a la sub-receta
-            $hasIsRemovable = \Illuminate\Support\Facades\Schema::hasColumn('dish_ingredients', 'is_removable');
             foreach ($ingredientsData as $ing) {
-                $pivotData = [
+                $dish->ingredients()->attach($ing['product_id'], [
                     'portion' => $ing['portion'],
                     'designated_cost' => $ing['designated_cost'],
-                ];
-                if ($hasIsRemovable) {
-                    $pivotData['is_removable'] = false;
-                }
-                $dish->ingredients()->attach($ing['product_id'], $pivotData);
+                    'is_removable' => false,
+                ]);
             }
 
             // Limpiar caché de categorías de platos

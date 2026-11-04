@@ -20,8 +20,9 @@ class StoreProductRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        if ($this->has('photo_url') && is_string($this->input('photo_url'))) {
+        if (!$this->hasFile('photo_url')) {
             $this->request->remove('photo_url');
+            $this->offsetUnset('photo_url');
         }
 
         $merges = [
@@ -137,7 +138,7 @@ class StoreProductRequest extends FormRequest
             'is_novaventa'     => ['sometimes', 'boolean'],
             'no_pvp'           => ['sometimes', 'boolean'],
 
-            'photo_url'        => ['sometimes', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
+            'photo_url'        => ['sometimes', 'nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
             'group_id'         => 'nullable|integer|exists:groups_products,id',
             'is_scarce'        => ['sometimes', 'boolean'],
             'is_unified_group' => ['sometimes', 'boolean'],

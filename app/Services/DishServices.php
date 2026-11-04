@@ -118,12 +118,22 @@ class DishServices implements DishContract
             }
 
             // Actualizar el costo unitario del producto generado por la sub-receta
+            $yield = (float) ($subRecipe->expected_yield_quantity ?? 1);
+            $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
+
+            if (empty($subRecipe->output_product_id) && Schema::hasColumn('dishes', 'output_product_id')) {
+                $linkedProd = Product::where('name', $subRecipe->name)->first();
+                if ($linkedProd) {
+                    $subRecipe->update(['output_product_id' => $linkedProd->id]);
+                    $subRecipe->output_product_id = $linkedProd->id;
+                }
+            }
+
             if (!empty($subRecipe->output_product_id)) {
-                $yield = (float) ($subRecipe->expected_yield_quantity ?? 1);
-                $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
                 Product::withoutEvents(function () use ($subRecipe, $unitCostProduct) {
                     Product::where('id', $subRecipe->output_product_id)->update([
                         'unit_cost' => $unitCostProduct,
+                        'cost_price' => $unitCostProduct,
                         'sale_price' => $unitCostProduct,
                     ]);
                 });
@@ -331,12 +341,22 @@ class DishServices implements DishContract
             $dish->suggested_price = $currentCost;
             $dish->designated_price = $currentCost;
 
+            $yield = (float) ($dish->expected_yield_quantity ?? 1);
+            $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
+
+            if (empty($dish->output_product_id) && Schema::hasColumn('dishes', 'output_product_id')) {
+                $linkedProd = Product::where('name', $dish->name)->first();
+                if ($linkedProd) {
+                    $dish->update(['output_product_id' => $linkedProd->id]);
+                    $dish->output_product_id = $linkedProd->id;
+                }
+            }
+
             if (!empty($dish->output_product_id)) {
-                $yield = (float) ($dish->expected_yield_quantity ?? 1);
-                $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
                 Product::withoutEvents(function () use ($dish, $unitCostProduct) {
                     Product::where('id', $dish->output_product_id)->update([
                         'unit_cost' => $unitCostProduct,
+                        'cost_price' => $unitCostProduct,
                         'sale_price' => $unitCostProduct,
                     ]);
                 });
@@ -405,16 +425,12 @@ class DishServices implements DishContract
             $dish = Dish::create($dishAttributes);
 
             // Vincular ingredientes
-            $hasIsRemovable = Schema::hasColumn('dish_ingredients', 'is_removable');
             foreach ($ingredientsData as $ing) {
-                $pivotData = [
+                $dish->ingredients()->attach($ing['product_id'], [
                     'portion' => $ing['portion'],
                     'designated_cost' => $ing['designated_cost'],
-                ];
-                if ($hasIsRemovable) {
-                    $pivotData['is_removable'] = !empty($ing['is_removable']);
-                }
-                $dish->ingredients()->attach($ing['product_id'], $pivotData);
+                    'is_removable' => !empty($ing['is_removable']),
+                ]);
             }
 
             // Vincular grupos de modificadores si vienen en la petición y existe la tabla
@@ -521,17 +537,13 @@ class DishServices implements DishContract
             $dish->update($dishAttributes);
 
             // Sincronizar ingredientes
-            $hasIsRemovable = Schema::hasColumn('dish_ingredients', 'is_removable');
             $syncData = [];
             foreach ($ingredientsData as $ing) {
-                $pivotData = [
+                $syncData[$ing['product_id']] = [
                     'portion' => $ing['portion'],
                     'designated_cost' => $ing['designated_cost'],
+                    'is_removable' => !empty($ing['is_removable']),
                 ];
-                if ($hasIsRemovable) {
-                    $pivotData['is_removable'] = !empty($ing['is_removable']);
-                }
-                $syncData[$ing['product_id']] = $pivotData;
             }
             $dish->ingredients()->sync($syncData);
 

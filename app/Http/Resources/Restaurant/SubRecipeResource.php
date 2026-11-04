@@ -42,18 +42,22 @@ class SubRecipeResource extends JsonResource
             ? round($rawCost * 1.05, 2)
             : (float) $this->cost_price;
 
+        $yieldQty = (float) ($this->expected_yield_quantity ?: 1.0);
+        $dynamicUnitCost = $yieldQty > 0 ? round($costPrice / $yieldQty, 4) : $costPrice;
+
         return [
             'id' => $this->id,
             'name' => $this->name,
             'cost_price' => $costPrice,
-            'expected_yield_quantity' => (float) ($this->expected_yield_quantity ?: 1.0),
+            'unit_cost' => $dynamicUnitCost,
+            'expected_yield_quantity' => $yieldQty,
             'shelf_life_days' => (int) ($this->shelf_life_days ?: 7),
             'output_product_id' => $this->output_product_id,
             'output_product' => $this->outputProduct ? [
                 'id' => $this->outputProduct->id,
                 'name' => $this->outputProduct->name,
                 'stock' => (float) $this->outputProduct->stock,
-                'unit_cost' => (float) $this->outputProduct->unit_cost,
+                'unit_cost' => $dynamicUnitCost,
                 'unit_of_measure' => $this->outputProduct->unit_of_measure,
             ] : null,
             'category_id' => $this->category_id,

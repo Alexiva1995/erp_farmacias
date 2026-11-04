@@ -23,8 +23,9 @@ class UpdateProductRequest extends FormRequest
      */
     protected function prepareForValidation()
     {
-        if ($this->has('photo_url') && is_string($this->input('photo_url'))) {
+        if (!$this->hasFile('photo_url')) {
             $this->request->remove('photo_url');
+            $this->offsetUnset('photo_url');
         }
 
         $merges = [
