@@ -106,7 +106,6 @@ class DishServices implements DishContract
             if (abs((float) $subRecipe->cost_price - $currentCost) > 0.001) {
                 $updateFields['cost_price'] = $currentCost;
                 $updateFields['suggested_price'] = $currentCost;
-                $updateFields['designated_price'] = $currentCost;
                 if ($hasCpvColumn) {
                     $updateFields['cpv'] = $currentCost;
                 }
@@ -134,7 +133,6 @@ class DishServices implements DishContract
                     Product::where('id', $subRecipe->output_product_id)->update([
                         'unit_cost' => $unitCostProduct,
                         'cost_price' => $unitCostProduct,
-                        'sale_price' => $unitCostProduct,
                     ]);
                 });
             }
@@ -337,9 +335,7 @@ class DishServices implements DishContract
             }
         } else {
             $updateFields['suggested_price'] = $currentCost;
-            $updateFields['designated_price'] = $currentCost;
             $dish->suggested_price = $currentCost;
-            $dish->designated_price = $currentCost;
 
             $yield = (float) ($dish->expected_yield_quantity ?? 1);
             $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
@@ -357,7 +353,6 @@ class DishServices implements DishContract
                     Product::where('id', $dish->output_product_id)->update([
                         'unit_cost' => $unitCostProduct,
                         'cost_price' => $unitCostProduct,
-                        'sale_price' => $unitCostProduct,
                     ]);
                 });
             }

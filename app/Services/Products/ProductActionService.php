@@ -229,7 +229,8 @@ class ProductActionService
         }
         // Si sale_price viene como 0, no recalcularlo (para vendedores y supervisores)
         // De lo contrario, calcular el precio basado en rentabilidad solo si unit_cost está presente
-        if ((!isset($validatedData['sale_price']) || $validatedData['sale_price'] != 0) && 
+        // Solo calcular precio sugerido si no se proporcionó un precio de venta (el precio designado por el usuario se respeta siempre)
+        if ((!isset($validatedData['sale_price']) || $validatedData['sale_price'] === null || $validatedData['sale_price'] === '') && 
             isset($validatedData['unit_cost']) && 
             $validatedData['unit_cost'] !== null && 
             $validatedData['unit_cost'] > 0) {
