@@ -254,9 +254,8 @@ const selectInvoice = (inv) => {
   entryForm.vat_withheld = inv.vat_withheld || 0
   entryForm.withholding_receipt_number = inv.withholding_receipt_number || ''
 
-  // Respetar la fecha de inicio del libro o la fecha del formulario si es incorporación de factura vieja a este período
-  if (!entryForm.operation_date) {
-    entryForm.operation_date = inv.created_invoice_date || book.value?.start_date || ''
+  if (inv.created_invoice_date) {
+    entryForm.operation_date = inv.created_invoice_date
   }
 
   foundInvoices.value = []
