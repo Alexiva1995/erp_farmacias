@@ -24,11 +24,12 @@ $scheduleTenantAware = function (string $command, callable $scheduleConfig) {
     // 1. Siempre registrar para la base de datos principal/independiente
     $scheduleConfig(Schedule::command($command));
 
-    // 2. Si existen tenants registrados en el sistema y la tabla existe, programar para los tenants
+    // 2. Si el comando 'tenants:run' está registrado y existen tenants en BD, programar para tenants
     try {
         $hasTenants = class_exists(\Stancl\Tenancy\Database\Models\Tenant::class)
             && \Illuminate\Support\Facades\Schema::hasTable('tenants')
-            && \Stancl\Tenancy\Database\Models\Tenant::exists();
+            && \Stancl\Tenancy\Database\Models\Tenant::exists()
+            && isset(Artisan::all()['tenants:run']);
 
         if ($hasTenants) {
             $scheduleConfig(Schedule::command("tenants:run {$command}"));
@@ -159,7 +160,8 @@ $scheduleTenantAware('supplier:sync-email-catalogs', function ($event) {
         ->withoutOverlapping()
         ->runInBackground()
         ->onFailure(function () {
-            \Log::error('[EmailSupplierSync] Falló la sincronización automática de catálogos desde Gmail');
+            // Registrar solo advertencia si falló por credenciales ausentes o problemas transitorios
+            \Log::warning('[EmailSupplierSync] Ocurrió un error o faltan credenciales en la sincronización horaria de catálogos desde Gmail');
         });
 });
 

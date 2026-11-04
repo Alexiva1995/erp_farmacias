@@ -115,13 +115,24 @@ class ProductActionService
         }
 
         if (!empty($masterId)) {
-            $validatedData['id'] = (int) $masterId;
+            $candidateId = (int) $masterId;
+            // Verificar si el ID no colisiona con un registro existente en la base de datos local
+            if (!Product::withoutGlobalScope('not_deleted')->withTrashed()->where('id', $candidateId)->exists()) {
+                $validatedData['id'] = $candidateId;
+            } else {
+                Log::info("ID #{$candidateId} de Catálogo Maestro ya existe localmente. Se creará con auto_increment local.");
+            }
         } elseif (config('catalog.role') === 'slave') {
             try {
                 $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
                 $masterProduct = $masterClient->registerProductInMaster($validatedData);
                 if (!empty($masterProduct['id'])) {
-                    $validatedData['id'] = (int) $masterProduct['id'];
+                    $candidateId = (int) $masterProduct['id'];
+                    if (!Product::withoutGlobalScope('not_deleted')->withTrashed()->where('id', $candidateId)->exists()) {
+                        $validatedData['id'] = $candidateId;
+                    } else {
+                        Log::info("ID #{$candidateId} asignado por Master ya existe localmente. Se creará con auto_increment local.");
+                    }
                 }
             } catch (\Throwable $e) {
                 Log::warning('No se pudo sincronizar ID con Master Catalog: ' . $e->getMessage());

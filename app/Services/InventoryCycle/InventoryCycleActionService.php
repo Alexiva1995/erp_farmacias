@@ -1233,6 +1233,8 @@ class InventoryCycleActionService
                         }
 
                         $stockAfter = (float) $product->lots()->sum('quantity');
+                        $movementQty = round($stockAfter - $stockBefore, 4);
+
                         Product::withoutEvents(function () use ($product, $stockAfter) {
                             $product->update(['stock' => $stockAfter]);
                         });
@@ -1243,22 +1245,24 @@ class InventoryCycleActionService
                             default                         => 'product_count',
                         };
 
-                        // Registrar movimiento de ajuste en trazabilidad
-                        InventoryMovement::create([
-                            'product_id'       => $product->id,
-                            'product_lot_id'   => $targetLot?->id,
-                            'movement_type'    => $difference > 0 ? 'adjustment' : 'loss',
-                            'quantity'         => $difference,
-                            'invoice_id'       => null,
-                            'supplier_id'      => null,
-                            'order_id'         => null,
-                            'user_id'          => Auth::id(),
-                            'product_count_id' => $model->id,
-                            'count_type'       => $countType,
-                            'stock_before'     => $stockBefore,
-                            'stock_after'      => $stockAfter,
-                            'movement_date'    => now(),
-                        ]);
+                        // Registrar movimiento de ajuste en trazabilidad garantizando el balance exacto
+                        if ($movementQty != 0.0) {
+                            InventoryMovement::create([
+                                'product_id'       => $product->id,
+                                'product_lot_id'   => $targetLot?->id,
+                                'movement_type'    => $movementQty > 0 ? 'adjustment' : 'loss',
+                                'quantity'         => $movementQty,
+                                'invoice_id'       => null,
+                                'supplier_id'      => null,
+                                'order_id'         => null,
+                                'user_id'          => Auth::id(),
+                                'product_count_id' => $model->id,
+                                'count_type'       => $countType,
+                                'stock_before'     => $stockBefore,
+                                'stock_after'      => $stockAfter,
+                                'movement_date'    => now(),
+                            ]);
+                        }
                     }
                 }
 
