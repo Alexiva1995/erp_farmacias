@@ -49,6 +49,14 @@ class SupplierActionService
             unset($validatedData['id']);
         }
 
+        // Asegurar campos json obligatorios en esquema de proveedores
+        if (!isset($validatedData['dispatch_days']) || $validatedData['dispatch_days'] === null) {
+            $validatedData['dispatch_days'] = [];
+        }
+        if (!isset($validatedData['order_days']) || $validatedData['order_days'] === null) {
+            $validatedData['order_days'] = [];
+        }
+
         return $this->supplierRepository->create($validatedData);
     }
     public function updateSupplier(Supplier $supplier, array $validatedData): Supplier
