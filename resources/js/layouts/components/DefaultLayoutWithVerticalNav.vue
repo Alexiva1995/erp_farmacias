@@ -509,38 +509,37 @@ const processedNavItems = computed(() => {
     };
 
     items = filterByRolePermissions(items);
-  }
+  } else {
+    // Si el rol no tiene permisos personalizados configurados, aplicar restricciones por defecto para empleado (rol 3)
+    const currentRoleId = authStore.user?.role_id;
+    const isUser = currentRoleId === 3;
 
-  const currentRoleId = authStore.user?.role_id;
-  const isUser = currentRoleId === 3;
-
-  if (!isUser) {
-    return items;
-  }
-
-  // Para usuarios tipo "usuario" (empleado), mostrar Inventario Ciclicos solo con Pendientes e Inventario de Usuario
-  try {
-    return items.map((item) => {
-      if (
-        item.title === "Inventario Ciclicos" &&
-        item.children &&
-        Array.isArray(item.children)
-      ) {
-        const allowedSubjects = ["pending-cyclics", "cycli-user"];
-        const userCyclicChildren = item.children.filter(
-          (c) => c.subject && allowedSubjects.includes(c.subject)
-        );
-        return {
-          ...item,
-          children: userCyclicChildren,
-        };
+    if (isUser) {
+      try {
+        items = items.map((item) => {
+          if (
+            item.title === "Inventario Ciclicos" &&
+            item.children &&
+            Array.isArray(item.children)
+          ) {
+            const allowedSubjects = ["pending-cyclics", "cycli-user"];
+            const userCyclicChildren = item.children.filter(
+              (c) => c.subject && allowedSubjects.includes(c.subject)
+            );
+            return {
+              ...item,
+              children: userCyclicChildren,
+            };
+          }
+          return { ...item };
+        });
+      } catch (error) {
+        console.error("Error procesando menú:", error);
       }
-      return { ...item };
-    });
-  } catch (error) {
-    console.error("Error procesando menú:", error);
-    return items;
+    }
   }
+
+  return items;
 });
 </script>
 
