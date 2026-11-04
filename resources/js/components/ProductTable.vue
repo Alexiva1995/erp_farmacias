@@ -293,7 +293,11 @@ const formatPriceWithCurrency = (price, isAlreadyConverted = false) => {
   if (currency === "COP") {
     const copObj = rates.find((r) => r && (r.currency_code === "COP" || r.currency_code === "COPC"));
     const copRate = Number(copObj?.rate || 4000);
-    const rounded = Math.ceil((numPrice * copRate) / 100) * 100;
+    const rawCop = numPrice * copRate;
+    if (rawCop > 0 && rawCop < 100) {
+      return formatCurrency(Math.round(rawCop), "COP");
+    }
+    const rounded = Math.ceil(rawCop / 100) * 100;
     return formatCurrency(rounded, "COP");
   }
 
