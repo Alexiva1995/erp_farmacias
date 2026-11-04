@@ -27,23 +27,36 @@ const isDromega = computed(() => {
   return id === 1005 || name.includes("DROMEGA") || name.includes("DROGUERIA MEGA");
 });
 
+const isDronena = computed(() => {
+  const name = props.supplier?.name?.toUpperCase() || "";
+  const id = Number(props.supplier?.id);
+  return id === 1014 || name.includes("DRONENA") || name.includes("DROGUERIA NENA") || name.includes("NENA");
+});
+
 const dromegaClientCode = ref("");
+const dronenaClientCode = ref("");
 
 const updateDromegaInvoicePath = (val) => {
   const cleanCode = (val || "").toString().trim();
   form.value.invoice_path = cleanCode ? `Facturas/${cleanCode}` : "Facturas/";
 };
 
+const updateDronenaClientCode = (val) => {
+  const cleanCode = (val || "").toString().trim();
+  form.value.path = cleanCode ? `Clientes/${cleanCode}/Inventario.txt` : "Clientes/";
+  form.value.invoice_path = cleanCode ? `Clientes/${cleanCode}/Factura` : "Clientes/";
+};
+
 const getDefaultFormForType = (type) => ({
   type: type,
   host: type === "dronena_bot" 
     ? "https://www.dronena.com/NuevaExperiencia/" 
-    : (isDromega.value && type === "ftp" ? "ftp.dromega.com.ve" : ""),
+    : (isDromega.value && type === "ftp" ? "ftp.dromega.com.ve" : (isDronena.value && type === "ftp" ? "ftp.dronena.com" : "")),
   port: type === "sftp" ? 22 : (type === "ftp" ? 21 : ""),
   username: "",
   password: "",
-  path: isDromega.value && type === "ftp" ? "Existencia/inventariomerida.txt" : "",
-  invoice_path: isDromega.value && type === "ftp" ? "Facturas/7586" : "",
+  path: isDromega.value && type === "ftp" ? "Existencia/inventariomerida.txt" : (isDronena.value && type === "ftp" ? "Clientes/" : ""),
+  invoice_path: isDromega.value && type === "ftp" ? "Facturas/7586" : (isDronena.value && type === "ftp" ? "Clientes/" : ""),
   pasv: true,
   has_header: false,
   ftp_orders_enabled: false,
@@ -78,20 +91,20 @@ const typeOptions = computed(() => {
     ];
   }
 
+  if (isDronena.value) {
+    return [
+      { title: "Bot Dronena", value: "dronena_bot", icon: "tabler-robot" },
+      { title: "FTP", value: "ftp", icon: "tabler-server" },
+      { title: "Correo Gmail", value: "file", icon: "tabler-mail" },
+    ];
+  }
+
   const options = [
     { title: "FTP", value: "ftp", icon: "tabler-server" },
     { title: "SFTP", value: "sftp", icon: "tabler-lock" },
     { title: "HTTP / API", value: "api", icon: "tabler-api" },
     { title: "Correo Gmail", value: "file", icon: "tabler-mail" },
   ];
-
-  if (props.supplier?.name && (props.supplier.name.toUpperCase().includes("NENA") || props.supplier.name.toUpperCase().includes("DRONENA"))) {
-    options.unshift({
-      title: "Bot Dronena",
-      value: "dronena_bot",
-      icon: "tabler-robot",
-    });
-  }
 
   return options;
 });
@@ -131,6 +144,26 @@ const loadFormForType = (type) => {
       const parts = form.value.invoice_path.split("/");
       dromegaClientCode.value = parts.length > 1 ? parts.slice(1).join("/") : (form.value.invoice_path || "");
     }
+
+    if (isDronena.value && type === "ftp") {
+      if (!form.value.host) form.value.host = "ftp.dronena.com";
+      if (!form.value.port) form.value.port = 21;
+
+      // Extraer código de cliente de invoice_path (ej: Clientes/XXXX/Factura) o path (ej: Clientes/XXXX/Inventario.txt) o username
+      let extractedCode = "";
+      if (form.value.invoice_path && form.value.invoice_path.includes("Clientes/")) {
+        const parts = form.value.invoice_path.split("/");
+        extractedCode = parts[1] || "";
+      } else if (form.value.path && form.value.path.includes("Clientes/")) {
+        const parts = form.value.path.split("/");
+        extractedCode = parts[1] || "";
+      } else if (form.value.username) {
+        extractedCode = form.value.username;
+      }
+
+      dronenaClientCode.value = extractedCode;
+      updateDronenaClientCode(extractedCode);
+    }
   } else {
     form.value = getDefaultFormForType(type);
     hasExistingPassword.value = false;
@@ -139,6 +172,11 @@ const loadFormForType = (type) => {
     if (isDromega.value && type === "ftp") {
       const parts = form.value.invoice_path.split("/");
       dromegaClientCode.value = parts.length > 1 ? parts.slice(1).join("/") : (form.value.invoice_path || "");
+    }
+
+    if (isDronena.value && type === "ftp") {
+      dronenaClientCode.value = "";
+      updateDronenaClientCode("");
     }
   }
 };
@@ -199,6 +237,14 @@ const saveConfig = async () => {
       payload.path = "Existencia/inventariomerida.txt";
       const cleanCode = (dromegaClientCode.value || "").toString().trim();
       payload.invoice_path = cleanCode ? `Facturas/${cleanCode}` : "Facturas/";
+    }
+
+    if (isDronena.value && payload.type === "ftp") {
+      payload.host = "ftp.dronena.com";
+      payload.port = 21;
+      const cleanCode = (dronenaClientCode.value || payload.username || "").toString().trim();
+      payload.path = cleanCode ? `Clientes/${cleanCode}/Inventario.txt` : "Clientes/";
+      payload.invoice_path = cleanCode ? `Clientes/${cleanCode}/Factura` : "Clientes/";
     }
 
     if (payload.type === "file") {
@@ -492,6 +538,40 @@ watch(
                   </VCol>
                 </template>
 
+                <!-- Configuración simplificada para Dronena (FTP) -->
+                <template v-else-if="isDronena && form.type === 'ftp'">
+                  <VCol cols="12" md="4">
+                    <AppTextField
+                      v-model="form.username"
+                      label="Usuario FTP *"
+                      placeholder="ej: D719-0"
+                      prepend-inner-icon="tabler-user"
+                      :error-messages="errors.username"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="4">
+                    <AppTextField
+                      v-model="form.password"
+                      :type="showPassword ? 'text' : 'password'"
+                      :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña FTP *'"
+                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
+                      prepend-inner-icon="tabler-lock"
+                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                      :error-messages="errors.password"
+                      @click:append-inner="showPassword = !showPassword"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="4">
+                    <AppTextField
+                      v-model="dronenaClientCode"
+                      label="Código de Cliente *"
+                      placeholder="ej: D719-0"
+                      prepend-inner-icon="tabler-barcode"
+                      @update:model-value="updateDronenaClientCode"
+                    />
+                  </VCol>
+                </template>
+
                 <!-- Configuración estándar para otros proveedores / tipos -->
                 <template v-else>
                   <!-- Servidor y Puerto -->
@@ -561,7 +641,7 @@ watch(
               </VRow>
 
               <!-- Opciones FTP en una sola fila compacta -->
-              <div v-if="isFtp && (!isDromega || form.type !== 'ftp')" class="d-flex align-center flex-wrap justify-space-between gap-3 pt-2 mt-2 border-t">
+              <div v-if="isFtp && (!isDromega || form.type !== 'ftp') && (!isDronena || form.type !== 'ftp')" class="d-flex align-center flex-wrap justify-space-between gap-3 pt-2 mt-2 border-t">
                 <div class="d-flex align-center gap-2">
                   <VSwitch v-model="form.pasv" color="primary" hide-details density="compact" />
                   <span class="text-xs font-weight-bold text-high-emphasis">Modo Pasivo (PASV)</span>
