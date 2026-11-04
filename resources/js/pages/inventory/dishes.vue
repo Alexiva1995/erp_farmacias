@@ -316,53 +316,7 @@ const addIngredient = () => {
     return;
   }
 
-  // Si es un plato base, expandir e importar/sumar sus ingredientes
-  if (selectedProduct.value.is_base_dish) {
-    const qty = parseFloat(ingredientPortion.value || 1);
-    
-    selectedProduct.value.ingredients.forEach((ing) => {
-      // Buscar si ya existe el ingrediente en el plato actual
-      const existing = currentDish.value.ingredients.find(
-        (i) => i.product_id === ing.product_id
-      );
-
-      const ingPortion = parseFloat(ing.portion || 0) * qty;
-      const ingCost = parseFloat(ing.unit_cost || 0);
-      const ingPresentation = parseFloat(ing.presentation || 1);
-      const portionCost = parseFloat(((ingPortion * ingCost) / ingPresentation).toFixed(4));
-
-      if (existing) {
-        // Si ya existe, sumar la porción y recalcular el costo de la porción acumulada
-        existing.portion = parseFloat((existing.portion + ingPortion).toFixed(4));
-        existing.designated_cost = parseFloat((existing.designated_cost + portionCost).toFixed(4));
-      } else {
-        // Si no existe, agregarlo como nuevo ingrediente
-        currentDish.value.ingredients.push({
-          product_id: ing.product_id,
-          name: ing.name,
-          portion: ingPortion,
-          unit_cost: ingCost,
-          presentation: ingPresentation,
-          unit_of_measure: ing.unit_of_measure || "und",
-          designated_cost: portionCost,
-          cpv_deductible: false,
-        });
-      }
-    });
-
-    // Limpiar campos
-    selectedProduct.value = null;
-    ingredientPortion.value = 0;
-    isCpvDeductible.value = false;
-    productSearch.value = "";
-    productOptions.value = [];
-
-    recalculateDishTotals();
-    toast.success("Ingredientes de la receta base añadidos.");
-    return;
-  }
-
-  // Comprobar si ya existe (ingrediente normal)
+  // Comprobar si ya existe el insumo/ingrediente
   const existing = currentDish.value.ingredients.find(
     (i) => i.product_id === selectedProduct.value.id
   );
@@ -467,14 +421,10 @@ watch(isEditDialogVisible, (val) => {
   }
 });
 
-// Detectar si el usuario selecciona un plato base para inicializar la cantidad por defecto en 1
+// Inicializar la porción por defecto en 1 al seleccionar un insumo
 watch(selectedProduct, (newVal) => {
   if (newVal) {
-    if (newVal.is_base_dish) {
-      ingredientPortion.value = 1;
-    } else {
-      ingredientPortion.value = 0;
-    }
+    ingredientPortion.value = 1;
   }
 });
 
@@ -530,6 +480,8 @@ const handleEditDish = async (dish) => {
       tax_rate: details.tax_rate !== null && details.tax_rate !== undefined ? details.tax_rate : 16.0,
       preparation_time_minutes: details.preparation_time_minutes || 15,
       kitchen_station_id: details.kitchen_station_id || null,
+      expected_yield_quantity: details.expected_yield_quantity || 1,
+      shelf_life_days: details.shelf_life_days || 7,
       ingredients: details.ingredients.map((ing) => {
         const portion = parseFloat(ing.portion || 0);
         const unitCost = parseFloat(ing.unit_cost || 0);
@@ -551,7 +503,7 @@ const handleEditDish = async (dish) => {
         };
       }),
     };
-    dishStatus.value = details.status === 3 ? 1 : details.status;
+    dishStatus.value = details.status;
     formErrors.value = {};
     recalculateDishTotals();
     syncInputPriceFromModel();
@@ -582,6 +534,8 @@ const handleDuplicateDish = async (dish) => {
       tax_rate: details.tax_rate !== null && details.tax_rate !== undefined ? details.tax_rate : 16.0,
       preparation_time_minutes: details.preparation_time_minutes || 15,
       kitchen_station_id: details.kitchen_station_id || null,
+      expected_yield_quantity: details.expected_yield_quantity || 1,
+      shelf_life_days: details.shelf_life_days || 7,
       ingredients: details.ingredients.map((ing) => {
         const portion = parseFloat(ing.portion || 0);
         const unitCost = parseFloat(ing.unit_cost || 0);
@@ -603,7 +557,7 @@ const handleDuplicateDish = async (dish) => {
         };
       }),
     };
-    dishStatus.value = details.status === 3 ? 1 : details.status;
+    dishStatus.value = details.status;
     formErrors.value = {};
     recalculateDishTotals();
     syncInputPriceFromModel();
@@ -1218,7 +1172,7 @@ onUnmounted(() => {
                       clearable
                       density="compact"
                       hide-details
-                      :no-filter="true"
+                      :custom-filter="() => true"
                       no-data-text="Escribe para buscar ingredientes..."
                     />
                   </VCol>
@@ -1235,7 +1189,7 @@ onUnmounted(() => {
                   <VCol cols="12" sm="4">
                     <VTextField
                       v-model="ingredientPortion"
-                      :label="selectedProduct.is_base_dish ? 'Cantidad Base' : 'Porción'"
+                      label="Porción"
                       type="number"
                       step="0.01"
                       :suffix="selectedProduct.unit_of_measure"

@@ -6,6 +6,8 @@ namespace App\Services;
 
 use App\Contracts\Dish as DishContract;
 use App\Models\Dish;
+use App\Models\Product;
+use Illuminate\Database\Schema\Builder as SchemaBuilder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -13,23 +15,35 @@ use Illuminate\Support\Facades\Schema;
 class DishServices implements DishContract
 {
     /**
+     * Obtener el constructor de esquema de la conexión activa del modelo Dish y asegurar las columnas de restaurante.
+     */
+    private function schema(): SchemaBuilder
+    {
+        $conn = (new Dish())->getConnection();
+        Dish::ensureRestaurantSchema($conn);
+
+        return $conn->getSchemaBuilder();
+    }
+
+    /**
      * Construir arreglo de relaciones disponibles según el esquema de base de datos.
      *
      * @return array<int, string>
      */
     private function getAvailableRelations(): array
     {
+        $schema = $this->schema();
         $relations = ['category', 'ingredients'];
 
-        if (Schema::hasTable('modifier_groups') && Schema::hasTable('dish_modifier_group')) {
+        if ($schema->hasTable('modifier_groups') && $schema->hasTable('dish_modifier_group')) {
             $relations[] = 'modifierGroups.options.product';
         }
 
-        if (Schema::hasTable('kitchen_stations') && Schema::hasColumn('dishes', 'kitchen_station_id')) {
+        if ($schema->hasTable('kitchen_stations') && $schema->hasColumn('dishes', 'kitchen_station_id')) {
             $relations[] = 'kitchenStation';
         }
 
-        if (Schema::hasColumn('dishes', 'output_product_id')) {
+        if ($schema->hasColumn('dishes', 'output_product_id')) {
             $relations[] = 'outputProduct';
         }
 
@@ -42,9 +56,11 @@ class DishServices implements DishContract
      */
     public function syncCostsAndFlagUnprofitableDishes(): array
     {
-        $hasCpvColumn = Schema::hasColumn('dishes', 'cpv');
+        $schema = $this->schema();
+        $hasCpvColumn = $schema->hasColumn('dishes', 'cpv');
         $dishSelectColumns = [
             'id',
+            'name',
             'cost_price',
             'suggested_price',
             'designated_price',
@@ -54,10 +70,10 @@ class DishServices implements DishContract
         if ($hasCpvColumn) {
             $dishSelectColumns[] = 'cpv';
         }
-        if (Schema::hasColumn('dishes', 'output_product_id')) {
+        if ($schema->hasColumn('dishes', 'output_product_id')) {
             $dishSelectColumns[] = 'output_product_id';
         }
-        if (Schema::hasColumn('dishes', 'expected_yield_quantity')) {
+        if ($schema->hasColumn('dishes', 'expected_yield_quantity')) {
             $dishSelectColumns[] = 'expected_yield_quantity';
         }
 
@@ -120,8 +136,8 @@ class DishServices implements DishContract
             $yield = (float) ($subRecipe->expected_yield_quantity ?? 1);
             $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
 
-            if (empty($subRecipe->output_product_id) && Schema::hasColumn('dishes', 'output_product_id')) {
-                $linkedProd = Product::where('name', $subRecipe->name)->first();
+            if (empty($subRecipe->output_product_id) && $schema->hasColumn('dishes', 'output_product_id')) {
+                $linkedProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $subRecipe->name))])->first();
                 if ($linkedProd) {
                     $subRecipe->update(['output_product_id' => $linkedProd->id]);
                     $subRecipe->output_product_id = $linkedProd->id;
@@ -132,6 +148,7 @@ class DishServices implements DishContract
                 Product::withoutEvents(function () use ($subRecipe, $unitCostProduct) {
                     Product::where('id', $subRecipe->output_product_id)->update([
                         'unit_cost' => $unitCostProduct,
+                        'sale_price' => $unitCostProduct,
                     ]);
                 });
             }
@@ -228,7 +245,7 @@ class DishServices implements DishContract
 
         if (isset($filters['status']) && $filters['status'] !== '') {
             $statusVal = (int) $filters['status'];
-            if ($statusVal === 3 && Schema::hasColumn('dishes', 'output_product_id')) {
+            if ($statusVal === 3 && $this->schema()->hasColumn('dishes', 'output_product_id')) {
                 $query->where(function ($q) {
                     $q->where('status', 3)
                       ->orWhereNotNull('output_product_id');
@@ -272,6 +289,12 @@ class DishServices implements DishContract
      */
     public function find(int $id): ?Dish
     {
+        try {
+            $this->syncCostsAndFlagUnprofitableDishes();
+        } catch (\Throwable $e) {
+            \Log::warning('No se pudo sincronizar costos generales antes de consultar plato: ' . $e->getMessage());
+        }
+
         $dish = Dish::with($this->getAvailableRelations())->find($id);
         if ($dish) {
             $this->syncSingleDishCost($dish);
@@ -284,8 +307,9 @@ class DishServices implements DishContract
      */
     public function syncSingleDishCost(Dish $dish): void
     {
+        $schema = $this->schema();
         $currentCost = 0.0;
-        $hasCpvColumn = Schema::hasColumn('dishes', 'cpv');
+        $hasCpvColumn = $schema->hasColumn('dishes', 'cpv');
         $isSubRecipe = ((int) $dish->status === 3);
 
         foreach ($dish->ingredients as $ingredient) {
@@ -339,8 +363,8 @@ class DishServices implements DishContract
             $yield = (float) ($dish->expected_yield_quantity ?? 1);
             $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
 
-            if (empty($dish->output_product_id) && Schema::hasColumn('dishes', 'output_product_id')) {
-                $linkedProd = Product::where('name', $dish->name)->first();
+            if (empty($dish->output_product_id) && $schema->hasColumn('dishes', 'output_product_id')) {
+                $linkedProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $dish->name))])->first();
                 if ($linkedProd) {
                     $dish->update(['output_product_id' => $linkedProd->id]);
                     $dish->output_product_id = $linkedProd->id;
@@ -351,6 +375,7 @@ class DishServices implements DishContract
                 Product::withoutEvents(function () use ($dish, $unitCostProduct) {
                     Product::where('id', $dish->output_product_id)->update([
                         'unit_cost' => $unitCostProduct,
+                        'sale_price' => $unitCostProduct,
                     ]);
                 });
             }
@@ -367,6 +392,7 @@ class DishServices implements DishContract
     public function create(array $data): Dish
     {
         return DB::transaction(function () use ($data) {
+            $schema = $this->schema();
             // Calcular costos si no vienen calculados del frontend (sumando 5% por imprevisto)
             $rawCost = 0;
             $ingredientsData = $data['ingredients'] ?? [];
@@ -398,20 +424,26 @@ class DishServices implements DishContract
                 'status' => $data['status'] ?? 1,
             ];
 
-            if (Schema::hasColumn('dishes', 'cpv')) {
+            if ($schema->hasColumn('dishes', 'cpv')) {
                 $dishAttributes['cpv'] = $data['cpv'];
             }
-            if (Schema::hasColumn('dishes', 'iva')) {
+            if ($schema->hasColumn('dishes', 'iva')) {
                 $dishAttributes['iva'] = $data['iva'] ?? false;
             }
-            if (Schema::hasColumn('dishes', 'tax_rate')) {
+            if ($schema->hasColumn('dishes', 'tax_rate')) {
                 $dishAttributes['tax_rate'] = $data['tax_rate'] ?? 16.00;
             }
-            if (Schema::hasColumn('dishes', 'preparation_time_minutes')) {
+            if ($schema->hasColumn('dishes', 'preparation_time_minutes')) {
                 $dishAttributes['preparation_time_minutes'] = $data['preparation_time_minutes'] ?? 15;
             }
-            if (Schema::hasColumn('dishes', 'kitchen_station_id')) {
+            if ($schema->hasColumn('dishes', 'kitchen_station_id')) {
                 $dishAttributes['kitchen_station_id'] = $data['kitchen_station_id'] ?? null;
+            }
+            if ($schema->hasColumn('dishes', 'expected_yield_quantity') && isset($data['expected_yield_quantity'])) {
+                $dishAttributes['expected_yield_quantity'] = max(0.01, (float) $data['expected_yield_quantity']);
+            }
+            if ($schema->hasColumn('dishes', 'shelf_life_days') && isset($data['shelf_life_days'])) {
+                $dishAttributes['shelf_life_days'] = max(1, (int) $data['shelf_life_days']);
             }
 
             // Crear plato
@@ -439,7 +471,7 @@ class DishServices implements DishContract
             if (
                 isset($data['modifier_group_ids'])
                 && is_array($data['modifier_group_ids'])
-                && Schema::hasTable('dish_modifier_group')
+                && $schema->hasTable('dish_modifier_group')
             ) {
                 $dish->modifierGroups()->sync($data['modifier_group_ids']);
             }
@@ -452,26 +484,40 @@ class DishServices implements DishContract
                 $yield = (float) ($dish->expected_yield_quantity ?: 1.0);
                 $safeYield = $yield > 0 ? $yield : 1.0;
                 $unitCostProd = round((float) $dish->cost_price / $safeYield, 4);
+                $unitMeasure = !empty($data['unit_of_measure']) ? trim((string) $data['unit_of_measure']) : 'porciones';
 
-                $productData = [
-                    'name' => trim($dish->name),
-                    'category_id' => $dish->category_id,
-                    'sale_price' => $unitCostProd,
-                    'unit_cost' => $unitCostProd,
-                    'stock' => 0,
-                    'presentation' => 1,
-                    'unit_of_measure' => 'porciones',
-                    'is_active' => true,
-                    'is_deleted' => false,
-                    'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)),
-                    'active_ingredient' => 'Sub-receta / Insumo Cocina',
-                    'iva' => false,
-                    'is_sub_recipe' => true,
-                    'yield_percentage' => 100.00,
-                ];
+                $existingProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $dish->name))])->first();
+                if ($existingProd) {
+                    Product::withoutEvents(function () use ($existingProd, $unitCostProd, $unitMeasure) {
+                        $existingProd->update([
+                            'unit_cost' => $unitCostProd,
+                            'sale_price' => $unitCostProd,
+                            'unit_of_measure' => $unitMeasure,
+                            'is_sub_recipe' => true,
+                        ]);
+                    });
+                    $dish->update(['output_product_id' => $existingProd->id]);
+                } else {
+                    $productData = [
+                        'name' => trim($dish->name),
+                        'category_id' => $dish->category_id,
+                        'sale_price' => $unitCostProd,
+                        'unit_cost' => $unitCostProd,
+                        'stock' => 0,
+                        'presentation' => 1,
+                        'unit_of_measure' => $unitMeasure,
+                        'is_active' => true,
+                        'is_deleted' => false,
+                        'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)),
+                        'active_ingredient' => 'Sub-receta / Insumo Cocina',
+                        'iva' => false,
+                        'is_sub_recipe' => true,
+                        'yield_percentage' => 100.00,
+                    ];
 
-                $outputProduct = Product::create($productData);
-                $dish->update(['output_product_id' => $outputProduct->id]);
+                    $outputProduct = Product::create($productData);
+                    $dish->update(['output_product_id' => $outputProduct->id]);
+                }
             }
 
             return $dish->load($this->getAvailableRelations());
@@ -484,6 +530,7 @@ class DishServices implements DishContract
     public function update(Dish $dish, array $data): Dish
     {
         return DB::transaction(function () use ($dish, $data) {
+            $schema = $this->schema();
             $rawCost = 0;
             $ingredientsData = $data['ingredients'] ?? [];
             
@@ -513,20 +560,26 @@ class DishServices implements DishContract
                 'status' => $data['status'] ?? 1,
             ];
 
-            if (Schema::hasColumn('dishes', 'cpv')) {
+            if ($schema->hasColumn('dishes', 'cpv')) {
                 $dishAttributes['cpv'] = $data['cpv'];
             }
-            if (Schema::hasColumn('dishes', 'iva')) {
+            if ($schema->hasColumn('dishes', 'iva')) {
                 $dishAttributes['iva'] = $data['iva'] ?? $dish->iva;
             }
-            if (Schema::hasColumn('dishes', 'tax_rate')) {
+            if ($schema->hasColumn('dishes', 'tax_rate')) {
                 $dishAttributes['tax_rate'] = $data['tax_rate'] ?? $dish->tax_rate;
             }
-            if (Schema::hasColumn('dishes', 'preparation_time_minutes')) {
+            if ($schema->hasColumn('dishes', 'preparation_time_minutes')) {
                 $dishAttributes['preparation_time_minutes'] = $data['preparation_time_minutes'] ?? $dish->preparation_time_minutes;
             }
-            if (Schema::hasColumn('dishes', 'kitchen_station_id')) {
+            if ($schema->hasColumn('dishes', 'kitchen_station_id')) {
                 $dishAttributes['kitchen_station_id'] = $data['kitchen_station_id'] ?? $dish->kitchen_station_id;
+            }
+            if ($schema->hasColumn('dishes', 'expected_yield_quantity') && isset($data['expected_yield_quantity'])) {
+                $dishAttributes['expected_yield_quantity'] = max(0.01, (float) $data['expected_yield_quantity']);
+            }
+            if ($schema->hasColumn('dishes', 'shelf_life_days') && isset($data['shelf_life_days'])) {
+                $dishAttributes['shelf_life_days'] = max(1, (int) $data['shelf_life_days']);
             }
 
             // Actualizar plato
@@ -556,7 +609,7 @@ class DishServices implements DishContract
             if (
                 isset($data['modifier_group_ids'])
                 && is_array($data['modifier_group_ids'])
-                && Schema::hasTable('dish_modifier_group')
+                && $schema->hasTable('dish_modifier_group')
             ) {
                 $dish->modifierGroups()->sync($data['modifier_group_ids']);
             }
@@ -571,6 +624,15 @@ class DishServices implements DishContract
                 $unitCostProd = round((float) $dish->cost_price / $safeYield, 4);
 
                 if (empty($dish->output_product_id)) {
+                    $existingProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $dish->name))])->first();
+                    if ($existingProd) {
+                        $dish->update(['output_product_id' => $existingProd->id]);
+                        $dish->output_product_id = $existingProd->id;
+                    }
+                }
+
+                if (empty($dish->output_product_id)) {
+                    $unitMeasure = !empty($data['unit_of_measure']) ? trim((string) $data['unit_of_measure']) : 'porciones';
                     $productData = [
                         'name' => trim($dish->name),
                         'category_id' => $dish->category_id,
@@ -578,7 +640,7 @@ class DishServices implements DishContract
                         'unit_cost' => $unitCostProd,
                         'stock' => 0,
                         'presentation' => 1,
-                        'unit_of_measure' => 'porciones',
+                        'unit_of_measure' => $unitMeasure,
                         'is_active' => true,
                         'is_deleted' => false,
                         'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)),
@@ -590,12 +652,25 @@ class DishServices implements DishContract
                     $outputProduct = Product::create($productData);
                     $dish->update(['output_product_id' => $outputProduct->id]);
                 } else {
-                    Product::where('id', $dish->output_product_id)->updateQuietly([
+                    $prodUpdate = [
                         'name' => trim($dish->name),
                         'unit_cost' => $unitCostProd,
                         'sale_price' => $unitCostProd,
                         'is_sub_recipe' => true,
-                    ]);
+                    ];
+                    if (!empty($data['unit_of_measure'])) {
+                        $prodUpdate['unit_of_measure'] = trim((string) $data['unit_of_measure']);
+                    }
+                    Product::withoutEvents(function () use ($dish, $prodUpdate) {
+                        Product::where('id', $dish->output_product_id)->update($prodUpdate);
+                    });
+                }
+
+                // Propagar el nuevo costo unitario de esta sub-receta a los platos que la utilicen
+                try {
+                    $this->syncCostsAndFlagUnprofitableDishes();
+                } catch (\Throwable $e) {
+                    \Log::warning('Error propagando costo de sub-receta tras actualizar: ' . $e->getMessage());
                 }
             }
 
@@ -610,7 +685,7 @@ class DishServices implements DishContract
     {
         return DB::transaction(function () use ($dish) {
             $dish->ingredients()->detach();
-            if (Schema::hasTable('dish_modifier_group')) {
+            if ($this->schema()->hasTable('dish_modifier_group')) {
                 $dish->modifierGroups()->detach();
             }
             
@@ -648,7 +723,7 @@ class DishServices implements DishContract
                     ->delete();
             }
 
-            $hasCpvColumn = Schema::hasColumn('dishes', 'cpv');
+            $hasCpvColumn = $this->schema()->hasColumn('dishes', 'cpv');
             $dishSelectColumns = [
                 'id',
                 'cost_price',

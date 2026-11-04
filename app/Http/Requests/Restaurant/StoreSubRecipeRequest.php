@@ -15,7 +15,7 @@ class StoreSubRecipeRequest extends FormRequest
     {
         return [
             'name' => 'required|string|min:2|max:255',
-            'category_id' => 'nullable|exists:categories,id',
+            'category_id' => 'nullable',
             'kitchen_station_id' => 'nullable|exists:kitchen_stations,id',
             'expected_yield_quantity' => 'required|numeric|min:0.01',
             'unit_of_measure' => 'nullable|string|max:50',

@@ -190,6 +190,8 @@ class ProductionOrderService implements ProductionOrderServiceInterface
     public function createSubRecipe(array $data): Dish
     {
         return DB::transaction(function () use ($data) {
+            Dish::ensureRestaurantSchema();
+
             $yieldQty = (float) ($data['expected_yield_quantity'] ?? 1.0);
             if ($yieldQty <= 0) {
                 $yieldQty = 1.0;
@@ -273,12 +275,124 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             // Limpiar caché de categorías de platos
             \Cache::forget('resources.categories.dishes');
 
-            $relations = ['ingredients', 'category'];
-            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'output_product_id')) {
-                $relations[] = 'outputProduct';
-            }
+            $relations = ['ingredients', 'category', 'outputProduct'];
 
             return $dish->load($relations);
+        });
+    }
+
+    /**
+     * Actualizar una sub-receta existente, recalcular su costo unitario por rendimiento y propagarlo a los platos.
+     */
+    public function updateSubRecipe(Dish $subRecipe, array $data): Dish
+    {
+        return DB::transaction(function () use ($subRecipe, $data) {
+            Dish::ensureRestaurantSchema($subRecipe->getConnection());
+
+            $yieldQty = (float) ($data['expected_yield_quantity'] ?? $subRecipe->expected_yield_quantity ?? 1.0);
+            if ($yieldQty <= 0) {
+                $yieldQty = 1.0;
+            }
+
+            $unitMeasure = !empty($data['unit_of_measure'])
+                ? trim((string) $data['unit_of_measure'])
+                : ($subRecipe->outputProduct?->unit_of_measure ?: 'porción');
+            $shelfLife = (int) ($data['shelf_life_days'] ?? $subRecipe->shelf_life_days ?? 7);
+
+            // Calcular costo total sumando los insumos de la receta + 5% por imprevisto
+            $rawCost = 0.0;
+            $ingredientsData = $data['ingredients'] ?? [];
+            foreach ($ingredientsData as $ing) {
+                $rawCost += (float) ($ing['designated_cost'] ?? 0);
+            }
+            $totalCost = round($rawCost * 1.05, 2);
+            $unitCost = $yieldQty > 0 ? round($totalCost / $yieldQty, 4) : $totalCost;
+
+            // 1. Vincular o actualizar el producto de inventario generado por la sub-receta
+            $outputProductId = $subRecipe->output_product_id;
+            if (empty($outputProductId)) {
+                $existingProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $subRecipe->name))])->first();
+                if ($existingProd) {
+                    $outputProductId = $existingProd->id;
+                }
+            }
+
+            if (empty($outputProductId)) {
+                $outputProduct = Product::create([
+                    'name' => trim($data['name']),
+                    'category_id' => $data['category_id'] ?? $subRecipe->category_id,
+                    'sale_price' => $unitCost,
+                    'unit_cost' => $unitCost,
+                    'stock' => 0,
+                    'presentation' => 1,
+                    'unit_of_measure' => $unitMeasure,
+                    'is_active' => true,
+                    'is_deleted' => false,
+                    'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(Str::random(6)),
+                    'active_ingredient' => 'Sub-receta / Insumo Cocina',
+                    'iva' => false,
+                    'is_sub_recipe' => true,
+                    'yield_percentage' => 100.00,
+                ]);
+                $outputProductId = $outputProduct->id;
+            } else {
+                Product::withoutEvents(function () use ($outputProductId, $data, $subRecipe, $unitCost, $unitMeasure) {
+                    Product::where('id', $outputProductId)->update([
+                        'name' => trim($data['name']),
+                        'category_id' => $data['category_id'] ?? $subRecipe->category_id,
+                        'unit_cost' => $unitCost,
+                        'sale_price' => $unitCost,
+                        'unit_of_measure' => $unitMeasure,
+                        'is_sub_recipe' => true,
+                    ]);
+                });
+            }
+
+            // 2. Actualizar la sub-receta
+            $subRecipe->update([
+                'name' => trim($data['name']),
+                'cost_price' => $totalCost,
+                'cpv' => $totalCost,
+                'suggested_price' => $totalCost,
+                'designated_price' => $totalCost,
+                'category_id' => $data['category_id'] ?? $subRecipe->category_id,
+                'kitchen_station_id' => $data['kitchen_station_id'] ?? $subRecipe->kitchen_station_id,
+                'status' => 3,
+                'output_product_id' => $outputProductId,
+                'expected_yield_quantity' => $yieldQty,
+                'shelf_life_days' => $shelfLife,
+            ]);
+
+            // 3. Sincronizar ingredientes
+            $conn = $subRecipe->getConnection();
+            $hasRemovable = false;
+            try {
+                $hasRemovable = $conn->getSchemaBuilder()->hasColumn('dish_ingredients', 'is_removable');
+            } catch (\Throwable $e) {}
+
+            $syncData = [];
+            foreach ($ingredientsData as $ing) {
+                $pivotData = [
+                    'portion' => $ing['portion'],
+                    'designated_cost' => $ing['designated_cost'],
+                ];
+                if ($hasRemovable) {
+                    $pivotData['is_removable'] = false;
+                }
+                $syncData[$ing['product_id']] = $pivotData;
+            }
+            $subRecipe->ingredients()->sync($syncData);
+
+            // 4. Propagar el nuevo costo unitario a todos los platos del menú que usen esta sub-receta
+            try {
+                app(\App\Services\DishServices::class)->syncCostsAndFlagUnprofitableDishes();
+            } catch (\Throwable $e) {
+                \Log::warning('Error sincronizando costos de platos tras editar sub-receta: ' . $e->getMessage());
+            }
+
+            \Cache::forget('resources.categories.dishes');
+
+            return $subRecipe->fresh(['ingredients', 'category', 'outputProduct']);
         });
     }
 }

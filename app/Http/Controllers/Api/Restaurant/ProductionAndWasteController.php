@@ -89,6 +89,27 @@ class ProductionAndWasteController extends Controller
         }
     }
 
+    public function updateSubRecipe(StoreSubRecipeRequest $request, \App\Models\Dish $dish): JsonResponse
+    {
+        try {
+            $subRecipe = $this->productionService->updateSubRecipe($dish, $request->validated());
+
+            return response()->json([
+                'message' => 'Sub-receta actualizada y costos recalculados exitosamente.',
+                'data' => new SubRecipeResource($subRecipe),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error al actualizar sub-receta: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'payload' => $request->all(),
+            ]);
+
+            return response()->json([
+                'message' => 'Error al actualizar la sub-receta: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function listWaste(Request $request): JsonResponse
     {
         $wastes = $this->wasteService->listWastes($request->all());

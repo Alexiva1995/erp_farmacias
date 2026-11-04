@@ -461,13 +461,15 @@ class ProductController extends Controller
     public function forAutocomplete(): JsonResponse
     {
         try {
-            $q = request()->query('q');
+            \App\Models\Dish::ensureRestaurantSchema();
+
+            $q = trim((string) request()->query('q'));
             
             // Buscar productos ordenados por nombre
             $query = Product::with(['lots', 'laboratory']);
 
             // Si se proporciona un término de búsqueda, filtrar
-            if (!empty($q)) {
+            if ($q !== '') {
                 $query->where(function ($queryBuilder) use ($q) {
                     $queryBuilder->where('name', 'like', "%{$q}%")
                         ->orWhere('active_ingredient', 'like', "%{$q}%")
@@ -478,16 +480,6 @@ class ProductController extends Controller
             $products = $query->orderBy('name', 'asc')
                 ->limit(50) // Límite razonable para autocomplete
                 ->get();
-
-            // Buscar platos base si coincide con la búsqueda
-            $baseDishesQuery = \App\Models\Dish::with('ingredients')
-                ->where('status', 3);
-
-            if (!empty($q)) {
-                $baseDishesQuery->where('name', 'like', "%{$q}%");
-            }
-
-            $baseDishes = $baseDishesQuery->limit(10)->get();
 
             $formattedProducts = $products->map(function ($product) {
                 $activeLots = $product->lots->filter(fn($lot) => $lot->quantity > 0);
@@ -500,50 +492,54 @@ class ProductController extends Controller
 
                 // Si el producto es una sub-receta o tiene costo 0, resolver dinámicamente desde la sub-receta o sus lotes
                 if ($unitCost <= 0 || !empty($product->is_sub_recipe)) {
-                    $baseDish = \App\Models\Dish::with('ingredients')
-                        ->where(function ($q) use ($product) {
-                            $q->where('output_product_id', $product->id)
-                              ->orWhere(function ($subQ) use ($product) {
-                                  $subQ->where('name', $product->name)
-                                       ->where('status', 3);
-                              });
-                        })
-                        ->first();
+                    try {
+                        $baseDish = \App\Models\Dish::with('ingredients')
+                            ->where(function ($queryBuilder) use ($product) {
+                                if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'output_product_id')) {
+                                    $queryBuilder->where('output_product_id', $product->id);
+                                }
+                                $queryBuilder->orWhere(function ($subQ) use ($product) {
+                                    $subQ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $product->name))])
+                                         ->where('status', 3);
+                                });
+                            })
+                            ->first();
 
-                    if ($baseDish) {
-                        $yield = (float) ($baseDish->expected_yield_quantity ?: 1.0);
-                        $safeYield = $yield > 0 ? $yield : 1.0;
-                        
-                        $rawDishCost = 0.0;
-                        if ($baseDish->ingredients && $baseDish->ingredients->isNotEmpty()) {
-                            foreach ($baseDish->ingredients as $ing) {
-                                $pPortion = (float) ($ing->pivot?->portion ?? 0);
-                                $pUnitCost = (float) ($ing->unit_cost ?? 0);
-                                $pPres = (float) ($ing->presentation ?? 1);
-                                $pPresSafe = $pPres > 0 ? $pPres : 1.0;
-                                $rawDishCost += ($pUnitCost > 0)
-                                    ? round(($pPortion * $pUnitCost) / $pPresSafe, 4)
-                                    : (float) ($ing->pivot?->designated_cost ?? 0);
+                        if ($baseDish) {
+                            $yield = (float) ($baseDish->expected_yield_quantity ?: 1.0);
+                            $safeYield = $yield > 0 ? $yield : 1.0;
+                            
+                            $rawDishCost = 0.0;
+                            if ($baseDish->ingredients && $baseDish->ingredients->isNotEmpty()) {
+                                foreach ($baseDish->ingredients as $ing) {
+                                    $pPortion = (float) ($ing->pivot?->portion ?? 0);
+                                    $pUnitCost = (float) ($ing->unit_cost ?? 0);
+                                    $pPres = (float) ($ing->presentation ?? 1);
+                                    $pPresSafe = $pPres > 0 ? $pPres : 1.0;
+                                    $rawDishCost += ($pUnitCost > 0)
+                                        ? round(($pPortion * $pUnitCost) / $pPresSafe, 4)
+                                        : (float) ($ing->pivot?->designated_cost ?? 0);
+                                }
+                            }
+                            $dishCost = $rawDishCost > 0 ? round($rawDishCost * 1.05, 4) : (float) $baseDish->cost_price;
+                            if ($dishCost > 0) {
+                                $unitCost = round($dishCost / $safeYield, 4);
+                                $product->updateQuietly([
+                                    'unit_cost' => $unitCost,
+                                    'sale_price' => $unitCost,
+                                    'is_sub_recipe' => true,
+                                ]);
+                                if (empty($baseDish->output_product_id)) {
+                                    $baseDish->updateQuietly(['output_product_id' => $product->id]);
+                                }
+                            }
+                        } elseif ($unitCost <= 0) {
+                            $lotWithCost = $activeLots->first(fn($l) => (float) $l->unit_cost > 0);
+                            if ($lotWithCost) {
+                                $unitCost = (float) $lotWithCost->unit_cost;
                             }
                         }
-                        $dishCost = $rawDishCost > 0 ? round($rawDishCost * 1.05, 4) : (float) $baseDish->cost_price;
-                        if ($dishCost > 0) {
-                            $unitCost = round($dishCost / $safeYield, 4);
-                            $product->updateQuietly([
-                                'unit_cost' => $unitCost,
-                                'sale_price' => $unitCost,
-                                'is_sub_recipe' => true,
-                            ]);
-                            if (empty($baseDish->output_product_id)) {
-                                $baseDish->updateQuietly(['output_product_id' => $product->id]);
-                            }
-                        }
-                    } elseif ($unitCost <= 0) {
-                        $lotWithCost = $activeLots->first(fn($l) => (float) $l->unit_cost > 0);
-                        if ($lotWithCost) {
-                            $unitCost = (float) $lotWithCost->unit_cost;
-                        }
-                    }
+                    } catch (\Throwable $e) {}
                 }
 
                 return [
@@ -580,46 +576,10 @@ class ProductController extends Controller
                 ];
             });
 
-            // Combinar los platos base formateados
-            $formattedDishes = $baseDishes->map(function ($dish) {
-                return [
-                    'id' => 'dish_' . $dish->id,
-                    'is_base_dish' => true,
-                    'name' => '[RECETA BASE] ' . $dish->name,
-                    'active_ingredient' => null,
-                    'presentation' => 1,
-                    'unit_of_measure' => 'receta',
-                    'stock' => 0,
-                    'available_stock' => 0,
-                    'sale_price' => (float) $dish->designated_price,
-                    'unit_cost' => (float) $dish->cost_price,
-                    'next_expiration' => null,
-                    'expiration_status' => 'good',
-                    'laboratory' => null,
-                    'formatted_details' => 'Importar ingredientes de esta receta base',
-                    'has_stock' => true,
-                    'is_available' => true,
-                    'lots' => [],
-                    'ingredients' => $dish->ingredients->map(function ($ing) {
-                        return [
-                            'product_id' => $ing->id,
-                            'name' => $ing->name,
-                            'portion' => (float) $ing->pivot->portion,
-                            'unit_cost' => (float) $ing->unit_cost,
-                            'presentation' => (float) $ing->presentation,
-                            'unit_of_measure' => $ing->unit_of_measure,
-                            'designated_cost' => (float) $ing->pivot->designated_cost,
-                        ];
-                    })->values()->toArray(),
-                ];
-            });
-
-            $mergedResult = $formattedProducts->concat($formattedDishes);
-
             return response()->json([
                 'success' => true,
-                'data' => $mergedResult,
-                'total' => $mergedResult->count(),
+                'data' => $formattedProducts,
+                'total' => $formattedProducts->count(),
                 'message' => 'Productos para autocomplete obtenidos exitosamente'
             ]);
 

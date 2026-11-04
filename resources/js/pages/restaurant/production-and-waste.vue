@@ -41,23 +41,11 @@
         :show-add="true"
         add-button-text="Nueva Sub-Receta"
         :show-advanced="true"
-        :has-advanced-filters="!!selectedCategory || selectedStatus !== null"
-        @clear="subRecipeSearch = ''; selectedCategory = null; selectedStatus = null; fetchSubRecipes()"
+        :has-advanced-filters="selectedStatus !== null"
+        @clear="subRecipeSearch = ''; selectedStatus = null; fetchSubRecipes()"
         @add="openSubRecipeModal"
       >
         <template #advanced-filters>
-          <VCol cols="12" sm="6" md="4">
-            <VSelect
-              v-model="selectedCategory"
-              :items="categories"
-              item-title="name"
-              item-value="id"
-              placeholder="Filtrar por Categoría"
-              clearable
-              density="compact"
-              hide-details
-            />
-          </VCol>
           <VCol cols="12" sm="6" md="4">
             <VSelect
               v-model="selectedStatus"
@@ -106,7 +94,6 @@
             :headers="[
               { title: 'ID', key: 'id', sortable: true },
               { title: 'Sub-Receta / Preparación', key: 'name', sortable: true },
-              { title: 'Categoría', key: 'category.name', sortable: false },
               { title: 'Costo Total', key: 'cost_price', sortable: true, align: 'end' },
               { title: 'Rendimiento', key: 'expected_yield_quantity', sortable: true, align: 'center' },
               { title: 'Costo Unitario', key: 'unit_cost', sortable: false, align: 'end' },
@@ -127,10 +114,6 @@
                   Insumo: {{ item.output_product.name }}
                 </span>
               </div>
-            </template>
-
-            <template #item.category.name="{ item }">
-              <span class="text-xs uppercase text-disabled">{{ item.category?.name || 'S/C' }}</span>
             </template>
 
             <template #item.cost_price="{ item }">
@@ -172,6 +155,15 @@
 
             <template #item.actions="{ item }">
               <div class="d-flex gap-2 justify-end">
+                <IconBtn
+                  color="info"
+                  class="bg-info-light"
+                  title="Editar Sub-Receta y Rendimiento"
+                  @click="openEditSubRecipe(item)"
+                >
+                  <VIcon icon="tabler-edit" size="18" />
+                  <VTooltip activator="parent" location="top">Editar Sub-Receta</VTooltip>
+                </IconBtn>
                 <IconBtn
                   color="primary"
                   class="bg-primary-light"
@@ -332,7 +324,7 @@
             </v-avatar>
             <div class="flex-grow-1 text-white">
               <h2 class="text-h6 font-weight-black mb-0 text-uppercase text-white" style="color: #ffffff !important;">
-                Crear Sub-Receta / Preparación Base
+                {{ editingSubRecipeId ? 'Editar Sub-Receta / Preparación Base' : 'Crear Sub-Receta / Preparación Base' }}
               </h2>
               <span class="text-super-xs opacity-75 uppercase font-weight-bold text-white" style="color: #ffffff !important;">
                 Configuración de ingredientes y rendimiento de producción
@@ -515,7 +507,7 @@
               :loading="submittingSubRecipe"
               :disabled="!subRecipeForm.name || !subRecipeForm.ingredients.length"
             >
-              Guardar Sub-Receta Y Habilitar En Platos
+              {{ editingSubRecipeId ? 'Actualizar Sub-Receta y Recalcular Costos' : 'Guardar Sub-Receta Y Habilitar En Platos' }}
             </v-btn>
           </v-form>
         </v-card-text>
@@ -774,7 +766,6 @@ const fetchSubRecipes = async () => {
   try {
     const params = {
       q: subRecipeSearch.value,
-      category_id: selectedCategory.value,
       status: selectedStatus.value !== null ? selectedStatus.value : 3, // Por defecto filtrar las sub-recetas (status 3)
       page: subRecipePage.value,
       itemsPerPage: subRecipeItemsPerPage.value,
@@ -803,12 +794,12 @@ const updateSubRecipeTableOptions = (options) => {
 
 // Watchers con debounce para recarga reactiva de sub-recetas
 let subRecipeDebounceTimer
-watch([subRecipeSearch, selectedCategory, selectedStatus], () => {
+watch([subRecipeSearch, selectedStatus], () => {
   subRecipePage.value = 1
 })
 
 watch(
-  [subRecipePage, subRecipeItemsPerPage, subRecipeSortBy, subRecipeOrderBy, subRecipeSearch, selectedCategory, selectedStatus],
+  [subRecipePage, subRecipeItemsPerPage, subRecipeSortBy, subRecipeOrderBy, subRecipeSearch, selectedStatus],
   () => {
     clearTimeout(subRecipeDebounceTimer)
     subRecipeDebounceTimer = setTimeout(() => fetchSubRecipes(), 300)
@@ -859,6 +850,7 @@ const showProductionModal = ref(false)
 const showWasteModal = ref(false)
 const showSubRecipeModal = ref(false)
 const submittingSubRecipe = ref(false)
+const editingSubRecipeId = ref(null)
 
 // Formulario de creación de sub-receta
 const subRecipeForm = reactive({
@@ -944,6 +936,7 @@ const addIngredientToSubRecipe = () => {
 }
 
 const openSubRecipeModal = () => {
+  editingSubRecipeId.value = null
   subRecipeForm.name = ''
   subRecipeForm.category_id = null
   subRecipeForm.kitchen_station_id = null
@@ -951,6 +944,36 @@ const openSubRecipeModal = () => {
   subRecipeForm.unit_of_measure = 'porción'
   subRecipeForm.shelf_life_days = 7
   subRecipeForm.ingredients = []
+  selectedIngredient.value = null
+  ingredientPortion.value = 1
+  showSubRecipeModal.value = true
+}
+
+const openEditSubRecipe = (item) => {
+  editingSubRecipeId.value = item.id
+  subRecipeForm.name = item.name || ''
+  subRecipeForm.category_id = item.category_id ?? item.category?.id ?? null
+  subRecipeForm.kitchen_station_id = item.kitchen_station_id ?? item.kitchen_station?.id ?? null
+  subRecipeForm.expected_yield_quantity = Number(item.expected_yield_quantity) || 1.0
+  subRecipeForm.unit_of_measure = item.output_product?.unit_of_measure || 'porción'
+  subRecipeForm.shelf_life_days = Number(item.shelf_life_days) || 7
+  subRecipeForm.ingredients = (item.ingredients || []).map(ing => {
+    const portion = parseFloat(ing.portion ?? ing.pivot?.portion ?? 1)
+    const unitCost = parseFloat(ing.unit_cost || 0)
+    const presentation = parseFloat(ing.presentation || 1)
+    const designatedCost = unitCost > 0
+      ? parseFloat(((portion * unitCost) / (presentation > 0 ? presentation : 1)).toFixed(4))
+      : parseFloat(ing.designated_cost ?? ing.pivot?.designated_cost ?? 0)
+    return {
+      product_id: ing.id || ing.product_id,
+      name: cleanIngredientName(ing.name),
+      portion,
+      unit_cost: unitCost,
+      presentation,
+      unit_of_measure: ing.unit_of_measure || 'und',
+      designated_cost: designatedCost,
+    }
+  })
   selectedIngredient.value = null
   ingredientPortion.value = 1
   showSubRecipeModal.value = true
@@ -964,9 +987,15 @@ const submitSubRecipe = async () => {
 
   submittingSubRecipe.value = true
   try {
-    const { data } = await axios.post('/restaurant/production/sub-recipes', subRecipeForm)
-    toast.success(data.message || 'Sub-receta creada con éxito.')
+    if (editingSubRecipeId.value) {
+      const { data } = await axios.put(`/restaurant/production/sub-recipes/${editingSubRecipeId.value}`, subRecipeForm)
+      toast.success(data.message || 'Sub-receta actualizada con éxito.')
+    } else {
+      const { data } = await axios.post('/restaurant/production/sub-recipes', subRecipeForm)
+      toast.success(data.message || 'Sub-receta creada con éxito.')
+    }
     showSubRecipeModal.value = false
+    editingSubRecipeId.value = null
     await fetchSubRecipes()
     await loadData()
   } catch (error) {

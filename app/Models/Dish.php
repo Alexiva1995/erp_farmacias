@@ -47,11 +47,77 @@ class Dish extends Model
     ];
 
     protected static array $hasIsRemovableCache = [];
+    protected static array $schemaEnsured = [];
+
+    /**
+     * Asegurar que las columnas de subrecetas y restaurante existan en la conexión activa (soporte multi-tenant).
+     */
+    public static function ensureRestaurantSchema($connection = null): void
+    {
+        try {
+            $conn = $connection ?? (new static())->getConnection();
+            $connName = $conn->getName();
+
+            if (!empty(static::$schemaEnsured[$connName])) {
+                return;
+            }
+            static::$schemaEnsured[$connName] = true;
+
+            $schema = $conn->getSchemaBuilder();
+
+            if ($schema->hasTable('products')) {
+                $missingYield = !$schema->hasColumn('products', 'yield_percentage');
+                $missingSubRecipe = !$schema->hasColumn('products', 'is_sub_recipe');
+                if ($missingYield || $missingSubRecipe) {
+                    $schema->table('products', function (\Illuminate\Database\Schema\Blueprint $table) use ($missingYield, $missingSubRecipe) {
+                        if ($missingYield) {
+                            $table->decimal('yield_percentage', 5, 2)->default(100.00);
+                        }
+                        if ($missingSubRecipe) {
+                            $table->boolean('is_sub_recipe')->default(false);
+                        }
+                    });
+                }
+            }
+
+            if ($schema->hasTable('dishes')) {
+                $missingOutputProd = !$schema->hasColumn('dishes', 'output_product_id');
+                $missingExpectedYield = !$schema->hasColumn('dishes', 'expected_yield_quantity');
+                $missingShelfLife = !$schema->hasColumn('dishes', 'shelf_life_days');
+                if ($missingOutputProd || $missingExpectedYield || $missingShelfLife) {
+                    $schema->table('dishes', function (\Illuminate\Database\Schema\Blueprint $table) use ($missingOutputProd, $missingExpectedYield, $missingShelfLife) {
+                        if ($missingOutputProd) {
+                            $table->unsignedBigInteger('output_product_id')->nullable();
+                        }
+                        if ($missingExpectedYield) {
+                            $table->decimal('expected_yield_quantity', 10, 2)->default(1.00);
+                        }
+                        if ($missingShelfLife) {
+                            $table->integer('shelf_life_days')->default(7);
+                        }
+                    });
+                }
+            }
+
+            if ($schema->hasTable('dish_ingredients')) {
+                if (!$schema->hasColumn('dish_ingredients', 'is_removable')) {
+                    $schema->table('dish_ingredients', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        $table->boolean('is_removable')->default(false);
+                    });
+                }
+                static::$hasIsRemovableCache[$connName] = true;
+            }
+        } catch (\Throwable $e) {
+            // Ignorar errores de concurrencia o permisos de DDL
+        }
+    }
 
     public function ingredients(): BelongsToMany
     {
         $conn = $this->getConnection();
         $connName = $conn->getName();
+
+        static::ensureRestaurantSchema($conn);
 
         if (!isset(static::$hasIsRemovableCache[$connName])) {
             try {

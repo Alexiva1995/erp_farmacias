@@ -14,4 +14,6 @@ interface ProductionOrderServiceInterface
     public function cancelOrder(ProductionOrder $productionOrder): bool;
 
     public function createSubRecipe(array $data): Dish;
+
+    public function updateSubRecipe(Dish $subRecipe, array $data): Dish;
 }
