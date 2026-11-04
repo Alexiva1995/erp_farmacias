@@ -491,22 +491,32 @@ class ProductController extends Controller
                 $unitCost = (float) $product->unit_cost;
                 $isSubRecipe = (bool) $product->is_sub_recipe;
 
-                // Si el producto es una sub-receta o tiene costo 0, resolver dinámicamente desde la sub-receta o sus lotes
+                // Si el producto es una sub-receta o está vinculado como salida de una sub-receta, resolver su costo dinámico
                 if ($unitCost <= 0 || !empty($product->is_sub_recipe)) {
                     try {
-                        $baseDish = \App\Models\Dish::with('ingredients')
-                            ->where(function ($queryBuilder) use ($product) {
-                                if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'output_product_id')) {
-                                    $queryBuilder->where('output_product_id', $product->id);
+                        $baseDishQuery = \App\Models\Dish::with('ingredients');
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'output_product_id')) {
+                            $baseDishQuery->where(function ($queryBuilder) use ($product, $isSubRecipe) {
+                                $queryBuilder->where('output_product_id', $product->id);
+                                if ($isSubRecipe) {
+                                    $queryBuilder->orWhere(function ($subQ) use ($product) {
+                                        $subQ->whereNull('output_product_id')
+                                             ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $product->name))])
+                                             ->where('status', 3);
+                                    });
                                 }
-                                $queryBuilder->orWhere(function ($subQ) use ($product) {
-                                    $subQ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $product->name))])
-                                         ->where('status', 3);
-                                });
-                            })
-                            ->first();
+                            });
+                        } else {
+                            $baseDishQuery->whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $product->name))])
+                                ->where('status', 3);
+                        }
 
-                        if ($baseDish) {
+                        $baseDish = $baseDishQuery->first();
+                        $dishIngredientIds = $baseDish && $baseDish->ingredients
+                            ? $baseDish->ingredients->pluck('id')->map(fn ($id) => (int) $id)->toArray()
+                            : [];
+
+                        if ($baseDish && !in_array((int) $product->id, $dishIngredientIds, true)) {
                             $isSubRecipe = true;
                             $yield = (float) ($baseDish->expected_yield_quantity ?: 1.0);
                             $safeYield = $yield > 0 ? $yield : 1.0;
@@ -514,6 +524,9 @@ class ProductController extends Controller
                             $rawDishCost = 0.0;
                             if ($baseDish->ingredients && $baseDish->ingredients->isNotEmpty()) {
                                 foreach ($baseDish->ingredients as $ing) {
+                                    if ((int) $ing->id === (int) $product->id) {
+                                        continue;
+                                    }
                                     $pPortion = (float) ($ing->pivot?->portion ?? 0);
                                     $pUnitCost = (float) ($ing->unit_cost ?? 0);
                                     $pPres = (float) ($ing->presentation ?? 1);
@@ -579,21 +592,16 @@ class ProductController extends Controller
                 ];
             });
 
-            // Si existen dos productos con el mismo nombre normalizado y uno es sub-receta y el otro no,
-            // conservar únicamente el producto vinculado a la sub-receta para evitar opciones duplicadas.
-            $groupedByName = $formattedProducts->groupBy(function ($item) {
-                return strtolower(trim(preg_replace('/\s+/', ' ', (string) $item['name'])));
+            // Deduplicar solo si comparten el mismo nombre normalizado Y el mismo tipo (ambos insumo o ambos sub-receta),
+            // manteniendo tanto el insumo base como la sub-receta si coexisten con igual nombre.
+            $groupedByNameAndType = $formattedProducts->groupBy(function ($item) {
+                $normName = strtolower(trim(preg_replace('/\s+/', ' ', (string) $item['name'])));
+                $typeFlag = !empty($item['is_sub_recipe']) ? 'sub' : 'raw';
+                return $normName . '|' . $typeFlag;
             });
 
-            $filteredProducts = $groupedByName->flatMap(function ($group) {
-                if ($group->count() <= 1) {
-                    return $group;
-                }
-                $subRecipeProd = $group->first(fn($p) => !empty($p['is_sub_recipe']));
-                if ($subRecipeProd) {
-                    return collect([$subRecipeProd]);
-                }
-                return collect([$group->first()]);
+            $filteredProducts = $groupedByNameAndType->map(function ($group) {
+                return $group->first();
             })->values();
 
             return response()->json([

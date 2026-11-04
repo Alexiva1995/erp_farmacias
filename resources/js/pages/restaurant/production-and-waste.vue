@@ -896,14 +896,20 @@ const searchIngredients = async (query = '') => {
       is_sub_recipe: Boolean(item.is_sub_recipe),
     }))
 
+    const currentSubRecipeName = (subRecipeForm.name || '').toLowerCase().trim().replace(/\s+/g, ' ')
     const uniqueMap = new Map()
     rawItems.forEach(item => {
       const key = item.name.toLowerCase().trim().replace(/\s+/g, ' ')
+      // Evitar que una sub-receta se seleccione a sí misma como ingrediente si existe el insumo base con el mismo nombre
+      if (item.is_sub_recipe && currentSubRecipeName && key === currentSubRecipeName) {
+        return
+      }
       if (!uniqueMap.has(key)) {
         uniqueMap.set(key, item)
       } else {
         const current = uniqueMap.get(key)
-        if (!current.is_sub_recipe && item.is_sub_recipe) {
+        // Dentro de la receta de una sub-receta, priorizar el insumo base de inventario sobre una sub-receta homónima
+        if (current.is_sub_recipe && !item.is_sub_recipe) {
           uniqueMap.set(key, item)
         }
       }
@@ -935,8 +941,8 @@ const addIngredientToSubRecipe = () => {
 
   const existing = subRecipeForm.ingredients.find(i => i.product_id === selectedIngredient.value.id)
   if (existing) {
-    existing.portion += portion
-    existing.designated_cost = parseFloat((existing.designated_cost + cost).toFixed(4))
+    existing.portion = portion
+    existing.designated_cost = cost
   } else {
     subRecipeForm.ingredients.push({
       product_id: selectedIngredient.value.id,

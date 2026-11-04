@@ -87,6 +87,9 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                     ->lockForUpdate()
                     ->get();
 
+                $presentation = (float) ($ingredient->presentation ?? 1.0);
+                $safePresentation = $presentation > 0 ? $presentation : 1.0;
+
                 foreach ($lots as $lot) {
                     if ($remainingToDeduct <= 0) break;
                     $deductFromLot = min($lot->quantity, $remainingToDeduct);
@@ -95,12 +98,12 @@ class ProductionOrderService implements ProductionOrderServiceInterface
 
                     $remainingToDeduct -= $deductFromLot;
                     $lotCost = (float) ($lot->unit_cost ?: ($ingredient->unit_cost ?: 0));
-                    $totalProductionCost += ($deductFromLot * $lotCost);
+                    $totalProductionCost += (($deductFromLot * $lotCost) / $safePresentation);
                 }
 
                 // Si queda cantidad por descontar (sin lotes suficientes), calcular el costo con el unit_cost de inventario
                 if ($remainingToDeduct > 0) {
-                    $totalProductionCost += ($remainingToDeduct * (float) ($ingredient->unit_cost ?: 0));
+                    $totalProductionCost += (($remainingToDeduct * (float) ($ingredient->unit_cost ?: 0)) / $safePresentation);
                 }
 
                 // Descontar stock general del producto ingrediente
@@ -327,9 +330,19 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             $unitCost = $yieldQty > 0 ? round($totalCost / $yieldQty, 4) : $totalCost;
 
             // 1. Vincular o actualizar el producto de inventario generado por la sub-receta
+            $ingredientIds = array_map(fn ($ing) => (int) ($ing['product_id'] ?? 0), $ingredientsData);
             $outputProductId = $subRecipe->output_product_id;
+
+            // Si output_product_id apunta por error a uno de los insumos base de la receta, desvincularlo
+            if (!empty($outputProductId) && in_array((int) $outputProductId, $ingredientIds, true)) {
+                $outputProductId = null;
+            }
+
             if (empty($outputProductId)) {
-                $existingProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $subRecipe->name))])->first();
+                $existingProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $subRecipe->name))])
+                    ->where('is_sub_recipe', true)
+                    ->whereNotIn('id', $ingredientIds)
+                    ->first();
                 if ($existingProd) {
                     $outputProductId = $existingProd->id;
                 }

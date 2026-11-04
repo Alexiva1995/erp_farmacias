@@ -101,6 +101,26 @@ class DishServices implements DishContract
             $currentCost = 0.0;
 
             foreach ($subRecipe->ingredients as $ingredient) {
+                // Evitar ciclo de auto-referencia si la sub-receta se tiene a sí misma como ingrediente
+                if (!empty($subRecipe->output_product_id) && (int) $ingredient->id === (int) $subRecipe->output_product_id) {
+                    $rawAlternative = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $subRecipe->name))])
+                        ->where('id', '!=', $subRecipe->output_product_id)
+                        ->where(function ($q) {
+                            $q->where('is_sub_recipe', false)->orWhereNull('is_sub_recipe');
+                        })
+                        ->first();
+
+                    if ($rawAlternative) {
+                        DB::table('dish_ingredients')
+                            ->where('dish_id', $subRecipe->id)
+                            ->where('product_id', $ingredient->id)
+                            ->update(['product_id' => $rawAlternative->id]);
+                        $ingredient = $rawAlternative;
+                    } else {
+                        continue;
+                    }
+                }
+
                 $portion = (float) ($ingredient->pivot?->portion ?? 0);
                 $unitCost = (float) ($ingredient->unit_cost ?? 0);
                 $presentation = (float) ($ingredient->presentation ?? 1);
@@ -135,16 +155,21 @@ class DishServices implements DishContract
             // Actualizar el costo unitario del producto generado por la sub-receta
             $yield = (float) ($subRecipe->expected_yield_quantity ?? 1);
             $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
+            $ingredientIds = $subRecipe->ingredients->pluck('id')->map(fn ($id) => (int) $id)->toArray();
 
             if (empty($subRecipe->output_product_id) && $schema->hasColumn('dishes', 'output_product_id')) {
-                $linkedProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $subRecipe->name))])->first();
+                $linkedProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $subRecipe->name))])
+                    ->where('is_sub_recipe', true)
+                    ->whereNotIn('id', $ingredientIds)
+                    ->first();
                 if ($linkedProd) {
                     $subRecipe->update(['output_product_id' => $linkedProd->id]);
                     $subRecipe->output_product_id = $linkedProd->id;
                 }
             }
 
-            if (!empty($subRecipe->output_product_id)) {
+            // Nunca sobreescribir el costo si el output_product_id apunta por error a uno de sus propios insumos base
+            if (!empty($subRecipe->output_product_id) && !in_array((int) $subRecipe->output_product_id, $ingredientIds, true)) {
                 Product::withoutEvents(function () use ($subRecipe, $unitCostProduct) {
                     Product::where('id', $subRecipe->output_product_id)->update([
                         'unit_cost' => $unitCostProduct,
@@ -362,16 +387,20 @@ class DishServices implements DishContract
 
             $yield = (float) ($dish->expected_yield_quantity ?? 1);
             $unitCostProduct = $yield > 0 ? round($currentCost / $yield, 4) : $currentCost;
+            $ingredientIds = $dish->ingredients->pluck('id')->map(fn ($id) => (int) $id)->toArray();
 
             if (empty($dish->output_product_id) && $schema->hasColumn('dishes', 'output_product_id')) {
-                $linkedProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $dish->name))])->first();
+                $linkedProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $dish->name))])
+                    ->where('is_sub_recipe', true)
+                    ->whereNotIn('id', $ingredientIds)
+                    ->first();
                 if ($linkedProd) {
                     $dish->update(['output_product_id' => $linkedProd->id]);
                     $dish->output_product_id = $linkedProd->id;
                 }
             }
 
-            if (!empty($dish->output_product_id)) {
+            if (!empty($dish->output_product_id) && !in_array((int) $dish->output_product_id, $ingredientIds, true)) {
                 Product::withoutEvents(function () use ($dish, $unitCostProduct) {
                     Product::where('id', $dish->output_product_id)->update([
                         'unit_cost' => $unitCostProduct,
@@ -488,8 +517,12 @@ class DishServices implements DishContract
                 $safeYield = $yield > 0 ? $yield : 1.0;
                 $unitCostProd = round((float) $dish->cost_price / $safeYield, 4);
                 $unitMeasure = !empty($data['unit_of_measure']) ? trim((string) $data['unit_of_measure']) : 'porciones';
+                $ingredientIds = array_map(fn ($ing) => (int) ($ing['product_id'] ?? 0), $ingredientsData);
 
-                $existingProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $dish->name))])->first();
+                $existingProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $dish->name))])
+                    ->where('is_sub_recipe', true)
+                    ->whereNotIn('id', $ingredientIds)
+                    ->first();
                 if ($existingProd) {
                     Product::withoutEvents(function () use ($existingProd, $unitCostProd, $unitMeasure) {
                         $existingProd->update([
@@ -628,9 +661,18 @@ class DishServices implements DishContract
                 $yield = (float) ($dish->expected_yield_quantity ?: 1.0);
                 $safeYield = $yield > 0 ? $yield : 1.0;
                 $unitCostProd = round((float) $dish->cost_price / $safeYield, 4);
+                $ingredientIds = array_map(fn ($ing) => (int) ($ing['product_id'] ?? 0), $ingredientsData);
+
+                // Si output_product_id apunta por error a uno de sus propios ingredientes, desvincularlo para crear el elaborado
+                if (!empty($dish->output_product_id) && in_array((int) $dish->output_product_id, $ingredientIds, true)) {
+                    $dish->output_product_id = null;
+                }
 
                 if (empty($dish->output_product_id)) {
-                    $existingProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $dish->name))])->first();
+                    $existingProd = Product::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim((string) $dish->name))])
+                        ->where('is_sub_recipe', true)
+                        ->whereNotIn('id', $ingredientIds)
+                        ->first();
                     if ($existingProd) {
                         $dish->update(['output_product_id' => $existingProd->id]);
                         $dish->output_product_id = $existingProd->id;

@@ -397,8 +397,8 @@ const addIngredient = () => {
 
   if (existing) {
     const qty = parseFloat(ingredientPortion.value || 0);
-    existing.portion = parseFloat((existing.portion + qty).toFixed(4));
-    existing.designated_cost = parseFloat((existing.designated_cost + calculatedPortionCost.value).toFixed(4));
+    existing.portion = parseFloat(qty.toFixed(4));
+    existing.designated_cost = parseFloat(calculatedPortionCost.value.toFixed(4));
     
     // Limpiar campos
     selectedProduct.value = null;
@@ -408,7 +408,7 @@ const addIngredient = () => {
     productOptions.value = [];
 
     recalculateDishTotals();
-    toast.success("Cantidad sumada al ingrediente existente.");
+    toast.success("Porción del ingrediente actualizada.");
     return;
   }
 
@@ -1107,7 +1107,7 @@ onUnmounted(() => {
                   <VCol cols="12" sm="5">
                     <VSelect
                       v-model="dishStatus"
-                      :items="statusOptionsWithoutBase"
+                      :items="currentDish.status === 3 || dishStatus === 3 ? statusOptions : statusOptionsWithoutBase"
                       label="Estado"
                       :error-messages="formErrors.status"
                       density="compact"
