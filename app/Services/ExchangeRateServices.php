@@ -41,9 +41,9 @@ class ExchangeRateServices implements ExchangeRate
         $model = $this->exchangeRateRepository->store($data);
 
         // Limpiar caché de tasas de cambio y fallbacks
-        \Illuminate\Support\Facades\Cache::forget("resources.exchange_rate.{$data['currency_code']}");
-        \Illuminate\Support\Facades\Cache::forget("resources.exchange_rate.{$data['currency_code']}.fallback");
-        \Illuminate\Support\Facades\Cache::forget('resources.all_exchange_rates');
+        \Illuminate\Support\Facades\Cache::forget(\App\Services\Resources\ResourceService::exchangeRateCacheKey($data['currency_code']));
+        \Illuminate\Support\Facades\Cache::forget(\App\Services\Resources\ResourceService::exchangeRateCacheKey($data['currency_code'], true));
+        \Illuminate\Support\Facades\Cache::forget(\App\Services\Resources\ResourceService::allExchangeRatesCacheKey());
 
         return $model;
     }
@@ -226,8 +226,8 @@ class ExchangeRateServices implements ExchangeRate
         $model = $this->exchangeRateRepository->updateBCVDollar($data);
 
         // Limpiar caché de tasas de cambio
-        \Illuminate\Support\Facades\Cache::forget("resources.exchange_rate.BS");
-        \Illuminate\Support\Facades\Cache::forget('resources.all_exchange_rates');
+        \Illuminate\Support\Facades\Cache::forget(\App\Services\Resources\ResourceService::exchangeRateCacheKey('BS'));
+        \Illuminate\Support\Facades\Cache::forget(\App\Services\Resources\ResourceService::allExchangeRatesCacheKey());
 
         return $model;
     }

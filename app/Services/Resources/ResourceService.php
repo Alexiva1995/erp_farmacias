@@ -94,6 +94,27 @@ class ResourceService
     }
 
     /**
+     * Clave de caché de una tasa individual, aislada por conexión (inquilino).
+     */
+    public static function exchangeRateCacheKey(string $currencyCode, bool $fallback = false): string
+    {
+        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
+        $key = "resources.exchange_rate.{$conn}.{$currencyCode}";
+
+        return $fallback ? "{$key}.fallback" : $key;
+    }
+
+    /**
+     * Clave de caché del listado de tasas, aislada por conexión (inquilino).
+     */
+    public static function allExchangeRatesCacheKey(): string
+    {
+        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
+
+        return "resources.all_exchange_rates.{$conn}";
+    }
+
+    /**
      * Obtiene una sola tasa, utilizando caché y una estrategia robusta de recuperación (Fallback Cache).
      */
     public function getExchangeRate(string $currencyCode): float
@@ -114,8 +135,8 @@ class ResourceService
             }
         }
 
-        $cacheKey = "resources.exchange_rate.{$currencyCode}";
-        $fallbackKey = "resources.exchange_rate.{$currencyCode}.fallback";
+        $cacheKey = self::exchangeRateCacheKey($currencyCode);
+        $fallbackKey = self::exchangeRateCacheKey($currencyCode, true);
 
         try {
             // Intentar obtener la tasa fresca o desde la caché con expiración
@@ -203,7 +224,7 @@ class ResourceService
             }
         }
 
-        return Cache::remember('resources.all_exchange_rates', now()->addHours(1), function () {
+        return Cache::remember(self::allExchangeRatesCacheKey(), now()->addHours(1), function () {
             $rates = ExchangeRate::query()
                 ->whereIn('id', function ($query) {
                     $query->selectRaw('MAX(id)')

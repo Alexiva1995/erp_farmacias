@@ -6,6 +6,7 @@ use App\Contracts\ExchangeRate;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ExchangeRateCreateRequest;
 use App\Http\Resources\Finances\ExchangeRateResource;
+use App\Services\Resources\ResourceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -35,8 +36,8 @@ class ExchangeRateController extends Controller
         }
 
         // Limpiar caché
-        Cache::forget("resources.exchange_rate.{$data['currency_code']}");
-        Cache::forget('resources.all_exchange_rates');
+        Cache::forget(ResourceService::exchangeRateCacheKey($data['currency_code']));
+        Cache::forget(ResourceService::allExchangeRatesCacheKey());
 
         return response()->json("Tasa de cambio procesada");
     }
@@ -96,8 +97,8 @@ class ExchangeRateController extends Controller
             $this->exchangeRate->store($data);
 
             // Limpiar caché
-            Cache::forget("resources.exchange_rate.BS");
-            Cache::forget('resources.all_exchange_rates');
+            Cache::forget(ResourceService::exchangeRateCacheKey('BS'));
+            Cache::forget(ResourceService::allExchangeRatesCacheKey());
 
             return response()->json($data);
         } else {
@@ -111,8 +112,8 @@ class ExchangeRateController extends Controller
             $this->exchangeRate->updateBCVDollar($data);
 
             // Limpiar caché
-            Cache::forget("resources.exchange_rate.BS");
-            Cache::forget('resources.all_exchange_rates');
+            Cache::forget(ResourceService::exchangeRateCacheKey('BS'));
+            Cache::forget(ResourceService::allExchangeRatesCacheKey());
 
             return response()->json($data);
         }

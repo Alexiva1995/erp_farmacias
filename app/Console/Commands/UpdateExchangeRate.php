@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\ExchangeRate;
+use App\Services\Resources\ResourceService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -37,7 +38,7 @@ class UpdateExchangeRate extends Command
                 'rate' => floatval($bcvRate),
                 'source' => null,
             ]);
-            Cache::forget('resources.exchange_rate.BS');
+            Cache::forget(ResourceService::exchangeRateCacheKey('BS'));
             $this->info("Dólar BCV actualizado: {$bcvRate} BS");
         } else {
             $this->error("No se pudo obtener la tasa de Dólar BCV desde las fuentes oficiales.");
@@ -75,7 +76,7 @@ class UpdateExchangeRate extends Command
                 'rate' => floatval($binanceRate),
                 'source' => 'binance',
             ]);
-            Cache::forget('resources.exchange_rate.BINANCE');
+            Cache::forget(ResourceService::exchangeRateCacheKey('BINANCE'));
             $this->info("Dólar Binance actualizado: {$binanceRate} BS");
         } else {
             $this->error("No se pudo obtener la tasa de Dólar Binance.");
@@ -90,14 +91,14 @@ class UpdateExchangeRate extends Command
                 'rate' => floatval($eurToVes),
                 'source' => null,
             ]);
-            Cache::forget('resources.exchange_rate.EUR');
+            Cache::forget(ResourceService::exchangeRateCacheKey('EUR'));
             $this->info("Euro actualizado: {$eurToVes} BS");
         } else {
             $this->error("No se pudo obtener la tasa de Euro desde el API.");
         }
 
         // Limpiar caché global de tasas de cambio
-        Cache::forget('resources.all_exchange_rates');
+        Cache::forget(ResourceService::allExchangeRatesCacheKey());
 
         // Obtener tasas finales (las más recientes) de la base de datos para el reporte
         $bcvVal = ExchangeRate::where('currency_code', 'BS')->latest('id')->value('rate') ?? $bcvRate;
