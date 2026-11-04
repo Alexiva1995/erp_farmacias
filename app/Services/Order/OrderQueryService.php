@@ -10,6 +10,7 @@ use App\Models\ExchangeRate;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Query\Builder as QueryBuilder;
