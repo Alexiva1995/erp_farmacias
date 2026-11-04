@@ -489,6 +489,7 @@ class ProductController extends Controller
                     ->first();
 
                 $unitCost = (float) $product->unit_cost;
+                $isSubRecipe = (bool) $product->is_sub_recipe;
 
                 // Si el producto es una sub-receta o tiene costo 0, resolver dinámicamente desde la sub-receta o sus lotes
                 if ($unitCost <= 0 || !empty($product->is_sub_recipe)) {
@@ -506,6 +507,7 @@ class ProductController extends Controller
                             ->first();
 
                         if ($baseDish) {
+                            $isSubRecipe = true;
                             $yield = (float) ($baseDish->expected_yield_quantity ?: 1.0);
                             $safeYield = $yield > 0 ? $yield : 1.0;
                             
@@ -545,6 +547,7 @@ class ProductController extends Controller
                 return [
                     'id' => $product->id,
                     'is_base_dish' => false,
+                    'is_sub_recipe' => $isSubRecipe,
                     'name' => $product->name,
                     'active_ingredient' => $product->active_ingredient,
                     'presentation' => $product->presentation ?: 1,
@@ -576,10 +579,27 @@ class ProductController extends Controller
                 ];
             });
 
+            // Si existen dos productos con el mismo nombre normalizado y uno es sub-receta y el otro no,
+            // conservar únicamente el producto vinculado a la sub-receta para evitar opciones duplicadas.
+            $groupedByName = $formattedProducts->groupBy(function ($item) {
+                return strtolower(trim(preg_replace('/\s+/', ' ', (string) $item['name'])));
+            });
+
+            $filteredProducts = $groupedByName->flatMap(function ($group) {
+                if ($group->count() <= 1) {
+                    return $group;
+                }
+                $subRecipeProd = $group->first(fn($p) => !empty($p['is_sub_recipe']));
+                if ($subRecipeProd) {
+                    return collect([$subRecipeProd]);
+                }
+                return collect([$group->first()]);
+            })->values();
+
             return response()->json([
                 'success' => true,
-                'data' => $formattedProducts,
-                'total' => $formattedProducts->count(),
+                'data' => $filteredProducts,
+                'total' => $filteredProducts->count(),
                 'message' => 'Productos para autocomplete obtenidos exitosamente'
             ]);
 

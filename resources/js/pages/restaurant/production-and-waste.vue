@@ -889,10 +889,26 @@ const searchIngredients = async (query = '') => {
     const { data } = await axios.get('/products/autocomplete', {
       params: { q: query },
     })
-    ingredientOptions.value = (data.data || []).filter(item => !item.is_base_dish).map(item => ({
+    const rawItems = (data.data || []).filter(item => !item.is_base_dish).map(item => ({
       ...item,
       name: cleanIngredientName(item.name),
+      is_sub_recipe: Boolean(item.is_sub_recipe),
     }))
+
+    const uniqueMap = new Map()
+    rawItems.forEach(item => {
+      const key = item.name.toLowerCase().trim().replace(/\s+/g, ' ')
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, item)
+      } else {
+        const current = uniqueMap.get(key)
+        if (!current.is_sub_recipe && item.is_sub_recipe) {
+          uniqueMap.set(key, item)
+        }
+      }
+    })
+
+    ingredientOptions.value = Array.from(uniqueMap.values())
   } catch (error) {
     console.error('Error al buscar ingredientes:', error)
   } finally {

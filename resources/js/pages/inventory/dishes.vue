@@ -314,15 +314,32 @@ const searchProducts = async (query) => {
     });
     // El backend para forAutocomplete devuelve los datos envueltos en response.data.data
     const items = data.data || [];
-    productOptions.value = items.map((p) => ({
+    const mapped = items.map((p) => ({
       id: p.id,
       name: cleanIngredientName(p.name),
       unit_cost: parseFloat(p.unit_cost || 0),
       presentation: parseFloat(p.presentation || 1),
       unit_of_measure: p.unit_of_measure || "und",
+      is_sub_recipe: Boolean(p.is_sub_recipe),
       is_base_dish: p.is_base_dish || false,
       ingredients: p.ingredients || [],
     }));
+
+    // Deduplicar en frontend por nombre normalizado priorizando la sub-receta
+    const uniqueMap = new Map();
+    mapped.forEach((item) => {
+      const key = item.name.toLowerCase().trim().replace(/\s+/g, ' ');
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, item);
+      } else {
+        const current = uniqueMap.get(key);
+        if (!current.is_sub_recipe && item.is_sub_recipe) {
+          uniqueMap.set(key, item);
+        }
+      }
+    });
+
+    productOptions.value = Array.from(uniqueMap.values());
   } catch (error) {
     console.error("Error al buscar productos:", error);
   } finally {
