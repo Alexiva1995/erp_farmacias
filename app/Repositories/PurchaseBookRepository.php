@@ -106,10 +106,10 @@ class PurchaseBookRepository implements PurchaseBookContract
         return $book;
     }
 
-    public function getBookById(int $id): PurchaseBook
+    public function getBookById(int $id, bool $reorder = true): PurchaseBook
     {
         $book = PurchaseBook::findOrFail($id);
-        if ($book->isOpen()) {
+        if ($reorder && $book->isOpen()) {
             $this->reorderOperations($book);
         }
 
@@ -520,7 +520,17 @@ class PurchaseBookRepository implements PurchaseBookContract
 
         $this->ensureExcludedInvoicesTableExists();
 
-        $entry = $book->entries()->where('id', $entryId)->firstOrFail();
+        // Buscar la entrada en el libro; si no se encuentra directamente por book->entries(), buscar por el modelo PurchaseBookEntry
+        $entry = $book->entries()->where('id', $entryId)->first()
+            ?? PurchaseBookEntry::where('purchase_book_id', $book->id)->where('id', $entryId)->first()
+            ?? PurchaseBookEntry::find($entryId);
+
+        if (!$entry) {
+            // Si la entrada ya no existe, recalcular totales y retornar true para no arrojar excepción
+            $this->recalculateTotals($book);
+            return true;
+        }
+
         $invoiceId = $entry->invoice_id;
         $retentionId = $entry->retention_id;
         $invoiceNumber = $entry->invoice_number;

@@ -23,7 +23,7 @@ interface PurchaseBookContract
     /**
      * Obtiene un libro por ID con sus entradas.
      */
-    public function getBookById(int $id): PurchaseBook;
+    public function getBookById(int $id, bool $reorder = true): PurchaseBook;
 
     /**
      * Sincroniza las transacciones (facturas y retenciones) en un libro abierto.

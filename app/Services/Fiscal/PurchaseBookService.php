@@ -68,19 +68,19 @@ class PurchaseBookService
 
     public function updateEntry(int $bookId, int $entryId, array $data): PurchaseBookEntry
     {
-        $book = $this->purchaseBookRepository->getBookById($bookId);
+        $book = $this->purchaseBookRepository->getBookById($bookId, false);
         return $this->purchaseBookRepository->updateEntry($book, $entryId, $data);
     }
 
     public function storeEntry(int $bookId, array $data): PurchaseBookEntry
     {
-        $book = $this->purchaseBookRepository->getBookById($bookId);
+        $book = $this->purchaseBookRepository->getBookById($bookId, false);
         return $this->purchaseBookRepository->storeEntry($book, $data);
     }
 
     public function deleteEntry(int $bookId, int $entryId, bool $deleteInvoiceFromSystem = false): bool
     {
-        $book = $this->purchaseBookRepository->getBookById($bookId);
+        $book = $this->purchaseBookRepository->getBookById($bookId, false);
         return $this->purchaseBookRepository->deleteEntry($book, $entryId, $deleteInvoiceFromSystem);
     }
 
