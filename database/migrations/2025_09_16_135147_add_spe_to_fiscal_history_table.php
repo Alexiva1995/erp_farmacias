@@ -10,9 +10,11 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table('fiscal_history', function (Blueprint $table) {
-            $table->boolean('spe')->default(false)->after('iva_amount');
-        });
+        if (Schema::hasTable('fiscal_history') && !Schema::hasColumn('fiscal_history', 'spe')) {
+            Schema::table('fiscal_history', function (Blueprint $table) {
+                $table->boolean('spe')->default(false)->after('iva_amount');
+            });
+        }
     }
 
     /**
@@ -20,8 +22,10 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::table('fiscal_history', function (Blueprint $table) {
-            $table->dropColumn('spe');
-        });
+        if (Schema::hasTable('fiscal_history') && Schema::hasColumn('fiscal_history', 'spe')) {
+            Schema::table('fiscal_history', function (Blueprint $table) {
+                $table->dropColumn('spe');
+            });
+        }
     }
 };

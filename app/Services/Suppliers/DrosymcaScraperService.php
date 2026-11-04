@@ -581,7 +581,7 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
                     'status' => 'ordered',
                     'status_payment' => 0,
                     'loaded_by' => $userId,
-                    'registered_by' => null,
+                    'registered_by' => $userId,
                     'uploaded_by' => $userId,
                 ]
                 );

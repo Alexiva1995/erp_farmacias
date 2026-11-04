@@ -641,7 +641,7 @@ class DromegaScraperService implements DromegaScraperServiceInterface
                     [
                     'supplier_id' => $supplierId,
                     'uploaded_by' => $userId,
-                    'registered_by' => null,
+                    'registered_by' => $userId,
                     'loaded_by' => $userId,
                     'invoice_number' => $rawDocNum,
                     'control_number' => '00-' . str_pad($cleanNumber, 7, '0', STR_PAD_LEFT),

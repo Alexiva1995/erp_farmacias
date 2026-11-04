@@ -471,7 +471,7 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
                     'status' => 'pending',
                     'status_payment' => 0,
                     'uploaded_by' => $userId,
-                    'registered_by' => null,
+                    'registered_by' => $userId,
                 ]
                 );
 

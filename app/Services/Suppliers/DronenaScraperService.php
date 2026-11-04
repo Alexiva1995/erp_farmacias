@@ -291,7 +291,7 @@ class DronenaScraperService implements DronenaScraperServiceInterface
                         'status' => $isND ? 'ordered' : 'pending',
                         'status_payment' => 0,
                         'uploaded_by' => 1,
-                        'registered_by' => null,
+                        'registered_by' => 1,
                         'loaded_by' => 1,
                         'ordered_by' => 1,
                     ]

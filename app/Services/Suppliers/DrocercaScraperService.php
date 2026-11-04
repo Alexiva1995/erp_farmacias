@@ -317,7 +317,7 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
                     'status' => 'pending',
                     'status_payment' => 0,
                     'uploaded_by' => $userId,
-                    'registered_by' => null,
+                    'registered_by' => $userId,
                     'invoice_photo' => $invoicePhoto,
                 ]
                 );
