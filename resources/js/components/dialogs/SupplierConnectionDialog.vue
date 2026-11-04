@@ -87,7 +87,6 @@ const typeOptions = computed(() => {
   if (isDromega.value) {
     return [
       { title: "FTP", value: "ftp", icon: "tabler-server" },
-      { title: "Correo Gmail", value: "file", icon: "tabler-mail" },
     ];
   }
 
@@ -95,7 +94,6 @@ const typeOptions = computed(() => {
     return [
       { title: "Bot Dronena", value: "dronena_bot", icon: "tabler-robot" },
       { title: "FTP", value: "ftp", icon: "tabler-server" },
-      { title: "Correo Gmail", value: "file", icon: "tabler-mail" },
     ];
   }
 
@@ -655,7 +653,7 @@ watch(
           </template>
 
           <!-- Enlace de Días de Crédito vía Correo (Gmail) para conexiones FTP / SFTP / API / Bot -->
-          <div v-if="!isEmail" class="mt-2">
+          <div v-if="!isEmail && !isDromega && !isDronena" class="mt-2">
             <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
               <div class="d-flex align-center gap-2 mb-1">
                 <VIcon icon="tabler-calendar-Dollar" color="primary" size="18" />
