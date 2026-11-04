@@ -33,6 +33,14 @@ const isDronena = computed(() => {
   return id === 1014 || name.includes("DRONENA") || name.includes("DROGUERIA NENA") || name.includes("NENA");
 });
 
+const isMafarta = computed(() => {
+  const name = props.supplier?.name?.toUpperCase() || "";
+  const id = Number(props.supplier?.id);
+  return id === 1011 || id === 23 || name.includes("MAFARTA") || name.includes("COBECA");
+});
+
+const isCobecaApiOnly = computed(() => isMafarta.value);
+
 const dromegaClientCode = ref("");
 const dronenaClientCode = ref("");
 
@@ -51,7 +59,13 @@ const getDefaultFormForType = (type) => ({
   type: type,
   host: type === "dronena_bot" 
     ? "https://www.dronena.com/NuevaExperiencia/" 
-    : (isDromega.value && type === "ftp" ? "ftp.dromega.com.ve" : (isDronena.value && type === "ftp" ? "ftp.dronena.com" : "")),
+    : (isDromega.value && type === "ftp" 
+        ? "ftp.dromega.com.ve" 
+        : (isDronena.value && type === "ftp" 
+            ? "ftp.dronena.com" 
+            : (isMafarta.value && (type === "api" || type === "http") 
+                ? "https://comparadores.drogueriascobeca.com/api/Login" 
+                : ""))),
   port: type === "sftp" ? 22 : (type === "ftp" ? 21 : ""),
   username: "",
   password: "",
@@ -81,7 +95,6 @@ const isFtp = computed(() => ["ftp", "sftp"].includes(form.value.type));
 const isHttp = computed(() => ["http", "api"].includes(form.value.type));
 const isEmail = computed(() => ["file", "email"].includes(form.value.type));
 const isDronenaBot = computed(() => form.value.type === "dronena_bot" || (props.supplier?.name && props.supplier.name.toUpperCase().includes("NENA")));
-const isMafarta = computed(() => props.supplier?.name && (props.supplier.name.toUpperCase().includes("MAFARTA") || props.supplier.name.toUpperCase().includes("COBECA") || props.supplier.id === 23));
 
 const typeOptions = computed(() => {
   if (isDromega.value) {
@@ -94,6 +107,12 @@ const typeOptions = computed(() => {
     return [
       { title: "Bot Dronena", value: "dronena_bot", icon: "tabler-robot" },
       { title: "FTP", value: "ftp", icon: "tabler-server" },
+    ];
+  }
+
+  if (isMafarta.value) {
+    return [
+      { title: "HTTP / API", value: "api", icon: "tabler-api" },
     ];
   }
 
@@ -201,12 +220,15 @@ const fetchConfig = async () => {
     }
 
     const availableTypes = Object.keys(connectionsMap.value);
-    const initialType =
-      availableTypes.find((t) => t === "dronena_bot") ||
-      availableTypes.find((t) => t === "api") ||
-      availableTypes.find((t) => t === "file") ||
-      availableTypes.find((t) => t === "ftp" || t === "sftp") ||
-      "ftp";
+    const initialType = isMafarta.value
+      ? (availableTypes.find((t) => t === "api" || t === "http") || "api")
+      : (
+          availableTypes.find((t) => t === "dronena_bot") ||
+          availableTypes.find((t) => t === "api") ||
+          availableTypes.find((t) => t === "file") ||
+          availableTypes.find((t) => t === "ftp" || t === "sftp") ||
+          "ftp"
+        );
 
     loadFormForType(initialType);
     hasExistingFtpOrdersPassword.value = data?.ftp_orders_has_pass ?? false;
@@ -243,6 +265,13 @@ const saveConfig = async () => {
       const cleanCode = (dronenaClientCode.value || payload.username || "").toString().trim();
       payload.path = cleanCode ? `Clientes/${cleanCode}/Inventario.txt` : "Clientes/";
       payload.invoice_path = cleanCode ? `Clientes/${cleanCode}/Factura` : "Clientes/";
+    }
+
+    if (isMafarta.value && (payload.type === "api" || payload.type === "http")) {
+      payload.host = "https://comparadores.drogueriascobeca.com/api/Login";
+      payload.port = null;
+      payload.path = null;
+      payload.invoice_path = null;
     }
 
     if (payload.type === "file") {
@@ -570,6 +599,31 @@ watch(
                   </VCol>
                 </template>
 
+                <!-- Configuración simplificada para Mafarta / Cobeca (API) -->
+                <template v-else-if="isMafarta && (form.type === 'api' || form.type === 'http')">
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.username"
+                      label="Usuario Mafarta / Cobeca *"
+                      placeholder="ej: usuario_cobeca"
+                      prepend-inner-icon="tabler-user"
+                      :error-messages="errors.username"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.password"
+                      :type="showPassword ? 'text' : 'password'"
+                      :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña Mafarta / Cobeca *'"
+                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
+                      prepend-inner-icon="tabler-lock"
+                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                      :error-messages="errors.password"
+                      @click:append-inner="showPassword = !showPassword"
+                    />
+                  </VCol>
+                </template>
+
                 <!-- Configuración estándar para otros proveedores / tipos -->
                 <template v-else>
                   <!-- Servidor y Puerto -->
@@ -653,7 +707,7 @@ watch(
           </template>
 
           <!-- Enlace de Días de Crédito vía Correo (Gmail) para conexiones FTP / SFTP / API / Bot -->
-          <div v-if="!isEmail && !isDromega && !isDronena" class="mt-2">
+          <div v-if="!isEmail && !isDromega && !isDronena && !isMafarta" class="mt-2">
             <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
               <div class="d-flex align-center gap-2 mb-1">
                 <VIcon icon="tabler-calendar-Dollar" color="primary" size="18" />
@@ -698,7 +752,7 @@ watch(
           </div>
 
           <!-- Transmisión de Pedidos FTP / EDI Secundaria (si aplica) -->
-          <div v-if="isHttp || isMafarta || form.type === 'dronena_bot'" class="mt-2">
+          <div v-if="(isHttp || isMafarta || form.type === 'dronena_bot') && !isMafarta" class="mt-2">
             <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card">
               <div class="d-flex align-center justify-space-between mb-2">
                 <div class="d-flex align-center gap-2">
