@@ -246,16 +246,17 @@ const selectInvoice = (inv) => {
   entryForm.total_purchases_with_vat = inv.total_purchases_with_vat || 0
   entryForm.exempt_purchases = inv.exempt_purchases || 0
   entryForm.general_taxable_base = inv.general_taxable_base || 0
-  entryForm.general_aliquot = inv.general_aliquot || 0.16
+  entryForm.general_aliquot = inv.general_aliquot ?? 0.16
   entryForm.general_vat = inv.general_vat || 0
   entryForm.reduced_taxable_base = inv.reduced_taxable_base || 0
-  entryForm.reduced_aliquot = inv.reduced_aliquot || 0.08
+  entryForm.reduced_aliquot = inv.reduced_aliquot ?? 0.08
   entryForm.reduced_vat = inv.reduced_vat || 0
   entryForm.vat_withheld = inv.vat_withheld || 0
   entryForm.withholding_receipt_number = inv.withholding_receipt_number || ''
 
-  if (inv.created_invoice_date) {
-    entryForm.operation_date = inv.created_invoice_date
+  // Respetar la fecha de inicio del libro o la fecha del formulario si es incorporación de factura vieja a este período
+  if (!entryForm.operation_date) {
+    entryForm.operation_date = inv.created_invoice_date || book.value?.start_date || ''
   }
 
   foundInvoices.value = []

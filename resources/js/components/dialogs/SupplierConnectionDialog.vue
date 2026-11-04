@@ -21,14 +21,29 @@ const showFtpOrdersPassword = ref(false);
 
 const connectionsMap = ref({});
 
+const isDromega = computed(() => {
+  const name = props.supplier?.name?.toUpperCase() || "";
+  const id = Number(props.supplier?.id);
+  return id === 1005 || name.includes("DROMEGA") || name.includes("DROGUERIA MEGA");
+});
+
+const dromegaClientCode = ref("");
+
+const updateDromegaInvoicePath = (val) => {
+  const cleanCode = (val || "").toString().trim();
+  form.value.invoice_path = cleanCode ? `Facturas/${cleanCode}` : "Facturas/";
+};
+
 const getDefaultFormForType = (type) => ({
   type: type,
-  host: type === "dronena_bot" ? "https://www.dronena.com/NuevaExperiencia/" : "",
+  host: type === "dronena_bot" 
+    ? "https://www.dronena.com/NuevaExperiencia/" 
+    : (isDromega.value && type === "ftp" ? "ftp.dromega.com.ve" : ""),
   port: type === "sftp" ? 22 : (type === "ftp" ? 21 : ""),
   username: "",
   password: "",
-  path: "",
-  invoice_path: "",
+  path: isDromega.value && type === "ftp" ? "Existencia/inventariomerida.txt" : "",
+  invoice_path: isDromega.value && type === "ftp" ? "Facturas/7586" : "",
   pasv: true,
   has_header: false,
   ftp_orders_enabled: false,
@@ -56,6 +71,13 @@ const isDronenaBot = computed(() => form.value.type === "dronena_bot" || (props.
 const isMafarta = computed(() => props.supplier?.name && (props.supplier.name.toUpperCase().includes("MAFARTA") || props.supplier.name.toUpperCase().includes("COBECA") || props.supplier.id === 23));
 
 const typeOptions = computed(() => {
+  if (isDromega.value) {
+    return [
+      { title: "FTP", value: "ftp", icon: "tabler-server" },
+      { title: "Correo Gmail", value: "file", icon: "tabler-mail" },
+    ];
+  }
+
   const options = [
     { title: "FTP", value: "ftp", icon: "tabler-server" },
     { title: "SFTP", value: "sftp", icon: "tabler-lock" },
@@ -99,10 +121,25 @@ const loadFormForType = (type) => {
     };
     hasExistingPassword.value = existing.has_password ?? false;
     lastConnection.value = existing.last_connection ?? null;
+
+    if (isDromega.value && type === "ftp") {
+      if (!form.value.host) form.value.host = "ftp.dromega.com.ve";
+      if (!form.value.port) form.value.port = 21;
+      if (!form.value.path) form.value.path = "Existencia/inventariomerida.txt";
+      if (!form.value.invoice_path) form.value.invoice_path = "Facturas/7586";
+
+      const parts = form.value.invoice_path.split("/");
+      dromegaClientCode.value = parts.length > 1 ? parts.slice(1).join("/") : (form.value.invoice_path || "");
+    }
   } else {
     form.value = getDefaultFormForType(type);
     hasExistingPassword.value = false;
     lastConnection.value = null;
+
+    if (isDromega.value && type === "ftp") {
+      const parts = form.value.invoice_path.split("/");
+      dromegaClientCode.value = parts.length > 1 ? parts.slice(1).join("/") : (form.value.invoice_path || "");
+    }
   }
 };
 
@@ -156,6 +193,14 @@ const saveConfig = async () => {
   saving.value = true;
   try {
     const payload = { ...form.value };
+    if (isDromega.value && payload.type === "ftp") {
+      payload.host = "ftp.dromega.com.ve";
+      payload.port = 21;
+      payload.path = "Existencia/inventariomerida.txt";
+      const cleanCode = (dromegaClientCode.value || "").toString().trim();
+      payload.invoice_path = cleanCode ? `Facturas/${cleanCode}` : "Facturas/";
+    }
+
     if (payload.type === "file") {
       payload.host = payload.username;
       payload.port = null;
@@ -413,73 +458,110 @@ watch(
               </div>
 
               <VRow dense>
-                <!-- Servidor y Puerto -->
-                <VCol cols="12" :md="isFtp ? 8 : 12">
-                  <AppTextField
-                    v-model="form.host"
-                    :label="isFtp ? 'Host / Servidor IP *' : 'URL Endpoint Login / Base *'"
-                    :placeholder="isFtp ? 'ftp.proveedor.com' : 'https://api.proveedor.com/login'"
-                    prepend-inner-icon="tabler-server"
-                    :error-messages="errors.host"
-                  />
-                </VCol>
-                <VCol v-if="isFtp" cols="12" md="4">
-                  <AppTextField
-                    v-model.number="form.port"
-                    type="number"
-                    label="Puerto *"
-                    :placeholder="form.type === 'sftp' ? '22' : '21'"
-                    prepend-inner-icon="tabler-hash"
-                    :error-messages="errors.port"
-                  />
-                </VCol>
+                <!-- Configuración simplificada para Dromega (FTP) -->
+                <template v-if="isDromega && form.type === 'ftp'">
+                  <VCol cols="12" md="4">
+                    <AppTextField
+                      v-model="form.username"
+                      label="Usuario / Token Cliente *"
+                      placeholder="clientemerida@dromega.com.ve"
+                      prepend-inner-icon="tabler-user"
+                      :error-messages="errors.username"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="4">
+                    <AppTextField
+                      v-model="form.password"
+                      :type="showPassword ? 'text' : 'password'"
+                      :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña / Clave *'"
+                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
+                      prepend-inner-icon="tabler-lock"
+                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                      :error-messages="errors.password"
+                      @click:append-inner="showPassword = !showPassword"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="4">
+                    <AppTextField
+                      v-model="dromegaClientCode"
+                      label="Código de Cliente *"
+                      placeholder="ej: 7586"
+                      prepend-inner-icon="tabler-barcode"
+                      @update:model-value="updateDromegaInvoicePath"
+                    />
+                  </VCol>
+                </template>
 
-                <!-- Credenciales -->
-                <VCol cols="12" md="6">
-                  <AppTextField
-                    v-model="form.username"
-                    label="Usuario / Token Cliente *"
-                    placeholder="Ingresa tu usuario o código de cliente"
-                    prepend-inner-icon="tabler-user"
-                    :error-messages="errors.username"
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <AppTextField
-                    v-model="form.password"
-                    :type="showPassword ? 'text' : 'password'"
-                    :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña / Clave *'"
-                    :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
-                    prepend-inner-icon="tabler-lock"
-                    :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                    :error-messages="errors.password"
-                    @click:append-inner="showPassword = !showPassword"
-                  />
-                </VCol>
+                <!-- Configuración estándar para otros proveedores / tipos -->
+                <template v-else>
+                  <!-- Servidor y Puerto -->
+                  <VCol cols="12" :md="isFtp ? 8 : 12">
+                    <AppTextField
+                      v-model="form.host"
+                      :label="isFtp ? 'Host / Servidor IP *' : 'URL Endpoint Login / Base *'"
+                      :placeholder="isFtp ? 'ftp.proveedor.com' : 'https://api.proveedor.com/login'"
+                      prepend-inner-icon="tabler-server"
+                      :error-messages="errors.host"
+                    />
+                  </VCol>
+                  <VCol v-if="isFtp" cols="12" md="4">
+                    <AppTextField
+                      v-model.number="form.port"
+                      type="number"
+                      label="Puerto *"
+                      :placeholder="form.type === 'sftp' ? '22' : '21'"
+                      prepend-inner-icon="tabler-hash"
+                      :error-messages="errors.port"
+                    />
+                  </VCol>
 
-                <!-- Rutas de Archivos -->
-                <VCol cols="12" md="6">
-                  <AppTextField
-                    v-model="form.path"
-                    :label="isFtp ? 'Ruta Archivo Productos' : 'Endpoint Productos'"
-                    :placeholder="isFtp ? '/inventario/productos.txt' : '/api/v1/productos'"
-                    prepend-inner-icon="tabler-folder"
-                    :error-messages="errors.path"
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <AppTextField
-                    v-model="form.invoice_path"
-                    :label="isFtp ? 'Ruta Directorio Facturas' : 'Endpoint Facturas'"
-                    :placeholder="isFtp ? '/facturas/' : '/api/v1/facturas'"
-                    prepend-inner-icon="tabler-file-invoice"
-                    :error-messages="errors.invoice_path"
-                  />
-                </VCol>
+                  <!-- Credenciales -->
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.username"
+                      label="Usuario / Token Cliente *"
+                      placeholder="Ingresa tu usuario o código de cliente"
+                      prepend-inner-icon="tabler-user"
+                      :error-messages="errors.username"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.password"
+                      :type="showPassword ? 'text' : 'password'"
+                      :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña / Clave *'"
+                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
+                      prepend-inner-icon="tabler-lock"
+                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                      :error-messages="errors.password"
+                      @click:append-inner="showPassword = !showPassword"
+                    />
+                  </VCol>
+
+                  <!-- Rutas de Archivos -->
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.path"
+                      :label="isFtp ? 'Ruta Archivo Productos' : 'Endpoint Productos'"
+                      :placeholder="isFtp ? '/inventario/productos.txt' : '/api/v1/productos'"
+                      prepend-inner-icon="tabler-folder"
+                      :error-messages="errors.path"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.invoice_path"
+                      :label="isFtp ? 'Ruta Directorio Facturas' : 'Endpoint Facturas'"
+                      :placeholder="isFtp ? '/facturas/' : '/api/v1/facturas'"
+                      prepend-inner-icon="tabler-file-invoice"
+                      :error-messages="errors.invoice_path"
+                    />
+                  </VCol>
+                </template>
               </VRow>
 
               <!-- Opciones FTP en una sola fila compacta -->
-              <div v-if="isFtp" class="d-flex align-center flex-wrap justify-space-between gap-3 pt-2 mt-2 border-t">
+              <div v-if="isFtp && (!isDromega || form.type !== 'ftp')" class="d-flex align-center flex-wrap justify-space-between gap-3 pt-2 mt-2 border-t">
                 <div class="d-flex align-center gap-2">
                   <VSwitch v-model="form.pasv" color="primary" hide-details density="compact" />
                   <span class="text-xs font-weight-bold text-high-emphasis">Modo Pasivo (PASV)</span>

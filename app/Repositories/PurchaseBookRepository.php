@@ -409,11 +409,28 @@ class PurchaseBookRepository implements PurchaseBookContract
             throw new \DomainException("No se puede agregar entradas a un libro cerrado.");
         }
 
-        $data['purchase_book_id'] = $book->id;
-        $data['operation_number'] = 999999;
-        $data['is_manual_override'] = true;
+        // Si ya existe una entrada con la misma factura vinculada, actualizarla en vez de duplicar el renglón
+        $existingEntry = null;
+        if (!empty($data['invoice_id'])) {
+            $existingEntry = $book->entries()->where('invoice_id', $data['invoice_id'])->first();
+        }
+        if (!$existingEntry && !empty($data['invoice_number'])) {
+            $existingEntry = $book->entries()
+                ->where('invoice_number', $data['invoice_number'])
+                ->where('document_type', $data['document_type'] ?? 'FACTURA')
+                ->first();
+        }
 
-        $entry = PurchaseBookEntry::create($data);
+        if ($existingEntry) {
+            $data['is_manual_override'] = true;
+            $existingEntry->update($data);
+            $entry = $existingEntry;
+        } else {
+            $data['purchase_book_id'] = $book->id;
+            $data['operation_number'] = 999999;
+            $data['is_manual_override'] = true;
+            $entry = PurchaseBookEntry::create($data);
+        }
 
         // Si la factura estaba previamente excluida y el usuario la vuelve a agregar explícitamente, remover la exclusión
         if (!empty($data['invoice_id']) || !empty($data['invoice_number'])) {
@@ -566,13 +583,14 @@ class PurchaseBookRepository implements PurchaseBookContract
                 $exemptAmount = (float) ($inv->exempt_amount ?? 0);
                 $totalAmount = (float) ($inv->total_amount ?? 0);
 
+                // Detectar si tiene alícuota reducida efectiva del 8% (solo si la razón de cálculo da 8%)
                 $hasReduced = false;
                 $reducedBase = 0.00;
                 $reducedVat = 0.00;
                 $generalBase = $taxableBase;
                 $generalVat = $taxAmount;
 
-                if ($isZoom || ($taxableBase > 0 && round($taxAmount / $taxableBase, 2) === 0.08)) {
+                if ($taxableBase > 0 && round($taxAmount / $taxableBase, 2) === 0.08) {
                     $hasReduced = true;
                     $reducedBase = $taxableBase;
                     $reducedVat = $taxAmount;
@@ -597,8 +615,8 @@ class PurchaseBookRepository implements PurchaseBookContract
                     'reduced_taxable_base' => $reducedBase,
                     'reduced_aliquot' => $hasReduced ? 0.08 : 0.00,
                     'reduced_vat' => $reducedVat,
-                    'vat_withheld' => (float) ($inv->retention?->total_withheld_amount ?? 0),
-                    'withholding_receipt_number' => (string) ($inv->retention?->number ?? ''),
+                    'vat_withheld' => 0.00,
+                    'withholding_receipt_number' => '',
                 ];
             });
     }
