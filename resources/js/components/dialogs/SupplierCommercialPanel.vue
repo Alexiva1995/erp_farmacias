@@ -1,6 +1,8 @@
 <script setup>
 import { ref, watch } from "vue"
 import { useTheme } from 'vuetify'
+import { useBrandingStore } from '@/stores/useBrandingStore'
+import { computed } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -22,6 +24,8 @@ const emit = defineEmits([
 ])
 
 const theme = useTheme()
+const brandingStore = useBrandingStore()
+const isRestaurant = computed(() => brandingStore.isRestaurant)
 const activeTab = ref(0)
 const internalErrors = ref({})
 
@@ -190,7 +194,7 @@ const close = () => {
         </VTab>
         <VTab :value="1" class="font-weight-black text-xs uppercase letter-spacing-1">
           <VIcon start>tabler-building-factory-2</VIcon>
-          Marcas y Escalas
+          {{ isRestaurant ? 'Marcas / Líneas y Escalas' : 'Marcas y Escalas' }}
         </VTab>
         <VTab :value="2" class="font-weight-black text-xs uppercase letter-spacing-1">
           <VIcon start>tabler-percentage</VIcon>
@@ -304,7 +308,7 @@ const close = () => {
               <div class="d-flex align-center gap-2">
                 <div class="header-indicator primary shadow-sm" />
                 <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
-                  Escalas de Negociación por Laboratorio
+                  {{ isRestaurant ? 'Escalas de Negociación por Marca / Línea' : 'Escalas de Negociación por Laboratorio' }}
                 </span>
               </div>
               <VBtn
@@ -323,7 +327,7 @@ const close = () => {
               <VTable class="premium-table">
                 <thead>
                   <tr>
-                    <th style="inline-size: 32%;">LABORATORIO / MARCA</th>
+                    <th style="inline-size: 32%;">{{ isRestaurant ? 'MARCA / LÍNEA' : 'LABORATORIO / MARCA' }}</th>
                     <th style="inline-size: 22%;">TIPO DE ESCALA</th>
                     <th style="inline-size: 24%;">RANGO (MÍN - MÁX)</th>
                     <th style="inline-size: 12%;">% DSCTO</th>
@@ -339,8 +343,8 @@ const close = () => {
                         item-title="name"
                         return-object
                         density="compact"
-                        placeholder="Seleccionar laboratorio..."
-                        no-data-text="No hay laboratorios disponibles"
+                        :placeholder="isRestaurant ? 'Seleccionar marca / línea...' : 'Seleccionar laboratorio...'"
+                        :no-data-text="isRestaurant ? 'No hay marcas disponibles' : 'No hay laboratorios disponibles'"
                         hide-details
                       />
                     </td>
@@ -422,10 +426,10 @@ const close = () => {
                 <VIcon icon="tabler-info-circle" size="22" color="primary" />
               </template>
               <div class="text-xs font-weight-black uppercase letter-spacing-1 mb-0.5 text-primary">
-                Información de Escalas por Volumen
+                {{ isRestaurant ? 'Información de Escalas por Marca / Volumen' : 'Información de Escalas por Volumen' }}
               </div>
               <div class="text-caption text-medium-emphasis">
-                Establece bonificaciones o descuentos comerciales escalonados por rangos de unidades compradas o montos en dólares por laboratorio.
+                Establece bonificaciones o descuentos comerciales escalonados por rangos de unidades compradas o montos en dólares {{ isRestaurant ? 'por marca o línea de insumos' : 'por laboratorio' }}.
               </div>
             </VAlert>
           </VWindowItem>

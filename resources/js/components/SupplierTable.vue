@@ -27,7 +27,7 @@ import AppMobilePagination from "@/components/AppMobilePagination.vue";
 
 const { mobile } = useDisplay();
 
-const isRestaurant = computed(() => false);
+const isRestaurant = computed(() => brandingStore.isRestaurant);
 
 const emit = defineEmits([
   "update:options",
@@ -74,14 +74,14 @@ const formatTime = (dateString) => {
   }
 };
 
-const headers = [
+const headers = computed(() => [
   { title: "ID", key: "id", sortable: true },
   { title: "Nombre", key: "name", sortable: true },
-  { title: "ÚLTIMA SIC", key: "last_sync_at", sortable: true },
+  { title: isRestaurant.value ? "ÚLTIMA COMPRA / SINCR." : "ÚLTIMA SIC", key: "last_sync_at", sortable: true },
   { title: "Deuda", key: "debt", sortable: true },
   { title: "Calificación", key: "latest_score_value", sortable: true },
   { title: "Acciones", key: "actions", sortable: false },
-];
+]);
 </script>
 
 <template>
@@ -387,7 +387,7 @@ const headers = [
                 </span>
               </div>
               <div class="d-flex flex-column align-end">
-                <span class="text-caption text-disabled mb-1">Última SIC</span>
+                <span class="text-caption text-disabled mb-1">{{ isRestaurant ? "Última Compra" : "Última SIC" }}</span>
                 <span class="text-xs font-weight-bold text-high-emphasis">{{ formatDate(item.last_sync_at) || '—' }}</span>
                 <span class="text-xxs text-disabled">{{ formatTime(item.last_sync_at) }}</span>
               </div>

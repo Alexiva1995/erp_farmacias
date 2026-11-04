@@ -16,7 +16,7 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
 
-const isRestaurant = computed(() => false);
+const isRestaurant = computed(() => brandingStore.isRestaurant);
 
 // Proveedor de tipo gasto (formulario simplificado)
 const isExpenseSupplier = computed(() => formData.value.type === "externo" || formData.value.type === "gasto");
@@ -118,7 +118,7 @@ const handleRifInput = () => {
         masterFoundNotice.value = `¡Proveedor oficial detectado en Catálogo Maestro (#${ms.id}: ${ms.name})! Datos e ID oficial autocompletados.`;
         toast.success(`Proveedor oficial ${ms.name} (#${ms.id}) cargado desde el Catálogo Maestro.`);
       } else if (data.exists_locally) {
-        masterFoundNotice.value = `Este proveedor ya está registrado en tu farmacia (#${data.supplier?.id}).`;
+        masterFoundNotice.value = `Este proveedor ya está registrado en tu ${isRestaurant.value ? "restaurante" : "farmacia"} (#${data.supplier?.id}).`;
       }
     } catch (e) {
       console.warn("Error en lookup de proveedor:", e);
@@ -306,7 +306,7 @@ watch(
                 {{ isNewSupplier ? (isRestaurant ? 'Nuevo Proveedor' : (formData.type === 'externo' ? 'Nuevo Proveedor de Gastos' : 'Nueva Droguería')) : "Editar Proveedor" }}
               </h2>
               <span class="text-super-xs text-white opacity-90 uppercase font-weight-bold letter-spacing-1">
-                {{ isNewSupplier ? "Registro de aliado comercial" : (isRestaurant ? 'Proveedor' : (formData.type === 'externo' ? 'Proveedor de Gastos' : 'Droguería')) + (formData.name ? ' | ' + formData.name : '') }}
+                {{ isNewSupplier ? "Registro de aliado comercial" : ((isRestaurant ? (formData.type === 'externo' ? 'Proveedor de Gastos' : 'Proveedor de Insumos') : (formData.type === 'externo' ? 'Proveedor de Gastos' : 'Droguería'))) + (formData.name ? ' | ' + formData.name : '') }}
               </span>
             </div>
           </div>
@@ -362,7 +362,7 @@ watch(
                         <AppSelect
                           v-model="formData.type"
                           :items="[
-                            { title: 'Droguerías / Mercancía (Inventario)', value: 'drogueria' },
+                            { title: isRestaurant ? 'Insumos y Mercancía (Inventario)' : 'Droguerías / Mercancía (Inventario)', value: 'drogueria' },
                             { title: 'Gastos y Servicios Operativos', value: 'externo' },
                           ]"
                           label="Tipo de Proveedor *"
@@ -393,7 +393,7 @@ watch(
                         <AppTextField
                           v-model="formData.name"
                           label="Nombre Comercial *"
-                          placeholder="Ej: Droguería Nena"
+                          :placeholder="isRestaurant ? 'Ej: Distribuidora Avícola / Lácteos' : 'Ej: Droguería Nena'"
                           prepend-inner-icon="tabler-building-store"
                           :error-messages="formErrors.name"
                           :readonly="isReadOnly"
@@ -404,7 +404,7 @@ watch(
                         <AppTextField
                           v-model="formData.social_reason"
                           label="Razón Social"
-                          placeholder="Ej: Droguería Nena C.A."
+                          :placeholder="isRestaurant ? 'Ej: Distribuidora Avícola C.A.' : 'Ej: Droguería Nena C.A.'"
                           prepend-inner-icon="tabler-certificate"
                           :error-messages="formErrors.social_reason"
                           :readonly="isReadOnly"
@@ -487,7 +487,7 @@ watch(
                             v-model="formData.payment_email"
                             label="Correo para Notificación de Pagos"
                             type="email"
-                            placeholder="pagos@drogueria.com"
+                            :placeholder="isRestaurant ? 'pagos@proveedor.com' : 'pagos@drogueria.com'"
                             prepend-inner-icon="tabler-mail-dollar"
                             :error-messages="formErrors.payment_email"
                             hint="Se enviará automáticamente el soporte de pago a este correo"
@@ -630,7 +630,7 @@ watch(
                 <VCard variant="outlined" class="pa-4 rounded-lg bg-surface border-card">
                   <div class="d-flex align-center gap-2 mb-1">
                     <VIcon icon="tabler-truck-delivery" color="primary" size="20" />
-                    <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Días de Despacho (Entrega en Farmacia)</span>
+                    <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">{{ isRestaurant ? 'Días de Despacho (Entrega en Restaurante)' : 'Días de Despacho (Entrega en Farmacia)' }}</span>
                   </div>
                   <p class="text-xs text-medium-emphasis mb-3">
                     Selecciona los días de la semana en que el proveedor realiza entregas de mercancía en la sucursal.

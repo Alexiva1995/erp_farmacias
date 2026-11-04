@@ -59,11 +59,13 @@ const scoreOptions = [
   { title: "2.0+ Estrellas", value: 40 },
 ];
 
-const typeOptions = [
+const isRestaurant = computed(() => brandingStore.isRestaurant);
+
+const typeOptions = computed(() => [
   { title: "Todos los Proveedores", value: null },
-  { title: "Droguerías / Mercancía", value: "drogueria" },
+  { title: isRestaurant.value ? "Insumos y Mercancía" : "Droguerías / Mercancía", value: "drogueria" },
   { title: "Gastos y Servicios", value: "externo" },
-];
+]);
 
 const showExpenseSupplierBtn = computed(() => {
   const enabledTypes = brandingStore.settings?.enabled_supplier_types || ['inventory', 'expenses'];
@@ -82,7 +84,7 @@ const hasAdvancedFilters = computed(
     :show-sort="true"
     :sort-options="sortOptions"
     :show-add="true"
-    add-button-text="Añadir Droguería"
+    :add-button-text="isRestaurant ? 'Añadir Proveedor' : 'Añadir Droguería'"
     search-placeholder="Buscar por ID, Nombre o RIF..."
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
