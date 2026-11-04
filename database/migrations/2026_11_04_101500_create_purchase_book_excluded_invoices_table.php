@@ -21,8 +21,8 @@ return new class extends Migration
                 $table->foreignId('retention_id')->nullable()->constrained('retentions')->nullOnDelete();
                 $table->timestamps();
 
-                $table->index(['purchase_book_id', 'invoice_id']);
-                $table->index(['purchase_book_id', 'invoice_number']);
+                $table->index(['purchase_book_id', 'invoice_id'], 'idx_pbei_book_invoice');
+                $table->index(['purchase_book_id', 'invoice_number'], 'idx_pbei_book_number');
             });
         }
     }
