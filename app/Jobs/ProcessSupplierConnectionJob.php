@@ -54,6 +54,9 @@ class ProcessSupplierConnectionJob implements ShouldQueue
      */
     public function handle(SupplierConnectionService $connectionService, SupplierQueryService $queryService): void
     {
+        @ignore_user_abort(true);
+        @set_time_limit(0);
+
         // Log INMEDIATO al inicio del Job
         $hasFiles = !empty($this->filePath);
         $tipo = $hasFiles ? 'EXCEL' : 'FTP/API';
