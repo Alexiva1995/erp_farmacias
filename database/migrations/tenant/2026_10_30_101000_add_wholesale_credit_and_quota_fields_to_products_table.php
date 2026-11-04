@@ -49,7 +49,11 @@ return new class extends Migration
         if (Schema::hasTable('laboratories')) {
             Schema::table('laboratories', function (Blueprint $table) {
                 if (!Schema::hasColumn('laboratories', 'default_credit_days')) {
-                    $table->integer('default_credit_days')->default(0)->after('description');
+                    if (Schema::hasColumn('laboratories', 'description')) {
+                        $table->integer('default_credit_days')->default(0)->after('description');
+                    } else {
+                        $table->integer('default_credit_days')->default(0);
+                    }
                 }
                 if (!Schema::hasColumn('laboratories', 'commercial_discount_pct')) {
                     $table->decimal('commercial_discount_pct', 5, 2)->default(0)->after('default_credit_days');
