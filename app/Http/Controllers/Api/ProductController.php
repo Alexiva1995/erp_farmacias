@@ -496,6 +496,57 @@ class ProductController extends Controller
                     ->sortBy('expiration_date')
                     ->first();
 
+                $unitCost = (float) $product->unit_cost;
+
+                // Si el producto es una sub-receta o tiene costo 0, resolver dinámicamente desde la sub-receta o sus lotes
+                if ($unitCost <= 0 || !empty($product->is_sub_recipe)) {
+                    $baseDish = \App\Models\Dish::with('ingredients')
+                        ->where(function ($q) use ($product) {
+                            $q->where('output_product_id', $product->id)
+                              ->orWhere(function ($subQ) use ($product) {
+                                  $subQ->where('name', $product->name)
+                                       ->where('status', 3);
+                              });
+                        })
+                        ->first();
+
+                    if ($baseDish) {
+                        $yield = (float) ($baseDish->expected_yield_quantity ?: 1.0);
+                        $safeYield = $yield > 0 ? $yield : 1.0;
+                        
+                        $rawDishCost = 0.0;
+                        if ($baseDish->ingredients && $baseDish->ingredients->isNotEmpty()) {
+                            foreach ($baseDish->ingredients as $ing) {
+                                $pPortion = (float) ($ing->pivot?->portion ?? 0);
+                                $pUnitCost = (float) ($ing->unit_cost ?? 0);
+                                $pPres = (float) ($ing->presentation ?? 1);
+                                $pPresSafe = $pPres > 0 ? $pPres : 1.0;
+                                $rawDishCost += ($pUnitCost > 0)
+                                    ? round(($pPortion * $pUnitCost) / $pPresSafe, 4)
+                                    : (float) ($ing->pivot?->designated_cost ?? 0);
+                            }
+                        }
+                        $dishCost = $rawDishCost > 0 ? round($rawDishCost * 1.05, 4) : (float) $baseDish->cost_price;
+                        if ($dishCost > 0) {
+                            $unitCost = round($dishCost / $safeYield, 4);
+                            $product->updateQuietly([
+                                'unit_cost' => $unitCost,
+                                'cost_price' => $unitCost,
+                                'sale_price' => $unitCost,
+                                'is_sub_recipe' => true,
+                            ]);
+                            if (empty($baseDish->output_product_id)) {
+                                $baseDish->updateQuietly(['output_product_id' => $product->id]);
+                            }
+                        }
+                    } elseif ($unitCost <= 0) {
+                        $lotWithCost = $activeLots->first(fn($l) => (float) $l->unit_cost > 0);
+                        if ($lotWithCost) {
+                            $unitCost = (float) $lotWithCost->unit_cost;
+                        }
+                    }
+                }
+
                 return [
                     'id' => $product->id,
                     'is_base_dish' => false,
@@ -506,8 +557,8 @@ class ProductController extends Controller
                     'stock' => $product->stock,
                     'available_stock' => $activeLots
                         ->sum('quantity'),
-                    'sale_price' => (float) $product->sale_price,
-                    'unit_cost' => (float) $product->unit_cost,
+                    'sale_price' => (float) ($product->sale_price ?: $unitCost),
+                    'unit_cost' => $unitCost,
                     'next_expiration' => $nextLot ? $nextLot->expiration_date->format('Y-m-d') : null,
                     'expiration_status' => $this->getExpirationStatus($nextLot),
                     'laboratory' => $product->laboratory ? $product->laboratory->name : null,

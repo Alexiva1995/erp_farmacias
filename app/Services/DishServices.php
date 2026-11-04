@@ -446,11 +446,17 @@ class DishServices implements DishContract
             \Cache::forget('resources.categories.dishes');
 
             // Si es un plato base / sub-receta (status = 3) y no tiene output_product_id, crearlo y vincularlo
-            if ((int) $dish->status === 3 && Schema::hasColumn('dishes', 'output_product_id') && empty($dish->output_product_id)) {
+            if ((int) $dish->status === 3 && empty($dish->output_product_id)) {
+                $yield = (float) ($dish->expected_yield_quantity ?: 1.0);
+                $safeYield = $yield > 0 ? $yield : 1.0;
+                $unitCostProd = round((float) $dish->cost_price / $safeYield, 4);
+
                 $productData = [
                     'name' => trim($dish->name),
                     'category_id' => $dish->category_id,
-                    'sale_price' => (float) $dish->cost_price,
+                    'sale_price' => $unitCostProd,
+                    'unit_cost' => $unitCostProd,
+                    'cost_price' => $unitCostProd,
                     'stock' => 0,
                     'presentation' => 1,
                     'unit_of_measure' => 'porciones',
@@ -459,20 +465,9 @@ class DishServices implements DishContract
                     'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)),
                     'active_ingredient' => 'Sub-receta / Insumo Cocina',
                     'iva' => false,
+                    'is_sub_recipe' => true,
+                    'yield_percentage' => 100.00,
                 ];
-
-                if (Schema::hasColumn('products', 'unit_cost')) {
-                    $productData['unit_cost'] = (float) $dish->cost_price;
-                }
-                if (Schema::hasColumn('products', 'cost_price')) {
-                    $productData['cost_price'] = (float) $dish->cost_price;
-                }
-                if (Schema::hasColumn('products', 'is_sub_recipe')) {
-                    $productData['is_sub_recipe'] = true;
-                }
-                if (Schema::hasColumn('products', 'yield_percentage')) {
-                    $productData['yield_percentage'] = 100.00;
-                }
 
                 $outputProduct = Product::create($productData);
                 $dish->update(['output_product_id' => $outputProduct->id]);
@@ -560,36 +555,40 @@ class DishServices implements DishContract
             \Cache::forget('resources.categories.dishes');
 
             // Si es un plato base / sub-receta (status = 3) y no tiene output_product_id, crearlo y vincularlo
-            if ((int) $dish->status === 3 && Schema::hasColumn('dishes', 'output_product_id') && empty($dish->output_product_id)) {
-                $productData = [
-                    'name' => trim($dish->name),
-                    'category_id' => $dish->category_id,
-                    'sale_price' => (float) $dish->cost_price,
-                    'stock' => 0,
-                    'presentation' => 1,
-                    'unit_of_measure' => 'porciones',
-                    'is_active' => true,
-                    'is_deleted' => false,
-                    'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)),
-                    'active_ingredient' => 'Sub-receta / Insumo Cocina',
-                    'iva' => false,
-                ];
+            if ((int) $dish->status === 3) {
+                $yield = (float) ($dish->expected_yield_quantity ?: 1.0);
+                $safeYield = $yield > 0 ? $yield : 1.0;
+                $unitCostProd = round((float) $dish->cost_price / $safeYield, 4);
 
-                if (Schema::hasColumn('products', 'unit_cost')) {
-                    $productData['unit_cost'] = (float) $dish->cost_price;
+                if (empty($dish->output_product_id)) {
+                    $productData = [
+                        'name' => trim($dish->name),
+                        'category_id' => $dish->category_id,
+                        'sale_price' => $unitCostProd,
+                        'unit_cost' => $unitCostProd,
+                        'cost_price' => $unitCostProd,
+                        'stock' => 0,
+                        'presentation' => 1,
+                        'unit_of_measure' => 'porciones',
+                        'is_active' => true,
+                        'is_deleted' => false,
+                        'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)),
+                        'active_ingredient' => 'Sub-receta / Insumo Cocina',
+                        'iva' => false,
+                        'is_sub_recipe' => true,
+                        'yield_percentage' => 100.00,
+                    ];
+                    $outputProduct = Product::create($productData);
+                    $dish->update(['output_product_id' => $outputProduct->id]);
+                } else {
+                    Product::where('id', $dish->output_product_id)->updateQuietly([
+                        'name' => trim($dish->name),
+                        'unit_cost' => $unitCostProd,
+                        'cost_price' => $unitCostProd,
+                        'sale_price' => $unitCostProd,
+                        'is_sub_recipe' => true,
+                    ]);
                 }
-                if (Schema::hasColumn('products', 'cost_price')) {
-                    $productData['cost_price'] = (float) $dish->cost_price;
-                }
-                if (Schema::hasColumn('products', 'is_sub_recipe')) {
-                    $productData['is_sub_recipe'] = true;
-                }
-                if (Schema::hasColumn('products', 'yield_percentage')) {
-                    $productData['yield_percentage'] = 100.00;
-                }
-
-                $outputProduct = Product::create($productData);
-                $dish->update(['output_product_id' => $outputProduct->id]);
             }
 
             return $dish->load($this->getAvailableRelations());

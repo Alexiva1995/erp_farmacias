@@ -53,18 +53,10 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                     'iva' => false,
                 ];
 
-                if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'unit_cost')) {
-                    $productData['unit_cost'] = (float) $dish->cost_price;
-                }
-                if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'cost_price')) {
-                    $productData['cost_price'] = (float) $dish->cost_price;
-                }
-                if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'is_sub_recipe')) {
-                    $productData['is_sub_recipe'] = true;
-                }
-                if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'yield_percentage')) {
-                    $productData['yield_percentage'] = 100.00;
-                }
+                $productData['unit_cost'] = (float) $dish->cost_price;
+                $productData['cost_price'] = (float) $dish->cost_price;
+                $productData['is_sub_recipe'] = true;
+                $productData['yield_percentage'] = 100.00;
 
                 $outputProduct = Product::create($productData);
                 $dish->update(['output_product_id' => $outputProduct->id]);
@@ -137,26 +129,16 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 'quantity' => $actualQty,
                 'expiration_date' => Carbon::now()->addDays($shelfLife)->toDateString(),
             ];
-            if (\Illuminate\Support\Facades\Schema::hasColumn('product_lots', 'unit_cost')) {
-                $lotData['unit_cost'] = $unitCostCalculated;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('product_lots', 'cost_price')) {
-                $lotData['cost_price'] = $unitCostCalculated;
-            }
+            $lotData['unit_cost'] = $unitCostCalculated;
+            $lotData['cost_price'] = $unitCostCalculated;
 
             $newLot = ProductLot::create($lotData);
 
             // Aumentar stock del producto elaborado
             $outputProduct->stock = (float) $outputProduct->stock + $actualQty;
-            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'unit_cost')) {
-                $outputProduct->unit_cost = $unitCostCalculated;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'cost_price')) {
-                $outputProduct->cost_price = $unitCostCalculated;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'is_sub_recipe')) {
-                $outputProduct->is_sub_recipe = true;
-            }
+            $outputProduct->unit_cost = $unitCostCalculated;
+            $outputProduct->cost_price = $unitCostCalculated;
+            $outputProduct->is_sub_recipe = true;
             $outputProduct->save();
 
             // Registrar Orden de Producción
@@ -245,18 +227,10 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 'iva' => false,
             ];
 
-            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'unit_cost')) {
-                $productData['unit_cost'] = $unitCost;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'cost_price')) {
-                $productData['cost_price'] = $unitCost;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'is_sub_recipe')) {
-                $productData['is_sub_recipe'] = true;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('products', 'yield_percentage')) {
-                $productData['yield_percentage'] = 100.00;
-            }
+            $productData['unit_cost'] = $unitCost;
+            $productData['cost_price'] = $unitCost;
+            $productData['is_sub_recipe'] = true;
+            $productData['yield_percentage'] = 100.00;
 
             $outputProduct = Product::create($productData);
 
@@ -271,30 +245,14 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 'status' => 3, // Base Dish / Sub-receta
             ];
 
-            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'cpv')) {
-                $dishAttributes['cpv'] = round($totalCost, 2);
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'iva')) {
-                $dishAttributes['iva'] = false;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'tax_rate')) {
-                $dishAttributes['tax_rate'] = 0.00;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'preparation_time_minutes')) {
-                $dishAttributes['preparation_time_minutes'] = 15;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'kitchen_station_id')) {
-                $dishAttributes['kitchen_station_id'] = $data['kitchen_station_id'] ?? null;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'output_product_id')) {
-                $dishAttributes['output_product_id'] = $outputProduct->id;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'expected_yield_quantity')) {
-                $dishAttributes['expected_yield_quantity'] = $yieldQty;
-            }
-            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'shelf_life_days')) {
-                $dishAttributes['shelf_life_days'] = $shelfLife;
-            }
+            $dishAttributes['cpv'] = round($totalCost, 2);
+            $dishAttributes['iva'] = false;
+            $dishAttributes['tax_rate'] = 0.00;
+            $dishAttributes['preparation_time_minutes'] = 15;
+            $dishAttributes['kitchen_station_id'] = $data['kitchen_station_id'] ?? null;
+            $dishAttributes['output_product_id'] = $outputProduct->id;
+            $dishAttributes['expected_yield_quantity'] = $yieldQty;
+            $dishAttributes['shelf_life_days'] = $shelfLife;
 
             $dish = Dish::create($dishAttributes);
 
