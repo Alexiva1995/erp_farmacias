@@ -40,9 +40,9 @@ const currencyPrefix = computed(() => {
   return "$";
 });
 
-const formatCurrency = (price, isDesignatedPrice = false) => {
+const formatCurrency = (price, isDesignatedPrice = false, designatedPriceCop = null) => {
   const numPrice = Number(price);
-  if (isNaN(numPrice)) return "—";
+  if (isNaN(numPrice) && designatedPriceCop === null) return "—";
 
   const currency = defaultCurrency.value;
   if (currency === "USD") {
@@ -52,6 +52,11 @@ const formatCurrency = (price, isDesignatedPrice = false) => {
   const rate = activeExchangeRate.value;
 
   if (currency === "COP") {
+    // Si viene designated_price_cop explícito para un precio designado, usarlo directamente
+    if (isDesignatedPrice && designatedPriceCop !== null && designatedPriceCop !== undefined && Number(designatedPriceCop) > 0) {
+      return formatRawCurrency(Math.round(Number(designatedPriceCop)), "COP");
+    }
+
     const rawCop = numPrice * rate;
     const cleanInt = Math.round(rawCop);
 
@@ -121,6 +126,7 @@ const currentDish = ref({
   cost_price: 0,
   suggested_price: 0,
   designated_price: 0,
+  designated_price_cop: null,
   status: 1,
   iva: false,
   tax_rate: 16.0,
@@ -140,15 +146,19 @@ const inputDesignatedPrice = ref("0");
 // Sincronizar el campo de texto con el valor del modelo formateado
 const syncInputPriceFromModel = () => {
   const usdVal = Number(currentDish.value.designated_price || 0);
-  inputDesignatedPrice.value = formatCurrency(usdVal, true);
+  const copVal = currentDish.value.designated_price_cop;
+  inputDesignatedPrice.value = formatCurrency(usdVal, true, copVal);
 };
 
 // Al enfocar el campo: mostrar únicamente el valor numérico limpio y seleccionarlo todo para editar fácil
 const onPriceFocus = (e) => {
   const usdVal = Number(currentDish.value.designated_price || 0);
+  const copVal = currentDish.value.designated_price_cop;
   const rate = activeExchangeRate.value || 1;
   if (defaultCurrency.value === "COP") {
-    const rawCop = Math.round(usdVal * rate);
+    const rawCop = copVal !== null && copVal !== undefined && Number(copVal) > 0
+      ? Math.round(Number(copVal))
+      : Math.round(usdVal * rate);
     inputDesignatedPrice.value = rawCop > 0 ? String(rawCop) : "";
   } else if (defaultCurrency.value === "USD") {
     inputDesignatedPrice.value = usdVal > 0 ? String(usdVal) : "";
@@ -198,10 +208,14 @@ const onPriceInput = (val) => {
   const numVal = parsePriceInput(val);
   if (numVal <= 0) {
     currentDish.value.designated_price = 0;
+    currentDish.value.designated_price_cop = null;
     return;
   }
   const rate = activeExchangeRate.value || 1;
   currentDish.value.designated_price = parseFloat((numVal / rate).toFixed(6));
+  if (defaultCurrency.value === "COP") {
+    currentDish.value.designated_price_cop = Math.round(numVal);
+  }
 };
 
 // Al salir del campo (blur) o presionar Enter: guardar el precio exacto ingresado por el usuario
@@ -209,14 +223,21 @@ const onPriceBlur = () => {
   const numVal = parsePriceInput(inputDesignatedPrice.value);
   if (numVal <= 0) {
     currentDish.value.designated_price = 0;
+    currentDish.value.designated_price_cop = null;
     inputDesignatedPrice.value = formatCurrency(0, true);
     return;
   }
 
   const rate = activeExchangeRate.value || 1;
-  // Guardar en USD con 4 decimales exactos correspondientes al monto exacto ingresado
-  currentDish.value.designated_price = parseFloat((numVal / rate).toFixed(4));
-  inputDesignatedPrice.value = formatCurrency(currentDish.value.designated_price, true);
+  if (defaultCurrency.value === "COP") {
+    const copVal = Math.round(numVal);
+    currentDish.value.designated_price_cop = copVal;
+    currentDish.value.designated_price = parseFloat((copVal / rate).toFixed(4));
+    inputDesignatedPrice.value = formatCurrency(currentDish.value.designated_price, true, copVal);
+  } else {
+    currentDish.value.designated_price = parseFloat((numVal / rate).toFixed(4));
+    inputDesignatedPrice.value = formatCurrency(currentDish.value.designated_price, true);
+  }
 };
 
 // Agregar ingrediente
@@ -440,6 +461,10 @@ const recalculateDishTotals = () => {
   // Por defecto, igualar precio designado al sugerido si es un plato nuevo (no duplicado)
   if (!currentDish.value.id && !isDuplicatedDish.value) {
     currentDish.value.designated_price = currentDish.value.suggested_price;
+    if (defaultCurrency.value === "COP") {
+      const rate = activeExchangeRate.value || 1;
+      currentDish.value.designated_price_cop = Math.round(currentDish.value.suggested_price * rate);
+    }
     syncInputPriceFromModel();
   }
 };
@@ -501,6 +526,7 @@ const handleAddDish = () => {
     cost_price: 0,
     suggested_price: 0,
     designated_price: 0,
+    designated_price_cop: null,
     status: 1,
     iva: false,
     tax_rate: 16.0,
@@ -528,6 +554,7 @@ const handleEditDish = async (dish) => {
       cost_price: details.cost_price,
       suggested_price: details.suggested_price,
       designated_price: details.designated_price,
+      designated_price_cop: details.designated_price_cop !== undefined ? details.designated_price_cop : null,
       status: details.status,
       iva: Boolean(details.iva),
       tax_rate: details.tax_rate !== null && details.tax_rate !== undefined ? details.tax_rate : 16.0,
@@ -582,6 +609,7 @@ const handleDuplicateDish = async (dish) => {
       cost_price: details.cost_price,
       suggested_price: details.suggested_price,
       designated_price: details.designated_price,
+      designated_price_cop: details.designated_price_cop !== undefined ? details.designated_price_cop : null,
       status: details.status,
       iva: Boolean(details.iva),
       tax_rate: details.tax_rate !== null && details.tax_rate !== undefined ? details.tax_rate : 16.0,
@@ -877,7 +905,7 @@ onUnmounted(() => {
           </template>
 
           <template #item.designated_price="{ item }">
-            <span class="text-xs font-weight-black text-success">{{ formatCurrency(item.designated_price, true) }}</span>
+            <span class="text-xs font-weight-black text-success">{{ formatCurrency(item.designated_price, true, item.designated_price_cop) }}</span>
           </template>
 
           <template #item.status="{ item }">
@@ -944,7 +972,7 @@ onUnmounted(() => {
                 <div class="d-flex flex-column text-right">
                   <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Designado</span>
                   <span class="text-base font-weight-black text-success">
-                    {{ formatCurrency(item.designated_price, true) }}
+                    {{ formatCurrency(item.designated_price, true, item.designated_price_cop) }}
                   </span>
                 </div>
               </div>

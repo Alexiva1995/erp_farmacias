@@ -17,6 +17,7 @@ class Dish extends Model
         'cpv',
         'suggested_price',
         'designated_price',
+        'designated_price_cop',
         'percentage_profit',
         'category_id',
         'status',
@@ -36,6 +37,7 @@ class Dish extends Model
         'cpv' => 'decimal:2',
         'suggested_price' => 'decimal:2',
         'designated_price' => 'decimal:2',
+        'designated_price_cop' => 'decimal:2',
         'percentage_profit' => 'decimal:2',
         'iva' => 'boolean',
         'tax_rate' => 'decimal:2',
@@ -96,8 +98,9 @@ class Dish extends Model
                 $missingCpv = !$schema->hasColumn('dishes', 'cpv');
                 $missingIva = !$schema->hasColumn('dishes', 'iva');
                 $missingTaxRate = !$schema->hasColumn('dishes', 'tax_rate');
+                $missingDesignatedCop = !$schema->hasColumn('dishes', 'designated_price_cop');
 
-                if ($missingOutputProd || $missingExpectedYield || $missingShelfLife || $missingKitchenStation || $missingPrepTime || $missingCpv || $missingIva || $missingTaxRate) {
+                if ($missingOutputProd || $missingExpectedYield || $missingShelfLife || $missingKitchenStation || $missingPrepTime || $missingCpv || $missingIva || $missingTaxRate || $missingDesignatedCop) {
                     $schema->table('dishes', function (\Illuminate\Database\Schema\Blueprint $table) use (
                         $missingOutputProd,
                         $missingExpectedYield,
@@ -106,7 +109,8 @@ class Dish extends Model
                         $missingPrepTime,
                         $missingCpv,
                         $missingIva,
-                        $missingTaxRate
+                        $missingTaxRate,
+                        $missingDesignatedCop
                     ) {
                         if ($missingOutputProd) {
                             $table->unsignedBigInteger('output_product_id')->nullable();
@@ -131,6 +135,9 @@ class Dish extends Model
                         }
                         if ($missingTaxRate) {
                             $table->decimal('tax_rate', 5, 2)->default(16.00);
+                        }
+                        if ($missingDesignatedCop) {
+                            $table->decimal('designated_price_cop', 14, 2)->nullable();
                         }
                     });
                 }

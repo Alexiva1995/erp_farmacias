@@ -26,6 +26,7 @@ class StoreDishRequest extends FormRequest
             'cost_price' => 'required|numeric|min:0',
             'suggested_price' => 'required|numeric|min:0',
             'designated_price' => 'required|numeric|min:0',
+            'designated_price_cop' => 'nullable|numeric|min:0',
             'status' => 'required|in:0,1,2,3',
             'iva' => 'nullable|boolean',
             'tax_rate' => 'nullable|numeric|min:0|max:100',

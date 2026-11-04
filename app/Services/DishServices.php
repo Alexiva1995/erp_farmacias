@@ -445,6 +445,9 @@ class DishServices implements DishContract
             if ($schema->hasColumn('dishes', 'shelf_life_days') && isset($data['shelf_life_days'])) {
                 $dishAttributes['shelf_life_days'] = max(1, (int) $data['shelf_life_days']);
             }
+            if ($schema->hasColumn('dishes', 'designated_price_cop') && array_key_exists('designated_price_cop', $data)) {
+                $dishAttributes['designated_price_cop'] = $data['designated_price_cop'] !== null ? (float) $data['designated_price_cop'] : null;
+            }
 
             // Crear plato
             $dish = Dish::create($dishAttributes);
@@ -580,6 +583,9 @@ class DishServices implements DishContract
             }
             if ($schema->hasColumn('dishes', 'shelf_life_days') && isset($data['shelf_life_days'])) {
                 $dishAttributes['shelf_life_days'] = max(1, (int) $data['shelf_life_days']);
+            }
+            if ($schema->hasColumn('dishes', 'designated_price_cop') && array_key_exists('designated_price_cop', $data)) {
+                $dishAttributes['designated_price_cop'] = $data['designated_price_cop'] !== null ? (float) $data['designated_price_cop'] : null;
             }
 
             // Actualizar plato

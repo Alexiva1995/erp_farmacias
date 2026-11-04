@@ -293,13 +293,19 @@ class OrderQueryService
         // 3. Consulta de PLATILLOS (Solo para restaurantes)
         $dishesQuery = null;
         if ($isRestaurant) {
+            \App\Models\Dish::ensureRestaurantSchema();
+            $hasDesignatedCop = Schema::hasColumn('dishes', 'designated_price_cop');
+            $priceCopExpr = $hasDesignatedCop
+                ? "COALESCE(dishes.designated_price_cop, ROUND(dishes.designated_price * {$tasaCop}, 2))"
+                : "ROUND(dishes.designated_price * {$tasaCop}, 2)";
+
             $dishesQuery = DB::table('dishes')
                 ->select([
                     'dishes.id',
                     'dishes.name',
                     'dishes.designated_price as sale_price',
                     DB::raw("ROUND(dishes.designated_price * {$tasaBs}, 2) as price_bs"),
-                    DB::raw("ROUND(dishes.designated_price * {$tasaCop}, 2) as price_cop"),
+                    DB::raw("{$priceCopExpr} as price_cop"),
                     DB::raw("'PLATILLO' as active_ingredient"),
                     DB::raw('NULL as laboratory_id'),
                     'dishes.category_id',
