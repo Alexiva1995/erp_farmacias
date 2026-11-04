@@ -297,7 +297,8 @@ const formatPriceWithCurrency = (price, isAlreadyConverted = false) => {
     if (rawCop > 0 && rawCop < 100) {
       return formatCurrency(Math.round(rawCop), "COP");
     }
-    const rounded = Math.ceil(rawCop / 100) * 100;
+    const cleanInt = Math.round(rawCop);
+    const rounded = cleanInt % 100 === 0 ? cleanInt : Math.ceil(cleanInt / 100) * 100;
     return formatCurrency(rounded, "COP");
   }
 

@@ -56,12 +56,9 @@ const formatCurrency = (price, exact = false) => {
     if (rawCop > 0 && rawCop < 100) {
       return formatRawCurrency(Math.round(rawCop), "COP");
     }
-    const rounded = Math.round(rawCop);
-    if (Math.abs(rounded - rawCop) < 0.05) {
-      return formatRawCurrency(rounded, "COP");
-    }
-    const ceilHundred = Math.ceil(rawCop / 100) * 100;
-    return formatRawCurrency(ceilHundred, "COP");
+    const cleanInt = Math.round(rawCop);
+    const rounded = cleanInt % 100 === 0 ? cleanInt : Math.ceil(cleanInt / 100) * 100;
+    return formatRawCurrency(rounded, "COP");
   }
 
   if (currency === "BS" || currency === "Bs") {
