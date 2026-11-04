@@ -14,9 +14,11 @@ use App\Models\PurchaseBookEntry;
 use App\Models\PurchaseBookExcludedInvoice;
 use App\Models\Retention;
 use Carbon\Carbon;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class PurchaseBookRepository implements PurchaseBookContract
 {
@@ -157,7 +159,10 @@ class PurchaseBookRepository implements PurchaseBookContract
                 ->get();
 
             // Obtener registros de facturas o retenciones expresamente excluidas de este libro
-            $excludedRecords = PurchaseBookExcludedInvoice::where('purchase_book_id', $book->id)->get();
+            $this->ensureExcludedInvoicesTableExists();
+            $excludedRecords = Schema::hasTable('purchase_book_excluded_invoices')
+                ? PurchaseBookExcludedInvoice::where('purchase_book_id', $book->id)->get()
+                : collect();
             $excludedInvoiceIds = $excludedRecords->pluck('invoice_id')->filter()->all();
             $excludedInvoiceNumbers = $excludedRecords->pluck('invoice_number')->filter()->all();
             $excludedRetentionIds = $excludedRecords->pluck('retention_id')->filter()->all();
@@ -457,16 +462,20 @@ class PurchaseBookRepository implements PurchaseBookContract
         }
 
         // Si la factura estaba previamente excluida y el usuario la vuelve a agregar explícitamente, remover la exclusión
-        if (!empty($data['invoice_id']) || !empty($data['invoice_number'])) {
-            PurchaseBookExcludedInvoice::where('purchase_book_id', $book->id)
-                ->where(function ($q) use ($data) {
-                    if (!empty($data['invoice_id'])) {
-                        $q->where('invoice_id', $data['invoice_id']);
-                    }
-                    if (!empty($data['invoice_number'])) {
-                        $q->orWhere('invoice_number', $data['invoice_number']);
-                    }
-                })->delete();
+        if ((!empty($data['invoice_id']) || !empty($data['invoice_number'])) && Schema::hasTable('purchase_book_excluded_invoices')) {
+            try {
+                PurchaseBookExcludedInvoice::where('purchase_book_id', $book->id)
+                    ->where(function ($q) use ($data) {
+                        if (!empty($data['invoice_id'])) {
+                            $q->where('invoice_id', $data['invoice_id']);
+                        }
+                        if (!empty($data['invoice_number'])) {
+                            $q->orWhere('invoice_number', $data['invoice_number']);
+                        }
+                    })->delete();
+            } catch (\Throwable $e) {
+                Log::warning("Error al remover exclusión en storeEntry: " . $e->getMessage());
+            }
         }
 
         $this->reorderOperations($book);
@@ -475,11 +484,35 @@ class PurchaseBookRepository implements PurchaseBookContract
         return $entry->fresh();
     }
 
+    protected function ensureExcludedInvoicesTableExists(): void
+    {
+        try {
+            if (!Schema::hasTable('purchase_book_excluded_invoices')) {
+                Schema::create('purchase_book_excluded_invoices', function (Blueprint $table) {
+                    $table->id();
+                    $table->foreignId('purchase_book_id')->constrained('purchase_books')->cascadeOnDelete();
+                    $table->foreignId('invoice_id')->nullable()->constrained('invoices')->nullOnDelete();
+                    $table->string('invoice_number')->nullable();
+                    $table->string('control_number')->nullable();
+                    $table->foreignId('retention_id')->nullable()->constrained('retentions')->nullOnDelete();
+                    $table->timestamps();
+
+                    $table->index(['purchase_book_id', 'invoice_id']);
+                    $table->index(['purchase_book_id', 'invoice_number']);
+                });
+            }
+        } catch (\Throwable $e) {
+            Log::warning("No se pudo verificar/crear tabla purchase_book_excluded_invoices: " . $e->getMessage());
+        }
+    }
+
     public function deleteEntry(PurchaseBook $book, int $entryId, bool $deleteInvoiceFromSystem = false): bool
     {
         if ($book->isClosed()) {
             throw new \DomainException("No se puede eliminar entradas de un libro cerrado.");
         }
+
+        $this->ensureExcludedInvoicesTableExists();
 
         $entry = $book->entries()->where('id', $entryId)->firstOrFail();
         $invoiceId = $entry->invoice_id;
@@ -488,23 +521,31 @@ class PurchaseBookRepository implements PurchaseBookContract
         $controlNumber = $entry->control_number;
 
         // Registrar la exclusión del libro para que sincronizaciones posteriores no vuelvan a insertarla sola
-        PurchaseBookExcludedInvoice::firstOrCreate([
-            'purchase_book_id' => $book->id,
-            'invoice_id' => $invoiceId,
-            'invoice_number' => $invoiceNumber,
-        ], [
-            'control_number' => $controlNumber,
-            'retention_id' => $retentionId,
-        ]);
+        try {
+            PurchaseBookExcludedInvoice::firstOrCreate([
+                'purchase_book_id' => $book->id,
+                'invoice_id' => $invoiceId,
+                'invoice_number' => $invoiceNumber,
+            ], [
+                'control_number' => $controlNumber,
+                'retention_id' => $retentionId,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("Error al registrar exclusión de factura en purchase_book_excluded_invoices: " . $e->getMessage());
+        }
 
         // Si el usuario solicitó eliminar también la factura del sistema
         if ($deleteInvoiceFromSystem && $invoiceId) {
-            $invoice = Invoice::find($invoiceId);
-            if ($invoice) {
-                // Si la factura tiene pagos registrados, no se puede forzar borrado total
-                if (!$invoice->payments()->exists()) {
-                    $invoice->update(['status' => 'deleted']);
+            try {
+                $invoice = Invoice::find($invoiceId);
+                if ($invoice) {
+                    // Si la factura tiene pagos registrados, no se puede forzar borrado total
+                    if (!$invoice->payments()->exists()) {
+                        $invoice->update(['status' => 'deleted']);
+                    }
                 }
+            } catch (\Throwable $e) {
+                Log::warning("Error al actualizar estado de la factura a deleted: " . $e->getMessage());
             }
         }
 
