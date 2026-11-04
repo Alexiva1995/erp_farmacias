@@ -22,7 +22,7 @@ const fiscalModeOptions = [
     label: 'Modo Demo (Pruebas)',
     value: 'demo',
     icon: 'tabler-device-desktop-analytics',
-    description: 'Operaciones de simulación. Factura obligatoriamente ítems con IVA y aplica muestreo aleatorio en divisas.',
+    description: 'Operaciones de simulación. Factura obligatoriamente ítems con IVA y ventas en Bolívares.',
   },
   {
     label: 'Modo Activo (Producción)',
@@ -199,7 +199,7 @@ onMounted(() => {
                       Contribuyente Especial (CE)
                     </span>
                     <VTooltip
-                      text="Aplica el recargo del 3% (IGTF) en transacciones pagadas en divisas (USD / COP). En producción se aplica universalmente; en modo demo factura productos gravados y muestrea 1 de cada 5 ventas en divisas."
+                      text="Aplica el recargo del 3% (IGTF) en transacciones pagadas en divisas (USD / COP) cuando está habilitado el Régimen de Contribuyente Especial."
                       location="top"
                     >
                       <template #activator="{ props: tooltipProps }">
@@ -228,7 +228,7 @@ onMounted(() => {
                 class="mt-4"
               />
               <p class="text-caption text-medium-emphasis mt-2 mb-0">
-                Al activar esta opción, en modo Producción los precios en el TPV reflejan el recargo del 3% en USD/COP y se cobra en todas las ventas en divisas. En Demo se aplica a ítems gravados y en 1 de cada 5 facturas en moneda extranjera.
+                Al activar esta opción, las transacciones en divisas (USD / COP) aplican el recargo del 3% por Sujeto Pasivo Especial (IGTF).
               </p>
             </VCard>
           </VCol>

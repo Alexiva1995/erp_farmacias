@@ -1521,18 +1521,8 @@ class OrderActionService
 
             // Determinar si aplica Recargo Sujeto Pasivo Especial (CE / IGTF 3%)
             $applySpe = false;
-            if ($isFiscalActive) {
-                // Modo Activo / Producción: Toda venta en divisas con CE activo aplica el 3%
-                if ($isForeignCurrency && $isCeEnabled) {
-                    $applySpe = true;
-                }
-            } else {
-                // Modo Demo: muestreo selectivo (1 de cada 5 o con IVA) para registrar SPE fiscal internamente sin alterar el cobro en caja
-                if ($isForeignCurrency) {
-                    if ($hasIvaItems || mt_rand(1, 5) === 1) {
-                        $applySpe = true;
-                    }
-                }
+            if ($isForeignCurrency && $isCeEnabled) {
+                $applySpe = true;
             }
 
             if ($applySpe) {
@@ -1724,7 +1714,7 @@ class OrderActionService
             //   1. Moneda es Bolívares (BS)
             //   2. Tiene productos con IVA gravado
             //   3. El vendedor marcó "generar factura" explícitamente en el request
-            //   4. Se aplicó CE/SPE (por tener IVA en divisas, o por muestreo selectivo 1 de cada 5)
+            //   4. Se aplicó CE/SPE (con CE activo en divisas)
             $skipFiscal = filter_var($request->input('skip_fiscal', false), FILTER_VALIDATE_BOOLEAN);
             $shouldInvoice = !$skipFiscal && ($isFiscalActive || ($currency === 'BS') || $hasIvaItems || $request->generate_invoice || $applySpe);
 
