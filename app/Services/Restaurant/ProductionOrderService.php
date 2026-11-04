@@ -233,24 +233,39 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             $outputProduct = Product::create($productData);
 
             // 2. Crear el plato configurado como plato base (status=3) y vinculado a su producto de salida
+            $conn = (new Dish())->getConnection();
+            $schema = $conn->getSchemaBuilder();
+
             $dishAttributes = [
                 'name' => trim($data['name']),
                 'cost_price' => round($totalCost, 2),
                 'suggested_price' => round($totalCost, 2),
                 'designated_price' => round($totalCost, 2),
                 'percentage_profit' => '1.00',
-                'category_id' => $data['category_id'] ?? null,
                 'status' => 3, // Base Dish / Sub-receta
+                'output_product_id' => $outputProduct->id,
+                'expected_yield_quantity' => $yieldQty,
+                'shelf_life_days' => $shelfLife,
             ];
 
-            $dishAttributes['cpv'] = round($totalCost, 2);
-            $dishAttributes['iva'] = false;
-            $dishAttributes['tax_rate'] = 0.00;
-            $dishAttributes['preparation_time_minutes'] = 15;
-            $dishAttributes['kitchen_station_id'] = $data['kitchen_station_id'] ?? null;
-            $dishAttributes['output_product_id'] = $outputProduct->id;
-            $dishAttributes['expected_yield_quantity'] = $yieldQty;
-            $dishAttributes['shelf_life_days'] = $shelfLife;
+            if ($schema->hasColumn('dishes', 'category_id')) {
+                $dishAttributes['category_id'] = $data['category_id'] ?? null;
+            }
+            if ($schema->hasColumn('dishes', 'cpv')) {
+                $dishAttributes['cpv'] = round($totalCost, 2);
+            }
+            if ($schema->hasColumn('dishes', 'iva')) {
+                $dishAttributes['iva'] = false;
+            }
+            if ($schema->hasColumn('dishes', 'tax_rate')) {
+                $dishAttributes['tax_rate'] = 0.00;
+            }
+            if ($schema->hasColumn('dishes', 'preparation_time_minutes')) {
+                $dishAttributes['preparation_time_minutes'] = 15;
+            }
+            if ($schema->hasColumn('dishes', 'kitchen_station_id')) {
+                $dishAttributes['kitchen_station_id'] = $data['kitchen_station_id'] ?? null;
+            }
 
             $dish = Dish::create($dishAttributes);
 
@@ -349,19 +364,31 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             }
 
             // 2. Actualizar la sub-receta
-            $subRecipe->update([
+            $conn = $subRecipe->getConnection();
+            $schema = $conn->getSchemaBuilder();
+
+            $dishUpdate = [
                 'name' => trim($data['name']),
                 'cost_price' => $totalCost,
-                'cpv' => $totalCost,
                 'suggested_price' => $totalCost,
                 'designated_price' => $totalCost,
-                'category_id' => $data['category_id'] ?? $subRecipe->category_id,
-                'kitchen_station_id' => $data['kitchen_station_id'] ?? $subRecipe->kitchen_station_id,
                 'status' => 3,
                 'output_product_id' => $outputProductId,
                 'expected_yield_quantity' => $yieldQty,
                 'shelf_life_days' => $shelfLife,
-            ]);
+            ];
+
+            if ($schema->hasColumn('dishes', 'cpv')) {
+                $dishUpdate['cpv'] = $totalCost;
+            }
+            if ($schema->hasColumn('dishes', 'category_id')) {
+                $dishUpdate['category_id'] = $data['category_id'] ?? $subRecipe->category_id;
+            }
+            if ($schema->hasColumn('dishes', 'kitchen_station_id')) {
+                $dishUpdate['kitchen_station_id'] = $data['kitchen_station_id'] ?? $subRecipe->kitchen_station_id;
+            }
+
+            $subRecipe->update($dishUpdate);
 
             // 3. Sincronizar ingredientes
             $conn = $subRecipe->getConnection();

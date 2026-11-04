@@ -84,8 +84,23 @@ class Dish extends Model
                 $missingOutputProd = !$schema->hasColumn('dishes', 'output_product_id');
                 $missingExpectedYield = !$schema->hasColumn('dishes', 'expected_yield_quantity');
                 $missingShelfLife = !$schema->hasColumn('dishes', 'shelf_life_days');
-                if ($missingOutputProd || $missingExpectedYield || $missingShelfLife) {
-                    $schema->table('dishes', function (\Illuminate\Database\Schema\Blueprint $table) use ($missingOutputProd, $missingExpectedYield, $missingShelfLife) {
+                $missingKitchenStation = !$schema->hasColumn('dishes', 'kitchen_station_id');
+                $missingPrepTime = !$schema->hasColumn('dishes', 'preparation_time_minutes');
+                $missingCpv = !$schema->hasColumn('dishes', 'cpv');
+                $missingIva = !$schema->hasColumn('dishes', 'iva');
+                $missingTaxRate = !$schema->hasColumn('dishes', 'tax_rate');
+
+                if ($missingOutputProd || $missingExpectedYield || $missingShelfLife || $missingKitchenStation || $missingPrepTime || $missingCpv || $missingIva || $missingTaxRate) {
+                    $schema->table('dishes', function (\Illuminate\Database\Schema\Blueprint $table) use (
+                        $missingOutputProd,
+                        $missingExpectedYield,
+                        $missingShelfLife,
+                        $missingKitchenStation,
+                        $missingPrepTime,
+                        $missingCpv,
+                        $missingIva,
+                        $missingTaxRate
+                    ) {
                         if ($missingOutputProd) {
                             $table->unsignedBigInteger('output_product_id')->nullable();
                         }
@@ -94,6 +109,21 @@ class Dish extends Model
                         }
                         if ($missingShelfLife) {
                             $table->integer('shelf_life_days')->default(7);
+                        }
+                        if ($missingKitchenStation) {
+                            $table->unsignedBigInteger('kitchen_station_id')->nullable();
+                        }
+                        if ($missingPrepTime) {
+                            $table->integer('preparation_time_minutes')->default(15);
+                        }
+                        if ($missingCpv) {
+                            $table->decimal('cpv', 12, 2)->default(0.00);
+                        }
+                        if ($missingIva) {
+                            $table->boolean('iva')->default(false);
+                        }
+                        if ($missingTaxRate) {
+                            $table->decimal('tax_rate', 5, 2)->default(16.00);
                         }
                     });
                 }
