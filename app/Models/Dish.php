@@ -151,6 +151,27 @@ class Dish extends Model
                 }
                 static::$hasIsRemovableCache[$connName] = true;
             }
+
+            // Asegurar precisión de 4 decimales para costos unitarios de insumos elaborados y porciones
+            try {
+                if ($schema->hasTable('products') && $schema->hasColumn('products', 'unit_cost')) {
+                    $conn->statement('ALTER TABLE products MODIFY unit_cost DECIMAL(15, 4) DEFAULT 0.0000');
+                }
+                if ($schema->hasTable('products') && $schema->hasColumn('products', 'sale_price')) {
+                    $conn->statement('ALTER TABLE products MODIFY sale_price DECIMAL(15, 4) DEFAULT 0.0000');
+                }
+                if ($schema->hasTable('dish_ingredients') && $schema->hasColumn('dish_ingredients', 'designated_cost')) {
+                    $conn->statement('ALTER TABLE dish_ingredients MODIFY designated_cost DECIMAL(15, 4) DEFAULT 0.0000');
+                }
+                if ($schema->hasTable('product_lots') && $schema->hasColumn('product_lots', 'unit_cost')) {
+                    $conn->statement('ALTER TABLE product_lots MODIFY unit_cost DECIMAL(15, 4) DEFAULT 0.0000');
+                }
+                if ($schema->hasTable('production_orders') && $schema->hasColumn('production_orders', 'unit_cost_calculated')) {
+                    $conn->statement('ALTER TABLE production_orders MODIFY unit_cost_calculated DECIMAL(15, 4) DEFAULT 0.0000');
+                }
+            } catch (\Throwable $e) {
+                // Ignorar si el motor no admite ALTER o permisos restringidos
+            }
         } catch (\Throwable $e) {
             // Ignorar errores de concurrencia o permisos de DDL
         }
