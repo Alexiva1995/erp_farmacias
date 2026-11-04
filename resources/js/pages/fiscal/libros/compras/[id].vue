@@ -283,21 +283,55 @@ const saveEntry = async () => {
 }
 
 const deleteEntry = async (entry) => {
-  const result = await Swal.fire({
-    title: '¿Eliminar operación?',
-    text: `Se eliminará la operación N° ${entry.operation_number} (${entry.supplier_name}).`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#d33',
-  })
+  const isInvoice = Boolean(entry.invoice_id || (entry.document_type === 'FACTURA' && entry.invoice_number))
 
-  if (!result.isConfirmed) return
+  let deleteInvoiceFromSystem = false
+
+  if (isInvoice) {
+    const result = await Swal.fire({
+      title: '¿Eliminar operación del Libro de Compras?',
+      html: `
+        <p class="mb-3">Se retirará la operación <strong>N° ${entry.operation_number}</strong> (${entry.supplier_name}) del libro de compras y no se volverá a sincronizar sola.</p>
+        <p class="text-caption text-medium-emphasis mb-0">¿Deseas además eliminar la factura definitivamente del sistema?</p>
+      `,
+      icon: 'warning',
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, borrar del libro y sistema',
+      denyButtonText: 'Solo retirar del libro',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#d33',
+      denyButtonColor: '#ff9800',
+    })
+
+    if (result.isDismissed) return
+
+    deleteInvoiceFromSystem = result.isConfirmed
+  } else {
+    const result = await Swal.fire({
+      title: '¿Eliminar operación?',
+      text: `Se retirará la operación N° ${entry.operation_number} (${entry.supplier_name}) del libro de compras.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#d33',
+    })
+
+    if (!result.isConfirmed) return
+  }
 
   try {
-    await axios.delete(`/purchase-books/${bookId}/entries/${entry.id}`)
-    toast.success('Operación eliminada.')
+    await axios.delete(`/purchase-books/${bookId}/entries/${entry.id}`, {
+      params: {
+        delete_invoice: deleteInvoiceFromSystem ? 1 : 0,
+      },
+    })
+    toast.success(
+      deleteInvoiceFromSystem
+        ? 'Operación retirada del libro y factura eliminada del sistema.'
+        : 'Operación retirada del libro (no se volverá a agregar automáticamente).'
+    )
     await fetchBook()
   } catch (err) {
     console.error('Error al eliminar fila:', err)

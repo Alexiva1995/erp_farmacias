@@ -58,6 +58,11 @@ class PurchaseBook extends Model
         return $this->hasMany(PurchaseBookEntry::class)->orderBy('operation_number', 'asc');
     }
 
+    public function excludedInvoices(): HasMany
+    {
+        return $this->hasMany(PurchaseBookExcludedInvoice::class, 'purchase_book_id');
+    }
+
     public function closedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'closed_by');

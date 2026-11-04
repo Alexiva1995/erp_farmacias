@@ -11,6 +11,7 @@ use App\Models\GeneralSetting;
 use App\Models\Invoice;
 use App\Models\PurchaseBook;
 use App\Models\PurchaseBookEntry;
+use App\Models\PurchaseBookExcludedInvoice;
 use App\Models\Retention;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -155,6 +156,12 @@ class PurchaseBookRepository implements PurchaseBookContract
                 ->orderBy('id', 'asc')
                 ->get();
 
+            // Obtener registros de facturas o retenciones expresamente excluidas de este libro
+            $excludedRecords = PurchaseBookExcludedInvoice::where('purchase_book_id', $book->id)->get();
+            $excludedInvoiceIds = $excludedRecords->pluck('invoice_id')->filter()->all();
+            $excludedInvoiceNumbers = $excludedRecords->pluck('invoice_number')->filter()->all();
+            $excludedRetentionIds = $excludedRecords->pluck('retention_id')->filter()->all();
+
             // Guardar entradas manuales que el usuario haya modificado explícitamente (excluyendo proveedores informales)
             $manualEntries = $book->entries()
                 ->where('is_manual_override', true)
@@ -207,6 +214,10 @@ class PurchaseBookRepository implements PurchaseBookContract
 
             // Agregar Facturas como 01-REG
             foreach ($invoices as $inv) {
+                // Si la factura fue excluida de este libro, no agregarla automáticamente
+                if (in_array($inv->id, $excludedInvoiceIds, true) || in_array((string) $inv->invoice_number, $excludedInvoiceNumbers, true)) {
+                    continue;
+                }
                 // Si la factura ya fue editada o incorporada manualmente en este libro, evitar duplicarla
                 if (in_array($inv->id, $manualInvoiceIds, true)) {
                     continue;
@@ -272,6 +283,10 @@ class PurchaseBookRepository implements PurchaseBookContract
 
             // Agregar Comprobantes de Retención de IVA como 05-RET (según normativa SENIAT en comprobantes de retención no se duplica la base/IVA/exento de la compra)
             foreach ($retentions as $ret) {
+                // Si la retención fue excluida de este libro, no agregarla automáticamente
+                if (in_array($ret->id, $excludedRetentionIds, true)) {
+                    continue;
+                }
                 // Si la retención ya fue editada o incorporada manualmente en este libro, evitar duplicarla
                 if (in_array($ret->id, $manualRetentionIds, true)) {
                     continue;
@@ -399,19 +414,59 @@ class PurchaseBookRepository implements PurchaseBookContract
         $data['is_manual_override'] = true;
 
         $entry = PurchaseBookEntry::create($data);
+
+        // Si la factura estaba previamente excluida y el usuario la vuelve a agregar explícitamente, remover la exclusión
+        if (!empty($data['invoice_id']) || !empty($data['invoice_number'])) {
+            PurchaseBookExcludedInvoice::where('purchase_book_id', $book->id)
+                ->where(function ($q) use ($data) {
+                    if (!empty($data['invoice_id'])) {
+                        $q->where('invoice_id', $data['invoice_id']);
+                    }
+                    if (!empty($data['invoice_number'])) {
+                        $q->orWhere('invoice_number', $data['invoice_number']);
+                    }
+                })->delete();
+        }
+
         $this->reorderOperations($book);
         $this->recalculateTotals($book);
 
         return $entry->fresh();
     }
 
-    public function deleteEntry(PurchaseBook $book, int $entryId): bool
+    public function deleteEntry(PurchaseBook $book, int $entryId, bool $deleteInvoiceFromSystem = false): bool
     {
         if ($book->isClosed()) {
             throw new \DomainException("No se puede eliminar entradas de un libro cerrado.");
         }
 
         $entry = $book->entries()->where('id', $entryId)->firstOrFail();
+        $invoiceId = $entry->invoice_id;
+        $retentionId = $entry->retention_id;
+        $invoiceNumber = $entry->invoice_number;
+        $controlNumber = $entry->control_number;
+
+        // Registrar la exclusión del libro para que sincronizaciones posteriores no vuelvan a insertarla sola
+        PurchaseBookExcludedInvoice::firstOrCreate([
+            'purchase_book_id' => $book->id,
+            'invoice_id' => $invoiceId,
+            'invoice_number' => $invoiceNumber,
+        ], [
+            'control_number' => $controlNumber,
+            'retention_id' => $retentionId,
+        ]);
+
+        // Si el usuario solicitó eliminar también la factura del sistema
+        if ($deleteInvoiceFromSystem && $invoiceId) {
+            $invoice = Invoice::find($invoiceId);
+            if ($invoice) {
+                // Si la factura tiene pagos registrados, no se puede forzar borrado total
+                if (!$invoice->payments()->exists()) {
+                    $invoice->update(['status' => 'deleted']);
+                }
+            }
+        }
+
         $deleted = $entry->delete();
 
         $this->reorderOperations($book);

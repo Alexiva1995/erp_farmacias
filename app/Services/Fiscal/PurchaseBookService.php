@@ -78,10 +78,10 @@ class PurchaseBookService
         return $this->purchaseBookRepository->storeEntry($book, $data);
     }
 
-    public function deleteEntry(int $bookId, int $entryId): bool
+    public function deleteEntry(int $bookId, int $entryId, bool $deleteInvoiceFromSystem = false): bool
     {
         $book = $this->purchaseBookRepository->getBookById($bookId);
-        return $this->purchaseBookRepository->deleteEntry($book, $entryId);
+        return $this->purchaseBookRepository->deleteEntry($book, $entryId, $deleteInvoiceFromSystem);
     }
 
     public function closeBook(int $id, int $userId): PurchaseBook

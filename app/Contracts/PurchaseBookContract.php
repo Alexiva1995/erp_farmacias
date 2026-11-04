@@ -42,8 +42,9 @@ interface PurchaseBookContract
 
     /**
      * Elimina una entrada de un libro abierto.
+     * Opcionalmente elimina también la factura asociada de la base del sistema si $deleteInvoiceFromSystem es true.
      */
-    public function deleteEntry(PurchaseBook $book, int $entryId): bool;
+    public function deleteEntry(PurchaseBook $book, int $entryId, bool $deleteInvoiceFromSystem = false): bool;
 
     /**
      * Cierra el libro de compras bloqueando su edición.

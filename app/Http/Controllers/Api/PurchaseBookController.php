@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Fiscal\DestroyPurchaseBookEntryRequest;
 use App\Http\Requests\Fiscal\IndexPurchaseBookRequest;
 use App\Http\Requests\Fiscal\StorePurchaseBookEntryRequest;
 use App\Http\Requests\Fiscal\UpdatePurchaseBookEntryRequest;
@@ -105,9 +106,10 @@ class PurchaseBookController extends Controller
         ]);
     }
 
-    public function destroyEntry(int $id, int $entryId): JsonResponse
+    public function destroyEntry(DestroyPurchaseBookEntryRequest $request, int $id, int $entryId): JsonResponse
     {
-        $this->purchaseBookService->deleteEntry($id, $entryId);
+        $deleteInvoice = filter_var($request->input('delete_invoice', false), FILTER_VALIDATE_BOOLEAN);
+        $this->purchaseBookService->deleteEntry($id, $entryId, $deleteInvoice);
 
         return response()->json([
             'message' => 'Operación eliminada exitosamente del libro de compras.',
