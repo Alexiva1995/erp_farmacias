@@ -37,7 +37,7 @@ const currencyPrefix = computed(() => {
   return "$";
 });
 
-const formatCurrency = (price, exact = false) => {
+const formatCurrency = (price, isDesignatedPrice = false) => {
   const numPrice = Number(price);
   if (isNaN(numPrice)) return "—";
 
@@ -50,13 +50,23 @@ const formatCurrency = (price, exact = false) => {
 
   if (currency === "COP") {
     const rawCop = numPrice * rate;
-    if (exact) {
-      return formatRawCurrency(Math.round(rawCop), "COP");
-    }
-    if (rawCop > 0 && rawCop < 100) {
-      return formatRawCurrency(Math.round(rawCop), "COP");
-    }
     const cleanInt = Math.round(rawCop);
+
+    // Regla especial para precio designado: si termina en menos de 50, redondear al cero/centena inferior
+    if (isDesignatedPrice) {
+      const remainder = cleanInt % 100;
+      if (remainder > 0 && remainder < 50) {
+        return formatRawCurrency(cleanInt - remainder, "COP");
+      }
+      if (remainder >= 50) {
+        return formatRawCurrency(cleanInt + (100 - remainder), "COP");
+      }
+      return formatRawCurrency(cleanInt, "COP");
+    }
+
+    if (rawCop > 0 && rawCop < 100) {
+      return formatRawCurrency(cleanInt, "COP");
+    }
     const rounded = cleanInt % 100 === 0 ? cleanInt : Math.ceil(cleanInt / 100) * 100;
     return formatRawCurrency(rounded, "COP");
   }
