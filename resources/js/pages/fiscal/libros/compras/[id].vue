@@ -290,19 +290,20 @@ const deleteEntry = async (entry) => {
 
   if (isInvoice) {
     const result = await Swal.fire({
-      title: '¿Eliminar operación del Libro de Compras?',
+      title: '¿Cómo deseas eliminar esta factura?',
       html: `
-        <p class="mb-3">Se retirará la operación <strong>N° ${entry.operation_number}</strong> (${entry.supplier_name}) del libro de compras y no se volverá a sincronizar sola.</p>
-        <p class="text-caption text-medium-emphasis mb-0">¿Deseas además eliminar la factura definitivamente del sistema?</p>
+        <p class="mb-3">Operación <strong>N° ${entry.operation_number}</strong> &bull; Factura: <strong>${entry.invoice_number || '-'}</strong> (${entry.supplier_name})</p>
+        <p class="text-caption text-medium-emphasis mb-0">Selecciona si deseas eliminarla por completo del sistema o únicamente quitarla de este libro de compras:</p>
       `,
-      icon: 'warning',
+      icon: 'question',
+      showCloseButton: true,
+      showConfirmButton: true,
       showDenyButton: true,
-      showCancelButton: true,
-      confirmButtonText: 'Sí, borrar del libro y sistema',
-      denyButtonText: 'Solo retirar del libro',
-      cancelButtonText: 'Cancelar',
+      showCancelButton: false,
+      confirmButtonText: 'Borrar completa (del libro y del sistema)',
+      denyButtonText: 'Solo del libro (no volver a mostrar)',
       confirmButtonColor: '#d33',
-      denyButtonColor: '#ff9800',
+      denyButtonColor: '#1976d2',
     })
 
     if (result.isDismissed) return
