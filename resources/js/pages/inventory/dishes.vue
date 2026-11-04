@@ -152,12 +152,42 @@ const onPriceFocus = (e) => {
   }, 50);
 };
 
+// Parser para extraer el valor numérico ingresado sin importar el formato (puntos de miles o comas)
+const parsePriceInput = (val) => {
+  if (val === null || val === undefined || val === "") return 0;
+  let str = String(val).trim();
+  // Remover sufijos de moneda o texto
+  str = str.replace(/[A-Za-z$]/g, "").trim();
+
+  // Si la moneda es COP, el separador de miles es '.' y no tiene decimales
+  if (defaultCurrency.value === "COP") {
+    const clean = str.replace(/\./g, "").replace(",", ".");
+    const num = parseFloat(clean);
+    return isNaN(num) ? 0 : num;
+  }
+
+  // Si tiene tanto punto como coma (ej. 1.250,50 o 1,250.50)
+  if (str.includes(".") && str.includes(",")) {
+    if (str.lastIndexOf(",") > str.lastIndexOf(".")) {
+      // Formato europeo/español: 1.250,50 -> 1250.50
+      str = str.replace(/\./g, "").replace(",", ".");
+    } else {
+      // Formato americano: 1,250.50 -> 1250.50
+      str = str.replace(/,/g, "");
+    }
+  } else if (str.includes(",")) {
+    str = str.replace(",", ".");
+  }
+
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+};
+
 // Mientras el usuario escribe: permitir tecleo libre sin redondeo en vivo
 const onPriceInput = (val) => {
   inputDesignatedPrice.value = val;
-  const cleanVal = String(val || "").replace(/[^\d.,]/g, "").replace(",", ".");
-  const numVal = parseFloat(cleanVal);
-  if (isNaN(numVal) || numVal < 0) {
+  const numVal = parsePriceInput(val);
+  if (numVal <= 0) {
     currentDish.value.designated_price = 0;
     return;
   }
@@ -167,9 +197,8 @@ const onPriceInput = (val) => {
 
 // Al salir del campo (blur) o presionar Enter: redondear y formatear igual que el precio sugerido
 const onPriceBlur = () => {
-  const cleanVal = String(inputDesignatedPrice.value || "").replace(/[^\d.,]/g, "").replace(",", ".");
-  const numVal = parseFloat(cleanVal);
-  if (isNaN(numVal) || numVal <= 0) {
+  const numVal = parsePriceInput(inputDesignatedPrice.value);
+  if (numVal <= 0) {
     currentDish.value.designated_price = 0;
     inputDesignatedPrice.value = formatCurrency(0);
     return;
@@ -177,7 +206,12 @@ const onPriceBlur = () => {
 
   const rate = activeExchangeRate.value || 1;
   if (defaultCurrency.value === "COP") {
-    const rounded = Math.ceil(numVal / 100) * 100;
+    let rounded = numVal;
+    if (rounded >= 100) {
+      rounded = Math.ceil(rounded / 100) * 100;
+    } else {
+      rounded = Math.round(rounded);
+    }
     currentDish.value.designated_price = parseFloat((rounded / rate).toFixed(6));
   } else {
     const rounded = parseFloat(numVal.toFixed(2));
