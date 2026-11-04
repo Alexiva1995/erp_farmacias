@@ -19,7 +19,10 @@ const activeExchangeRate = computed(() => {
   const rates = Array.isArray(brandingStore.exchangeRates) ? brandingStore.exchangeRates : [];
 
   if (currency === "COP") {
-    const copObj = rates.find((r) => r && (r.currency_code === "COP" || r.currency_code === "COPC"));
+    // Prioriza la tasa de venta COP y usa COPC solo como respaldo
+    const copObj =
+      rates.find((r) => r && r.currency_code === "COP") ||
+      rates.find((r) => r && r.currency_code === "COPC");
     return Number(copObj?.rate || 4000);
   }
 
@@ -52,15 +55,8 @@ const formatCurrency = (price, isDesignatedPrice = false) => {
     const rawCop = numPrice * rate;
     const cleanInt = Math.round(rawCop);
 
-    // Regla especial para precio designado: si termina en menos de 50 lleva al cero inferior, si es mayor a 84 lleva a 100
+    // Para precio designado: mostrar exactamente el monto ingresado sin redondeos arbitrarios
     if (isDesignatedPrice) {
-      const remainder = cleanInt % 100;
-      if (remainder > 0 && remainder < 50) {
-        return formatRawCurrency(cleanInt - remainder, "COP");
-      }
-      if (remainder > 84) {
-        return formatRawCurrency(cleanInt + (100 - remainder), "COP");
-      }
       return formatRawCurrency(cleanInt, "COP");
     }
 
