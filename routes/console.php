@@ -20,22 +20,26 @@ Artisan::command('master-catalog:init {--source-db= : Base de datos origen alter
 })->purpose('Unifica en tovaerp_master los catálogos de la central y TODOS los tenants, y homologa todos los IDs y llaves foráneas en cascada');
 
 // Helper para ejecutar comandos tanto en BD local/central como en tenants si existen
-$scheduleTenantAware = function (string $command, callable $scheduleConfig) {
+$hasTenantsCached = null;
+$scheduleTenantAware = function (string $command, callable $scheduleConfig) use (&$hasTenantsCached) {
     // 1. Siempre registrar para la base de datos principal/independiente
     $scheduleConfig(Schedule::command($command));
 
-    // 2. Si el comando 'tenants:run' está registrado y existen tenants en BD, programar para tenants
+    // 2. Si el comando 'tenants:run' existe y hay tenants en BD, programar para tenants
+    // Nota: NUNCA llamar Artisan::all() dentro de routes/console.php porque provoca recursión infinita en Kernel::discoverCommands()
     try {
-        $hasTenants = class_exists(\Stancl\Tenancy\Database\Models\Tenant::class)
-            && \Illuminate\Support\Facades\Schema::hasTable('tenants')
-            && \Stancl\Tenancy\Database\Models\Tenant::exists()
-            && isset(Artisan::all()['tenants:run']);
+        if ($hasTenantsCached === null) {
+            $hasTenantsCached = class_exists(\Stancl\Tenancy\Database\Models\Tenant::class)
+                && class_exists(\Stancl\Tenancy\Commands\Run::class)
+                && \Illuminate\Support\Facades\Schema::hasTable('tenants')
+                && \Stancl\Tenancy\Database\Models\Tenant::exists();
+        }
 
-        if ($hasTenants) {
+        if ($hasTenantsCached) {
             $scheduleConfig(Schedule::command("tenants:run {$command}"));
         }
     } catch (\Throwable) {
-        // Ignorar si la base de datos no tiene soporte o conexión de tenants
+        $hasTenantsCached = false;
     }
 };
 

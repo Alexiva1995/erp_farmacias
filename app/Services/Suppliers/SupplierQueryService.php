@@ -1393,6 +1393,14 @@ class SupplierQueryService
 
     public function getRecentConnectionStatusesForUser(int $userId, int $minutes = 15): Collection
     {
+        // Limpiar registros huérfanos que lleven más de 10 minutos bloqueados en 'processing'
+        SupplierConnectionStatus::where('status', 'processing')
+            ->where('updated_at', '<', now()->subMinutes(10))
+            ->update([
+                'status' => 'failed',
+                'message' => 'Tiempo de espera agotado o proceso en segundo plano interrumpido.',
+            ]);
+
         return SupplierConnectionStatus::with('supplier')
             ->where('created_at', '>=', now()->subMinutes($minutes))
             ->latest('id')

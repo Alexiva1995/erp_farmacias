@@ -24,34 +24,20 @@ class SupplierActionService
      * @param array $validatedData 
      * @return Supplier 
      */
-    public function createSupplier(array $validatedData): Supplier
+        public function createSupplier(array $validatedData): Supplier
     {
         $type = $validatedData['type'] ?? 'drogueria';
         $typeValue = $type instanceof \App\Enums\SupplierType ? $type->value : (string) $type;
 
-        // Verificar si el proveedor existe en el Catálogo Maestro para adoptar su ID oficial
-        if (!empty($validatedData['rif'])) {
-            try {
-                $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
-                $masterSupplier = $masterClient->findMasterSupplierByRif($validatedData['rif']);
-                if (!empty($masterSupplier['id'])) {
-                    $masterId = (int) $masterSupplier['id'];
-                    if (!Supplier::where('id', $masterId)->exists()) {
-                        $validatedData['id'] = $masterId;
-                    }
-                }
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Aviso al consultar ID de proveedor en Master Catalog: ' . $e->getMessage());
-            }
-        }
-
-        if (false) {
+        // Solo droguerías / mercancía farmacéutica se registran en el Catálogo Maestro central (tovaerp_master)
+        // para unificar y obtener el ID oficial sin propagarse a los demás tenants.
+        // Proveedores de gastos ('externo') son locales del tenant.
+        if ($typeValue !== 'externo') {
             try {
                 $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
                 $masterSupplier = $masterClient->registerSupplierInMaster($validatedData);
                 if (!empty($masterSupplier['id'])) {
                     $masterId = (int) $masterSupplier['id'];
-                    // Solo adoptar el ID del master si no colisiona con un ID existente localmente en el tenant
                     if (!Supplier::where('id', $masterId)->exists()) {
                         $validatedData['id'] = $masterId;
                     }
@@ -60,20 +46,11 @@ class SupplierActionService
                 \Illuminate\Support\Facades\Log::warning('No se pudo sincronizar proveedor con Master Catalog: ' . $e->getMessage());
             }
         } else {
-            // Asegurar que no viaje un id nulo o ajeno
             unset($validatedData['id']);
         }
 
         return $this->supplierRepository->create($validatedData);
     }
-
-    /**
-     * Actualiza un proveedor existente.
-     *
-     * @param Supplier $supplier
-     * @param array $validatedData
-     * @return Supplier
-     */
     public function updateSupplier(Supplier $supplier, array $validatedData): Supplier
     {
         return $this->supplierRepository->update($supplier, $validatedData);

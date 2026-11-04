@@ -158,6 +158,14 @@ class SupplierController extends Controller
         $userId = auth()->id() ?? 1;
         $priorityConn = $supplier->getPriorityConnection();
 
+        // Cerrar estados previos que hayan quedado colgados en 'processing' para este proveedor
+        \App\Models\SupplierConnectionStatus::where('supplier_id', $supplier->id)
+            ->where('status', 'processing')
+            ->update([
+                'status' => 'failed',
+                'message' => 'Proceso anterior reemplazado por una nueva sincronización.',
+            ]);
+
         $status = \App\Models\SupplierConnectionStatus::create([
             "supplier_id" => $supplier->id,
             "user_id" => $userId,
@@ -165,8 +173,9 @@ class SupplierController extends Controller
             "status" => "processing",
         ]);
 
-        // Despachar de forma asíncrona pasando el status_id creado
-        ProcessSupplierConnectionJob::dispatch($supplier, $userId, null, [], null, $status->id);
+        // Ejecutar tras enviar la respuesta HTTP para evitar timeouts en el navegador y no depender de un demonio queue:work externo
+        @set_time_limit(0);
+        ProcessSupplierConnectionJob::dispatchAfterResponse($supplier, $userId, null, [], null, $status->id);
 
         return response()->json([
             "status" => "processing",
