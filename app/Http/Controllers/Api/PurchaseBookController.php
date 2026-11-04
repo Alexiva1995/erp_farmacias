@@ -88,32 +88,64 @@ class PurchaseBookController extends Controller
 
     public function storeEntry(StorePurchaseBookEntryRequest $request, int $id): JsonResponse
     {
-        $entry = $this->purchaseBookService->storeEntry($id, $request->validated());
+        try {
+            $entry = $this->purchaseBookService->storeEntry($id, $request->validated());
 
-        return response()->json([
-            'message' => 'Operación agregada exitosamente al libro de compras.',
-            'data' => new PurchaseBookEntryResource($entry),
-        ], 201);
+            return response()->json([
+                'message' => 'Operación agregada exitosamente al libro de compras.',
+                'data' => new PurchaseBookEntryResource($entry),
+            ], 201);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error en storeEntry libro {$id}: " . $e->getMessage(), [
+                'exception' => $e,
+                'payload' => $request->all(),
+            ]);
+
+            return response()->json([
+                'message' => 'Error al agregar operación: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function updateEntry(UpdatePurchaseBookEntryRequest $request, int $id, int $entryId): JsonResponse
     {
-        $entry = $this->purchaseBookService->updateEntry($id, $entryId, $request->validated());
+        try {
+            $entry = $this->purchaseBookService->updateEntry($id, $entryId, $request->validated());
 
-        return response()->json([
-            'message' => 'Operación actualizada exitosamente.',
-            'data' => new PurchaseBookEntryResource($entry),
-        ]);
+            return response()->json([
+                'message' => 'Operación actualizada exitosamente.',
+                'data' => new PurchaseBookEntryResource($entry),
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error en updateEntry libro {$id}, entrada {$entryId}: " . $e->getMessage(), [
+                'exception' => $e,
+                'payload' => $request->all(),
+            ]);
+
+            return response()->json([
+                'message' => 'Error al actualizar operación: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function destroyEntry(DestroyPurchaseBookEntryRequest $request, int $id, int $entryId): JsonResponse
     {
-        $deleteInvoice = filter_var($request->input('delete_invoice', false), FILTER_VALIDATE_BOOLEAN);
-        $this->purchaseBookService->deleteEntry($id, $entryId, $deleteInvoice);
+        try {
+            $deleteInvoice = filter_var($request->input('delete_invoice', false), FILTER_VALIDATE_BOOLEAN);
+            $this->purchaseBookService->deleteEntry($id, $entryId, $deleteInvoice);
 
-        return response()->json([
-            'message' => 'Operación eliminada exitosamente del libro de compras.',
-        ]);
+            return response()->json([
+                'message' => 'Operación eliminada exitosamente del libro de compras.',
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error en destroyEntry libro {$id}, entrada {$entryId}: " . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+
+            return response()->json([
+                'message' => 'Error al eliminar operación: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function close(Request $request, int $id): JsonResponse

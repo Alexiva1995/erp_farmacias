@@ -423,8 +423,11 @@ class PurchaseBookRepository implements PurchaseBookContract
 
         $entry = $book->entries()->where('id', $entryId)->firstOrFail();
 
-        $data['is_manual_override'] = true;
-        $entry->update($data);
+        $allowedFields = (new PurchaseBookEntry())->getFillable();
+        $entryData = array_intersect_key($data, array_flip($allowedFields));
+        $entryData['is_manual_override'] = true;
+
+        $entry->update($entryData);
 
         $this->reorderOperations($book);
         $this->recalculateTotals($book);
@@ -441,7 +444,7 @@ class PurchaseBookRepository implements PurchaseBookContract
         // Si ya existe una entrada con la misma factura vinculada, actualizarla en vez de duplicar el renglón
         $existingEntry = null;
         if (!empty($data['invoice_id'])) {
-            $existingEntry = $book->entries()->where('invoice_id', $data['invoice_id'])->first();
+            $existingEntry = $book->entries()->where('invoice_id', (int) $data['invoice_id'])->first();
         }
         if (!$existingEntry && !empty($data['invoice_number'])) {
             $existingEntry = $book->entries()
@@ -450,15 +453,18 @@ class PurchaseBookRepository implements PurchaseBookContract
                 ->first();
         }
 
+        // Limpiar campos que no pertenecen a la tabla purchase_book_entries antes de guardar
+        $allowedFields = (new PurchaseBookEntry())->getFillable();
+        $entryData = array_intersect_key($data, array_flip($allowedFields));
+        $entryData['is_manual_override'] = true;
+
         if ($existingEntry) {
-            $data['is_manual_override'] = true;
-            $existingEntry->update($data);
+            $existingEntry->update($entryData);
             $entry = $existingEntry;
         } else {
-            $data['purchase_book_id'] = $book->id;
-            $data['operation_number'] = 999999;
-            $data['is_manual_override'] = true;
-            $entry = PurchaseBookEntry::create($data);
+            $entryData['purchase_book_id'] = $book->id;
+            $entryData['operation_number'] = 999999;
+            $entry = PurchaseBookEntry::create($entryData);
         }
 
         // Si la factura estaba previamente excluida y el usuario la vuelve a agregar explícitamente, remover la exclusión
