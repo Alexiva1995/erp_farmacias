@@ -52,13 +52,13 @@ const formatCurrency = (price, isDesignatedPrice = false) => {
     const rawCop = numPrice * rate;
     const cleanInt = Math.round(rawCop);
 
-    // Regla especial para precio designado: si termina en menos de 50, redondear al cero/centena inferior
+    // Regla especial para precio designado: si termina en menos de 50 lleva al cero inferior, si es mayor o igual a 90 lleva a 100
     if (isDesignatedPrice) {
       const remainder = cleanInt % 100;
       if (remainder > 0 && remainder < 50) {
         return formatRawCurrency(cleanInt - remainder, "COP");
       }
-      if (remainder >= 50) {
+      if (remainder >= 90) {
         return formatRawCurrency(cleanInt + (100 - remainder), "COP");
       }
       return formatRawCurrency(cleanInt, "COP");
