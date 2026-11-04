@@ -149,7 +149,16 @@ class SupplierConnectionService
             throw new Exception("No se pudo iniciar sesión en el servidor FTP {$host} mediante SSL. Verifique el usuario y contraseña.");
         }
 
-        ftp_pasv($ftp, $connection->pasv); // Modo pasivo
+        $isContinental = str_contains(strtolower($connection->host ?? ''), '186.167.68.54')
+            || str_contains(strtolower($connection->supplier?->name ?? ''), 'contin')
+            || (int)$connection->supplier_id === 1032;
+
+        if ($isContinental) {
+            $connection->pasv = 1;
+            $connection->has_header = 0;
+        }
+
+        ftp_pasv($ftp, (bool)$connection->pasv); // Modo pasivo
 
         // Productos
         $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
@@ -487,7 +496,13 @@ class SupplierConnectionService
             }
 
             if (!empty($url)) {
-        $requestData = isset($payloadDef['payload']) ? $payloadDef['payload'] : (isset($payloadDef['url']) ? [] : ($payloadDef ?? []));
+                if ($isCristmedicals) {
+                    $coCli = !empty($connection->username) ? trim($connection->username) : ($connection->structure['co_cli'] ?? env('CRISTMEDICALS_USERNAME', ''));
+                    if (!empty($coCli) && !str_contains($url, 'co_cli=')) {
+                        $url .= (str_contains($url, '?') ? '&' : '?') . 'co_cli=' . urlencode($coCli);
+                    }
+                }
+                $requestData = isset($payloadDef['payload']) ? $payloadDef['payload'] : (isset($payloadDef['url']) ? [] : ($payloadDef ?? []));
                 $method = $payloadDef['method'] ?? 'get';
 
                 $allProducts = [];
@@ -563,6 +578,13 @@ class SupplierConnectionService
                     }
                 } elseif (!$invoiceUrl) {
                     $invoiceUrl = $connection->invoice_path;
+                }
+
+                if ($isCristmedicals && !empty($invoiceUrl)) {
+                    $coCli = !empty($connection->username) ? trim($connection->username) : ($connection->structure['co_cli'] ?? env('CRISTMEDICALS_USERNAME', ''));
+                    if (!empty($coCli) && !str_contains($invoiceUrl, 'co_cli=')) {
+                        $invoiceUrl .= (str_contains($invoiceUrl, '?') ? '&' : '?') . 'co_cli=' . urlencode($coCli);
+                    }
                 }
 
                 $requestDataInv = isset($payloadInvoice['payload']) ? $payloadInvoice['payload'] : (isset($payloadInvoice['url']) ? [] : ($payloadInvoice ?? []));
@@ -695,6 +717,52 @@ class SupplierConnectionService
                 ];
                 $connection->update(['structure' => $standardMafartaStructure]);
                 $connection->structure = $standardMafartaStructure;
+            }
+        }
+
+        // Auto-asignación de estructura para Droguería Continental si viene vacía en BD
+        $isContinental = str_contains($supplierName, 'CONTIN')
+            || str_contains(strtolower($connection->host ?? ''), '186.167.68.54')
+            || in_array((int)$supplierId, [1032]);
+
+        if ($isContinental) {
+            $hasName = collect($connection->structure)->contains(fn($m, $k) => ($m['target'] ?? $k) === 'name');
+            if (!$hasName) {
+                $standardContinentalStructure = [
+                    [ "target" => "cod_supplier", "file_field" => "A", "type" => "string" ],
+                    [ "target" => "barcode_match", "file_field" => "B", "type" => "string" ],
+                    [ "target" => "name", "file_field" => "C", "type" => "string" ],
+                    [ "target" => "expiration", "file_field" => "D", "type" => "date", "format" => "d/m/Y" ],
+                    [ "target" => "unit_cost_usd", "file_field" => "G", "type" => "decimal" ],
+                    [ "target" => "quantity", "file_field" => "H", "type" => "integer" ],
+                    [ "target" => "laboratory", "file_field" => "I", "type" => "string" ]
+                ];
+                try {
+                    $connection->update(['structure' => $standardContinentalStructure, 'has_header' => false]);
+                } catch (\Throwable) {}
+                $connection->structure = $standardContinentalStructure;
+                $connection->has_header = false;
+            }
+        }
+
+        // Auto-asignación de estructura para Cristmedicals si viene vacía en BD
+        $isCristmedicals = str_contains($supplierName, 'CRIST')
+            || str_contains(strtolower($connection->host ?? ''), 'cristmedicals')
+            || in_array((int)$supplierId, [3, 21, 1002]);
+
+        if ($isCristmedicals) {
+            $hasName = collect($connection->structure)->contains(fn($m, $k) => ($m['target'] ?? $k) === 'name');
+            if (!$hasName) {
+                $standardCristStructure = [
+                    [ "target" => "name", "file_field" => "des_art", "type" => "string" ],
+                    [ "target" => "barcode_match", "file_field" => "codigo_barra", "type" => "string" ],
+                    [ "target" => "unit_cost_usd", "file_field" => "precio_con_descuento", "type" => "decimal" ],
+                    [ "target" => "cod_supplier", "file_field" => "co_art", "type" => "string" ]
+                ];
+                try {
+                    $connection->update(['structure' => $standardCristStructure]);
+                } catch (\Throwable) {}
+                $connection->structure = $standardCristStructure;
             }
         }
 
@@ -908,6 +976,14 @@ class SupplierConnectionService
                             // Si ya tiene la columna especifica unit_cost_usd en el archivo
                             if ($hasUnitCostUsd) {
                                 $entry[$meta["target"]] = $newValue;
+                                if ($meta["target"] === "unit_cost_usd" && empty($entry["unit_cost"])) {
+                                    $entry["unit_cost"] = number_format(
+                                        (float) ($newValue * ($usdCurrency->rate ?? 1)),
+                                        2,
+                                        ".",
+                                        ""
+                                    );
+                                }
                                 break;
                             } else {
                                 if (isset($meta["currency"]) && $meta["currency"] === "usd") {
