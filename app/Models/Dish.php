@@ -61,6 +61,13 @@ class Dish extends Model
             if (!empty(static::$schemaEnsured[$connName])) {
                 return;
             }
+
+            // Si la conexión ya se encuentra dentro de una transacción activa, abortar la ejecución DDL
+            // porque en MySQL / MariaDB cualquier ALTER TABLE ejecuta un COMMIT IMPLÍCITO y rompe la transacción
+            if ($conn->transactionLevel() > 0) {
+                return;
+            }
+
             static::$schemaEnsured[$connName] = true;
 
             $schema = $conn->getSchemaBuilder();

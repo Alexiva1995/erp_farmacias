@@ -71,6 +71,7 @@ class ProductionAndWasteController extends Controller
     public function storeSubRecipe(StoreSubRecipeRequest $request): JsonResponse
     {
         try {
+            \App\Models\Dish::ensureRestaurantSchema();
             $subRecipe = $this->productionService->createSubRecipe($request->validated());
 
             return response()->json([
@@ -92,6 +93,7 @@ class ProductionAndWasteController extends Controller
     public function updateSubRecipe(StoreSubRecipeRequest $request, \App\Models\Dish $dish): JsonResponse
     {
         try {
+            \App\Models\Dish::ensureRestaurantSchema($dish->getConnection());
             $subRecipe = $this->productionService->updateSubRecipe($dish, $request->validated());
 
             return response()->json([

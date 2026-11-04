@@ -391,8 +391,8 @@ class DishServices implements DishContract
      */
     public function create(array $data): Dish
     {
-        return DB::transaction(function () use ($data) {
-            $schema = $this->schema();
+        $schema = $this->schema();
+        return DB::transaction(function () use ($data, $schema) {
             // Calcular costos si no vienen calculados del frontend (sumando 5% por imprevisto)
             $rawCost = 0;
             $ingredientsData = $data['ingredients'] ?? [];
@@ -529,8 +529,8 @@ class DishServices implements DishContract
      */
     public function update(Dish $dish, array $data): Dish
     {
-        return DB::transaction(function () use ($dish, $data) {
-            $schema = $this->schema();
+        $schema = $this->schema();
+        return DB::transaction(function () use ($dish, $data, $schema) {
             $rawCost = 0;
             $ingredientsData = $data['ingredients'] ?? [];
             

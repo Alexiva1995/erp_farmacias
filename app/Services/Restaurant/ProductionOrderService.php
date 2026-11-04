@@ -189,8 +189,9 @@ class ProductionOrderService implements ProductionOrderServiceInterface
      */
     public function createSubRecipe(array $data): Dish
     {
+        Dish::ensureRestaurantSchema();
+
         return DB::transaction(function () use ($data) {
-            Dish::ensureRestaurantSchema();
 
             $yieldQty = (float) ($data['expected_yield_quantity'] ?? 1.0);
             if ($yieldQty <= 0) {
@@ -301,8 +302,10 @@ class ProductionOrderService implements ProductionOrderServiceInterface
      */
     public function updateSubRecipe(Dish $subRecipe, array $data): Dish
     {
-        return DB::transaction(function () use ($subRecipe, $data) {
-            Dish::ensureRestaurantSchema($subRecipe->getConnection());
+        $conn = $subRecipe->getConnection();
+        Dish::ensureRestaurantSchema($conn);
+
+        return $conn->transaction(function () use ($subRecipe, $data) {
 
             $yieldQty = (float) ($data['expected_yield_quantity'] ?? $subRecipe->expected_yield_quantity ?? 1.0);
             if ($yieldQty <= 0) {
