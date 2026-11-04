@@ -168,11 +168,12 @@ class PurchaseBookRepository implements PurchaseBookContract
                 ->whereRaw('UPPER(supplier_name) NOT LIKE ?', ['%INFORMAL%'])
                 ->get();
 
-            // Guardar IDs de facturas y retenciones que ya están preservadas por entradas manuales
+            // Guardar IDs y números de facturas y retenciones que ya están preservadas por entradas manuales
             $manualInvoiceIds = $manualEntries->pluck('invoice_id')->filter()->all();
+            $manualInvoiceNumbers = $manualEntries->pluck('invoice_number')->filter()->all();
             $manualRetentionIds = $manualEntries->pluck('retention_id')->filter()->all();
 
-            // Eliminar entradas no protegidas o con proveedor informal para recrear la sincronización limpia
+            // Eliminar TODAS las entradas no protegidas o con proveedor informal para recrear la sincronización limpia
             $book->entries()->where(function ($q) {
                 $q->where('is_manual_override', false)
                   ->orWhereRaw('UPPER(supplier_name) LIKE ?', ['%INFORMAL%']);
@@ -180,8 +181,27 @@ class PurchaseBookRepository implements PurchaseBookContract
 
             $rawRows = collect();
 
-            // Preservar y reinsertar las entradas manuales del usuario
+            // Preservar entradas manuales (deduplicando en memoria por invoice_id o invoice_number si existieran duplicados previos)
+            $seenInvoiceIds = [];
+            $seenInvoiceNumbers = [];
+
             foreach ($manualEntries as $manualEntry) {
+                if ($manualEntry->invoice_id && in_array($manualEntry->invoice_id, $seenInvoiceIds, true)) {
+                    $manualEntry->delete();
+                    continue;
+                }
+                if ($manualEntry->invoice_number && in_array((string)$manualEntry->invoice_number, $seenInvoiceNumbers, true)) {
+                    $manualEntry->delete();
+                    continue;
+                }
+
+                if ($manualEntry->invoice_id) {
+                    $seenInvoiceIds[] = $manualEntry->invoice_id;
+                }
+                if ($manualEntry->invoice_number) {
+                    $seenInvoiceNumbers[] = (string) $manualEntry->invoice_number;
+                }
+
                 $rawRows->push([
                     'type' => $manualEntry->retention_id ? 'retention' : 'invoice',
                     'date' => $manualEntry->operation_date ? $manualEntry->operation_date->format('Y-m-d') : $startDate,
@@ -212,6 +232,10 @@ class PurchaseBookRepository implements PurchaseBookContract
                 ]);
             }
 
+            // Para no reinsertar duplicados de manualEntries en la base de datos, eliminamos las manualEntries existentes en el libro
+            // para que se vuelvan a guardar en bloque una sola vez junto al resto ordenado
+            $book->entries()->where('is_manual_override', true)->delete();
+
             // Agregar Facturas como 01-REG
             foreach ($invoices as $inv) {
                 // Si la factura fue excluida de este libro, no agregarla automáticamente
@@ -219,7 +243,7 @@ class PurchaseBookRepository implements PurchaseBookContract
                     continue;
                 }
                 // Si la factura ya fue editada o incorporada manualmente en este libro, evitar duplicarla
-                if (in_array($inv->id, $manualInvoiceIds, true)) {
+                if (in_array($inv->id, $manualInvoiceIds, true) || in_array((string) $inv->invoice_number, $manualInvoiceNumbers, true) || in_array($inv->id, $seenInvoiceIds, true) || in_array((string) $inv->invoice_number, $seenInvoiceNumbers, true)) {
                     continue;
                 }
                 $supplierNameUpper = strtoupper(trim((string) ($inv->supplier?->name ?? '')));
