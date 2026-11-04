@@ -132,7 +132,6 @@ class DishServices implements DishContract
                 Product::withoutEvents(function () use ($subRecipe, $unitCostProduct) {
                     Product::where('id', $subRecipe->output_product_id)->update([
                         'unit_cost' => $unitCostProduct,
-                        'cost_price' => $unitCostProduct,
                     ]);
                 });
             }
@@ -352,7 +351,6 @@ class DishServices implements DishContract
                 Product::withoutEvents(function () use ($dish, $unitCostProduct) {
                     Product::where('id', $dish->output_product_id)->update([
                         'unit_cost' => $unitCostProduct,
-                        'cost_price' => $unitCostProduct,
                     ]);
                 });
             }
@@ -460,7 +458,6 @@ class DishServices implements DishContract
                     'category_id' => $dish->category_id,
                     'sale_price' => $unitCostProd,
                     'unit_cost' => $unitCostProd,
-                    'cost_price' => $unitCostProd,
                     'stock' => 0,
                     'presentation' => 1,
                     'unit_of_measure' => 'porciones',
@@ -579,7 +576,6 @@ class DishServices implements DishContract
                         'category_id' => $dish->category_id,
                         'sale_price' => $unitCostProd,
                         'unit_cost' => $unitCostProd,
-                        'cost_price' => $unitCostProd,
                         'stock' => 0,
                         'presentation' => 1,
                         'unit_of_measure' => 'porciones',
@@ -597,7 +593,6 @@ class DishServices implements DishContract
                     Product::where('id', $dish->output_product_id)->updateQuietly([
                         'name' => trim($dish->name),
                         'unit_cost' => $unitCostProd,
-                        'cost_price' => $unitCostProd,
                         'sale_price' => $unitCostProd,
                         'is_sub_recipe' => true,
                     ]);

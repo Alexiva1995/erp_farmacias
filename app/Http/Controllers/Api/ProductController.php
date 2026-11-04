@@ -531,7 +531,6 @@ class ProductController extends Controller
                             $unitCost = round($dishCost / $safeYield, 4);
                             $product->updateQuietly([
                                 'unit_cost' => $unitCost,
-                                'cost_price' => $unitCost,
                                 'sale_price' => $unitCost,
                                 'is_sub_recipe' => true,
                             ]);

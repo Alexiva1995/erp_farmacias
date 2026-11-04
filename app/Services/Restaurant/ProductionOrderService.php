@@ -54,7 +54,6 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 ];
 
                 $productData['unit_cost'] = (float) $dish->cost_price;
-                $productData['cost_price'] = (float) $dish->cost_price;
                 $productData['is_sub_recipe'] = true;
                 $productData['yield_percentage'] = 100.00;
 
@@ -130,14 +129,12 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 'expiration_date' => Carbon::now()->addDays($shelfLife)->toDateString(),
             ];
             $lotData['unit_cost'] = $unitCostCalculated;
-            $lotData['cost_price'] = $unitCostCalculated;
 
             $newLot = ProductLot::create($lotData);
 
             // Aumentar stock del producto elaborado
             $outputProduct->stock = (float) $outputProduct->stock + $actualQty;
             $outputProduct->unit_cost = $unitCostCalculated;
-            $outputProduct->cost_price = $unitCostCalculated;
             $outputProduct->is_sub_recipe = true;
             $outputProduct->save();
 
@@ -228,7 +225,6 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             ];
 
             $productData['unit_cost'] = $unitCost;
-            $productData['cost_price'] = $unitCost;
             $productData['is_sub_recipe'] = true;
             $productData['yield_percentage'] = 100.00;
 
