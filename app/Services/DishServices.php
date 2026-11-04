@@ -285,7 +285,9 @@ class DishServices implements DishContract
         }
 
         $itemsPerPage = (int) ($filters['itemsPerPage'] ?? ($filters['per_page'] ?? 15));
-        if ($itemsPerPage <= 0 || $itemsPerPage > 500) {
+        if ($itemsPerPage === -1 || (isset($filters['all']) && filter_var($filters['all'], FILTER_VALIDATE_BOOLEAN))) {
+            $itemsPerPage = 5000;
+        } elseif ($itemsPerPage <= 0 || $itemsPerPage > 5000) {
             $itemsPerPage = 100;
         }
         

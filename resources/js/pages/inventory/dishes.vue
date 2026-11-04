@@ -7,6 +7,7 @@ import { useBrandingStore } from "@/stores/useBrandingStore";
 import { formatCurrency as formatRawCurrency } from "@/utils/currencyFormatter";
 import AppFilterBase from "@/components/AppFilterBase.vue";
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
+import generateActiveDishesPdf from "@/utils/pdfDishesGenerator";
 
 const brandingStore = useBrandingStore();
 
@@ -754,6 +755,42 @@ const handleRemoveFixedCostsAndRecalculate = async () => {
   }
 };
 
+const isExportingPdf = ref(false);
+
+const handleExportActiveDishesPdf = async () => {
+  isExportingPdf.value = true;
+  try {
+    toast.info("Generando PDF de platos activos...");
+    const response = await axios.get("/dishes", {
+      params: {
+        status: 1, // Únicamente platos activos
+        all: true,
+        itemsPerPage: 5000,
+        sortBy: "id",
+        orderBy: "asc",
+      },
+    });
+
+    const activeDishes = response.data?.data || [];
+    if (!activeDishes.length) {
+      toast.warning("No se encontraron platos activos para exportar.");
+      return;
+    }
+
+    generateActiveDishesPdf(
+      activeDishes,
+      formatCurrency,
+      defaultCurrency.value
+    );
+    toast.success("PDF de platos activos generado correctamente.");
+  } catch (error) {
+    console.error("Error al exportar PDF de platos activos:", error);
+    toast.error("No se pudo generar el PDF de platos activos.");
+  } finally {
+    isExportingPdf.value = false;
+  }
+};
+
 const getStatusChipColor = (status) => {
   if (status === 1) return "success";
   if (status === 2) return "info";
@@ -796,6 +833,22 @@ onUnmounted(() => {
       @add="handleAddDish"
     >
       <template #actions-extra>
+        <VBtn
+          icon
+          color="error"
+          variant="tonal"
+          size="38"
+          rounded="circle"
+          :loading="isExportingPdf"
+          :disabled="isExportingPdf || loading"
+          @click="handleExportActiveDishesPdf"
+        >
+          <VIcon icon="tabler-file-type-pdf" />
+          <VTooltip activator="parent" location="top">
+            Exportar PDF de Platos Activos (ID, Nombre y Precio)
+          </VTooltip>
+        </VBtn>
+
         <VBtn
           icon
           color="warning"
