@@ -16,6 +16,8 @@ class StorePurchaseBookEntryRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'invoice_id' => ['nullable', 'integer'],
+            'retention_id' => ['nullable', 'integer'],
             'operation_date' => ['required', 'date'],
             'rif' => ['required', 'string', 'max:20'],
             'supplier_name' => ['required', 'string', 'max:255'],

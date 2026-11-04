@@ -161,6 +161,10 @@ class PurchaseBookRepository implements PurchaseBookContract
                 ->whereRaw('UPPER(supplier_name) NOT LIKE ?', ['%INFORMAL%'])
                 ->get();
 
+            // Guardar IDs de facturas y retenciones que ya están preservadas por entradas manuales
+            $manualInvoiceIds = $manualEntries->pluck('invoice_id')->filter()->all();
+            $manualRetentionIds = $manualEntries->pluck('retention_id')->filter()->all();
+
             // Eliminar entradas no protegidas o con proveedor informal para recrear la sincronización limpia
             $book->entries()->where(function ($q) {
                 $q->where('is_manual_override', false)
@@ -169,8 +173,44 @@ class PurchaseBookRepository implements PurchaseBookContract
 
             $rawRows = collect();
 
+            // Preservar y reinsertar las entradas manuales del usuario
+            foreach ($manualEntries as $manualEntry) {
+                $rawRows->push([
+                    'type' => $manualEntry->retention_id ? 'retention' : 'invoice',
+                    'date' => $manualEntry->operation_date ? $manualEntry->operation_date->format('Y-m-d') : $startDate,
+                    'invoice_id' => $manualEntry->invoice_id,
+                    'retention_id' => $manualEntry->retention_id,
+                    'rif' => $manualEntry->rif,
+                    'supplier_name' => $manualEntry->supplier_name,
+                    'import_planilla_number' => $manualEntry->import_planilla_number,
+                    'import_dossier_number' => $manualEntry->import_dossier_number,
+                    'invoice_number' => $manualEntry->invoice_number,
+                    'control_number' => $manualEntry->control_number,
+                    'debit_note_number' => $manualEntry->debit_note_number,
+                    'credit_note_number' => $manualEntry->credit_note_number,
+                    'affected_invoice_number' => $manualEntry->affected_invoice_number,
+                    'document_type' => $manualEntry->document_type,
+                    'transaction_type' => $manualEntry->transaction_type,
+                    'total_purchases_with_vat' => (float) $manualEntry->total_purchases_with_vat,
+                    'exempt_purchases' => (float) $manualEntry->exempt_purchases,
+                    'general_taxable_base' => (float) $manualEntry->general_taxable_base,
+                    'general_aliquot' => (float) $manualEntry->general_aliquot,
+                    'general_vat' => (float) $manualEntry->general_vat,
+                    'reduced_taxable_base' => (float) $manualEntry->reduced_taxable_base,
+                    'reduced_aliquot' => (float) $manualEntry->reduced_aliquot,
+                    'reduced_vat' => (float) $manualEntry->reduced_vat,
+                    'vat_withheld' => (float) $manualEntry->vat_withheld,
+                    'withholding_receipt_number' => $manualEntry->withholding_receipt_number,
+                    'is_manual_override' => true,
+                ]);
+            }
+
             // Agregar Facturas como 01-REG
             foreach ($invoices as $inv) {
+                // Si la factura ya fue editada o incorporada manualmente en este libro, evitar duplicarla
+                if (in_array($inv->id, $manualInvoiceIds, true)) {
+                    continue;
+                }
                 $supplierNameUpper = strtoupper(trim((string) ($inv->supplier?->name ?? '')));
                 $supplierSocialUpper = strtoupper(trim((string) ($inv->supplier?->social_reason ?? '')));
                 if (str_contains($supplierNameUpper, 'INFORMAL') || str_contains($supplierSocialUpper, 'INFORMAL')) {
@@ -230,8 +270,12 @@ class PurchaseBookRepository implements PurchaseBookContract
                 ]);
             }
 
-            // Agregar Comprobantes de Retención de IVA como 05-RET
+            // Agregar Comprobantes de Retención de IVA como 05-RET (según normativa SENIAT en comprobantes de retención no se duplica la base/IVA/exento de la compra)
             foreach ($retentions as $ret) {
+                // Si la retención ya fue editada o incorporada manualmente en este libro, evitar duplicarla
+                if (in_array($ret->id, $manualRetentionIds, true)) {
+                    continue;
+                }
                 $retSupplierNameUpper = strtoupper(trim((string) ($ret->supplier?->name ?? '')));
                 $retSupplierSocialUpper = strtoupper(trim((string) ($ret->supplier?->social_reason ?? '')));
                 if (str_contains($retSupplierNameUpper, 'INFORMAL') || str_contains($retSupplierSocialUpper, 'INFORMAL')) {
@@ -264,9 +308,9 @@ class PurchaseBookRepository implements PurchaseBookContract
                     'transaction_type' => '05-RET',
                     'total_purchases_with_vat' => 0.00,
                     'exempt_purchases' => 0.00,
-                    'general_taxable_base' => (float) ($ret->total_taxable_base ?? 0),
-                    'general_aliquot' => 0.16,
-                    'general_vat' => (float) ($ret->total_tax_amount ?? 0),
+                    'general_taxable_base' => 0.00,
+                    'general_aliquot' => 0.00,
+                    'general_vat' => 0.00,
                     'reduced_taxable_base' => 0.00,
                     'reduced_aliquot' => 0.00,
                     'reduced_vat' => 0.00,
@@ -310,7 +354,7 @@ class PurchaseBookRepository implements PurchaseBookContract
                     'reduced_vat' => $item['reduced_vat'],
                     'vat_withheld' => $item['vat_withheld'],
                     'withholding_receipt_number' => $item['withholding_receipt_number'],
-                    'is_manual_override' => false,
+                    'is_manual_override' => $item['is_manual_override'] ?? false,
                 ]);
             }
 

@@ -16,6 +16,8 @@ class UpdatePurchaseBookEntryRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'invoice_id' => ['nullable', 'integer'],
+            'retention_id' => ['nullable', 'integer'],
             'operation_date' => ['sometimes', 'required', 'date'],
             'rif' => ['sometimes', 'required', 'string', 'max:20'],
             'supplier_name' => ['sometimes', 'required', 'string', 'max:255'],

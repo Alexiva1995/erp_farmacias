@@ -21,6 +21,8 @@ const isCreatingRow = ref(false)
 
 const entryForm = reactive({
   id: null,
+  invoice_id: null,
+  retention_id: null,
   operation_date: '',
   rif: '',
   supplier_name: '',
@@ -138,6 +140,8 @@ const openEditModal = (entry) => {
   isCreatingRow.value = false
   Object.assign(entryForm, {
     id: entry.id,
+    invoice_id: entry.invoice_id || null,
+    retention_id: entry.retention_id || null,
     operation_date: entry.operation_date || '',
     rif: entry.rif || '',
     supplier_name: entry.supplier_name || '',
@@ -168,6 +172,8 @@ const openCreateModal = () => {
   isCreatingRow.value = true
   Object.assign(entryForm, {
     id: null,
+    invoice_id: null,
+    retention_id: null,
     operation_date: book.value?.start_date || '',
     rif: '',
     supplier_name: '',
