@@ -37,7 +37,7 @@ const currencyPrefix = computed(() => {
   return "$";
 });
 
-const formatCurrency = (price) => {
+const formatCurrency = (price, exact = false) => {
   const numPrice = Number(price);
   if (isNaN(numPrice)) return "—";
 
@@ -50,11 +50,18 @@ const formatCurrency = (price) => {
 
   if (currency === "COP") {
     const rawCop = numPrice * rate;
+    if (exact) {
+      return formatRawCurrency(Math.round(rawCop), "COP");
+    }
     if (rawCop > 0 && rawCop < 100) {
       return formatRawCurrency(Math.round(rawCop), "COP");
     }
-    const rounded = Math.ceil(rawCop / 100) * 100;
-    return formatRawCurrency(rounded, "COP");
+    const rounded = Math.round(rawCop);
+    if (Math.abs(rounded - rawCop) < 0.05) {
+      return formatRawCurrency(rounded, "COP");
+    }
+    const ceilHundred = Math.ceil(rawCop / 100) * 100;
+    return formatRawCurrency(ceilHundred, "COP");
   }
 
   if (currency === "BS" || currency === "Bs") {
@@ -130,7 +137,7 @@ const inputDesignatedPrice = ref("0");
 // Sincronizar el campo de texto con el valor del modelo formateado
 const syncInputPriceFromModel = () => {
   const usdVal = Number(currentDish.value.designated_price || 0);
-  inputDesignatedPrice.value = formatCurrency(usdVal);
+  inputDesignatedPrice.value = formatCurrency(usdVal, true);
 };
 
 // Al enfocar el campo: mostrar únicamente el valor numérico limpio y seleccionarlo todo para editar fácil
@@ -138,9 +145,8 @@ const onPriceFocus = (e) => {
   const usdVal = Number(currentDish.value.designated_price || 0);
   const rate = activeExchangeRate.value || 1;
   if (defaultCurrency.value === "COP") {
-    const rawCop = usdVal * rate;
-    const rounded = Math.ceil(rawCop / 100) * 100;
-    inputDesignatedPrice.value = rounded > 0 ? String(rounded) : "";
+    const rawCop = Math.round(usdVal * rate);
+    inputDesignatedPrice.value = rawCop > 0 ? String(rawCop) : "";
   } else if (defaultCurrency.value === "USD") {
     inputDesignatedPrice.value = usdVal > 0 ? String(usdVal) : "";
   } else {
@@ -195,29 +201,19 @@ const onPriceInput = (val) => {
   currentDish.value.designated_price = parseFloat((numVal / rate).toFixed(6));
 };
 
-// Al salir del campo (blur) o presionar Enter: redondear y formatear igual que el precio sugerido
+// Al salir del campo (blur) o presionar Enter: guardar el precio exacto ingresado por el usuario
 const onPriceBlur = () => {
   const numVal = parsePriceInput(inputDesignatedPrice.value);
   if (numVal <= 0) {
     currentDish.value.designated_price = 0;
-    inputDesignatedPrice.value = formatCurrency(0);
+    inputDesignatedPrice.value = formatCurrency(0, true);
     return;
   }
 
   const rate = activeExchangeRate.value || 1;
-  if (defaultCurrency.value === "COP") {
-    let rounded = numVal;
-    if (rounded >= 100) {
-      rounded = Math.ceil(rounded / 100) * 100;
-    } else {
-      rounded = Math.round(rounded);
-    }
-    currentDish.value.designated_price = parseFloat((rounded / rate).toFixed(6));
-  } else {
-    const rounded = parseFloat(numVal.toFixed(2));
-    currentDish.value.designated_price = parseFloat((rounded / rate).toFixed(4));
-  }
-  inputDesignatedPrice.value = formatCurrency(currentDish.value.designated_price);
+  // Guardar en USD con 4 decimales exactos correspondientes al monto exacto ingresado
+  currentDish.value.designated_price = parseFloat((numVal / rate).toFixed(4));
+  inputDesignatedPrice.value = formatCurrency(currentDish.value.designated_price, true);
 };
 
 // Agregar ingrediente
@@ -878,7 +874,7 @@ onUnmounted(() => {
           </template>
 
           <template #item.designated_price="{ item }">
-            <span class="text-xs font-weight-black text-success">{{ formatCurrency(item.designated_price) }}</span>
+            <span class="text-xs font-weight-black text-success">{{ formatCurrency(item.designated_price, true) }}</span>
           </template>
 
           <template #item.status="{ item }">
@@ -945,7 +941,7 @@ onUnmounted(() => {
                 <div class="d-flex flex-column text-right">
                   <span class="text-super-xs text-disabled text-uppercase font-weight-black text-xs">Designado</span>
                   <span class="text-base font-weight-black text-success">
-                    {{ formatCurrency(item.designated_price) }}
+                    {{ formatCurrency(item.designated_price, true) }}
                   </span>
                 </div>
               </div>
