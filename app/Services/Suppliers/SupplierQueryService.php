@@ -1501,4 +1501,81 @@ class SupplierQueryService
             return null;
         }
     }
+
+    /**
+     * Buscar proveedor local o en el catálogo maestro por RIF.
+     */
+    public function lookupByRif(string $rif): array
+    {
+        $rif = trim($rif);
+        if (empty($rif)) {
+            return [
+                'exists_locally'  => false,
+                'found_in_master' => false,
+                'supplier'        => null,
+            ];
+        }
+
+        $cleanRif = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $rif));
+
+        // 1. Buscar en la base de datos local del tenant
+        $local = Supplier::where(function ($q) use ($rif, $cleanRif) {
+            $q->where('rif', $rif)
+              ->orWhereRaw("UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) = ?", [$cleanRif]);
+        })->first();
+
+        if ($local) {
+            return [
+                'exists_locally'  => true,
+                'found_in_master' => false,
+                'supplier'        => [
+                    'id'            => $local->id,
+                    'name'          => $local->name,
+                    'rif'           => $local->rif,
+                    'social_reason' => $local->social_reason,
+                    'address'       => $local->address,
+                    'sales_phone'   => $local->sales_phone,
+                    'collections_phone' => $local->collections_phone,
+                    'payment_email' => $local->payment_email,
+                    'credit_days'   => $local->credit_days,
+                    'is_indexed'    => (bool) $local->is_indexed,
+                    'type'          => $local->type instanceof \App\Enums\SupplierType ? $local->type->value : $local->type,
+                ],
+            ];
+        }
+
+        // 2. Buscar en el Catálogo Maestro
+        try {
+            $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
+            $masterSup = $masterClient->findMasterSupplierByRif($rif);
+            if ($masterSup) {
+                return [
+                    'exists_locally'  => false,
+                    'found_in_master' => true,
+                    'supplier'        => [
+                        'id'            => (int) $masterSup['id'],
+                        'name'          => $masterSup['name'] ?? null,
+                        'rif'           => $masterSup['rif'] ?? $rif,
+                        'social_reason' => $masterSup['social_reason'] ?? $masterSup['name'] ?? null,
+                        'address'       => $masterSup['address'] ?? null,
+                        'sales_phone'   => $masterSup['sales_phone'] ?? null,
+                        'collections_phone' => $masterSup['collections_phone'] ?? null,
+                        'payment_email' => $masterSup['payment_email'] ?? null,
+                        'credit_days'   => isset($masterSup['credit_days']) ? (int) $masterSup['credit_days'] : 0,
+                        'is_indexed'    => (bool) ($masterSup['is_indexed'] ?? false),
+                        'type'          => $masterSup['type'] ?? 'drogueria',
+                    ],
+                ];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Error en lookupByRif consultando Master Catalog: ' . $e->getMessage());
+        }
+
+        return [
+            'exists_locally'  => false,
+            'found_in_master' => false,
+            'supplier'        => null,
+        ];
+    }
 }
+

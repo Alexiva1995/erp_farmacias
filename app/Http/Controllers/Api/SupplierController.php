@@ -32,6 +32,8 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Arr;
 use App\Models\Product;
 
+use App\Http\Requests\Suppliers\SupplierLookupRequest;
+use App\Http\Resources\SupplierLookupResource;
 class SupplierController extends Controller
 {
     /**
@@ -77,6 +79,16 @@ class SupplierController extends Controller
      * @param \App\Http\Requests\StoreSupplierRequest $request
      * @return mixed|\Illuminate\Http\JsonResponse
      */
+    
+    /**
+     * Consultar si un proveedor existe localmente o en el catálogo maestro por RIF.
+     */
+    public function lookup(SupplierLookupRequest $request): SupplierLookupResource
+    {
+        $data = $this->supplierQueryService->lookupByRif($request->validated('rif'));
+        return new SupplierLookupResource($data);
+    }
+
     public function store(StoreSupplierRequest $request)
     {
         try {

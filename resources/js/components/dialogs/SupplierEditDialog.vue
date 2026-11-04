@@ -1,5 +1,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
+import axios from "@axios";
+import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
@@ -83,7 +85,49 @@ const diasFull = {
   saturday: "Sábado",
 };
 
-const isNewSupplier = computed(() => !formData.value.id);
+const isNewSupplier = computed(() => !props.supplier?.id);
+const isLookingUpMaster = ref(false);
+const masterFoundNotice = ref(null);
+
+let lookupTimer = null;
+const handleRifInput = () => {
+  if (!isNewSupplier.value) return;
+  masterFoundNotice.value = null;
+  clearTimeout(lookupTimer);
+
+  const rawRif = (formData.value.rif || "").trim();
+  if (rawRif.length < 5) return;
+
+  lookupTimer = setTimeout(async () => {
+    isLookingUpMaster.value = true;
+    try {
+      const res = await axios.get("/suppliers/lookup", { params: { rif: rawRif } });
+      const data = res.data?.data || res.data || {};
+      if (data.found_in_master && data.supplier) {
+        const ms = data.supplier;
+        formData.value.id = ms.id;
+        formData.value.name = ms.name || formData.value.name;
+        formData.value.social_reason = ms.social_reason || formData.value.name;
+        if (ms.address) formData.value.address = ms.address;
+        if (ms.sales_phone) formData.value.sales_phone = ms.sales_phone;
+        if (ms.collections_phone) formData.value.collections_phone = ms.collections_phone;
+        if (ms.payment_email) formData.value.payment_email = ms.payment_email;
+        if (ms.credit_days) formData.value.credit_days = ms.credit_days;
+        if (ms.is_indexed !== undefined) formData.value.is_indexed = Boolean(ms.is_indexed);
+        if (ms.type) formData.value.type = ms.type;
+        masterFoundNotice.value = `¡Proveedor oficial detectado en Catálogo Maestro (#${ms.id}: ${ms.name})! Datos e ID oficial autocompletados.`;
+        toast.success(`Proveedor oficial ${ms.name} (#${ms.id}) cargado desde el Catálogo Maestro.`);
+      } else if (data.exists_locally) {
+        masterFoundNotice.value = `Este proveedor ya está registrado en tu farmacia (#${data.supplier?.id}).`;
+      }
+    } catch (e) {
+      console.warn("Error en lookup de proveedor:", e);
+    } finally {
+      isLookingUpMaster.value = false;
+    }
+  }, 450);
+};
+
 const isReadOnly = computed(() => !isNewSupplier.value && !authStore.isAdmin);
 
 // ─── Métodos ───────────────────────────────────────────────────────────────
@@ -159,7 +203,9 @@ const submitForm = () => {
 
   if (isNewSupplier.value) {
     const cleanData = { ...current };
-    delete cleanData.id;
+    if (!cleanData.id) {
+      delete cleanData.id;
+    }
     if (isRestaurant.value) {
       cleanData.type = "externo";
     }
@@ -371,9 +417,21 @@ watch(
                           :label="'RIF' + (isRestaurant ? '' : ' *')"
                           placeholder="J-12345678-9"
                           prepend-inner-icon="tabler-id-badge-2"
+                          :loading="isLookingUpMaster"
                           :error-messages="formErrors.rif"
                           :readonly="isReadOnly"
+                          @update:model-value="handleRifInput"
                         />
+                        <VAlert
+                          v-if="masterFoundNotice"
+                          type="info"
+                          variant="tonal"
+                          density="compact"
+                          class="mt-2 rounded-lg text-xs font-weight-medium"
+                        >
+                          <VIcon start icon="tabler-sparkles" size="16" />
+                          {{ masterFoundNotice }}
+                        </VAlert>
                       </VCol>
 
                       <VCol cols="12" v-if="isFieldVisible('address')">

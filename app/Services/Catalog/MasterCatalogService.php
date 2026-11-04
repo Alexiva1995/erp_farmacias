@@ -391,6 +391,36 @@ class MasterCatalogService
     /**
      * Registrar o asegurar un proveedor en el Catálogo Maestro.
      */
+    
+    /**
+     * Buscar un proveedor en el catálogo maestro por RIF.
+     */
+    public function findSupplierByRif(string $rif): ?array
+    {
+        $rif = trim($rif);
+        if (empty($rif)) {
+            return null;
+        }
+
+        $conn = $this->getMasterConnection();
+        if (!Schema::connection($conn)->hasTable('suppliers')) {
+            return null;
+        }
+
+        $cleanRif = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $rif));
+        $supplier = DB::connection($conn)->table('suppliers')
+            ->where(function ($q) use ($rif, $cleanRif) {
+                $q->where('rif', $rif)
+                  ->orWhereRaw("UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) = ?", [$cleanRif]);
+            })
+            ->first();
+
+        if (!$supplier) {
+            return null;
+        }
+
+        return (array) $supplier;
+    }
     public function registerMasterSupplier(array $data): array
     {
         $name = trim($data['name'] ?? '');

@@ -56,6 +56,11 @@ class StoreProductRequest extends FormRequest
             $merges['unit_of_measure'] = (empty($val) || $val === 'null' || $val === 'undefined') ? null : trim((string) $val);
         }
 
+        if ($this->has('barcode')) {
+            $val = $this->input('barcode');
+            $merges['barcode'] = ($val === null || $val === '' || $val === 'null' || $val === 'undefined') ? null : trim((string) $val);
+        }
+
         $this->merge($merges);
     }
 

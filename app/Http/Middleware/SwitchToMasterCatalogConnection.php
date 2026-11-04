@@ -244,7 +244,7 @@ class SwitchToMasterCatalogConnection
             } elseif (str_contains($path, 'categories')) {
                 app(\App\Services\Tenancy\CategorySyncService::class)->syncAllTenants();
             } elseif (str_contains($path, 'suppliers')) {
-                app(\App\Services\Tenancy\SupplierSyncService::class)->syncAllTenants();
+                // Proveedores aislados por tenant: no propagar automáticamente a otros tenants
             }
         } catch (\Throwable $e) {
             Log::warning('Aviso al propagar cambio del Master a tenants: ' . $e->getMessage());

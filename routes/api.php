@@ -858,6 +858,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     // Rutas de Proveedores
     Route::get('/suppliers/stats', [SupplierController::class, 'stats']);
     Route::resource("suppliers", SupplierController::class)->except(["create", "edit", "show"]);
+    Route::get("/suppliers/lookup", [SupplierController::class, "lookup"]);
     Route::prefix("suppliers")->group(function () {
         Route::get("/{supplier}/connection", [SupplierController::class, "connectionServiceSupplier"]);
         Route::post("/{supplier}/connection", [SupplierController::class, "saveConnectionConfig"]);

@@ -83,14 +83,20 @@ class ProductActionService
         $validatedData['sale_price'] = (float)($validatedData['sale_price'] ?? 0);
         
         if (!empty($validatedData['barcode'])) {
-            $duplicateProduct = Product::withoutGlobalScope('not_deleted')
-                ->withTrashed()
-                ->where('barcode', $validatedData['barcode'])
-                ->first();
+            $candidateBarcode = trim((string) $validatedData['barcode']);
+            $validatedData['barcode'] = $candidateBarcode;
 
-            if ($duplicateProduct && ($duplicateProduct->is_deleted || $duplicateProduct->trashed())) {
-                $duplicateProduct->barcode = null;
-                $duplicateProduct->save();
+            // Limpiar colisión previa con registros eliminados o soft-deleted (tanto por is_deleted como por trashed)
+            $duplicateProducts = Product::withoutGlobalScopes()
+                ->withTrashed()
+                ->where('barcode', $candidateBarcode)
+                ->get();
+
+            foreach ($duplicateProducts as $dup) {
+                if ($dup->is_deleted || $dup->trashed()) {
+                    $dup->barcode = null;
+                    $dup->save();
+                }
             }
         }
 
@@ -142,7 +148,18 @@ class ProductActionService
         $initialStock = (float) ($validatedData['initial_stock'] ?? $validatedData['stock'] ?? 0);
         unset($validatedData['stock'], $validatedData['initial_stock']);
 
-        $product = Product::create($validatedData);
+        $createdWithCandidateId = !empty($validatedData['id']);
+        try {
+            $product = Product::create($validatedData);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // Si la colisión fue de clave primaria al intentar sincronizar con un ID del Master, reintentar sin forzar ID
+            if ($createdWithCandidateId && str_contains($e->getMessage(), 'products.PRIMARY')) {
+                unset($validatedData['id']);
+                $product = Product::create($validatedData);
+            } else {
+                throw $e;
+            }
+        }
 
         if (!empty($validatedData['barcode'])) {
             $this->resolveBarcodeConflict($validatedData['barcode'], $product->id);

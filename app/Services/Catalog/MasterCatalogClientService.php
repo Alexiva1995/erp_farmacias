@@ -62,6 +62,14 @@ class MasterCatalogClientService
     /**
      * Registrar proveedor en el Catálogo Maestro para obtener ID oficial unificado.
      */
+    
+    /**
+     * Buscar proveedor en el catálogo maestro por RIF.
+     */
+    public function findMasterSupplierByRif(string $rif): ?array
+    {
+        return $this->localMasterService->findSupplierByRif($rif);
+    }
     public function registerSupplierInMaster(array $data): ?array
     {
         $res = $this->localMasterService->registerMasterSupplier($data);
