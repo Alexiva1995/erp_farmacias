@@ -420,12 +420,21 @@ class DishServices implements DishContract
             $dish = Dish::create($dishAttributes);
 
             // Vincular ingredientes
+            $conn = $dish->getConnection();
+            $hasRemovable = false;
+            try {
+                $hasRemovable = $conn->getSchemaBuilder()->hasColumn('dish_ingredients', 'is_removable');
+            } catch (\Throwable $e) {}
+
             foreach ($ingredientsData as $ing) {
-                $dish->ingredients()->attach($ing['product_id'], [
+                $pivotData = [
                     'portion' => $ing['portion'],
                     'designated_cost' => $ing['designated_cost'],
-                    'is_removable' => !empty($ing['is_removable']),
-                ]);
+                ];
+                if ($hasRemovable) {
+                    $pivotData['is_removable'] = !empty($ing['is_removable']);
+                }
+                $dish->ingredients()->attach($ing['product_id'], $pivotData);
             }
 
             // Vincular grupos de modificadores si vienen en la petición y existe la tabla
@@ -527,13 +536,22 @@ class DishServices implements DishContract
             $dish->update($dishAttributes);
 
             // Sincronizar ingredientes
+            $conn = $dish->getConnection();
+            $hasRemovable = false;
+            try {
+                $hasRemovable = $conn->getSchemaBuilder()->hasColumn('dish_ingredients', 'is_removable');
+            } catch (\Throwable $e) {}
+
             $syncData = [];
             foreach ($ingredientsData as $ing) {
-                $syncData[$ing['product_id']] = [
+                $pivotData = [
                     'portion' => $ing['portion'],
                     'designated_cost' => $ing['designated_cost'],
-                    'is_removable' => !empty($ing['is_removable']),
                 ];
+                if ($hasRemovable) {
+                    $pivotData['is_removable'] = !empty($ing['is_removable']);
+                }
+                $syncData[$ing['product_id']] = $pivotData;
             }
             $dish->ingredients()->sync($syncData);
 

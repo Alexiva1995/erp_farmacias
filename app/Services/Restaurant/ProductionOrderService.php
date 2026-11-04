@@ -257,12 +257,21 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             $dish = Dish::create($dishAttributes);
 
             // 3. Vincular los ingredientes a la sub-receta
+            $conn = $dish->getConnection();
+            $hasRemovable = false;
+            try {
+                $hasRemovable = $conn->getSchemaBuilder()->hasColumn('dish_ingredients', 'is_removable');
+            } catch (\Throwable $e) {}
+
             foreach ($ingredientsData as $ing) {
-                $dish->ingredients()->attach($ing['product_id'], [
+                $pivotData = [
                     'portion' => $ing['portion'],
                     'designated_cost' => $ing['designated_cost'],
-                    'is_removable' => false,
-                ]);
+                ];
+                if ($hasRemovable) {
+                    $pivotData['is_removable'] = false;
+                }
+                $dish->ingredients()->attach($ing['product_id'], $pivotData);
             }
 
             // Limpiar caché de categorías de platos

@@ -46,10 +46,42 @@ class Dish extends Model
         'shelf_life_days' => 'integer',
     ];
 
+    protected static array $hasIsRemovableCache = [];
+
     public function ingredients(): BelongsToMany
     {
+        $conn = $this->getConnection();
+        $connName = $conn->getName();
+
+        if (!isset(static::$hasIsRemovableCache[$connName])) {
+            try {
+                $schema = $conn->getSchemaBuilder();
+                if ($schema->hasTable('dish_ingredients')) {
+                    if (!$schema->hasColumn('dish_ingredients', 'is_removable')) {
+                        $schema->table('dish_ingredients', function (\Illuminate\Database\Schema\Blueprint $table) {
+                            $table->boolean('is_removable')->default(false)->after('designated_cost');
+                        });
+                    }
+                    static::$hasIsRemovableCache[$connName] = true;
+                } else {
+                    static::$hasIsRemovableCache[$connName] = false;
+                }
+            } catch (\Throwable $e) {
+                try {
+                    static::$hasIsRemovableCache[$connName] = $conn->getSchemaBuilder()->hasColumn('dish_ingredients', 'is_removable');
+                } catch (\Throwable $ex) {
+                    static::$hasIsRemovableCache[$connName] = false;
+                }
+            }
+        }
+
+        $pivotColumns = ['id', 'portion', 'designated_cost'];
+        if (!empty(static::$hasIsRemovableCache[$connName])) {
+            $pivotColumns[] = 'is_removable';
+        }
+
         return $this->belongsToMany(Product::class, 'dish_ingredients', 'dish_id', 'product_id')
-            ->withPivot(['id', 'portion', 'designated_cost', 'is_removable'])
+            ->withPivot($pivotColumns)
             ->withTimestamps();
     }
 
