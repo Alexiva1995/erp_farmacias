@@ -878,7 +878,7 @@ class OrderActionService
             $auditHash = hash('sha256', $auditString);
 
             $fiscalHistory = FiscalHistory::create([
-                'user_id' => $order->seller_id,
+                'user_id' => $order->seller_id ?: (\Illuminate\Support\Facades\Auth::id() ?? 1),
                 'order_id' => $order->id,
                 'invoice_number' => null,
                 'business_name' => $clientBusinessName,
@@ -984,6 +984,50 @@ class OrderActionService
             return $fiscalHistory;
         }
         return $fiscalexist;
+    }
+
+    /**
+     * Crea el comprobante fiscal para una orden (si no existe) y solicita su impresión fiscal.
+     *
+     * @param int|Order $order
+     * @return FiscalHistory
+     * @throws \Exception
+     */
+    public function createAndPrintFiscalInvoice(int|Order $order): FiscalHistory
+    {
+        if (!$order instanceof Order) {
+            $order = Order::with(['details.product', 'details.dish', 'details.court', 'client', 'fiscalHistory'])->findOrFail($order);
+        } else {
+            $order->loadMissing(['details.product', 'details.dish', 'details.court', 'client', 'fiscalHistory']);
+        }
+
+        $normalizedStatus = strtolower((string) ($order->status ?? ''));
+        if (in_array($normalizedStatus, ['cancelled', 'abandoned', 'abandonada', 'cancelada'], true)) {
+            throw new \Exception('No se puede generar comprobante fiscal para una orden cancelada o abandonada.');
+        }
+
+        $spe = ($order->spe_surcharge_rate > 0) ? 1 : 0;
+
+        // Si no tiene historial fiscal, se crea e inicializa la emisión
+        if (!$order->fiscalHistory) {
+            $fiscalHistory = $this->invoicing($order, $spe);
+        } else {
+            // Si ya existe, reencolar e intentar la impresión fiscal
+            $fiscalHistory = $order->fiscalHistory;
+            $fiscalHistory->update(['is_queued' => true]);
+
+            $generalSetting = \App\Models\GeneralSetting::first();
+            if ($generalSetting && $generalSetting->fiscal_machine_type === 'factory') {
+                try {
+                    $factoryService = app(\App\Contracts\Fiscal\FactoryFiscalServiceInterface::class);
+                    $factoryService->printInvoice($fiscalHistory->id);
+                } catch (\Throwable $ex) {
+                    Log::warning("[FactoryFiscal] Reintento de impresión fiscal falló: " . $ex->getMessage());
+                }
+            }
+        }
+
+        return $fiscalHistory->loadMissing(['details', 'user']);
     }
 
     /**

@@ -60,7 +60,13 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:isDialogVisible", "modal-closed", "cancel-order"]);
+  isProcessingFiscal: {
+    type: Boolean,
+    default: false,
+  },
+});
+
+const emit = defineEmits(["update:isDialogVisible", "modal-closed", "cancel-order", "create-fiscal-invoice"]);
 
 const dialogVisible = computed({
   get() {
@@ -685,7 +691,20 @@ const documentTitle = computed(() => {
       </VCardText>
 
       <!-- Botón de Salida Accesible -->
-      <VCardActions class="pa-2.5 bg-white border-t flex-shrink-0 d-flex justify-end">
+      <VCardActions class="pa-2.5 bg-white border-t flex-shrink-0 d-flex justify-end gap-2">
+        <VBtn
+          v-if="!fiscalSummary.hasFiscalRecord && orderData?.status !== 'Cancelled' && orderData?.status !== 'cancelled' && orderData?.status !== 'Abandonada' && orderData?.status !== 'Abandoned'"
+          color="info"
+          variant="tonal"
+          class="rounded-lg font-weight-black text-caption"
+          height="36"
+          prepend-icon="tabler-file-invoice"
+          :loading="props.isProcessingFiscal"
+          :disabled="props.isProcessingFiscal"
+          @click="emit('create-fiscal-invoice', props.orderData?.id)"
+        >
+          EMITIR COMPROBANTE FISCAL
+        </VBtn>
         <VBtn
           color="primary"
           variant="flat"

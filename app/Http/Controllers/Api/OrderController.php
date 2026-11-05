@@ -15,6 +15,8 @@ use App\Http\Requests\Order\CompleteOrderRequest;
 use App\Http\Requests\Order\SyncContingencyOrderRequest;
 use App\Http\Requests\Order\GetFiscalReportRequest;
 use App\Http\Requests\Order\GetFiscalHistoryRequest;
+use App\Http\Requests\Order\CreateFiscalInvoiceRequest;
+use App\Http\Resources\Fiscal\FiscalHistoryResource;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use Illuminate\Support\Facades\Auth;
@@ -358,6 +360,26 @@ class OrderController extends Controller
             'order' => $order,
             'hasCreditPayment' => $hasCreditPayment,
         ], "Datos de la orden recuperados correctamente", 200);
+    }
+
+    public function createAndPrintFiscalInvoice(CreateFiscalInvoiceRequest $request, int $orderId): JsonResponse
+    {
+        try {
+            $fiscalHistory = $this->orderActionService->createAndPrintFiscalInvoice($orderId);
+
+            return ApiResponse::success(
+                new FiscalHistoryResource($fiscalHistory),
+                'Comprobante fiscal generado e impresión iniciada exitosamente.'
+            );
+        } catch (ModelNotFoundException $e) {
+            return ApiResponse::error('Orden no encontrada.', 404);
+        } catch (\Throwable $e) {
+            Log::error('Error al generar comprobante fiscal para la orden ' . $orderId . ': ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return ApiResponse::error('Error al generar e imprimir el comprobante fiscal: ' . $e->getMessage(), 500);
+        }
     }
 
     public function filtrarOrderPorpsychotropicsConPaginacion(Request $request): JsonResponse

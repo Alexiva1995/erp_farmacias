@@ -34,6 +34,7 @@ const sortByOrdersAll = ref();
 const orderByOrdersAll = ref();
 
 const isPrinting = ref(false);
+const processingFiscalIds = ref([]);
 
 const ordersAbandoned = ref([]);
 const totalOrdersAbandoned = ref(0);
@@ -759,6 +760,45 @@ const handleCloseViewModal = () => {
   creditForPrint.value = false;
 };
 
+const handleCreateFiscalInvoice = async (orderId) => {
+  if (!orderId || processingFiscalIds.value.includes(orderId)) return;
+
+  const result = await Swal.fire({
+    title: "¿Emitir Comprobante Fiscal?",
+    text: `Se creará la factura fiscal y se enviará a impresión para la orden #${orderId}.`,
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonColor: "#7A0099",
+    cancelButtonColor: "#6e7881",
+    confirmButtonText: "Sí, emitir e imprimir",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!result.isConfirmed) return;
+
+  processingFiscalIds.value.push(orderId);
+  try {
+    const response = await axios.post(`/tpv/orders/${orderId}/fiscal-invoice`);
+    toast.success(response.data?.message || "Comprobante fiscal generado e impresión iniciada exitosamente.");
+
+    if (activeTab.value === 0) {
+      await fetchOrderCompleted();
+    } else if (activeTab.value === 1) {
+      await fetchOrderAll();
+    }
+
+    if (viewModal.value && orderData.value?.id === orderId) {
+      await handleViewOrder(orderId);
+    }
+  } catch (error) {
+    console.error("Error al crear e imprimir factura fiscal:", error);
+    const msg = error.response?.data?.message || "Error al crear e imprimir la factura fiscal.";
+    toast.error(msg);
+  } finally {
+    processingFiscalIds.value = processingFiscalIds.value.filter((id) => id !== orderId);
+  }
+};
+
 const handleCancelOrder = async (orderId) => {
   if (!orderId) return;
   Swal.fire({
@@ -1141,7 +1181,9 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
           @print-order="printOrder"
           @print-order-thermal="printOrderThermal54"
           @view-order="handleViewOrder"
+          :processing-fiscal-ids="processingFiscalIds"
           @cancel-order="handleCancelOrder"
+          @create-fiscal-invoice="handleCreateFiscalInvoice"
         />
       </VWindowItem>
       <VWindowItem :value="4">
@@ -1237,6 +1279,8 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
       :credit="creditForPrint"
       @close="handleCloseViewModal"
       @cancel-order="handleCancelOrder"
+      :is-processing-fiscal="processingFiscalIds.includes(orderData?.id)"
+      @create-fiscal-invoice="handleCreateFiscalInvoice"
       :is-special-taxpayer="isSpecialTaxpayer"
     />
   </div>

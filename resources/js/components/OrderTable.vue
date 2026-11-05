@@ -16,6 +16,7 @@ const props = defineProps({
   orderBy: { type: String, default: "desc" },
   showThermalPrint: { type: Boolean, default: false },
   showPrintActions: { type: Boolean, default: true },
+  processingFiscalIds: { type: Array, default: () => [] },
 });
 
 const { mobile } = useDisplay();
@@ -26,7 +27,15 @@ const sortByModel = computed(() => {
   return key ? [{ key, order: props.orderBy || "desc" }] : [];
 });
 
-const emit = defineEmits(["update:options", "print-order", "print-order-thermal", "view-order", "cancel-order"]);
+const emit = defineEmits(["update:options", "print-order", "print-order-thermal", "view-order", "cancel-order", "create-fiscal-invoice"]);
+
+const hasFiscalInvoice = (item) => {
+  return !!(item?.fiscal_history?.id || item?.fiscalHistory?.id);
+};
+
+const hasFiscalInvoiceNumber = (item) => {
+  return !!(item?.fiscal_history?.invoice_number || item?.fiscalHistory?.invoice_number);
+};
 
 const date = (order) => {
   if (!order) return "N/A";
@@ -185,6 +194,17 @@ const renderSellerName = (item) => {
                     @click="handleView(item.raw.id)"
                   />
                   <VBtn
+                    v-if="!hasFiscalInvoiceNumber(item.raw) && item.raw.status !== 'Cancelled' && item.raw.status !== 'cancelled' && item.raw.status !== 'Abandonada' && item.raw.status !== 'Abandoned'"
+                    :icon="!hasFiscalInvoice(item.raw) ? 'tabler-file-invoice' : 'tabler-printer'"
+                    variant="tonal"
+                    :color="!hasFiscalInvoice(item.raw) ? 'info' : 'warning'"
+                    size="small"
+                    :loading="props.processingFiscalIds.includes(item.raw.id)"
+                    :disabled="props.processingFiscalIds.includes(item.raw.id)"
+                    :title="!hasFiscalInvoice(item.raw) ? 'Crear e Imprimir Factura Fiscal' : 'Reenviar a Impresora Fiscal'"
+                    @click="$emit('create-fiscal-invoice', item.raw.id)"
+                  />
+                  <VBtn
                     v-if="showPrintActions"
                     icon="tabler-printer"
                     variant="tonal"
@@ -335,6 +355,23 @@ const renderSellerName = (item) => {
             <template #activator="{ props: tooltipProps }">
               <IconBtn v-bind="tooltipProps" color="error" @click="$emit('cancel-order', item.id)">
                 <VIcon icon="tabler-circle-x" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+          <VTooltip
+            v-if="!hasFiscalInvoiceNumber(item) && item.status !== 'Cancelled' && item.status !== 'cancelled' && item.status !== 'Abandonada' && item.status !== 'Abandoned'"
+            :text="!hasFiscalInvoice(item) ? 'Crear e Imprimir Factura Fiscal' : 'Reenviar a Impresora Fiscal'"
+            location="top"
+          >
+            <template #activator="{ props: tooltipProps }">
+              <IconBtn
+                v-bind="tooltipProps"
+                :color="!hasFiscalInvoice(item) ? 'info' : 'warning'"
+                :loading="props.processingFiscalIds.includes(item.id)"
+                :disabled="props.processingFiscalIds.includes(item.id)"
+                @click="$emit('create-fiscal-invoice', item.id)"
+              >
+                <VIcon :icon="!hasFiscalInvoice(item) ? 'tabler-file-invoice' : 'tabler-printer'" />
               </IconBtn>
             </template>
           </VTooltip>

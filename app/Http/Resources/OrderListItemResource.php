@@ -39,6 +39,10 @@ class OrderListItemResource extends JsonResource
                 ];
             }),
             'fiscal_history' => $this->whenLoaded('fiscalHistory', function () {
+                if (!$this->fiscalHistory) {
+                    return null;
+                }
+
                 return [
                     'id' => $this->fiscalHistory->id,
                     'invoice_number' => $this->fiscalHistory->invoice_number,

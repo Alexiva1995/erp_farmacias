@@ -516,6 +516,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteOrderDetail']);
         Route::patch('/orders/{order}/abandon', [OrderController::class, 'abandonOrder']);
         Route::post('/orders/{orderId}/complete', [OrderController::class, 'completeOrder']);
+        Route::post('/orders/{orderId}/fiscal-invoice', [OrderController::class, 'createAndPrintFiscalInvoice']);
         Route::patch('/order/{order}/reserve', [OrderController::class, 'reserveOrder']);
         Route::patch('/order/{order}/reserveAdd', [OrderController::class, 'reserveAddOrder']);
         Route::get("/order/searchReserved", [OrderController::class, "getSearchReserved"]);
@@ -855,6 +856,10 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::patch('/{id}/status', 'updateStatus')->name('updateStatus');
         Route::patch('/invoice/{invoiceId}/status', 'updateInvoiceStatus')->name('updateInvoiceStatus');
     });
+
+    // Catálogo Maestro de Proveedores (Directorio Master -> Tenant)
+    Route::get('/suppliers-master-catalog', [\App\Http\Controllers\Api\SupplierMasterCatalogController::class, 'index']);
+    Route::post('/suppliers-master-catalog/activate', [\App\Http\Controllers\Api\SupplierMasterCatalogController::class, 'activate']);
 
     // Rutas de Proveedores
     Route::get('/suppliers/stats', [SupplierController::class, 'stats']);
