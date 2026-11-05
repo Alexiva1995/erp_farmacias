@@ -289,6 +289,7 @@ const generateWhatsappMessage = () => {
 
     const whatsappMessage = 
       "¡Hola, gracias por escribirnos! 🌟\n\n" +
+      `*${brandingStore.settings?.app_name?.trim() || "Farmacia"}* le da la Bienvenida!\n\n` +
       "Aquí tienes el detalle de tu pedido:\n\n" +
       "📝 DETALLE DEL PEDIDO\n\n" +
       productos_array.join("\n") +
@@ -354,7 +355,7 @@ const generateWhatsappMessage = () => {
     }) +
     quotationNumber +
     "\nBuenas tardes, Estimado Cliente!\n" +
-    "... le da la Bienvenida!\n" +
+    `*${brandingStore.settings?.app_name?.trim() || "Farmacia"}* le da la Bienvenida!\n` +
     "Para nosotros es un gusto servirle.\n\n" +
     "A continuación el detalle de su presupuesto: \n" +
     productos_array.join("\n\n") +
@@ -459,6 +460,9 @@ const fetchLastQuotationNumber = async () => {
 
 onMounted(() => {
   fetchLastQuotationNumber();
+  if (!brandingStore.isLoaded) {
+    brandingStore.fetchSettings();
+  }
 });
 </script>
 
