@@ -36,6 +36,8 @@ class TraceabilityIndexRequest extends FormRequest
             'is_psychotropic' => ['nullable', 'boolean'],
             'laboratoryId' => ['nullable', 'integer', 'exists:laboratories,id'],
             'hasStock' => ['nullable', 'boolean'],
+            'tab' => ['nullable', 'string', 'in:all,ingredients,sales'],
+            'view_scope' => ['nullable', 'string', 'in:all,ingredients,sales'],
         ];
     }
 

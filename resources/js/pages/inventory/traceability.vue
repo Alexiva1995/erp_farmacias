@@ -26,6 +26,7 @@ const endDate = ref(null);
 const searchQuery = ref(route.query.q ? String(route.query.q) : "");
 const movementType = ref([]);
 const excludeMovementTypes = ref([]);
+const currentTab = ref("ingredients");
 
 const fetchSales = async () => {
   loading.value = true;
@@ -39,6 +40,7 @@ const fetchSales = async () => {
     endDate: endDate.value || undefined,
     movement_type: movementType.value && movementType.value.length > 0 ? movementType.value : undefined,
     exclude_movement_types: excludeMovementTypes.value && excludeMovementTypes.value.length > 0 ? excludeMovementTypes.value : undefined,
+    tab: currentTab.value !== "all" ? currentTab.value : undefined,
   };
 
   try {
@@ -64,6 +66,11 @@ const triggerSearch = () => {
 
 watch([searchQuery, startDate, endDate, movementType, excludeMovementTypes], () => {
   triggerSearch();
+});
+
+watch(currentTab, () => {
+  page.value = 1;
+  fetchSales();
 });
 
 watch(
@@ -111,6 +118,7 @@ const handleExport = async (format) => {
     endDate: endDate.value || undefined,
     movement_type: movementType.value && movementType.value.length > 0 ? movementType.value : undefined,
     exclude_movement_types: excludeMovementTypes.value && excludeMovementTypes.value.length > 0 ? excludeMovementTypes.value : undefined,
+    tab: currentTab.value !== "all" ? currentTab.value : undefined,
     format: format,
   };
 
@@ -162,11 +170,35 @@ const handleExport = async (format) => {
               Kardex y Trazabilidad de Inventario
             </h1>
             <p class="text-caption text-medium-emphasis mb-0">
-              Auditoría cronológica de movimientos de inventario, stock inicial, final y responsables.
+              Auditoría cronológica de movimientos de inventario, insumos de cocina, gramajes y ventas comerciales.
             </p>
           </div>
         </div>
       </div>
+    </VCard>
+
+    <!-- Selector de Pestañas: Insumos de Cocina vs Ventas vs Todos -->
+    <VCard variant="flat" class="border rounded-lg overflow-hidden">
+      <VTabs
+        v-model="currentTab"
+        color="primary"
+        density="comfortable"
+        show-arrows
+        grow
+      >
+        <VTab value="ingredients" class="font-weight-bold">
+          <VIcon icon="tabler-tools-kitchen-2" class="me-2" size="20" />
+          Insumos y Recetas
+        </VTab>
+        <VTab value="sales" class="font-weight-bold">
+          <VIcon icon="tabler-shopping-cart" class="me-2" size="20" />
+          Ventas Comerciales
+        </VTab>
+        <VTab value="all" class="font-weight-bold">
+          <VIcon icon="tabler-list-details" class="me-2" size="20" />
+          Todos los Movimientos
+        </VTab>
+      </VTabs>
     </VCard>
 
     <!-- Filtros de Trazabilidad -->
@@ -188,6 +220,7 @@ const handleExport = async (format) => {
       :total-sales="totalSales"
       :items-per-page="itemsPerPage"
       :page="page"
+      :current-tab="currentTab"
       @update:options="updateTableOptions"
       @filter-product="handleSelectProduct"
     />

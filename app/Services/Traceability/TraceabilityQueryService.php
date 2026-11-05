@@ -7,6 +7,7 @@ namespace App\Services\Traceability;
 use App\Models\InventoryMovement;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TraceabilityQueryService
 {
@@ -87,6 +88,29 @@ class TraceabilityQueryService
             $query->whereHas('product', function ($product) use ($request) {
                 $product->where('psychotropic', '=', $request->input('is_psychotropic'));
             });
+        }
+
+        // Filtro por pestañas: insumos de cocina vs ventas comerciales directas
+        $tab = $request->input('tab', $request->input('view_scope'));
+        if ($tab === 'ingredients') {
+            $query->where(function ($sub) {
+                $sub->whereNotNull('inventory_movements.dish_id')
+                    ->orWhereExists(function ($ex) {
+                        $ex->select(DB::raw(1))
+                            ->from('dish_ingredients')
+                            ->whereColumn('dish_ingredients.product_id', 'inventory_movements.product_id');
+                    })
+                    ->orWhereHas('product', function ($p) {
+                        $p->where('is_sub_recipe', 1)
+                          ->orWhere(function ($p2) {
+                              $p2->whereNotNull('presentation')
+                                 ->where('presentation', '>', 1);
+                          });
+                    });
+            });
+        } elseif ($tab === 'sales') {
+            $query->whereNull('inventory_movements.dish_id')
+                  ->where('inventory_movements.movement_type', 'sale');
         }
 
         if ($request->filled('sortBy') && $request->filled('orderBy')) {

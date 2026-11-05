@@ -133,6 +133,7 @@ class TraceabilityController extends Controller
             'product.laboratory',
             'productLot',
             'user.employee',
+            'dish:id,name',
             'order.seller.employee',
             'order.client',
             'order' => function ($query) {

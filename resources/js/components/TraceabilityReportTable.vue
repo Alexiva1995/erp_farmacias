@@ -10,6 +10,7 @@ const props = defineProps({
   totalSales: { type: Number, required: true },
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
+  currentTab: { type: String, default: "all" },
 });
 
 const emit = defineEmits(["update:options", "filter-product"]);
@@ -22,17 +23,61 @@ const handleReferenceClick = (item) => {
   showDetailsDialog.value = true;
 };
 
-const formatStockValue = (val) => {
+// Formato de stock considerando unidad base (gramaje/volumen) o unidades comerciales
+const formatStockDisplay = (item, type = "after") => {
+  if (!item) return "0";
+
+  if (item.has_grammage && (item.base_stock_after !== undefined || item.base_stock_before !== undefined)) {
+    const baseVal = type === "before" ? item.base_stock_before : item.base_stock_after;
+    const unit = item.unit_of_measure || "G";
+    const num = parseFloat(baseVal ?? 0);
+    const formatted = Number.isInteger(num)
+      ? num.toLocaleString("es-CO")
+      : parseFloat(num.toFixed(2)).toLocaleString("es-CO");
+    return `${formatted} ${unit}`;
+  }
+
+  const val = type === "before" ? item.global_stock_before : item.global_stock_after;
   if (val === undefined || val === null) return "0";
   const numVal = parseFloat(val);
-  return Number.isInteger(numVal) ? numVal.toString() : numVal.toFixed(2);
+  if (Number.isInteger(numVal)) return numVal.toString();
+  const precision = Math.abs(numVal) < 0.05 && numVal !== 0 ? 3 : 2;
+  return parseFloat(numVal.toFixed(precision)).toString();
 };
 
-const formatQuantityValue = (val) => {
+// Subtítulo de stock en unidades de empaque si aplica
+const formatSubStockDisplay = (item, type = "after") => {
+  if (!item || !item.has_grammage || !item.presentation_factor || item.presentation_factor <= 1) {
+    return null;
+  }
+  const rawVal = type === "before" ? item.global_stock_before : item.global_stock_after;
+  if (rawVal === undefined || rawVal === null) return null;
+  const num = parseFloat(rawVal);
+  const formatted = Number.isInteger(num) ? num.toString() : parseFloat(num.toFixed(2)).toString();
+  return `(${formatted} paq)`;
+};
+
+// Formato de cantidad considerando unidad de medida para evitar cortes a 0 falso
+const formatQuantityDisplay = (item) => {
+  if (!item) return "0";
+
+  if (item.has_grammage && item.base_quantity !== undefined) {
+    const baseQty = parseFloat(item.base_quantity);
+    const sign = baseQty > 0 ? "+" : "";
+    const unit = item.unit_of_measure || "G";
+    const formatted = Number.isInteger(baseQty)
+      ? baseQty.toLocaleString("es-CO")
+      : parseFloat(baseQty.toFixed(2)).toLocaleString("es-CO");
+    return `${sign}${formatted} ${unit}`;
+  }
+
+  const val = item.quantity;
   if (val === undefined || val === null) return "0";
   const numVal = parseFloat(val);
   const sign = numVal > 0 ? "+" : "";
-  const strVal = Number.isInteger(numVal) ? numVal.toString() : numVal.toFixed(2);
+  if (Number.isInteger(numVal)) return `${sign}${numVal}`;
+  const precision = Math.abs(numVal) < 0.05 && numVal !== 0 ? 3 : 2;
+  const strVal = parseFloat(numVal.toFixed(precision)).toString();
   return `${sign}${strVal}`;
 };
 
@@ -96,23 +141,40 @@ const headers = [
 
         <template #item.product.name="{ item }">
           <div class="d-flex align-center gap-x-2 py-1">
-            <div class="d-flex flex-column truncate" style="max-inline-size: 330px;">
+            <div class="d-flex flex-column truncate" style="max-inline-size: 340px;">
               <span
                 class="text-sm font-weight-black text-high-emphasis text-uppercase text-truncate"
                 :class="{ 'text-warning': item.product?.psychotropic }"
                 :title="item.product?.name"
               >
                 {{ item.product?.name?.toUpperCase() || 'N/A' }}
-                <span v-if="item.dish" class="text-primary font-weight-black text-none"> - {{ item.dish.name }}</span>
                 <span v-if="item.product?.iva" class="text-xs text-disabled"> (G)</span>
                 <span v-if="item.product?.is_colombian_origin" class="text-xs text-disabled"> (COL)</span>
               </span>
-              <div class="d-flex align-center flex-wrap gap-1 text-super-xs">
+
+              <!-- Indicador de Plato / Receta -->
+              <div v-if="item.dish" class="d-flex align-center gap-1 mt-1">
+                <VChip
+                  size="x-small"
+                  color="primary"
+                  variant="tonal"
+                  class="font-weight-black"
+                >
+                  <VIcon icon="tabler-tools-kitchen-2" size="13" class="me-1" />
+                  {{ item.dish.name }}
+                </VChip>
+              </div>
+
+              <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-1">
+                <span v-if="item.has_grammage" class="text-primary font-weight-bold">
+                  Empaque: {{ Number(item.presentation_factor).toLocaleString('es-CO') }} {{ item.unit_of_measure }}
+                </span>
+                <span v-if="item.has_grammage" class="text-disabled mx-1">|</span>
                 <span class="text-disabled truncate" style="max-inline-size: 150px;">
                   {{ item.product?.active_ingredient || "Sin principio" }}
                 </span>
                 <span class="text-disabled mx-1">|</span>
-                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 130px;">
+                <span class="text-medium-emphasis font-weight-medium text-uppercase truncate" style="max-inline-size: 110px;">
                   {{ item.product?.laboratory?.name || 'S/L' }}
                 </span>
               </div>
@@ -121,14 +183,22 @@ const headers = [
         </template>
 
         <template #item.stock_transition="{ item }">
-          <div class="d-flex align-center justify-center gap-1 font-weight-bold">
-            <span class="text-medium-emphasis text-body-2">
-              {{ formatStockValue(item.global_stock_before) }}
-            </span>
-            <VIcon icon="tabler-arrow-narrow-right" size="18" class="text-disabled mx-1" />
-            <span class="text-body-2 font-weight-black" :class="item.global_stock_after > 0 ? 'text-primary' : 'text-error'">
-              {{ formatStockValue(item.global_stock_after) }}
-            </span>
+          <div class="d-flex flex-column align-center justify-center">
+            <div class="d-flex align-center justify-center gap-1 font-weight-bold">
+              <span class="text-medium-emphasis text-body-2">
+                {{ formatStockDisplay(item, 'before') }}
+              </span>
+              <VIcon icon="tabler-arrow-narrow-right" size="18" class="text-disabled mx-1" />
+              <span
+                class="text-body-2 font-weight-black"
+                :class="(item.has_grammage ? item.base_stock_after : item.global_stock_after) > 0 ? 'text-primary' : 'text-error'"
+              >
+                {{ formatStockDisplay(item, 'after') }}
+              </span>
+            </div>
+            <div v-if="formatSubStockDisplay(item, 'after')" class="text-super-xs text-disabled text-center">
+              {{ formatSubStockDisplay(item, 'before') }} → {{ formatSubStockDisplay(item, 'after') }}
+            </div>
           </div>
         </template>
 
@@ -140,7 +210,7 @@ const headers = [
             variant="tonal"
             class="font-weight-black"
           >
-            {{ formatQuantityValue(item.quantity) }}
+            {{ formatQuantityDisplay(item) }}
           </VChip>
         </template>
 
@@ -220,12 +290,30 @@ const headers = [
                     {{ item.product?.name || 'S/N' }}
                   </h3>
                 </div>
+
+                <!-- Indicador de Plato / Receta en Móvil -->
+                <div v-if="item.dish" class="mt-1">
+                  <VChip
+                    size="x-small"
+                    color="primary"
+                    variant="tonal"
+                    class="font-weight-black"
+                  >
+                    <VIcon icon="tabler-tools-kitchen-2" size="13" class="me-1" />
+                    {{ item.dish.name }}
+                  </VChip>
+                </div>
+
                 <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-1">
+                  <span v-if="item.has_grammage" class="text-primary font-weight-bold">
+                    Emp: {{ Number(item.presentation_factor).toLocaleString('es-CO') }} {{ item.unit_of_measure }}
+                  </span>
+                  <span v-if="item.has_grammage" class="text-disabled mx-1">|</span>
                   <span class="text-disabled truncate" style="max-inline-size: 140px;">
                     {{ item.product?.active_ingredient || 'Sin principio' }}
                   </span>
                   <span class="text-disabled mx-1">|</span>
-                  <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">
+                  <span class="text-medium-emphasis font-weight-medium text-uppercase text-truncate" style="max-inline-size: 120px;">
                     {{ item.product?.laboratory?.name || 'S/L' }}
                   </span>
                 </div>
@@ -238,7 +326,10 @@ const headers = [
               <div class="d-flex flex-column text-center">
                 <span class="text-caption text-disabled text-uppercase font-weight-black">Stock Ant</span>
                 <span class="text-sm font-weight-black text-medium-emphasis">
-                  {{ formatStockValue(item.global_stock_before) }}
+                  {{ formatStockDisplay(item, 'before') }}
+                </span>
+                <span v-if="formatSubStockDisplay(item, 'before')" class="text-super-xs text-disabled">
+                  {{ formatSubStockDisplay(item, 'before') }}
                 </span>
               </div>
               <div class="d-flex flex-column align-center">
@@ -249,13 +340,19 @@ const headers = [
                   variant="tonal"
                   class="font-weight-black"
                 >
-                  {{ formatQuantityValue(item.quantity) }}
+                  {{ formatQuantityDisplay(item) }}
                 </VChip>
               </div>
               <div class="d-flex flex-column text-right">
                 <span class="text-caption text-disabled text-uppercase font-weight-black">Stock Fin</span>
-                <span class="text-sm font-weight-black" :class="item.global_stock_after > 0 ? 'text-primary' : 'text-error'">
-                  {{ formatStockValue(item.global_stock_after) }}
+                <span
+                  class="text-sm font-weight-black"
+                  :class="(item.has_grammage ? item.base_stock_after : item.global_stock_after) > 0 ? 'text-primary' : 'text-error'"
+                >
+                  {{ formatStockDisplay(item, 'after') }}
+                </span>
+                <span v-if="formatSubStockDisplay(item, 'after')" class="text-super-xs text-disabled">
+                  {{ formatSubStockDisplay(item, 'after') }}
                 </span>
               </div>
             </div>
