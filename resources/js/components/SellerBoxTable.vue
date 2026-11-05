@@ -458,7 +458,7 @@ const getAvatarColor = (id) => {
                 >Venta Bs.</span
               >
               <span class="text-xs font-weight-black text-warning">{{
-                fmtBs(item.total_bs)
+                fmtBs(parseFloat(item.bs_cash || 0) + parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0) + parseFloat(item.bs_transfer || 0) + parseFloat(item.bs_mobile || 0))
               }}</span>
             </div>
             <VDivider class="my-1 opacity-5" />

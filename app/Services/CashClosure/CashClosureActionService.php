@@ -358,11 +358,17 @@ class CashClosureActionService
             $TotalCopDeliveryInUsd = $dailyCashClosureInstance->getTotalCopDeliveryInUsd($cashClosings);
             $TotalBsDeliveryInUsd = $dailyCashClosureInstance->getTotalBsDeliveryInUsd($cashClosings);
 
+            $dailyClosureBsSum = (float) $cashClosings->sum('bs_cash')
+                + (float) $cashClosings->sum('bs_card_debito')
+                + (float) $cashClosings->sum('bs_card_credit')
+                + (float) $cashClosings->sum('bs_transfer')
+                + (float) $cashClosings->sum('bs_mobile');
+
             $dailyClosure = DailyCashClosure::create([
                 'total_sales'          => $cashClosings->sum('total_sales'),
                 'total_usd'            => $cashClosings->sum('total_usd'),
                 'total_cop'            => $cashClosings->sum('total_cop'),
-                'total_bs'             => $cashClosings->sum('total_bs'),
+                'total_bs'             => $dailyClosureBsSum > 0 ? $dailyClosureBsSum : $cashClosings->sum('total_bs'),
                 // Suma colapsada (compatibilidad)
                 'bs_card'              => $cashClosings->sum('bs_card_debito') + $cashClosings->sum('bs_card_credit'),
                 // Desglose Bs por método

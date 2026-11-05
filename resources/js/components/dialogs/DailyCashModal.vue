@@ -102,7 +102,7 @@ const totalCopGlobal = computed(() => {
 });
 
 const totalBsGlobal = computed(() => {
-  return filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.total_bs || 0), 0);
+  return filteredCashClosings.value.reduce((acc, c) => acc + (parseFloat(c.real_bs ?? c.total_bs) || 0), 0);
 });
 
 const totalSalesGlobal = computed(() => {

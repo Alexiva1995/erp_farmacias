@@ -267,7 +267,12 @@ class CashClosureQueryService
             $monthName = $endDate->monthName;
 
             $usd   = (float) $summary->amount_usd_month;
-            $bs    = (float) $summary->amount_bs_month;
+            $bsMethods = (float) $summary->bs_cash
+                + (float) $summary->bs_mobile
+                + (float) $summary->bs_transfer
+                + (float) $summary->bs_card_debito
+                + (float) $summary->bs_card_credit;
+            $bs    = $bsMethods > 0 ? $bsMethods : (float) $summary->amount_bs_month;
             $cop   = (float) $summary->amount_cop_month;
 
             // Usamos directamente la suma acumulada de ventas históricas (USD)

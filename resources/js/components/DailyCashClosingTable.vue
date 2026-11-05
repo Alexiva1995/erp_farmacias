@@ -65,6 +65,19 @@ const fmtBs = (v) =>
     maximumFractionDigits: 2,
   }).format(v ?? 0) + " Bs.";
 
+const getTotalBs = (item) => {
+  if (!item) return 0;
+  const cash = parseFloat(item.bs_cash || 0);
+  const mobile = parseFloat(item.bs_mobile || 0);
+  const transfer = parseFloat(item.bs_transfer || 0);
+  const debito = parseFloat(item.bs_card_debito || 0);
+  const credit = parseFloat(item.bs_card_credit || 0);
+  const card = parseFloat(item.bs_card || 0);
+  const pos = debito > 0 || credit > 0 ? debito + credit : card;
+  const sumMethods = cash + mobile + transfer + pos;
+  return sumMethods > 0 ? sumMethods : parseFloat(item.total_bs || 0);
+};
+
 const getAvatarColor = (id) => {
   const colors = ["primary", "success", "info", "warning", "purple", "cyan"];
   return colors[id % colors.length];
@@ -262,7 +275,7 @@ const hasMismatch = (item) => {
         <!-- Bs. (total + popover) -->
         <template #item.total_bs="{ item }">
           <div class="d-flex align-center justify-end gap-1">
-            <span class="text-sm font-weight-bold text-warning">{{ fmtBs(item.total_bs) }}</span>
+            <span class="text-sm font-weight-bold text-warning">{{ fmtBs(getTotalBs(item)) }}</span>
             <VMenu v-if="getPaymentDetail(item, 'BS').length > 0" open-on-hover close-on-content-click location="top">
               <template #activator="{ props: menuProps }">
                 <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer" />
@@ -449,7 +462,7 @@ const hasMismatch = (item) => {
                 >Total Bs.</span
               >
               <span class="text-xs font-weight-black text-warning">{{
-                fmtBs(item.total_bs)
+                fmtBs(getTotalBs(item))
               }}</span>
             </div>
           </div>

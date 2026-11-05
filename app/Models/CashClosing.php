@@ -128,7 +128,14 @@ class CashClosing extends Model
         // 1. Totales de Venta (Rendimiento Real - Basado en Órdenes completadas)
         $this->total_cop = (float) $this->orders()->where('currency', 'COP')->where('status', 'Completed')->sum('total_amount');
         $this->total_usd = (float) $this->orders()->where('currency', 'USD')->where('status', 'Completed')->sum('total_amount');
-        $this->total_bs  = (float) $this->orders()->where('currency', 'BS')->where('status', 'Completed')->sum('total_amount');
+        $bsMethodsSum = (float) $this->bs_cash
+            + (float) $this->bs_card_debito
+            + (float) $this->bs_card_credit
+            + (float) $this->bs_transfer
+            + (float) $this->bs_mobile;
+        $this->total_bs  = $bsMethodsSum > 0
+            ? $bsMethodsSum
+            : (float) $this->orders()->where('currency', 'BS')->where('status', 'Completed')->sum('total_amount');
 
         // 2. Efectivo Neto Real a Entregar (Físico: Ventas Cash + Abonos Cash - Vueltos - Ajustes)
         $this->cop_delivered = $this->cop_cash + $this->cop_cash_payment_credit + ($this->cop_spare ?? 0);

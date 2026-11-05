@@ -15,6 +15,17 @@ class CashClosingResource extends JsonResource
      */
     public function toArray($request): array
     {
+        $bsDebitoCredit = ((float)$this->bs_card_debito > 0 || (float)$this->bs_card_credit > 0)
+            ? ((float)$this->bs_card_debito + (float)$this->bs_card_credit)
+            : (float)($this->bs_card ?? 0);
+
+        $bsMethodsSum = (float)$this->bs_cash
+            + (float)$this->bs_mobile
+            + (float)$this->bs_transfer
+            + $bsDebitoCredit;
+
+        $totalBs = $bsMethodsSum > 0 ? $bsMethodsSum : (float)$this->total_bs;
+
         return [
             'id' => $this->id,
             'seller_id' => $this->seller_id,
@@ -23,7 +34,7 @@ class CashClosingResource extends JsonResource
             'total_sales' => (float)$this->total_sales,
             'total_usd' => (float)$this->total_usd,
             'total_cop' => (float)$this->total_cop,
-            'total_bs' => (float)$this->total_bs,
+            'total_bs' => $totalBs,
             'bs_card_debito' => (float)$this->bs_card_debito,
             'bs_card_credit' => (float)$this->bs_card_credit,
             'bs_cash' => (float)$this->bs_cash,

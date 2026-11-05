@@ -15,12 +15,23 @@ class DailyCashClosureResource extends JsonResource
      */
     public function toArray($request): array
     {
+        $bsCard = ((float)$this->bs_card_debito > 0 || (float)$this->bs_card_credit > 0)
+            ? ((float)$this->bs_card_debito + (float)$this->bs_card_credit)
+            : (float)($this->bs_card ?? 0);
+
+        $bsMethodsSum = (float)$this->bs_cash
+            + (float)$this->bs_mobile
+            + (float)$this->bs_transfer
+            + $bsCard;
+
+        $totalBs = $bsMethodsSum > 0 ? $bsMethodsSum : (float)$this->total_bs;
+
         return [
             'id'                   => $this->id,
             'total_sales'          => (float)$this->total_sales,
             'total_usd'            => (float)$this->total_usd,
             'total_cop'            => (float)$this->total_cop,
-            'total_bs'             => (float)$this->total_bs,
+            'total_bs'             => $totalBs,
             // USD por método
             'usd_cash'             => (float)$this->usd_cash,
             'usd_transfer'         => (float)$this->usd_transfer,
