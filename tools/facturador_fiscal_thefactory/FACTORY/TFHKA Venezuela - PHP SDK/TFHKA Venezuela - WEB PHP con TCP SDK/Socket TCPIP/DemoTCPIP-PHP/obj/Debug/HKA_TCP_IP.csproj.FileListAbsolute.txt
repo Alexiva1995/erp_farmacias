@@ -1,0 +1,11 @@
+C:\Users\cparedes\Documents\Visual Studio 2015\Projects\TCPListener\DemoTCPIP-PHP\bin\Debug\DemoTCPIP-PHP.exe.config
+C:\Users\cparedes\Documents\Visual Studio 2015\Projects\TCPListener\DemoTCPIP-PHP\obj\Debug\DemoTCPIP-PHP.exe
+C:\Users\cparedes\Documents\Visual Studio 2015\Projects\TCPListener\DemoTCPIP-PHP\obj\Debug\DemoTCPIP-PHP.pdb
+C:\Users\cparedes\Documents\Visual Studio 2015\Projects\TCPListener\DemoTCPIP-PHP\bin\Debug\Resources\hka80.png
+C:\Users\cparedes\Documents\Visual Studio 2015\Projects\TCPListener\DemoTCPIP-PHP\bin\Debug\DemoTCPIP-PHP.exe
+C:\Users\cparedes\Documents\Visual Studio 2015\Projects\TCPListener\DemoTCPIP-PHP\bin\Debug\DemoTCPIP-PHP.pdb
+C:\Users\cparedes\Documents\Visual Studio 2015\Projects\TCPListener\DemoTCPIP-PHP\bin\Debug\TfhkaNet.dll
+C:\Users\cparedes\Documents\Visual Studio 2015\Projects\TCPListener\DemoTCPIP-PHP\obj\Debug\DemoTCPIP_PHP.Form1.resources
+C:\Users\cparedes\Documents\Visual Studio 2015\Projects\TCPListener\DemoTCPIP-PHP\obj\Debug\DemoTCPIP_PHP.Properties.Resources.resources
+C:\Users\cparedes\Documents\Visual Studio 2015\Projects\TCPListener\DemoTCPIP-PHP\obj\Debug\HKA_TCP_IP.csproj.GenerateResource.Cache
+C:\Users\cparedes\Documents\Visual Studio 2015\Projects\TCPListener\DemoTCPIP-PHP\obj\Debug\HKA_TCP_IP.csprojResolveAssemblyReference.cache

@@ -168,6 +168,10 @@ class SupplierEmailCatalogService
             }
 
             if (!$connection || empty($connection->structure)) {
+                $this->hydrateStructureFromMaster($supplier, $connection);
+            }
+
+            if (!$connection || empty($connection->structure)) {
                 $errors[] = [
                     'supplier_id' => $supplier->id,
                     'supplier_name' => $supplier->name,
@@ -777,6 +781,75 @@ class SupplierEmailCatalogService
         }
 
         return $this->queryService->applyCreditDaysMapToSupplierProducts($supplier, $combinedCreditMap);
+    }
+
+    /**
+     * Intenta hidratar la estructura de mapeo Excel desde la base de datos Master si el tenant no la tiene.
+     */
+    protected function hydrateStructureFromMaster(Supplier $supplier, ?SupplierConnection &$connection): void
+    {
+        try {
+            $masterConnection = 'master_catalog';
+            if (!\Illuminate\Support\Facades\Schema::connection($masterConnection)->hasTable('suppliers')) {
+                $masterConnection = config('tenancy.database.central_connection', 'mysql');
+            }
+
+            if (!\Illuminate\Support\Facades\Schema::connection($masterConnection)->hasTable('supplier_connections')) {
+                return;
+            }
+
+            $masterSupplier = \Illuminate\Support\Facades\DB::connection($masterConnection)
+                ->table('suppliers')
+                ->where('id', $supplier->id)
+                ->first();
+
+            if (!$masterSupplier && !empty($supplier->rif)) {
+                $masterSupplier = \Illuminate\Support\Facades\DB::connection($masterConnection)
+                    ->table('suppliers')
+                    ->where('rif', $supplier->rif)
+                    ->first();
+            }
+
+            if (!$masterSupplier) {
+                return;
+            }
+
+            $masterConn = \Illuminate\Support\Facades\DB::connection($masterConnection)
+                ->table('supplier_connections')
+                ->where('supplier_id', $masterSupplier->id)
+                ->where('type', 'file')
+                ->first();
+
+            if (!$masterConn || empty($masterConn->structure)) {
+                return;
+            }
+
+            $struct = json_decode((string) $masterConn->structure, true);
+            $secStruct = !empty($masterConn->secondary_structure) ? json_decode((string) $masterConn->secondary_structure, true) : null;
+            $tertStruct = !empty($masterConn->tertiary_structure) ? json_decode((string) $masterConn->tertiary_structure, true) : null;
+
+            if ($connection) {
+                $connection->update([
+                    'structure' => $struct,
+                    'secondary_structure' => $secStruct,
+                    'tertiary_structure' => $tertStruct,
+                    'has_header' => (bool) ($masterConn->has_header ?? false),
+                ]);
+                $connection->refresh();
+            } else {
+                $connection = $supplier->connections()->create([
+                    'type' => 'file',
+                    'host' => $supplier->name . ' (Excel)',
+                    'structure' => $struct,
+                    'secondary_structure' => $secStruct,
+                    'tertiary_structure' => $tertStruct,
+                    'has_header' => (bool) ($masterConn->has_header ?? false),
+                    'pasv' => 0,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning("No se pudo hidratar la estructura del Master para el proveedor {$supplier->name}: " . $e->getMessage());
+        }
     }
 }
 

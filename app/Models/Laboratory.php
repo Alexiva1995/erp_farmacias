@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Resources\ResourceService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,17 @@ class Laboratory extends Model
         'group_id',
         'parent_id',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            ResourceService::clearLaboratoriesCache();
+        });
+
+        static::deleted(function () {
+            ResourceService::clearLaboratoriesCache();
+        });
+    }
 
     public function parent()
     {

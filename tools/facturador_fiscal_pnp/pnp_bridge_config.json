@@ -1,0 +1,9 @@
+{
+    "api_base_url": "https://alkosto.tovaerp.com/api",
+    "api_token": "",
+    "dll_path": "C:\\laragon\\www\\erp_farmacias\\tools\\facturador_fiscal_pnp\\pnpdll64.dll",
+    "serial_port_num": "1",
+    "machine_serial": "EOM0000310",
+    "polling_interval": 5,
+    "auto_start": false
+}

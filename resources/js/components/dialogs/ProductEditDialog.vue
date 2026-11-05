@@ -67,6 +67,15 @@ const onCropConfirm = (croppedFile) => {
 
 const isLabDialogVisible = ref(false);
 const activeTab = ref(0);
+const localLaboratories = ref([...props.laboratories]);
+
+watch(
+  () => props.laboratories,
+  (newVal) => {
+    localLaboratories.value = Array.isArray(newVal) ? [...newVal] : [];
+  },
+  { deep: true, immediate: true }
+);
 
 const handleNextTab = () => {
   if (props.isMaster) {
@@ -85,8 +94,14 @@ const handleNextTab = () => {
 };
 
 const onLaboratoryCreated = (lab) => {
+  if (lab && lab.id) {
+    const exists = localLaboratories.value.some((l) => l.id === lab.id);
+    if (!exists) {
+      localLaboratories.value.unshift(lab);
+    }
+    formData.value.laboratory_id = lab.id;
+  }
   emit("laboratory-created", lab);
-  formData.value.laboratory_id = lab.id;
 };
 
 const isNewProduct = computed(() => !formData.value.id);
@@ -520,7 +535,7 @@ const imagePreviewUrl = computed(() => {
             <ProductEditGeneralTab
               v-model:form-data="formData"
               :form-errors="formErrors"
-              :laboratories="props.laboratories"
+              :laboratories="localLaboratories"
               :origins="props.origins"
               :categories="props.categories"
               :suppliers="props.suppliers"

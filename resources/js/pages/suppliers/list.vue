@@ -4,6 +4,7 @@ import SupplierConnectionDialog from "@/components/dialogs/SupplierConnectionDia
 import SupplierConnectionHistoryDialog from "@/components/dialogs/SupplierConnectionHistoryDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
 import SupplierMergeDialog from "@/components/dialogs/SupplierMergeDialog.vue";
+import MasterSupplierDirectoryDialog from "@/components/dialogs/MasterSupplierDirectoryDialog.vue";
 import SupplierFilters from "@/components/SupplierFilters.vue";
 import SupplierStatsCards from "@/components/SupplierStatsCards.vue";
 import SupplierTable from "@/components/SupplierTable.vue";
@@ -15,6 +16,16 @@ import { onMounted, onUnmounted, ref, watch, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 const authStore = useAuthStore();
+
+const props = defineProps({
+  isMaster: {
+    type: Boolean,
+    default: false,
+  },
+});
+
+const route = useRoute();
+const isMasterMode = computed(() => props.isMaster || (route.path && route.path.startsWith("/master")));
 const suppliers = ref([]);
 const totalSupplier = ref(0);
 const loading = ref(false);
@@ -26,7 +37,11 @@ const orderBy = ref();
 const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
-const typeFilter = ref("drogueria");
+const typeFilter = ref(isMasterMode.value ? null : "drogueria");
+if (isMasterMode.value) {
+  sortBy.value = "id";
+  orderBy.value = "asc";
+}
 
 const stats = ref({
   total_debt: 0,
@@ -43,6 +58,7 @@ const connectionHistorySupplier = ref({});
 
 // Estado para el diálogo de fusión de proveedores duplicados
 const isMergeDialogVisible = ref(false);
+const isMasterDirectoryDialogVisible = ref(false);
 const mergeSupplierTarget = ref({});
 
 const laboratories = ref([]);
@@ -64,7 +80,8 @@ const router = useRouter();
 const fetchStats = async () => {
   isLoadingStats.value = true;
   try {
-    const response = await axios.get("/suppliers/stats");
+    const config = isMasterMode.value ? { headers: { "X-Master-Catalog-Context": "1" } } : {};
+    const response = await axios.get("/suppliers/stats", config);
     stats.value = response.data;
   } catch (error) {
     console.error("Error al cargar estadísticas:", error);
@@ -92,11 +109,11 @@ const fetchSuppliers = async () => {
     q: searchQuery.value,
     debtStatus: debtFilter.value,
     minScore: minScore.value,
-    type: typeFilter.value,
+    type: isMasterMode.value ? typeFilter.value : (typeFilter.value || undefined),
     page: page.value,
     itemsPerPage: itemsPerPage.value,
-    sortBy: sortBy.value,
-    orderBy: orderBy.value,
+    sortBy: sortBy.value || (isMasterMode.value ? "id" : undefined),
+    orderBy: orderBy.value || (isMasterMode.value ? "asc" : undefined),
   };
 
   Object.keys(params).forEach(
@@ -104,7 +121,11 @@ const fetchSuppliers = async () => {
   );
 
   try {
-    const response = await axios.get("/suppliers", { params });
+    const config = {
+      params,
+      headers: isMasterMode.value ? { "X-Master-Catalog-Context": "1" } : {},
+    };
+    const response = await axios.get("/suppliers", config);
     suppliers.value = response.data.data;
     totalSupplier.value = response.data.total;
   } catch (error) {
@@ -433,6 +454,10 @@ const handleToggleSupplierStatus = async (supplier) => {
   }
 };
 
+const handleSupplierActivatedFromMaster = async () => {
+  await Promise.all([fetchSuppliers(), fetchStats()]);
+};
+
 const handleSupplierMerged = async () => {
   await Promise.all([fetchSuppliers(), fetchStats()]);
 };
@@ -469,6 +494,7 @@ onUnmounted(() => {
     clearTimeout(debounceTimer);
   }
 });
+defineExpose({ fetchSuppliers, fetchStats });
 </script>
 
 <template>
@@ -482,6 +508,7 @@ onUnmounted(() => {
         @clear="handleClearFilters"
         @sort="handleSort"
         @add-supplier="handleAddSupplier"
+        @open-master-catalog="isMasterDirectoryDialogVisible = true"
       />
 
       <SupplierStatsCards
@@ -551,6 +578,12 @@ onUnmounted(() => {
       />
 
       <!-- Diálogo de Fusión de Proveedores Duplicados -->
+      <!-- Diálogo Directorio de Droguerías del Catálogo Maestro -->
+      <MasterSupplierDirectoryDialog
+        v-model="isMasterDirectoryDialogVisible"
+        @supplier-activated="handleSupplierActivatedFromMaster"
+      />
+
       <SupplierMergeDialog
         v-model="isMergeDialogVisible"
         :supplier="mergeSupplierTarget"

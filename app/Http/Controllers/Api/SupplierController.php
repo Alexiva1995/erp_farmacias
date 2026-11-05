@@ -500,12 +500,22 @@ class SupplierController extends Controller
             ]);
         }
 
-        if ($formatType === 'tertiary') {
-            $fileConnection->update(['tertiary_structure' => $validated]);
-        } elseif ($formatType === 'secondary') {
-            $fileConnection->update(['secondary_structure' => $validated]);
-        } else {
-            $fileConnection->update(['structure' => $validated]);
+        $structureColumn = match ($formatType) {
+            'tertiary' => 'tertiary_structure',
+            'secondary' => 'secondary_structure',
+            default => 'structure',
+        };
+
+        $fileConnection->update([$structureColumn => $validated]);
+
+        // Si se actualiza en el catálogo Master (contexto central), propagar a todos los tenants
+        $isTenant = function_exists('tenancy') && tenancy()->initialized;
+        if (!$isTenant) {
+            \App\Jobs\PropagateSupplierStructureJob::dispatch(
+                $supplier->id,
+                'file',
+                [$structureColumn => $validated]
+            );
         }
 
         return response()->json([

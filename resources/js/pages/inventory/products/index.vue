@@ -89,6 +89,16 @@ const fetchSelectOptions = async () => {
   }
 };
 
+const handleLaboratoryCreated = (newLab) => {
+  if (newLab && newLab.id) {
+    const exists = laboratories.value.some((l) => l.id === newLab.id);
+    if (!exists) {
+      laboratories.value.unshift(newLab);
+    }
+  }
+  fetchSelectOptions();
+};
+
 const fetchProducts = async () => {
   loading.value = true;
   const params = {
@@ -497,7 +507,7 @@ const handleSort = sortOptions => {
       :is-master="isMasterMode"
       @save="handleSaveProduct"
       @clear-errors="clearFormErrors"
-      @laboratory-created="fetchSelectOptions"
+      @laboratory-created="handleLaboratoryCreated"
     />
 
     <ProductStatsDialog

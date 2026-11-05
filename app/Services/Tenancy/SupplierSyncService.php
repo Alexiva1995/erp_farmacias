@@ -227,4 +227,124 @@ class SupplierSyncService
 
         return $results;
     }
+
+    /**
+     * Propaga la estructura técnica de un proveedor (ej. plantilla de columnas Excel) a todos los tenants.
+     * Actualiza únicamente campos de estructura técnica sin tocar credenciales ni datos privados locales.
+     *
+     * @param int $supplierId ID del proveedor en el Master
+     * @param string $type Tipo de conexión (ej. 'file', 'ftp', 'api')
+     * @param array<string, mixed> $payload Campos estructurales a propagar
+     * @return array<string, bool> Resumen de tenants actualizados
+     */
+    public function propagateStructureToTenants(int $supplierId, string $type, array $payload): array
+    {
+        $centralConnection = config('tenancy.database.central_connection', 'mysql');
+        if (!Schema::connection($centralConnection)->hasTable('tenants')) {
+            return [];
+        }
+
+        // Obtener el proveedor master para conocer su RIF como identificador canónico
+        $masterConnection = 'master_catalog';
+        if (!Schema::connection($masterConnection)->hasTable('suppliers')) {
+            $masterConnection = $centralConnection;
+        }
+
+        $masterSupplier = DB::connection($masterConnection)
+            ->table('suppliers')
+            ->where('id', $supplierId)
+            ->first();
+
+        $supplierRif = $masterSupplier?->rif;
+
+        // Filtrar columnas estrictamente estructurales permitidas para propagación
+        $allowedColumns = [
+            'has_header',
+            'pasv',
+            'structure',
+            'secondary_structure',
+            'tertiary_structure',
+            'invoice_structure',
+            'credit_days_cod_col',
+            'credit_days_col',
+        ];
+
+        $updateData = [];
+        foreach ($allowedColumns as $col) {
+            if (array_key_exists($col, $payload)) {
+                $val = $payload[$col];
+                // Si es array o null, formatearlo adecuadamente para la consulta SQL
+                $updateData[$col] = is_array($val) ? json_encode($val) : $val;
+            }
+        }
+
+        if (empty($updateData)) {
+            return [];
+        }
+
+        $updateData['updated_at'] = now();
+
+        $tenants = Tenant::all();
+        $results = [];
+
+        foreach ($tenants as $tenant) {
+            try {
+                $tenant->run(function () use ($supplierId, $supplierRif, $type, $updateData) {
+                    if (!Schema::hasTable('suppliers') || !Schema::hasTable('supplier_connections')) {
+                        return;
+                    }
+
+                    // Resolver los IDs correspondientes a este proveedor en el tenant
+                    $localSupplierIds = [$supplierId];
+                    if (!empty($supplierRif)) {
+                        $matchedIds = DB::table('suppliers')
+                            ->where('rif', $supplierRif)
+                            ->pluck('id')
+                            ->map(fn ($id) => (int) $id)
+                            ->all();
+                        $localSupplierIds = array_values(array_unique(array_merge($localSupplierIds, $matchedIds)));
+                    }
+
+                    // Actualizar conexiones existentes que correspondan al proveedor y tipo
+                    $affected = DB::table('supplier_connections')
+                        ->whereIn('supplier_id', $localSupplierIds)
+                        ->where('type', $type)
+                        ->update($updateData);
+
+                    // Si no existía la conexión pero el proveedor está instalado en el tenant, crear plantilla base
+                    if ($affected === 0) {
+                        $installedSuppliers = DB::table('suppliers')
+                            ->whereIn('id', $localSupplierIds)
+                            ->get();
+
+                        foreach ($installedSuppliers as $sup) {
+                            $insertPayload = array_merge($updateData, [
+                                'supplier_id' => $sup->id,
+                                'type' => $type,
+                                'host' => $type === 'file' ? ($sup->name . ' (Excel)') : null,
+                                'username' => null,
+                                'password' => null,
+                                'path' => null,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+
+                            DB::table('supplier_connections')->insert($insertPayload);
+                        }
+                    }
+                });
+
+                $results[(string) $tenant->id] = true;
+            } catch (\Throwable $e) {
+                Log::error("Error propagando estructura a tenant {$tenant->id}: " . $e->getMessage(), [
+                    'supplier_id' => $supplierId,
+                    'type' => $type,
+                    'exception' => $e,
+                ]);
+                $results[(string) $tenant->id] = false;
+            }
+        }
+
+        return $results;
+    }
 }

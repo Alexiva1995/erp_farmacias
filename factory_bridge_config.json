@@ -1,0 +1,9 @@
+{
+    "api_base_url": "https://ensalud.tovaerp.com/api",
+    "api_token": "",
+    "tcp_port": 8090,
+    "polling_interval": 3,
+    "listener_exe": "C:\\laragon\\www\\erp_farmacias\\tools\\puentes\\facturador_fiscal_thefactory\\FACTORY\\TFHKA Venezuela - PHP SDK\\TFHKA Venezuela - WEB PHP con TCP SDK\\Socket TCPIP\\DemoTCPIP-PHP\\bin\\Debug\\DemoTCPIP-PHP.exe",
+    "auto_start_listener": true,
+    "auto_start": false
+}

@@ -19,6 +19,21 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 class ResourceService
 {
     /**
+     * Limpia la caché de laboratorios para la conexión actual y variantes conocidas.
+     */
+    public static function clearLaboratoriesCache(): void
+    {
+        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
+        Cache::forget('resources.laboratories');
+        Cache::forget('resources.laboratories.mysql');
+        Cache::forget('resources.laboratories.master_catalog');
+        Cache::forget('resources.laboratories.tenant');
+        if ($conn) {
+            Cache::forget("resources.laboratories.{$conn}");
+        }
+    }
+
+    /**
      * Obtiene una lista de todos los laboratorios con su grupo y conteo de productos, utilizando caché.
      */
     public function getLaboratories(): Collection

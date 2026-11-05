@@ -22,6 +22,7 @@ const emit = defineEmits([
   "clear",
   "sort",
   "add-supplier",
+  "open-master-catalog",
 ]);
 
 const sortOptions = [
@@ -93,6 +94,19 @@ const hasAdvancedFilters = computed(
     class="py-1"
   >
     <template #actions-extra>
+      <!-- Botón para explorar y activar droguerías desde el Catálogo Maestro -->
+      <VBtn
+        icon
+        color="primary"
+        variant="tonal"
+        size="38"
+        class="rounded-circle shadow-sm"
+        @click="emit('open-master-catalog')"
+      >
+        <VIcon icon="tabler-database-import" />
+        <VTooltip activator="parent" location="top">Directorio Master de Droguerías (Plantillas Excel)</VTooltip>
+      </VBtn>
+
       <!-- Botón para añadir proveedor de gastos/servicios -->
       <VBtn
         v-if="showExpenseSupplierBtn"

@@ -163,7 +163,7 @@ defineExpose({
       :is-saving="isSavingProduct"
       @save="handleSaveProductInternal"
       @clear-errors="productFormErrors = {}"
-      @laboratory-created="emit('laboratory-created')"
+      @laboratory-created="emit('laboratory-created', $event)"
     />
   </div>
 </template>

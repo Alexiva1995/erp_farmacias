@@ -861,6 +861,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     // Catálogo Maestro de Proveedores (Directorio Master -> Tenant)
     Route::get('/suppliers-master-catalog', [\App\Http\Controllers\Api\SupplierMasterCatalogController::class, 'index']);
     Route::post('/suppliers-master-catalog/activate', [\App\Http\Controllers\Api\SupplierMasterCatalogController::class, 'activate']);
+    Route::post('/master-suppliers/sync-from-all-tenants', [\App\Http\Controllers\Api\SupplierMasterCatalogController::class, 'syncFromAllTenants']);
 
     // Rutas de Proveedores
     Route::get('/suppliers/stats', [SupplierController::class, 'stats']);

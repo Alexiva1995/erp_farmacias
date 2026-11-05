@@ -48,7 +48,7 @@ class ResourceController extends Controller
         $laboratory = Laboratory::create($data);
 
         // Limpiar la caché de laboratorios para que se actualice la lista
-        \Cache::forget('resources.laboratories');
+        ResourceService::clearLaboratoriesCache();
 
         return response()->json([
             'message' => 'Laboratorio creado con éxito.',

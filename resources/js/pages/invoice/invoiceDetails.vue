@@ -670,6 +670,16 @@ const fetchProductSelectOptions = async () => {
   }
 };
 
+const handleLaboratoryCreated = (newLab) => {
+  if (newLab && newLab.id) {
+    const exists = laboratories.value.some((l) => l.id === newLab.id);
+    if (!exists) {
+      laboratories.value.unshift(newLab);
+    }
+  }
+  fetchProductSelectOptions();
+};
+
 const fetchProducts = async () => {
   loadingProducts.value = true;
 
@@ -1851,7 +1861,7 @@ const detailsHeaders = computed(() => {
           @update-table-options="updateProductTableOptions"
           @add-product-to-invoice="addProductToInvoice"
           @save-product="handleSaveProduct"
-          @laboratory-created="fetchProductSelectOptions"
+          @laboratory-created="handleLaboratoryCreated"
           @search-barcode="handleSearchBarcode"
         />
       </template>

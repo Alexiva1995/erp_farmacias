@@ -99,8 +99,7 @@ class LaboratoryManagementController extends Controller
         );
 
         // Limpiar la caché de laboratorios para que se actualice la lista en los selects
-        \Cache::forget('resources.laboratories');
-        \Cache::forget('resources.laboratories.' . \Illuminate\Support\Facades\DB::getDefaultConnection());
+        \App\Services\Resources\ResourceService::clearLaboratoriesCache();
         \Cache::forget('resources.laboratory_groups.' . \Illuminate\Support\Facades\DB::getDefaultConnection());
 
         return response()->json(['message' => 'Laboratorio guardado correctamente', 'laboratory' => $lab]);
@@ -159,7 +158,7 @@ class LaboratoryManagementController extends Controller
         $laboratory->delete();
 
         // Limpiar la caché de laboratorios para que desaparezca de los selects
-        \Cache::forget('resources.laboratories');
+        \App\Services\Resources\ResourceService::clearLaboratoriesCache();
 
         return response()->json(['message' => 'Laboratorio eliminado y productos desvinculados']);
     }
@@ -185,7 +184,7 @@ class LaboratoryManagementController extends Controller
         $syncResult = $syncService->syncLaboratoriesFromMaster();
         $remapResult = $syncService->remapTenantProductsLaboratories();
 
-        \Cache::forget('resources.laboratories');
+        \App\Services\Resources\ResourceService::clearLaboratoriesCache();
 
         return response()->json([
             'message' => 'Laboratorios sincronizados y productos reasignados con éxito.',
