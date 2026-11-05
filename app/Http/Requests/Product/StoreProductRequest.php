@@ -61,6 +61,15 @@ class StoreProductRequest extends FormRequest
             $merges['barcode'] = ($val === null || $val === '' || $val === 'null' || $val === 'undefined') ? null : trim((string) $val);
         }
 
+        // Si se envía stock en vez de initial_stock (o viceversa), asegurar mapeo consistente
+        if ($this->has('stock') && !$this->has('initial_stock')) {
+            $val = $this->input('stock');
+            $merges['initial_stock'] = ($val !== null && $val !== '' && is_numeric($val)) ? (float) $val : null;
+        } elseif ($this->has('initial_stock')) {
+            $val = $this->input('initial_stock');
+            $merges['initial_stock'] = ($val !== null && $val !== '' && is_numeric($val)) ? (float) $val : null;
+        }
+
         $this->merge($merges);
     }
 
@@ -108,6 +117,7 @@ class StoreProductRequest extends FormRequest
             'unit_cost'     => ['nullable', 'numeric', 'min:0'],
             'sale_price'    => ['nullable', 'numeric', 'min:0'],
             'initial_stock' => ['nullable', 'numeric', 'min:0'],
+            'stock'         => ['nullable', 'numeric', 'min:0'],
 
             'barcode' => [
                 'nullable',

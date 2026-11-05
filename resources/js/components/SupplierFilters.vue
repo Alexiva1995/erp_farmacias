@@ -12,6 +12,8 @@ const props = defineProps({
   minScore: { type: [Number, String, null], default: null },
   type: { type: [String, null], default: null },
   loading: { type: Boolean, default: false },
+  isMaster: { type: Boolean, default: false },
+  isSyncingMaster: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -23,6 +25,7 @@ const emit = defineEmits([
   "sort",
   "add-supplier",
   "open-master-catalog",
+  "sync-tenants-to-master",
 ]);
 
 const sortOptions = [
@@ -94,8 +97,25 @@ const hasAdvancedFilters = computed(
     class="py-1"
   >
     <template #actions-extra>
-      <!-- Botón para explorar y activar droguerías desde el Catálogo Maestro -->
+      <!-- Botón para sincronizar tenants al master (visible en modo Master) -->
       <VBtn
+        v-if="props.isMaster"
+        icon
+        color="primary"
+        variant="elevated"
+        size="38"
+        class="rounded-circle shadow-sm"
+        :loading="props.isSyncingMaster"
+        :disabled="props.isSyncingMaster"
+        @click="emit('sync-tenants-to-master')"
+      >
+        <VIcon icon="tabler-refresh" />
+        <VTooltip activator="parent" location="top">Sincronizar Todos los Tenants al Master</VTooltip>
+      </VBtn>
+
+      <!-- Botón para explorar y activar droguerías desde el Catálogo Maestro (modo normal) -->
+      <VBtn
+        v-else
         icon
         color="primary"
         variant="tonal"

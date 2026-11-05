@@ -9,7 +9,7 @@ import SupplierFilters from "@/components/SupplierFilters.vue";
 import SupplierStatsCards from "@/components/SupplierStatsCards.vue";
 import SupplierTable from "@/components/SupplierTable.vue";
 import axios from "@/plugins/axios";
-import { toast } from "@/plugins/sweetalert";
+import { toast, confirmDialog } from "@/plugins/sweetalert";
 import { useSupplierConnectionStore } from "@/stores/supplierConnection";
 import Swal from "sweetalert2";
 import { onMounted, onUnmounted, ref, watch, computed } from "vue";
@@ -26,6 +26,7 @@ const props = defineProps({
 
 const route = useRoute();
 const isMasterMode = computed(() => props.isMaster || (route.path && route.path.startsWith("/master")));
+const isSyncingAll = ref(false);
 const suppliers = ref([]);
 const totalSupplier = ref(0);
 const loading = ref(false);
@@ -454,6 +455,33 @@ const handleToggleSupplierStatus = async (supplier) => {
   }
 };
 
+const handleSyncFromAllTenants = async () => {
+  const isConfirmed = await confirmDialog({
+    title: "¿Consolidar Proveedores al Master?",
+    text: "Se extraerán e integrarán los proveedores y estructuras técnicas de Excel/conexiones de todos los tenants hacia tovaerp_master.",
+    confirmButtonText: "Sí, Sincronizar Todo",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!isConfirmed) return;
+
+  isSyncingAll.value = true;
+  try {
+    const response = await axios.post("/master-suppliers/sync-from-all-tenants", {
+      overwrite: true,
+      propagate: false,
+    });
+
+    toast.success(response.data?.message || "Catálogo maestro consolidado exitosamente.");
+    await fetchSuppliers();
+  } catch (error) {
+    console.error("Error al sincronizar tenants al master:", error);
+    toast.error(error.response?.data?.message || "Ocurrió un error al consolidar el catálogo maestro.");
+  } finally {
+    isSyncingAll.value = false;
+  }
+};
+
 const handleSupplierActivatedFromMaster = async () => {
   await Promise.all([fetchSuppliers(), fetchStats()]);
 };
@@ -508,7 +536,10 @@ defineExpose({ fetchSuppliers, fetchStats });
         @clear="handleClearFilters"
         @sort="handleSort"
         @add-supplier="handleAddSupplier"
+        :is-master="isMasterMode"
+        :is-syncing-master="isSyncingAll"
         @open-master-catalog="isMasterDirectoryDialogVisible = true"
+        @sync-tenants-to-master="handleSyncFromAllTenants"
       />
 
       <SupplierStatsCards

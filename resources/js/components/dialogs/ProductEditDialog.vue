@@ -285,6 +285,7 @@ watch(
   () => props.modelValue,
   (newVal) => {
     if (newVal) {
+      activeTab.value = 0;
       fetchAllGroups();
     }
   },
@@ -330,6 +331,7 @@ const closeDialog = () => {
   emit("update:modelValue", false);
   formErrors.value = {};
   isSubmitting.value = false;
+  activeTab.value = 0;
   emit("clearErrors");
 };
 
@@ -345,7 +347,7 @@ const submitForm = () => {
   const payload = new FormData();
 
   Object.keys(formData.value).forEach((key) => {
-    if (key === "unit_cost" || key === "sale_price" || key === "variants" || key === "initial_stock" || key === "photo_url") {
+    if (key === "unit_cost" || key === "sale_price" || key === "variants" || key === "initial_stock" || key === "stock" || key === "photo_url") {
       return;
     }
 
@@ -379,14 +381,16 @@ const submitForm = () => {
     payload.append("sale_price", formData.value.sale_price);
   }
 
+  const rawStock = formData.value.initial_stock ?? formData.value.stock;
   if (
     isNewProduct.value &&
-    formData.value.initial_stock !== null &&
-    formData.value.initial_stock !== undefined &&
-    formData.value.initial_stock !== "" &&
-    !isNaN(formData.value.initial_stock)
+    rawStock !== null &&
+    rawStock !== undefined &&
+    rawStock !== "" &&
+    !isNaN(rawStock) &&
+    Number(rawStock) >= 0
   ) {
-    payload.append("initial_stock", formData.value.initial_stock);
+    payload.append("initial_stock", Number(rawStock));
   }
 
   if (Array.isArray(formData.value.supplier_ids)) {
