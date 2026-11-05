@@ -82,6 +82,10 @@ class AlignTraceabilityStockCommand extends Command
             $progressBar
         ) {
             foreach ($products as $product) {
+                if (!$isDryRun) {
+                    \App\Models\ProductLot::where('product_id', $product->id)->where('quantity', '<', 0)->update(['quantity' => 0]);
+                }
+
                 $realStock = (float) $product->lots->sum('quantity');
 
                 // Sincronizar columna stock en tabla products

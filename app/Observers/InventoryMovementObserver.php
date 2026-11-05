@@ -78,7 +78,7 @@ class InventoryMovementObserver
 
         $product = Product::find($productId);
         if ($product) {
-            $totalStock = (float) $product->lots()->sum('quantity');
+            $totalStock = (float) $product->lots()->where('quantity', '>', 0)->sum('quantity');
             $product->updateQuietly(['stock' => $totalStock]);
             \App\Services\Inventory\StockoutService::syncStockout($product, $totalStock);
         }
