@@ -39,6 +39,12 @@ const isMafarta = computed(() => {
   return id === 1011 || id === 23 || name.includes("MAFARTA") || name.includes("COBECA");
 });
 
+const isContinental = computed(() => {
+  const name = props.supplier?.name?.toUpperCase() || "";
+  const id = Number(props.supplier?.id);
+  return id === 1032 || name.includes("CONTINENTAL") || name.includes("CONTINETAL");
+});
+
 const isCobecaApiOnly = computed(() => isMafarta.value);
 
 const dromegaClientCode = ref("");
@@ -63,14 +69,28 @@ const getDefaultFormForType = (type) => ({
         ? "ftp.dromega.com.ve" 
         : (isDronena.value && type === "ftp" 
             ? "ftp.dronena.com" 
-            : (isMafarta.value && (type === "api" || type === "http") 
-                ? "https://comparadores.drogueriascobeca.com/api/Login" 
-                : ""))),
-  port: type === "sftp" ? 22 : (type === "ftp" ? 21 : ""),
+            : (isContinental.value && type === "ftp"
+                ? "186.167.68.54"
+                : (isMafarta.value && (type === "api" || type === "http") 
+                    ? "https://comparadores.drogueriascobeca.com/api/Login" 
+                    : "")))),
+  port: type === "sftp" ? 22 : (isContinental.value && type === "ftp" ? 58021 : (type === "ftp" ? 21 : "")),
   username: "",
   password: "",
-  path: isDromega.value && type === "ftp" ? "Existencia/inventariomerida.txt" : (isDronena.value && type === "ftp" ? "Clientes/" : ""),
-  invoice_path: isDromega.value && type === "ftp" ? "Facturas/7586" : (isDronena.value && type === "ftp" ? "Clientes/" : ""),
+  path: isDromega.value && type === "ftp" 
+    ? "Existencia/inventariomerida.txt" 
+    : (isDronena.value && type === "ftp" 
+        ? "Clientes/" 
+        : (isContinental.value && type === "ftp"
+            ? "inventario.txt"
+            : "")),
+  invoice_path: isDromega.value && type === "ftp" 
+    ? "Facturas/7586" 
+    : (isDronena.value && type === "ftp" 
+        ? "Clientes/" 
+        : (isContinental.value && type === "ftp"
+            ? "/Facturas"
+            : "")),
   pasv: true,
   has_header: false,
   ftp_orders_enabled: false,
@@ -97,7 +117,7 @@ const isEmail = computed(() => ["file", "email"].includes(form.value.type));
 const isDronenaBot = computed(() => form.value.type === "dronena_bot" || (props.supplier?.name && props.supplier.name.toUpperCase().includes("NENA")));
 
 const typeOptions = computed(() => {
-  if (isDromega.value) {
+  if (isDromega.value || isContinental.value) {
     return [
       { title: "FTP", value: "ftp", icon: "tabler-server" },
     ];
@@ -181,6 +201,13 @@ const loadFormForType = (type) => {
       dronenaClientCode.value = extractedCode;
       updateDronenaClientCode(extractedCode);
     }
+
+    if (isContinental.value && type === "ftp") {
+      if (!form.value.host) form.value.host = "186.167.68.54";
+      if (!form.value.port) form.value.port = 58021;
+      if (!form.value.path) form.value.path = "inventario.txt";
+      if (!form.value.invoice_path) form.value.invoice_path = "/Facturas";
+    }
   } else {
     form.value = getDefaultFormForType(type);
     hasExistingPassword.value = false;
@@ -194,6 +221,13 @@ const loadFormForType = (type) => {
     if (isDronena.value && type === "ftp") {
       dronenaClientCode.value = "";
       updateDronenaClientCode("");
+    }
+
+    if (isContinental.value && type === "ftp") {
+      form.value.host = "186.167.68.54";
+      form.value.port = 58021;
+      form.value.path = "inventario.txt";
+      form.value.invoice_path = "/Facturas";
     }
   }
 };
@@ -265,6 +299,13 @@ const saveConfig = async () => {
       const cleanCode = (dronenaClientCode.value || payload.username || "").toString().trim();
       payload.path = cleanCode ? `Clientes/${cleanCode}/Inventario.txt` : "Clientes/";
       payload.invoice_path = cleanCode ? `Clientes/${cleanCode}/Factura` : "Clientes/";
+    }
+
+    if (isContinental.value && payload.type === "ftp") {
+      payload.host = "186.167.68.54";
+      payload.port = 58021;
+      payload.path = "inventario.txt";
+      payload.invoice_path = "/Facturas";
     }
 
     if (isMafarta.value && (payload.type === "api" || payload.type === "http")) {
@@ -599,6 +640,31 @@ watch(
                   </VCol>
                 </template>
 
+                <!-- Configuración simplificada para Continental (FTP) -->
+                <template v-else-if="isContinental && form.type === 'ftp'">
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.username"
+                      label="Usuario / Código Cliente *"
+                      placeholder="ej: c3041"
+                      prepend-inner-icon="tabler-user"
+                      :error-messages="errors.username"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.password"
+                      :type="showPassword ? 'text' : 'password'"
+                      :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña de acceso *'"
+                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
+                      prepend-inner-icon="tabler-lock"
+                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                      :error-messages="errors.password"
+                      @click:append-inner="showPassword = !showPassword"
+                    />
+                  </VCol>
+                </template>
+
                 <!-- Configuración simplificada para Mafarta / Cobeca (API) -->
                 <template v-else-if="isMafarta && (form.type === 'api' || form.type === 'http')">
                   <VCol cols="12" md="6">
@@ -693,7 +759,7 @@ watch(
               </VRow>
 
               <!-- Opciones FTP en una sola fila compacta -->
-              <div v-if="isFtp && (!isDromega || form.type !== 'ftp') && (!isDronena || form.type !== 'ftp')" class="d-flex align-center flex-wrap justify-space-between gap-3 pt-2 mt-2 border-t">
+              <div v-if="isFtp && (!isDromega || form.type !== 'ftp') && (!isDronena || form.type !== 'ftp') && (!isContinental || form.type !== 'ftp')" class="d-flex align-center flex-wrap justify-space-between gap-3 pt-2 mt-2 border-t">
                 <div class="d-flex align-center gap-2">
                   <VSwitch v-model="form.pasv" color="primary" hide-details density="compact" />
                   <span class="text-xs font-weight-bold text-high-emphasis">Modo Pasivo (PASV)</span>
