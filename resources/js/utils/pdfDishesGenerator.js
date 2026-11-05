@@ -106,10 +106,11 @@ export const generateActiveDishesPdf = (dishes = [], formatPriceFn, currency = "
         ? formatPriceFn(dish.designated_price, true, dish.designated_price_cop)
         : dish.designated_price;
 
+      const itemText = dish.id ? `${dish.id} - ${dish.name || "Sin nombre"}` : (dish.name || "Sin nombre");
+
       return [
-        { content: `#${dish.id}`, styles: { halign: "center", fontStyle: "bold", textColor: [120, 120, 120], cellWidth: 12 } },
-        { content: dish.name || "Sin nombre", styles: { halign: "left", fontStyle: "normal", textColor: [30, 30, 30] } },
-        { content: String(formattedPrice), styles: { halign: "right", fontStyle: "bold", textColor: [226, 0, 116], cellWidth: 26 } },
+        { content: itemText, styles: { halign: "left", fontStyle: "normal", textColor: [30, 30, 30] } },
+        { content: String(formattedPrice), styles: { halign: "right", fontStyle: "bold", textColor: [226, 0, 116], cellWidth: 28 } },
       ];
     });
 
@@ -121,7 +122,7 @@ export const generateActiveDishesPdf = (dishes = [], formatPriceFn, currency = "
         [
           {
             content: catName.toUpperCase(),
-            colSpan: 3,
+            colSpan: 2,
             styles: {
               halign: "left",
               fillColor: [248, 248, 248],
@@ -143,9 +144,8 @@ export const generateActiveDishesPdf = (dishes = [], formatPriceFn, currency = "
         overflow: "linebreak",
       },
       columnStyles: {
-        0: { cellWidth: 12, halign: "center" },
-        1: { cellWidth: "auto", halign: "left" },
-        2: { cellWidth: 26, halign: "right" },
+        0: { cellWidth: "auto", halign: "left" },
+        1: { cellWidth: 28, halign: "right" },
       },
     });
 
