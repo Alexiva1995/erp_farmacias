@@ -5,6 +5,7 @@ import OrderTable from "@/components/OrderTable.vue";
 import OrderTicket from "@/components/OrderTicket.vue";
 import OrderTicketThermal54 from "@/components/OrderTicketThermal54.vue";
 import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
+import FiscalInvoicePreviewDialog from "@/components/dialogs/FiscalInvoicePreviewDialog.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
@@ -35,6 +36,10 @@ const orderByOrdersAll = ref();
 
 const isPrinting = ref(false);
 const processingFiscalIds = ref([]);
+const isFiscalPreviewVisible = ref(false);
+const fiscalPreviewData = ref(null);
+const loadingFiscalPreview = ref(false);
+const isConfirmingFiscal = ref(false);
 
 const ordersAbandoned = ref([]);
 const totalOrdersAbandoned = ref(0);
@@ -760,26 +765,34 @@ const handleCloseViewModal = () => {
   creditForPrint.value = false;
 };
 
-const handleCreateFiscalInvoice = async (orderId) => {
-  if (!orderId || processingFiscalIds.value.includes(orderId)) return;
+const handleOpenFiscalPreview = async (orderId) => {
+  if (!orderId) return;
+  loadingFiscalPreview.value = true;
+  fiscalPreviewData.value = null;
+  isFiscalPreviewVisible.value = true;
 
-  const result = await Swal.fire({
-    title: "¿Emitir Comprobante Fiscal?",
-    text: `Se creará la factura fiscal y se enviará a impresión para la orden #${orderId}.`,
-    icon: "question",
-    showCancelButton: true,
-    confirmButtonColor: "#7A0099",
-    cancelButtonColor: "#6e7881",
-    confirmButtonText: "Sí, emitir e imprimir",
-    cancelButtonText: "Cancelar",
-  });
+  try {
+    const response = await axios.get(`/tpv/orders/${orderId}/fiscal-preview`);
+    fiscalPreviewData.value = response.data?.data ?? null;
+  } catch (error) {
+    console.error("Error al obtener previa fiscal:", error);
+    const msg = error.response?.data?.message || "No se pudo obtener la previa de la factura fiscal.";
+    toast.error(msg);
+    isFiscalPreviewVisible.value = false;
+  } finally {
+    loadingFiscalPreview.value = false;
+  }
+};
 
-  if (!result.isConfirmed) return;
+const handleConfirmFiscalInvoice = async (orderId) => {
+  if (!orderId || isConfirmingFiscal.value) return;
 
+  isConfirmingFiscal.value = true;
   processingFiscalIds.value.push(orderId);
   try {
     const response = await axios.post(`/tpv/orders/${orderId}/fiscal-invoice`);
     toast.success(response.data?.message || "Comprobante fiscal generado e impresión iniciada exitosamente.");
+    isFiscalPreviewVisible.value = false;
 
     if (activeTab.value === 0) {
       await fetchOrderCompleted();
@@ -795,9 +808,12 @@ const handleCreateFiscalInvoice = async (orderId) => {
     const msg = error.response?.data?.message || "Error al crear e imprimir la factura fiscal.";
     toast.error(msg);
   } finally {
+    isConfirmingFiscal.value = false;
     processingFiscalIds.value = processingFiscalIds.value.filter((id) => id !== orderId);
   }
 };
+
+const handleCreateFiscalInvoice = handleOpenFiscalPreview;
 
 const handleCancelOrder = async (orderId) => {
   if (!orderId) return;
@@ -1282,6 +1298,13 @@ const sellerDisplayName = (item) => (item?.username ? capitalizeFirstAndLastName
       :is-processing-fiscal="processingFiscalIds.includes(orderData?.id)"
       @create-fiscal-invoice="handleCreateFiscalInvoice"
       :is-special-taxpayer="isSpecialTaxpayer"
+    />
+    <FiscalInvoicePreviewDialog
+      v-model="isFiscalPreviewVisible"
+      :preview-data="fiscalPreviewData"
+      :loading="loadingFiscalPreview"
+      :is-confirming="isConfirmingFiscal"
+      @confirm="handleConfirmFiscalInvoice"
     />
   </div>
 </template>

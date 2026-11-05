@@ -17,6 +17,8 @@ use App\Http\Requests\Order\GetFiscalReportRequest;
 use App\Http\Requests\Order\GetFiscalHistoryRequest;
 use App\Http\Requests\Order\CreateFiscalInvoiceRequest;
 use App\Http\Resources\Fiscal\FiscalHistoryResource;
+use App\Http\Requests\Order\PreviewFiscalInvoiceRequest;
+use App\Http\Resources\Fiscal\FiscalInvoicePreviewResource;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use Illuminate\Support\Facades\Auth;
@@ -360,6 +362,26 @@ class OrderController extends Controller
             'order' => $order,
             'hasCreditPayment' => $hasCreditPayment,
         ], "Datos de la orden recuperados correctamente", 200);
+    }
+
+    public function previewFiscalInvoice(PreviewFiscalInvoiceRequest $request, int $orderId): JsonResponse
+    {
+        try {
+            $preview = $this->orderActionService->previewFiscalInvoice($orderId);
+
+            return ApiResponse::success(
+                new FiscalInvoicePreviewResource($preview),
+                'Previa de comprobante fiscal generada exitosamente.'
+            );
+        } catch (ModelNotFoundException $e) {
+            return ApiResponse::error('Orden no encontrada.', 404);
+        } catch (\Throwable $e) {
+            Log::error('Error al generar previa de comprobante fiscal para la orden ' . $orderId . ': ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return ApiResponse::error('Error al generar la previa fiscal: ' . $e->getMessage(), 500);
+        }
     }
 
     public function createAndPrintFiscalInvoice(CreateFiscalInvoiceRequest $request, int $orderId): JsonResponse

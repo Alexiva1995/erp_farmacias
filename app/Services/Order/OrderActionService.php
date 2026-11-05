@@ -1031,6 +1031,138 @@ class OrderActionService
     }
 
     /**
+     * Obtiene la vista previa de los datos fiscales en Bolívares que se generarán para una orden.
+     *
+     * @param int|Order $order
+     * @return array<string, mixed>
+     * @throws \Exception
+     */
+    public function previewFiscalInvoice(int|Order $order): array
+    {
+        if (!$order instanceof Order) {
+            $order = Order::with(['details.product', 'details.dish', 'details.court', 'client', 'fiscalHistory'])->findOrFail($order);
+        } else {
+            $order->loadMissing(['details.product', 'details.dish', 'details.court', 'client', 'fiscalHistory']);
+        }
+
+        $applySpe = ($order->spe_surcharge_rate > 0);
+        $spe = $applySpe ? 1 : 0;
+        $totalIva = 0;
+        $exemptAmount = 0;
+        $taxableAmount = 0;
+        $client = $order->client;
+
+        $resourceService = app(ResourceService::class);
+        $exchangeRate = (float) ($resourceService->getExchangeRate('BS') ?: 1);
+        $currencyOfOrder = strtoupper($order->currency ?? 'BS');
+
+        $items = [];
+        foreach ($order->details as $detail) {
+            if ($detail->product_type === 'dish') {
+                $dish = $detail->dish;
+                $priceBs = (float) ($detail->price_bs ?? $detail->price);
+                $quantity = (float) $detail->quantity;
+                $itemSubtotal = $priceBs * $quantity;
+                $isDishTaxable = $dish && (bool) $dish->iva;
+
+                if ($isDishTaxable) {
+                    $ratePct = ((float) ($dish->tax_rate ?? 16.0)) / 100;
+                    $itemIva = $itemSubtotal * $ratePct;
+                    $totalIva += $itemIva;
+                    $taxableAmount += $itemSubtotal;
+                } else {
+                    $exemptAmount += $itemSubtotal;
+                    $itemIva = 0;
+                }
+
+                $items[] = [
+                    'name' => $dish?->name ?? 'Plato',
+                    'quantity' => $quantity,
+                    'price_bs' => round($priceBs, 4),
+                    'is_taxable' => $isDishTaxable,
+                    'iva_amount_bs' => round($itemIva, 4),
+                    'total_amount_bs' => round($itemSubtotal + $itemIva, 4),
+                ];
+                continue;
+            }
+
+            if ($detail->product_type === 'court') {
+                $court = $detail->court;
+                $priceBs = (float) ($detail->price_bs ?? $detail->price);
+                $quantity = (float) $detail->quantity;
+                $itemSubtotal = $priceBs * $quantity;
+                $exemptAmount += $itemSubtotal;
+
+                $items[] = [
+                    'name' => 'Alquiler: ' . ($court?->name ?? 'Cancha'),
+                    'quantity' => $quantity,
+                    'price_bs' => round($priceBs, 4),
+                    'is_taxable' => false,
+                    'iva_amount_bs' => 0,
+                    'total_amount_bs' => round($itemSubtotal, 4),
+                ];
+                continue;
+            }
+
+            $product = $detail->product;
+            $quantity = (float) $detail->quantity;
+            $priceBs = (float) ($detail->price_bs ?? ($product ? ($product->price_bs * (1 - (($detail->discount_percentage ?? 0) / 100))) : $detail->price));
+            $itemSubtotal = $priceBs * $quantity;
+            $isTaxable = $product && ((int) $product->iva === 1);
+
+            if ($isTaxable) {
+                $itemIva = $itemSubtotal * 0.16;
+                $totalIva += $itemIva;
+                $taxableAmount += $itemSubtotal;
+            } else {
+                $exemptAmount += $itemSubtotal;
+                $itemIva = 0;
+            }
+
+            $isZoomItem = !empty($detail->notes) && ($product?->barcode === 'ZOOM-SERVICE' || $product?->name === 'SERVICIO ZOOM');
+            $printedProductName = $isZoomItem ? $detail->notes : ($product?->name ?? 'Producto');
+
+            $items[] = [
+                'name' => $printedProductName,
+                'quantity' => $quantity,
+                'price_bs' => round($priceBs, 4),
+                'is_taxable' => $isTaxable,
+                'iva_amount_bs' => round($itemIva, 4),
+                'total_amount_bs' => round($itemSubtotal + $itemIva, 4),
+            ];
+        }
+
+        $taxableBase = $exemptAmount + $taxableAmount + $totalIva;
+        $speRate = $applySpe ? 3.00 : 0.00;
+        $speAmountBs = $applySpe ? ($taxableBase * 0.03) : 0.00;
+        $totalAmountBs = $taxableBase + $speAmountBs;
+
+        $clientName = $client ? trim($client->name . ' ' . $client->last_name) : 'CLIENTE GENERICO';
+        $clientIdentification = $client ? ($client->identification_type . $client->identification) : 'V00000000';
+        $clientAddress = $client?->address ?? 'N/A';
+
+        return [
+            'order_id' => $order->id,
+            'client_name' => $clientName,
+            'client_identification' => $clientIdentification,
+            'client_address' => $clientAddress,
+            'currency' => $currencyOfOrder,
+            'exchange_rate' => $exchangeRate,
+            'items' => $items,
+            'exempt_amount_bs' => round($exemptAmount, 2),
+            'taxable_amount_bs' => round($taxableAmount, 2),
+            'iva_amount_bs' => round($totalIva, 2),
+            'subtotal_bs' => round($taxableBase, 2),
+            'spe' => (bool) $spe,
+            'spe_surcharge_rate' => $speRate,
+            'spe_surcharge_amount_bs' => round($speAmountBs, 2),
+            'total_amount_bs' => round($totalAmountBs, 2),
+            'has_fiscal_record' => (bool) $order->fiscalHistory,
+            'invoice_number' => $order->fiscalHistory?->invoice_number,
+        ];
+    }
+
+    /**
      * Valida que la suma de los pagos cubra el total de la orden (en la moneda de la orden).
      * Lanza \App\Exceptions\PaymentDiscrepancyException si no coinciden o la suma es menor.
      */

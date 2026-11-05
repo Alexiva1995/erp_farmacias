@@ -517,6 +517,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::patch('/orders/{order}/abandon', [OrderController::class, 'abandonOrder']);
         Route::post('/orders/{orderId}/complete', [OrderController::class, 'completeOrder']);
         Route::post('/orders/{orderId}/fiscal-invoice', [OrderController::class, 'createAndPrintFiscalInvoice']);
+        Route::get('/orders/{orderId}/fiscal-preview', [OrderController::class, 'previewFiscalInvoice']);
         Route::patch('/order/{order}/reserve', [OrderController::class, 'reserveOrder']);
         Route::patch('/order/{order}/reserveAdd', [OrderController::class, 'reserveAddOrder']);
         Route::get("/order/searchReserved", [OrderController::class, "getSearchReserved"]);
