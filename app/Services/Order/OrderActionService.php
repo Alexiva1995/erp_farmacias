@@ -2194,6 +2194,27 @@ class OrderActionService
 
     public function cancelledOrder(Order $order): Order
     {
+        $wasCompleted = strtolower((string) $order->status) === strtolower(Order::COMPLETED);
+        $connection = $order->getConnectionName() ?: config('database.default');
+
+        // Si la orden estaba en Pending o Reserved, aún no descontó stock ni sumó a ningún cierre de caja
+        if (!$wasCompleted) {
+            DB::connection($connection)->beginTransaction();
+            try {
+                $order->status = Order::CANCELLED;
+                $order->save();
+                DB::connection($connection)->commit();
+                return $order;
+            } catch (\Throwable $e) {
+                DB::connection($connection)->rollBack();
+                Log::error('Error al cancelar orden no completada: ' . $e->getMessage(), [
+                    'order_id' => $order->id,
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                throw $e;
+            }
+        }
+
         $cashClosing = $order->cashClosing ?? ($order->cash_closing_id ? \App\Models\CashClosing::find($order->cash_closing_id) : null);
         if (!$cashClosing && $order->seller_id) {
             $cashClosing = \App\Models\CashClosing::where('seller_id', $order->seller_id)
@@ -2201,12 +2222,11 @@ class OrderActionService
                 ->first();
         }
 
-        // Regla estricta: Solo se pueden cancelar órdenes pertenecientes a un cierre de caja abierto
+        // Regla estricta: Solo se pueden cancelar órdenes completadas pertenecientes a un cierre de caja abierto
         if (!$cashClosing || $cashClosing->status === \App\Models\CashClosing::CLOSED || !empty($cashClosing->daily_closure_id)) {
             throw new \Exception('No se puede cancelar una orden perteneciente a un cierre de caja ya cerrado o consolidado. Solo se permiten cancelaciones en cajas actualmente abiertas.');
         }
 
-        $connection = $order->getConnectionName() ?: config('database.default');
         DB::connection($connection)->beginTransaction();
         try {
             $order->status = Order::CANCELLED;

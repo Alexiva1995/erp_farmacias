@@ -832,8 +832,8 @@ const handleCancelOrder = async (orderId) => {
         await axios.patch(`/tpv/orders/${orderId}/cancelled`);
         toast.success(`Orden #${orderId} cancelada exitosamente.`);
         if (viewModal.value) handleCloseViewModal();
-        if (activeTab.value === 0) fetchOrdersCompleted();
-        else if (activeTab.value === 1) fetchOrdersAll();
+        if (activeTab.value === 0) fetchOrderCompleted();
+        else if (activeTab.value === 1) fetchOrderAll();
         else if (activeTab.value === 2) fetchOrderCancelled();
         else if (activeTab.value === 3) fetchOrderAbandoned();
         fetchAllTabCounts();
