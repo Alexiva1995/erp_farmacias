@@ -1,5 +1,6 @@
 <script setup lang="js">
-import { computed, reactive, watch } from "vue";
+import DialogCloseBtn from "@core/components/DialogCloseBtn.vue";
+import { computed, reactive, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -132,101 +133,121 @@ function submit() {
 <template>
   <VDialog
     :model-value="modelValue"
-    max-width="720"
+    max-width="700"
     persistent
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
-    <VCard class="pa-2">
-      <VCardItem class="pb-2">
-        <template #prepend>
-          <VAvatar color="primary" variant="tonal" class="me-2">
-            <VIcon icon="tabler-calendar-repeat" size="24" />
-          </VAvatar>
-        </template>
-        <VCardTitle class="text-h6 font-weight-bold">
-          {{ title }}
-        </VCardTitle>
-        <VCardSubtitle>
-          Configure el compromiso recurrente y su calendario de recordatorios
-        </VCardSubtitle>
+    <VCard class="rounded-lg">
+      <!-- Encabezado con Avatar e Icono de Cierre -->
+      <VCardItem class="pb-3 border-b">
+        <div class="d-flex align-center justify-space-between w-100">
+          <div class="d-flex align-center gap-2">
+            <VAvatar color="primary" variant="tonal" size="38">
+              <VIcon icon="tabler-calendar-repeat" size="20" />
+            </VAvatar>
+            <div>
+              <VCardTitle class="text-h6 font-weight-bold">
+                {{ title }}
+              </VCardTitle>
+              <VCardSubtitle class="text-caption text-medium-emphasis">
+                Compromiso recurrente y programación de recordatorios
+              </VCardSubtitle>
+            </div>
+          </div>
+          <DialogCloseBtn @click="close" />
+        </div>
       </VCardItem>
 
-      <VDivider />
-
-      <VCardText class="pt-4">
-        <VRow dense>
-          <!-- Nombre -->
-          <VCol cols="12" md="8">
+      <VCardText class="pa-5">
+        <VRow dense class="gy-3">
+          <!-- Nombre del compromiso -->
+          <VCol cols="12" md="7">
             <VTextField
               v-model="form.name"
-              label="Nombre del gasto fijo *"
-              placeholder="Ej: Alquiler Local Central, Servicio de Luz, Internet Fibra..."
+              label="Nombre *"
+              placeholder="Ej: Alquiler Local Central, Internet Fibra..."
               density="compact"
               variant="outlined"
+              prepend-inner-icon="tabler-file-description"
+              hide-details="auto"
             />
           </VCol>
 
-          <!-- Categoría -->
-          <VCol cols="12" md="4">
+          <!-- Categoría de gasto -->
+          <VCol cols="12" md="5">
             <VSelect
               v-model="form.category_id"
               :items="categories"
               item-title="name"
               item-value="id"
               label="Categoría *"
+              placeholder="Seleccionar"
               density="compact"
               variant="outlined"
+              prepend-inner-icon="tabler-category"
+              hide-details="auto"
             />
           </VCol>
 
-          <!-- Monto y Moneda -->
-          <VCol cols="12" sm="4">
+          <!-- Monto, Moneda y Método -->
+          <VCol cols="12" sm="5">
             <VTextField
               v-model="form.amount"
               type="number"
               min="0"
               step="0.01"
-              label="Monto base / estimado *"
+              label="Monto base *"
               placeholder="0.00"
               density="compact"
               variant="outlined"
+              prepend-inner-icon="tabler-currency-dollar"
+              hide-details="auto"
             />
           </VCol>
 
-          <VCol cols="12" sm="3">
+          <VCol cols="6" sm="3">
             <VSelect
               v-model="form.currency"
               :items="currencies"
               label="Moneda *"
               density="compact"
               variant="outlined"
+              hide-details="auto"
             />
           </VCol>
 
-          <VCol cols="12" sm="5">
+          <VCol cols="6" sm="4">
             <VSelect
               v-model="form.default_count"
               :items="paymentMethods"
-              label="Método de pago sugerido"
+              label="Método sugerido"
               density="compact"
               variant="outlined"
+              prepend-inner-icon="tabler-wallet"
+              hide-details="auto"
             />
           </VCol>
 
-          <!-- Monto variable -->
+          <!-- Monto variable (diseño en tarjeta sutil) -->
           <VCol cols="12">
-            <VSwitch
-              v-model="form.is_amount_variable"
-              color="primary"
-              density="compact"
-              label="Monto estimado / variable (ej. luz, agua, gas: se confirma el monto exacto al pagar)"
-            />
+            <div class="d-flex align-center justify-space-between pa-3 rounded bg-var-theme-background border">
+              <div class="d-flex flex-column pe-3">
+                <span class="text-body-2 font-weight-medium text-high-emphasis">Monto variable</span>
+                <span class="text-caption text-medium-emphasis">
+                  El importe exacto se confirma al registrar cada pago (ej. servicios de luz, agua o gas).
+                </span>
+              </div>
+              <VSwitch
+                v-model="form.is_amount_variable"
+                color="primary"
+                density="compact"
+                hide-details
+              />
+            </div>
           </VCol>
 
-          <VDivider class="my-2" />
-
-          <!-- Frecuencia -->
-          <VCol cols="12" sm="6">
+          <!-- Frecuencia y Aviso de anticipación -->
+          <VCol cols="12" sm="7">
             <VSelect
               v-model="selectedPreset"
               :items="presetFrequencies.map(p => ({ title: p.title, value: p.unit === 'custom' ? 'custom' : `${p.unit}_${p.count}` }))"
@@ -235,24 +256,27 @@ function submit() {
               label="Frecuencia de pago *"
               density="compact"
               variant="outlined"
+              prepend-inner-icon="tabler-repeat"
+              hide-details="auto"
             />
           </VCol>
 
-          <!-- Días de anticipación -->
-          <VCol cols="12" sm="6">
+          <VCol cols="12" sm="5">
             <VTextField
               v-model="form.reminder_days_before"
               type="number"
               min="0"
               max="90"
-              label="Avisar con anticipación *"
+              label="Anticipación"
               suffix="días antes"
               density="compact"
               variant="outlined"
+              prepend-inner-icon="tabler-bell"
+              hide-details="auto"
             />
           </VCol>
 
-          <!-- Personalizado (si aplica) -->
+          <!-- Frecuencia personalizada (si aplica) -->
           <template v-if="isCustomFrequency">
             <VCol cols="12" sm="6">
               <VTextField
@@ -263,6 +287,8 @@ function submit() {
                 label="Repetir cada *"
                 density="compact"
                 variant="outlined"
+                prepend-inner-icon="tabler-clock"
+                hide-details="auto"
               />
             </VCol>
             <VCol cols="12" sm="6">
@@ -279,18 +305,21 @@ function submit() {
                 label="Unidad de tiempo *"
                 density="compact"
                 variant="outlined"
+                hide-details="auto"
               />
             </VCol>
           </template>
 
-          <!-- Primer pago y Fin -->
+          <!-- Fechas: Primer pago y Término -->
           <VCol cols="12" sm="6">
             <VTextField
               v-model="form.start_date"
               type="date"
-              label="Fecha del primer pago *"
+              label="Primer pago *"
               density="compact"
               variant="outlined"
+              prepend-inner-icon="tabler-calendar"
+              hide-details="auto"
             />
           </VCol>
 
@@ -298,36 +327,45 @@ function submit() {
             <VTextField
               v-model="form.end_date"
               type="date"
-              label="Fecha de finalización (opcional)"
-              placeholder="Indefinido si está vacío"
+              label="Fecha límite (opcional)"
+              placeholder="Indefinido"
               clearable
               density="compact"
               variant="outlined"
+              prepend-inner-icon="tabler-calendar-off"
+              hide-details="auto"
             />
           </VCol>
 
-          <!-- Notas -->
+          <!-- Notas u observaciones -->
           <VCol cols="12">
             <VTextarea
               v-model="form.notes"
-              label="Notas u observaciones"
-              placeholder="Número de contrato, titular del servicio, referencia de pago..."
+              label="Notas / Referencias"
+              placeholder="Titular del servicio, número de contrato o cuenta de destino..."
               rows="2"
               density="compact"
               variant="outlined"
+              prepend-inner-icon="tabler-notes"
+              hide-details="auto"
             />
           </VCol>
         </VRow>
       </VCardText>
 
-      <VCardActions class="pt-0 px-4 pb-3">
-        <VSpacer />
-        <VBtn variant="text" color="secondary" @click="close">
+      <!-- Botones de Acción consistentes con el diseño del sistema -->
+      <VCardActions class="pa-4 border-t justify-end gap-2">
+        <VBtn
+          variant="tonal"
+          color="secondary"
+          @click="close"
+        >
           Cancelar
         </VBtn>
         <VBtn
           color="primary"
-          variant="elevated"
+          variant="flat"
+          prepend-icon="tabler-device-floppy"
           :loading="loading"
           :disabled="loading || !form.name.trim() || !form.category_id || !form.amount"
           @click="submit"
@@ -338,3 +376,13 @@ function submit() {
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.bg-var-theme-background {
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+}
+
+.gap-2 {
+  gap: 8px !important;
+}
+</style>

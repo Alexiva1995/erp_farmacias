@@ -1,4 +1,5 @@
 <script setup lang="js">
+import DialogCloseBtn from "@core/components/DialogCloseBtn.vue";
 import { computed, reactive, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 
@@ -112,24 +113,27 @@ function submit() {
     persistent
     @update:model-value="(val) => emit('update:modelValue', val)"
   >
-    <VCard class="pa-2">
-      <VCardItem class="pb-2">
-        <template #prepend>
-          <VAvatar color="success" variant="tonal" class="me-2">
-            <VIcon icon="tabler-cash-register" size="24" />
-          </VAvatar>
-        </template>
-        <VCardTitle class="text-h6 font-weight-bold">
-          Registrar Pago de Gasto Fijo
-        </VCardTitle>
-        <VCardSubtitle v-if="occurrence">
-          Compromiso: <strong>{{ occurrence.fixed_expense?.name }}</strong>
-        </VCardSubtitle>
+    <VCard class="rounded-lg">
+      <VCardItem class="pb-3 border-b">
+        <div class="d-flex align-center justify-space-between w-100">
+          <div class="d-flex align-center gap-2">
+            <VAvatar color="success" variant="tonal" size="38">
+              <VIcon icon="tabler-cash-register" size="20" />
+            </VAvatar>
+            <div>
+              <VCardTitle class="text-h6 font-weight-bold">
+                Registrar Pago de Gasto Fijo
+              </VCardTitle>
+              <VCardSubtitle v-if="occurrence" class="text-caption text-medium-emphasis">
+                Compromiso: <strong class="text-high-emphasis">{{ occurrence.fixed_expense?.name }}</strong>
+              </VCardSubtitle>
+            </div>
+          </div>
+          <DialogCloseBtn @click="close" />
+        </div>
       </VCardItem>
 
-      <VDivider />
-
-      <VCardText class="pt-4">
+      <VCardText class="pa-5">
         <!-- Alerta de vencimiento -->
         <VAlert
           v-if="occurrence?.is_overdue"
@@ -221,21 +225,31 @@ function submit() {
         </VRow>
       </VCardText>
 
-      <VCardActions class="pt-0 px-4 pb-3">
-        <VSpacer />
-        <VBtn variant="text" color="secondary" @click="close">
+      <VCardActions class="pa-4 border-t justify-end gap-2">
+        <VBtn
+          variant="tonal"
+          color="secondary"
+          @click="close"
+        >
           Cancelar
         </VBtn>
         <VBtn
           color="success"
-          variant="elevated"
+          variant="flat"
+          prepend-icon="tabler-check"
           :loading="loading"
           :disabled="loading || !form.total_amount || Number(form.total_amount) <= 0"
           @click="submit"
         >
-          Confirmar Pago y Registrar Gasto
+          Confirmar Pago
         </VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
+
+<style scoped>
+.gap-2 {
+  gap: 8px !important;
+}
+</style>
