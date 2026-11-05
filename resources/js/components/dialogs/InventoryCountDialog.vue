@@ -66,11 +66,17 @@ const productUnit = computed(() => props.product?.unit_of_measure || 'und');
 // Modo dual solo cuando trazabilidad es por consumo Y el producto tiene presentación configurada
 const isDualCountMode = computed(() => isConsumptionMode.value && productPresentation.value > 0);
 
-// Total calculado en modo restaurante
+// Total calculado en modo restaurante (en unidad de consumo: g o ml)
 const dualTotalQuantity = computed(() => {
   const pkgs = Number(packagesCount.value) || 0;
   const opened = Number(openedQuantity.value) || 0;
   return pkgs * productPresentation.value + opened;
+});
+
+// Total calculado en unidades de stock del sistema (paquetes / envases)
+const dualSystemQuantity = computed(() => {
+  if (productPresentation.value <= 0) return dualTotalQuantity.value;
+  return parseFloat(((Number(packagesCount.value) || 0) + ((Number(openedQuantity.value) || 0) / productPresentation.value)).toFixed(4));
 });
 
 const canSave = computed(() => {
@@ -199,13 +205,13 @@ const handleSave = async () => {
     return;
   }
 
-  // En modo restaurante el total se calcula del modo dual si el producto tiene presentación
+  // En modo restaurante el total se calcula del modo dual convirtiéndolo a unidades del sistema
   const quantity = isDualCountMode.value
-    ? dualTotalQuantity.value
+    ? dualSystemQuantity.value
     : Number(countedQuantity.value);
 
   const systemStock = Number(props.product?.stock ?? props.product?.system_quantity ?? props.product?.stock_calculado ?? 0);
-  const difference = quantity - systemStock;
+  const difference = parseFloat((quantity - systemStock).toFixed(4));
   const isZeroWhenHadStock = systemStock > 0 && quantity === 0;
 
   let result;
@@ -260,7 +266,7 @@ const handleSave = async () => {
               <strong style="color: ${diffColor};">${diffLabel}</strong>
             </div>
           </div>
-          ${isDualCountMode.value ? `<p class="text-caption text-muted mb-0">${Number(packagesCount.value) || 0} paquete(s) + ${Number(openedQuantity.value) || 0} ${productUnit.value} abierto(s)</p>` : ''}
+          ${isDualCountMode.value ? `<p class="text-caption text-muted mb-0">${Number(packagesCount.value) || 0} paquete(s) + ${Number(openedQuantity.value) || 0} ${productUnit.value} abierto(s) (${dualTotalQuantity.value} ${productUnit.value} en total = ${quantity} und)</p>` : ''}
         </div>
       `,
       icon: difference === 0 ? "question" : "warning",
@@ -512,7 +518,7 @@ const handleSave = async () => {
                 >
                   <span class="text-xs font-weight-black text-primary uppercase">Total calculado</span>
                   <VChip size="small" color="primary" variant="flat" class="font-weight-black">
-                    {{ dualTotalQuantity }} {{ productUnit }}
+                    {{ dualTotalQuantity }} {{ productUnit }} ({{ dualSystemQuantity }} und)
                   </VChip>
                 </div>
               </div>
