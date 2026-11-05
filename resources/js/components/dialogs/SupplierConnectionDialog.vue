@@ -45,6 +45,12 @@ const isContinental = computed(() => {
   return id === 1032 || name.includes("CONTINENTAL") || name.includes("CONTINETAL");
 });
 
+const isCristmedicals = computed(() => {
+  const name = props.supplier?.name?.toUpperCase() || "";
+  const id = Number(props.supplier?.id);
+  return [3, 21, 1002].includes(id) || name.includes("CRISTMEDICAL") || name.includes("CRISTALMEDICAL");
+});
+
 const isCobecaApiOnly = computed(() => isMafarta.value);
 
 const dromegaClientCode = ref("");
@@ -71,9 +77,11 @@ const getDefaultFormForType = (type) => ({
             ? "ftp.dronena.com" 
             : (isContinental.value && type === "ftp"
                 ? "186.167.68.54"
-                : (isMafarta.value && (type === "api" || type === "http") 
-                    ? "https://comparadores.drogueriascobeca.com/api/Login" 
-                    : "")))),
+                : (isCristmedicals.value && (type === "api" || type === "http")
+                    ? "https://apienterprise.cristmedicals.com"
+                    : (isMafarta.value && (type === "api" || type === "http") 
+                        ? "https://comparadores.drogueriascobeca.com/api/Login" 
+                        : ""))))),
   port: type === "sftp" ? 22 : (isContinental.value && type === "ftp" ? 58021 : (type === "ftp" ? 21 : "")),
   username: "",
   password: "",
@@ -83,14 +91,18 @@ const getDefaultFormForType = (type) => ({
         ? "Clientes/" 
         : (isContinental.value && type === "ftp"
             ? "inventario.txt"
-            : "")),
+            : (isCristmedicals.value && (type === "api" || type === "http")
+                ? "https://apienterprise.cristmedicals.com/api/v1/articulos"
+                : ""))),
   invoice_path: isDromega.value && type === "ftp" 
     ? "Facturas/7586" 
     : (isDronena.value && type === "ftp" 
         ? "Clientes/" 
         : (isContinental.value && type === "ftp"
             ? "/Facturas"
-            : "")),
+            : (isCristmedicals.value && (type === "api" || type === "http")
+                ? "https://apienterprise.cristmedicals.com/api/v1/facturas"
+                : ""))),
   pasv: true,
   has_header: false,
   ftp_orders_enabled: false,
@@ -130,7 +142,7 @@ const typeOptions = computed(() => {
     ];
   }
 
-  if (isMafarta.value) {
+  if (isMafarta.value || isCristmedicals.value) {
     return [
       { title: "HTTP / API", value: "api", icon: "tabler-api" },
     ];
@@ -208,6 +220,12 @@ const loadFormForType = (type) => {
       if (!form.value.path) form.value.path = "inventario.txt";
       if (!form.value.invoice_path) form.value.invoice_path = "/Facturas";
     }
+
+    if (isCristmedicals.value && (type === "api" || type === "http")) {
+      if (!form.value.host) form.value.host = "https://apienterprise.cristmedicals.com";
+      if (!form.value.path) form.value.path = "https://apienterprise.cristmedicals.com/api/v1/articulos";
+      if (!form.value.invoice_path) form.value.invoice_path = "https://apienterprise.cristmedicals.com/api/v1/facturas";
+    }
   } else {
     form.value = getDefaultFormForType(type);
     hasExistingPassword.value = false;
@@ -228,6 +246,12 @@ const loadFormForType = (type) => {
       form.value.port = 58021;
       form.value.path = "inventario.txt";
       form.value.invoice_path = "/Facturas";
+    }
+
+    if (isCristmedicals.value && (type === "api" || type === "http")) {
+      form.value.host = "https://apienterprise.cristmedicals.com";
+      form.value.path = "https://apienterprise.cristmedicals.com/api/v1/articulos";
+      form.value.invoice_path = "https://apienterprise.cristmedicals.com/api/v1/facturas";
     }
   }
 };
@@ -254,7 +278,7 @@ const fetchConfig = async () => {
     }
 
     const availableTypes = Object.keys(connectionsMap.value);
-    const initialType = isMafarta.value
+    const initialType = (isMafarta.value || isCristmedicals.value)
       ? (availableTypes.find((t) => t === "api" || t === "http") || "api")
       : (
           availableTypes.find((t) => t === "dronena_bot") ||
@@ -313,6 +337,13 @@ const saveConfig = async () => {
       payload.port = null;
       payload.path = null;
       payload.invoice_path = null;
+    }
+
+    if (isCristmedicals.value && (payload.type === "api" || payload.type === "http")) {
+      payload.host = "https://apienterprise.cristmedicals.com";
+      payload.port = null;
+      payload.path = "https://apienterprise.cristmedicals.com/api/v1/articulos";
+      payload.invoice_path = "https://apienterprise.cristmedicals.com/api/v1/facturas";
     }
 
     if (payload.type === "file") {
@@ -665,6 +696,31 @@ watch(
                   </VCol>
                 </template>
 
+                <!-- Configuración simplificada para Cristmedicals (API) -->
+                <template v-else-if="isCristmedicals && (form.type === 'api' || form.type === 'http')">
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.username"
+                      label="Código de Cliente (co_cli) *"
+                      placeholder="ej: FAR00818"
+                      prepend-inner-icon="tabler-user"
+                      :error-messages="errors.username"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.password"
+                      :type="showPassword ? 'text' : 'password'"
+                      :label="hasExistingPassword ? 'Token API (dejar vacío para mantener)' : 'Token API *'"
+                      :placeholder="hasExistingPassword ? '••••••••' : 'Ingresa el Token de acceso'"
+                      prepend-inner-icon="tabler-key"
+                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                      :error-messages="errors.password"
+                      @click:append-inner="showPassword = !showPassword"
+                    />
+                  </VCol>
+                </template>
+
                 <!-- Configuración simplificada para Mafarta / Cobeca (API) -->
                 <template v-else-if="isMafarta && (form.type === 'api' || form.type === 'http')">
                   <VCol cols="12" md="6">
@@ -773,7 +829,7 @@ watch(
           </template>
 
           <!-- Enlace de Días de Crédito vía Correo (Gmail) para conexiones FTP / SFTP / API / Bot -->
-          <div v-if="!isEmail && !isDromega && !isDronena && !isMafarta" class="mt-2">
+          <div v-if="!isEmail && !isDromega && !isDronena && !isMafarta && !isCristmedicals" class="mt-2">
             <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
               <div class="d-flex align-center gap-2 mb-1">
                 <VIcon icon="tabler-calendar-Dollar" color="primary" size="18" />
@@ -818,7 +874,7 @@ watch(
           </div>
 
           <!-- Transmisión de Pedidos FTP / EDI Secundaria (si aplica) -->
-          <div v-if="(isHttp || isMafarta || form.type === 'dronena_bot') && !isMafarta" class="mt-2">
+          <div v-if="(isHttp || isMafarta || form.type === 'dronena_bot') && !isMafarta && !isCristmedicals" class="mt-2">
             <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card">
               <div class="d-flex align-center justify-space-between mb-2">
                 <div class="d-flex align-center gap-2">
