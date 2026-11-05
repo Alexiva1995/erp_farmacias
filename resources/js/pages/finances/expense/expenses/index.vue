@@ -101,6 +101,22 @@ const kpis = [
     <LoaderComponent :loadingApp="statuModule.loadingApp" />
 
     <div class="d-flex flex-column gap-1 mt-1">
+      <!-- === ACCESO A GASTOS FIJOS === -->
+      <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-3">
+        <div>
+          <h1 class="text-h4 font-weight-bold mb-0">Control de Gastos</h1>
+          <p class="text-body-2 text-medium-emphasis mb-0">Egresos operativos diarios de la farmacia</p>
+        </div>
+        <VBtn
+          color="primary"
+          variant="tonal"
+          prepend-icon="tabler-calendar-repeat"
+          to="/finances/expense/recurring-expense"
+        >
+          Ir a Gastos Fijos
+        </VBtn>
+      </div>
+
       <!-- === FILTROS === -->
       <div>
         <FiltrosGastos

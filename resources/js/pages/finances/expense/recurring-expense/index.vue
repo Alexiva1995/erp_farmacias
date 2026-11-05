@@ -1,398 +1,589 @@
 <script setup lang="js">
-// import Swal from 'sweetalert2';
-// import { useRouter } from "vue-router";
+import { onMounted, ref, watch } from "vue";
+import { useFixedExpenses } from "@/composables/useFixedExpenses";
+import FixedExpenseDialog from "@/components/dialogs/FixedExpenseDialog.vue";
+import PayFixedExpenseDialog from "@/components/dialogs/PayFixedExpenseDialog.vue";
 
-// const route= useRouter()
+const {
+  // Cuotas
+  occurrencesLoading,
+  occurrences,
+  occurrencesTotal,
+  occurrencesPage,
+  occurrencesPerPage,
+  occurrencesScope,
+  occurrencesSearch,
+  fetchOccurrences,
 
-/*const modal= reactive({
-  statu:false,
-  titulo:"Nuevo",
-})
+  // Resumen
+  summaryLoading,
+  summary,
+  fetchSummary,
 
-const statuModule= reactive({
-  items:[],
-  total:0,
-  categorias:[],
-  loadingApp:false
-})
+  // Plantillas
+  templatesLoading,
+  templates,
+  templatesTotal,
+  templatesPage,
+  templatesPerPage,
+  templatesSearch,
+  fetchTemplates,
+  saveTemplate,
+  toggleActive,
+  deleteTemplate,
 
-const formulario= reactive({
-  id:null,
-  name:"",
-  category_id:"",
-  amount:"",
-  amount_usd:"",
-  amount_bs:"",
-  currency:"USD",
-  has_invoice:false,
-  is_deductible:false,
-  iva:false,
-  // expense_date:"",
-  user_id:"",
-  count:"",
-  // file_factura:null,
-  recurrence:"Mensual",
-})
+  // Categorías
+  categories,
+  fetchCategories,
 
-const formularioError= reactive({
-  id:"",
-  name:"",
-  category_id:"",
-  amount:"",
-  amount_usd:"",
-  amount_bs:"",
-  currency:"",
-  has_invoice:"",
-  is_deductible:"",
-  iva:"",
-  // expense_date:null,
-  count:"",
-  // file_factura:null,
-  recurrence:"",
-})
+  // Acciones
+  generateOccurrencesNow,
+  payOccurrence,
+  confirmSkipOccurrence,
 
-const buscardor_filtro= ref("");// nombre, id
-const category_id_filtro= ref("");
-const currency= ref("");
-const fechaDesde_filtro= ref("");
-const fechaHasta_filtro= ref("");
-const status= ["Approved","Cancelled"];
-const type_of_expense = ["Recurrente"];
+  // Modales
+  isTemplateDialogOpen,
+  templateDialogTitle,
+  selectedTemplate,
+  openNewTemplateDialog,
+  openEditTemplateDialog,
 
-const loading = ref(false)
+  isPayDialogOpen,
+  selectedOccurrence,
+  openPayDialog,
 
-const page = ref(1)
-const itemsPerPage = ref(10)
-const sortBy = ref()
-const orderBy = ref()
-const isDeductible = ref(false);
-const hasInvoice = ref(false);
+  isSkipDialogOpen,
+  skipNote,
+  occurrenceToSkip,
+  openSkipDialog,
+} = useFixedExpenses();
 
-function insertarDatosAlFormulario(datos){
-  formulario.id=datos.id
-  formulario.id=datos.name
-  formulario.category_id=datos.category_id
-  formulario.amount=datos.amount
-  formulario.amount_usd=datos.amount_usd
-  formulario.amount_bs=datos.amount_bs
-  formulario.currency=datos.currency
-  formulario.has_invoice=datos.has_invoice
-  formulario.is_deductible=datos.is_deductible
-  formulario.iva=datos.iva
-  // formulario.expense_date=datos.expense_date
-  formulario.count=datos.count
-  formulario.recurrence=datos.recurrence
+const currentTab = ref("pending"); // 'pending' | 'history' | 'templates'
+const isActionLoading = ref(false);
 
-}
+const occurrenceHeaders = [
+  { title: "Vencimiento", key: "due_date", sortable: false },
+  { title: "Gasto Fijo", key: "fixed_expense.name", sortable: false },
+  { title: "Categoría", key: "fixed_expense.category.name", sortable: false },
+  { title: "Monto", key: "amount", sortable: false },
+  { title: "Moneda", key: "currency", sortable: false },
+  { title: "Estado", key: "status", sortable: false },
+  { title: "Acciones", key: "actions", sortable: false, align: "end" },
+];
 
-function limpiarDatosFormulario(){
-  formulario.id=null
-  formulario.name=""
-  formulario.category_id=""
-  formulario.amount=""
-  formulario.amount_usd=""
-  formulario.amount_bs=""
-  formulario.currency="BS"
-  formulario.has_invoice=false
-  formulario.is_deductible=false
-  formulario.iva=false
-  // formulario.expense_date=""
-  formulario.count=""
-  // formulario.file_factura=null
-  formulario.recurrence="Mensual"
-
-}
-
-function limpiarErroresFormulario(){
-  formularioError.id=""
-  formularioError.name=""
-  formularioError.category_id=""
-  formularioError.amount=""
-  formularioError.amount_usd=""
-  formularioError.amount_bs=""
-  formularioError.currency=""
-  formularioError.has_invoice=false
-  formularioError.is_deductible=false
-  formularioError.iva=false
-  // formularioError.expense_date=""
-  formularioError.count=""
-  formularioError.recurrence=""
-  // formularioError.file_factura=""
-}
-
-function cargarErrores(errores){
-  formularioError.id=(errores.id)?errores.id.join(", "):""
-  formularioError.name=(errores.name)?errores.name.join(", "):""
-  formularioError.category_id=(errores.category_id)?errores.category_id.join(", "):""
-  formularioError.amount=(errores.amount)?errores.amount.join(", "):""
-  formularioError.amount_usd=(errores.amount_usd)?errores.amount_usd.join(", "):""
-  formularioError.amount_bs=(errores.amount_bs)?errores.amount_bs.join(", "):""
-  formularioError.currency=(errores.currency)?errores.currency.join(", "):""
-  formularioError.has_invoice=(errores.has_invoice)?errores.has_invoice.join(", "):""
-  formularioError.is_deductible=(errores.is_deductible)?errores.is_deductible.join(", "):""
-  formularioError.iva=(errores.iva)?errores.iva.join(", "):""
-  // formularioError.expense_date=(errores.expense_date)?errores.expense_date.join(", "):""
-  formularioError.count=(errores.count)?errores.count.join(", "):""
-  formularioError.recurrence=(errores.recurrence)?errores.recurrence.join(", "):""
-  // formularioError.file_factura=(errores.file_factura)?errores.file_factura.join(", "):""
-}
-
-function mostarModal(){
-  modal.statu=true
-  modal.titulo="Añadir Nuevo Gasto Recurrente"
-}
-
-function cerrarModal(payload){
-  modal.statu=payload
-  limpiarDatosFormulario()
-  limpiarErroresFormulario()
-}
-
-watch(
-    [
-      buscardor_filtro,
-      category_id_filtro,
-      currency,
-      fechaDesde_filtro,
-      fechaHasta_filtro,
-      page,
-      itemsPerPage,
-      sortBy,
-      orderBy,
-      isDeductible,
-      hasInvoice
-  ],
-  async () =>{
-    actualizarTabla()
-  }
-)
-
-async function enviar(payload){
-  try {
-    statuModule.loadingApp=true
-    let respuesApi=await axios.post("/finances/expenses/create-recurrence",payload)
-    if(respuesApi.status==200 && payload.has_invoice==false){
-      toast.success("El gasto se ha guardado correctamente")
-      cerrarModal(false)
-      await actualizarTabla()
-      statuModule.loadingApp=false
-    }
-    console.log("respuesta api gasto => ",respuesApi.data.data)
-    let gasto=respuesApi.data.data
-
-    // if(payload.has_invoice==true){
-    //   let data=new FormData()
-    //   data.append("id",gasto.id)
-    //   // data.append("file_invoice",payload.file_factura)
-
-    //   let config= {
-    //     headers: {
-    //       'Content-Type': 'multipart/form-data',
-    //     },
-    //   }
-
-    //   let respuesApiFileUploaa=await axios.post("/finances/expenses/upload-file-invoice",data,config)
-    //   if(respuesApiFileUploaa.status==200){
-    //     toast.success("El archivo de la factura a sido guardado correctamente")
-    //     cerrarModal(false)
-    //     await actualizarTabla()
-    //     statuModule.loadingApp=false
-    //   }
-    // }
-
-  } catch (error) {
-    statuModule.loadingApp=false
-    toast.error("Error al crear el gasto")
-    console.log("error en el servidor => ",error)
-    let errores={...error.response.data.data.errors}
-    cargarErrores(errores)
-  }
-}
-
-async function consultarCategorias(){
-  let respuestaApi=await axios.get("/finances/expenses/category")
-  if(respuestaApi.status!=200){
-    toast.error("Error al cargar las categorias de los gastos")
-  }
-  return [...respuestaApi.data.data]
-}
-
-async function consultarGastos(){
-  const DATA ={
-    status,
-    buscardor_filtro:buscardor_filtro.value,
-    currency:currency.value,
-    category_id_filtro:category_id_filtro.value,
-    fechaDesde_filtro:fechaDesde_filtro.value,
-    fechaHasta_filtro:fechaHasta_filtro.value,
-    page:page.value,
-    itemsPerPage:itemsPerPage.value,
-    sortBy:sortBy.value,
-    orderBy:orderBy.value,
-    type_of_expense:type_of_expense,
-    isDeductible: isDeductible.value,
-    hasInvoice: hasInvoice.value,
-  }
-  let respuestaApi=await axios.post(`/finances/expenses/filter-paginate?page=${page.value}`,DATA)
-  if(respuestaApi.status!=200){
-    toast.error("Error al cargar los gastos")
-  }
-  console.log("respuesta => ",respuestaApi)
-  return {...respuestaApi.data.data}
-}
-
-async function actualizarTabla(){
-  loading.value=true
-  let gastosPaginate=await consultarGastos()
-  statuModule.items=gastosPaginate.data
-  statuModule.total=gastosPaginate.total
-  loading.value=false
-}
-
-const updateTableOptions = options => {
-  // console.log(options)
-  page.value = options.page
-  itemsPerPage.value = options.itemsPerPage
-  sortBy.value = options.sortBy[0]?.key
-  orderBy.value = options.sortBy[0]?.order
-}
-
-function limpliarFiltros(){
-  buscardor_filtro.value=""
-  currency.value=""
-  category_id_filtro.value=""
-  fechaDesde_filtro.value=""
-  fechaHasta_filtro.value=""
-  isDeductible.value=false
-  hasInvoice.value=false
-}
-
-
-async function generaPdf(){
-  statuModule.loadingApp=true
-  const DATA ={
-      status,
-      buscardor_filtro:buscardor_filtro.value,
-      currency:currency.value,
-      category_id_filtro:category_id_filtro.value,
-      fechaDesde_filtro:fechaDesde_filtro.value,
-      fechaHasta_filtro:fechaHasta_filtro.value
-  }
-  let respuestaApi=await axios.post(`/finances/expenses`,DATA)
-  if(respuestaApi.status!=200){
-     statuModule.loadingApp=false
-    toast.error("Error al cargar los gastos")
-    return
-  }
-  console.log("respuesta => ",respuestaApi)
-   statuModule.loadingApp=false
-  pdfGastos([...respuestaApi.data.data],"Gastos Pendientes")
-}
-
-async function exportarExcel(formato){
-  try{
-    statuModule.loadingApp=true
-    let params={
-        formato,
-        status,
-        buscardor_filtro:buscardor_filtro.value,
-        currency:currency.value,
-        category_id_filtro:category_id_filtro.value,
-        fechaDesde_filtro:fechaDesde_filtro.value,
-        fechaHasta_filtro:fechaHasta_filtro.value
-    }
-
-    let respuestaApi = await axios.post(
-      '/finances/expenses/exportar/excel',
-      params,  // Tus parámetros como objeto
-      {
-        responseType: 'blob',
-        headers: {
-          'Content-Type': 'application/json',  // Asegura el envío correcto de los parámetros
-        }
-      }
-    );
-
-    console.log("res => ",respuestaApi)
-
-    if(respuestaApi.status!=200){
-      toast.success("Error al filtrar los datos")
-    }
-    const url = window.URL.createObjectURL(new Blob([respuestaApi.data]));
-    const link = document.createElement("a");
-    link.href = url;
-
-    const contentDisposition = respuestaApi.headers["content-disposition"];
-    let fileName = `gastos-pendientes.${formato}`;
-    if (contentDisposition) {
-      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
-      if (fileNameMatch && fileNameMatch.length === 2)
-        fileName = fileNameMatch[1];
-    }
-
-    link.setAttribute("download", fileName);
-    document.body.appendChild(link);
-    link.click();
-
-    link.remove();
-    window.URL.revokeObjectURL(url);
-    statuModule.loadingApp=false
-  } catch (error) {
-    console.error("Error al exportar los datos:", error);
-    statuModule.loadingApp=false
-  }
-
-}
+const templateHeaders = [
+  { title: "Nombre", key: "name", sortable: false },
+  { title: "Categoría", key: "category.name", sortable: false },
+  { title: "Monto Base", key: "amount", sortable: false },
+  { title: "Frecuencia", key: "frequency_label", sortable: false },
+  { title: "Próximo Pago", key: "next_due_date", sortable: false },
+  { title: "Aviso", key: "reminder_days_before", sortable: false },
+  { title: "Estado", key: "is_active", sortable: false },
+  { title: "Acciones", key: "actions", sortable: false, align: "end" },
+];
 
 onMounted(async () => {
-  statuModule.loadingApp=true
-  formulario.user_id=1
-  let categorias=await consultarCategorias()
-  await actualizarTabla()
-  statuModule.categorias=categorias
-  statuModule.loadingApp=false
-})*/
+  await Promise.all([
+    fetchCategories(),
+    fetchSummary(),
+    fetchOccurrences(),
+    fetchTemplates(),
+  ]);
+});
+
+watch(currentTab, (newTab) => {
+  if (newTab === "pending") {
+    occurrencesScope.value = "pending";
+    occurrencesPage.value = 1;
+    fetchOccurrences();
+  } else if (newTab === "history") {
+    occurrencesScope.value = "history";
+    occurrencesPage.value = 1;
+    fetchOccurrences();
+  } else if (newTab === "templates") {
+    templatesPage.value = 1;
+    fetchTemplates();
+  }
+});
+
+async function handleSaveTemplate(payload) {
+  isActionLoading.value = true;
+  await saveTemplate(payload);
+  isActionLoading.value = false;
+}
+
+async function handleConfirmPay({ occurrenceId, data }) {
+  isActionLoading.value = true;
+  await payOccurrence(occurrenceId, data);
+  isActionLoading.value = false;
+}
+
+async function handleDeleteTemplate(item) {
+  if (confirm(`¿Eliminar el gasto fijo "${item.name}"? Sus cuotas pasadas se conservarán como historial.`)) {
+    await deleteTemplate(item);
+  }
+}
 </script>
 
 <template>
-  <!-- 
-<LoaderComponent :loadingApp="statuModule?.loadingApp" />
-  <div>
-    <FiltrosGastoRecurrente
-      v-model:currency="currency"
-      v-model:buscardor_filtro="buscardor_filtro"
-      v-model:category_id_filtro="category_id_filtro"
-      v-model:fechaDesde_filtro="fechaDesde_filtro"
-      v-model:fechaHasta_filtro="fechaHasta_filtro"
-      v-model:isDeductible="isDeductible"
-      v-model:hasInvoice="hasInvoice"
-      :categorias="statuModule?.categorias"
-      @export-excel="exportarExcel"
-      @export-pdf="generaPdf"
-      @clear="limpliarFiltros"
-      @add="mostarModal"
-    />
-    <ExpenseFormDialoge
-      type_of_expense="recurrente"
-      :modal-formulario="modal.statu"
-      :titulo="modal.titulo"
-      :form-data="formulario"
-      :form-error="formularioError"
-      :categorias="statuModule.categorias"
-      @modal-close="cerrarModal"
-      @clear-error-form="limpiarErroresFormulario"
-      @save="enviar"
-    />
-    <VCard>
+  <div class="fixed-expenses-view pb-12">
+    <!-- Encabezado Principal -->
+    <div class="d-flex flex-wrap align-center justify-space-between gap-4 mb-4">
+      <div>
+        <h1 class="text-h4 font-weight-bold mb-1">
+          Control de Gastos Fijos
+        </h1>
+        <p class="text-body-2 text-medium-emphasis mb-0">
+          Compromisos periódicos de la operación (alquiler, luz, agua, internet, licencias y servicios)
+        </p>
+      </div>
+
+      <div class="d-flex align-center gap-2">
+        <VBtn
+          variant="outlined"
+          color="secondary"
+          prepend-icon="tabler-refresh"
+          :loading="summaryLoading"
+          @click="generateOccurrencesNow"
+        >
+          Actualizar Avisos
+        </VBtn>
+        <VBtn
+          color="primary"
+          variant="elevated"
+          prepend-icon="tabler-plus"
+          @click="openNewTemplateDialog"
+        >
+          Nuevo Gasto Fijo
+        </VBtn>
+      </div>
+    </div>
+
+    <!-- KPIs Rápidos -->
+    <VRow dense class="mb-5">
+      <!-- Vencidos -->
+      <VCol cols="12" sm="4">
+        <VCard class="pa-4 border-0 shadow-sm" style="border-left: 4px solid #ef4444 !important;">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-error uppercase">Vencidos</span>
+            <VAvatar color="error" variant="tonal" size="32">
+              <VIcon icon="tabler-alert-triangle" size="18" />
+            </VAvatar>
+          </div>
+          <div class="text-h5 font-weight-bold text-error mb-1">
+            {{ summary.overdue_count }} cuotas
+          </div>
+          <div class="text-caption text-medium-emphasis">
+            Compromisos con fecha de pago anterior a hoy
+          </div>
+        </VCard>
+      </VCol>
+
+      <!-- Esta Semana -->
+      <VCol cols="12" sm="4">
+        <VCard class="pa-4 border-0 shadow-sm" style="border-left: 4px solid #f59e0b !important;">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-warning uppercase">Próximos 7 Días</span>
+            <VAvatar color="warning" variant="tonal" size="32">
+              <VIcon icon="tabler-clock" size="18" />
+            </VAvatar>
+          </div>
+          <div class="text-h5 font-weight-bold text-warning mb-1">
+            {{ summary.week_count }} cuotas
+          </div>
+          <div class="text-caption text-medium-emphasis">
+            Compromisos a cancelar en los próximos 7 días
+          </div>
+        </VCard>
+      </VCol>
+
+      <!-- Total Pendiente -->
+      <VCol cols="12" sm="4">
+        <VCard class="pa-4 border-0 shadow-sm" style="border-left: 4px solid #3b82f6 !important;">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-caption font-weight-bold text-info uppercase">Total Por Pagar</span>
+            <VAvatar color="info" variant="tonal" size="32">
+              <VIcon icon="tabler-calendar-due" size="18" />
+            </VAvatar>
+          </div>
+          <div class="text-h5 font-weight-bold text-info mb-1">
+            {{ summary.total_count }} cuotas
+          </div>
+          <div class="text-caption text-medium-emphasis">
+            Cuotas pendientes generadas en el sistema
+          </div>
+        </VCard>
+      </VCol>
+    </VRow>
+
+    <!-- Contenedor con Tabs -->
+    <VCard variant="flat" class="border shadow-sm rounded-lg overflow-hidden">
+      <VTabs v-model="currentTab" color="primary" class="px-4" density="comfortable">
+        <VTab value="pending" class="font-weight-bold">
+          <span>Avisos Por Pagar</span>
+          <VChip
+            v-if="summary.total_count > 0"
+            size="x-small"
+            color="warning"
+            variant="tonal"
+            class="ms-2 font-weight-bold"
+          >
+            {{ summary.total_count }}
+          </VChip>
+        </VTab>
+
+        <VTab value="history" class="font-weight-bold">
+          <span>Historial de Pagos</span>
+        </VTab>
+
+        <VTab value="templates" class="font-weight-bold">
+          <span>Configuración de Gastos Fijos</span>
+          <VChip
+            v-if="templatesTotal > 0"
+            size="x-small"
+            color="primary"
+            variant="tonal"
+            class="ms-2 font-weight-bold"
+          >
+            {{ templatesTotal }}
+          </VChip>
+        </VTab>
+      </VTabs>
+
       <VDivider />
-      <RecurringExpenseTable
-        :items="statuModule.items"
-        :total="statuModule.total"
-        :loading="loading"
-        :items-per-page="itemsPerPage"
-        :page="page"
-        @update:options="updateTableOptions"
-      />
+
+      <!-- CONTENIDO TAB 1: Cuotas por Pagar -->
+      <div v-if="currentTab === 'pending'" class="pa-4">
+        <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+          <VTextField
+            v-model="occurrencesSearch"
+            placeholder="Buscar por nombre de gasto..."
+            prepend-inner-icon="tabler-search"
+            density="compact"
+            variant="outlined"
+            style="max-width: 320px;"
+            clearable
+            @update:model-value="fetchOccurrences"
+          />
+
+          <VBtn
+            variant="text"
+            color="secondary"
+            prepend-icon="tabler-refresh"
+            size="small"
+            :loading="occurrencesLoading"
+            @click="fetchOccurrences"
+          >
+            Recargar
+          </VBtn>
+        </div>
+
+        <VDataTableServer
+          :headers="occurrenceHeaders"
+          :items="occurrences"
+          :items-length="occurrencesTotal"
+          :loading="occurrencesLoading"
+          :items-per-page="occurrencesPerPage"
+          :page="occurrencesPage"
+          class="elevation-0"
+          @update:options="(opt) => { occurrencesPage = opt.page; occurrencesPerPage = opt.itemsPerPage; fetchOccurrences(); }"
+        >
+          <!-- Vencimiento -->
+          <template #item.due_date="{ item }">
+            <div class="d-flex align-center gap-2">
+              <span class="font-weight-medium">{{ item.due_date }}</span>
+              <VChip
+                v-if="item.is_overdue"
+                size="x-small"
+                color="error"
+                variant="flat"
+              >
+                Vencido ({{ Math.abs(item.days_difference) }}d)
+              </VChip>
+              <VChip
+                v-else-if="item.days_difference === 0"
+                size="x-small"
+                color="warning"
+                variant="flat"
+              >
+                Hoy
+              </VChip>
+              <VChip
+                v-else-if="item.days_difference <= 7"
+                size="x-small"
+                color="info"
+                variant="tonal"
+              >
+                En {{ item.days_difference }}d
+              </VChip>
+            </div>
+          </template>
+
+          <!-- Gasto Fijo -->
+          <template #item.fixed_expense.name="{ item }">
+            <div>
+              <div class="font-weight-bold text-high-emphasis">
+                {{ item.fixed_expense?.name || 'Gasto' }}
+              </div>
+              <div v-if="item.fixed_expense?.is_amount_variable" class="text-caption text-warning">
+                Monto variable (confirmar al pagar)
+              </div>
+            </div>
+          </template>
+
+          <!-- Monto -->
+          <template #item.amount="{ item }">
+            <span class="font-weight-bold">
+              {{ item.currency === 'USD' ? '$' : item.currency === 'BS' ? 'Bs.' : 'COP' }}
+              {{ Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+            </span>
+          </template>
+
+          <!-- Estado -->
+          <template #item.status="{ item }">
+            <VChip size="small" color="warning" variant="tonal">
+              Por pagar
+            </VChip>
+          </template>
+
+          <!-- Acciones -->
+          <template #item.actions="{ item }">
+            <div class="d-flex align-center justify-end gap-1">
+              <VBtn
+                size="small"
+                color="success"
+                variant="elevated"
+                prepend-icon="tabler-cash"
+                @click="openPayDialog(item)"
+              >
+                Pagar
+              </VBtn>
+              <VBtn
+                size="small"
+                color="secondary"
+                variant="text"
+                @click="openSkipDialog(item)"
+              >
+                Omitir
+              </VBtn>
+            </div>
+          </template>
+
+          <!-- Estado Vacío -->
+          <template #no-data>
+            <div class="text-center pa-8">
+              <VIcon icon="tabler-circle-check" size="48" color="success" class="mb-2" />
+              <div class="text-h6 font-weight-bold mb-1">¡Al día! No hay cuotas pendientes</div>
+              <p class="text-body-2 text-medium-emphasis mb-3">
+                No tienes compromisos por pagar en tu ventana de anticipación.
+              </p>
+              <VBtn color="primary" variant="tonal" size="small" @click="openNewTemplateDialog">
+                Configurar Nuevo Gasto Fijo
+              </VBtn>
+            </div>
+          </template>
+        </VDataTableServer>
+      </div>
+
+      <!-- CONTENIDO TAB 2: Historial -->
+      <div v-if="currentTab === 'history'" class="pa-4">
+        <VDataTableServer
+          :headers="occurrenceHeaders"
+          :items="occurrences"
+          :items-length="occurrencesTotal"
+          :loading="occurrencesLoading"
+          :items-per-page="occurrencesPerPage"
+          :page="occurrencesPage"
+          class="elevation-0"
+          @update:options="(opt) => { occurrencesPage = opt.page; occurrencesPerPage = opt.itemsPerPage; fetchOccurrences(); }"
+        >
+          <template #item.status="{ item }">
+            <VChip
+              size="small"
+              :color="item.status === 'Paid' ? 'success' : 'secondary'"
+              variant="tonal"
+            >
+              {{ item.status === 'Paid' ? 'Pagado' : 'Omitido' }}
+            </VChip>
+          </template>
+
+          <template #item.amount="{ item }">
+            <span class="font-weight-bold">
+              {{ item.currency === 'USD' ? '$' : item.currency === 'BS' ? 'Bs.' : 'COP' }}
+              {{ Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+            </span>
+          </template>
+
+          <template #item.actions="{ item }">
+            <span v-if="item.paid_at" class="text-caption text-medium-emphasis">
+              Pagado el {{ item.paid_at.substring(0, 10) }}
+            </span>
+            <span v-else-if="item.note" class="text-caption text-medium-emphasis">
+              {{ item.note }}
+            </span>
+            <span v-else class="text-caption text-medium-emphasis">-</span>
+          </template>
+
+          <template #no-data>
+            <div class="text-center pa-6 text-medium-emphasis">
+              No hay historial registrado aún.
+            </div>
+          </template>
+        </VDataTableServer>
+      </div>
+
+      <!-- CONTENIDO TAB 3: Plantillas de Gastos Fijos -->
+      <div v-if="currentTab === 'templates'" class="pa-4">
+        <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+          <VTextField
+            v-model="templatesSearch"
+            placeholder="Buscar por nombre..."
+            prepend-inner-icon="tabler-search"
+            density="compact"
+            variant="outlined"
+            style="max-width: 320px;"
+            clearable
+            @update:model-value="fetchTemplates"
+          />
+
+          <VBtn
+            color="primary"
+            variant="elevated"
+            prepend-icon="tabler-plus"
+            @click="openNewTemplateDialog"
+          >
+            Nuevo Gasto Fijo
+          </VBtn>
+        </div>
+
+        <VDataTableServer
+          :headers="templateHeaders"
+          :items="templates"
+          :items-length="templatesTotal"
+          :loading="templatesLoading"
+          :items-per-page="templatesPerPage"
+          :page="templatesPage"
+          class="elevation-0"
+          @update:options="(opt) => { templatesPage = opt.page; templatesPerPage = opt.itemsPerPage; fetchTemplates(); }"
+        >
+          <template #item.name="{ item }">
+            <div>
+              <span class="font-weight-bold">{{ item.name }}</span>
+              <div v-if="item.is_amount_variable" class="text-caption text-warning">
+                Monto variable
+              </div>
+            </div>
+          </template>
+
+          <template #item.amount="{ item }">
+            <span class="font-weight-medium">
+              {{ item.currency === 'USD' ? '$' : item.currency === 'BS' ? 'Bs.' : 'COP' }}
+              {{ Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+            </span>
+          </template>
+
+          <template #item.reminder_days_before="{ item }">
+            <span>{{ item.reminder_days_before }} días antes</span>
+          </template>
+
+          <template #item.is_active="{ item }">
+            <VSwitch
+              :model-value="item.is_active"
+              color="primary"
+              density="compact"
+              hide-details
+              @click.stop="toggleActive(item)"
+            />
+          </template>
+
+          <template #item.actions="{ item }">
+            <div class="d-flex align-center justify-end gap-1">
+              <VBtn
+                size="small"
+                variant="text"
+                color="primary"
+                icon="tabler-edit"
+                @click="openEditTemplateDialog(item)"
+              />
+              <VBtn
+                size="small"
+                variant="text"
+                color="error"
+                icon="tabler-trash"
+                @click="handleDeleteTemplate(item)"
+              />
+            </div>
+          </template>
+
+          <template #no-data>
+            <div class="text-center pa-8">
+              <VIcon icon="tabler-calendar-plus" size="48" color="primary" class="mb-2" />
+              <div class="text-h6 font-weight-bold mb-1">No hay gastos fijos configurados</div>
+              <p class="text-body-2 text-medium-emphasis mb-3">
+                Agrega tus compromisos mensuales (alquiler, nómina fija, servicios) para recibir alertas de pago.
+              </p>
+              <VBtn color="primary" variant="elevated" @click="openNewTemplateDialog">
+                Configurar Primer Gasto Fijo
+              </VBtn>
+            </div>
+          </template>
+        </VDataTableServer>
+      </div>
     </VCard>
-  </div>-->
+
+    <!-- Diálogo Crear/Editar Gasto Fijo -->
+    <FixedExpenseDialog
+      v-model="isTemplateDialogOpen"
+      :title="templateDialogTitle"
+      :template-data="selectedTemplate"
+      :categories="categories"
+      :loading="isActionLoading"
+      @save="handleSaveTemplate"
+    />
+
+    <!-- Diálogo Pagar Cuota -->
+    <PayFixedExpenseDialog
+      v-model="isPayDialogOpen"
+      :occurrence="selectedOccurrence"
+      :loading="isActionLoading"
+      @confirm="handleConfirmPay"
+    />
+
+    <!-- Diálogo Confirmar Omitir Cuota -->
+    <VDialog v-model="isSkipDialogOpen" max-width="480">
+      <VCard class="pa-2">
+        <VCardTitle class="font-weight-bold">
+          ¿Omitir esta cuota?
+        </VCardTitle>
+        <VCardText>
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            La cuota se marcará como omitida y no se registrará ningún egreso. El gasto fijo continuará activo para el próximo mes.
+          </p>
+          <VTextField
+            v-model="skipNote"
+            label="Motivo u observación (opcional)"
+            placeholder="Ej: Mes exonerado por propietario..."
+            density="compact"
+            variant="outlined"
+          />
+        </VCardText>
+        <VCardActions class="px-4 pb-3">
+          <VSpacer />
+          <VBtn variant="text" color="secondary" @click="isSkipDialogOpen = false">
+            Cancelar
+          </VBtn>
+          <VBtn color="warning" variant="elevated" @click="confirmSkipOccurrence">
+            Omitir Cuota
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+  </div>
 </template>
+
+<style scoped>
+.fixed-expenses-view {
+  background-color: #f8fafc;
+  min-block-size: 100vh;
+}
+</style>

@@ -54,6 +54,7 @@ use App\Http\Controllers\Api\CasheaCreditController;
 use App\Http\Controllers\Api\CreditsController;
 use App\Http\Controllers\Api\ExpenseCategoryController;
 use App\Http\Controllers\Api\ExpensesController;
+use App\Http\Controllers\Api\FixedExpenseController;
 use App\Http\Controllers\Api\SupplierIaAssistantReportController;
 use App\Http\Controllers\Api\SuppliersIaOrderAssistantController;
 use App\Http\Controllers\Api\UserController;
@@ -1168,6 +1169,20 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
                 Route::put("/{id}", [ExpenseCategoryController::class, "update"]);
                 Route::delete("/{id}", [ExpenseCategoryController::class, "destroy"]);
             });
+        });
+
+        Route::prefix("fixed-expenses")->group(function () {
+            Route::get("/", [FixedExpenseController::class, "index"]);
+            Route::post("/", [FixedExpenseController::class, "store"]);
+            Route::put("/{id}", [FixedExpenseController::class, "update"]);
+            Route::delete("/{id}", [FixedExpenseController::class, "destroy"]);
+            Route::patch("/{id}/toggle-active", [FixedExpenseController::class, "toggleActive"]);
+
+            Route::get("/occurrences", [FixedExpenseController::class, "occurrences"]);
+            Route::get("/occurrences/summary", [FixedExpenseController::class, "occurrencesSummary"]);
+            Route::post("/occurrences/{id}/pay", [FixedExpenseController::class, "payOccurrence"]);
+            Route::post("/occurrences/{id}/skip", [FixedExpenseController::class, "skipOccurrence"]);
+            Route::post("/occurrences/generate", [FixedExpenseController::class, "generateOccurrences"]);
         });
 
         // Balance General

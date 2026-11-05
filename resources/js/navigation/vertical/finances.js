@@ -75,6 +75,12 @@ export default [
             action: 'manage',
             subject: 'gastos-expenses',
           },
+          {
+            title: 'Gastos Fijos',
+            to: 'finances-expense-recurring-expense',
+            action: 'manage',
+            subject: 'gastos-expenses',
+          },
       {
         title: 'Balance General',
         to: 'balance-general',

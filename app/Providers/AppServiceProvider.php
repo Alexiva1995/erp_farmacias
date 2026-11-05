@@ -327,6 +327,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(Expenses::class, ExpensesServices::class);
         $this->app->bind(ExpenseCategory::class, ExpenseCategoryServices::class);
+        $this->app->bind(\App\Contracts\FixedExpenses::class, \App\Services\FixedExpenseService::class);
 
 
         $this->app->bind(
