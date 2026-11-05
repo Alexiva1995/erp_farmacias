@@ -156,6 +156,9 @@ class Order extends Model
             if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'tax_rate')) {
                 $dishColumns[] = 'tax_rate';
             }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'designated_price_cop')) {
+                $dishColumns[] = 'designated_price_cop';
+            }
             $withRelations[] = 'dish:' . implode(',', $dishColumns);
         }
 
@@ -176,11 +179,16 @@ class Order extends Model
 
             // Blindaje: si la orden es en COP pero el detalle tiene precio unitario en USD
             if ($isCopOrder && $copRate > 1 && $price < 100) {
-                $unitUsd = (float) ($detail->unit_price_usd ?? 0);
-                if ($unitUsd > 0) {
-                    $price = ceil(($unitUsd * $copRate) / 100) * 100;
-                } elseif ($price > 0) {
-                    $price = ceil(($price * $copRate) / 100) * 100;
+                $designatedCop = $detail->product_type === 'dish' ? (float) ($detail->dish?->designated_price_cop ?? 0) : 0;
+                if ($designatedCop > 0) {
+                    $price = $designatedCop;
+                } else {
+                    $unitUsd = (float) ($detail->unit_price_usd ?? 0);
+                    if ($unitUsd > 0) {
+                        $price = ceil(($unitUsd * $copRate) / 100) * 100;
+                    } elseif ($price > 0) {
+                        $price = ceil(($price * $copRate) / 100) * 100;
+                    }
                 }
             }
             

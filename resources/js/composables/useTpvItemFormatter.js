@@ -96,7 +96,16 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
 
     // Si el backend envió unit_price_usd (con modificadores sumados), usarlo; si no, designated_price
     const priceUsd = parseFloat(backendItem.unit_price_usd ?? dish.designated_price ?? dish.price ?? 0)
-    const priceCop = Math.ceil((priceUsd * rateCop) / 100) * 100
+    const designatedCop = parseFloat(dish.designated_price_cop || dish.price_cop || 0)
+    let priceCop
+    if (designatedCop > 0) {
+      const baseUsd = parseFloat(dish.designated_price ?? dish.sale_price ?? dish.price ?? 0)
+      const extraUsd = Math.max(0, priceUsd - baseUsd)
+      const extraCop = extraUsd > 0 ? Math.ceil((extraUsd * rateCop) / 100) * 100 : 0
+      priceCop = designatedCop + extraCop
+    } else {
+      priceCop = Math.ceil((priceUsd * rateCop) / 100) * 100
+    }
     const priceBs = parseFloat((priceUsd * rateBs).toFixed(2))
     const dishTax = dish.iva ? (parseFloat(dish.tax_rate || 16) / 100) : 0
 

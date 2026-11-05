@@ -290,13 +290,20 @@ export function useTpvCart({
 
     const newQty = existing ? existing.selectedQuantity + (options.quantity || 1) : (options.quantity || 1)
     const unitPrice = parseFloat(dish.designated_price) || parseFloat(dish.sale_price) || parseFloat(dish.price) || 0
+    let priceAtProduct = unitPrice
+    if (selectedDisplayCurrency.value === 'COP') {
+      const designatedCop = parseFloat(dish.designated_price_cop || dish.price_cop || 0)
+      if (designatedCop > 0) {
+        priceAtProduct = designatedCop
+      }
+    }
 
     try {
       const payload = {
         order_detail_id: orderDetailId,
         dish_id: dish.id,
         quantity: newQty,
-        price_at_product: unitPrice,
+        price_at_product: priceAtProduct,
         price_usd_unit: unitPrice,
         currency_at_order: selectedDisplayCurrency.value,
         notes: notes,

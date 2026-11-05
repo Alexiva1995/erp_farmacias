@@ -238,9 +238,17 @@ class OrderActionService
                 if ($targetCurrency === 'USD') {
                     $unitPriceAtOrder = $price_usd;
                 } elseif ($targetCurrency === 'COP') {
+                    $designatedCop = (float)($dish->designated_price_cop ?? 0);
                     $resourceService = app(\App\Services\Resources\ResourceService::class);
                     $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
-                    $unitPriceAtOrder = ceil(round($price_usd * $tasaCop) / 100) * 100;
+
+                    if ($designatedCop > 0) {
+                        // Si hay modificadores extra en USD, se convierten a COP y se adicionan al precio fijo asignado
+                        $extraCop = $extraPriceUsd > 0 ? (ceil(round($extraPriceUsd * $tasaCop) / 100) * 100) : 0;
+                        $unitPriceAtOrder = $designatedCop + $extraCop;
+                    } else {
+                        $unitPriceAtOrder = ceil(round($price_usd * $tasaCop) / 100) * 100;
+                    }
                 } elseif ($targetCurrency === 'BS') {
                     $resourceService = app(\App\Services\Resources\ResourceService::class);
                     $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
@@ -2186,7 +2194,10 @@ class OrderActionService
 
     public function cancelledOrder(Order $order): Order
     {
-        if ($order->cash_closing_id) {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $isAdmin = $user && ((int) $user->role_id === 1 || in_array(strtolower((string) $user->role?->name), ['admin', 'administrador', 'super admin']));
+
+        if ($order->cash_closing_id && !$isAdmin) {
             $cashClosing = $order->cashClosing ?? \App\Models\CashClosing::find($order->cash_closing_id);
             if ($cashClosing && ($cashClosing->status === \App\Models\CashClosing::CLOSED || !empty($cashClosing->daily_closure_id))) {
                 throw new \Exception('No se puede cancelar una orden perteneciente a un cierre de caja ya cerrado o consolidado.');
@@ -2197,7 +2208,7 @@ class OrderActionService
         try {
             $order->status = Order::CANCELLED;
             $order->save();
-            $order->load('details', 'cashClosing');
+            $order->load('details.product', 'cashClosing', 'credit');
 
             foreach ($order->details as $item) {
                 if (!$item->product_id) {
@@ -2227,7 +2238,7 @@ class OrderActionService
                         'lot_number' => 'LOT-RETURN-' . $item->product_id,
                         'quantity' => 0,
                         'expiration_date' => Carbon::now()->addYears(2),
-                        'unit_cost' => $item->product->cost_price ?? 0,
+                        'unit_cost' => $item->product?->cost_price ?? 0,
                     ]);
                 }
 
@@ -2266,6 +2277,13 @@ class OrderActionService
                 ]);
             }
 
+            // Anular crédito asociado si existiera
+            if ($order->credit && $order->credit->status !== 'cancelled') {
+                $order->credit->status = 'cancelled';
+                $order->credit->pending_amount = 0;
+                $order->credit->save();
+            }
+
             $cashClosing = $order->cashClosing;
             if (!$cashClosing && $order->seller_id) {
                 $cashClosing = \App\Models\CashClosing::where('seller_id', $order->seller_id)
@@ -2275,6 +2293,8 @@ class OrderActionService
 
             if (!$cashClosing) {
                 Log::warning("Orden ID {$order->id} no tiene un cierre de caja asociado para descontar montos.");
+            } elseif ($cashClosing->status === \App\Models\CashClosing::CLOSED || !empty($cashClosing->daily_closure_id)) {
+                Log::info("Orden ID {$order->id} cancelada por admin. No se descuentan montos del cierre de caja ID {$cashClosing->id} porque ya está cerrado o consolidado.");
             } else {
                 $paymentMethods = is_array($order->payment_methods) ? $order->payment_methods : (json_decode($order->payment_methods ?? '[]', true) ?: []);
                 foreach ($paymentMethods as $payment) {
@@ -2596,9 +2616,14 @@ class OrderActionService
             if ($targetCurrency === 'USD') {
                 $priceToSet = $usdPrice;
             } elseif ($targetCurrency === 'COP') {
-                $resourceService = app(\App\Services\Resources\ResourceService::class);
-                $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
-                $priceToSet = ceil(($usdPrice * $tasaCop) / 100) * 100;
+                $designatedCop = (float)($dish->designated_price_cop ?? 0);
+                if ($designatedCop > 0) {
+                    $priceToSet = $designatedCop;
+                } else {
+                    $resourceService = app(\App\Services\Resources\ResourceService::class);
+                    $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
+                    $priceToSet = ceil(($usdPrice * $tasaCop) / 100) * 100;
+                }
             } elseif ($targetCurrency === 'BS') {
                 $resourceService = app(\App\Services\Resources\ResourceService::class);
                 $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
