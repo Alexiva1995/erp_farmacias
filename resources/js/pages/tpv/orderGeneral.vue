@@ -839,8 +839,8 @@ const handleCancelOrder = async (orderId) => {
         fetchAllTabCounts();
       } catch (err) {
         console.error("Error cancelando orden:", err);
-        const msg = err.response?.data?.message || "No se pudo cancelar la orden.";
-        toast.error(msg);
+        const msg = err.response?.data?.message || err.response?.data?.error || err.message || "No se pudo cancelar la orden.";
+        toast.error(msg, err);
       }
     }
   });

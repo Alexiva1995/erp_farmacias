@@ -539,16 +539,23 @@ class OrderController extends Controller
         }
     }
 
-    public function cancelledOrder(Order $order)
+    public function cancelledOrder(Order|int|string $order)
     {
+        if (!($order instanceof Order)) {
+            $order = Order::find($order);
+            if (!$order) {
+                return ApiResponse::error('Orden no encontrada.', 404);
+            }
+        }
+
         if (in_array(strtolower($order->status), ['cancelled', 'abandoned'])) {
             return ApiResponse::error('La orden ya se encuentra cancelada o abandonada.', 400);
         }
         try {
             $abandonedOrder = $this->orderActionService->cancelledOrder($order);
             return ApiResponse::success(['order' => $abandonedOrder], 'Orden cancelada exitosamente.');
-        } catch (\Exception $e) {
-            Log::error('Error al cancelar la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id]);
+        } catch (\Throwable $e) {
+            Log::error('Error al cancelar la orden:', ['error' => $e->getMessage(), 'order_id' => $order->id, 'trace' => $e->getTraceAsString()]);
             return ApiResponse::error('No se pudo cancelar la orden: ' . $e->getMessage(), 500);
         }
     }

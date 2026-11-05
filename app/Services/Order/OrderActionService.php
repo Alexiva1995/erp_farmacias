@@ -2194,108 +2194,99 @@ class OrderActionService
 
     public function cancelledOrder(Order $order): Order
     {
-        $user = \Illuminate\Support\Facades\Auth::user();
-        $isAdmin = $user && ((int) $user->role_id === 1 || in_array(strtolower((string) $user->role?->name), ['admin', 'administrador', 'super admin']));
-
-        if ($order->cash_closing_id && !$isAdmin) {
-            $cashClosing = $order->cashClosing ?? \App\Models\CashClosing::find($order->cash_closing_id);
-            if ($cashClosing && ($cashClosing->status === \App\Models\CashClosing::CLOSED || !empty($cashClosing->daily_closure_id))) {
-                throw new \Exception('No se puede cancelar una orden perteneciente a un cierre de caja ya cerrado o consolidado.');
-            }
+        $cashClosing = $order->cashClosing ?? ($order->cash_closing_id ? \App\Models\CashClosing::find($order->cash_closing_id) : null);
+        if (!$cashClosing && $order->seller_id) {
+            $cashClosing = \App\Models\CashClosing::where('seller_id', $order->seller_id)
+                ->where('status', \App\Models\CashClosing::OPEN)
+                ->first();
         }
 
-        DB::beginTransaction();
+        // Regla estricta: Solo se pueden cancelar órdenes pertenecientes a un cierre de caja abierto
+        if (!$cashClosing || $cashClosing->status === \App\Models\CashClosing::CLOSED || !empty($cashClosing->daily_closure_id)) {
+            throw new \Exception('No se puede cancelar una orden perteneciente a un cierre de caja ya cerrado o consolidado. Solo se permiten cancelaciones en cajas actualmente abiertas.');
+        }
+
+        $connection = $order->getConnectionName() ?: config('database.default');
+        DB::connection($connection)->beginTransaction();
         try {
             $order->status = Order::CANCELLED;
             $order->save();
             $order->load('details.product', 'cashClosing', 'credit');
 
-            foreach ($order->details as $item) {
-                if (!$item->product_id) {
-                    continue;
-                }
+            // Detectar si la orden ya tuvo movimientos de retorno previos (para prevenir doble descuento en reintentos)
+            $alreadyReturned = \App\Models\InventoryMovement::where('order_id', $order->id)
+                ->where('movement_type', 'return')
+                ->exists();
 
-                $productLot = ProductLot::where('product_id', $item->product_id)
-                    ->where(function ($query) {
-                        $query->whereNull('expiration_date')
-                            ->orWhere('expiration_date', '>', Carbon::now());
-                    })
-                    ->orderBy('expiration_date', 'asc')
-                    ->orderBy('id', 'asc')
-                    ->first();
+            if (!$alreadyReturned) {
+                foreach ($order->details as $item) {
+                    if (!$item->product_id) {
+                        continue;
+                    }
 
-                // Si no hay un lote activo, buscar cualquier lote previo del producto sin restringir la fecha de vencimiento
-                if (!$productLot) {
                     $productLot = ProductLot::where('product_id', $item->product_id)
-                        ->orderBy('id', 'desc')
+                        ->where(function ($query) {
+                            $query->whereNull('expiration_date')
+                                ->orWhere('expiration_date', '>', Carbon::now());
+                        })
+                        ->orderBy('expiration_date', 'asc')
+                        ->orderBy('id', 'asc')
                         ->first();
-                }
 
-                // Si el producto no posee ningún lote registrado en la base de datos, crear un lote genérico de devolución
-                if (!$productLot) {
-                    $productLot = ProductLot::create([
+                    // Si no hay un lote activo, buscar cualquier lote previo del producto sin restringir la fecha de vencimiento
+                    if (!$productLot) {
+                        $productLot = ProductLot::where('product_id', $item->product_id)
+                            ->orderBy('id', 'desc')
+                            ->first();
+                    }
+
+                    // Si el producto no posee ningún lote registrado en la base de datos, crear un lote genérico de devolución
+                    if (!$productLot) {
+                        $productLot = ProductLot::create([
+                            'product_id' => $item->product_id,
+                            'lot_number' => 'LOT-RETURN-' . $item->product_id,
+                            'quantity' => 0,
+                            'expiration_date' => Carbon::now()->addYears(2),
+                            'unit_cost' => $item->product?->cost_price ?? 0,
+                        ]);
+                    }
+
+                    $qty = (float) $item->quantity;
+                    $stockBefore = round((float) ProductLot::where('product_id', $item->product_id)->sum('quantity'), 4);
+                    $stockAfter = round($stockBefore + $qty, 4);
+                    
+                    // Activar bandera estática para que ProductLotObserver no cree un movimiento automático de 'AJUSTE'
+                    \App\Observers\ProductLotObserver::$isReturningLot = true;
+                    try {
+                        $productLot->increment('quantity', $qty);
+                    } finally {
+                        \App\Observers\ProductLotObserver::$isReturningLot = false;
+                    }
+                    
+                    // Sincronizar stock estático del producto
+                    $product = $item->product;
+                    if ($product) {
+                        $product->updateQuietly(['stock' => $stockAfter]);
+                        \App\Services\Inventory\StockoutService::syncStockout($product, $stockAfter);
+                    }
+
+                    // Crear el movimiento de inventario de tipo 'return' (devolución por cancelación) asociado a la orden
+                    \App\Models\InventoryMovement::create([
                         'product_id' => $item->product_id,
-                        'lot_number' => 'LOT-RETURN-' . $item->product_id,
-                        'quantity' => 0,
-                        'expiration_date' => Carbon::now()->addYears(2),
-                        'unit_cost' => $item->product?->cost_price ?? 0,
+                        'product_lot_id' => $productLot->id,
+                        'movement_type' => 'return',
+                        'quantity' => $qty,
+                        'invoice_id' => null,
+                        'supplier_id' => null,
+                        'order_id' => $order->id,
+                        'user_id' => \Illuminate\Support\Facades\Auth::id() ?? $order->seller_id,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
+                        'movement_date' => now(),
                     ]);
                 }
 
-                $qty = (float) $item->quantity;
-                $stockBefore = round((float) ProductLot::where('product_id', $item->product_id)->sum('quantity'), 4);
-                $stockAfter = round($stockBefore + $qty, 4);
-                
-                // Activar bandera estática para que ProductLotObserver no cree un movimiento automático de 'AJUSTE'
-                \App\Observers\ProductLotObserver::$isReturningLot = true;
-                try {
-                    $productLot->increment('quantity', $qty);
-                } finally {
-                    \App\Observers\ProductLotObserver::$isReturningLot = false;
-                }
-                
-                // Sincronizar stock estático del producto
-                $product = $item->product;
-                if ($product) {
-                    $product->updateQuietly(['stock' => $stockAfter]);
-                    \App\Services\Inventory\StockoutService::syncStockout($product, $stockAfter);
-                }
-
-                // Crear el movimiento de inventario de tipo 'return' (devolución por cancelación) asociado a la orden
-                \App\Models\InventoryMovement::create([
-                    'product_id' => $item->product_id,
-                    'product_lot_id' => $productLot->id,
-                    'movement_type' => 'return',
-                    'quantity' => $qty,
-                    'invoice_id' => null,
-                    'supplier_id' => null,
-                    'order_id' => $order->id,
-                    'user_id' => \Illuminate\Support\Facades\Auth::id() ?? $order->seller_id,
-                    'stock_before' => $stockBefore,
-                    'stock_after' => $stockAfter,
-                    'movement_date' => now(),
-                ]);
-            }
-
-            // Anular crédito asociado si existiera
-            if ($order->credit && $order->credit->status !== 'cancelled') {
-                $order->credit->status = 'cancelled';
-                $order->credit->pending_amount = 0;
-                $order->credit->save();
-            }
-
-            $cashClosing = $order->cashClosing;
-            if (!$cashClosing && $order->seller_id) {
-                $cashClosing = \App\Models\CashClosing::where('seller_id', $order->seller_id)
-                    ->where('status', \App\Models\CashClosing::OPEN)
-                    ->first();
-            }
-
-            if (!$cashClosing) {
-                Log::warning("Orden ID {$order->id} no tiene un cierre de caja asociado para descontar montos.");
-            } elseif ($cashClosing->status === \App\Models\CashClosing::CLOSED || !empty($cashClosing->daily_closure_id)) {
-                Log::info("Orden ID {$order->id} cancelada por admin. No se descuentan montos del cierre de caja ID {$cashClosing->id} porque ya está cerrado o consolidado.");
-            } else {
+                // Descontar montos de los métodos de pago en el cierre de caja abierto
                 $paymentMethods = is_array($order->payment_methods) ? $order->payment_methods : (json_decode($order->payment_methods ?? '[]', true) ?: []);
                 foreach ($paymentMethods as $payment) {
                     $amount = (float) ($payment['amount'] ?? 0);
@@ -2356,15 +2347,24 @@ class OrderActionService
                             break;
                     }
                 }
-
-                $cashClosing->recalculateTotals();
+            } else {
+                Log::info("Orden ID {$order->id} ya tenía movimientos de retorno registrados. Se omite doble descuento de inventario y caja.");
             }
 
-            DB::commit();
+            // Anular crédito asociado si existiera
+            if ($order->credit && $order->credit->status !== 'cancelled') {
+                $order->credit->status = 'cancelled';
+                $order->credit->pending_amount = 0;
+                $order->credit->save();
+            }
+
+            $cashClosing->recalculateTotals();
+
+            DB::connection($connection)->commit();
             return $order;
         } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Error al cancelada la orden: ' . $e->getMessage(), [
+            DB::connection($connection)->rollBack();
+            Log::error('Error al cancelar la orden: ' . $e->getMessage(), [
                 'order_id' => $order->id,
                 'trace' => $e->getTraceAsString(),
             ]);
