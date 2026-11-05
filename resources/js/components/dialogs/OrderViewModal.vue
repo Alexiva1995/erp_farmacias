@@ -58,8 +58,6 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-});
-
   isProcessingFiscal: {
     type: Boolean,
     default: false,
