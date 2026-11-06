@@ -88,7 +88,7 @@ const hasAdvancedFilters = computed(
     :show-sort="true"
     :sort-options="sortOptions"
     :show-add="true"
-    :add-button-text="isRestaurant ? 'Añadir Proveedor' : 'Añadir Droguería'"
+    :add-button-text="props.isMaster ? 'Añadir Droguería Master' : (isRestaurant ? 'Añadir Proveedor' : 'Añadir Droguería')"
     search-placeholder="Buscar por ID, Nombre o RIF..."
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
@@ -129,7 +129,7 @@ const hasAdvancedFilters = computed(
 
       <!-- Botón para añadir proveedor de gastos/servicios -->
       <VBtn
-        v-if="showExpenseSupplierBtn"
+        v-if="showExpenseSupplierBtn && !props.isMaster"
         icon
         color="info"
         variant="tonal"

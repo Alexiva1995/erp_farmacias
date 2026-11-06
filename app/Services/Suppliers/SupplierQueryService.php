@@ -41,7 +41,21 @@ class SupplierQueryService
     {
         $isMaster = request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master');
         if ($isMaster) {
-            return $this->supplierRepository->getQuery()->with('connections');
+            return $this->supplierRepository->getQuery()
+                ->with('connections')
+                ->where(function ($q) {
+                    $q->where('type', '!=', 'externo')
+                      ->orWhereNull('type');
+                })
+                ->where(function ($q) {
+                    $q->where('type', 'drogueria')
+                      ->orWhere('type', 'inventory')
+                      ->orWhereNull('type');
+                })
+                ->where(function ($q) {
+                    $q->where('is_active', true)
+                      ->orWhereNull('is_active');
+                });
         }
 
         $currentYearStart = \Carbon\Carbon::now()->startOfYear();
@@ -1432,8 +1446,16 @@ class SupplierQueryService
     {
         $isMaster = request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master');
         if ($isMaster) {
-            $totalSuppliers = Supplier::count();
-            $connections = SupplierConnection::all();
+            $masterSuppliersQuery = Supplier::where(function ($q) {
+                $q->where('type', '!=', 'externo')->orWhereNull('type');
+            })->where(function ($q) {
+                $q->where('type', 'drogueria')->orWhere('type', 'inventory')->orWhereNull('type');
+            })->where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            });
+            $totalSuppliers = $masterSuppliersQuery->count();
+            $masterSupplierIds = $masterSuppliersQuery->pluck('id');
+            $connections = SupplierConnection::whereIn('supplier_id', $masterSupplierIds)->get();
             $withExcel = $connections->filter(fn($c) => in_array($c->type, ['file', 'email']) && !empty($c->structure))->pluck('supplier_id')->unique()->count();
             $withApiOrFtp = $connections->filter(fn($c) => in_array($c->type, ['ftp', 'sftp', 'api', 'http', 'dronena_bot', 'drosymca_bot']))->pluck('supplier_id')->unique()->count();
             $withoutStructure = max(0, $totalSuppliers - $connections->filter(fn($c) => !empty($c->structure) || in_array($c->type, ['ftp', 'api', 'http']))->pluck('supplier_id')->unique()->count());

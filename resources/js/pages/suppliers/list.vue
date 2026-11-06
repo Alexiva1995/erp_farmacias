@@ -38,7 +38,7 @@ const orderBy = ref();
 const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
-const typeFilter = ref(isMasterMode.value ? null : "drogueria");
+const typeFilter = ref(isMasterMode.value ? "drogueria" : "drogueria");
 if (isMasterMode.value) {
   sortBy.value = "id";
   orderBy.value = "asc";
@@ -110,7 +110,7 @@ const fetchSuppliers = async () => {
     q: searchQuery.value,
     debtStatus: debtFilter.value,
     minScore: minScore.value,
-    type: isMasterMode.value ? typeFilter.value : (typeFilter.value || undefined),
+    type: isMasterMode.value ? "drogueria" : (typeFilter.value || undefined),
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value || (isMasterMode.value ? "id" : undefined),
