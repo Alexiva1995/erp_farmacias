@@ -127,6 +127,11 @@ const discrepancy = computed(() => {
   return props.targetQuantity - totalDistributed.value;
 });
 
+const formatQty = (val) => {
+  const num = Number(val) || 0;
+  return formatNumber(num, Number.isInteger(num) ? 0 : 2);
+};
+
 const lotErrors = ref({});
 
 const hasValidationErrors = computed(() => {
@@ -165,7 +170,7 @@ const hasValidationErrors = computed(() => {
 });
 
 const canSave = computed(() => {
-  if (discrepancy.value !== 0) return false;
+  if (Math.abs(discrepancy.value) > 0.0001) return false;
   if (hasValidationErrors.value) return false;
   const missingLocation = distributedLots.value.some(
     lot => (Number(lot.quantity) || 0) > 0 && (!lot.location || String(lot.location).trim() === "")
@@ -197,7 +202,7 @@ const handleSave = () => {
     toast.error("Todos los lotes mostrados deben tener lote, vencimiento y ubicación asignada.");
     return;
   }
-  if (discrepancy.value !== 0) {
+  if (Math.abs(discrepancy.value) > 0.0001) {
     toast.error("Asegúrese de que la diferencia sea 0 para guardar.");
     return;
   }
@@ -355,7 +360,7 @@ const handleScan = (code) => {
             <VCard variant="flat" class="pa-2 bg-white text-center rounded-xl border shadow-sm w-100 d-flex flex-column justify-center border-l-primary">
               <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1 letter-spacing-1">Objetivo</span>
               <div class="text-h5 font-weight-black text-primary leading-none">
-                {{ formatNumber(objective) }}
+                {{ formatQty(objective) }}
               </div>
             </VCard>
           </VCol>
@@ -365,7 +370,7 @@ const handleScan = (code) => {
             <VCard variant="flat" class="pa-2 bg-white text-center rounded-xl border shadow-sm w-100 d-flex flex-column justify-center">
               <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1 letter-spacing-1">Asignado</span>
               <div class="text-h5 font-weight-black text-info leading-none">
-                {{ formatNumber(totalDistributed) }}
+                {{ formatQty(totalDistributed) }}
               </div>
             </VCard>
           </VCol>
@@ -376,9 +381,9 @@ const handleScan = (code) => {
               <span class="text-super-xs font-weight-black text-disabled d-block uppercase mb-1 letter-spacing-1">Diferencia</span>
               <div 
                 class="text-h5 font-weight-black leading-none"
-                :class="discrepancy === 0 ? 'text-success' : 'text-error'"
+                :class="Math.abs(discrepancy) < 0.0001 ? 'text-success' : 'text-error'"
               >
-                {{ discrepancy > 0 ? '+' : '' }}{{ formatNumber(discrepancy) }}
+                {{ discrepancy > 0 ? '+' : '' }}{{ formatQty(discrepancy) }}
               </div>
             </VCard>
           </VCol>

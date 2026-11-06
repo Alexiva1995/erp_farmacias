@@ -1,6 +1,7 @@
 import axios from '@/plugins/axios';
 import { toast } from '@/plugins/sweetalert';
 import { nextTick, reactive, ref, watch } from 'vue';
+import { useBrandingStore } from '@/stores/useBrandingStore';
 
 export function useCyclicTable(endpointPrefix, filters) {
   const items = ref([]);
@@ -117,6 +118,20 @@ export function useCyclicTable(endpointPrefix, filters) {
 
   // El supervisor encontró diferencia → abrir modal de lotes
   const onVerifyWithDiscrepancy = async ({ countRecord, newCountedQuantity }) => {
+    const brandingStore = useBrandingStore();
+    const isRestaurant = Boolean(brandingStore.isRestaurant || brandingStore.settings?.enable_dishes);
+    const isConsumptionMode = brandingStore.settings?.traceability_mode === 'consumption';
+    const isFractionalProduct = Boolean(countRecord.product?.presentation && Number(countRecord.product.presentation) > 0);
+    const enableLots = brandingStore.settings?.enable_lots ?? true;
+
+    if (isRestaurant || isConsumptionMode || isFractionalProduct || !enableLots) {
+      await callProcessApi(countRecord.id, {
+        action: 'approve',
+        corrected_quantity: newCountedQuantity,
+      });
+      return;
+    }
+
     pendingVerifyData.value = { countRecord, newCountedQuantity };
     itemForLotDistribution.value = countRecord.product;
     targetQuantityForDistribution.value = newCountedQuantity;

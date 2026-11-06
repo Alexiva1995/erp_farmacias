@@ -287,6 +287,7 @@ const handleSave = async () => {
     barcode: isWithoutBarcode ? null : barcodeInput.value.trim(),
     countedQuantity: quantity,
     allowWithoutBarcode: isWithoutBarcode,
+    isDualCount: isDualCountMode.value,
   };
 
   emit("save", countData);

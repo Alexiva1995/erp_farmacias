@@ -231,7 +231,16 @@ const handleSaveCount = async (countData) => {
 
   // Modo simple con lotes → derivar al modal de distribución
   const enableLots = brandingStore.settings?.enable_lots ?? true;
-  if (enableLots && isSimpleMode.value && countType.value === "product") {
+  const isRestaurant = Boolean(brandingStore.isRestaurant || brandingStore.settings?.enable_dishes);
+  const isDualOrConsumption = Boolean(
+    countData.isDualCount ||
+    brandingStore.settings?.traceability_mode === "consumption" ||
+    (currentProduct.value?.presentation && Number(currentProduct.value.presentation) > 0)
+  );
+
+  // En restaurantes o cuando el producto se cuenta en modo consumo/fraccionado (Opción A),
+  // el ajuste de lotes se realiza automáticamente en el backend (FEFO) sin abrir el modal manual.
+  if (!isRestaurant && !isDualOrConsumption && enableLots && isSimpleMode.value && countType.value === "product") {
     isCountDialogVisible.value      = false;
     pendingCountData.value          = { endpoint, payload };
     itemForLotDistribution.value    = currentProduct.value;
