@@ -25,29 +25,59 @@ const formatCurrency = (value) => {
   }).format(value);
 };
 
-const statistics = computed(() => [
-  {
-    title: "Deuda Total",
-    value: formatCurrency(props.stats?.total_debt ?? 0),
-    icon: "tabler-currency-dollar",
-    color: "error",
-    description: "Pendiente por pagar",
-  },
-  {
-    title: "Proveedores",
-    value: props.stats?.active_suppliers_count ?? 0,
-    icon: "tabler-users",
-    color: "primary",
-    description: "Registrados activos",
-  },
-  {
-    title: "Éxito Conexión",
-    value: `${props.stats?.connection_success_rate ?? 0}%`,
-    icon: "tabler-api",
-    color: "success",
-    description: "Últimas 24 horas",
-  },
-]);
+const isMasterMode = computed(() => !!props.stats?.is_master);
+
+const statistics = computed(() => {
+  if (isMasterMode.value) {
+    return [
+      {
+        title: "Droguerías Homologadas",
+        value: props.stats?.total_suppliers ?? props.stats?.active_suppliers_count ?? 0,
+        icon: "tabler-building-store",
+        color: "primary",
+        description: "Catálogo Maestro Central",
+      },
+      {
+        title: "Con Plantilla Excel",
+        value: props.stats?.with_excel_count ?? 0,
+        icon: "tabler-file-spreadsheet",
+        color: "success",
+        description: "Mapeo de columnas listo",
+      },
+      {
+        title: "Conexión Directa (API/FTP)",
+        value: props.stats?.with_direct_conn_count ?? 0,
+        icon: "tabler-server",
+        color: "info",
+        description: "Protocolos automáticos",
+      },
+    ];
+  }
+
+  return [
+    {
+      title: "Deuda Total",
+      value: formatCurrency(props.stats?.total_debt ?? 0),
+      icon: "tabler-currency-dollar",
+      color: "error",
+      description: "Pendiente por pagar",
+    },
+    {
+      title: "Proveedores",
+      value: props.stats?.active_suppliers_count ?? 0,
+      icon: "tabler-users",
+      color: "primary",
+      description: "Registrados activos",
+    },
+    {
+      title: "Éxito Conexión",
+      value: `${props.stats?.connection_success_rate ?? 0}%`,
+      icon: "tabler-api",
+      color: "success",
+      description: "Últimas 24 horas",
+    },
+  ];
+});
 </script>
 
 <template>

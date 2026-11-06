@@ -154,20 +154,10 @@ const typeOptions = computed(() => {
     ];
   }
 
-  if (isDrosymca.value) {
-    return [
-      { title: "Correo Gmail", value: "file", icon: "tabler-mail" },
-    ];
-  }
-
-  const options = [
-    { title: "FTP", value: "ftp", icon: "tabler-server" },
-    { title: "SFTP", value: "sftp", icon: "tabler-lock" },
-    { title: "HTTP / API", value: "api", icon: "tabler-api" },
+  // Cualquier proveedor que no tenga integración FTP o API dedicada muestra solo Correo Gmail
+  return [
     { title: "Correo Gmail", value: "file", icon: "tabler-mail" },
   ];
-
-  return options;
 });
 
 const loadFormForType = (type) => {
@@ -290,17 +280,13 @@ const fetchConfig = async () => {
     }
 
     const availableTypes = Object.keys(connectionsMap.value);
-    const initialType = isDrosymca.value
-      ? "file"
-      : (isMafarta.value || isCristmedicals.value)
-        ? (availableTypes.find((t) => t === "api" || t === "http") || "api")
-        : (
-            availableTypes.find((t) => t === "dronena_bot") ||
-            availableTypes.find((t) => t === "api") ||
-            availableTypes.find((t) => t === "file") ||
-            availableTypes.find((t) => t === "ftp" || t === "sftp") ||
-            "ftp"
-          );
+    const initialType = (isDromega.value || isContinental.value)
+      ? "ftp"
+      : isDronena.value
+        ? (availableTypes.find((t) => t === "dronena_bot") || availableTypes.find((t) => t === "ftp") || "dronena_bot")
+        : (isMafarta.value || isCristmedicals.value)
+          ? (availableTypes.find((t) => t === "api" || t === "http") || "api")
+          : "file";
 
     loadFormForType(initialType);
     hasExistingFtpOrdersPassword.value = data?.ftp_orders_has_pass ?? false;

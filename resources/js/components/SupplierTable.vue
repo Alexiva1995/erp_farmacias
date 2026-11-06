@@ -15,6 +15,7 @@ const props = defineProps({
   sortBy: { type: String, default: undefined },
   orderBy: { type: String, default: 'asc' },
   checkingApiId: { type: Number, default: null },
+  isMaster: { type: Boolean, default: false },
 });
 
 const sortByModel = computed(() => {
