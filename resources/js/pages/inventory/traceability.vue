@@ -4,6 +4,7 @@ import TraceabilityReportTable from "@/components/TraceabilityReportTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
@@ -19,14 +20,16 @@ const orderBy = ref(null);
 
 const route = useRoute();
 const authStore = useAuthStore();
+const brandingStore = useBrandingStore();
 const isAdmin = computed(() => authStore.user?.role_id === 1);
+const isRestaurant = computed(() => Boolean(brandingStore.isRestaurant || brandingStore.settings?.enable_dishes));
 
 const startDate = ref(null);
 const endDate = ref(null);
 const searchQuery = ref(route.query.q ? String(route.query.q) : "");
 const movementType = ref([]);
 const excludeMovementTypes = ref([]);
-const currentTab = ref("ingredients");
+const currentTab = ref(isRestaurant.value ? "ingredients" : "all");
 
 const fetchSales = async () => {
   loading.value = true;
@@ -40,7 +43,7 @@ const fetchSales = async () => {
     endDate: endDate.value || undefined,
     movement_type: movementType.value && movementType.value.length > 0 ? movementType.value : undefined,
     exclude_movement_types: excludeMovementTypes.value && excludeMovementTypes.value.length > 0 ? excludeMovementTypes.value : undefined,
-    tab: currentTab.value !== "all" ? currentTab.value : undefined,
+    tab: isRestaurant.value && currentTab.value !== "all" ? currentTab.value : undefined,
   };
 
   try {
@@ -118,7 +121,7 @@ const handleExport = async (format) => {
     endDate: endDate.value || undefined,
     movement_type: movementType.value && movementType.value.length > 0 ? movementType.value : undefined,
     exclude_movement_types: excludeMovementTypes.value && excludeMovementTypes.value.length > 0 ? excludeMovementTypes.value : undefined,
-    tab: currentTab.value !== "all" ? currentTab.value : undefined,
+    tab: isRestaurant.value && currentTab.value !== "all" ? currentTab.value : undefined,
     format: format,
   };
 
@@ -170,15 +173,15 @@ const handleExport = async (format) => {
               Kardex y Trazabilidad de Inventario
             </h1>
             <p class="text-caption text-medium-emphasis mb-0">
-              Auditoría cronológica de movimientos de inventario, insumos de cocina, gramajes y ventas comerciales.
+              {{ isRestaurant ? 'Auditoría cronológica de movimientos de inventario, insumos de cocina, gramajes y ventas comerciales.' : 'Auditoría cronológica de movimientos de inventario, stock inicial, final y responsables.' }}
             </p>
           </div>
         </div>
       </div>
     </VCard>
 
-    <!-- Selector de Pestañas: Insumos de Cocina vs Ventas vs Todos -->
-    <VCard variant="flat" class="border rounded-lg overflow-hidden">
+    <!-- Selector de Pestañas: Insumos de Cocina vs Ventas vs Todos (Solo Modo Restaurante) -->
+    <VCard v-if="isRestaurant" variant="flat" class="border rounded-lg overflow-hidden">
       <VTabs
         v-model="currentTab"
         color="primary"
@@ -221,6 +224,7 @@ const handleExport = async (format) => {
       :items-per-page="itemsPerPage"
       :page="page"
       :current-tab="currentTab"
+      :is-restaurant="isRestaurant"
       @update:options="updateTableOptions"
       @filter-product="handleSelectProduct"
     />

@@ -11,6 +11,7 @@ const props = defineProps({
   itemsPerPage: { type: Number, required: true },
   page: { type: Number, required: true },
   currentTab: { type: String, default: "all" },
+  isRestaurant: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:options", "filter-product"]);
@@ -23,11 +24,12 @@ const handleReferenceClick = (item) => {
   showDetailsDialog.value = true;
 };
 
-// Formato de stock considerando unidad base (gramaje/volumen) o unidades comerciales
+// Formato de stock considerando unidad base (gramaje/volumen) en restaurante o unidades normales en farmacia
 const formatStockDisplay = (item, type = "after") => {
   if (!item) return "0";
 
-  if (item.has_grammage && (item.base_stock_after !== undefined || item.base_stock_before !== undefined)) {
+  // Modo restaurante exclusivo para recetas e insumos con gramaje
+  if (props.isRestaurant && item.has_grammage && (item.base_stock_after !== undefined || item.base_stock_before !== undefined)) {
     const baseVal = type === "before" ? item.base_stock_before : item.base_stock_after;
     const unit = item.unit_of_measure || "G";
     const num = parseFloat(baseVal ?? 0);
@@ -37,17 +39,16 @@ const formatStockDisplay = (item, type = "after") => {
     return `${formatted} ${unit}`;
   }
 
+  // Modo farmacia / estándar (formato original intacto)
   const val = type === "before" ? item.global_stock_before : item.global_stock_after;
   if (val === undefined || val === null) return "0";
   const numVal = parseFloat(val);
-  if (Number.isInteger(numVal)) return numVal.toString();
-  const precision = Math.abs(numVal) < 0.05 && numVal !== 0 ? 3 : 2;
-  return parseFloat(numVal.toFixed(precision)).toString();
+  return Number.isInteger(numVal) ? numVal.toString() : numVal.toFixed(2);
 };
 
-// Subtítulo de stock en unidades de empaque si aplica
+// Subtítulo de stock en unidades de empaque (solo restaurante)
 const formatSubStockDisplay = (item, type = "after") => {
-  if (!item || !item.has_grammage || !item.presentation_factor || item.presentation_factor <= 1) {
+  if (!props.isRestaurant || !item || !item.has_grammage || !item.presentation_factor || item.presentation_factor <= 1) {
     return null;
   }
   const rawVal = type === "before" ? item.global_stock_before : item.global_stock_after;
@@ -57,11 +58,12 @@ const formatSubStockDisplay = (item, type = "after") => {
   return `(${formatted} paq)`;
 };
 
-// Formato de cantidad considerando unidad de medida para evitar cortes a 0 falso
+// Formato de cantidad: gramaje en recetas de restaurante o unidades en farmacia
 const formatQuantityDisplay = (item) => {
   if (!item) return "0";
 
-  if (item.has_grammage && item.base_quantity !== undefined) {
+  // Modo restaurante exclusivo para recetas e insumos con gramaje
+  if (props.isRestaurant && item.has_grammage && item.base_quantity !== undefined) {
     const baseQty = parseFloat(item.base_quantity);
     const sign = baseQty > 0 ? "+" : "";
     const unit = item.unit_of_measure || "G";
@@ -71,13 +73,12 @@ const formatQuantityDisplay = (item) => {
     return `${sign}${formatted} ${unit}`;
   }
 
+  // Modo farmacia / estándar (formato original intacto)
   const val = item.quantity;
   if (val === undefined || val === null) return "0";
   const numVal = parseFloat(val);
   const sign = numVal > 0 ? "+" : "";
-  if (Number.isInteger(numVal)) return `${sign}${numVal}`;
-  const precision = Math.abs(numVal) < 0.05 && numVal !== 0 ? 3 : 2;
-  const strVal = parseFloat(numVal.toFixed(precision)).toString();
+  const strVal = Number.isInteger(numVal) ? numVal.toString() : numVal.toFixed(2);
   return `${sign}${strVal}`;
 };
 
@@ -148,12 +149,13 @@ const headers = [
                 :title="item.product?.name"
               >
                 {{ item.product?.name?.toUpperCase() || 'N/A' }}
+                <span v-if="props.isRestaurant && item.dish" class="text-primary font-weight-black text-none"> - {{ item.dish.name }}</span>
                 <span v-if="item.product?.iva" class="text-xs text-disabled"> (G)</span>
                 <span v-if="item.product?.is_colombian_origin" class="text-xs text-disabled"> (COL)</span>
               </span>
 
-              <!-- Indicador de Plato / Receta -->
-              <div v-if="item.dish" class="d-flex align-center gap-1 mt-1">
+              <!-- Indicador de Plato / Receta (Solo Modo Restaurante) -->
+              <div v-if="props.isRestaurant && item.dish" class="d-flex align-center gap-1 mt-1">
                 <VChip
                   size="x-small"
                   color="primary"
@@ -166,15 +168,15 @@ const headers = [
               </div>
 
               <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-1">
-                <span v-if="item.has_grammage" class="text-primary font-weight-bold">
+                <span v-if="props.isRestaurant && item.has_grammage" class="text-primary font-weight-bold">
                   Empaque: {{ Number(item.presentation_factor).toLocaleString('es-CO') }} {{ item.unit_of_measure }}
                 </span>
-                <span v-if="item.has_grammage" class="text-disabled mx-1">|</span>
+                <span v-if="props.isRestaurant && item.has_grammage" class="text-disabled mx-1">|</span>
                 <span class="text-disabled truncate" style="max-inline-size: 150px;">
                   {{ item.product?.active_ingredient || "Sin principio" }}
                 </span>
                 <span class="text-disabled mx-1">|</span>
-                <span class="text-medium-emphasis font-weight-medium text-uppercase truncate" style="max-inline-size: 110px;">
+                <span class="text-primary font-weight-black text-uppercase truncate" style="max-inline-size: 130px;">
                   {{ item.product?.laboratory?.name || 'S/L' }}
                 </span>
               </div>
@@ -291,8 +293,8 @@ const headers = [
                   </h3>
                 </div>
 
-                <!-- Indicador de Plato / Receta en Móvil -->
-                <div v-if="item.dish" class="mt-1">
+                <!-- Indicador de Plato / Receta en Móvil (Solo Modo Restaurante) -->
+                <div v-if="props.isRestaurant && item.dish" class="mt-1">
                   <VChip
                     size="x-small"
                     color="primary"
@@ -305,15 +307,15 @@ const headers = [
                 </div>
 
                 <div class="d-flex align-center flex-wrap gap-1 text-super-xs mt-1">
-                  <span v-if="item.has_grammage" class="text-primary font-weight-bold">
+                  <span v-if="props.isRestaurant && item.has_grammage" class="text-primary font-weight-bold">
                     Emp: {{ Number(item.presentation_factor).toLocaleString('es-CO') }} {{ item.unit_of_measure }}
                   </span>
-                  <span v-if="item.has_grammage" class="text-disabled mx-1">|</span>
+                  <span v-if="props.isRestaurant && item.has_grammage" class="text-disabled mx-1">|</span>
                   <span class="text-disabled truncate" style="max-inline-size: 140px;">
                     {{ item.product?.active_ingredient || 'Sin principio' }}
                   </span>
                   <span class="text-disabled mx-1">|</span>
-                  <span class="text-medium-emphasis font-weight-medium text-uppercase text-truncate" style="max-inline-size: 120px;">
+                  <span class="text-primary font-weight-black text-uppercase text-truncate" style="max-inline-size: 120px;">
                     {{ item.product?.laboratory?.name || 'S/L' }}
                   </span>
                 </div>
