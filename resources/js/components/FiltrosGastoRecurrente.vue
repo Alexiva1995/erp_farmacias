@@ -1,145 +1,213 @@
 <script setup lang="js">
+// Filtros de Gastos Fijos basados en AppFilterBase
+import AppFilterBase from "@/components/AppFilterBase.vue";
+import { computed } from "vue";
 
-const props=defineProps({
-  buscardor_filtro: {type: String, requiered: true, default: () => "" },
-  currency:{type: String,requiered: true},
-  category_id_filtro:{type: String,requiered: true},
-  categorias:{type: Array,requiered: true, default:() => []},
-  fechaHasta_filtro: {type: String, requiered: true, default: () => "" },
-  fechaDesde_filtro: {type: String, requiered: true, default: () => "" },
-  isDeductible: Boolean,
-  hasInvoice: Boolean,
-})
+const props = defineProps({
+  search: { type: String, default: "" },
+  currency: { type: String, default: null },
+  categoryId: { type: [Number, String], default: null },
+  categories: { type: Array, default: () => [] },
+  dateFrom: { type: String, default: "" },
+  dateTo: { type: String, default: "" },
+  isActive: { type: Boolean, default: null },
+  loading: { type: Boolean, default: false },
+  refreshing: { type: Boolean, default: false },
+});
 
-const currencies=["BS","USD", "COP"];
+const currencies = ["BS", "USD", "COP"];
 
-const emit=defineEmits([
+const statusOptions = [
+  { title: "Activos", value: true },
+  { title: "Pausados", value: false },
+];
+
+const emit = defineEmits([
+  "update:search",
   "update:currency",
-  "update:buscardor_filtro",
-  "update:category_id_filtro",
-  "update:fechaHasta_filtro",
-  "update:fechaDesde_filtro",
+  "update:categoryId",
+  "update:dateFrom",
+  "update:dateTo",
+  "update:isActive",
   "clear",
-  "export-excel",
-  "export-pdf",
   "add",
-  "update:isDeductible",
-  "update:hasInvoice",
-])
+  "refresh",
+]);
+
+const hasAdvancedFilters = computed(() => {
+  return !!(
+    props.categoryId ||
+    props.currency ||
+    props.dateFrom ||
+    props.dateTo ||
+    props.isActive !== null
+  );
+});
+
+const formatDateString = (d) => {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+function setQuickFilter(days) {
+  const today = new Date();
+
+  if (days === "all") {
+    emit("update:dateFrom", "");
+    emit("update:dateTo", "");
+  } else if (days === "current_month") {
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    emit("update:dateFrom", formatDateString(start));
+    emit("update:dateTo", formatDateString(end));
+  } else if (days === "last_month") {
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+    emit("update:dateFrom", formatDateString(lastMonth));
+    emit("update:dateTo", formatDateString(lastDay));
+  } else if (days === "next_7") {
+    const next = new Date();
+    next.setDate(today.getDate() + 7);
+    emit("update:dateFrom", formatDateString(today));
+    emit("update:dateTo", formatDateString(next));
+  } else {
+    const start = new Date();
+    start.setDate(today.getDate() - days);
+    emit("update:dateFrom", formatDateString(start));
+    emit("update:dateTo", formatDateString(today));
+  }
+}
 </script>
+
 <template>
-  <!-- <h1>desuwa</h1> -->
-  <VCard title="Filtros" class="mb-6">
-    <VCardText>
-      <VRow>
-        <VCol cols="12" sm="6" md="8">
-          <AppTextField
-            :model-value="props.buscardor_filtro"
-            placeholder="Buscar por nombre o id"
-            clearable
-            @update:model-value="emit('update:buscardor_filtro', $event)"
-          />
-          <div class="d-flex align-center gap-4">
-            <VCheckbox
-              label="Deducibles"
-              :model-value="props.isDeductible"
-              @update:model-value="emit('update:isDeductible', $event)"
-              hide-details
-            />
-            
-            <VCheckbox
-              label="Facturas"
-              :model-value="props.hasInvoice"
-              @update:model-value="emit('update:hasInvoice', $event)"
-              hide-details
-            />
-          </div>
-        </VCol>
-        <VCol cols="12" sm="6" md="2">
-          <VSelect
-            :model-value="props.currency"
-            label="Moneda"
-            :items="currencies"
-            clearable
-            @update:model-value="emit('update:currency', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="2">
-          <VSelect
-            :model-value="props.category_id_filtro"
-            label="Categoria"
-            :items="props.categorias"
-            item-title="name"
-            item-value="id"
-            clearable
-            @update:model-value="emit('update:category_id_filtro', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="6">
-          <AppDateTimePicker
-            :model-value="props.fechaDesde_filtro"
-            label="Desde"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:fechaDesde_filtro', $event)"
-          />
-        </VCol>
-        <VCol cols="12" sm="6" md="6">
-          <AppDateTimePicker
-            :model-value="props.fechaHasta_filtro"
-            label="Hasta"
-            clearable
-            :config="{
-              altInput: true,
-              altFormat: 'Y-m-d',
-              dateFormat: 'Y-m-d',
-            }"
-            @update:model-value="emit('update:fechaHasta_filtro', $event)"
-          />
-        </VCol>
-      </VRow>
-    </VCardText>
+  <AppFilterBase
+    :search="props.search"
+    :has-advanced-filters="hasAdvancedFilters"
+    :show-add="true"
+    :show-export="false"
+    add-button-text="Nuevo Gasto Fijo"
+    search-placeholder="Nombre o Concepto del Gasto Fijo..."
+    class="py-1"
+    @update:search="emit('update:search', $event)"
+    @clear="emit('clear')"
+    @add="emit('add')"
+  >
+    <template #advanced-filters>
+      <!-- Categoría -->
+      <VCol cols="12" sm="6" md="3">
+        <VAutocomplete
+          :model-value="props.categoryId"
+          :items="props.categories"
+          :loading="props.loading"
+          placeholder="Categoría"
+          item-title="name"
+          item-value="id"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+          prepend-inner-icon="tabler-category"
+          @update:model-value="emit('update:categoryId', $event)"
+        />
+      </VCol>
 
-    <VDivider />
+      <!-- Moneda -->
+      <VCol cols="12" sm="6" md="2">
+        <VSelect
+          :model-value="props.currency"
+          :items="currencies"
+          placeholder="Moneda"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+          prepend-inner-icon="tabler-coin"
+          @update:model-value="emit('update:currency', $event)"
+        />
+      </VCol>
 
-    <VCardActions class="pa-4 d-flex flex-wrap gap-4">
-      <VBtn color="secondary" variant="outlined" @click="emit('clear')">
-        Limpiar Filtros
-      </VBtn>
-      <VSpacer />
-      <VMenu>
+      <!-- Rango de Fechas -->
+      <VCol cols="12" sm="6" md="5">
+        <div class="d-flex align-center gap-2">
+          <AppDateTimePicker
+            :model-value="props.dateFrom"
+            placeholder="Desde"
+            clearable
+            density="compact"
+            hide-details
+            class="flex-grow-1"
+            :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+            prepend-inner-icon="tabler-calendar"
+            @update:model-value="emit('update:dateFrom', $event)"
+          />
+          <AppDateTimePicker
+            :model-value="props.dateTo"
+            placeholder="Hasta"
+            clearable
+            density="compact"
+            hide-details
+            class="flex-grow-1"
+            :config="{ altFormat: 'Y-m-d', dateFormat: 'Y-m-d' }"
+            prepend-inner-icon="tabler-calendar-check"
+            @update:model-value="emit('update:dateTo', $event)"
+          />
+        </div>
+      </VCol>
+
+      <!-- Estado de Plantilla -->
+      <VCol cols="12" sm="6" md="2">
+        <VSelect
+          :model-value="props.isActive"
+          :items="statusOptions"
+          item-title="title"
+          item-value="value"
+          placeholder="Estado"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+          prepend-inner-icon="tabler-toggle-left"
+          @update:model-value="emit('update:isActive', $event)"
+        />
+      </VCol>
+    </template>
+
+    <template #actions-extra>
+      <!-- Menú de Accesos Rápidos de Fecha -->
+      <VMenu location="bottom end">
         <template #activator="{ props: menuProps }">
           <VBtn
-            color="success"
-            variant="flat"
-            prepend-icon="tabler-upload"
             v-bind="menuProps"
+            variant="tonal"
+            color="info"
+            size="38"
+            icon
+            class="rounded-circle shadow-sm ms-1"
           >
-            Exportar
+            <VIcon icon="tabler-calendar-time" size="20" />
+            <VTooltip activator="parent" location="top">Períodos Rápidos</VTooltip>
           </VBtn>
         </template>
-        <VList>
-          <VListItem @click="emit('export-excel', 'xlsx')">
-            <template #prepend>
-              <VIcon icon="tabler-file-type-csv" class="me-2" color="success" />
-            </template>
-            <VListItemTitle class="text-success">Excel</VListItemTitle>
-          </VListItem>
-          <VListItem @click="emit('export-pdf')">
-            <template #prepend>
-              <VIcon icon="tabler-file-type-pdf" class="me-2" />
-            </template>
-            <VListItemTitle>PDF</VListItemTitle>
-          </VListItem>
+        <VList density="compact" class="rounded-lg shadow-lg border-0 pa-2">
+          <VListItem @click="setQuickFilter('all')"><VListItemTitle class="text-xs font-weight-bold">Todo</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter('next_7')"><VListItemTitle class="text-xs font-weight-bold">Próximos 7 días</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter('current_month')"><VListItemTitle class="text-xs font-weight-bold">Mes Actual</VListItemTitle></VListItem>
+          <VListItem @click="setQuickFilter('last_month')"><VListItemTitle class="text-xs font-weight-bold">Mes Pasado</VListItemTitle></VListItem>
         </VList>
       </VMenu>
-      <VBtn color="primary" prepend-icon="tabler-plus" @click="emit('add')">
-        Agregar Gasto
+
+      <!-- Botón Actualizar Avisos -->
+      <VBtn
+        variant="tonal"
+        color="warning"
+        size="38"
+        icon
+        :loading="props.refreshing"
+        class="rounded-circle shadow-sm ms-1"
+        @click="emit('refresh')"
+      >
+        <VIcon icon="tabler-refresh" size="20" />
+        <VTooltip activator="parent" location="top">Actualizar Avisos</VTooltip>
       </VBtn>
-    </VCardActions>
-  </VCard>
+    </template>
+  </AppFilterBase>
 </template>

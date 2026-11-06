@@ -22,6 +22,7 @@ class ListFixedExpensesRequest extends FormRequest
         return [
             'search' => ['nullable', 'string', 'max:255'],
             'category_id' => ['nullable', 'integer'],
+            'currency' => ['nullable', 'string', Rule::in(['USD', 'BS', 'COP'])],
             'is_active' => ['nullable', 'boolean'],
             'scope' => ['nullable', Rule::in(['pending', 'history'])],
             'date_from' => ['nullable', 'date'],

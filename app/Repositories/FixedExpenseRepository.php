@@ -43,6 +43,10 @@ class FixedExpenseRepository
             $query->where('category_id', $filters['category_id']);
         }
 
+        if (!empty($filters['currency'])) {
+            $query->where('currency', $filters['currency']);
+        }
+
         if (array_key_exists('is_active', $filters) && $filters['is_active'] !== null) {
             $query->where('is_active', (bool) $filters['is_active']);
         }
@@ -183,6 +187,10 @@ class FixedExpenseRepository
 
         if (!empty($filters['category_id'])) {
             $query->where('fixed_expenses.category_id', $filters['category_id']);
+        }
+
+        if (!empty($filters['currency'])) {
+            $query->where('fixed_expense_occurrences.currency', $filters['currency']);
         }
 
         if (!empty($filters['date_from'])) {

@@ -28,8 +28,9 @@ class TraceabilityResource extends JsonResource
         $stockAfter = isset($this->global_stock_after) ? (float) $this->global_stock_after : (float) ($this->stock_after ?? 0);
         $quantity = (float) $this->quantity;
 
-        // Detección de insumos con presentación de gramaje / volumen
-        $hasGrammage = $presentation > 1 && in_array($unitOfMeasure, ['G', 'GR', 'GRAMOS', 'GRAMO', 'ML', 'MILILITROS', 'CC', 'MG', 'KG', 'L', 'LT', 'LTS']);
+        // Detección de insumos con presentación de gramaje / volumen exclusiva para restaurante (consumo de recetas)
+        $isRestaurantConsumption = !is_null($this->dish_id);
+        $hasGrammage = $isRestaurantConsumption && $presentation > 1 && in_array($unitOfMeasure, ['G', 'GR', 'GRAMOS', 'GRAMO', 'ML', 'MILILITROS', 'CC', 'MG', 'KG', 'L', 'LT', 'LTS']);
         $baseQuantity = $hasGrammage ? round($quantity * $presentation, 2) : $quantity;
         $baseStockBefore = $hasGrammage ? round($stockBefore * $presentation, 2) : $stockBefore;
         $baseStockAfter = $hasGrammage ? round($stockAfter * $presentation, 2) : $stockAfter;

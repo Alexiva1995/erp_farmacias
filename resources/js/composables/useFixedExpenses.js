@@ -1,8 +1,16 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
-import { reactive, ref } from "vue";
+import { reactive, ref, watch } from "vue";
 
 export function useFixedExpenses() {
+  // Filtros compartidos
+  const search = ref("");
+  const categoryId = ref(null);
+  const currency = ref(null);
+  const dateFrom = ref("");
+  const dateTo = ref("");
+  const isActive = ref(null);
+
   // Estado para cuotas
   const occurrencesLoading = ref(false);
   const occurrences = ref([]);
@@ -10,8 +18,6 @@ export function useFixedExpenses() {
   const occurrencesPage = ref(1);
   const occurrencesPerPage = ref(15);
   const occurrencesScope = ref("pending"); // 'pending' | 'history'
-  const occurrencesSearch = ref("");
-  const occurrencesCategoryId = ref(null);
 
   // Resumen de cuotas
   const summaryLoading = ref(false);
@@ -28,12 +34,10 @@ export function useFixedExpenses() {
   const templatesTotal = ref(0);
   const templatesPage = ref(1);
   const templatesPerPage = ref(10);
-  const templatesSearch = ref("");
-  const templatesCategoryId = ref(null);
-  const templatesIsActive = ref(null);
 
   // Categorías de gastos
   const categories = ref([]);
+  const categoriesLoading = ref(false);
 
   // Modales
   const isTemplateDialogOpen = ref(false);
@@ -47,8 +51,34 @@ export function useFixedExpenses() {
   const skipNote = ref("");
   const occurrenceToSkip = ref(null);
 
+  let debounceTimer = null;
+
+  watch(
+    [search, categoryId, currency, dateFrom, dateTo, isActive],
+    () => {
+      occurrencesPage.value = 1;
+      templatesPage.value = 1;
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchOccurrences();
+        fetchTemplates();
+      }, 300);
+    }
+  );
+
+  // Limpiar filtros
+  function clearFilters() {
+    search.value = "";
+    categoryId.value = null;
+    currency.value = null;
+    dateFrom.value = "";
+    dateTo.value = "";
+    isActive.value = null;
+  }
+
   // Cargar categorías
   async function fetchCategories() {
+    categoriesLoading.value = true;
     try {
       const response = await axios.get("/finances/expenses/category");
       if (response.status === 200) {
@@ -56,6 +86,8 @@ export function useFixedExpenses() {
       }
     } catch (error) {
       console.error("Error al cargar categorías:", error);
+    } finally {
+      categoriesLoading.value = false;
     }
   }
 
@@ -84,11 +116,20 @@ export function useFixedExpenses() {
         per_page: occurrencesPerPage.value,
       };
 
-      if (occurrencesSearch.value) {
-        params.search = occurrencesSearch.value;
+      if (search.value) {
+        params.search = search.value;
       }
-      if (occurrencesCategoryId.value) {
-        params.category_id = occurrencesCategoryId.value;
+      if (categoryId.value) {
+        params.category_id = categoryId.value;
+      }
+      if (currency.value) {
+        params.currency = currency.value;
+      }
+      if (dateFrom.value) {
+        params.date_from = dateFrom.value;
+      }
+      if (dateTo.value) {
+        params.date_to = dateTo.value;
       }
 
       const response = await axios.get("/finances/fixed-expenses/occurrences", { params });
@@ -114,14 +155,17 @@ export function useFixedExpenses() {
         per_page: templatesPerPage.value,
       };
 
-      if (templatesSearch.value) {
-        params.search = templatesSearch.value;
+      if (search.value) {
+        params.search = search.value;
       }
-      if (templatesCategoryId.value) {
-        params.category_id = templatesCategoryId.value;
+      if (categoryId.value) {
+        params.category_id = categoryId.value;
       }
-      if (templatesIsActive.value !== null) {
-        params.is_active = templatesIsActive.value;
+      if (currency.value) {
+        params.currency = currency.value;
+      }
+      if (isActive.value !== null && isActive.value !== "") {
+        params.is_active = isActive.value;
       }
 
       const response = await axios.get("/finances/fixed-expenses", { params });
@@ -275,6 +319,15 @@ export function useFixedExpenses() {
   }
 
   return {
+    // Filtros
+    search,
+    categoryId,
+    currency,
+    dateFrom,
+    dateTo,
+    isActive,
+    clearFilters,
+
     // Cuotas
     occurrencesLoading,
     occurrences,
@@ -282,8 +335,6 @@ export function useFixedExpenses() {
     occurrencesPage,
     occurrencesPerPage,
     occurrencesScope,
-    occurrencesSearch,
-    occurrencesCategoryId,
     fetchOccurrences,
 
     // Resumen
@@ -297,9 +348,6 @@ export function useFixedExpenses() {
     templatesTotal,
     templatesPage,
     templatesPerPage,
-    templatesSearch,
-    templatesCategoryId,
-    templatesIsActive,
     fetchTemplates,
     saveTemplate,
     toggleActive,
@@ -307,6 +355,7 @@ export function useFixedExpenses() {
 
     // Categorías
     categories,
+    categoriesLoading,
     fetchCategories,
 
     // Acciones de cuotas

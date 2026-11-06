@@ -1,10 +1,20 @@
 <script setup lang="js">
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useFixedExpenses } from "@/composables/useFixedExpenses";
+import FiltrosGastoRecurrente from "@/components/FiltrosGastoRecurrente.vue";
 import FixedExpenseDialog from "@/components/dialogs/FixedExpenseDialog.vue";
 import PayFixedExpenseDialog from "@/components/dialogs/PayFixedExpenseDialog.vue";
 
 const {
+  // Filtros
+  search,
+  categoryId,
+  currency,
+  dateFrom,
+  dateTo,
+  isActive,
+  clearFilters,
+
   // Cuotas
   occurrencesLoading,
   occurrences,
@@ -12,7 +22,6 @@ const {
   occurrencesPage,
   occurrencesPerPage,
   occurrencesScope,
-  occurrencesSearch,
   fetchOccurrences,
 
   // Resumen
@@ -26,7 +35,6 @@ const {
   templatesTotal,
   templatesPage,
   templatesPerPage,
-  templatesSearch,
   fetchTemplates,
   saveTemplate,
   toggleActive,
@@ -34,6 +42,7 @@ const {
 
   // Categorías
   categories,
+  categoriesLoading,
   fetchCategories,
 
   // Acciones
@@ -54,12 +63,47 @@ const {
 
   isSkipDialogOpen,
   skipNote,
-  occurrenceToSkip,
   openSkipDialog,
 } = useFixedExpenses();
 
 const currentTab = ref("pending"); // 'pending' | 'history' | 'templates'
 const isActionLoading = ref(false);
+
+const currencyAmounts = computed(() => {
+  const map = { overdue: 0, week: 0, total: 0 };
+  (summary.by_currency || []).forEach((row) => {
+    if (!currency.value || row.currency === currency.value) {
+      map.overdue += Number(row.overdue_amount) || 0;
+      map.week += Number(row.week_amount) || 0;
+      map.total += Number(row.total_amount) || 0;
+    }
+  });
+  return map;
+});
+
+const kpis = computed(() => [
+  {
+    title: "Vencidos",
+    count: summary.overdue_count || 0,
+    amount: currencyAmounts.value.overdue,
+    color: "error",
+    icon: "tabler-alert-triangle",
+  },
+  {
+    title: "Próximos 7 Días",
+    count: summary.week_count || 0,
+    amount: currencyAmounts.value.week,
+    color: "warning",
+    icon: "tabler-clock",
+  },
+  {
+    title: "Total Por Pagar",
+    count: summary.total_count || 0,
+    amount: currencyAmounts.value.total,
+    color: "info",
+    icon: "tabler-calendar-due",
+  },
+]);
 
 const occurrenceHeaders = [
   { title: "Vencimiento", key: "due_date", sortable: false },
@@ -127,158 +171,129 @@ async function handleDeleteTemplate(item) {
 
 <template>
   <div class="fixed-expenses-view pb-12">
-    <!-- Encabezado Principal -->
-    <div class="d-flex flex-wrap align-center justify-space-between gap-4 mb-4">
+    <div class="d-flex flex-column gap-1 mt-1">
+      <!-- === FILTROS === -->
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">
-          Control de Gastos Fijos
-        </h1>
-        <p class="text-body-2 text-medium-emphasis mb-0">
-          Compromisos periódicos de la operación (alquiler, luz, agua, internet, licencias y servicios)
-        </p>
+        <FiltrosGastoRecurrente
+          v-model:search="search"
+          v-model:currency="currency"
+          v-model:category-id="categoryId"
+          v-model:date-from="dateFrom"
+          v-model:date-to="dateTo"
+          v-model:is-active="isActive"
+          :categories="categories"
+          :loading="categoriesLoading"
+          :refreshing="summaryLoading"
+          class="mb-5"
+          @clear="clearFilters"
+          @add="openNewTemplateDialog"
+          @refresh="generateOccurrencesNow"
+        />
       </div>
 
-      <div class="d-flex align-center gap-2">
-        <VBtn
-          variant="outlined"
-          color="secondary"
-          prepend-icon="tabler-refresh"
-          :loading="summaryLoading"
-          @click="generateOccurrencesNow"
-        >
-          Actualizar Avisos
-        </VBtn>
-        <VBtn
+      <!-- === KPIS RÁPIDOS === -->
+      <VRow class="ma-0 mx-n1 mb-5" dense>
+        <VCol v-for="kpi in kpis" :key="kpi.title" cols="12" sm="4" class="pa-1">
+          <VCard
+            class="stats-card h-100 border-0 overflow-hidden shadow-sm position-relative"
+          >
+            <div
+              class="card-bg-decoration"
+              :class="`bg-${kpi.color}-opacity-1`"
+            ></div>
+            <VCardText class="pa-4 relative-content h-100 d-flex flex-column">
+              <div class="d-flex align-center gap-3 mb-3">
+                <VAvatar
+                  :color="kpi.color"
+                  variant="tonal"
+                  size="38"
+                  class="rounded-lg"
+                >
+                  <VIcon :icon="kpi.icon" size="20" />
+                </VAvatar>
+                <span
+                  class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-widest"
+                >
+                  {{ kpi.title }}
+                </span>
+              </div>
+              <div class="mt-auto">
+                <div
+                  class="text-h5 font-weight-black leading-none mb-1"
+                  :class="kpi.color === 'warning' ? 'kpi-text-warning' : `text-${kpi.color}`"
+                >
+                  ${{ kpi.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                </div>
+                <div class="d-flex align-center gap-1">
+                  <span class="text-xs font-weight-black text-high-emphasis">
+                    {{ kpi.count }}
+                  </span>
+                  <span class="text-super-xs text-disabled font-weight-black uppercase">
+                    Cuotas
+                  </span>
+                </div>
+              </div>
+            </VCardText>
+            <div class="accent-border" :class="`bg-${kpi.color}`"></div>
+          </VCard>
+        </VCol>
+      </VRow>
+
+      <!-- === TABLA CON TABS === -->
+      <VCard
+        variant="flat"
+        class="rounded-lg border shadow-sm bg-surface overflow-hidden"
+      >
+        <VTabs
+          v-model="currentTab"
           color="primary"
-          variant="elevated"
-          prepend-icon="tabler-plus"
-          @click="openNewTemplateDialog"
+          class="px-4 bg-surface"
+          align-tabs="start"
+          density="comfortable"
         >
-          Nuevo Gasto Fijo
-        </VBtn>
-      </div>
-    </div>
-
-    <!-- KPIs Rápidos -->
-    <VRow dense class="mb-5">
-      <!-- Vencidos -->
-      <VCol cols="12" sm="4">
-        <VCard class="pa-4 border-0 shadow-sm" style="border-left: 4px solid #ef4444 !important;">
-          <div class="d-flex align-center justify-space-between mb-2">
-            <span class="text-caption font-weight-bold text-error uppercase">Vencidos</span>
-            <VAvatar color="error" variant="tonal" size="32">
-              <VIcon icon="tabler-alert-triangle" size="18" />
-            </VAvatar>
-          </div>
-          <div class="text-h5 font-weight-bold text-error mb-1">
-            {{ summary.overdue_count }} cuotas
-          </div>
-          <div class="text-caption text-medium-emphasis">
-            Compromisos con fecha de pago anterior a hoy
-          </div>
-        </VCard>
-      </VCol>
-
-      <!-- Esta Semana -->
-      <VCol cols="12" sm="4">
-        <VCard class="pa-4 border-0 shadow-sm" style="border-left: 4px solid #f59e0b !important;">
-          <div class="d-flex align-center justify-space-between mb-2">
-            <span class="text-caption font-weight-bold text-warning uppercase">Próximos 7 Días</span>
-            <VAvatar color="warning" variant="tonal" size="32">
-              <VIcon icon="tabler-clock" size="18" />
-            </VAvatar>
-          </div>
-          <div class="text-h5 font-weight-bold text-warning mb-1">
-            {{ summary.week_count }} cuotas
-          </div>
-          <div class="text-caption text-medium-emphasis">
-            Compromisos a cancelar en los próximos 7 días
-          </div>
-        </VCard>
-      </VCol>
-
-      <!-- Total Pendiente -->
-      <VCol cols="12" sm="4">
-        <VCard class="pa-4 border-0 shadow-sm" style="border-left: 4px solid #3b82f6 !important;">
-          <div class="d-flex align-center justify-space-between mb-2">
-            <span class="text-caption font-weight-bold text-info uppercase">Total Por Pagar</span>
-            <VAvatar color="info" variant="tonal" size="32">
-              <VIcon icon="tabler-calendar-due" size="18" />
-            </VAvatar>
-          </div>
-          <div class="text-h5 font-weight-bold text-info mb-1">
-            {{ summary.total_count }} cuotas
-          </div>
-          <div class="text-caption text-medium-emphasis">
-            Cuotas pendientes generadas en el sistema
-          </div>
-        </VCard>
-      </VCol>
-    </VRow>
-
-    <!-- Contenedor con Tabs -->
-    <VCard variant="flat" class="border shadow-sm rounded-lg overflow-hidden">
-      <VTabs v-model="currentTab" color="primary" class="px-4" density="comfortable">
-        <VTab value="pending" class="font-weight-bold">
-          <span>Avisos Por Pagar</span>
-          <VChip
-            v-if="summary.total_count > 0"
-            size="x-small"
-            color="warning"
-            variant="tonal"
-            class="ms-2 font-weight-bold"
+          <VTab
+            value="pending"
+            class="tab-with-badge font-weight-black text-xs uppercase letter-spacing-widest"
           >
-            {{ summary.total_count }}
-          </VChip>
-        </VTab>
+            <span>Avisos Por Pagar</span>
+            <VChip
+              size="x-small"
+              color="warning"
+              variant="tonal"
+              class="ms-2 font-weight-black"
+            >
+              {{ summary.total_count || 0 }}
+            </VChip>
+          </VTab>
 
-        <VTab value="history" class="font-weight-bold">
-          <span>Historial de Pagos</span>
-        </VTab>
-
-        <VTab value="templates" class="font-weight-bold">
-          <span>Configuración de Gastos Fijos</span>
-          <VChip
-            v-if="templatesTotal > 0"
-            size="x-small"
-            color="primary"
-            variant="tonal"
-            class="ms-2 font-weight-bold"
+          <VTab
+            value="history"
+            class="tab-with-badge font-weight-black text-xs uppercase letter-spacing-widest"
           >
-            {{ templatesTotal }}
-          </VChip>
-        </VTab>
-      </VTabs>
+            <span>Historial de Pagos</span>
+          </VTab>
 
-      <VDivider />
-
-      <!-- CONTENIDO TAB 1: Cuotas por Pagar -->
-      <div v-if="currentTab === 'pending'" class="pa-4">
-        <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-          <VTextField
-            v-model="occurrencesSearch"
-            placeholder="Buscar por nombre de gasto..."
-            prepend-inner-icon="tabler-search"
-            density="compact"
-            variant="outlined"
-            style="max-width: 320px;"
-            clearable
-            @update:model-value="fetchOccurrences"
-          />
-
-          <VBtn
-            variant="text"
-            color="secondary"
-            prepend-icon="tabler-refresh"
-            size="small"
-            :loading="occurrencesLoading"
-            @click="fetchOccurrences"
+          <VTab
+            value="templates"
+            class="tab-with-badge font-weight-black text-xs uppercase letter-spacing-widest"
           >
-            Recargar
-          </VBtn>
-        </div>
+            <span>Configuración de Gastos Fijos</span>
+            <VChip
+              size="x-small"
+              color="primary"
+              variant="tonal"
+              class="ms-2 font-weight-black"
+            >
+              {{ templatesTotal || 0 }}
+            </VChip>
+          </VTab>
+        </VTabs>
 
+        <VDivider />
+
+        <!-- CONTENIDO TAB 1: Cuotas por Pagar -->
         <VDataTableServer
+          v-if="currentTab === 'pending'"
           :headers="occurrenceHeaders"
           :items="occurrences"
           :items-length="occurrencesTotal"
@@ -323,7 +338,7 @@ async function handleDeleteTemplate(item) {
           <template #item.fixed_expense.name="{ item }">
             <div>
               <div class="font-weight-bold text-high-emphasis">
-                {{ item.fixed_expense?.name || 'Gasto' }}
+                {{ item.fixed_expense?.name || "Gasto" }}
               </div>
               <div v-if="item.fixed_expense?.is_amount_variable" class="text-caption text-warning">
                 Monto variable (confirmar al pagar)
@@ -334,13 +349,13 @@ async function handleDeleteTemplate(item) {
           <!-- Monto -->
           <template #item.amount="{ item }">
             <span class="font-weight-bold">
-              {{ item.currency === 'USD' ? '$' : item.currency === 'BS' ? 'Bs.' : 'COP' }}
-              {{ Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+              {{ item.currency === "USD" ? "$" : item.currency === "BS" ? "Bs." : "COP" }}
+              {{ Number(item.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
             </span>
           </template>
 
           <!-- Estado -->
-          <template #item.status="{ item }">
+          <template #item.status>
             <VChip size="small" color="warning" variant="tonal">
               Por pagar
             </VChip>
@@ -352,7 +367,7 @@ async function handleDeleteTemplate(item) {
               <VBtn
                 size="small"
                 color="success"
-                variant="elevated"
+                variant="tonal"
                 prepend-icon="tabler-cash"
                 @click="openPayDialog(item)"
               >
@@ -383,11 +398,10 @@ async function handleDeleteTemplate(item) {
             </div>
           </template>
         </VDataTableServer>
-      </div>
 
-      <!-- CONTENIDO TAB 2: Historial -->
-      <div v-if="currentTab === 'history'" class="pa-4">
+        <!-- CONTENIDO TAB 2: Historial -->
         <VDataTableServer
+          v-if="currentTab === 'history'"
           :headers="occurrenceHeaders"
           :items="occurrences"
           :items-length="occurrencesTotal"
@@ -403,14 +417,14 @@ async function handleDeleteTemplate(item) {
               :color="item.status === 'Paid' ? 'success' : 'secondary'"
               variant="tonal"
             >
-              {{ item.status === 'Paid' ? 'Pagado' : 'Omitido' }}
+              {{ item.status === "Paid" ? "Pagado" : "Omitido" }}
             </VChip>
           </template>
 
           <template #item.amount="{ item }">
             <span class="font-weight-bold">
-              {{ item.currency === 'USD' ? '$' : item.currency === 'BS' ? 'Bs.' : 'COP' }}
-              {{ Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+              {{ item.currency === "USD" ? "$" : item.currency === "BS" ? "Bs." : "COP" }}
+              {{ Number(item.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
             </span>
           </template>
 
@@ -430,33 +444,10 @@ async function handleDeleteTemplate(item) {
             </div>
           </template>
         </VDataTableServer>
-      </div>
 
-      <!-- CONTENIDO TAB 3: Plantillas de Gastos Fijos -->
-      <div v-if="currentTab === 'templates'" class="pa-4">
-        <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
-          <VTextField
-            v-model="templatesSearch"
-            placeholder="Buscar por nombre..."
-            prepend-inner-icon="tabler-search"
-            density="compact"
-            variant="outlined"
-            style="max-width: 320px;"
-            clearable
-            @update:model-value="fetchTemplates"
-          />
-
-          <VBtn
-            color="primary"
-            variant="elevated"
-            prepend-icon="tabler-plus"
-            @click="openNewTemplateDialog"
-          >
-            Nuevo Gasto Fijo
-          </VBtn>
-        </div>
-
+        <!-- CONTENIDO TAB 3: Plantillas de Gastos Fijos -->
         <VDataTableServer
+          v-if="currentTab === 'templates'"
           :headers="templateHeaders"
           :items="templates"
           :items-length="templatesTotal"
@@ -477,8 +468,8 @@ async function handleDeleteTemplate(item) {
 
           <template #item.amount="{ item }">
             <span class="font-weight-medium">
-              {{ item.currency === 'USD' ? '$' : item.currency === 'BS' ? 'Bs.' : 'COP' }}
-              {{ Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+              {{ item.currency === "USD" ? "$" : item.currency === "BS" ? "Bs." : "COP" }}
+              {{ Number(item.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
             </span>
           </template>
 
@@ -522,14 +513,14 @@ async function handleDeleteTemplate(item) {
               <p class="text-body-2 text-medium-emphasis mb-3">
                 Agrega tus compromisos mensuales (alquiler, nómina fija, servicios) para recibir alertas de pago.
               </p>
-              <VBtn color="primary" variant="elevated" @click="openNewTemplateDialog">
+              <VBtn color="primary" variant="tonal" @click="openNewTemplateDialog">
                 Configurar Primer Gasto Fijo
               </VBtn>
             </div>
           </template>
         </VDataTableServer>
-      </div>
-    </VCard>
+      </VCard>
+    </div>
 
     <!-- Diálogo Crear/Editar Gasto Fijo -->
     <FixedExpenseDialog
@@ -585,5 +576,83 @@ async function handleDeleteTemplate(item) {
 .fixed-expenses-view {
   background-color: #f8fafc;
   min-block-size: 100vh;
+}
+
+.stats-card {
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--v-theme-surface), 90%) !important;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stats-card:not(.no-hover):hover {
+  transform: translateY(-4px);
+  background: rgba(var(--v-theme-surface), 98%) !important;
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.15) !important;
+}
+
+.card-bg-decoration {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  block-size: 60px;
+  filter: blur(35px);
+  inline-size: 60px;
+  inset-block-start: -10px;
+  inset-inline-end: -10px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.relative-content {
+  position: relative;
+  z-index: 1;
+}
+
+.accent-border {
+  position: absolute;
+  block-size: 100%;
+  inline-size: 4px;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  opacity: 0.7;
+}
+
+.bg-info-opacity-1 {
+  background: rgba(var(--v-theme-info), 0.1);
+}
+.bg-warning-opacity-1 {
+  background: rgba(var(--v-theme-warning), 0.1);
+}
+.kpi-text-warning {
+  color: #92400e !important;
+}
+.bg-error-opacity-1 {
+  background: rgba(var(--v-theme-error), 0.1);
+}
+
+.letter-spacing-widest {
+  letter-spacing: 0.1em !important;
+}
+.text-super-xs {
+  font-size: 0.65rem !important;
+}
+
+:deep(.v-tabs) {
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.1);
+  min-height: 48px !important;
+}
+
+:deep(.v-tab) {
+  min-block-size: 48px !important;
+  height: 48px !important;
+  padding-inline: 16px !important;
+}
+
+:deep(.v-tab .v-btn__content) {
+  display: flex !important;
+  align-items: center !important;
+  line-height: 1 !important;
+  padding-bottom: 0 !important;
 }
 </style>
