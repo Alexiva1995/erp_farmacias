@@ -133,6 +133,15 @@ Schedule::command('lots:consolidate-duplicates')
         \Log::error('[ConsolidateLots] Falló la consolidación automática de lotes duplicados a las 04:00 AM');
     });
 
+$scheduleTenantAware('suppliers:update', function ($event) {
+    $event->everySixHours()
+        ->withoutOverlapping()
+        ->runInBackground()
+        ->onFailure(function () {
+            \Log::error('[SuppliersUpdate] Falló la actualización automática de listas de proveedores cada 6 horas');
+        });
+});
+
 $scheduleTenantAware('dronena:sync-invoices', function ($event) {
     $event->dailyAt('04:00')
         ->withoutOverlapping()

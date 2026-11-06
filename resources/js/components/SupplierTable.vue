@@ -28,6 +28,7 @@ import AppMobilePagination from "@/components/AppMobilePagination.vue";
 const { mobile } = useDisplay();
 
 const isRestaurant = computed(() => brandingStore.isRestaurant);
+const canManageSuppliers = computed(() => authStore.isAdmin || authStore.isSupervisor);
 
 const emit = defineEmits([
   "update:options",
@@ -273,7 +274,7 @@ const headers = computed(() => [
                   <VListItemTitle>Editar Datos</VListItemTitle>
                 </VListItem>
 
-                <VListItem v-if="authStore.isAdmin && !isRestaurant" @click="emit('config-connection', item)" prepend-icon="tabler-plug-connected" base-color="warning">
+                <VListItem v-if="canManageSuppliers && !isRestaurant" @click="emit('config-connection', item)" prepend-icon="tabler-plug-connected" base-color="warning">
                   <VListItemTitle>Configurar Conexión</VListItemTitle>
                 </VListItem>
 
@@ -303,20 +304,20 @@ const headers = computed(() => [
                   <VListItemTitle>Sincronizar</VListItemTitle>
                 </VListItem>
 
-                <VListItem v-if="authStore.isAdmin && !isRestaurant" @click="emit('commercial-panel', item)" prepend-icon="tabler-settings-dollar" base-color="primary">
+                <VListItem v-if="canManageSuppliers && !isRestaurant" @click="emit('commercial-panel', item)" prepend-icon="tabler-settings-dollar" base-color="primary">
                   <VListItemTitle>Configuración Comercial</VListItemTitle>
                 </VListItem>
 
-                <VListItem v-if="authStore.isAdmin" @click="emit('supplier-pending-invoices', item)" prepend-icon="tabler-credit-card-pay">
+                <VListItem v-if="canManageSuppliers" @click="emit('supplier-pending-invoices', item)" prepend-icon="tabler-credit-card-pay">
                    <VListItemTitle>Facturas Pendientes</VListItemTitle>
                 </VListItem>
 
-                <VListItem v-if="authStore.isAdmin" @click="emit('merge-supplier', item)" prepend-icon="tabler-arrows-join-2" base-color="warning">
+                <VListItem v-if="canManageSuppliers" @click="emit('merge-supplier', item)" prepend-icon="tabler-arrows-join-2" base-color="warning">
                   <VListItemTitle>Fusionar Proveedor</VListItemTitle>
                 </VListItem>
 
                 <VListItem
-                  v-if="authStore.isAdmin"
+                  v-if="canManageSuppliers"
                   :base-color="item.is_active === false ? 'success' : 'warning'"
                   @click="emit('toggle-supplier-status', item)"
                   :prepend-icon="item.is_active === false ? 'tabler-toggle-right' : 'tabler-power'"
@@ -324,9 +325,9 @@ const headers = computed(() => [
                   <VListItemTitle>{{ item.is_active === false ? 'Activar Proveedor' : 'Desactivar Proveedor' }}</VListItemTitle>
                 </VListItem>
 
-                <VDivider v-if="authStore.isAdmin" />
+                <VDivider v-if="canManageSuppliers" />
 
-                <VListItem v-if="authStore.isAdmin" base-color="error" @click="emit('delete-supplier', item.id)" prepend-icon="tabler-trash">
+                <VListItem v-if="canManageSuppliers" base-color="error" @click="emit('delete-supplier', item.id)" prepend-icon="tabler-trash">
                   <VListItemTitle>Eliminar</VListItemTitle>
                 </VListItem>
               </VList>
@@ -458,7 +459,7 @@ const headers = computed(() => [
                   @click="emit('edit-supplier', item)"
                 />
                 <VBtn
-                  v-if="authStore.isAdmin"
+                  v-if="canManageSuppliers"
                   icon="tabler-arrows-join-2"
                   variant="tonal"
                   color="warning"
@@ -466,7 +467,7 @@ const headers = computed(() => [
                   @click="emit('merge-supplier', item)"
                 />
                 <VBtn
-                  v-if="authStore.isAdmin && !isRestaurant"
+                  v-if="canManageSuppliers && !isRestaurant"
                   icon="tabler-plug-connected"
                   variant="tonal"
                   color="warning"
@@ -491,7 +492,7 @@ const headers = computed(() => [
                   @click="emit('check-supplier-api', item)"
                 />
                 <VBtn
-                  v-if="authStore.isAdmin && !isRestaurant"
+                  v-if="canManageSuppliers && !isRestaurant"
                   icon="tabler-settings-dollar"
                   variant="tonal"
                   color="primary"
@@ -499,7 +500,7 @@ const headers = computed(() => [
                   @click="emit('commercial-panel', item)"
                 />
                 <VBtn
-                  v-if="authStore.isAdmin"
+                  v-if="canManageSuppliers"
                   icon="tabler-credit-card-pay"
                   variant="tonal"
                   color="secondary"
@@ -507,7 +508,7 @@ const headers = computed(() => [
                   @click="emit('supplier-pending-invoices', item)"
                 />
                 <VBtn
-                  v-if="authStore.isAdmin"
+                  v-if="canManageSuppliers"
                   :icon="item.is_active === false ? 'tabler-toggle-right' : 'tabler-power'"
                   variant="tonal"
                   :color="item.is_active === false ? 'success' : 'warning'"
@@ -515,7 +516,7 @@ const headers = computed(() => [
                   @click="emit('toggle-supplier-status', item)"
                 />
                 <VBtn
-                  v-if="authStore.isAdmin"
+                  v-if="canManageSuppliers"
                   icon="tabler-trash"
                   variant="tonal"
                   color="error"
