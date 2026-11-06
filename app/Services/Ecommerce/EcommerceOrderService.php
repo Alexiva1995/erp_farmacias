@@ -71,8 +71,8 @@ class EcommerceOrderService
                             throw new Exception("La variante seleccionada no es válida para el producto.");
                         }
 
-                        // Ajustar precio según el modificador de la variante
-                        $unitPrice += (float) $variant->price_modifier;
+                        // Ajustar precio según el modificador de la variante (asegurar que no sea negativo)
+                        $unitPrice = max(0, $basePrice + (float) $variant->price_modifier);
                     }
 
                     // Validar y descontar stock

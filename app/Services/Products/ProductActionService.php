@@ -66,12 +66,13 @@ class ProductActionService
         // Asegurar que unit_cost sea numérico
         $validatedData['unit_cost'] = (float)($validatedData['unit_cost'] ?? 0);
         
-        // sale_price: si no está presente, calcularlo o asignar 0
-        // sale_price: si no está presente, calcularlo o asignar 0
-        if (!isset($validatedData['sale_price']) || 
-            $validatedData['sale_price'] === null || 
-            $validatedData['sale_price'] === '') {
-            // Si unit_cost > 0, calcular el precio basado en rentabilidad
+        // Si no se proporcionó sale_price o viene en 0 teniendo un costo mayor a 0, calcularlo según rentabilidad
+        $salePriceProvided = isset($validatedData['sale_price']) && 
+            $validatedData['sale_price'] !== null && 
+            $validatedData['sale_price'] !== '' && 
+            (float)$validatedData['sale_price'] > 0;
+
+        if (!$salePriceProvided) {
             if ($validatedData['unit_cost'] > 0) {
                 $validatedData['sale_price'] = $this->calculateSalePrice((float) $validatedData['unit_cost']);
             } else {
@@ -337,15 +338,18 @@ class ProductActionService
         } else {
             unset($validatedData['photo_url']);
         }
-        // Si sale_price viene como 0, no recalcularlo (para vendedores y supervisores)
-        // De lo contrario, calcular el precio basado en rentabilidad solo si unit_cost está presente
-        // Solo calcular precio sugerido si no se proporcionó un precio de venta (el precio designado por el usuario se respeta siempre)
-        if ((!isset($validatedData['sale_price']) || $validatedData['sale_price'] === null || $validatedData['sale_price'] === '') && 
-            isset($validatedData['unit_cost']) && 
-            $validatedData['unit_cost'] !== null && 
-            $validatedData['unit_cost'] > 0) {
+        // Si no se proporcionó sale_price o viene en 0 teniendo costo mayor a 0, calcularlo según rentabilidad
+        $salePriceProvided = isset($validatedData['sale_price']) && 
+            $validatedData['sale_price'] !== null && 
+            $validatedData['sale_price'] !== '' && 
+            (float)$validatedData['sale_price'] > 0;
 
-            $validatedData['sale_price'] = $this->calculateSalePrice((float) $validatedData['unit_cost'], $product);
+        $unitCost = isset($validatedData['unit_cost']) && $validatedData['unit_cost'] !== null 
+            ? (float)$validatedData['unit_cost'] 
+            : (float)$product->unit_cost;
+
+        if (!$salePriceProvided && $unitCost > 0) {
+            $validatedData['sale_price'] = $this->calculateSalePrice($unitCost, $product);
         }
         
         if (!empty($validatedData['barcode'])) {

@@ -56,9 +56,10 @@ const cart = ref([])
 const cartTotalItems = computed(() => cart.value.reduce((acc, i) => acc + i.quantity, 0))
 const cartTotalPrice = computed(() =>
   cart.value.reduce((acc, i) => {
-    const base = Number(i.product.sale_price) || 0
+    const base = Number(i.product?.sale_price) || 0
     const mod  = i.variant ? (Number(i.variant.price_modifier) || 0) : 0
-    return acc + (base + mod) * i.quantity
+    const finalPrice = Math.max(0, base + mod)
+    return acc + finalPrice * i.quantity
   }, 0)
 )
 
@@ -541,9 +542,10 @@ const quickAddToCart = () => {
 
 // ——— Precio con variante ———
 const productPrice = (product, variant = null) => {
-  const base = Number(product.sale_price) || 0
+  const base = Number(product?.sale_price) || 0
   const mod  = variant ? (Number(variant.price_modifier) || 0) : 0
-  return (base + mod).toFixed(2)
+  const finalPrice = Math.max(0, base + mod)
+  return finalPrice.toFixed(2)
 }
 
 

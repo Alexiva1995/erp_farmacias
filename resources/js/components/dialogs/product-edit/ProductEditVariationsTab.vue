@@ -166,7 +166,7 @@ const removeVariantPhoto = (variant, index) => {
 
             <!-- Modificador de Precio -->
             <VCol cols="12" sm="2">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block">Ajuste ($)</span>
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-2 d-block" title="Monto a sumar o restar del precio de venta base">Ajuste / Dif. ($)</span>
               <AppTextField
                 v-model="variant.price_modifier"
                 type="number"
