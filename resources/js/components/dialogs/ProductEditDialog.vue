@@ -129,6 +129,42 @@ watch(
   }
 );
 
+const resetFormData = () => {
+  formData.value = {
+    name: "",
+    description: "",
+    active_ingredient: "",
+    laboratory_id: null,
+    unit_cost: null,
+    sale_price: null,
+    origin_id: null,
+    category_id: null,
+    group_id: null,
+    group: null,
+    barcode: "",
+    iva: 0,
+    psychotropic: 0,
+    is_colombian_origin: 0,
+    is_novaventa: 0,
+    is_scarce: 0,
+    is_unified_group: 0,
+    no_pvp: 0,
+    lots: [],
+    photo_url: null,
+    presentation: null,
+    initial_stock: null,
+    unit_of_measure: null,
+    supplier_ids: [],
+    supplier_id: null,
+    master_id: null,
+    variants: [],
+  };
+  masterFound.value = false;
+  masterFoundProduct.value = null;
+  imageFile.value = null;
+  formErrors.value = {};
+};
+
 // Inicializar formData al cambiar el producto seleccionado
 watch(
   () => props.product,
@@ -161,41 +197,13 @@ watch(
       }
 
       formData.value = clonedProduct;
+      masterFound.value = false;
+      masterFoundProduct.value = null;
+      imageFile.value = null;
+      formErrors.value = {};
     } else {
-      formData.value = {
-        name: "",
-        description: "",
-        active_ingredient: "",
-        laboratory_id: null,
-        unit_cost: null,
-        sale_price: null,
-        origin_id: null,
-        category_id: null,
-        group_id: null,
-        group: null,
-        barcode: "",
-        iva: 0,
-        psychotropic: 0,
-        is_colombian_origin: 0,
-        is_novaventa: 0,
-        is_scarce: 0,
-        is_unified_group: 0,
-        no_pvp: 0,
-        lots: [],
-        photo_url: null,
-        presentation: null,
-        initial_stock: null,
-        unit_of_measure: null,
-        supplier_ids: [],
-        supplier_id: null,
-        master_id: null,
-        variants: [],
-      };
+      resetFormData();
     }
-    masterFound.value = false;
-    masterFoundProduct.value = null;
-    imageFile.value = null;
-    formErrors.value = {};
   },
   { deep: true, immediate: true }
 );
@@ -286,6 +294,9 @@ watch(
   (newVal) => {
     if (newVal) {
       activeTab.value = 0;
+      if (!props.product || Object.keys(props.product).length === 0) {
+        resetFormData();
+      }
       fetchAllGroups();
     }
   },
@@ -552,7 +563,7 @@ const imagePreviewUrl = computed(() => {
               @update:image-file="imageFile = $event"
               @open-lab-dialog="isLabDialogVisible = true"
               @open-img-preview="imgPreviewOpen = true"
-              @submit="submitForm"
+              @submit="isNewProduct && activeTab !== 2 ? handleNextTab() : submitForm()"
             />
           </VWindowItem>
 

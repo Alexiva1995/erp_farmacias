@@ -163,6 +163,33 @@ class ProductActionService
 
         if ($recentDuplicate) {
             Log::info("Petición de creación duplicada concurrente evitada para '{$validatedData['name']}' (ID #{$recentDuplicate->id}).");
+
+            // Si el duplicado detectado no tiene lotes y se envió stock inicial, crear el lote correspondiente
+            if ($initialStock > 0 && !$recentDuplicate->lots()->exists()) {
+                $lot = $recentDuplicate->lots()->create([
+                    'lot_number'      => 'LOTE-INICIAL',
+                    'quantity'        => $initialStock,
+                    'unit_cost'       => $recentDuplicate->unit_cost ?? 0,
+                    'expiration_date' => now()->addYears(5)->format('Y-m-d'),
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
+                ]);
+
+                \App\Models\InventoryMovement::create([
+                    'product_id'     => $recentDuplicate->id,
+                    'product_lot_id' => $lot->id,
+                    'movement_type'  => 'adjustment',
+                    'quantity'       => $initialStock,
+                    'invoice_id'     => null,
+                    'supplier_id'    => null,
+                    'order_id'       => null,
+                    'user_id'        => \Illuminate\Support\Facades\Auth::id(),
+                    'stock_before'   => 0,
+                    'stock_after'    => $initialStock,
+                    'movement_date'  => now(),
+                ]);
+            }
+
             return $recentDuplicate;
         }
 
