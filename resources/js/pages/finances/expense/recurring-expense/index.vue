@@ -541,31 +541,99 @@ async function handleDeleteTemplate(item) {
     />
 
     <!-- Diálogo Confirmar Omitir Cuota -->
-    <VDialog v-model="isSkipDialogOpen" max-width="480">
-      <VCard class="pa-2">
-        <VCardTitle class="font-weight-bold">
-          ¿Omitir esta cuota?
+    <VDialog
+      v-model="isSkipDialogOpen"
+      max-width="500px"
+      transition="dialog-bottom-transition"
+    >
+      <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl bg-surface">
+        <VCardTitle class="pa-0">
+          <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+            <VAvatar
+              color="white"
+              variant="flat"
+              size="40"
+              class="me-3 elevation-1"
+            >
+              <VIcon
+                icon="tabler-calendar-cancel"
+                size="24"
+                color="primary"
+              />
+            </VAvatar>
+            <div class="d-flex flex-column leading-none">
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0">
+                Omitir Cuota
+              </h2>
+              <div class="d-flex align-center gap-2 mt-1">
+                <span
+                  class="text-white opacity-75 uppercase font-weight-bold"
+                  style="font-size: 0.6rem; letter-spacing: 0.05em;"
+                >
+                  Módulo de Gestión de Gastos Fijos
+                </span>
+              </div>
+            </div>
+            <VSpacer />
+            <VBtn
+              icon="tabler-x"
+              variant="tonal"
+              color="white"
+              size="small"
+              class="rounded-lg"
+              @click="isSkipDialogOpen = false"
+            />
+          </div>
         </VCardTitle>
-        <VCardText>
-          <p class="text-body-2 text-medium-emphasis mb-3">
-            La cuota se marcará como omitida y no se registrará ningún egreso. El gasto fijo continuará activo para el próximo mes.
-          </p>
-          <VTextField
-            v-model="skipNote"
-            label="Motivo u observación (opcional)"
-            placeholder="Ej: Mes exonerado por propietario..."
-            density="compact"
-            variant="outlined"
-          />
+
+        <VCardText class="pa-4 bg-light">
+          <VCard variant="flat" class="pa-3 bg-white rounded-lg border shadow-sm">
+            <p class="text-xs text-medium-emphasis mb-3">
+              La cuota se marcará como omitida y no se registrará ningún egreso. El gasto fijo continuará activo para el próximo período.
+            </p>
+            <VTextField
+              v-model="skipNote"
+              label="Motivo u Observación (Opcional)"
+              placeholder="Ej: Mes exonerado por propietario..."
+              density="compact"
+              variant="outlined"
+              class="rounded-lg"
+              prepend-inner-icon="tabler-notes"
+              hide-details="auto"
+            />
+          </VCard>
         </VCardText>
-        <VCardActions class="px-4 pb-3">
-          <VSpacer />
-          <VBtn variant="text" color="secondary" @click="isSkipDialogOpen = false">
-            Cancelar
-          </VBtn>
-          <VBtn color="warning" variant="elevated" @click="confirmSkipOccurrence">
-            Omitir Cuota
-          </VBtn>
+
+        <VDivider />
+
+        <VCardActions class="pa-3 bg-white border-t px-6">
+          <VRow no-gutters class="w-100">
+            <VCol cols="12" sm="6" class="pa-1">
+              <VBtn
+                color="secondary"
+                variant="outlined"
+                height="44"
+                block
+                class="font-weight-black rounded-lg text-button uppercase"
+                @click="isSkipDialogOpen = false"
+              >
+                Cancelar
+              </VBtn>
+            </VCol>
+            <VCol cols="12" sm="6" class="pa-1">
+              <VBtn
+                color="primary"
+                variant="flat"
+                height="44"
+                block
+                class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+                @click="confirmSkipOccurrence"
+              >
+                <VIcon start icon="tabler-check" size="18" />
+                Omitir Cuota
+              </VBtn>
+            </VCol>
+          </VRow>
         </VCardActions>
       </VCard>
     </VDialog>
@@ -576,6 +644,30 @@ async function handleDeleteTemplate(item) {
 .fixed-expenses-view {
   background-color: #f8fafc;
   min-block-size: 100vh;
+}
+
+.header-gradient {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary)) 0%,
+    rgb(var(--v-theme-gradient-end)) 100%
+  );
+}
+
+.detail-dialog-card {
+  border-radius: 12px !important;
+}
+
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+
+.leading-none {
+  line-height: 1 !important;
+}
+
+.border-t {
+  border-block-start: 1px solid rgba(var(--v-border-color), 0.08) !important;
 }
 
 .stats-card {
