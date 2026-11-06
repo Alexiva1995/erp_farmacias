@@ -201,6 +201,13 @@ const getProductLocations = (item) => {
                 📍 {{ getProductLocations(item).join(', ') }}
               </span>
             </template>
+            <template v-if="item.variants && item.variants.length > 0">
+              <span class="text-disabled mx-1">|</span>
+              <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-1" density="compact">
+                <VIcon icon="tabler-palette" size="10" class="me-0.5" />
+                {{ item.variants.length }} {{ item.variants.length === 1 ? 'tono' : 'tonos' }}
+              </VChip>
+            </template>
           </div>
         </div>
       </div>

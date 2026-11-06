@@ -552,6 +552,13 @@ const getMergedLots = (lots) => {
                     📍 {{ getProductLocations(item).join(', ') }}
                   </span>
                 </template>
+                <template v-if="item.variants && item.variants.length > 0">
+                  <span class="text-disabled mx-1">|</span>
+                  <VChip size="x-small" variant="tonal" color="primary" class="font-weight-black px-1.5" density="compact">
+                    <VIcon icon="tabler-palette" size="12" class="me-1" />
+                    {{ item.variants.length }} {{ item.variants.length === 1 ? 'tono' : 'tonos' }}
+                  </VChip>
+                </template>
               </div>
             </div>
           </div>

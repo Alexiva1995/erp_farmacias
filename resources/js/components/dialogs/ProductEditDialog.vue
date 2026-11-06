@@ -410,14 +410,16 @@ const submitForm = () => {
     });
   }
 
-  if (brandingStore.settings?.enable_variations && Array.isArray(formData.value.variants)) {
+  if (Array.isArray(formData.value.variants) && formData.value.variants.length > 0) {
     for (const v of formData.value.variants) {
       if (!v.attribute_value || !v.attribute_value.trim()) {
         toast.error("Debe ingresar el nombre del tono para todas las variaciones.");
+        isSubmitting.value = false;
         return;
       }
       if (v.color_hex && !/^#[0-9A-Fa-f]{6}$/.test(v.color_hex.trim())) {
         toast.error(`El color "${v.color_hex}" no es un código hexadecimal válido (debe ser formato #RRGGBB).`);
+        isSubmitting.value = false;
         return;
       }
     }
@@ -438,6 +440,9 @@ const submitForm = () => {
     });
 
     payload.append("variants", JSON.stringify(sanitizedVariants));
+  } else if (!isNewProduct.value && Array.isArray(formData.value.variants) && formData.value.variants.length === 0) {
+    // Si se eliminaron todas las variantes al editar, enviar array vacío para que el backend elimine las anteriores
+    payload.append("variants", JSON.stringify([]));
   }
 
   emit("save", payload);

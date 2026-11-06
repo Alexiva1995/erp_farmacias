@@ -190,6 +190,39 @@ class ProductActionService
                 ]);
             }
 
+            // Sincronizar variantes en caso de duplicado si se recibieron
+            $variantsInput = $validatedData['variants'] ?? request()->input('variants');
+            if (!empty($variantsInput)) {
+                $variantsData = is_string($variantsInput) ? json_decode($variantsInput, true) : $variantsInput;
+                $variantsData = is_array($variantsData) ? $variantsData : [];
+                foreach ($variantsData as $index => $v) {
+                    $photoPath = null;
+                    if (request()->hasFile("variant_photos.{$index}")) {
+                        $photoPath = request()->file("variant_photos.{$index}")->store('product_variants', 'public');
+                    } elseif (request()->hasFile("variant_photos_{$index}")) {
+                        $photoPath = request()->file("variant_photos_{$index}")->store('product_variants', 'public');
+                    }
+
+                    $colorHex = trim($v['color_hex'] ?? '#E20074');
+                    if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $colorHex)) {
+                        $colorHex = preg_match('/^[0-9A-Fa-f]{6}$/', $colorHex) ? '#' . $colorHex : '#E20074';
+                    }
+
+                    $recentDuplicate->variants()->updateOrCreate(
+                        ['attribute_value' => $v['attribute_value'] ?? ''],
+                        [
+                            'attribute_type' => 'shade',
+                            'color_hex' => $colorHex,
+                            'photo_url' => $photoPath,
+                            'price_modifier' => (float)($v['price_modifier'] ?? 0),
+                            'stock' => (int)($v['stock'] ?? 0)
+                        ]
+                    );
+                }
+            }
+
+            $recentDuplicate->load(['category', 'laboratory', 'origin', 'lots', 'group', 'productSuppliers', 'variants']);
+
             return $recentDuplicate;
         }
 
@@ -250,8 +283,8 @@ class ProductActionService
         }
 
         // Crear/Guardar las variantes
-        if (request()->has('variants')) {
-            $variantsInput = request()->input('variants');
+        $variantsInput = $validatedData['variants'] ?? (request()->has('variants') ? request()->input('variants') : null);
+        if (!empty($variantsInput)) {
             $variantsData = is_string($variantsInput) ? json_decode($variantsInput, true) : $variantsInput;
             $variantsData = is_array($variantsData) ? $variantsData : [];
 
@@ -377,8 +410,8 @@ class ProductActionService
         }
 
         // Sincronizar las variantes solo si están presentes en la request
-        if (request()->has('variants')) {
-            $variantsInput = request()->input('variants');
+        $variantsInput = $validatedData['variants'] ?? (request()->has('variants') ? request()->input('variants') : null);
+        if ($variantsInput !== null) {
             $variantsData = is_string($variantsInput) ? json_decode($variantsInput, true) : $variantsInput;
             $variantsData = is_array($variantsData) ? $variantsData : [];
 
