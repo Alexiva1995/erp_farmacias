@@ -51,6 +51,12 @@ const isCristmedicals = computed(() => {
   return [3, 21, 1002].includes(id) || name.includes("CRISTMEDICAL") || name.includes("CRISTALMEDICAL");
 });
 
+const isDrosymca = computed(() => {
+  const name = props.supplier?.name?.toUpperCase() || "";
+  const id = Number(props.supplier?.id);
+  return id === 1006 || name.includes("DROSYMCA");
+});
+
 const isCobecaApiOnly = computed(() => isMafarta.value);
 
 const dromegaClientCode = ref("");
@@ -145,6 +151,12 @@ const typeOptions = computed(() => {
   if (isMafarta.value || isCristmedicals.value) {
     return [
       { title: "HTTP / API", value: "api", icon: "tabler-api" },
+    ];
+  }
+
+  if (isDrosymca.value) {
+    return [
+      { title: "Correo Gmail", value: "file", icon: "tabler-mail" },
     ];
   }
 
@@ -278,15 +290,17 @@ const fetchConfig = async () => {
     }
 
     const availableTypes = Object.keys(connectionsMap.value);
-    const initialType = (isMafarta.value || isCristmedicals.value)
-      ? (availableTypes.find((t) => t === "api" || t === "http") || "api")
-      : (
-          availableTypes.find((t) => t === "dronena_bot") ||
-          availableTypes.find((t) => t === "api") ||
-          availableTypes.find((t) => t === "file") ||
-          availableTypes.find((t) => t === "ftp" || t === "sftp") ||
-          "ftp"
-        );
+    const initialType = isDrosymca.value
+      ? "file"
+      : (isMafarta.value || isCristmedicals.value)
+        ? (availableTypes.find((t) => t === "api" || t === "http") || "api")
+        : (
+            availableTypes.find((t) => t === "dronena_bot") ||
+            availableTypes.find((t) => t === "api") ||
+            availableTypes.find((t) => t === "file") ||
+            availableTypes.find((t) => t === "ftp" || t === "sftp") ||
+            "ftp"
+          );
 
     loadFormForType(initialType);
     hasExistingFtpOrdersPassword.value = data?.ftp_orders_has_pass ?? false;
