@@ -142,7 +142,7 @@ const hasAdvancedFilters = computed(
       </VBtn>
     </template>
 
-    <template #advanced-filters>
+    <template #advanced-filters v-if="!props.isMaster">
       <!-- Filtro de Tipo de Proveedor (Droguerías / Gastos) -->
       <VCol cols="12" sm="6" md="4">
         <VSelect

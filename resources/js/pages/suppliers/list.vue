@@ -558,6 +558,7 @@ defineExpose({ fetchSuppliers, fetchStats });
         :sort-by="sortBy"
         :order-by="orderBy"
         :checking-api-id="checkingApiSupplierId"
+        :is-master="isMasterMode"
         @update:options="updateTableOptions"
         @edit-supplier="handleEditSupplier"
         @delete-supplier="handleDeleteSupplier"

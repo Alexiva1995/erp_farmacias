@@ -75,14 +75,27 @@ const formatTime = (dateString) => {
   }
 };
 
-const headers = computed(() => [
-  { title: "ID", key: "id", sortable: true },
-  { title: "Nombre", key: "name", sortable: true },
-  { title: isRestaurant.value ? "ÚLTIMA COMPRA / SINCR." : "ÚLTIMA SIC", key: "last_sync_at", sortable: true },
-  { title: "Deuda", key: "debt", sortable: true },
-  { title: "Calificación", key: "latest_score_value", sortable: true },
-  { title: "Acciones", key: "actions", sortable: false },
-]);
+const headers = computed(() => {
+  if (props.isMaster) {
+    return [
+      { title: "ID Master", key: "id", sortable: true },
+      { title: "Droguería / RIF", key: "name", sortable: true },
+      { title: "Tipo de Integración", key: "primary_connection_type", sortable: false },
+      { title: "Plantilla Excel", key: "has_structure", sortable: false },
+      { title: "Estado", key: "status", sortable: false },
+      { title: "Acciones Técnicas", key: "actions", sortable: false },
+    ];
+  }
+
+  return [
+    { title: "ID", key: "id", sortable: true },
+    { title: "Nombre", key: "name", sortable: true },
+    { title: isRestaurant.value ? "ÚLTIMA COMPRA / SINCR." : "ÚLTIMA SIC", key: "last_sync_at", sortable: true },
+    { title: "Deuda", key: "debt", sortable: true },
+    { title: "Calificación", key: "latest_score_value", sortable: true },
+    { title: "Acciones", key: "actions", sortable: false },
+  ];
+});
 </script>
 
 <template>
@@ -117,6 +130,80 @@ const headers = computed(() => [
         <!-- Columnas personalizadas existentes -->
         <template #item.id="{ item }">
           <span class="text-sm font-weight-black text-primary">{{ item.id }}</span>
+        </template>
+
+        <template #item.primary_connection_type="{ item }">
+          <div class="d-flex align-center gap-1">
+            <VChip
+              v-if="item.primary_connection_type === 'ftp' || item.primary_connection_type === 'sftp'"
+              color="info"
+              size="small"
+              variant="tonal"
+              prepend-icon="tabler-server"
+            >
+              FTP / SFTP
+            </VChip>
+            <VChip
+              v-else-if="item.primary_connection_type === 'api' || item.primary_connection_type === 'http' || (item.primary_connection_type && item.primary_connection_type.includes('bot'))"
+              color="primary"
+              size="small"
+              variant="tonal"
+              prepend-icon="tabler-api"
+            >
+              API / Bot
+            </VChip>
+            <VChip
+              v-else
+              color="success"
+              size="small"
+              variant="tonal"
+              prepend-icon="tabler-file-spreadsheet"
+            >
+              Excel por Correo
+            </VChip>
+          </div>
+        </template>
+
+        <template #item.has_structure="{ item }">
+          <div class="d-flex align-center gap-1">
+            <VChip
+              v-if="item.has_structure"
+              color="success"
+              size="small"
+              variant="flat"
+              prepend-icon="tabler-check"
+            >
+              Mapeo Listo
+            </VChip>
+            <VChip
+              v-else-if="item.primary_connection_type === 'api' || item.primary_connection_type === 'ftp'"
+              color="info"
+              size="small"
+              variant="outlined"
+            >
+              Automático
+            </VChip>
+            <VChip
+              v-else
+              color="warning"
+              size="small"
+              variant="tonal"
+              prepend-icon="tabler-alert-triangle"
+            >
+              Pendiente Mapeo
+            </VChip>
+          </div>
+        </template>
+
+        <template #item.status="{ item }">
+          <VChip
+            color="success"
+            size="small"
+            variant="tonal"
+            prepend-icon="tabler-circle-check"
+          >
+            Activo en Master
+          </VChip>
         </template>
 
         <template #item.name="{ item }">
@@ -304,11 +391,11 @@ const headers = computed(() => [
                   <VListItemTitle>Sincronizar</VListItemTitle>
                 </VListItem>
 
-                <VListItem v-if="canManageSuppliers && !isRestaurant" @click="emit('commercial-panel', item)" prepend-icon="tabler-settings-dollar" base-color="primary">
+                <VListItem v-if="canManageSuppliers && !isRestaurant && !props.isMaster" @click="emit('commercial-panel', item)" prepend-icon="tabler-settings-dollar" base-color="primary">
                   <VListItemTitle>Configuración Comercial</VListItemTitle>
                 </VListItem>
 
-                <VListItem v-if="canManageSuppliers" @click="emit('supplier-pending-invoices', item)" prepend-icon="tabler-credit-card-pay">
+                <VListItem v-if="canManageSuppliers && !props.isMaster" @click="emit('supplier-pending-invoices', item)" prepend-icon="tabler-credit-card-pay">
                    <VListItemTitle>Facturas Pendientes</VListItemTitle>
                 </VListItem>
 
@@ -317,7 +404,7 @@ const headers = computed(() => [
                 </VListItem>
 
                 <VListItem
-                  v-if="canManageSuppliers"
+                  v-if="canManageSuppliers && !props.isMaster"
                   :base-color="item.is_active === false ? 'success' : 'warning'"
                   @click="emit('toggle-supplier-status', item)"
                   :prepend-icon="item.is_active === false ? 'tabler-toggle-right' : 'tabler-power'"

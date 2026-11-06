@@ -39,6 +39,11 @@ class SupplierQueryService
      */
     private function getBaseQuery(): Builder
     {
+        $isMaster = request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master');
+        if ($isMaster) {
+            return $this->supplierRepository->getQuery()->with('connections');
+        }
+
         $currentYearStart = \Carbon\Carbon::now()->startOfYear();
 
         return $this->supplierRepository->getQuery()
@@ -1425,6 +1430,26 @@ class SupplierQueryService
      */
     public function getSupplierSummaryStats(): array
     {
+        $isMaster = request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master');
+        if ($isMaster) {
+            $totalSuppliers = Supplier::count();
+            $connections = SupplierConnection::all();
+            $withExcel = $connections->filter(fn($c) => in_array($c->type, ['file', 'email']) && !empty($c->structure))->pluck('supplier_id')->unique()->count();
+            $withApiOrFtp = $connections->filter(fn($c) => in_array($c->type, ['ftp', 'sftp', 'api', 'http', 'dronena_bot', 'drosymca_bot']))->pluck('supplier_id')->unique()->count();
+            $withoutStructure = max(0, $totalSuppliers - $connections->filter(fn($c) => !empty($c->structure) || in_array($c->type, ['ftp', 'api', 'http']))->pluck('supplier_id')->unique()->count());
+
+            return [
+                'is_master' => true,
+                'total_suppliers' => $totalSuppliers,
+                'with_excel_count' => $withExcel,
+                'with_direct_conn_count' => $withApiOrFtp,
+                'pending_mapping_count' => $withoutStructure,
+                'total_debt' => 0,
+                'active_suppliers_count' => $totalSuppliers,
+                'connection_success_rate' => 100,
+            ];
+        }
+
         // 1. Deuda Total (Facturas que salen exactamente en la vista Por Pagar)
         $pendingPaymentsService = app(\App\Services\PendingPayments\PendingPaymentsService::class);
         $pendingInvoices = $pendingPaymentsService->getPendingInvoices();
