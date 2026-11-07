@@ -45,6 +45,7 @@ class SupplierResource extends JsonResource
             'is_indexed' => (bool) $this->is_indexed,
             'is_active' => (request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master')) ? true : (bool) ($this->is_active ?? true),
             'type' => $this->type instanceof \App\Enums\SupplierType ? $this->type->value : ($this->type ?? 'drogueria'),
+            'business_types' => is_string($this->business_types) ? (json_decode($this->business_types, true) ?: []) : ($this->business_types ?? []),
             'score_breakdown' => $this->score_breakdown,
             'last_sync_at' => $this->connection?->last_connection ?? ($this->relationLoaded('connections') ? $this->connections->max('last_connection') : null),
             'created_at' => $this->created_at,

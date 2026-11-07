@@ -39,6 +39,7 @@ const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
 const typeFilter = ref(isMasterMode.value ? "drogueria" : "drogueria");
+const businessTypeFilter = ref("all");
 if (isMasterMode.value) {
   sortBy.value = "id";
   orderBy.value = "asc";
@@ -111,6 +112,7 @@ const fetchSuppliers = async () => {
     debtStatus: debtFilter.value,
     minScore: minScore.value,
     type: isMasterMode.value ? "drogueria" : (typeFilter.value || undefined),
+    business_type: isMasterMode.value ? (businessTypeFilter.value || "all") : undefined,
     page: page.value,
     itemsPerPage: itemsPerPage.value,
     sortBy: sortBy.value || (isMasterMode.value ? "id" : undefined),
@@ -492,7 +494,7 @@ const handleSupplierMerged = async () => {
 
 let debounceTimer;
 watch(
-  [page, itemsPerPage, sortBy, orderBy, searchQuery, debtFilter, minScore, typeFilter],
+  [page, itemsPerPage, sortBy, orderBy, searchQuery, debtFilter, minScore, typeFilter, businessTypeFilter],
   () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchSuppliers(), 300);
@@ -500,7 +502,7 @@ watch(
   { deep: true },
 );
 
-watch([searchQuery, debtFilter, minScore, typeFilter], () => {
+watch([searchQuery, debtFilter, minScore, typeFilter, businessTypeFilter], () => {
   page.value = 1;
 });
 
@@ -533,6 +535,7 @@ defineExpose({ fetchSuppliers, fetchStats });
         v-model:debtFilter="debtFilter"
         v-model:minScore="minScore"
         v-model:type="typeFilter"
+        v-model:businessType="businessTypeFilter"
         @clear="handleClearFilters"
         @sort="handleSort"
         @add-supplier="handleAddSupplier"

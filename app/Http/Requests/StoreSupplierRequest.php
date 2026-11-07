@@ -62,6 +62,8 @@ class StoreSupplierRequest extends FormRequest
         if ($isRestaurant) {
             return [
                 'type' => ['sometimes', 'string'],
+                'business_types' => ['sometimes', 'nullable', 'array'],
+                'business_types.*' => ['string', 'max:50'],
                 'name' => ['required', 'string', 'max:255'],
                 'sales_phone' => ['nullable', 'string', 'max:50'],
                 'social_reason' => ['nullable', 'string', 'max:255'],
@@ -82,6 +84,8 @@ class StoreSupplierRequest extends FormRequest
 
         return [
             'type' => ['sometimes', 'string', Rule::enum(SupplierType::class)],
+            'business_types' => ['sometimes', 'nullable', 'array'],
+            'business_types.*' => ['string', 'max:50'],
             'name' => ['required', 'string', 'max:255'],
             'social_reason' => ['nullable', 'string', 'max:255'],
             'rif' => ['required', 'string', 'max:20', Rule::unique('suppliers', 'rif')->whereNull('deleted_at')],

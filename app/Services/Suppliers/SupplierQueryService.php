@@ -87,6 +87,24 @@ class SupplierQueryService
             $query->where("suppliers.type", $filters["type"]);
         }
 
+        if (!empty($filters["business_type"])) {
+            $bt = $filters["business_type"];
+            if ($bt === "all" || $bt === "todos") {
+                // Sin filtro por tipo de negocio
+            } elseif ($bt === "pharmacy" || $bt === "drogueria") {
+                $query->where(function ($q) {
+                    $q->whereJsonContains("suppliers.business_types", "pharmacy")
+                      ->orWhereJsonContains("suppliers.business_types", "drogueria")
+                      ->orWhereNull("suppliers.business_types")
+                      ->orWhere("suppliers.business_types", "[]");
+                });
+            } else {
+                $query->where(function ($q) use ($bt) {
+                    $q->whereJsonContains("suppliers.business_types", $bt);
+                });
+            }
+        }
+
         if (!empty($filters["debtStatus"])) {
             $currentYearStart = \Carbon\Carbon::now()->startOfYear();
             if ($filters["debtStatus"] === "with_debt") {
@@ -1454,6 +1472,27 @@ class SupplierQueryService
             $withApiOrFtp = $connections->filter(fn($c) => in_array($c->type, ['ftp', 'sftp', 'api', 'http', 'dronena_bot', 'drosymca_bot']))->pluck('supplier_id')->unique()->count();
             $withoutStructure = max(0, $totalSuppliers - $connections->filter(fn($c) => !empty($c->structure) || in_array($c->type, ['ftp', 'api', 'http']))->pluck('supplier_id')->unique()->count());
 
+            $allMasterSuppliers = $masterSuppliersQuery->get(['id', 'business_types']);
+            $pharmacyCount = 0;
+            $restaurantCount = 0;
+            $minimarketCount = 0;
+            $fastFoodCount = 0;
+            foreach ($allMasterSuppliers as $sup) {
+                $bts = is_string($sup->business_types) ? json_decode($sup->business_types, true) : ($sup->business_types ?? []);
+                if (empty($bts) || in_array('pharmacy', (array) $bts) || in_array('drogueria', (array) $bts)) {
+                    $pharmacyCount++;
+                }
+                if (in_array('restaurant', (array) $bts)) {
+                    $restaurantCount++;
+                }
+                if (in_array('minimarket', (array) $bts)) {
+                    $minimarketCount++;
+                }
+                if (in_array('fast_food', (array) $bts)) {
+                    $fastFoodCount++;
+                }
+            }
+
             return [
                 'is_master' => true,
                 'total_suppliers' => $totalSuppliers,
@@ -1463,6 +1502,13 @@ class SupplierQueryService
                 'total_debt' => 0,
                 'active_suppliers_count' => $totalSuppliers,
                 'connection_success_rate' => 100,
+                'business_type_counts' => [
+                    'all' => $totalSuppliers,
+                    'pharmacy' => $pharmacyCount,
+                    'restaurant' => $restaurantCount,
+                    'minimarket' => $minimarketCount,
+                    'fast_food' => $fastFoodCount,
+                ],
             ];
         }
 

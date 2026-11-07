@@ -83,6 +83,7 @@ const headers = computed(() => {
       { title: "Droguería / RIF", key: "name", sortable: true },
       { title: "Tipo de Integración", key: "primary_connection_type", sortable: false },
       { title: "Plantilla Excel", key: "has_structure", sortable: false },
+      { title: "Verticales", key: "business_types", sortable: false },
       { title: "Estado", key: "status", sortable: false },
       { title: "Acciones Técnicas", key: "actions", sortable: false },
     ];
@@ -192,6 +193,58 @@ const headers = computed(() => {
               prepend-icon="tabler-alert-triangle"
             >
               Pendiente Mapeo
+            </VChip>
+          </div>
+        </template>
+
+        <template #item.business_types="{ item }">
+          <div class="d-flex align-center flex-wrap gap-1">
+            <template v-if="item.business_types && item.business_types.length > 0">
+              <VChip
+                v-if="item.business_types.includes('pharmacy') || item.business_types.includes('drogueria')"
+                size="x-small"
+                color="primary"
+                variant="tonal"
+                prepend-icon="tabler-pill"
+              >
+                Farmacia
+              </VChip>
+              <VChip
+                v-if="item.business_types.includes('restaurant')"
+                size="x-small"
+                color="success"
+                variant="tonal"
+                prepend-icon="tabler-tools-kitchen-2"
+              >
+                Restaurante
+              </VChip>
+              <VChip
+                v-if="item.business_types.includes('minimarket')"
+                size="x-small"
+                color="secondary"
+                variant="tonal"
+                prepend-icon="tabler-building-store"
+              >
+                Bodegón
+              </VChip>
+              <VChip
+                v-if="item.business_types.includes('fast_food')"
+                size="x-small"
+                color="warning"
+                variant="tonal"
+                prepend-icon="tabler-burger"
+              >
+                Comida Rápida
+              </VChip>
+            </template>
+            <VChip
+              v-else
+              size="x-small"
+              color="primary"
+              variant="tonal"
+              prepend-icon="tabler-pill"
+            >
+              Farmacia
             </VChip>
           </div>
         </template>

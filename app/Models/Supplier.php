@@ -51,6 +51,7 @@ class Supplier extends Model
         'public_token',
         'is_indexed',
         'type',
+        'business_types',
         'is_active',
         'min_order_amount',
     ];
@@ -58,6 +59,7 @@ class Supplier extends Model
     protected $casts = [
         'dispatch_days' => 'array',
         'order_days' => 'array',
+        'business_types' => 'array',
         'type' => SupplierType::class,
         'is_active' => 'boolean',
         'min_order_amount' => 'decimal:2',

@@ -58,6 +58,7 @@ const baseForm = {
   is_indexed: false,
   is_active: true,
   type: "drogueria",
+  business_types: [],
 };
 const formData = ref({ ...baseForm });
 const formErrors = ref({});
@@ -84,6 +85,14 @@ const diasFull = {
   friday: "Viernes",
   saturday: "Sábado",
 };
+
+
+const availableBusinessTypes = [
+  { title: "Farmacia & Salud", value: "pharmacy", icon: "tabler-pill", color: "primary" },
+  { title: "Restaurante & Comandas", value: "restaurant", icon: "tabler-tools-kitchen-2", color: "success" },
+  { title: "Bodegón & Minimarket", value: "minimarket", icon: "tabler-building-store", color: "secondary" },
+  { title: "Comida Rápida & Cafetería", value: "fast_food", icon: "tabler-burger", color: "warning" },
+];
 
 const isNewSupplier = computed(() => !props.supplier?.id);
 const isLookingUpMaster = ref(false);
@@ -231,9 +240,15 @@ watch(
 const initForm = () => {
   const newSupplier = props.supplier;
   if (newSupplier && Object.keys(newSupplier).length > 0) {
+    const parsed = JSON.parse(JSON.stringify(newSupplier));
     formData.value = {
       ...baseForm,
-      ...JSON.parse(JSON.stringify(newSupplier)),
+      ...parsed,
+      business_types: Array.isArray(parsed.business_types)
+        ? parsed.business_types
+        : (typeof parsed.business_types === 'string'
+            ? (JSON.parse(parsed.business_types || '[]') || [])
+            : ['pharmacy']),
     };
     const normalized = {};
     (formData.value.dispatch_days || []).forEach((day) => {
@@ -387,6 +402,24 @@ watch(
                             density="compact"
                           />
                         </div>
+                      </VCol>
+
+                                            <!-- Tipos de Negocio donde está disponible este proveedor -->
+                      <VCol cols="12">
+                        <AppSelect
+                          v-model="formData.business_types"
+                          :items="availableBusinessTypes"
+                          label="Disponible para Tipos de Negocio"
+                          placeholder="Selecciona las verticales permitidas"
+                          prepend-inner-icon="tabler-building-community"
+                          multiple
+                          chips
+                          closable-chips
+                          :error-messages="formErrors.business_types"
+                          :readonly="isReadOnly"
+                          hint="Define en qué verticales (Farmacia, Restaurante, Bodegón, etc.) se puede usar este proveedor"
+                          persistent-hint
+                        />
                       </VCol>
 
                       <VCol cols="12" v-if="isFieldVisible('name')">

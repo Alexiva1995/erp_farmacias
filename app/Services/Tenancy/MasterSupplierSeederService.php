@@ -45,6 +45,15 @@ class MasterSupplierSeederService
             }
         }
 
+        // Asegurar columna business_types en suppliers de tovaerp_master
+        if (Schema::connection($masterConn)->hasTable('suppliers') && !Schema::connection($masterConn)->hasColumn('suppliers', 'business_types')) {
+            try {
+                DB::connection($masterConn)->statement("ALTER TABLE `suppliers` ADD COLUMN `business_types` JSON NULL AFTER `type`;");
+            } catch (\Throwable) {
+                // Silenciar si ya existe
+            }
+        }
+
         return $masterConn;
     }
 
@@ -110,7 +119,7 @@ class MasterSupplierSeederService
                 $payload['is_active'] = 1;
 
                 if ($masterSup) {
-                    $updateCols = ['name', 'social_reason', 'rif', 'type', 'is_active', 'updated_at'];
+                    $updateCols = ['name', 'social_reason', 'rif', 'type', 'business_types', 'is_active', 'updated_at'];
                     $updatePayload = array_intersect_key($payload, array_flip($updateCols));
                     $updatePayload['is_active'] = 1;
                     $updatePayload['updated_at'] = now();

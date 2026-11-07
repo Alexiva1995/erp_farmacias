@@ -11,6 +11,7 @@ const props = defineProps({
   debtFilter: { type: [String, null], default: null },
   minScore: { type: [Number, String, null], default: null },
   type: { type: [String, null], default: null },
+  businessType: { type: [String, null], default: "all" },
   loading: { type: Boolean, default: false },
   isMaster: { type: Boolean, default: false },
   isSyncingMaster: { type: Boolean, default: false },
@@ -21,6 +22,7 @@ const emit = defineEmits([
   "update:debtFilter",
   "update:minScore",
   "update:type",
+  "update:businessType",
   "clear",
   "sort",
   "add-supplier",
@@ -63,6 +65,15 @@ const scoreOptions = [
   { title: "2.0+ Estrellas", value: 40 },
 ];
 
+
+const businessTypeOptions = [
+  { title: "Todos los Negocios", value: "all" },
+  { title: "Farmacias", value: "pharmacy" },
+  { title: "Restaurantes", value: "restaurant" },
+  { title: "Bodegones / Minimarkets", value: "minimarket" },
+  { title: "Comida Rápida / Cafeterías", value: "fast_food" },
+];
+
 const isRestaurant = computed(() => brandingStore.isRestaurant);
 
 const typeOptions = computed(() => [
@@ -98,6 +109,20 @@ const hasAdvancedFilters = computed(
     class="py-1"
   >
     <template #actions-extra>
+            <!-- Filtro por Tipo de Negocio (exclusivo Modo Master) -->
+      <div v-if="props.isMaster" style="min-width: 200px;">
+        <VSelect
+          :model-value="props.businessType || 'all'"
+          :items="businessTypeOptions"
+          density="compact"
+          hide-details
+          variant="outlined"
+          color="primary"
+          prepend-inner-icon="tabler-building-store"
+          @update:model-value="emit('update:businessType', $event)"
+        />
+      </div>
+
       <!-- Botón para sincronizar tenants al master (visible en modo Master) -->
       <VBtn
         v-if="props.isMaster"

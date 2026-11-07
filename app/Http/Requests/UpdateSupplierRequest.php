@@ -45,6 +45,8 @@ class UpdateSupplierRequest extends FormRequest
         if ($isRestaurant) {
             return [
                 'type' => ['sometimes', 'string'],
+                'business_types' => ['sometimes', 'nullable', 'array'],
+                'business_types.*' => ['string', 'max:50'],
                 'name' => 'sometimes|string|max:255',
                 'sales_phone' => 'sometimes|nullable|string|max:50',
                 'social_reason' => 'sometimes|nullable|string|max:255',
@@ -60,6 +62,8 @@ class UpdateSupplierRequest extends FormRequest
 
         return [
             'type' => ['sometimes', Rule::enum(SupplierType::class)],
+            'business_types' => ['sometimes', 'nullable', 'array'],
+            'business_types.*' => ['string', 'max:50'],
             'name' => 'sometimes|string|max:255',
             'social_reason' => ['sometimes', 'nullable', 'string', 'max:255'],
             'rif' => ['sometimes', 'string', 'max:20', Rule::unique('suppliers', 'rif')->ignore($this->route('supplier'))->whereNull('deleted_at')],

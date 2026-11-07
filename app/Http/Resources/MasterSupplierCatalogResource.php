@@ -22,6 +22,7 @@ class MasterSupplierCatalogResource extends JsonResource
             'social_reason' => $this['social_reason'] ?? '',
             'rif' => $this['rif'] ?? '',
             'type' => $this['type'] ?? 'drogueria',
+            'business_types' => is_string($this['business_types'] ?? null) ? (json_decode($this['business_types'], true) ?: []) : ($this['business_types'] ?? []),
             'integration_type' => $this['integration_type'] ?? 'file',
             'has_excel_structure' => (bool) ($this['has_excel_structure'] ?? false),
             'excel_columns_summary' => $this['excel_columns_summary'] ?? [],
