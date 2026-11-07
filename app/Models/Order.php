@@ -156,6 +156,9 @@ class Order extends Model
             if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'tax_rate')) {
                 $dishColumns[] = 'tax_rate';
             }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'designated_price')) {
+                $dishColumns[] = 'designated_price';
+            }
             if (\Illuminate\Support\Facades\Schema::hasColumn('dishes', 'designated_price_cop')) {
                 $dishColumns[] = 'designated_price_cop';
             }
@@ -181,7 +184,11 @@ class Order extends Model
             if ($isCopOrder && $copRate > 1 && $price < 100) {
                 $designatedCop = $detail->product_type === 'dish' ? (float) ($detail->dish?->designated_price_cop ?? 0) : 0;
                 if ($designatedCop > 0) {
-                    $price = $designatedCop;
+                    $baseUsd = (float) ($detail->dish?->designated_price ?? 0);
+                    $unitUsd = (float) ($detail->unit_price_usd ?? 0);
+                    $extraUsd = max(0.0, $unitUsd - $baseUsd);
+                    $extraCop = $extraUsd > 0 ? (ceil(round($extraUsd * $copRate) / 100) * 100) : 0.0;
+                    $price = $designatedCop + $extraCop;
                 } else {
                     $unitUsd = (float) ($detail->unit_price_usd ?? 0);
                     if ($unitUsd > 0) {

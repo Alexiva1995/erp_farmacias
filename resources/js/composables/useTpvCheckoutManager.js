@@ -379,19 +379,34 @@ export function useTpvCheckoutManager({
       }
 
       const isCustomChange = !!brandingStore?.settings?.enable_custom_change_currency
-      const mappedItems = (props.orderProducts || []).map((item) => ({
-        order_detail_id: item.order_detail_id || item.id,
-        product_id: item.product_id || null,
-        dish_id: item.dish_id || null,
-        quantity: item.selectedQuantity || item.quantity,
-        price: item.price,
-        price_before_discount: item.price_before_discount || item.basePrice || item.price,
-        price_bs: item.price_bs,
-        price_before_discount_bs: item.price_before_discount_bs || item.base_price_bs,
-        discount_percentage: item.discount_percentage,
-        discount_type: item.discount_type,
-        discount_source_id: item.discount_source_id,
-      }))
+      const mappedItems = (props.orderProducts || []).map((item) => {
+        const isCop = props.selectedCurrency === 'COP'
+        const isBs = props.selectedCurrency === 'BS'
+        const itemPriceInCurrency = isCop
+          ? (item.price_cop ?? item.price)
+          : isBs
+            ? (item.price_bs ?? item.price)
+            : item.price
+        const itemBeforeDiscountInCurrency = isCop
+          ? (item.original_price_cop ?? item.base_price_cop ?? item.price_cop ?? item.price_before_discount ?? item.price)
+          : isBs
+            ? (item.original_price_bs ?? item.base_price_bs ?? item.price_bs ?? item.price_before_discount ?? item.price)
+            : (item.price_before_discount || item.basePrice || item.price)
+
+        return {
+          order_detail_id: item.order_detail_id || item.id,
+          product_id: item.product_id || null,
+          dish_id: item.dish_id || null,
+          quantity: item.selectedQuantity || item.quantity,
+          price: itemPriceInCurrency,
+          price_before_discount: itemBeforeDiscountInCurrency,
+          price_bs: item.price_bs,
+          price_before_discount_bs: item.price_before_discount_bs || item.base_price_bs,
+          discount_percentage: item.discount_percentage,
+          discount_type: item.discount_type,
+          discount_source_id: item.discount_source_id,
+        }
+      })
 
       const payload = {
         order_id: orderIdNum,

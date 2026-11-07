@@ -710,21 +710,35 @@ class OrderActionService
             // $order->total_cost = $validatedData['total_cost']; // No usar costo del frontend
             $order->currency = $targetCurrency;
             $order->save();
-            $order->load('details.product');
+            $detailRelations = ['details.product'];
+            if (\Illuminate\Support\Facades\Schema::hasTable('dishes')) {
+                $detailRelations[] = 'details.dish';
+            }
+            $order->load($detailRelations);
 
             // Instanciamos dinámicamente la estrategia de precios utilizando el Factory
             $pricingStrategy = \App\Services\Order\Strategies\PricingStrategyFactory::make($targetCurrency);
 
             foreach ($order->details as $item) {
                 if ($item->dish_id || $item->court_id) {
-                    $usdPrice = $item->unit_price_usd;
+                    $usdPrice = (float) $item->unit_price_usd;
                     if ($targetCurrency === 'USD') {
                         $priceToSet = $usdPrice;
                     } elseif ($targetCurrency === 'COP') {
                         $resourceService = app(\App\Services\Resources\ResourceService::class);
-                        $tasaCop = $resourceService->getExchangeRate('COP') ?: 1;
-                        $rawCop = $usdPrice * $tasaCop;
-                         $priceToSet = ceil(round($rawCop) / 100) * 100;
+                        $tasaCop = (float) ($resourceService->getExchangeRate('COP') ?: 1);
+                        $designatedCop = ($item->dish_id && $item->dish) ? (float) ($item->dish->designated_price_cop ?? 0) : 0.0;
+
+                        // Si el plato tiene precio designado en COP, respetarlo y sumar solo modificadores extra
+                        if ($designatedCop > 0) {
+                            $baseUsd = (float) ($item->dish->designated_price ?? 0);
+                            $extraUsd = max(0.0, $usdPrice - $baseUsd);
+                            $extraCop = $extraUsd > 0 ? (ceil(round($extraUsd * $tasaCop) / 100) * 100) : 0.0;
+                            $priceToSet = $designatedCop + $extraCop;
+                        } else {
+                            $rawCop = $usdPrice * $tasaCop;
+                            $priceToSet = ceil(round($rawCop) / 100) * 100;
+                        }
                     } elseif ($targetCurrency === 'BS') {
                         $resourceService = app(\App\Services\Resources\ResourceService::class);
                         $tasaBs = $resourceService->getExchangeRate('BS') ?: 1;
@@ -1329,7 +1343,11 @@ class OrderActionService
                 $items = is_string($rawItems) ? json_decode($rawItems, true) : $rawItems;
 
                 if (is_array($items)) {
-                    $detailsById = $orderId->details()->get()->keyBy('id');
+                    $detailWith = ['product'];
+                    if (\Illuminate\Support\Facades\Schema::hasTable('dishes')) {
+                        $detailWith[] = 'dish';
+                    }
+                    $detailsById = $orderId->details()->with($detailWith)->get()->keyBy('id');
 
                     foreach ($items as $itemData) {
                         $detailId = $itemData['order_detail_id'] ?? null;
@@ -1344,18 +1362,35 @@ class OrderActionService
                             $rawItemPrice = (float) ($itemData['price'] ?? 0);
                             $rawBeforeDiscount = (float) ($itemData['price_before_discount'] ?? 0);
                             $tasaCop = (float) (app(\App\Services\Resources\ResourceService::class)->getExchangeRate('COP') ?: 1);
+                            $isDishDetail = ($detail->product_type === 'dish' || !empty($detail->dish_id)) && $detail->dish;
+                            $designatedCop = $isDishDetail ? (float) ($detail->dish->designated_price_cop ?? 0) : 0.0;
 
-                            // Si el frontend envió el precio en USD (< 100), convertirlo a COP
-                            if ($rawItemPrice < 100 && $tasaCop > 1) {
-                                $detail->price = ceil(($rawItemPrice * $tasaCop) / 100) * 100;
-                            } else {
-                                $detail->price = $rawItemPrice;
-                            }
+                            // Si es un plato con precio designado en COP y el frontend envió USD (< 100), respetar designated_price_cop
+                            if ($isDishDetail && $designatedCop > 0 && $rawItemPrice < 100) {
+                                $baseUsd = (float) ($detail->dish->designated_price ?? 0);
+                                $unitUsd = (float) ($detail->unit_price_usd ?: $rawItemPrice);
+                                $extraUsd = max(0.0, $unitUsd - $baseUsd);
+                                $extraCop = $extraUsd > 0 ? (ceil(round($extraUsd * $tasaCop) / 100) * 100) : 0.0;
+                                $baseCopPrice = $designatedCop + $extraCop;
+                                $discountPct = (float) ($itemData['discount_percentage'] ?? $detail->discount_percentage ?? 0);
 
-                            if ($rawBeforeDiscount < 100 && $tasaCop > 1) {
-                                $detail->price_before_discount = ceil(($rawBeforeDiscount * $tasaCop) / 100) * 100;
+                                $detail->price_before_discount = $baseCopPrice;
+                                $detail->price = $discountPct > 0
+                                    ? ($baseCopPrice * (1 - ($discountPct / 100)))
+                                    : $baseCopPrice;
                             } else {
-                                $detail->price_before_discount = $rawBeforeDiscount;
+                                // Si el frontend envió el precio en USD (< 100), convertirlo a COP
+                                if ($rawItemPrice < 100 && $tasaCop > 1) {
+                                    $detail->price = ceil(($rawItemPrice * $tasaCop) / 100) * 100;
+                                } else {
+                                    $detail->price = $rawItemPrice;
+                                }
+
+                                if ($rawBeforeDiscount < 100 && $tasaCop > 1) {
+                                    $detail->price_before_discount = ceil(($rawBeforeDiscount * $tasaCop) / 100) * 100;
+                                } else {
+                                    $detail->price_before_discount = $rawBeforeDiscount;
+                                }
                             }
                         } else {
                             $detail->price = ($itemData['price'] ?? 0);
