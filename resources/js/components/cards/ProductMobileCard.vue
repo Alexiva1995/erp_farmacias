@@ -38,7 +38,22 @@ const isRestaurant = computed(() => brandingStore.settings.business_type === "re
 const isMiniMarket = computed(() => brandingStore.settings.business_type === "minimarket");
 const isSportsRental = computed(() => brandingStore.settings.business_type === "sports_rental");
 
-const formatStock = (item, customStock = null) => {
+const getStockColor = (item, customStock = null) => {
+  const stock = Number(customStock !== null ? customStock : (item.stock_calculado ?? 0));
+  if (stock <= 0) return "error";
+
+  if (isRestaurant.value) {
+    const presentation = Number(item.presentation) || 0;
+    const isGramOrMl = item.unit_of_measure === "g" || item.unit_of_measure === "ml";
+    if ((presentation > 1 || isGramOrMl) && stock < 1) {
+      return "warning";
+    }
+  }
+
+  return "success";
+};
+
+const formatPrimaryStock = (item, customStock = null) => {
   const stock = Number(customStock !== null ? customStock : (item.stock_calculado ?? 0));
   if (isSportsRental.value || isMiniMarket.value) {
     return Math.round(stock).toString();
@@ -46,42 +61,51 @@ const formatStock = (item, customStock = null) => {
   if (!isRestaurant.value) {
     return stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
   }
-  if (!item.unit_of_measure) {
-    const formatted = stock.toString().replace(".", ",");
-    return `${formatted} UNDS`;
+  if (!item.unit_of_measure || item.unit_of_measure === "und") {
+    const formatted = stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
+    return `${formatted} und`;
   }
   const presentation = Number(item.presentation) || 0;
   if (presentation > 0 && (item.unit_of_measure === "g" || item.unit_of_measure === "ml")) {
     const unit = item.unit_of_measure;
     const totalUnits = Math.round(stock * presentation);
-    if (totalUnits < 0) {
-      return `${totalUnits} ${unit}`;
-    }
+    return `${totalUnits.toLocaleString("es-CO")} ${unit}`;
+  }
+  if (item.unit_of_measure === "g" || item.unit_of_measure === "ml") {
+    const val = presentation > 0 ? Math.round(stock * presentation) : Math.round(stock);
+    return `${val.toLocaleString("es-CO")} ${item.unit_of_measure}`;
+  }
+  const formatted = stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
+  return `${formatted} ${item.unit_of_measure}`;
+};
+
+const formatSecondaryStock = (item, customStock = null) => {
+  if (!isRestaurant.value) return null;
+  const stock = Number(customStock !== null ? customStock : (item.stock_calculado ?? 0));
+  const presentation = Number(item.presentation) || 0;
+  if (presentation <= 1) return null;
+
+  if (item.unit_of_measure === "g" || item.unit_of_measure === "ml") {
+    const unit = item.unit_of_measure;
+    const totalUnits = Math.round(stock * presentation);
+    if (totalUnits <= 0) return null;
+
     const fullPackages = Math.floor(totalUnits / presentation);
     const remainder = totalUnits % presentation;
+
     if (fullPackages > 0 && remainder > 0) {
       return `${fullPackages} paq + ${remainder} ${unit}`;
-    } else if (fullPackages > 0) {
-      return `${fullPackages} paq`;
-    } else {
-      return `${remainder} ${unit}`;
     }
+    if (fullPackages > 0) {
+      return `${fullPackages} paq ${fullPackages === 1 ? 'completo' : 'completos'}`;
+    }
+    return `0 paq (${remainder} ${unit} abierto)`;
   }
-  if (item.unit_of_measure === "g") {
-    const val = presentation > 0 ? Math.round(stock * presentation) : stock;
-    return `${val} g`;
-  }
-  if (item.unit_of_measure === "ml") {
-    const val = presentation > 0 ? Math.round(stock * presentation) : stock;
-    return `${val} ml`;
-  }
-  if (item.unit_of_measure === "und") {
-    const formatted = stock.toString().replace(".", ",");
-    return `${formatted} unidades`;
-  }
-  const formatted = stock.toString().replace(".", ",");
-  return `${formatted} UNDS`;
+
+  return `${stock.toFixed(2).replace('.', ',')} paq`;
 };
+
+const formatStock = (item, customStock = null) => formatPrimaryStock(item, customStock);
 
 const calculateSalePriceWithIva = (product) => {
   const isCopPrice = isRestaurant.value && Boolean(product.sale_price_cop);
@@ -232,10 +256,15 @@ const getProductLocations = (item) => {
 
       <!-- Caja compacta de Stock y P.V.P -->
       <div v-if="mode !== 'master'" class="d-flex align-center justify-space-between bg-var-theme-background px-2 py-1 mt-2 rounded border-dashed-thin">
-        <div class="d-flex align-center gap-2">
-          <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Stock:</span>
-          <span :class="(item.stock_calculado ?? 0) > 0 ? 'text-success' : 'text-error'" class="text-xs font-weight-bold">
-            {{ formatStock(item) }}
+        <div class="d-flex flex-column">
+          <div class="d-flex align-center gap-1.5">
+            <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Stock:</span>
+            <span :class="`text-${getStockColor(item)}`" class="text-xs font-weight-bold">
+              {{ formatPrimaryStock(item) }}
+            </span>
+          </div>
+          <span v-if="formatSecondaryStock(item)" class="text-super-xs text-disabled font-weight-medium">
+            {{ formatSecondaryStock(item) }}
           </span>
         </div>
         <div v-if="!isRestaurant" class="d-flex align-center gap-1.5 text-right">

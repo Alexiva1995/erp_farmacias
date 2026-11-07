@@ -135,7 +135,22 @@ const nextExpirationDate = (product) => {
   return formatDateSimple(closestDate);
 };
 
-const formatStock = (item, customStock = null) => {
+const getStockColor = (item, customStock = null) => {
+  const stock = Number(customStock !== null ? customStock : (item.stock_calculado ?? 0));
+  if (stock <= 0) return "error";
+
+  if (isRestaurant.value) {
+    const presentation = Number(item.presentation) || 0;
+    const isGramOrMl = item.unit_of_measure === "g" || item.unit_of_measure === "ml";
+    if ((presentation > 1 || isGramOrMl) && stock < 1) {
+      return "warning";
+    }
+  }
+
+  return "success";
+};
+
+const formatPrimaryStock = (item, customStock = null) => {
   const stock = Number(customStock !== null ? customStock : (item.stock_calculado ?? 0));
   if (isSportsRental.value || isMiniMarket.value) {
     return Math.round(stock).toString();
@@ -143,42 +158,51 @@ const formatStock = (item, customStock = null) => {
   if (!isRestaurant.value) {
     return stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
   }
-  if (!item.unit_of_measure) {
-    const formatted = stock.toString().replace(".", ",");
-    return `${formatted} UNDS`;
+  if (!item.unit_of_measure || item.unit_of_measure === "und") {
+    const formatted = stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
+    return `${formatted} und`;
   }
   const presentation = Number(item.presentation) || 0;
   if (presentation > 0 && (item.unit_of_measure === "g" || item.unit_of_measure === "ml")) {
     const unit = item.unit_of_measure;
     const totalUnits = Math.round(stock * presentation);
-    if (totalUnits < 0) {
-      return `${totalUnits} ${unit}`;
-    }
+    return `${totalUnits.toLocaleString("es-CO")} ${unit}`;
+  }
+  if (item.unit_of_measure === "g" || item.unit_of_measure === "ml") {
+    const val = presentation > 0 ? Math.round(stock * presentation) : Math.round(stock);
+    return `${val.toLocaleString("es-CO")} ${item.unit_of_measure}`;
+  }
+  const formatted = stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
+  return `${formatted} ${item.unit_of_measure}`;
+};
+
+const formatSecondaryStock = (item, customStock = null) => {
+  if (!isRestaurant.value) return null;
+  const stock = Number(customStock !== null ? customStock : (item.stock_calculado ?? 0));
+  const presentation = Number(item.presentation) || 0;
+  if (presentation <= 1) return null;
+
+  if (item.unit_of_measure === "g" || item.unit_of_measure === "ml") {
+    const unit = item.unit_of_measure;
+    const totalUnits = Math.round(stock * presentation);
+    if (totalUnits <= 0) return null;
+
     const fullPackages = Math.floor(totalUnits / presentation);
     const remainder = totalUnits % presentation;
+
     if (fullPackages > 0 && remainder > 0) {
       return `${fullPackages} paq + ${remainder} ${unit}`;
-    } else if (fullPackages > 0) {
-      return `${fullPackages} paq`;
-    } else {
-      return `${remainder} ${unit}`;
     }
+    if (fullPackages > 0) {
+      return `${fullPackages} paq ${fullPackages === 1 ? 'completo' : 'completos'}`;
+    }
+    return `0 paq (${remainder} ${unit} abierto)`;
   }
-  if (item.unit_of_measure === "g") {
-    const val = presentation > 0 ? Math.round(stock * presentation) : stock;
-    return `${val} g`;
-  }
-  if (item.unit_of_measure === "ml") {
-    const val = presentation > 0 ? Math.round(stock * presentation) : stock;
-    return `${val} ml`;
-  }
-  if (item.unit_of_measure === "und") {
-    const formatted = stock.toString().replace(".", ",");
-    return `${formatted} unidades`;
-  }
-  const formatted = stock.toString().replace(".", ",");
-  return `${formatted} UNDS`;
+
+  return `${stock.toFixed(2).replace('.', ',')} paq`;
 };
+
+const formatStock = (item, customStock = null) => formatPrimaryStock(item, customStock);
 
 const getProductLocations = (item) => {
   if (item.lot_locations && Array.isArray(item.lot_locations)) {
@@ -415,59 +439,73 @@ const getMergedLots = (lots) => {
 
                   <!-- STOCK -->
                   <td class="text-end">
-                    <!-- Menú flotante interactivo para ver desglose de lotes -->
-                    <VMenu
-                      v-if="product.lots && product.lots.length > 0 && brandingStore.settings?.enable_lots !== false"
-                      open-on-hover
-                      location="bottom end"
-                      offset="8px"
-                    >
-                      <template #activator="{ props: menuProps }">
-                        <VChip
-                          v-bind="menuProps"
-                          :color="(product.stock_calculado || 0) > 0 ? 'success' : 'error'"
-                          label
-                          size="x-small"
-                          variant="tonal"
-                          class="font-weight-black cursor-pointer hover-chip"
-                        >
-                          {{ formatStock(product) }}
-                          <VIcon icon="tabler-info-circle" size="12" class="ms-1" />
-                        </VChip>
-                      </template>
-                      <VCard min-width="280" class="rounded-xl border shadow-lg pa-3">
-                        <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-flex align-center gap-1">
-                          <VIcon icon="tabler-clipboard-list" size="14" />
-                          Desglose de Lotes
-                        </div>
-                        <VDivider class="mb-2" />
-                        <div style="max-height: 180px; overflow-y: auto;">
-                          <div 
-                            v-for="lot in getMergedLots(product.lots)" 
-                            :key="`${lot.lot_number}_${lot.expiration_date}`"
-                            class="d-flex align-center justify-space-between py-1 border-bottom-light"
+                    <div class="d-flex flex-column align-end">
+                      <!-- Menú flotante interactivo para ver desglose de lotes -->
+                      <VMenu
+                        v-if="product.lots && product.lots.length > 0 && brandingStore.settings?.enable_lots !== false"
+                        open-on-hover
+                        location="bottom end"
+                        offset="8px"
+                      >
+                        <template #activator="{ props: menuProps }">
+                          <VChip
+                            v-bind="menuProps"
+                            :color="getStockColor(product)"
+                            label
+                            size="x-small"
+                            variant="tonal"
+                            class="font-weight-black cursor-pointer hover-chip"
                           >
-                            <div class="d-flex flex-column text-left">
-                              <span class="text-xs font-weight-bold text-high-emphasis">Lote: {{ lot.lot_number }}</span>
-                              <span class="text-super-xs text-disabled">Exp: {{ formatDateSimple(lot.expiration_date) }}</span>
-                            </div>
-                            <VChip size="x-small" label color="secondary" variant="flat" class="font-weight-black">
-                              {{ formatStock(product, lot.quantity) }}
-                            </VChip>
+                            {{ formatPrimaryStock(product) }}
+                            <VIcon icon="tabler-info-circle" size="12" class="ms-1" />
+                          </VChip>
+                        </template>
+                        <VCard min-width="300" class="rounded-xl border shadow-lg pa-3">
+                          <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-flex align-center gap-1">
+                            <VIcon icon="tabler-clipboard-list" size="14" />
+                            Desglose de Lotes
                           </div>
-                        </div>
-                      </VCard>
-                    </VMenu>
-                    <VChip
-                      v-else
-                      :color="(product.stock_calculado || 0) > 0 ? 'success' : 'error'"
-                      label
-                      size="x-small"
-                      variant="tonal"
-                      class="font-weight-black"
-                    >
-                      {{ formatStock(product) }}
-                    </VChip>
+                          <VDivider class="mb-2" />
+                          <div style="max-height: 200px; overflow-y: auto;">
+                            <div 
+                              v-for="lot in getMergedLots(product.lots)" 
+                              :key="`${lot.lot_number}_${lot.expiration_date}`"
+                              class="d-flex align-center justify-space-between py-1.5 border-bottom-light"
+                            >
+                              <div class="d-flex flex-column text-left">
+                                <span class="text-xs font-weight-bold text-high-emphasis">Lote: {{ lot.lot_number }}</span>
+                                <span class="text-super-xs text-disabled">Exp: {{ formatDateSimple(lot.expiration_date) }}</span>
+                              </div>
+                              <div class="d-flex flex-column align-end">
+                                <VChip size="x-small" label :color="getStockColor(product, lot.quantity)" variant="flat" class="font-weight-black">
+                                  {{ formatPrimaryStock(product, lot.quantity) }}
+                                </VChip>
+                                <span v-if="formatSecondaryStock(product, lot.quantity)" class="text-super-xs text-disabled mt-0-5 font-weight-medium">
+                                  {{ formatSecondaryStock(product, lot.quantity) }}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </VCard>
+                      </VMenu>
+                      <VChip
+                        v-else
+                        :color="getStockColor(product)"
+                        label
+                        size="x-small"
+                        variant="tonal"
+                        class="font-weight-black"
+                      >
+                        {{ formatPrimaryStock(product) }}
+                      </VChip>
+
+                      <span
+                        v-if="formatSecondaryStock(product)"
+                        class="text-super-xs text-disabled font-weight-medium mt-0-5"
+                      >
+                        {{ formatSecondaryStock(product) }}
+                      </span>
+                    </div>
                   </td>
 
                   <!-- ACCIONES -->

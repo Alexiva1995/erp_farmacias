@@ -233,7 +233,22 @@ const openMergeModal = (product) => {
   isMergeDialogVisible.value = true;
 };
 
-const formatStock = (item, customStock = null) => {
+const getStockColor = (item, customStock = null) => {
+  const stock = Number(customStock !== null ? customStock : (item.stock_calculado ?? 0));
+  if (stock <= 0) return "error";
+
+  if (isRestaurant.value) {
+    const presentation = Number(item.presentation) || 0;
+    const isGramOrMl = item.unit_of_measure === "g" || item.unit_of_measure === "ml";
+    if ((presentation > 1 || isGramOrMl) && stock < 1) {
+      return "warning";
+    }
+  }
+
+  return "success";
+};
+
+const formatPrimaryStock = (item, customStock = null) => {
   const stock = Number(customStock !== null ? customStock : (item.stock_calculado ?? 0));
   if (isSportsRental.value || isMiniMarket.value) {
     return Math.round(stock).toString();
@@ -241,42 +256,51 @@ const formatStock = (item, customStock = null) => {
   if (!isRestaurant.value) {
     return stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
   }
-  if (!item.unit_of_measure) {
-    const formatted = stock.toString().replace(".", ",");
-    return `${formatted} UNDS`;
+  if (!item.unit_of_measure || item.unit_of_measure === "und") {
+    const formatted = stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
+    return `${formatted} und`;
   }
   const presentation = Number(item.presentation) || 0;
   if (presentation > 0 && (item.unit_of_measure === "g" || item.unit_of_measure === "ml")) {
     const unit = item.unit_of_measure;
     const totalUnits = Math.round(stock * presentation);
-    if (totalUnits < 0) {
-      return `${totalUnits} ${unit}`;
-    }
+    return `${totalUnits.toLocaleString("es-CO")} ${unit}`;
+  }
+  if (item.unit_of_measure === "g" || item.unit_of_measure === "ml") {
+    const val = presentation > 0 ? Math.round(stock * presentation) : Math.round(stock);
+    return `${val.toLocaleString("es-CO")} ${item.unit_of_measure}`;
+  }
+  const formatted = stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
+  return `${formatted} ${item.unit_of_measure}`;
+};
+
+const formatSecondaryStock = (item, customStock = null) => {
+  if (!isRestaurant.value) return null;
+  const stock = Number(customStock !== null ? customStock : (item.stock_calculado ?? 0));
+  const presentation = Number(item.presentation) || 0;
+  if (presentation <= 1) return null;
+
+  if (item.unit_of_measure === "g" || item.unit_of_measure === "ml") {
+    const unit = item.unit_of_measure;
+    const totalUnits = Math.round(stock * presentation);
+    if (totalUnits <= 0) return null;
+
     const fullPackages = Math.floor(totalUnits / presentation);
     const remainder = totalUnits % presentation;
+
     if (fullPackages > 0 && remainder > 0) {
       return `${fullPackages} paq + ${remainder} ${unit}`;
-    } else if (fullPackages > 0) {
-      return `${fullPackages} paq`;
-    } else {
-      return `${remainder} ${unit}`;
     }
+    if (fullPackages > 0) {
+      return `${fullPackages} paq ${fullPackages === 1 ? 'completo' : 'completos'}`;
+    }
+    return `0 paq (${remainder} ${unit} abierto)`;
   }
-  if (item.unit_of_measure === "g") {
-    const val = presentation > 0 ? Math.round(stock * presentation) : stock;
-    return `${val} g`;
-  }
-  if (item.unit_of_measure === "ml") {
-    const val = presentation > 0 ? Math.round(stock * presentation) : stock;
-    return `${val} ml`;
-  }
-  if (item.unit_of_measure === "und") {
-    const formatted = stock.toString().replace(".", ",");
-    return `${formatted} unidades`;
-  }
-  const formatted = stock.toString().replace(".", ",");
-  return `${formatted} UNDS`;
+
+  return `${stock.toFixed(2).replace('.', ',')} paq`;
 };
+
+const formatStock = (item, customStock = null) => formatPrimaryStock(item, customStock);
 
 const formatPriceWithCurrency = (price, isAlreadyConverted = false) => {
   const numPrice = Number(price);
@@ -565,7 +589,7 @@ const getMergedLots = (lots) => {
         </template>
 
         <template #item.stock_calculado="{ item }">
-          <div class="text-end">
+          <div class="d-flex flex-column align-end">
             <!-- Menú flotante interactivo para ver desglose de lotes -->
             <VMenu
               open-on-hover
@@ -576,49 +600,62 @@ const getMergedLots = (lots) => {
               <template #activator="{ props: menuProps }">
                 <VChip
                   v-bind="menuProps"
-                  :color="item.stock_calculado > 0 ? 'success' : 'error'"
+                  :color="getStockColor(item)"
                   label
                   size="x-small"
                   variant="tonal"
                   class="font-weight-black cursor-pointer hover-chip"
                 >
-                  {{ formatStock(item) }}
+                  {{ formatPrimaryStock(item) }}
                   <VIcon icon="tabler-info-circle" size="12" class="ms-1" />
                 </VChip>
               </template>
-              <VCard min-width="280" class="rounded-xl border shadow-lg pa-3">
+              <VCard min-width="300" class="rounded-xl border shadow-lg pa-3">
                 <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1 mb-2 d-flex align-center gap-1">
                   <VIcon icon="tabler-clipboard-list" size="14" />
                   Desglose de Lotes
                 </div>
                 <VDivider class="mb-2" />
-                <div style="max-height: 180px; overflow-y: auto;">
+                <div style="max-height: 200px; overflow-y: auto;">
                   <div 
                     v-for="lot in getMergedLots(item.lots)" 
                     :key="`${lot.lot_number}_${lot.expiration_date}`"
-                    class="d-flex align-center justify-space-between py-1 border-bottom-light"
+                    class="d-flex align-center justify-space-between py-1.5 border-bottom-light"
                   >
                     <div class="d-flex flex-column text-left">
                       <span class="text-xs font-weight-bold text-high-emphasis">Lote: {{ lot.lot_number }}</span>
                       <span class="text-super-xs text-disabled">Exp: {{ formatDateSimple(lot.expiration_date) }}</span>
                     </div>
-                    <VChip size="x-small" label color="secondary" variant="flat" class="font-weight-black">
-                      {{ formatStock(item, lot.quantity) }}
-                    </VChip>
+                    <div class="d-flex flex-column align-end">
+                      <VChip size="x-small" label :color="getStockColor(item, lot.quantity)" variant="flat" class="font-weight-black">
+                        {{ formatPrimaryStock(item, lot.quantity) }}
+                      </VChip>
+                      <span v-if="formatSecondaryStock(item, lot.quantity)" class="text-super-xs text-disabled mt-0-5 font-weight-medium">
+                        {{ formatSecondaryStock(item, lot.quantity) }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </VCard>
             </VMenu>
             <VChip
               v-else
-              :color="item.stock_calculado > 0 ? 'success' : 'error'"
+              :color="getStockColor(item)"
               label
               size="x-small"
               variant="tonal"
               class="font-weight-black"
             >
-              {{ formatStock(item) }}
+              {{ formatPrimaryStock(item) }}
             </VChip>
+
+            <!-- Subtexto nivel 2 (desglose de empaques para restaurante) -->
+            <span
+              v-if="formatSecondaryStock(item)"
+              class="text-super-xs text-disabled font-weight-medium mt-0-5"
+            >
+              {{ formatSecondaryStock(item) }}
+            </span>
           </div>
         </template>
 
@@ -627,9 +664,23 @@ const getMergedLots = (lots) => {
         </template>
 
         <template #item.unit_cost="{ item }">
-          <span class="text-sm font-weight-medium text-high-emphasis">
-            {{ formatPriceWithCurrency(item.unit_cost) }}
-          </span>
+          <div class="d-flex flex-column">
+            <span class="text-sm font-weight-medium text-high-emphasis">
+              {{ formatPriceWithCurrency(item.unit_cost) }}
+            </span>
+            <span
+              v-if="isRestaurant && item.presentation && Number(item.presentation) > 1"
+              class="text-super-xs text-disabled font-weight-medium"
+            >
+              x paq ({{ item.presentation }} {{ item.unit_of_measure || '' }})
+            </span>
+            <span
+              v-else-if="isRestaurant && item.unit_of_measure"
+              class="text-super-xs text-disabled font-weight-medium"
+            >
+              x {{ item.unit_of_measure }}
+            </span>
+          </div>
         </template>
 
         <template #item.sale_price="{ item }">
