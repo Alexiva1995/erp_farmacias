@@ -135,8 +135,8 @@ const nextExpirationDate = (product) => {
   return formatDateSimple(closestDate);
 };
 
-const formatStock = (item) => {
-  const stock = Number(item.stock_calculado ?? 0);
+const formatStock = (item, customStock = null) => {
+  const stock = Number(customStock !== null ? customStock : (item.stock_calculado ?? 0));
   if (isSportsRental.value || isMiniMarket.value) {
     return Math.round(stock).toString();
   }
@@ -150,7 +150,7 @@ const formatStock = (item) => {
   const presentation = Number(item.presentation) || 0;
   if (presentation > 0 && (item.unit_of_measure === "g" || item.unit_of_measure === "ml")) {
     const unit = item.unit_of_measure;
-    const totalUnits = Math.round(stock * 1000);
+    const totalUnits = Math.round(stock * presentation);
     if (totalUnits < 0) {
       return `${totalUnits} ${unit}`;
     }
@@ -164,7 +164,20 @@ const formatStock = (item) => {
       return `${remainder} ${unit}`;
     }
   }
-  return `${stock} UNDS`;
+  if (item.unit_of_measure === "g") {
+    const val = presentation > 0 ? Math.round(stock * presentation) : stock;
+    return `${val} g`;
+  }
+  if (item.unit_of_measure === "ml") {
+    const val = presentation > 0 ? Math.round(stock * presentation) : stock;
+    return `${val} ml`;
+  }
+  if (item.unit_of_measure === "und") {
+    const formatted = stock.toString().replace(".", ",");
+    return `${formatted} unidades`;
+  }
+  const formatted = stock.toString().replace(".", ",");
+  return `${formatted} UNDS`;
 };
 
 const getProductLocations = (item) => {
@@ -439,7 +452,7 @@ const getMergedLots = (lots) => {
                               <span class="text-super-xs text-disabled">Exp: {{ formatDateSimple(lot.expiration_date) }}</span>
                             </div>
                             <VChip size="x-small" label color="secondary" variant="flat" class="font-weight-black">
-                              {{ lot.quantity }}
+                              {{ formatStock(product, lot.quantity) }}
                             </VChip>
                           </div>
                         </div>

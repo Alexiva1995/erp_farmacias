@@ -234,12 +234,16 @@ const lotHeaders = [
 
           <!-- Stock Inicial -->
           <VCol v-if="isNewProduct && isFieldEnabled('stock')" cols="12" md="4" class="mt-4">
-            <VTextField v-model="formData.initial_stock" label="Stock Inicial"
+            <VTextField v-model="formData.initial_stock"
+              :label="isRestaurant && Number(formData.presentation) > 0 ? `Stock Inicial (Empaques de ${formData.presentation} ${formData.unit_of_measure || ''})` : 'Stock Inicial'"
               type="number"
+              step="any"
               variant="outlined"
               density="comfortable"
               :error-messages="formErrors.initial_stock"
               class="rounded-lg font-weight-black"
+              :hint="isRestaurant && Number(formData.presentation) > 0 ? `Cantidad en empaques o paquetes (ej: 3 para 3 envases de ${formData.presentation} ${formData.unit_of_measure || ''})` : undefined"
+              :persistent-hint="Boolean(isRestaurant && Number(formData.presentation) > 0)"
               hide-details="auto"
             />
           </VCol>
@@ -287,7 +291,7 @@ const lotHeaders = [
                 variant="tonal"
                 class="font-weight-black px-2 rounded-lg"
               >
-                {{ item.quantity }} UNID.
+                {{ item.quantity }} {{ isRestaurant ? 'PAQ.' : 'UNID.' }}
               </VChip>
             </template>
             <template #item.expiration_date="{ item }">

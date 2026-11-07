@@ -18,6 +18,14 @@ const emit = defineEmits(["update:modelValue", "save"]);
 
 const brandingStore = useBrandingStore();
 const isMiniMarket = computed(() => false);
+const isRestaurant = computed(() => brandingStore.settings?.business_type === "restaurant");
+
+const selectedProduct = computed(() => {
+  if (props.isEditing && props.lotToEdit?.product) {
+    return props.lotToEdit.product;
+  }
+  return props.products.find((p) => p.id === lotData.value.product_id) || null;
+});
 
 const defaultLot = {
   product_id: null,
@@ -219,13 +227,16 @@ const onCancel = () => emit("update:modelValue", false);
                   <VCol cols="12" sm="6">
                     <AppTextField
                       v-model="lotData.quantity"
-                      label="Cantidad"
+                      :label="isRestaurant && Number(selectedProduct?.presentation) > 0 ? `Cantidad (Empaques x ${selectedProduct.presentation} ${selectedProduct.unit_of_measure || ''})` : 'Cantidad'"
                       type="number"
+                      step="any"
                       variant="outlined"
                       density="comfortable"
                       placeholder="0"
                       :disabled="props.isEditing"
                       class="shadow-sm"
+                      :hint="isRestaurant && Number(selectedProduct?.presentation) > 0 ? `1 empaque = ${selectedProduct.presentation} ${selectedProduct.unit_of_measure || ''}` : undefined"
+                      :persistent-hint="Boolean(isRestaurant && Number(selectedProduct?.presentation) > 0)"
                     />
                   </VCol>
 

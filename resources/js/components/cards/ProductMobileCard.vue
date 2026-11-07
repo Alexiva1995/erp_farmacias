@@ -38,8 +38,8 @@ const isRestaurant = computed(() => brandingStore.settings.business_type === "re
 const isMiniMarket = computed(() => brandingStore.settings.business_type === "minimarket");
 const isSportsRental = computed(() => brandingStore.settings.business_type === "sports_rental");
 
-const formatStock = (item) => {
-  const stock = Number(item.stock_calculado ?? 0);
+const formatStock = (item, customStock = null) => {
+  const stock = Number(customStock !== null ? customStock : (item.stock_calculado ?? 0));
   if (isSportsRental.value || isMiniMarket.value) {
     return Math.round(stock).toString();
   }
@@ -53,7 +53,7 @@ const formatStock = (item) => {
   const presentation = Number(item.presentation) || 0;
   if (presentation > 0 && (item.unit_of_measure === "g" || item.unit_of_measure === "ml")) {
     const unit = item.unit_of_measure;
-    const totalUnits = Math.round(stock * 1000);
+    const totalUnits = Math.round(stock * presentation);
     if (totalUnits < 0) {
       return `${totalUnits} ${unit}`;
     }
@@ -68,11 +68,11 @@ const formatStock = (item) => {
     }
   }
   if (item.unit_of_measure === "g") {
-    const val = Math.round(stock * 1000);
+    const val = presentation > 0 ? Math.round(stock * presentation) : stock;
     return `${val} g`;
   }
   if (item.unit_of_measure === "ml") {
-    const val = Math.round(stock * 1000);
+    const val = presentation > 0 ? Math.round(stock * presentation) : stock;
     return `${val} ml`;
   }
   if (item.unit_of_measure === "und") {
