@@ -51,10 +51,6 @@ class SupplierQueryService
                     $q->where('type', 'drogueria')
                       ->orWhere('type', 'inventory')
                       ->orWhereNull('type');
-                })
-                ->where(function ($q) {
-                    $q->where('is_active', true)
-                      ->orWhereNull('is_active');
                 });
         }
 
@@ -1450,8 +1446,6 @@ class SupplierQueryService
                 $q->where('type', '!=', 'externo')->orWhereNull('type');
             })->where(function ($q) {
                 $q->where('type', 'drogueria')->orWhere('type', 'inventory')->orWhereNull('type');
-            })->where(function ($q) {
-                $q->where('is_active', true)->orWhereNull('is_active');
             });
             $totalSuppliers = $masterSuppliersQuery->count();
             $masterSupplierIds = $masterSuppliersQuery->pluck('id');

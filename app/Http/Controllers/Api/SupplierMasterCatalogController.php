@@ -78,6 +78,11 @@ class SupplierMasterCatalogController extends Controller
 
         $stats = $this->masterSeederService->syncMasterFromAllTenants($overwrite);
 
+        // Asegurar que en tovaerp_master todos los proveedores queden activos y sin IDs de offset
+        $masterConn = $this->masterSeederService->ensureMasterDatabaseAndTables();
+        $this->masterSeederService->normalizeMasterSupplierIds($masterConn);
+        \Illuminate\Support\Facades\DB::connection($masterConn)->table('suppliers')->update(['is_active' => 1]);
+
         if ($propagate) {
             $this->masterSeederService->propagateToAllTenants();
         }

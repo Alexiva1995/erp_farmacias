@@ -84,7 +84,8 @@ const hasAdvancedFilters = computed(
 <template>
   <AppFilterBase
     :search="props.searchQuery"
-    :has-advanced-filters="hasAdvancedFilters"
+    :has-advanced-filters="props.isMaster ? false : hasAdvancedFilters"
+    :show-advanced="!props.isMaster"
     :show-sort="true"
     :sort-options="sortOptions"
     :show-add="true"

@@ -74,13 +74,22 @@ class MasterSupplierSeederService
             $masterSupCols = array_flip(Schema::connection($masterConn)->getColumnListing('suppliers'));
             $masterConnCols = array_flip(Schema::connection($masterConn)->getColumnListing('supplier_connections'));
 
+            // Normalizar IDs anómalos previos (offsets temporales >= 100000000)
+            $this->normalizeMasterSupplierIds($masterConn);
+
             // 1. Sincronizar Proveedores hacia tovaerp_master
             $idMapping = []; // [source_id => master_id]
 
             foreach ($sourceSuppliers as $sup) {
+                // Si el ID del source trae un offset temporal (>= 100000000), normalizarlo
+                $sourceSupId = (int) $sup->id;
+                if ($sourceSupId >= 100000000) {
+                    $sourceSupId -= 100000000;
+                }
+
                 $cleanRif = !empty($sup->rif) ? strtoupper(trim((string) $sup->rif)) : null;
 
-                // Buscar si ya existe en el Master por RIF o por ID
+                // Buscar si ya existe en el Master por RIF o por ID normalizado
                 $masterSup = null;
                 if ($cleanRif) {
                     $masterSup = DB::connection($masterConn)->table('suppliers')
@@ -90,16 +99,20 @@ class MasterSupplierSeederService
 
                 if (!$masterSup) {
                     $masterSup = DB::connection($masterConn)->table('suppliers')
-                        ->where('id', $sup->id)
+                        ->where('id', $sourceSupId)
                         ->first();
                 }
 
                 $payload = array_intersect_key((array) $sup, $masterSupCols);
                 unset($payload['provider_tenant_id']);
 
+                // En el Catálogo Maestro todos los proveedores deben figurar como activos
+                $payload['is_active'] = 1;
+
                 if ($masterSup) {
-                    $updateCols = ['name', 'social_reason', 'rif', 'type', 'updated_at'];
+                    $updateCols = ['name', 'social_reason', 'rif', 'type', 'is_active', 'updated_at'];
                     $updatePayload = array_intersect_key($payload, array_flip($updateCols));
+                    $updatePayload['is_active'] = 1;
                     $updatePayload['updated_at'] = now();
 
                     DB::connection($masterConn)->table('suppliers')
@@ -108,11 +121,13 @@ class MasterSupplierSeederService
 
                     $idMapping[$sup->id] = (int) $masterSup->id;
                 } else {
+                    $payload['id'] = $sourceSupId;
+                    $payload['is_active'] = 1;
                     $payload['created_at'] = $payload['created_at'] ?? now();
                     $payload['updated_at'] = now();
 
                     // Intentar respetar el ID original si no existe colisión
-                    if (DB::connection($masterConn)->table('suppliers')->where('id', $sup->id)->exists()) {
+                    if (DB::connection($masterConn)->table('suppliers')->where('id', $sourceSupId)->exists()) {
                         unset($payload['id']);
                     }
 
@@ -260,6 +275,78 @@ class MasterSupplierSeederService
         }
 
         return $totalStats;
+    }
+
+    /**
+     * Normaliza en tovaerp_master cualquier proveedor o conexión técnica que haya quedado
+     * con un offset temporal (>= 100000000) proveniente de procesos de reordenamiento previos.
+     */
+    public function normalizeMasterSupplierIds(string $masterConn): void
+    {
+        try {
+            if (!Schema::connection($masterConn)->hasTable('suppliers')) {
+                return;
+            }
+
+            $offset = 100000000;
+            $anomalousSuppliers = DB::connection($masterConn)->table('suppliers')
+                ->where('id', '>=', $offset)
+                ->get(['id', 'rif', 'name']);
+
+            if ($anomalousSuppliers->isEmpty()) {
+                return;
+            }
+
+            DB::connection($masterConn)->statement('SET FOREIGN_KEY_CHECKS=0;');
+
+            foreach ($anomalousSuppliers as $sup) {
+                $targetId = (int) $sup->id - $offset;
+
+                // Verificar si ya existe el ID objetivo en el Master
+                $exists = DB::connection($masterConn)->table('suppliers')
+                    ->where('id', $targetId)
+                    ->exists();
+
+                if ($exists) {
+                    // Si ya existe la fila con targetId, unificar apuntadores de conexiones y borrar el offset duplicado
+                    if (Schema::connection($masterConn)->hasTable('supplier_connections')) {
+                        DB::connection($masterConn)->table('supplier_connections')
+                            ->where('supplier_id', $sup->id)
+                            ->update(['supplier_id' => $targetId]);
+                    }
+                    DB::connection($masterConn)->table('suppliers')
+                        ->where('id', $sup->id)
+                        ->delete();
+                } else {
+                    // Actualizar el ID en suppliers y en supplier_connections
+                    DB::connection($masterConn)->table('suppliers')
+                        ->where('id', $sup->id)
+                        ->update(['id' => $targetId]);
+
+                    if (Schema::connection($masterConn)->hasTable('supplier_connections')) {
+                        DB::connection($masterConn)->table('supplier_connections')
+                            ->where('supplier_id', $sup->id)
+                            ->update(['supplier_id' => $targetId]);
+                    }
+                }
+            }
+
+            // Normalizar conexiones huérfanas que aún tengan supplier_id >= offset
+            if (Schema::connection($masterConn)->hasTable('supplier_connections')) {
+                DB::connection($masterConn)->statement("
+                    UPDATE supplier_connections 
+                    SET supplier_id = supplier_id - {$offset} 
+                    WHERE supplier_id >= {$offset}
+                ");
+            }
+
+            // Asegurar que todos queden con is_active = 1
+            DB::connection($masterConn)->table('suppliers')->update(['is_active' => 1]);
+
+            DB::connection($masterConn)->statement('SET FOREIGN_KEY_CHECKS=1;');
+        } catch (\Throwable $e) {
+            Log::warning('Error normalizando IDs en tovaerp_master: ' . $e->getMessage());
+        }
     }
 
     /**
