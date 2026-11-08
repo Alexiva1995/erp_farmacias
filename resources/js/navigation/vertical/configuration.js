@@ -16,6 +16,10 @@ export default [
         to: 'configuration-pharmacy',
       },
       {
+        title: 'Sucursales & Sedes',
+        to: 'configuration-branches',
+      },
+      {
         title: 'Roles',
         to: 'configuration-roles',
       },

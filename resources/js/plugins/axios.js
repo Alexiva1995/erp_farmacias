@@ -39,6 +39,14 @@ axiosInstance.interceptors.request.use(
     if (typeof window !== 'undefined' && window.location.pathname.startsWith('/master')) {
       config.headers['X-Master-Catalog-Context'] = '1';
     }
+
+    // 4. Si el Administrador ha seleccionado una sucursal activa en la sesión, adjuntar contexto multi-sede
+    if (typeof window !== 'undefined') {
+      const activeBranchId = sessionStorage.getItem('active_branch_id');
+      if (activeBranchId) {
+        config.headers['X-Branch-Context'] = activeBranchId;
+      }
+    }
     
     // Asegurar que las cookies de sesión se envíen
     config.withCredentials = true;

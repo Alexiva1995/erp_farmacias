@@ -24,6 +24,20 @@ class BootstrapConfigController extends Controller
 
         $vertical = $tenantVertical ?: $businessType;
 
+        $currentBranch = null;
+        $canCreateBranches = false;
+        if ($isTenant && tenancy()->tenant) {
+            $t = tenancy()->tenant;
+            $currentBranch = [
+                'id' => $t->id,
+                'parent_tenant_id' => $t->parent_tenant_id,
+                'company_name' => $t->company_name ?? ucfirst($t->id),
+                'branch_code' => $t->branch_code ?? ($t->parent_tenant_id ? strtoupper($t->id) : 'MATRIZ'),
+                'is_matriz' => empty($t->parent_tenant_id),
+            ];
+            $canCreateBranches = (bool) ($t->can_create_branches ?? false);
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -32,6 +46,8 @@ class BootstrapConfigController extends Controller
                 'enabled_modules' => $enabledModules,
                 'is_tenant' => $isTenant,
                 'is_master' => !$isTenant,
+                'current_branch' => $currentBranch,
+                'can_create_branches' => $canCreateBranches,
             ]
         ]);
     }

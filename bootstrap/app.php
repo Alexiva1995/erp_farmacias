@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\SwitchToMasterCatalogConnection::class,
+            \App\Http\Middleware\SwitchToBranchContext::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
 

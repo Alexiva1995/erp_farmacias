@@ -10,6 +10,7 @@ import logoSvg from '@images/logo.svg?raw';
 import Footer from "@/layouts/components/Footer.vue";
 import NavbarThemeSwitcher from "@/layouts/components/NavbarThemeSwitcher.vue";
 import UserProfile from "@/layouts/components/UserProfile.vue";
+import BranchSwitcher from "@/components/branches/BranchSwitcher.vue";
 import NavBarI18n from "@core/components/I18n.vue";
 
 // @layouts plugin
@@ -598,6 +599,8 @@ const processedNavItems = computed(() => {
           </IconBtn>
 
           <VSpacer />
+
+          <BranchSwitcher />
 
           <NavBarI18n
             v-if="

@@ -135,6 +135,10 @@ class AppServiceProvider extends ServiceProvider
             ->needs(PurchaseOrder::class)
             ->give(PurchaseOrderServices::class);
 
+        $this->app->bind(
+            \App\Contracts\Tenancy\BranchManagementServiceInterface::class,
+            \App\Services\Tenancy\BranchManagementService::class
+        );
         $this->app->bind(PurchaseOrder::class, PurchaseOrderServices::class);
         $this->app->bind(
             \App\Contracts\Suppliers\PurchaseOrderByLaboratoryServiceInterface::class,

@@ -28,6 +28,8 @@ class User extends Authenticatable
         'token_login',
         'remember_token',
         'ui_preferences',
+        'is_corporate_admin',
+        'allowed_branch_ids',
     ];
 
     /**
@@ -57,6 +59,8 @@ class User extends Authenticatable
         return [
             'password_hash'  => 'hashed',
             'ui_preferences' => 'array',
+            'is_corporate_admin' => 'boolean',
+            'allowed_branch_ids' => 'array',
         ];
     }
 

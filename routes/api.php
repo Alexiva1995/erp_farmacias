@@ -1374,6 +1374,14 @@ Route::prefix('central/tenants')->group(function () {
     Route::delete('/{id}', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'destroy']);
 });
 
+// Rutas de Gestión de Sucursales (Multi-Sede)
+Route::prefix('branches')->middleware(['auth:sanctum'])->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\Branches\BranchManagementController::class, 'index']);
+    Route::post('/', [\App\Http\Controllers\Api\Branches\BranchManagementController::class, 'store']);
+    Route::put('/{branchId}', [\App\Http\Controllers\Api\Branches\BranchManagementController::class, 'update']);
+    Route::post('/{branchId}/toggle-active', [\App\Http\Controllers\Api\Branches\BranchManagementController::class, 'toggleActive']);
+});
+
 // Rutas Públicas de Menú QR en Mesa (Fase 5)
 // Rutas de Vertical Droguería (Mayorista B2B, Cartera, Marketplace y WMS)
 Route::prefix('wholesale')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
