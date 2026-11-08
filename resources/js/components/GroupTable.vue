@@ -158,22 +158,16 @@ const formatPrimaryStock = (item, customStock = null) => {
   if (!isRestaurant.value) {
     return stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
   }
-  if (!item.unit_of_measure || item.unit_of_measure === "und") {
-    const formatted = stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
-    return `${formatted} und`;
-  }
-  const presentation = Number(item.presentation) || 0;
-  if (presentation > 0 && (item.unit_of_measure === "g" || item.unit_of_measure === "ml")) {
-    const unit = item.unit_of_measure;
+  const presentation = Number(item.presentation) || 1;
+  const unit = item.unit_of_measure || "und";
+
+  if (presentation > 1) {
     const totalUnits = Math.round(stock * presentation);
     return `${totalUnits.toLocaleString("es-CO")} ${unit}`;
   }
-  if (item.unit_of_measure === "g" || item.unit_of_measure === "ml") {
-    const val = presentation > 0 ? Math.round(stock * presentation) : Math.round(stock);
-    return `${val.toLocaleString("es-CO")} ${item.unit_of_measure}`;
-  }
+
   const formatted = stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
-  return `${formatted} ${item.unit_of_measure}`;
+  return `${formatted} ${unit}`;
 };
 
 const formatSecondaryStock = (item, customStock = null) => {
@@ -182,24 +176,20 @@ const formatSecondaryStock = (item, customStock = null) => {
   const presentation = Number(item.presentation) || 0;
   if (presentation <= 1) return null;
 
-  if (item.unit_of_measure === "g" || item.unit_of_measure === "ml") {
-    const unit = item.unit_of_measure;
-    const totalUnits = Math.round(stock * presentation);
-    if (totalUnits <= 0) return null;
+  const unit = item.unit_of_measure || "und";
+  const totalUnits = Math.round(stock * presentation);
+  if (totalUnits <= 0) return null;
 
-    const fullPackages = Math.floor(totalUnits / presentation);
-    const remainder = totalUnits % presentation;
+  const fullPackages = Math.floor(totalUnits / presentation);
+  const remainder = totalUnits % presentation;
 
-    if (fullPackages > 0 && remainder > 0) {
-      return `${fullPackages} paq + ${remainder} ${unit}`;
-    }
-    if (fullPackages > 0) {
-      return `${fullPackages} paq ${fullPackages === 1 ? 'completo' : 'completos'}`;
-    }
-    return `0 paq (${remainder} ${unit} abierto)`;
+  if (fullPackages > 0 && remainder > 0) {
+    return `${fullPackages} paq + ${remainder} ${unit}`;
   }
-
-  return `${stock.toFixed(2).replace('.', ',')} paq`;
+  if (fullPackages > 0) {
+    return `${fullPackages} paq ${fullPackages === 1 ? 'completo' : 'completos'}`;
+  }
+  return `0 paq (${remainder} ${unit} abierto)`;
 };
 
 const formatStock = (item, customStock = null) => formatPrimaryStock(item, customStock);

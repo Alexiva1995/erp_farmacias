@@ -70,13 +70,13 @@ class InventoryCycleActionService
                     }
                 }
 
-                $expectedDiscrepancy = $data['counted_quantity'] - $systemStock;
-                if ((int) $expectedDiscrepancy !== (int) $data['discrepancy']) {
+                $expectedDiscrepancy = round((float) $data['counted_quantity'] - (float) $systemStock, 3);
+                if (abs($expectedDiscrepancy - (float) ($data['discrepancy'] ?? 0)) > 0.001) {
                     Log::warning('Discrepancia no coincide con el cálculo del backend', [
                         'product_id' => $productId,
                         'frontend_system_stock' => $systemStock,
                         'counted_quantity' => $data['counted_quantity'],
-                        'frontend_discrepancy' => $data['discrepancy'],
+                        'frontend_discrepancy' => $data['discrepancy'] ?? null,
                         'backend_discrepancy' => $expectedDiscrepancy
                     ]);
 
@@ -85,8 +85,8 @@ class InventoryCycleActionService
 
                 // Si no hay discrepancia y no es simple, aprobar automáticamente sin supervisor
                 $isSimple = \App\Models\GeneralSetting::first()?->cyclic_inventory_mode === 'simple';
-                $finalDiscrepancy = $data['discrepancy'];
-                $status = ($finalDiscrepancy == 0 && !$isSimple) ? 'approved' : 'pending';
+                $finalDiscrepancy = round((float) ($data['discrepancy'] ?? 0), 3);
+                $status = (abs($finalDiscrepancy) < 0.0001 && !$isSimple) ? 'approved' : 'pending';
                 $userId = Auth::id();
                 $today = now()->toDateString();
                 
@@ -569,13 +569,13 @@ class InventoryCycleActionService
                     }
                 }
 
-                $expectedDiscrepancy = $data['counted_quantity'] - $data['system_quantity'];
-                if ((int) $expectedDiscrepancy !== (int) $data['discrepancy']) {
+                $expectedDiscrepancy = round((float) $data['counted_quantity'] - (float) $data['system_quantity'], 3);
+                if (abs($expectedDiscrepancy - (float) ($data['discrepancy'] ?? 0)) > 0.001) {
                     $data['discrepancy'] = $expectedDiscrepancy;
                 }
 
-                $finalDiscrepancy = $data['discrepancy'];
-                $status = ($finalDiscrepancy == 0) ? 'approved' : 'pending';
+                $finalDiscrepancy = round((float) ($data['discrepancy'] ?? 0), 3);
+                $status = (abs($finalDiscrepancy) < 0.0001) ? 'approved' : 'pending';
                 $supervisorId = null;
                 $userId = Auth::id();
                 $today = now()->toDateString();
@@ -919,14 +919,14 @@ class InventoryCycleActionService
                     }
                 }
 
-                $expectedDiscrepancy = $data['counted_quantity'] - $data['system_quantity'];
-                if ((int) $expectedDiscrepancy !== (int) $data['discrepancy']) {
+                $expectedDiscrepancy = round((float) $data['counted_quantity'] - (float) $data['system_quantity'], 3);
+                if (abs($expectedDiscrepancy - (float) ($data['discrepancy'] ?? 0)) > 0.001) {
                     $data['discrepancy'] = $expectedDiscrepancy;
                 }
 
                 // Si no hay discrepancia, aprobar automáticamente sin supervisor
-                $finalDiscrepancy = $data['discrepancy'];
-                $status = ($finalDiscrepancy == 0) ? 'approved' : 'pending';
+                $finalDiscrepancy = round((float) ($data['discrepancy'] ?? 0), 3);
+                $status = (abs($finalDiscrepancy) < 0.0001) ? 'approved' : 'pending';
                 $supervisorId = null; // No hay supervisor cuando se aprueba automáticamente
                 $userId = Auth::id();
                 $today = now()->toDateString();

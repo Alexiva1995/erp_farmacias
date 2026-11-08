@@ -494,11 +494,11 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
 
           <template #item.discrepancy="{ item }">
             <VChip
-              v-if="item.discrepancy !== 0"
-              :color="item.discrepancy > 0 ? 'success' : 'error'"
+              v-if="Math.abs(Number(item.discrepancy ?? 0)) > 0.0001"
+              :color="Number(item.discrepancy) > 0 ? 'success' : 'error'"
               size="x-small" label variant="tonal" class="font-weight-black"
             >
-              {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
+              {{ Number(item.discrepancy) > 0 ? `+${item.discrepancy}` : item.discrepancy }}
             </VChip>
             <span v-else class="text-xs text-disabled">Sin diferencias</span>
           </template>
@@ -508,8 +508,8 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
           </template>
 
           <template #item.amount="{ item }">
-            <span class="text-sm font-weight-black" :class="item.discrepancy >= 0 ? 'text-success' : 'text-error'">
-              {{ formatPrice((item.discrepancy || 0) * (item.product?.sale_price || 0)) }}
+            <span class="text-sm font-weight-black" :class="Number(item.discrepancy ?? 0) >= 0 ? 'text-success' : 'text-error'">
+              {{ formatPrice((Number(item.discrepancy) || 0) * (Number(item.product?.sale_price) || 0)) }}
             </span>
           </template>
 

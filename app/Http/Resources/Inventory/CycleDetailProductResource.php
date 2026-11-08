@@ -51,14 +51,23 @@ class CycleDetailProductResource extends JsonResource
                 : ($supervisor->employee_last_name ?? $supervisor->employee?->last_name);
         }
 
+        $systemQuantity = (float) ($item->system_quantity ?? 0);
+        $finalQuantity = (float) ($item->final_quantity ?? $item->counted_quantity ?? 0);
+        $discrepancy = (float) ($item->discrepancy ?? 0);
+
+        // Si la discrepancia guardada es 0 pero hay diferencia real entre final y sistema (por truncamiento entero histórico)
+        if (abs($discrepancy) < 0.0001 && abs($finalQuantity - $systemQuantity) > 0.0001) {
+            $discrepancy = round($finalQuantity - $systemQuantity, 3);
+        }
+
         return [
             'id' => $item->id ?? null,
             'source_type' => $item->source_type ?? 'product_count',
             'product_id' => (int) ($item->product_id ?? 0),
-            'system_quantity' => (float) ($item->system_quantity ?? 0),
-            'final_quantity' => (float) ($item->final_quantity ?? $item->counted_quantity ?? 0),
+            'system_quantity' => $systemQuantity,
+            'final_quantity' => $finalQuantity,
             'counted_quantity' => (float) ($item->counted_quantity ?? 0),
-            'discrepancy' => (float) ($item->discrepancy ?? 0),
+            'discrepancy' => $discrepancy,
             'created_at' => $item->created_at ?? null,
             'product' => isset($item->product) ? [
                 'id' => $item->product['id'] ?? $item->product->id ?? null,
