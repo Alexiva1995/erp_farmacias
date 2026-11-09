@@ -34,7 +34,7 @@ class InventoryCycleQueryService
             ->where(function ($q) {
                 $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
             })
-            ->selectRaw("products.*, GREATEST(0, COALESCE((SELECT SUM(CASE WHEN quantity > 0 THEN quantity ELSE 0 END) FROM product_lots WHERE product_lots.product_id = products.id), 0)) AS stock_calculado")
+            ->selectRaw("products.*, COALESCE((SELECT SUM(CASE WHEN quantity > 0 THEN quantity ELSE 0 END) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado")
             ->with(['lots', 'laboratory', 'origin']);
     }
 
@@ -753,7 +753,7 @@ class InventoryCycleQueryService
                 'product.laboratory.name' => 'laboratories.name',
                 'discrepancy' => 'discrepancies.discrepancy',
                 'product.unit_cost' => 'products.unit_cost',
-                'amount' => DB::raw('products.sale_price * (CASE WHEN discrepancies.discrepancy > 0 THEN GREATEST(0, discrepancies.discrepancy - discrepancies.exempt_quantity) ELSE -GREATEST(0, ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) END)'),
+                'amount' => DB::raw('products.sale_price * (CASE WHEN discrepancies.discrepancy > 0 THEN (CASE WHEN (discrepancies.discrepancy - discrepancies.exempt_quantity) > 0 THEN (discrepancies.discrepancy - discrepancies.exempt_quantity) ELSE 0 END) ELSE -(CASE WHEN (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) > 0 THEN (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) ELSE 0 END) END)'),
                 'processed_date' => 'discrepancies.updated_at'
             ];
 

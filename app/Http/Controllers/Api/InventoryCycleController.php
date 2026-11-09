@@ -721,8 +721,8 @@ class InventoryCycleController extends Controller
         
         $totalsRaw = $totalsQuery
             ->select(DB::raw("
-                SUM(CASE WHEN discrepancies.discrepancy > 0 THEN products.sale_price * GREATEST(0, discrepancies.discrepancy - discrepancies.exempt_quantity) ELSE 0 END) as surplus,
-                SUM(CASE WHEN discrepancies.discrepancy < 0 THEN products.sale_price * GREATEST(0, ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) ELSE 0 END) as shortage
+                SUM(CASE WHEN discrepancies.discrepancy > 0 AND (discrepancies.discrepancy - discrepancies.exempt_quantity) > 0 THEN products.sale_price * (discrepancies.discrepancy - discrepancies.exempt_quantity) ELSE 0 END) as surplus,
+                SUM(CASE WHEN discrepancies.discrepancy < 0 AND (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) > 0 THEN products.sale_price * (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) ELSE 0 END) as shortage
             "))
             ->first();
 
