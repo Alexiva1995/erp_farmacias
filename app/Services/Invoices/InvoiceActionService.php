@@ -35,6 +35,7 @@ class InvoiceActionService
 
             $isExpense = !empty($data['is_expense']);
             $hasIslr = $isExpense && !empty($data['has_islr_retention']);
+            $isFiscal = isset($data['is_fiscal']) ? (bool) $data['is_fiscal'] : true;
 
             $invoiceData = [
                 'auto_order_id' => $autoOrder->id ?? null,
@@ -66,6 +67,9 @@ class InvoiceActionService
             }
             if (\Illuminate\Support\Facades\Schema::hasColumn('invoices', 'has_islr_retention')) {
                 $invoiceData['has_islr_retention'] = $hasIslr;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('invoices', 'is_fiscal')) {
+                $invoiceData['is_fiscal'] = $isFiscal;
             }
 
             return Invoice::create($invoiceData);

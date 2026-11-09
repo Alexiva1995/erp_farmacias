@@ -57,6 +57,7 @@ const baseForm = {
   order_days: {},
   is_indexed: false,
   is_active: true,
+  is_fiscal: true,
   type: "drogueria",
   business_types: [],
 };
@@ -398,6 +399,23 @@ watch(
                           <VSwitch
                             v-model="formData.is_active"
                             color="success"
+                            hide-details
+                            density="compact"
+                          />
+                        </div>
+                      </VCol>
+
+                      <VCol cols="12">
+                        <div class="d-flex align-center justify-space-between pa-3 rounded-lg border bg-light-surface">
+                          <div class="d-flex flex-column">
+                            <span class="text-caption font-weight-bold">Facturación Fiscal Formal</span>
+                            <span class="text-xxs text-disabled">
+                              {{ formData.is_fiscal ? 'Proveedor fiscal (requiere N° de control y desglose formal)' : 'Proveedor informal (facturación simplificada con autoincremento y fechas automáticas)' }}
+                            </span>
+                          </div>
+                          <VSwitch
+                            v-model="formData.is_fiscal"
+                            color="primary"
                             hide-details
                             density="compact"
                           />

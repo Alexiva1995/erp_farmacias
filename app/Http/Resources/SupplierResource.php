@@ -27,6 +27,7 @@ class SupplierResource extends JsonResource
             'dispatch_days' => $this->dispatch_days,
             'social_reason' => $this->social_reason,
             'rif' => $this->rif,
+            'is_fiscal' => (bool) ($this->is_fiscal ?? true),
             'credit_days' => $this->credit_days,
             'min_order_amount' => (float) ($this->min_order_amount ?? 0),
             'order_days' => $this->order_days,

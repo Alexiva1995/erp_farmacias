@@ -53,6 +53,7 @@ class Supplier extends Model
         'type',
         'business_types',
         'is_active',
+        'is_fiscal',
         'min_order_amount',
     ];
 
@@ -62,6 +63,7 @@ class Supplier extends Model
         'business_types' => 'array',
         'type' => SupplierType::class,
         'is_active' => 'boolean',
+        'is_fiscal' => 'boolean',
         'min_order_amount' => 'decimal:2',
     ];
 

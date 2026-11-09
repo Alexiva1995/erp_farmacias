@@ -23,26 +23,38 @@ const onFileChange = (file) => {
   <div>
     <!-- SECCIÓN 1: Datos del Proveedor y Control -->
     <div class="mb-4">
-      <div class="d-flex align-center gap-2 mb-3">
-        <VIcon icon="tabler-building-store" size="20" color="primary" />
-        <span class="text-subtitle-1 font-weight-bold">1. Información del Proveedor y Documento</span>
+      <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-3">
+        <div class="d-flex align-center gap-2">
+          <VIcon icon="tabler-building-store" size="20" color="primary" />
+          <span class="text-subtitle-1 font-weight-bold">1. Información del Proveedor y Documento</span>
+        </div>
+        <div class="d-flex align-center gap-2">
+          <VCheckbox
+            v-model="formData.is_fiscal"
+            label="Fiscal"
+            color="primary"
+            density="compact"
+            hide-details
+            class="mt-0"
+          />
+        </div>
       </div>
 
-      <!-- Alerta de Proveedor Informal -->
+      <!-- Alerta de Compra Informal / No Fiscal -->
       <VAlert
-        v-if="isInformalSupplier"
-        color="warning"
+        v-if="!formData.is_fiscal"
+        color="info"
         variant="tonal"
-        icon="tabler-alert-circle"
+        icon="tabler-info-circle"
         class="mb-3 py-2 px-3 text-body-2"
         density="compact"
       >
-        <span class="font-weight-medium">Proveedor Informal:</span> 
-        Los números de factura y control se han generado automáticamente bajo el formato secuencial <code>INF-YYYYMMDD-HHMMSS</code>.
+        <span class="font-weight-medium">Modo Compra Informal / No Fiscal:</span> 
+        Número correlativo sugerido automáticamente, sin exigir N° de control. La fecha de recepción se aplicará automáticamente a emisión, vencimiento y pago.
       </VAlert>
 
       <VRow density="compact">
-        <VCol cols="12" md="4">
+        <VCol cols="12" :md="formData.is_fiscal ? 4 : 6">
           <VAutocomplete
             v-model="formData.supplier_id"
             :items="suppliers"
@@ -57,19 +69,18 @@ const onFileChange = (file) => {
             :error-messages="validationErrors.supplier_id"
           />
         </VCol>
-        <VCol cols="12" md="4">
+        <VCol cols="12" :md="formData.is_fiscal ? 4 : 6">
           <VTextField
             v-model="formData.invoice_number"
-            label="N° de Factura *"
+            :label="formData.is_fiscal ? 'N° de Factura *' : 'N° de Factura / Nota (Auto) *'"
             placeholder="Ej: FAC-00123"
             variant="outlined"
             density="compact"
             prepend-inner-icon="tabler-file-invoice"
-            :disabled="isInformalSupplier"
             :error-messages="validationErrors.invoice_number"
           />
         </VCol>
-        <VCol cols="12" md="4">
+        <VCol v-if="formData.is_fiscal" cols="12" md="4">
           <VTextField
             v-model="formData.control_number"
             label="N° de Control"
@@ -77,7 +88,6 @@ const onFileChange = (file) => {
             variant="outlined"
             density="compact"
             prepend-inner-icon="tabler-hash"
-            :disabled="isInformalSupplier"
             :error-messages="validationErrors.control_number"
           />
         </VCol>
@@ -87,7 +97,9 @@ const onFileChange = (file) => {
           <div class="d-flex flex-column gap-1">
             <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-1">
               <span class="text-caption font-weight-bold text-high-emphasis">
-                Documento Digital de la Factura (PDF / Imagen) <span v-if="!formData.invoice_photo" class="text-error">*</span>
+                Documento Digital de la Factura (PDF / Imagen)
+                <span v-if="formData.is_fiscal && !formData.invoice_photo" class="text-error">*</span>
+                <span v-else-if="!formData.is_fiscal" class="text-caption text-medium-emphasis ms-1 font-weight-regular">(Opcional)</span>
               </span>
               <div v-if="formData.invoice_photo" class="d-flex align-center gap-2">
                 <VChip
@@ -114,7 +126,7 @@ const onFileChange = (file) => {
 
             <VFileInput
               :model-value="selectedFile"
-              :label="formData.invoice_photo ? 'Reemplazar documento actual (PDF o Imagen)...' : 'Subir archivo PDF / Foto de la Factura *'"
+              :label="formData.invoice_photo ? 'Reemplazar documento actual (PDF o Imagen)...' : (formData.is_fiscal ? 'Subir archivo PDF / Foto de la Factura *' : 'Subir archivo PDF / Foto de la Factura o Nota (Opcional)')"
               accept=".pdf,image/*"
               prepend-icon=""
               prepend-inner-icon="tabler-file-type-pdf"
@@ -182,7 +194,8 @@ const onFileChange = (file) => {
         <span class="text-subtitle-1 font-weight-bold">2. Fechas y Condiciones de Pago</span>
       </div>
 
-      <VRow density="compact">
+      <!-- Modo Fiscal: 4 campos de fechas -->
+      <VRow v-if="formData.is_fiscal" density="compact">
         <VCol cols="12" sm="6" md="3">
           <VTextField
             v-model="formData.created_invoice_date"
@@ -229,6 +242,23 @@ const onFileChange = (file) => {
             hint="Auto-calculada por reglas"
             persistent-hint
             :error-messages="validationErrors.payment_date"
+          />
+        </VCol>
+      </VRow>
+
+      <!-- Modo No Fiscal / Informal: Solo Fecha de Recepción -->
+      <VRow v-else density="compact">
+        <VCol cols="12" sm="6">
+          <VTextField
+            v-model="formData.received_date"
+            label="Fecha de Recepción *"
+            type="date"
+            variant="outlined"
+            density="compact"
+            prepend-inner-icon="tabler-calendar-down"
+            hint="Esta fecha se asigna automáticamente a emisión, vencimiento y pago"
+            persistent-hint
+            :error-messages="validationErrors.received_date"
           />
         </VCol>
       </VRow>

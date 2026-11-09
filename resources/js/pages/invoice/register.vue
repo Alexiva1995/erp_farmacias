@@ -24,6 +24,7 @@ const formData = ref({
   received_date: null,
   created_invoice_date: null,
   currency: "Bs",
+  is_fiscal: true,
   is_expense: false,
   has_islr_retention: false,
   discount_rule_id: null,
@@ -81,8 +82,9 @@ const selectedSupplier = computed(() => {
 });
 
 const isInformalSupplier = computed(() => {
+  if (!formData.value.is_fiscal) return true;
   if (!selectedSupplier.value) return false;
-  return selectedSupplier.value.name.toLowerCase().includes("informal");
+  return selectedSupplier.value.is_fiscal === false || selectedSupplier.value.name.toLowerCase().includes("informal");
 });
 
 const botInfo = computed(() => {
@@ -270,6 +272,7 @@ const shouldShowExchangeRate = computed(() => {
 });
 
 const computedTaxAmount = computed(() => {
+  if (!formData.value.is_fiscal) return 0;
   const base = Number(formData.value.taxable_base) || 0;
   return Number((base * 0.16).toFixed(2));
 });
@@ -317,6 +320,7 @@ const resetFormFields = () => {
     received_date: null,
     created_invoice_date: null,
     currency: "Bs",
+    is_fiscal: true,
     is_expense: false,
     has_islr_retention: false,
     discount_rule_id: null,
@@ -333,6 +337,51 @@ const resetFormFields = () => {
   validationErrors.value = {};
 };
 
+const fetchInformalSequence = async (supplierId) => {
+  if (!supplierId) return;
+  try {
+    const res = await axios.get("/invoices/next-sequence", {
+      params: { supplier_id: supplierId },
+    });
+    const seq = res.data?.next_sequence;
+    if (seq) {
+      formData.value.invoice_number = seq;
+      formData.value.control_number = seq;
+    }
+  } catch (e) {
+    const nowObj = new Date();
+    const yyyy = nowObj.getFullYear();
+    const mm = String(nowObj.getMonth() + 1).padStart(2, "0");
+    const dd = String(nowObj.getDate()).padStart(2, "0");
+    const hh = String(nowObj.getHours()).padStart(2, "0");
+    const min = String(nowObj.getMinutes()).padStart(2, "0");
+    const ss = String(nowObj.getSeconds()).padStart(2, "0");
+    const seq = `INF-${yyyy}${mm}${dd}-${hh}${min}${ss}`;
+    formData.value.invoice_number = seq;
+    formData.value.control_number = seq;
+  }
+};
+
+const syncInformalDates = () => {
+  if (!formData.value.is_fiscal && formData.value.received_date) {
+    formData.value.created_invoice_date = formData.value.received_date;
+    formData.value.exp_date = formData.value.received_date;
+    formData.value.payment_date = formData.value.received_date;
+  }
+};
+
+watch(
+  () => formData.value.is_fiscal,
+  async (newIsFiscal) => {
+    if (!newIsFiscal) {
+      if (formData.value.supplier_id && (!formData.value.invoice_number || !formData.value.invoice_number.startsWith("INF-"))) {
+        await fetchInformalSequence(formData.value.supplier_id);
+      }
+      syncInformalDates();
+    }
+  },
+);
+
 watch(
   () => formData.value.supplier_id,
   async (newSupplierId) => {
@@ -343,26 +392,13 @@ watch(
       await nextTick();
       calculatePaymentDate();
 
-      if (isInformalSupplier.value) {
-        try {
-          const res = await axios.get("/invoices/next-sequence", {
-            params: { supplier_id: newSupplierId }
-          });
-          const seq = res.data.next_sequence;
-          formData.value.invoice_number = seq;
-          formData.value.control_number = seq;
-        } catch (e) {
-          const nowObj = new Date();
-          const yyyy = nowObj.getFullYear();
-          const mm = String(nowObj.getMonth() + 1).padStart(2, '0');
-          const dd = String(nowObj.getDate()).padStart(2, '0');
-          const hh = String(nowObj.getHours()).padStart(2, '0');
-          const min = String(nowObj.getMinutes()).padStart(2, '0');
-          const ss = String(nowObj.getSeconds()).padStart(2, '0');
-          const seq = `INF-${yyyy}${mm}${dd}-${hh}${min}${ss}`;
-          formData.value.invoice_number = seq;
-          formData.value.control_number = seq;
-        }
+      const supp = selectedSupplier.value;
+      if (supp && supp.is_fiscal === false) {
+        formData.value.is_fiscal = false;
+        await fetchInformalSequence(newSupplierId);
+        syncInformalDates();
+      } else if (supp && supp.is_fiscal === true) {
+        formData.value.is_fiscal = true;
       }
     } else {
       formData.value.payment_date = null;
@@ -392,23 +428,17 @@ watch(
     const [newCreated, newExp, newRec, newSupp] = newVals;
     const [oldCreated, oldExp, oldRec, oldSupp] = oldVals || [];
 
-    if (newExp !== oldExp) {
-      validateExpDate(newExp);
-    } else if (newCreated !== oldCreated && formData.value.exp_date) {
-      validateExpDate(formData.value.exp_date);
+    if (newRec && newRec !== oldRec && !formData.value.is_fiscal) {
+      syncInformalDates();
     }
 
-    calculatePaymentDate();
-
-    if (newCreated !== oldCreated && isInformalSupplier.value && newCreated) {
-      const formattedDate = String(newCreated).replace(/-/g, "");
-      const nowObj = new Date();
-      const hh = String(nowObj.getHours()).padStart(2, '0');
-      const min = String(nowObj.getMinutes()).padStart(2, '0');
-      const ss = String(nowObj.getSeconds()).padStart(2, '0');
-      const seq = `INF-${formattedDate}-${hh}${min}${ss}`;
-      formData.value.invoice_number = seq;
-      formData.value.control_number = seq;
+    if (formData.value.is_fiscal) {
+      if (newExp !== oldExp) {
+        validateExpDate(newExp);
+      } else if (newCreated !== oldCreated && formData.value.exp_date) {
+        validateExpDate(formData.value.exp_date);
+      }
+      calculatePaymentDate();
     }
   },
   { deep: true }
@@ -445,6 +475,7 @@ const fetchInvoiceData = async () => {
       received_date: invoice.received_date,
       created_invoice_date: invoice.created_invoice_date,
       currency: invoice.currency,
+      is_fiscal: invoice.is_fiscal !== undefined ? Boolean(invoice.is_fiscal) : true,
       is_expense: Boolean(invoice.is_expense),
       has_islr_retention: Boolean(invoice.has_islr_retention),
       discount_rule_id: invoice.discount_rule_id,
@@ -582,23 +613,33 @@ const handleSyncBot = async (bot) => {
 const handleSubmit = async () => {
   fileError.value = "";
 
-  if (!formData.value.invoice_photo && !selectedFile.value) {
-    fileError.value = "El documento digital (PDF o imagen) de la factura es obligatorio.";
-    toast.error(fileError.value);
-    return;
-  }
+  if (formData.value.is_fiscal) {
+    if (!formData.value.invoice_photo && !selectedFile.value) {
+      fileError.value = "El documento digital (PDF o imagen) de la factura es obligatorio.";
+      toast.error(fileError.value);
+      return;
+    }
 
-  if (!validateExpDate(formData.value.exp_date)) {
-    toast.error(expDateError.value);
-    return;
+    if (!validateExpDate(formData.value.exp_date)) {
+      toast.error(expDateError.value);
+      return;
+    }
+  } else {
+    syncInformalDates();
+    if (!formData.value.control_number) {
+      formData.value.control_number = formData.value.invoice_number || "N/A";
+    }
   }
 
   loading.value = true;
   validationErrors.value = {};
 
+  const isFisc = formData.value.is_fiscal;
   const payload = {
     ...formData.value,
-    tax_amount: computedTaxAmount.value,
+    tax_amount: isFisc ? computedTaxAmount.value : 0,
+    taxable_base: isFisc ? (Number(formData.value.taxable_base) || 0) : 0,
+    exempt_amount: isFisc ? (Number(formData.value.exempt_amount) || 0) : computedTotalAmount.value,
     total_amount: computedTotalAmount.value,
     total_usd: computedTotalUsd.value,
   };

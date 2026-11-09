@@ -359,6 +359,11 @@ class InvoiceController extends Controller
 
         $formatted = 'INF-' . str_pad($nextVal, 6, '0', STR_PAD_LEFT);
 
+        while (Invoice::where('invoice_number', $formatted)->exists()) {
+            $nextVal++;
+            $formatted = 'INF-' . str_pad($nextVal, 6, '0', STR_PAD_LEFT);
+        }
+
         return response()->json([
             'next_sequence' => $formatted
         ]);

@@ -18,6 +18,7 @@ class Invoice extends Model
         'payment_date',
         'received_date',
         'currency',
+        'is_fiscal',
         'is_indexed', // ISSUE #3: Campo para facturas indexadas
         'is_expense',
         'has_islr_retention',
@@ -49,6 +50,7 @@ class Invoice extends Model
      * ISSUE #3: Casts para manejo correcto de tipos de datos
      */
     protected $casts = [
+        'is_fiscal' => 'boolean',
         'is_indexed' => 'boolean',
         'is_expense' => 'boolean',
         'has_islr_retention' => 'boolean',
@@ -93,6 +95,7 @@ class Invoice extends Model
         'received_date',
         'created_invoice_date',
         'currency',
+        'is_fiscal',
         'is_indexed',
         'total_usd',
         'tax_amount',

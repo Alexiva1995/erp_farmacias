@@ -24,6 +24,7 @@ class InvoiceResource extends JsonResource
             'exp_date' => $this->exp_date?->format('Y-m-d'),
             'payment_date' => $this->payment_date?->format('Y-m-d'),
             'currency' => $this->currency,
+            'is_fiscal' => (bool)($this->is_fiscal ?? true),
             'exchange_rate' => (float)($this->exchange_rate ?? 0),
             'discount_rule_id' => $this->discount_rule_id,
             'exempt_amount' => (float)($this->exempt_amount ?? 0),
