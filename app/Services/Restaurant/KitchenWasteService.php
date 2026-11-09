@@ -84,7 +84,19 @@ class KitchenWasteService implements KitchenWasteServiceInterface
 
             $totalLossUsd = round($unitCost * $qty, 2);
 
-            return $this->wasteRepository->create([
+            $user = \App\Models\User::find($userId);
+            $roleName = strtolower($user?->role?->name ?? '');
+            $isAuthorizedAdmin = in_array((int) ($user?->role_id ?? 0), [1, 2, 4], true)
+                || str_contains($roleName, 'admin')
+                || str_contains($roleName, 'supervisor');
+
+            $autoApprove = $isAuthorizedAdmin || !empty($data['auto_approve']);
+
+            $initialStatus = $autoApprove
+                ? KitchenWasteStatusEnum::APPROVED->value
+                : KitchenWasteStatusEnum::PENDING->value;
+
+            $waste = $this->wasteRepository->create([
                 'user_id' => $userId,
                 'kitchen_station_id' => $data['kitchen_station_id'] ?? null,
                 'item_type' => $itemType,
@@ -96,10 +108,40 @@ class KitchenWasteService implements KitchenWasteServiceInterface
                 'total_loss_usd' => $totalLossUsd,
                 'reason' => $data['reason'] ?? KitchenWasteReasonEnum::BURNED_SPOILED->value,
                 'notes' => $data['notes'] ?? null,
-                'status' => KitchenWasteStatusEnum::PENDING->value,
+                'status' => $initialStatus,
                 'photo_path' => $photoPath,
+                'approved_by' => $autoApprove ? $userId : null,
+                'approved_at' => $autoApprove ? Carbon::now() : null,
                 'occurred_at' => Carbon::now(),
             ]);
+
+            if ($autoApprove) {
+                if ($itemType === 'product' && $productId) {
+                    $this->deductProductStockAndRecordLoss(
+                        product: $product,
+                        quantityToDeduct: $qty,
+                        approverId: $userId,
+                        preferredLotId: $lotId,
+                        dishId: null
+                    );
+                } elseif ($itemType === 'dish' && $dishId) {
+                    $dish = Dish::with('ingredients')->findOrFail($dishId);
+                    foreach ($dish->ingredients as $ingredient) {
+                        $ingQty = round((float) ($ingredient->pivot->portion ?? 0) * $qty, 4);
+                        if ($ingQty > 0) {
+                            $this->deductProductStockAndRecordLoss(
+                                product: $ingredient,
+                                quantityToDeduct: $ingQty,
+                                approverId: $userId,
+                                preferredLotId: null,
+                                dishId: $dish->id
+                            );
+                        }
+                    }
+                }
+            }
+
+            return $waste;
         });
     }
 

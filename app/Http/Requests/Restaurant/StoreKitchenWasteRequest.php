@@ -33,7 +33,7 @@ class StoreKitchenWasteRequest extends FormRequest
             'quantity' => ['required', 'numeric', 'min:0.01'],
             'reason' => ['required', 'string', 'in:expired,burned_spoiled,preparation_trim,staff_meal,courtesy,dropped'],
             'notes' => ['required', 'string', 'max:500'],
-            'photo' => ['required', 'image', 'max:5120'],
+            'photo' => ['nullable', 'image', 'max:5120'],
         ];
     }
 
