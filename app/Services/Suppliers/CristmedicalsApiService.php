@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Log;
 class CristmedicalsApiService implements CristmedicalsApiServiceInterface
 {
     private const API_BASE_URL = 'https://apienterprise.cristmedicals.com/api/v1';
-    private const DEFAULT_TOKEN = 'GLyQBJZhVhEgCoGm1QTxKxgeUTR9PWPUEcR6GbWJEAVopyV8Tj9Av8JMuYIbmsF7ZcIZapDPUp3nCJnU';
-    private const DEFAULT_CO_CLI = 'FAR00818';
+    private const DEFAULT_TOKEN = 'rXWGlhRb5kE181blNsjdsR8KjT0mnGFKEa5mhcPoXUdjD2CtlNakX5geAgzFiSwBE2JEBQx96W7bgM5n';
+    private const DEFAULT_CO_CLI = 'FAR00275';
 
     public function __construct(
         protected ExchangeRateServices $exchangeRateService
@@ -59,6 +59,9 @@ class CristmedicalsApiService implements CristmedicalsApiServiceInterface
 
         // 2. Obtener Código de Cliente (co_cli)
         $coCli = $connection?->username ?: env('CRISTMEDICALS_USERNAME', self::DEFAULT_CO_CLI);
+        if (str_starts_with(strtoupper((string) $coCli), 'FRA')) {
+            $coCli = 'FAR' . substr((string) $coCli, 3);
+        }
 
         // 3. Obtener Datos de la Empresa / Farmacia
         $setting = GeneralSetting::first();
