@@ -832,11 +832,28 @@ const formatDate = (dateString) => {
   });
 };
 
-const handleShowProductSearch = () => {
+const handleShowProductSearch = async () => {
+  productSearchQuery.value = "";
+  productPage.value = 1;
   isProductSearchVisible.value = true;
-  if (laboratories.value.length === 0) fetchProductSelectOptions();
-  fetchProducts();
+  if (laboratories.value.length === 0) {
+    await fetchProductSelectOptions();
+  }
+  await fetchProducts();
+  await nextTick();
+  catalogSearchRef.value?.$el?.scrollIntoView?.({ behavior: "smooth", block: "start" });
 };
+
+watch(isProductSearchVisible, async (newVal) => {
+  if (newVal) {
+    if (laboratories.value.length === 0) {
+      await fetchProductSelectOptions();
+    }
+    if (products.value.length === 0) {
+      await fetchProducts();
+    }
+  }
+});
 
 let isSavingInvoiceProduct = false;
 
@@ -1666,7 +1683,7 @@ const detailsHeaders = computed(() => {
                     </template>
 
                     <VBtn
-                      v-if="isEditableMode && isEditMode && isRestaurant"
+                      v-if="isEditableMode && isEditMode"
                       color="info"
                       variant="tonal"
                       size="small"
@@ -1863,6 +1880,7 @@ const detailsHeaders = computed(() => {
           @save-product="handleSaveProduct"
           @laboratory-created="handleLaboratoryCreated"
           @search-barcode="handleSearchBarcode"
+          @show-product-search="handleShowProductSearch"
         />
       </template>
 

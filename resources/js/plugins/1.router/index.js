@@ -54,6 +54,12 @@ const router = createRouter({
     // Agregar rutas manuales no auto-generadas por unplugin-vue-router
     const manualRoutes = [
       {
+        path: '/restaurant/waste',
+        name: 'restaurant-waste',
+        component: () => import('@/pages/restaurant/waste.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
         path: '/restaurant/process-audit',
         name: 'restaurant-process-audit',
         component: () => import('@/pages/restaurant/process-audit.vue'),

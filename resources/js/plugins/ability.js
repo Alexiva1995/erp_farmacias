@@ -9,6 +9,7 @@ export const buildAbilityForRules = (user) => {
     if (user.role_id === 1 || user.role_id === 4 || user.role?.name?.toLowerCase() === 'admin' || user.role?.name?.toLowerCase() === 'administrador') {
       can('manage', 'all');
       can('manage', 'admin'); 
+      can('manage', 'user');
       can('manage', 'GeneralSetting');
       can('manage', 'supervisor-or-admin');
       can('manage', 'cyclic-menu');

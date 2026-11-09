@@ -147,6 +147,7 @@ class Product extends Model
         'units_per_inner_pack' => 'integer',
         'units_per_master_box' => 'integer',
         'requires_cold_chain' => 'boolean',
+        'is_sub_recipe' => 'boolean',
     ];
 
 

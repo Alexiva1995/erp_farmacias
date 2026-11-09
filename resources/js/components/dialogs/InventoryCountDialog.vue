@@ -46,8 +46,37 @@ const packagesCount = ref("");
 const openedQuantity = ref("");
 
 // Solo se permite bypass / ingreso manual si la configuración global lo permite (!barcodeRequiredGlobal), o si el producto NO tiene código de barras, si su código es igual a su ID, o si no tiene stock (stock <= 0)
+// Detectar si el producto es una receta producida / sub-receta elaborada
+const isProducedRecipe = computed(() => {
+  if (!props.product) return false;
+  const p = props.product;
+  if (p.is_sub_recipe === true || p.is_sub_recipe === 1 || p.is_sub_recipe === '1') return true;
+  if (p.is_recipe === true || p.is_recipe === 1) return true;
+  if (p.is_dish === true || p.is_dish === 1) return true;
+  const barcode = String(p.barcode || '').toUpperCase();
+  if (barcode.startsWith('SUB-')) return true;
+  const activeIng = String(p.active_ingredient || '').toLowerCase();
+  if (activeIng.includes('sub-receta') || activeIng.includes('subreceta') || activeIng.includes('insumo cocina') || activeIng.includes('receta producida')) {
+    return true;
+  }
+  return false;
+});
+
+// Etiqueta legible de la unidad para recetas producidas (porciones, gramos, etc.)
+const recipeUnitLabel = computed(() => {
+  const u = (props.product?.unit_of_measure || '').toLowerCase().trim();
+  if (u === 'gr' || u === 'g' || u === 'grm' || u === 'gramos') return 'gramos (g)';
+  if (u === 'porción' || u === 'porcion' || u === 'porciones') return 'porciones';
+  if (u === 'ml' || u === 'mililitros') return 'mililitros (ml)';
+  if (u === 'lt' || u === 'l' || u === 'litros') return 'litros (L)';
+  if (u === 'kg' || u === 'kilos' || u === 'kilogramos') return 'kilogramos (kg)';
+  return props.product?.unit_of_measure || 'und';
+});
+
+// Solo se permite bypass / ingreso manual si la configuración global lo permite (!barcodeRequiredGlobal), o si el producto es receta producida, NO tiene código de barras, su código es igual a su ID, o si no tiene stock (stock <= 0)
 const canBypassBarcode = computed(() => {
   if (!barcodeRequiredGlobal.value) return true;
+  if (isProducedRecipe.value) return true;
   const bc = props.product?.barcode ? String(props.product.barcode).trim() : '';
   const id = props.product?.id ? String(props.product.id).trim() : '';
   const stock = Number(props.product?.stock ?? props.product?.system_quantity ?? props.product?.current_stock ?? 0);
@@ -56,6 +85,7 @@ const canBypassBarcode = computed(() => {
 
 const isManualEntryAllowed = computed(() => {
   if (!barcodeRequiredGlobal.value) return true;
+  if (isProducedRecipe.value) return true;
   return canBypassBarcode.value && allowWithoutBarcode.value;
 });
 
@@ -64,7 +94,11 @@ const productPresentation = computed(() => Number(props.product?.presentation) |
 const productUnit = computed(() => props.product?.unit_of_measure || 'und');
 
 // Modo dual solo cuando trazabilidad es por consumo Y el producto tiene presentación configurada
-const isDualCountMode = computed(() => isConsumptionMode.value && productPresentation.value > 0);
+// Modo dual solo cuando trazabilidad es por consumo Y el producto tiene presentación configurada Y NO es una receta producida
+const isDualCountMode = computed(() => {
+  if (isProducedRecipe.value) return false;
+  return isConsumptionMode.value && productPresentation.value > 0;
+});
 
 // Total calculado en modo restaurante (en unidad de consumo: g o ml)
 const dualTotalQuantity = computed(() => {
@@ -110,7 +144,7 @@ const resetForm = () => {
   openedQuantity.value = "";
   barcodeError.value = "";
   isScannerVisible.value = false;
-  allowWithoutBarcode.value = canBypassBarcode.value && !barcodeRequiredGlobal.value;
+  allowWithoutBarcode.value = isProducedRecipe.value || (canBypassBarcode.value && !barcodeRequiredGlobal.value);
 };
 
 const handleCancel = () => {
@@ -121,7 +155,7 @@ watch(
   () => props.modelValue,
   (newVal) => {
     if (newVal) {
-      allowWithoutBarcode.value = canBypassBarcode.value && !barcodeRequiredGlobal.value;
+      allowWithoutBarcode.value = isProducedRecipe.value || (canBypassBarcode.value && !barcodeRequiredGlobal.value);
       nextTick(() => {
         if (isManualEntryAllowed.value) {
           const quantityInput = document.querySelector("#quantity-input");
@@ -281,7 +315,7 @@ const handleSave = async () => {
 
   if (!result || !result.isConfirmed) return;
 
-  const isWithoutBarcode = !barcodeRequiredGlobal.value || allowWithoutBarcode.value;
+  const isWithoutBarcode = !barcodeRequiredGlobal.value || allowWithoutBarcode.value || isProducedRecipe.value;
 
   const countData = {
     barcode: isWithoutBarcode ? null : barcodeInput.value.trim(),
@@ -453,10 +487,12 @@ const handleSave = async () => {
                   size="16"
                   color="primary"
                 />
-                <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Conteo Físico</span>
+                <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">
+                  {{ isProducedRecipe ? `Conteo de Receta (${recipeUnitLabel})` : 'Conteo Físico' }}
+                </span>
               </div>
               <span class="text-super-xs text-disabled font-weight-bold uppercase">
-                Ingrese unidades físicas
+                {{ isProducedRecipe ? `Ingrese cantidad en ${recipeUnitLabel}` : 'Ingrese unidades físicas' }}
               </span>
             </div>
 
@@ -525,16 +561,34 @@ const handleSave = async () => {
               </div>
             </template>
 
-            <!-- Modo Normal: Un solo campo -->
+            <!-- Modo Normal / Receta Producida: Un solo campo -->
             <template v-else>
               <div class="solid-input-container mt-1">
+                <!-- Indicador visual exclusivo de Receta Producida -->
+                <div
+                  v-if="isProducedRecipe"
+                  class="d-flex align-center justify-space-between mb-2 pa-2 rounded-lg bg-primary-lighten-5 border"
+                >
+                  <div class="d-flex align-center gap-1">
+                    <VIcon icon="tabler-tools-kitchen-2" size="16" color="primary" />
+                    <span class="text-xs font-weight-black text-primary uppercase">
+                      Receta Producida / Preparación
+                    </span>
+                  </div>
+                  <VChip size="x-small" color="primary" variant="flat" class="font-weight-bold uppercase">
+                    Conteo en: {{ recipeUnitLabel }}
+                  </VChip>
+                </div>
+
                 <VTextField
                   id="quantity-input"
                   v-model.number="countedQuantity"
                   type="number"
                   min="0"
                   step="any"
-                  placeholder="0"
+                  :placeholder="isProducedRecipe ? ('0 ' + productUnit) : '0'"
+                  :label="isProducedRecipe ? ('Cantidad contada en ' + recipeUnitLabel) : 'Cantidad Contada'"
+                  :suffix="productUnit"
                   variant="outlined"
                   bg-color="white"
                   class="conteo-definitivo-input font-weight-black"

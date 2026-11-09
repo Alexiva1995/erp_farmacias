@@ -2,8 +2,6 @@ export default [
   {
     title: 'Restaurante',
     icon: { icon: 'tabler-tools-kitchen-2' },
-    action: 'manage',
-    subject: 'admin',
     children: [
       {
         title: 'Salón y Mesas (3D)',
@@ -16,6 +14,12 @@ export default [
         to: 'restaurant-kds',
         action: 'manage',
         subject: 'admin',
+      },
+      {
+        title: 'Mermas',
+        to: 'restaurant-waste',
+        action: 'manage',
+        subject: 'user',
       },
       {
         title: 'Producción & Mermas',

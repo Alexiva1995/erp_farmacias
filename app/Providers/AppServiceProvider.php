@@ -281,6 +281,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\Repositories\KitchenWasteRepositoryInterface::class,
+            \App\Repositories\KitchenWasteRepository::class
+        );
+
+        $this->app->bind(
             \App\Contracts\KitchenWasteServiceInterface::class,
             \App\Services\Restaurant\KitchenWasteService::class
         );

@@ -57,6 +57,7 @@ const emit = defineEmits([
   "save-product",
   "laboratory-created",
   "search-barcode",
+  "show-product-search",
 ]);
 
 const searchQueryModel = defineModel("searchQuery", { type: String, default: "" });
@@ -94,6 +95,12 @@ const handleSaveProductInternal = async (formData) => {
 
 const openBarcodeModal = () => {
   isBarcodeModalVisible.value = true;
+};
+
+const onShowProductSearch = () => {
+  searchQueryModel.value = "";
+  emit("update:isProductSearchVisible", true);
+  emit("show-product-search");
 };
 
 defineExpose({
@@ -147,7 +154,7 @@ defineExpose({
       v-model="isBarcodeModalVisible"
       :loading="searchingBarcode"
       @search-barcode="emit('search-barcode', $event)"
-      @show-product-search="emit('update:isProductSearchVisible', true)"
+      @show-product-search="onShowProductSearch"
       @add-new-product="handleAddNewProduct"
       @add-product-to-invoice="emit('add-product-to-invoice', $event)"
     />

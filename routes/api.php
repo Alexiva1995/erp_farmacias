@@ -388,6 +388,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::prefix("restaurant/waste")->group(function () {
         Route::get("records", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "listWaste"]);
         Route::post("records", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "storeWaste"]);
+        Route::post("records/{kitchenWaste}/approve", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "approveWaste"]);
+        Route::post("records/{kitchenWaste}/reject", [\App\Http\Controllers\Api\Restaurant\ProductionAndWasteController::class, "rejectWaste"]);
     });
 
     // Rutas de Reservas Gastronómicas de Salón (Fase 5)

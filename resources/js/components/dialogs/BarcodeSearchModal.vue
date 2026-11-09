@@ -221,8 +221,18 @@ defineExpose({
           class="text-center text-disabled"
         >
           <VIcon icon="tabler-barcode" size="48" class="mb-3" />
-          <p>Escanee o pegue un código de barras</p>
-          <p class="text-caption">La búsqueda se realiza automáticamente</p>
+          <p class="mb-1">Escanee o pegue un código de barras</p>
+          <p class="text-caption mb-3">La búsqueda se realiza automáticamente</p>
+          <VBtn
+            color="primary"
+            variant="tonal"
+            size="small"
+            class="mt-1"
+            @click="handleShowProductSearch"
+          >
+            <VIcon icon="tabler-search" class="me-1" size="16" />
+            ¿No tienes el código? Buscar en Catálogo
+          </VBtn>
         </div>
 
         <div v-if="loading" class="text-center text-primary">
@@ -232,6 +242,14 @@ defineExpose({
       </VCardText>
 
       <VCardActions class="pa-4">
+        <VBtn
+          variant="text"
+          color="primary"
+          @click="handleShowProductSearch"
+        >
+          <VIcon icon="tabler-search" class="me-1" size="16" />
+          Buscar en Catálogo
+        </VBtn>
         <VSpacer />
         <VBtn variant="tonal" color="secondary" @click="handleClose">
           Finalizar

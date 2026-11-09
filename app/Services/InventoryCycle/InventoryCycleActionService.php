@@ -48,7 +48,8 @@ class InventoryCycleActionService
 
                 // Si el producto tiene código de barras real, la configuración global lo exige Y tiene stock > 0, el escaneo es obligatorio
                 // Si la configuración global no lo exige, o si el stock en sistema es 0 o menor, se permite el ingreso manual
-                $requiresStrictBarcode = $barcodeRequiredGlobal && $hasRealBarcode && $systemStock > 0;
+                $isSubRecipe = (bool) ($product->is_sub_recipe ?? false) || str_starts_with(strtoupper($rawBarcode), 'SUB-');
+                $requiresStrictBarcode = $barcodeRequiredGlobal && $hasRealBarcode && $systemStock > 0 && !$isSubRecipe;
 
                 if ($requiresStrictBarcode) {
                     $scannedBarcode = isset($data['barcode']) ? trim((string) $data['barcode']) : '';

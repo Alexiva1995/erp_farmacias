@@ -51,7 +51,7 @@ const processedNavItems = computed(() => {
     if (title === 'lotería' || to === 'lottery' || title === 'loteria') {
       return enabledModules.includes('lottery');
     }
-    if (title === 'restaurante' || title === 'operativa' || to === 'restaurant-process-audit' || to === 'inventory-dishes' || to === 'restaurant-kds' || to === 'restaurant-stations') {
+    if (title === 'restaurante' || title === 'operativa' || to === 'restaurant-process-audit' || to === 'inventory-dishes' || to === 'restaurant-kds' || to === 'restaurant-stations' || to === 'restaurant-waste') {
       return isRestaurantVertical;
     }
     if (title === 'facturas' || to === 'invoice' || to.startsWith('invoice-')) {
@@ -452,7 +452,7 @@ const processedNavItems = computed(() => {
   const rolePermissions = authStore.user?.role?.menu_permissions;
   if (Array.isArray(rolePermissions)) {
     const allowedSet = new Set(rolePermissions);
-    const isKeyAllowed = (key) => allowedSet.has(key);
+    const isKeyAllowed = (key) => allowedSet.has(key) || (isRestaurantVertical && key === 'restaurant-waste');
 
     const filterByRolePermissions = (navItemsList, parentKey = '') => {
       return navItemsList.map(item => {

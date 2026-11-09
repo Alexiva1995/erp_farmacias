@@ -232,8 +232,15 @@ const handleSaveCount = async (countData) => {
   // Modo simple con lotes → derivar al modal de distribución
   const enableLots = brandingStore.settings?.enable_lots ?? true;
   const isRestaurant = Boolean(brandingStore.isRestaurant || brandingStore.settings?.enable_dishes);
+  const isSubRecipe = Boolean(
+    currentProduct.value?.is_sub_recipe ||
+    currentProduct.value?.is_recipe ||
+    String(currentProduct.value?.barcode || '').toUpperCase().startsWith('SUB-') ||
+    /sub-?receta|insumo cocina|receta producida/i.test(currentProduct.value?.active_ingredient || '')
+  );
   const isDualOrConsumption = Boolean(
     countData.isDualCount ||
+    isSubRecipe ||
     brandingStore.settings?.traceability_mode === "consumption" ||
     (currentProduct.value?.presentation && Number(currentProduct.value.presentation) > 0)
   );

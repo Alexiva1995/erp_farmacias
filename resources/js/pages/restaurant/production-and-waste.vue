@@ -26,6 +26,15 @@
             <v-tab value="waste">
               <v-icon start size="18">tabler-trash-x</v-icon>
               Control de Mermas
+              <v-chip
+                v-if="pendingWastesCount > 0"
+                size="x-small"
+                color="warning"
+                variant="flat"
+                class="ms-2 font-weight-bold"
+              >
+                {{ pendingWastesCount }}
+              </v-chip>
             </v-tab>
           </v-tabs>
         </div>
@@ -270,41 +279,93 @@
         <v-table density="comfortable" hover class="premium-table text-no-wrap">
           <thead>
             <tr>
-              <th>Tipo</th>
+              <th>ID Producto</th>
               <th>Ítem Afectado</th>
-              <th>Estación</th>
               <th class="text-center">Cantidad</th>
-              <th class="text-right">Costo Unitario</th>
               <th class="text-right">Pérdida Total</th>
-              <th>Motivo de Baja</th>
+              <th>Descripción / Motivo</th>
+              <th class="text-center">Foto</th>
               <th>Reportado Por</th>
+              <th class="text-center">Estado</th>
               <th>Fecha</th>
+              <th class="text-end">Acciones Admin</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="waste in kitchenWastes" :key="waste.id">
               <td>
-                <v-chip size="x-small" :color="waste.item_type === 'dish' ? 'warning' : 'info'" class="font-weight-bold">
-                  {{ waste.item_type === 'dish' ? 'Platillo' : 'Insumo' }}
+                <v-chip size="x-small" color="primary" variant="tonal" class="font-weight-black">
+                  #{{ waste.product_id || waste.dish_id || waste.id }}
                 </v-chip>
               </td>
               <td class="font-weight-bold text-xs uppercase">{{ waste.item_name }}</td>
-              <td class="text-xs text-medium-emphasis">{{ waste.station_name }}</td>
-              <td class="text-center font-weight-bold text-error text-xs">{{ waste.quantity }}</td>
-              <td class="text-right text-xs">{{ formatCurrency(waste.unit_cost) }}</td>
+              <td class="text-center font-weight-bold text-error text-xs">
+                -{{ waste.quantity }} {{ waste.product_unit || 'und' }}
+              </td>
               <td class="text-right font-weight-bold text-error text-xs">
                 -{{ formatCurrency(waste.total_loss_usd) }}
               </td>
-              <td>
-                <v-chip size="small" color="error" variant="outlined" class="font-weight-bold">
-                  {{ waste.reason_label || waste.reason }}
-                </v-chip>
+              <td style="max-width: 260px; white-space: normal;">
+                <div class="py-1">
+                  <div class="text-xs font-weight-bold">{{ waste.notes || 'Sin descripción' }}</div>
+                  <div class="text-caption text-medium-emphasis">{{ waste.reason_label || waste.reason }}</div>
+                </div>
+              </td>
+              <td class="text-center">
+                <v-btn
+                  v-if="waste.photo_url"
+                  size="x-small"
+                  variant="tonal"
+                  color="info"
+                  prepend-icon="tabler-photo"
+                  @click="openWastePhotoPreview(waste)"
+                >
+                  Ver Foto
+                </v-btn>
+                <span v-else class="text-caption text-disabled">Sin foto</span>
               </td>
               <td class="text-caption">{{ waste.user_name }}</td>
+              <td class="text-center">
+                <v-chip
+                  size="x-small"
+                  :color="waste.status_color || (waste.status === 'approved' ? 'success' : waste.status === 'rejected' ? 'error' : 'warning')"
+                  variant="tonal"
+                  class="font-weight-bold"
+                >
+                  {{ waste.status_label || waste.status }}
+                </v-chip>
+              </td>
               <td class="text-caption text-medium-emphasis">{{ waste.occurred_at }}</td>
+              <td class="text-end">
+                <div v-if="waste.status === 'pending'" class="d-flex justify-end gap-1">
+                  <v-btn
+                    size="x-small"
+                    color="success"
+                    variant="flat"
+                    prepend-icon="tabler-check"
+                    :loading="processingWasteId === waste.id"
+                    @click="approveWasteRecord(waste)"
+                  >
+                    Aprobar
+                  </v-btn>
+                  <v-btn
+                    size="x-small"
+                    color="error"
+                    variant="outlined"
+                    prepend-icon="tabler-x"
+                    :loading="processingWasteId === waste.id"
+                    @click="rejectWasteRecord(waste)"
+                  >
+                    Rechazar
+                  </v-btn>
+                </div>
+                <span v-else class="text-caption text-medium-emphasis">
+                  {{ waste.approved_at || 'Procesada' }}
+                </span>
+              </td>
             </tr>
             <tr v-if="!kitchenWastes.length">
-              <td colspan="9" class="text-center py-8 text-medium-emphasis">
+              <td colspan="10" class="text-center py-8 text-medium-emphasis">
                 No hay mermas registradas en el período.
               </td>
             </tr>
@@ -590,7 +651,7 @@
     </v-dialog>
 
     <!-- DIÁLOGO: REGISTRAR MERMA -->
-    <v-dialog v-model="showWasteModal" max-width="500">
+    <v-dialog v-model="showWasteModal" max-width="540">
       <v-card class="rounded-lg overflow-hidden">
         <v-card-title class="pa-0">
           <div class="bg-error pa-4 d-flex align-center shadow-sm text-white">
@@ -610,6 +671,34 @@
         </v-card-title>
         <v-card-text class="pa-4">
           <v-form @submit.prevent="submitWaste">
+            <v-row dense>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model.number="wasteForm.product_id"
+                  type="number"
+                  min="1"
+                  label="ID del Producto *"
+                  placeholder="Ej: 105"
+                  density="compact"
+                  variant="outlined"
+                  class="mb-2"
+                  required
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model.number="wasteForm.quantity"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  label="Cantidad Perdida *"
+                  density="compact"
+                  variant="outlined"
+                  class="mb-2"
+                  required
+                />
+              </v-col>
+            </v-row>
             <v-select
               v-model="wasteForm.reason"
               :items="wasteReasons"
@@ -621,43 +710,50 @@
               class="mb-3"
               required
             />
-            <v-row dense>
-              <v-col cols="6">
-                <v-select
-                  v-model="wasteForm.item_type"
-                  :items="[{ title: 'Insumo (Producto)', value: 'product' }, { title: 'Platillo Terminado', value: 'dish' }]"
-                  label="Tipo de Ítem"
-                  density="compact"
-                  variant="outlined"
-                  class="mb-3"
-                />
-              </v-col>
-              <v-col cols="6">
-                <v-text-field
-                  v-model.number="wasteForm.quantity"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  label="Cantidad Perdida"
-                  density="compact"
-                  variant="outlined"
-                  class="mb-3"
-                  required
-                />
-              </v-col>
-            </v-row>
             <v-textarea
               v-model="wasteForm.notes"
-              label="Explicación / Justificación"
+              label="Descripción de la Pérdida *"
               rows="2"
               density="compact"
               variant="outlined"
               class="mb-3"
+              required
+            />
+            <v-file-input
+              accept="image/*"
+              capture="environment"
+              label="Fotografía de Evidencia *"
+              prepend-icon=""
+              prepend-inner-icon="tabler-camera"
+              density="compact"
+              variant="outlined"
+              show-size
+              class="mb-3"
+              required
+              @update:model-value="onWastePhotoSelected"
             />
             <v-btn type="submit" color="error" block :loading="submitting">
-              Registrar Baja de Cocina
+              Registrar Baja de Cocina (Pendiente de Aprobación)
             </v-btn>
           </v-form>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- DIÁLOGO: VISOR DE FOTO DE EVIDENCIA -->
+    <v-dialog v-model="showWastePhotoModal" max-width="640">
+      <v-card v-if="selectedWastePhoto" class="rounded-lg overflow-hidden">
+        <v-card-title class="d-flex align-center justify-space-between bg-primary text-white py-3 px-4">
+          <span class="text-subtitle-1 font-weight-bold text-white">
+            Evidencia Fotográfica — #{{ selectedWastePhoto.product_id }} {{ selectedWastePhoto.item_name }}
+          </span>
+          <v-btn icon="tabler-x" variant="text" color="white" size="small" @click="showWastePhotoModal = false" />
+        </v-card-title>
+        <v-card-text class="pa-4 text-center">
+          <v-img :src="selectedWastePhoto.photo_url" max-height="420" contain class="rounded mb-3" />
+          <div class="text-body-2 font-weight-medium text-start">
+            <strong>Descripción:</strong> {{ selectedWastePhoto.notes }}
+          </div>
         </v-card-text>
       </v-card>
     </v-dialog>
@@ -1042,12 +1138,57 @@ const productionForm = reactive({
 // Formulario de mermas
 const wasteForm = reactive({
   item_type: 'product',
-  product_id: 1,
+  product_id: '',
   dish_id: null,
   quantity: 1.0,
   reason: 'burned_spoiled',
   notes: '',
+  photo: null,
 })
+
+const showWastePhotoModal = ref(false)
+const selectedWastePhoto = ref(null)
+const processingWasteId = ref(null)
+
+const pendingWastesCount = computed(() =>
+  kitchenWastes.value.filter(w => w.status === 'pending').length
+)
+
+const onWastePhotoSelected = files => {
+  const file = Array.isArray(files) ? files[0] : files
+  wasteForm.photo = file instanceof File ? file : null
+}
+
+const openWastePhotoPreview = waste => {
+  selectedWastePhoto.value = waste
+  showWastePhotoModal.value = true
+}
+
+const approveWasteRecord = async waste => {
+  processingWasteId.value = waste.id
+  try {
+    const res = await axios.post(`/restaurant/waste/records/${waste.id}/approve`)
+    toast.success(res.data?.message || 'Merma aprobada y descontada del inventario.')
+    await loadData()
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Error al aprobar merma.')
+  } finally {
+    processingWasteId.value = null
+  }
+}
+
+const rejectWasteRecord = async waste => {
+  processingWasteId.value = waste.id
+  try {
+    const res = await axios.post(`/restaurant/waste/records/${waste.id}/reject`)
+    toast.success(res.data?.message || 'Merma rechazada.')
+    await loadData()
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Error al rechazar merma.')
+  } finally {
+    processingWasteId.value = null
+  }
+}
 
 const wasteReasons = [
   { label: 'Quemado / Malogrado', value: 'burned_spoiled' },
@@ -1142,13 +1283,33 @@ const submitProduction = async () => {
 }
 
 const openWasteModal = () => {
+  wasteForm.product_id = ''
+  wasteForm.quantity = 1.0
+  wasteForm.notes = ''
+  wasteForm.photo = null
   showWasteModal.value = true
 }
 
 const submitWaste = async () => {
+  if (!wasteForm.product_id || !wasteForm.notes || !wasteForm.photo) {
+    toast.warning('Debes ingresar el ID del producto, la descripción y anexar la foto de evidencia.')
+    return
+  }
   submitting.value = true
   try {
-    const res = await axios.post('/restaurant/waste/records', wasteForm)
+    const formData = new FormData()
+    formData.append('item_type', 'product')
+    formData.append('product_id', String(wasteForm.product_id))
+    formData.append('quantity', String(wasteForm.quantity))
+    formData.append('reason', wasteForm.reason)
+    formData.append('notes', String(wasteForm.notes).trim())
+    if (wasteForm.photo instanceof File) {
+      formData.append('photo', wasteForm.photo)
+    }
+
+    const res = await axios.post('/restaurant/waste/records', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
     toast.success(res.data?.message || 'Merma registrada.')
     showWasteModal.value = false
     await loadData()
