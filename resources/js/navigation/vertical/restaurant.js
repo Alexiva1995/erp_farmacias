@@ -25,7 +25,7 @@ export default [
         title: 'Producción & Mermas',
         to: 'restaurant-production-and-waste',
         action: 'manage',
-        subject: 'admin',
+        subject: 'user',
       },
       {
         title: 'Platos / Menú',

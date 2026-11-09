@@ -761,9 +761,15 @@ onUnmounted(() => {
     </v-card>
 
     <!-- DIÁLOGO: REPORTAR NUEVA MERMA -->
-    <v-dialog v-model="showReportModal" max-width="640" persistent>
-      <v-card class="rounded-lg overflow-hidden">
-        <v-card-title class="d-flex align-center justify-space-between bg-primary text-white py-3 px-4">
+    <v-dialog
+      v-model="showReportModal"
+      max-width="640"
+      :fullscreen="$vuetify.display.xs"
+      scrollable
+      persistent
+    >
+      <v-card class="rounded-lg d-flex flex-column" style="max-height: 90vh;">
+        <v-card-title class="d-flex align-center justify-space-between bg-primary text-white py-3 px-4 flex-shrink-0">
           <div class="d-flex align-center gap-2">
             <v-icon color="white">tabler-alert-triangle</v-icon>
             <span class="text-subtitle-1 font-weight-bold text-white">
@@ -780,8 +786,8 @@ onUnmounted(() => {
           />
         </v-card-title>
 
-        <v-card-text class="pa-4">
-          <v-form @submit.prevent="submitWasteReport">
+        <v-card-text class="pa-4 flex-grow-1 overflow-y-auto">
+          <v-form id="wasteReportForm" @submit.prevent="submitWasteReport">
             <v-row dense>
               <!-- Campo 1: ID del Producto -->
               <v-col cols="12" sm="4">
@@ -899,10 +905,21 @@ onUnmounted(() => {
               <!-- Previsualización de la foto seleccionada -->
               <v-col v-if="photoPreviewUrl" cols="12" class="mb-2">
                 <div class="border rounded-lg pa-2 text-center bg-grey-lighten-4">
-                  <div class="text-caption font-weight-bold mb-1">Vista previa de la evidencia:</div>
+                  <div class="d-flex justify-space-between align-center mb-1">
+                    <span class="text-caption font-weight-bold">Vista previa de la evidencia:</span>
+                    <v-btn
+                      size="x-small"
+                      color="error"
+                      variant="text"
+                      prepend-icon="tabler-trash"
+                      @click="wasteForm.photo = null; photoPreviewUrl = null"
+                    >
+                      Quitar foto
+                    </v-btn>
+                  </div>
                   <v-img
                     :src="photoPreviewUrl"
-                    max-height="220"
+                    max-height="160"
                     contain
                     class="rounded mx-auto"
                   />
@@ -920,27 +937,31 @@ onUnmounted(() => {
               </v-col>
             </v-row>
 
-            <div class="d-flex justify-end gap-2 mt-4">
-              <v-btn
-                variant="text"
-                color="secondary"
-                :disabled="submitting"
-                @click="showReportModal = false"
-              >
-                Cancelar
-              </v-btn>
-              <v-btn
-                type="submit"
-                color="primary"
-                prepend-icon="tabler-send"
-                :loading="submitting"
-                :disabled="submitting"
-              >
-                Enviar Merma a Aprobación
-              </v-btn>
-            </div>
-          </v-form>
+            </v-form>
         </v-card-text>
+
+        <v-divider />
+        <v-card-actions class="pa-3 bg-surface flex-shrink-0 d-flex justify-end gap-2">
+          <v-btn
+            variant="outlined"
+            color="secondary"
+            :disabled="submitting"
+            @click="showReportModal = false"
+          >
+            Cancelar
+          </v-btn>
+          <v-btn
+            type="submit"
+            form="wasteReportForm"
+            color="primary"
+            variant="flat"
+            prepend-icon="tabler-send"
+            :loading="submitting"
+            :disabled="submitting"
+          >
+            Enviar Merma a Aprobación
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
 

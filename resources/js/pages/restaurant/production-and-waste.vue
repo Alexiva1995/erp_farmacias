@@ -47,7 +47,7 @@
       <AppFilterBase
         v-model:search="subRecipeSearch"
         search-placeholder="Buscar sub-receta o preparación base..."
-        :show-add="true"
+        :show-add="isApprover"
         add-button-text="Nueva Sub-Receta"
         :show-advanced="true"
         :has-advanced-filters="selectedStatus !== null"
@@ -165,6 +165,7 @@
             <template #item.actions="{ item }">
               <div class="d-flex gap-2 justify-end">
                 <IconBtn
+                  v-if="isApprover"
                   color="info"
                   class="bg-info-light"
                   title="Editar Sub-Receta y Rendimiento"
@@ -183,6 +184,7 @@
                   <VTooltip activator="parent" location="top">Producir Lote</VTooltip>
                 </IconBtn>
                 <IconBtn
+                  v-if="isApprover"
                   color="error"
                   class="bg-error-light"
                   title="Eliminar Sub-Receta"
@@ -337,7 +339,7 @@
               </td>
               <td class="text-caption text-medium-emphasis">{{ waste.occurred_at }}</td>
               <td class="text-end">
-                <div v-if="waste.status === 'pending'" class="d-flex justify-end gap-1">
+                <div v-if="waste.status === 'pending' && isApprover" class="d-flex justify-end gap-1">
                   <v-btn
                     size="x-small"
                     color="success"
@@ -576,7 +578,12 @@
     </v-dialog>
 
     <!-- DIÁLOGO: CREAR ORDEN DE PRODUCCIÓN -->
-    <v-dialog v-model="showProductionModal" max-width="600">
+    <v-dialog
+      v-model="showProductionModal"
+      max-width="600"
+      :fullscreen="$vuetify.display.xs"
+      scrollable
+    >
       <v-card class="rounded-lg overflow-hidden">
         <v-card-title class="pa-0">
           <div class="bg-primary pa-4 d-flex align-center shadow-sm text-white">
@@ -594,8 +601,8 @@
             </v-btn>
           </div>
         </v-card-title>
-        <v-card-text class="pa-4">
-          <v-form @submit.prevent="submitProduction">
+        <v-card-text class="pa-4 flex-grow-1 overflow-y-auto">
+          <v-form id="prodOrderForm" @submit.prevent="submitProduction">
             <v-select
               v-model="productionForm.dish_id"
               :items="subRecipeDishes"
@@ -642,16 +649,33 @@
               variant="outlined"
               class="mb-3"
             />
-            <v-btn type="submit" color="primary" block :loading="submitting">
-              Producir y Descontar Insumos (FEFO + Rendimiento)
-            </v-btn>
-          </v-form>
+            </v-form>
         </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-3 bg-surface flex-shrink-0 d-flex justify-end gap-2">
+          <v-btn variant="outlined" color="secondary" @click="showProductionModal = false">
+            Cancelar
+          </v-btn>
+          <v-btn
+            type="submit"
+            form="prodOrderForm"
+            color="primary"
+            variant="flat"
+            :loading="submitting"
+          >
+            Producir y Descontar Insumos
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
 
     <!-- DIÁLOGO: REGISTRAR MERMA -->
-    <v-dialog v-model="showWasteModal" max-width="540">
+    <v-dialog
+      v-model="showWasteModal"
+      max-width="540"
+      :fullscreen="$vuetify.display.xs"
+      scrollable
+    >
       <v-card class="rounded-lg overflow-hidden">
         <v-card-title class="pa-0">
           <div class="bg-error pa-4 d-flex align-center shadow-sm text-white">
@@ -669,8 +693,8 @@
             </v-btn>
           </div>
         </v-card-title>
-        <v-card-text class="pa-4">
-          <v-form @submit.prevent="submitWaste">
+        <v-card-text class="pa-4 flex-grow-1 overflow-y-auto">
+          <v-form id="prodWasteForm" @submit.prevent="submitWaste">
             <v-row dense>
               <v-col cols="12" sm="6">
                 <v-text-field
@@ -732,11 +756,23 @@
               required
               @update:model-value="onWastePhotoSelected"
             />
-            <v-btn type="submit" color="error" block :loading="submitting">
-              Registrar Baja de Cocina (Pendiente de Aprobación)
-            </v-btn>
-          </v-form>
+            </v-form>
         </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-3 bg-surface flex-shrink-0 d-flex justify-end gap-2">
+          <v-btn variant="outlined" color="secondary" @click="showWasteModal = false">
+            Cancelar
+          </v-btn>
+          <v-btn
+            type="submit"
+            form="prodWasteForm"
+            color="error"
+            variant="flat"
+            :loading="submitting"
+          >
+            Registrar Baja de Cocina
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
 
@@ -765,11 +801,14 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import axios from '@axios'
 import { toast } from '@/plugins/sweetalert'
 import Swal from 'sweetalert2'
+import { useAuthStore } from '@/stores/auth'
 import { useBrandingStore } from '@/stores/useBrandingStore'
 import { formatCurrency as formatRawCurrency } from '@/utils/currencyFormatter'
 import AppFilterBase from '@/components/AppFilterBase.vue'
 
+const authStore = useAuthStore()
 const brandingStore = useBrandingStore()
+const isApprover = computed(() => Boolean(authStore.isAdmin || authStore.isSupervisor))
 
 const defaultCurrency = computed(() => brandingStore.settings?.default_currency || 'USD')
 
