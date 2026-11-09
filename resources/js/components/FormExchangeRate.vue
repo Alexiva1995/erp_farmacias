@@ -56,6 +56,7 @@ const submitManualRate = async (currencyCode, value) => {
       timer: 3000,
     });
     emit("refresh");
+    await brandingStore.fetchExchangeRates();
     if (currencyCode === "COP") pesosInput.value = "";
     if (currencyCode === "COPC") copcInput.value = "";
     if (currencyCode === "BS_COP") bsCopInput.value = "";
@@ -84,6 +85,7 @@ const updateRate = async (currency) => {
       timer: 3000,
     });
     emit("refresh");
+    await brandingStore.fetchExchangeRates();
   } catch (error) {
     console.error("Error al actualizar tasa automática:", error);
   } finally {

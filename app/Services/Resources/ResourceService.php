@@ -113,8 +113,9 @@ class ResourceService
      */
     public static function exchangeRateCacheKey(string $currencyCode, bool $fallback = false): string
     {
+        $tenantId = function_exists('tenant') && tenant() ? tenant('id') : 'central';
         $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
-        $key = "resources.exchange_rate.{$conn}.{$currencyCode}";
+        $key = "resources.exchange_rate.{$tenantId}.{$conn}.{$currencyCode}";
 
         return $fallback ? "{$key}.fallback" : $key;
     }
@@ -124,9 +125,10 @@ class ResourceService
      */
     public static function allExchangeRatesCacheKey(): string
     {
+        $tenantId = function_exists('tenant') && tenant() ? tenant('id') : 'central';
         $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
 
-        return "resources.all_exchange_rates.{$conn}";
+        return "resources.all_exchange_rates.{$tenantId}.{$conn}";
     }
 
     /**
@@ -159,19 +161,31 @@ class ResourceService
                 if ($currencyCode === 'COP' || $currencyCode === 'COPC') {
                     $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)
                         ->where('rate', '>=', 100)
-                        ->latest('id')
+                        ->orderByDesc('updated_at')
+                        ->orderByDesc('created_at')
+                        ->orderByDesc('id')
                         ->first();
 
                     if (!$exchangeRate && $currencyCode === 'COP') {
                         $exchangeRate = ExchangeRate::where('currency_code', 'COPC')
                             ->where('rate', '>=', 100)
-                            ->latest('id')
+                            ->orderByDesc('updated_at')
+                            ->orderByDesc('created_at')
+                            ->orderByDesc('id')
                             ->first();
                     }
                 } else {
-                    $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)->latest('id')->first();
+                    $exchangeRate = ExchangeRate::where('currency_code', $currencyCode)
+                        ->orderByDesc('updated_at')
+                        ->orderByDesc('created_at')
+                        ->orderByDesc('id')
+                        ->first();
                     if (!$exchangeRate && ($currencyCode === 'BCV' || $currencyCode === 'BS')) {
-                        $exchangeRate = ExchangeRate::whereIn('currency_code', ['BS', 'BCV', 'VES'])->latest('id')->first();
+                        $exchangeRate = ExchangeRate::whereIn('currency_code', ['BS', 'BCV', 'VES'])
+                            ->orderByDesc('updated_at')
+                            ->orderByDesc('created_at')
+                            ->orderByDesc('id')
+                            ->first();
                     }
                 }
 
@@ -221,18 +235,28 @@ class ResourceService
         if (!empty($date)) {
             try {
                 $parsedDate = \Carbon\Carbon::parse($date)->endOfDay();
-                $historicalRates = ExchangeRate::query()
-                    ->whereIn('id', function ($query) use ($parsedDate) {
-                        $query->selectRaw('MAX(id)')
-                            ->from('exchange_rates')
-                            ->where('created_at', '<=', $parsedDate)
-                            ->groupBy('currency_code');
-                    })
-                    ->orderBy('currency_code')
-                    ->get(['currency_code', 'rate', 'source']);
+                $currencyCodes = ExchangeRate::query()
+                    ->where('created_at', '<=', $parsedDate)
+                    ->distinct()
+                    ->pluck('currency_code');
+
+                $historicalRates = collect();
+                foreach ($currencyCodes as $code) {
+                    $latest = ExchangeRate::query()
+                        ->where('currency_code', $code)
+                        ->where('created_at', '<=', $parsedDate)
+                        ->orderByDesc('created_at')
+                        ->orderByDesc('updated_at')
+                        ->orderByDesc('id')
+                        ->first(['currency_code', 'rate', 'source']);
+
+                    if ($latest) {
+                        $historicalRates->push($latest);
+                    }
+                }
 
                 if ($historicalRates->isNotEmpty()) {
-                    return $historicalRates;
+                    return $historicalRates->sortBy('currency_code')->values();
                 }
             } catch (\Throwable $e) {
                 Log::warning("Error al consultar tasas para fecha '{$date}': " . $e->getMessage());
@@ -240,21 +264,34 @@ class ResourceService
         }
 
         return Cache::remember(self::allExchangeRatesCacheKey(), now()->addHours(1), function () {
-            $rates = ExchangeRate::query()
-                ->whereIn('id', function ($query) {
-                    $query->selectRaw('MAX(id)')
-                        ->from('exchange_rates')
-                        ->groupBy('currency_code');
-                })
-                ->orderBy('currency_code')
-                ->get(['currency_code', 'rate', 'source']);
+            $currencyCodes = ExchangeRate::query()
+                ->distinct()
+                ->pluck('currency_code');
+
+            $rates = collect();
+            foreach ($currencyCodes as $code) {
+                $latest = ExchangeRate::query()
+                    ->where('currency_code', $code)
+                    ->orderByDesc('updated_at')
+                    ->orderByDesc('created_at')
+                    ->orderByDesc('id')
+                    ->first(['currency_code', 'rate', 'source']);
+
+                if ($latest) {
+                    $rates->push($latest);
+                }
+            }
+
+            $rates = $rates->sortBy('currency_code')->values();
 
             // Proteger las tasas de COP y COPC si hay valores anómalos menores a 100
             foreach ($rates as $item) {
                 if (in_array($item->currency_code, ['COP', 'COPC']) && floatval($item->rate) < 100) {
                     $validRate = ExchangeRate::where('currency_code', $item->currency_code)
                         ->where('rate', '>=', 100)
-                        ->latest('id')
+                        ->orderByDesc('updated_at')
+                        ->orderByDesc('created_at')
+                        ->orderByDesc('id')
                         ->value('rate');
                     $item->rate = $validRate ?: 3300.0;
                 }

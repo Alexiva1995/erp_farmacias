@@ -305,7 +305,8 @@ const formatPriceWithCurrency = (price, isAlreadyConverted = false) => {
   const rates = Array.isArray(brandingStore.exchangeRates) ? brandingStore.exchangeRates : [];
 
   if (currency === "COP") {
-    const copObj = rates.find((r) => r && (r.currency_code === "COP" || r.currency_code === "COPC"));
+    const copObj = rates.find((r) => r && r.currency_code === "COP")
+      || rates.find((r) => r && r.currency_code === "COPC");
     const copRate = Number(copObj?.rate || 4000);
     const rawCop = numPrice * copRate;
     if (rawCop > 0 && rawCop < 100) {

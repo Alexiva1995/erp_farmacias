@@ -40,10 +40,28 @@ class ExchangeRateServices implements ExchangeRate
 
         $model = $this->exchangeRateRepository->store($data);
 
+        // Propagar a master_catalog si la conexión está configurada y la tabla existe
+        try {
+            if (config('database.connections.master_catalog') && \Illuminate\Support\Facades\Schema::connection('master_catalog')->hasTable('exchange_rates')) {
+                \Illuminate\Support\Facades\DB::connection('master_catalog')->table('exchange_rates')->insert([
+                    'currency_code' => $data['currency_code'],
+                    'rate' => $data['rate'],
+                    'source' => $data['source'] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Aviso al sincronizar tasa {$data['currency_code']} con master_catalog: " . $e->getMessage());
+        }
+
         // Limpiar caché de tasas de cambio y fallbacks
         \Illuminate\Support\Facades\Cache::forget(\App\Services\Resources\ResourceService::exchangeRateCacheKey($data['currency_code']));
         \Illuminate\Support\Facades\Cache::forget(\App\Services\Resources\ResourceService::exchangeRateCacheKey($data['currency_code'], true));
         \Illuminate\Support\Facades\Cache::forget(\App\Services\Resources\ResourceService::allExchangeRatesCacheKey());
+        \Illuminate\Support\Facades\Cache::forget('resources.all_exchange_rates.central.mysql');
+        \Illuminate\Support\Facades\Cache::forget('resources.all_exchange_rates.mysql');
+        \Illuminate\Support\Facades\Cache::forget('resources.all_exchange_rates.tenant');
 
         return $model;
     }

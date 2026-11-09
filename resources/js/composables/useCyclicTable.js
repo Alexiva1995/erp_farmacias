@@ -122,9 +122,15 @@ export function useCyclicTable(endpointPrefix, filters) {
     const isRestaurant = Boolean(brandingStore.isRestaurant || brandingStore.settings?.enable_dishes);
     const isConsumptionMode = brandingStore.settings?.traceability_mode === 'consumption';
     const isFractionalProduct = Boolean(countRecord.product?.presentation && Number(countRecord.product.presentation) > 0);
+    const isSubRecipe = Boolean(
+      countRecord.product?.is_sub_recipe ||
+      countRecord.product?.is_recipe ||
+      String(countRecord.product?.barcode || '').toUpperCase().startsWith('SUB-') ||
+      /sub-?receta|insumo cocina|receta producida/i.test(countRecord.product?.active_ingredient || '')
+    );
     const enableLots = brandingStore.settings?.enable_lots ?? true;
 
-    if (isRestaurant || isConsumptionMode || isFractionalProduct || !enableLots) {
+    if (isRestaurant || isConsumptionMode || isFractionalProduct || isSubRecipe || !enableLots) {
       await callProcessApi(countRecord.id, {
         action: 'approve',
         corrected_quantity: newCountedQuantity,

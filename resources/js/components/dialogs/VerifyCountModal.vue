@@ -184,13 +184,30 @@ const differenceIcon = computed(() => {
   return difference.value > 0 ? "tabler-trending-up" : "tabler-trending-down";
 });
 
+const productUnit = computed(() => props.countRecord?.product?.unit_of_measure || 'und');
+
+const isSubRecipe = computed(() => {
+  const p = props.countRecord?.product;
+  if (!p) return false;
+  if (p.is_sub_recipe === true || p.is_sub_recipe === 1 || p.is_sub_recipe === '1') return true;
+  if (p.is_recipe === true || p.is_recipe === 1) return true;
+  if (p.is_dish === true || p.is_dish === 1) return true;
+  const barcode = String(p.barcode || '').toUpperCase();
+  if (barcode.startsWith('SUB-')) return true;
+  const activeIng = String(p.active_ingredient || '').toLowerCase();
+  if (activeIng.includes('sub-receta') || activeIng.includes('subreceta') || activeIng.includes('insumo cocina') || activeIng.includes('receta producida')) {
+    return true;
+  }
+  return false;
+});
+
 const differenceText = computed(() => {
   if (difference.value === null) return "";
   if (difference.value === 0) return "Stock Correcto";
   const absDiff = Math.abs(difference.value);
   return difference.value > 0
-    ? `Sobran ${absDiff} unidades`
-    : `Faltan ${absDiff} unidades`;
+    ? `Sobran ${absDiff} ${productUnit.value !== 'und' ? productUnit.value : 'unidades'}`
+    : `Faltan ${absDiff} ${productUnit.value !== 'und' ? productUnit.value : 'unidades'}`;
 });
 
 const canVerify = computed(() => {
@@ -518,7 +535,7 @@ const handleClose = () => {
                 <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Conteo Definitivo</span>
               </div>
               <span class="text-super-xs text-disabled font-weight-bold uppercase">
-                Ingrese unidades físicas
+                {{ isSubRecipe ? ('Ingrese cantidad en ' + productUnit) : 'Ingrese unidades físicas' }}
               </span>
             </div>
 
@@ -528,6 +545,8 @@ const handleClose = () => {
                 id="recounter-quantity-input"
                 v-model.number="newCountedQuantity"
                 type="number"
+                step="any"
+                :suffix="productUnit !== 'und' ? productUnit : undefined"
                 min="0"
                 placeholder="0"
                 variant="outlined"
