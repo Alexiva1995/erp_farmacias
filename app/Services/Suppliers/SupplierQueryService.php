@@ -263,10 +263,10 @@ class SupplierQueryService
         }
     }
 
-    public function storeSupplierConnectionData(Supplier $supplier, array $data)
+    public function storeSupplierConnectionData(Supplier $supplier, array $data, bool $preserveExistingProducts = false)
     {
         // Logs DIRECTO a archivo para asegurar que se escriban SIEMPRE
-        $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 storeSupplierConnectionData INICIADO - Supplier ID: {$supplier->id}, Name: {$supplier->name}, Products: " . count($data["products"] ?? []) . ", Invoices: " . count($data["invoices"] ?? []) . "\n";
+        $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 storeSupplierConnectionData INICIADO - Supplier ID: {$supplier->id}, Name: {$supplier->name}, Products: " . count($data["products"] ?? []) . ", Invoices: " . count($data["invoices"] ?? []) . ", PreserveExisting: " . ($preserveExistingProducts ? 'YES' : 'NO') . "\n";
         $this->writeDebugLog($logMessage);
         error_log($logMessage);
 
@@ -298,15 +298,21 @@ class SupplierQueryService
             }
 
             // Borrado automático de productos previos del proveedor que NO estén en auto-orden
-            $logMessage = "[" . date('Y-m-d H:i:s') . "] 🧹 Iniciando limpieza automática de productos para el proveedor: {$supplier->id}\n";
-            $this->writeDebugLog($logMessage);
-            
-            $deletedCount = $supplier->productSuppliers()
-                ->whereDoesntHave('autoOrderDetails')
-                ->delete();
-            
-            $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Limpieza completada. Productos eliminados: {$deletedCount}\n";
-            $this->writeDebugLog($logMessage);
+            // Si el proveedor maneja múltiples formatos y se solicita preservar productos existentes, no se eliminan
+            if (!$preserveExistingProducts) {
+                $logMessage = "[" . date('Y-m-d H:i:s') . "] 🧹 Iniciando limpieza automática de productos para el proveedor: {$supplier->id}\n";
+                $this->writeDebugLog($logMessage);
+                
+                $deletedCount = $supplier->productSuppliers()
+                    ->whereDoesntHave('autoOrderDetails')
+                    ->delete();
+                
+                $logMessage = "[" . date('Y-m-d H:i:s') . "] ✅ Limpieza completada. Productos eliminados: {$deletedCount}\n";
+                $this->writeDebugLog($logMessage);
+            } else {
+                $logMessage = "[" . date('Y-m-d H:i:s') . "] 🛡️ Conservando productos existentes (múltiples formatos configurados).\n";
+                $this->writeDebugLog($logMessage);
+            }
 
 
             // No filtramos por grupo para permitir que suban todos los registros (duplicados incluidos si no tienen ID)

@@ -476,7 +476,19 @@ class SupplierController extends Controller
             $fileConnection->update(['structure' => $validated]);
         }
 
-        ProcessSupplierConnectionJob::dispatchSync($supplier, $userId, $path, $validated);
+        // Si el proveedor tiene múltiples formatos configurados (secundario o terciario),
+        // conservar los productos existentes al importar para no borrar los del otro formato.
+        $hasMultipleFormats = !empty($fileConnection->secondary_structure) || !empty($fileConnection->tertiary_structure);
+
+        ProcessSupplierConnectionJob::dispatchSync(
+            $supplier,
+            $userId,
+            $path,
+            $validated,
+            null,
+            null,
+            $hasMultipleFormats
+        );
 
         return response()->json(["status" => "completed"]);
     }

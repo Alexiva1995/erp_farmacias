@@ -30,6 +30,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
         public array $columnMap = [],
         public ?float $exchangeRate = null,
         public ?int $statusId = null,
+        public bool $preserveExistingProducts = false,
     ) {
     }
 
@@ -128,7 +129,9 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             $results = [];
 
             if ($hasFiles) {
-                if (!$supplierConnection || $structure !== $this->columnMap) {
+                // Solo actualizar la estructura principal por defecto si no existen múltiples formatos configurados
+                $hasMultipleFormats = !empty($supplierConnection?->secondary_structure) || !empty($supplierConnection?->tertiary_structure);
+                if ((!$supplierConnection || $structure !== $this->columnMap) && !$hasMultipleFormats) {
                     $data = [
                         'supplier_id' => $this->supplier->id,
                         'type' => $supplierConnection->type ?? 'file',
@@ -269,7 +272,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
             $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] ANTES de llamar storeSupplierConnectionData - Supplier ID: {$this->supplier->id}, Products: " . count($results["products"] ?? []) . "\n";
             $this->writeDebugLog($logMessage);
             
-            $saveResult = $queryService->storeSupplierConnectionData($this->supplier, $results);
+            $saveResult = $queryService->storeSupplierConnectionData($this->supplier, $results, $this->preserveExistingProducts);
             
             // Log DESPUÉS de llamar a storeSupplierConnectionData
             Log::info("🚨 [JOB] DESPUÉS de llamar storeSupplierConnectionData", [
