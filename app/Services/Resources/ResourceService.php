@@ -240,7 +240,7 @@ class ResourceService
                     ->distinct()
                     ->pluck('currency_code');
 
-                $historicalRates = collect();
+                $historicalRates = new Collection();
                 foreach ($currencyCodes as $code) {
                     $latest = ExchangeRate::query()
                         ->where('currency_code', $code)
@@ -256,7 +256,7 @@ class ResourceService
                 }
 
                 if ($historicalRates->isNotEmpty()) {
-                    return $historicalRates->sortBy('currency_code')->values();
+                    return new Collection($historicalRates->sortBy('currency_code')->values()->all());
                 }
             } catch (\Throwable $e) {
                 Log::warning("Error al consultar tasas para fecha '{$date}': " . $e->getMessage());
@@ -268,7 +268,7 @@ class ResourceService
                 ->distinct()
                 ->pluck('currency_code');
 
-            $rates = collect();
+            $rates = new Collection();
             foreach ($currencyCodes as $code) {
                 $latest = ExchangeRate::query()
                     ->where('currency_code', $code)
@@ -281,8 +281,6 @@ class ResourceService
                     $rates->push($latest);
                 }
             }
-
-            $rates = $rates->sortBy('currency_code')->values();
 
             // Proteger las tasas de COP y COPC si hay valores anómalos menores a 100
             foreach ($rates as $item) {
@@ -297,7 +295,7 @@ class ResourceService
                 }
             }
 
-            return $rates;
+            return new Collection($rates->sortBy('currency_code')->values()->all());
         });
     }
 
