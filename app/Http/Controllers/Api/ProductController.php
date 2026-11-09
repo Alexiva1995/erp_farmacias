@@ -266,8 +266,13 @@ class ProductController extends Controller
 
     public function getStock(Product $product): JsonResponse
     {
+        $rawStock = (float) $product->lots()->sum('quantity');
+
+        // Para auditoría y conteos físicos, las existencias reales no pueden ser negativas.
+        // Si hay saldo negativo virtual por ventas previas a orden de producción, la base física es 0.
         return response()->json([
-            'stock' => (int) $product->lots()->sum('quantity')
+            'stock' => max(0.0, $rawStock),
+            'raw_stock' => $rawStock,
         ]);
     }
 

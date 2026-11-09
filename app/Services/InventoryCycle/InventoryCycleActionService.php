@@ -37,7 +37,11 @@ class InventoryCycleActionService
                     ];
                 }
 
-                $systemStock = (float) $data['system_quantity'];
+                // Sanear deudas virtuales / lotes negativos antes de evaluar conteo físico
+                ProductLot::where('product_id', $productId)->where('quantity', '<', 0)->update(['quantity' => 0]);
+
+                $systemStock = max(0.0, (float) $data['system_quantity']);
+                $data['system_quantity'] = $systemStock;
                 $rawBarcode = $product->barcode ? trim((string) $product->barcode) : '';
                 $rawId = trim((string) $product->id);
                 $hasRealBarcode = !empty($rawBarcode) && $rawBarcode !== $rawId;
@@ -330,8 +334,8 @@ class InventoryCycleActionService
         // Sanear previamente cualquier lote con cantidad negativa para garantizar consistencia física
         ProductLot::where('product_id', $product->id)->where('quantity', '<', 0)->update(['quantity' => 0]);
 
-        // Stock actual real antes de cualquier modificación
-        $stockBefore = (float) $product->lots()->sum('quantity');
+        // Stock actual real antes de cualquier modificación (base física no negativa)
+        $stockBefore = max(0.0, (float) $product->lots()->where('quantity', '>', 0)->sum('quantity'));
         $finalDiscrepancy = $finalQuantity - $stockBefore;
         
         // Sincronizar system_quantity con el stock al momento de la verificación
@@ -570,6 +574,10 @@ class InventoryCycleActionService
                     }
                 }
 
+                // Sanear deudas virtuales / lotes negativos antes de evaluar conteo físico
+                ProductLot::where('product_id', $productId)->where('quantity', '<', 0)->update(['quantity' => 0]);
+                $data['system_quantity'] = max(0.0, (float) ($data['system_quantity'] ?? 0));
+
                 $expectedDiscrepancy = round((float) $data['counted_quantity'] - (float) $data['system_quantity'], 3);
                 if (abs($expectedDiscrepancy - (float) ($data['discrepancy'] ?? 0)) > 0.001) {
                     $data['discrepancy'] = $expectedDiscrepancy;
@@ -674,8 +682,8 @@ class InventoryCycleActionService
         // Sanear previamente cualquier lote con cantidad negativa para garantizar consistencia física
         ProductLot::where('product_id', $product->id)->where('quantity', '<', 0)->update(['quantity' => 0]);
 
-        // Stock actual real antes de cualquier modificación
-        $stockBefore = (float) $product->lots()->sum('quantity');
+        // Stock actual real antes de cualquier modificación (base física no negativa)
+        $stockBefore = max(0.0, (float) $product->lots()->where('quantity', '>', 0)->sum('quantity'));
         $finalDiscrepancy = $finalQuantity - $stockBefore;
         
         // Sincronizar system_quantity con el stock al momento de la verificación
@@ -920,6 +928,10 @@ class InventoryCycleActionService
                     }
                 }
 
+                // Sanear deudas virtuales / lotes negativos antes de evaluar conteo físico
+                ProductLot::where('product_id', $productId)->where('quantity', '<', 0)->update(['quantity' => 0]);
+                $data['system_quantity'] = max(0.0, (float) ($data['system_quantity'] ?? 0));
+
                 $expectedDiscrepancy = round((float) $data['counted_quantity'] - (float) $data['system_quantity'], 3);
                 if (abs($expectedDiscrepancy - (float) ($data['discrepancy'] ?? 0)) > 0.001) {
                     $data['discrepancy'] = $expectedDiscrepancy;
@@ -1004,8 +1016,8 @@ class InventoryCycleActionService
         // Sanear previamente cualquier lote con cantidad negativa para garantizar consistencia física
         ProductLot::where('product_id', $product->id)->where('quantity', '<', 0)->update(['quantity' => 0]);
 
-        // Stock actual real antes de cualquier modificación
-        $stockBefore = (float) $product->lots()->sum('quantity');
+        // Stock actual real antes de cualquier modificación (base física no negativa)
+        $stockBefore = max(0.0, (float) $product->lots()->where('quantity', '>', 0)->sum('quantity'));
         $finalDiscrepancy = $finalQuantity - $stockBefore;
         
         // Sincronizar system_quantity con el stock al momento de la verificación
@@ -1220,7 +1232,7 @@ class InventoryCycleActionService
 
                         // Sanear previamente lotes negativos para consistencia física
                         ProductLot::where('product_id', $product->id)->where('quantity', '<', 0)->update(['quantity' => 0]);
-                        $stockBefore = (float) $product->lots()->sum('quantity');
+                        $stockBefore = max(0.0, (float) $product->lots()->where('quantity', '>', 0)->sum('quantity'));
 
                         if ($targetLot) {
                             $targetLot->quantity = max(0, $targetLot->quantity + $difference);

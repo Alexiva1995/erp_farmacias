@@ -157,7 +157,8 @@ const loadCurrentStock = async () => {
     const response = await axios.get(
       `/products/${props.countRecord.product_id}/stock`,
     );
-    currentStock.value = response.data.stock ?? 0;
+    const fetchedStock = Number(response.data.stock ?? 0);
+    currentStock.value = Math.max(0, fetchedStock);
   } catch (e) {
     loadError.value = "No se pudo cargar el stock actual.";
     currentStock.value = 0;
@@ -166,10 +167,17 @@ const loadCurrentStock = async () => {
   }
 };
 
+const effectiveSystemStock = computed(() => {
+  if (currentStock.value !== null && currentStock.value !== undefined) {
+    return Math.max(0, Number(currentStock.value));
+  }
+  return Math.max(0, Number(props.countRecord?.system_quantity ?? 0));
+});
+
 const difference = computed(() => {
   if (newCountedQuantity.value === null || currentStock.value === null)
     return null;
-  return newCountedQuantity.value - currentStock.value;
+  return Number((Number(newCountedQuantity.value) - effectiveSystemStock.value).toFixed(4));
 });
 
 const differenceColor = computed(() => {
@@ -228,7 +236,7 @@ const handleVerify = async () => {
     return;
   }
 
-  const systemStock = Number(currentStock.value ?? props.countRecord?.system_quantity ?? 0);
+  const systemStock = effectiveSystemStock.value;
   const qty = Number(newCountedQuantity.value);
   const isZeroWhenHadStock = systemStock > 0 && qty === 0;
 
@@ -482,7 +490,7 @@ const handleClose = () => {
                     Sistema
                   </span>
                   <span class="text-h6 font-weight-black text-high-emphasis leading-tight">
-                    {{ formatNumber(currentStock) }}
+                    {{ formatNumber(effectiveSystemStock) }}
                   </span>
                 </div>
               </div>
@@ -513,7 +521,7 @@ const handleClose = () => {
                     class="text-h6 font-weight-black leading-tight"
                     :class="countRecord.discrepancy !== 0 ? 'text-error' : 'text-high-emphasis'"
                   >
-                    {{ formatNumber((countRecord.system_quantity || 0) + (countRecord.discrepancy || 0)) }}
+                    {{ formatNumber(countRecord.counted_quantity ?? ((countRecord.system_quantity || 0) + (countRecord.discrepancy || 0))) }}
                   </span>
                 </div>
               </div>

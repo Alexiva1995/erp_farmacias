@@ -34,7 +34,7 @@ class InventoryCycleQueryService
             ->where(function ($q) {
                 $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
             })
-            ->selectRaw("products.*, COALESCE((SELECT SUM(quantity) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado")
+            ->selectRaw("products.*, GREATEST(0, COALESCE((SELECT SUM(CASE WHEN quantity > 0 THEN quantity ELSE 0 END) FROM product_lots WHERE product_lots.product_id = products.id), 0)) AS stock_calculado")
             ->with(['lots', 'laboratory', 'origin']);
     }
 

@@ -133,10 +133,15 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             ];
             $lotData['unit_cost'] = $unitCostCalculated;
 
+            // Sanear saldo negativo previo (por consumos previos a registrar la orden de producción)
+            ProductLot::where('product_id', $outputProduct->id)
+                ->where('quantity', '<', 0)
+                ->update(['quantity' => 0]);
+
             $newLot = ProductLot::create($lotData);
 
-            // Aumentar stock del producto elaborado
-            $outputProduct->stock = (float) $outputProduct->stock + $actualQty;
+            // Aumentar stock del producto elaborado sobre la existencia física real
+            $outputProduct->stock = max(0.0, (float) $outputProduct->stock) + $actualQty;
             $outputProduct->unit_cost = $unitCostCalculated;
             $outputProduct->is_sub_recipe = true;
             $outputProduct->save();

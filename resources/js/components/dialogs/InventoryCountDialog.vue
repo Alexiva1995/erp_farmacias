@@ -244,7 +244,8 @@ const handleSave = async () => {
     ? dualSystemQuantity.value
     : Number(countedQuantity.value);
 
-  const systemStock = Number(props.product?.stock ?? props.product?.system_quantity ?? props.product?.stock_calculado ?? 0);
+  const rawSystemStock = Number(props.product?.stock ?? props.product?.system_quantity ?? props.product?.stock_calculado ?? 0);
+  const systemStock = Math.max(0, rawSystemStock);
   const difference = parseFloat((quantity - systemStock).toFixed(4));
   const isZeroWhenHadStock = systemStock > 0 && quantity === 0;
 

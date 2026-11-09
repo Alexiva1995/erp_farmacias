@@ -219,7 +219,8 @@ const handleSaveCount = async (countData) => {
     countType.value === "sales"   ? `/inventory/count/sales-count/${productId}`   :
                                     `/inventory/count/${productId}`;
 
-  const systemQuantity = Number(currentProduct.value.stock_calculado ?? currentProduct.value.stock ?? 0);
+  const rawSystemQuantity = Number(currentProduct.value.stock_calculado ?? currentProduct.value.stock ?? 0);
+  const systemQuantity = Math.max(0, rawSystemQuantity);
   const payload = {
     counted_quantity: countData.countedQuantity,
     system_quantity:  systemQuantity,
