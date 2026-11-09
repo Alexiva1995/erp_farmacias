@@ -90,10 +90,10 @@ class DrocercaFtpService implements DrocercaFtpServiceInterface
                 ->first();
         }
 
-        $host = $connection?->host ?: env('DROCERCA_FTP_HOST', 'drocerca.proteoerp.org');
-        $port = (int) ($connection?->port ?? env('DROCERCA_FTP_PORT', 21));
-        $user = (string) ($connection?->username ?? env('DROCERCA_FTP_USER'));
-        $pass = (string) ($connection?->password ? FtpCrypt::decrypt($connection->password) : env('DROCERCA_FTP_PASS'));
+        $host = $connection?->host ?: 'drocerca.proteoerp.org';
+        $port = (int) ($connection?->port ?? 21);
+        $user = (string) ($connection?->username ?? '');
+        $pass = (string) ($connection?->password ? FtpCrypt::decrypt($connection->password) : '');
 
         if (trim($user) === '' || trim($pass) === '') {
             throw new Exception("Faltan las credenciales FTP de Drocerca (usuario o contraseña vacíos).");
@@ -187,9 +187,9 @@ class DrocercaFtpService implements DrocercaFtpServiceInterface
      */
     public function fetchInventoryFtp(?string $host = null, ?string $user = null, ?string $password = null): array
     {
-        $ftpHost = $host ?: env('DROCERCA_FTP_HOST', 'drocerca.proteoerp.org');
-        $ftpUser = $user ?: env('DROCERCA_FTP_USER', 'W008B3');
-        $ftpPass = $password ?: env('DROCERCA_FTP_PASS', 'J505406957');
+        $ftpHost = $host ?: 'drocerca.proteoerp.org';
+        $ftpUser = (string) ($user ?? '');
+        $ftpPass = (string) ($password ?? '');
 
         $ftp = @ftp_connect($ftpHost, 21, 20);
         if (!$ftp) {

@@ -308,8 +308,8 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
     {
         $shouldCleanCookie = false;
         if (!$cookieFile) {
-            $user = $username ?: env('DROSYMCA_USERNAME', 'farmab.sucre2024@gmail.com');
-            $pass = $password ?: env('DROSYMCA_PASSWORD', 'J505406957');
+            $user = (string) ($username ?? '');
+            $pass = (string) ($password ?? '');
             $session = $this->createAuthenticatedSession($user, $pass);
             $cookieFile = $session['cookie_file'];
             $shouldCleanCookie = true;
@@ -431,11 +431,11 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
             $pass = FtpCrypt::decrypt($conn->password);
         }
 
-        $user = $user ?: env('DROSYMCA_USERNAME');
-        $pass = $pass ?: env('DROSYMCA_PASSWORD');
+        $user = $user ?: null;
+        $pass = $pass ?: null;
 
         if (empty($user) || empty($pass)) {
-            \Illuminate\Support\Facades\Log::warning('[DrosymcaScraper] No se encontraron credenciales configuradas para el bot de Drosymca (BD o .env). Sincronización omitida.');
+            \Illuminate\Support\Facades\Log::warning('[DrosymcaScraper] No se encontraron credenciales configuradas en el sistema para el bot de Drosymca. Sincronización omitida.');
             return [
                 'total_extracted' => 0,
                 'created' => 0,

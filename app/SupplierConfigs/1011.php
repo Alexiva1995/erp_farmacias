@@ -17,7 +17,7 @@ return [
             'payload' => [
                 'fechaInicio' => now()->subDays(60)->toIso8601String(),
                 'fechaFin' => now()->toIso8601String(),
-                'cliente' => !empty($connection->username) ? (int) preg_replace('/\D/', '', $connection->username) : (int) env('MAFARTA_CLIENTE', 31373),
+                'cliente' => !empty($connection->username) ? (int) preg_replace('/\D/', '', $connection->username) : (int) ($connection->structure['cliente'] ?? 0),
                 'drogueria' => 3,
             ],
         ];

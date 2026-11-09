@@ -20,8 +20,6 @@ use Illuminate\Support\Facades\Log;
 class CristmedicalsApiService implements CristmedicalsApiServiceInterface
 {
     private const API_BASE_URL = 'https://apienterprise.cristmedicals.com/api/v1';
-    private const DEFAULT_TOKEN = 'rXWGlhRb5kE181blNsjdsR8KjT0mnGFKEa5mhcPoXUdjD2CtlNakX5geAgzFiSwBE2JEBQx96W7bgM5n';
-    private const DEFAULT_CO_CLI = 'FAR00275';
 
     public function __construct(
         protected ExchangeRateServices $exchangeRateService
@@ -46,7 +44,7 @@ class CristmedicalsApiService implements CristmedicalsApiServiceInterface
             ->first()
             ?? $supplier?->connections()->first();
 
-        // 1. Obtener Token de autenticación
+        // 1. Obtener Token de autenticación exclusivamente desde la conexión configurada en el sistema
         $token = null;
         if ($connection && !empty($connection->password)) {
             try {
@@ -55,10 +53,20 @@ class CristmedicalsApiService implements CristmedicalsApiServiceInterface
                 $token = $connection->password;
             }
         }
-        $token = $token ?: env('CRISTMEDICALS_API_TOKEN', self::DEFAULT_TOKEN);
+        if (empty($token) && !empty($connection?->username) && strlen(trim($connection->username)) > 25) {
+            $token = trim($connection->username);
+        }
 
-        // 2. Obtener Código de Cliente (co_cli)
-        $coCli = $connection?->username ?: env('CRISTMEDICALS_USERNAME', self::DEFAULT_CO_CLI);
+        if (empty($token)) {
+            throw new Exception("No se ha configurado el token de autenticación para Cristmedicals en el sistema.");
+        }
+
+        // 2. Obtener Código de Cliente (co_cli) exclusivamente desde la conexión configurada en el sistema
+        $coCli = !empty($connection?->username) ? trim($connection->username) : ($connection?->structure['co_cli'] ?? null);
+        if (empty($coCli)) {
+            throw new Exception("No se ha configurado el código de cliente para Cristmedicals en el sistema.");
+        }
+
         if (str_starts_with(strtoupper((string) $coCli), 'FRA')) {
             $coCli = 'FAR' . substr((string) $coCli, 3);
         }
@@ -157,7 +165,7 @@ class CristmedicalsApiService implements CristmedicalsApiServiceInterface
             'nombre' => $companyName,
             'rif' => $rif,
             'co_cli' => $coCli,
-            'co_ven' => env('CRISTMEDICALS_CO_VEN', 'VEN01'),
+            'co_ven' => !empty($connection?->structure['co_ven']) ? $connection->structure['co_ven'] : 'VEN01',
             'fec_emis' => $fecEmis,
             'fec_venc' => $fecVenc,
             'tasa' => round((float) $bcvRate, 4),

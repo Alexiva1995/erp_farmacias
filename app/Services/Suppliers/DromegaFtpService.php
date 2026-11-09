@@ -83,15 +83,15 @@ class DromegaFtpService implements DromegaFtpServiceInterface
                 ->first();
         }
 
-        $host = $connection?->host ?: env('DROMEGA_FTP_HOST', 'ftp.dromega.com.ve');
+        $host = $connection?->host ?: 'ftp.dromega.com.ve';
         // Limpiar protocolo y barras si fueron ingresadas en el host
         $host = preg_replace('#^(https?|ftps?)://#i', '', trim($host));
         $host = explode('/', $host)[0];
         $host = explode(':', $host)[0];
 
-        $port = (int) ($connection?->port ?? env('DROMEGA_FTP_PORT', 21));
-        $user = (string) ($connection?->username ?? env('DROMEGA_FTP_USER', 'clientemerida@dromega.com.ve'));
-        $pass = (string) ($connection?->password ? FtpCrypt::decrypt($connection->password) : env('DROMEGA_FTP_PASS', 'Bgw9Uo+ya_j'));
+        $port = (int) ($connection?->port ?? 21);
+        $user = (string) ($connection?->username ?? '');
+        $pass = (string) ($connection?->password ? FtpCrypt::decrypt($connection->password) : '');
 
         if (trim($user) === '' || trim($pass) === '') {
             throw new Exception("Faltan las credenciales FTP de DROMEGA (usuario o contraseña vacíos).");
@@ -185,13 +185,13 @@ class DromegaFtpService implements DromegaFtpServiceInterface
      */
     public function fetchInventoryFtp(?string $host = null, ?string $user = null, ?string $password = null): array
     {
-        $ftpHost = $host ?: env('DROMEGA_FTP_HOST', 'ftp.dromega.com.ve');
+        $ftpHost = $host ?: 'ftp.dromega.com.ve';
         $ftpHost = preg_replace('#^(https?|ftps?)://#i', '', trim($ftpHost));
         $ftpHost = explode('/', $ftpHost)[0];
         $ftpHost = explode(':', $ftpHost)[0];
 
-        $ftpUser = $user ?: env('DROMEGA_FTP_USER', 'clientemerida@dromega.com.ve');
-        $ftpPass = $password ?: env('DROMEGA_FTP_PASS', 'Bgw9Uo+ya_j');
+        $ftpUser = (string) ($user ?? '');
+        $ftpPass = (string) ($password ?? '');
 
         $ftp = @ftp_connect($ftpHost, 21, 20);
         if (!$ftp) {

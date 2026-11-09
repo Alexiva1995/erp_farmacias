@@ -497,8 +497,8 @@ class SupplierConnectionService
 
             if (!empty($url)) {
                 if ($isCristmedicals) {
-                    $coCli = !empty($connection->username) ? trim($connection->username) : ($connection->structure['co_cli'] ?? env('CRISTMEDICALS_USERNAME', 'FAR00275'));
-                    if (str_starts_with(strtoupper($coCli), 'FRA')) {
+                    $coCli = !empty($connection->username) ? trim($connection->username) : ($connection->structure['co_cli'] ?? null);
+                    if ($coCli && str_starts_with(strtoupper($coCli), 'FRA')) {
                         $coCli = 'FAR' . substr($coCli, 3);
                     }
                     if (!empty($coCli) && !str_contains($url, 'co_cli=')) {
@@ -584,8 +584,8 @@ class SupplierConnectionService
                 }
 
                 if ($isCristmedicals && !empty($invoiceUrl)) {
-                    $coCli = !empty($connection->username) ? trim($connection->username) : ($connection->structure['co_cli'] ?? env('CRISTMEDICALS_USERNAME', 'FAR00275'));
-                    if (str_starts_with(strtoupper($coCli), 'FRA')) {
+                    $coCli = !empty($connection->username) ? trim($connection->username) : ($connection->structure['co_cli'] ?? null);
+                    if ($coCli && str_starts_with(strtoupper($coCli), 'FRA')) {
                         $coCli = 'FAR' . substr($coCli, 3);
                     }
                     if (!empty($coCli) && !str_contains($invoiceUrl, 'co_cli=')) {

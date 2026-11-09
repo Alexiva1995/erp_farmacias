@@ -2,7 +2,7 @@
 
 return [
     'productos' => function ($connection) {
-        $co_cli = !empty($connection->username) ? trim($connection->username) : env('CRISTMEDICALS_USERNAME', '');
+        $co_cli = !empty($connection->username) ? trim($connection->username) : '';
         if (empty($co_cli) && !empty($connection->structure['co_cli'])) {
             $co_cli = trim($connection->structure['co_cli']);
         }
@@ -30,7 +30,7 @@ return [
         ];
     },
     'facturas' => function ($connection) {
-        $co_cli = !empty($connection->username) ? trim($connection->username) : env('CRISTMEDICALS_USERNAME', '');
+        $co_cli = !empty($connection->username) ? trim($connection->username) : '';
         if (empty($co_cli) && !empty($connection->structure['co_cli'])) {
             $co_cli = trim($connection->structure['co_cli']);
         }

@@ -50,12 +50,12 @@ class DronenaScraperService implements DronenaScraperServiceInterface
             $pass = \App\Helpers\FtpCrypt::decrypt($conn->password);
         }
 
-        // Fallbacks a variables de entorno si no están en BD
-        $user = $user ?: env('DRONENA_USERNAME');
-        $pass = $pass ?: env('DRONENA_PASSWORD');
+        // Credenciales exclusivamente desde la BD del sistema
+        $user = $user ?: null;
+        $pass = $pass ?: null;
 
         if (empty($user) || empty($pass)) {
-            \Illuminate\Support\Facades\Log::warning('[DronenaScraper] No se encontraron credenciales configuradas para el bot de Dronena (BD o .env). Sincronización omitida.');
+            \Illuminate\Support\Facades\Log::warning('[DronenaScraper] No se encontraron credenciales configuradas en el sistema para el bot de Dronena. Sincronización omitida.');
             return [
                 'total_extracted' => 0,
                 'updated' => 0,
@@ -750,8 +750,8 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         ?string $username = null,
         ?string $password = null
     ): array {
-        $user = $username ?: env('DRONENA_USERNAME', 'D719');
-        $pass = $password ?: env('DRONENA_PASSWORD', 'dronena2025');
+        $user = (string) ($username ?? '');
+        $pass = (string) ($password ?? '');
         $date = $paymentDate ?: Carbon::now()->format('d/m/Y');
         if (str_contains($date, '-')) {
             $date = Carbon::parse($date)->format('d/m/Y');

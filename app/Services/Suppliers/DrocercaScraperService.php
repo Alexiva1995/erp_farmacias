@@ -63,12 +63,12 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
             $pass = \App\Helpers\FtpCrypt::decrypt($conn->password);
         }
 
-        // Fallbacks por variables de entorno si no están en BD
-        $user = $user ?: env('DROCERCA_USERNAME');
-        $pass = $pass ?: env('DROCERCA_PASSWORD');
+        // Credenciales exclusivamente desde la BD del sistema
+        $user = $user ?: null;
+        $pass = $pass ?: null;
 
         if (empty($user) || empty($pass)) {
-            \Illuminate\Support\Facades\Log::warning("[DrocercaScraper] No se encontraron credenciales configuradas para el bot de Drocerca (BD o .env). Sincronización omitida.");
+            \Illuminate\Support\Facades\Log::warning("[DrocercaScraper] No se encontraron credenciales configuradas en el sistema para el bot de Drocerca. Sincronización omitida.");
             return [
                 'total_extracted' => 0,
                 'updated' => 0,

@@ -338,8 +338,8 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
             }
         }
 
-        $user = $user ?: env('CRISTMEDICALS_USERNAME');
-        $pass = $pass ?: env('CRISTMEDICALS_PASSWORD');
+        $user = $user ?: null;
+        $pass = $pass ?: null;
 
         if (empty($user) || empty($pass)) {
             \Illuminate\Support\Facades\Log::warning('[CristmedicalsScraper] Faltan credenciales para el proveedor ID: ' . $supplierId);
@@ -576,7 +576,7 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
                 $pass = null;
             }
         }
-        $pass = $pass ?: env('CRISTMEDICALS_PASSWORD', 'FAR00818');
+        $pass = $pass ?: ($conn?->password ?? null);
 
         $session = $this->createAuthenticatedSession($user, $pass);
         $cookieFile = $session['cookie_file'];

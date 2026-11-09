@@ -165,21 +165,18 @@ class MarfartaPcCorreoService implements MarfartaPcCorreoServiceInterface
                 ->first();
         }
 
-        $host = $connection?->host ?: env('MAFARTA_FTP_HOST');
-        $port = (int) ($connection?->port ?? env('MAFARTA_FTP_PORT', 21));
-        $user = (string) ($connection?->username ?? env('MAFARTA_FTP_USER'));
-        $pass = (string) ($connection?->password ? FtpCrypt::decrypt($connection->password) : env('MAFARTA_FTP_PASS'));
+        $host = (string) ($connection?->host ?? '');
+        $port = (int) ($connection?->port ?? 21);
+        $user = (string) ($connection?->username ?? '');
+        $pass = (string) ($connection?->password ? FtpCrypt::decrypt($connection->password) : '');
 
         if (!$host || trim($user) === '' || trim($pass) === '') {
             throw new Exception("Faltan las credenciales FTP de Mafarta para la transmisión de pedidos (Host, Usuario o Contraseña no configurados). Por favor configure la conexión FTP del proveedor.");
         }
 
-        $clientCode = env('MAFARTA_CLIENTE', '31373');
-        if (!empty($connection?->username) && is_numeric(preg_replace('/\D/', '', $connection->username))) {
-            $clientCode = preg_replace('/\D/', '', $connection->username);
-        }
+        $clientCode = !empty($connection?->username) ? preg_replace('/\D/', '', $connection->username) : '';
 
-        $supplierCode = env('MAFARTA_COD_DROGUERIA', '003');
+        $supplierCode = $connection?->structure['cod_drogueria'] ?? '003';
         $filename = $this->generateFilename($autoOrder, (string)$clientCode, (string)$supplierCode);
         $content = $this->generateOrderContent($autoOrder, (string)$clientCode, (string)$supplierCode);
 
@@ -269,7 +266,7 @@ class MarfartaPcCorreoService implements MarfartaPcCorreoServiceInterface
             ->first()
             ?? $supplier->connections()->first();
 
-        $username = $connection?->username ?: env('MAFARTA_USERNAME', 'F31373');
+        $username = (string) ($connection?->username ?? '');
         $password = null;
         if ($connection && !empty($connection->password)) {
             try {
@@ -278,7 +275,6 @@ class MarfartaPcCorreoService implements MarfartaPcCorreoServiceInterface
                 $password = $connection->password;
             }
         }
-        $password = $password ?: env('MAFARTA_PASSWORD', 'Mafarta2026*');
 
         // Obtener token mediante POST /api/Login o /api/auth/login
         $token = null;
@@ -331,8 +327,8 @@ class MarfartaPcCorreoService implements MarfartaPcCorreoServiceInterface
             throw new Exception("Error de autenticación con la API de Droguerías Cobeca. No se pudo obtener el token de acceso.");
         }
 
-        $clientCode = (int) (preg_replace('/\D/', '', (string) $username) ?: env('MAFARTA_CLIENTE', 31373));
-        $drugstoreCode = (int) env('MAFARTA_COD_DROGUERIA', 3); // 3 = Droguería Mafarta
+        $clientCode = (int) preg_replace('/\D/', '', (string) $username);
+        $drugstoreCode = (int) ($connection?->structure['cod_drogueria'] ?? 3); // 3 = Droguería Mafarta
 
         // Construir detalles del pedido
         $detalles = [];

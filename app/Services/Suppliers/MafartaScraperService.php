@@ -63,8 +63,8 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             $pass = \App\Helpers\FtpCrypt::decrypt($conn->password);
         }
 
-        $user = $user ?: env('MAFARTA_USERNAME');
-        $pass = $pass ?: env('MAFARTA_PASSWORD');
+        $user = $user ?: null;
+        $pass = $pass ?: null;
 
         if (empty($user) || empty($pass)) {
             \Illuminate\Support\Facades\Log::warning('[MafartaScraper] Faltan credenciales para el proveedor ID: ' . $supplierId);
@@ -421,8 +421,8 @@ class MafartaScraperService implements MafartaScraperServiceInterface
     public function testSessionToken(string $token, ?int $clientCode = null): array
     {
         try {
-            $client = $clientCode ?: (int) env('MAFARTA_CLIENTE', 31373);
-            $drugstore = (int) env('MAFARTA_COD_DROGUERIA', 3);
+            $client = (int) ($clientCode ?: 0);
+            $drugstore = 3;
 
             $docsRes = Http::withHeaders([
                 'Authorization' => "Bearer " . trim($token),
@@ -468,10 +468,10 @@ class MafartaScraperService implements MafartaScraperServiceInterface
     public function fetchDocumentsWithToken(string $username, string $password, ?string $sessionToken = null): array
     {
         try {
-            $user = $username ?: 'F31373';
-            $pass = $password ?: 'Mafarta2026*';
-            $clientCode = (int) (preg_replace('/\D/', '', (string) $user) ?: env('MAFARTA_CLIENTE', 31373));
-            $drugstore = (int) env('MAFARTA_COD_DROGUERIA', 3);
+            $user = (string) ($username ?? '');
+            $pass = (string) ($password ?? '');
+            $clientCode = (int) preg_replace('/\D/', '', (string) $user);
+            $drugstore = 3;
 
             // 1. PRIORIDAD: Si se suministró un token de sesión (Bypass de Cloudflare Turnstile)
             if (!empty($sessionToken)) {
@@ -676,7 +676,7 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                     $password = $conn->password;
                 }
             }
-            $password = $password ?: env('MAFARTA_PASSWORD', 'Mafarta2026*');
+            $password = $password ?: null;
 
             $sessionToken = $conn?->structure['session_token'] ?? null;
             $token = null;

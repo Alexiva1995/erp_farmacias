@@ -197,7 +197,7 @@ class DromegaScraperService implements DromegaScraperServiceInterface
         }
 
         $conn = $supplier?->connections?->first();
-        $username = $conn?->username ?: env('DROMEGA_USERNAME', 'Farmacia_Barrio_Sucre');
+        $username = $conn?->username;
         $password = null;
 
         if ($conn && !empty($conn->password)) {
@@ -207,7 +207,7 @@ class DromegaScraperService implements DromegaScraperServiceInterface
                 $password = null;
             }
         }
-        $password = $password ?: env('DROMEGA_PASSWORD', 'Dromega2026');
+        $password = $password ?: ($conn?->password ?? null);
 
         if (empty($username) || empty($password)) {
             throw new \RuntimeException("No se encontraron credenciales configuradas en la BD para Droguería Mega.");
