@@ -441,23 +441,11 @@ watch(
               />
             </VCol>
             <VCol cols="6">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Coste Unitario (Bs)</span>
-              <VTextField
-                v-model="formats[activeFormat].unit_cost"
-                type="text"
-                variant="outlined"
-                density="comfortable"
-                hide-details="auto"
-                prepend-inner-icon="tabler-currency-boliviano"
-                class="rounded-lg font-weight-black"
-                :error-messages="errors.unit_cost"
-              />
-            </VCol>
-            <VCol cols="6">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Coste Unitario (USD)</span>
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Costo 1 (USD)</span>
               <VTextField
                 v-model="formats[activeFormat].unit_cost_usd"
                 type="text"
+                placeholder="Ej. E o Columna Costo 1"
                 variant="outlined"
                 density="comfortable"
                 hide-details="auto"
@@ -467,17 +455,17 @@ watch(
               />
             </VCol>
             <VCol cols="6">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Tasa de Cambio</span>
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Costo 2 (USD) (Opcional)</span>
               <VTextField
-                v-model="formats[activeFormat].currency"
-                type="number"
-                :step="0.01"
+                v-model="formats[activeFormat].unit_cost"
+                type="text"
+                placeholder="Ej. F (Vacío = igual a Costo 1)"
                 variant="outlined"
                 density="comfortable"
                 hide-details="auto"
-                prepend-inner-icon="tabler-arrows-exchange"
+                prepend-inner-icon="tabler-coin"
                 class="rounded-lg font-weight-black"
-                :error-messages="errors.currency"
+                :error-messages="errors.unit_cost"
               />
             </VCol>
             <VCol cols="6">

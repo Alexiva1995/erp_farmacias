@@ -143,27 +143,28 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                 $active_ingredient = trim((string) ($row[$this->colIndex($this->activeIngredientCol)] ?? ""));
                 $bar = trim((string) ($row[$this->colIndex($this->barcodeCol)] ?? ""));
 
-                $bsRaw = $this->costBsCol !== null
-                    ? $row[$this->colIndex($this->costBsCol)] ?? null
-                    : null;
-                $bs = $bsRaw !== null ? $toNumber((string) $bsRaw) : null;
-
-                $usdRaw = $this->costUsdCol !== null
+                $cost1Raw = $this->costUsdCol !== null
                     ? $row[$this->colIndex($this->costUsdCol)] ?? null
                     : null;
-                $usd = $usdRaw !== null ? $toNumber((string) $usdRaw) : null;
+                $cost1 = $cost1Raw !== null ? $toNumber((string) $cost1Raw) : null;
 
-                if ($bs === null && $usd !== null) {
-                    $bs = $usd * $currency;
-                } elseif ($usd === null && $bs !== null) {
-                    $usd = round($bs / $currency, 2);
+                $cost2Raw = $this->costBsCol !== null
+                    ? $row[$this->colIndex($this->costBsCol)] ?? null
+                    : null;
+                $cost2 = $cost2Raw !== null ? $toNumber((string) $cost2Raw) : null;
+
+                // Fallback: si no tiene Costo 2 o viene vacío/0, toma Costo 1. Si solo viene Costo 2, toma Costo 2.
+                if (($cost2 === null || $cost2 <= 0) && ($cost1 !== null && $cost1 > 0)) {
+                    $cost2 = $cost1;
+                } elseif (($cost1 === null || $cost1 <= 0) && ($cost2 !== null && $cost2 > 0)) {
+                    $cost1 = $cost2;
                 }
 
                 $cod = $cod === "" ? null : $cod;
                 $name = $name === "" ? null : $name;
                 $bar = $bar === "" ? null : $bar;
-                $bs = $bs ?? 0.0;
-                $usd = $usd ?? 0.0;
+                $cost1 = $cost1 ?? 0.0;
+                $cost2 = $cost2 ?? 0.0;
 
                 if ($name === null) {
                     return null;
@@ -187,8 +188,8 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                     "name" => $this->cleanCell($name),
                     "barcode_match" => $bar,
                     "quantity" => $row[$this->colIndex($this->qtyCol)] ?? null,
-                    "unit_cost" => $this->castToFloat($bs),
-                    "unit_cost_usd" => $this->castToFloat($usd),
+                    "unit_cost" => $this->castToFloat($cost1),
+                    "unit_cost_usd" => $this->castToFloat($cost1),
                     "expiration" => $expiration,
                     "credit_days" => $creditDays,
                     "supplier_id" => $this->supplierId,
@@ -198,8 +199,8 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                     'active_ingredient' => $this->cleanCell($active_ingredient),
                     "laboratory" => !empty($this->laboratoryCol) ? $this->cleanCell($row[$this->colIndex($this->laboratoryCol)] ?? null) : null,
                     "product_id" => null,
-                    "unit_cost_with_discount" => $this->castToFloat($bs),
-                    "unit_cost_usd_with_discount" => $this->castToFloat($usd),
+                    "unit_cost_with_discount" => $this->castToFloat($cost2),
+                    "unit_cost_usd_with_discount" => $this->castToFloat($cost2),
                 ];
 
                 $product = $products->get($bar);

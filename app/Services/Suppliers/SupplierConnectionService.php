@@ -1089,8 +1089,20 @@ class SupplierConnectionService
                 }
             }
 
-            $entry["unit_cost_with_discount"] = $entry["unit_cost"] ?? null;
-            $entry["unit_cost_usd_with_discount"] = $entry["unit_cost_usd"] ?? null;
+            $cost1 = isset($entry["unit_cost_usd"]) && is_numeric($entry["unit_cost_usd"]) ? (float)$entry["unit_cost_usd"] : null;
+            $cost2 = isset($entry["unit_cost_usd_with_discount"]) && is_numeric($entry["unit_cost_usd_with_discount"]) ? (float)$entry["unit_cost_usd_with_discount"] : null;
+
+            // Si Costo 2 no viene o es 0, toma Costo 1; si Costo 1 está vacío, toma Costo 2
+            if (($cost2 === null || $cost2 <= 0) && ($cost1 !== null && $cost1 > 0)) {
+                $cost2 = $cost1;
+            } elseif (($cost1 === null || $cost1 <= 0) && ($cost2 !== null && $cost2 > 0)) {
+                $cost1 = $cost2;
+            }
+
+            $entry["unit_cost"] = $cost1;
+            $entry["unit_cost_usd"] = $cost1;
+            $entry["unit_cost_with_discount"] = $cost2;
+            $entry["unit_cost_usd_with_discount"] = $cost2;
 
             if (!isset($entry["quantity"]))
                 $entry["quantity"] = $quantity;

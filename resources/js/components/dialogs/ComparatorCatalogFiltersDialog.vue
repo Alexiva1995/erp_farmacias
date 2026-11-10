@@ -111,12 +111,13 @@ const closeDialog = () => {
           <VCol cols="12" class="d-flex flex-wrap gap-x-6 gap-y-2">
             <VSwitch
               :model-value="props.enableDiscounts"
-              label="Aplicar Descuento"
+              label="Usar Costo 2"
               color="primary"
               hide-details
               @update:model-value="emit('update:enableDiscounts', $event)"
             />
             <VSwitch
+              v-if="false"
               :model-value="props.enableUsdAmountCol"
               label="Ver Divisas ($)"
               color="success"
@@ -124,6 +125,7 @@ const closeDialog = () => {
               @update:model-value="emit('update:enableUsdAmountCol', $event)"
             />
             <VSwitch
+              v-if="false"
               :model-value="props.enableDiscountCol"
               label="Ver % Desc."
               color="info"

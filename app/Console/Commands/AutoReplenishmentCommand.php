@@ -247,12 +247,14 @@ class AutoReplenishmentCommand extends Command
 
             $offers = $allOffersGrouped->get($product->id, collect());
 
-            // Ordenar ofertas por precio (con o sin descuento según la configuración)
+            // Ordenar ofertas por precio (con o sin descuento según la configuración: conDescuento = Costo 2)
             $sortedOffers = $offers->sortBy(function ($ps) use ($conDescuento) {
-                if ($conDescuento && $ps->unit_cost_usd_with_discount > 0) {
-                    return (float) $ps->unit_cost_usd_with_discount;
+                if ($conDescuento) {
+                    $c2 = (float) $ps->unit_cost_usd_with_discount;
+                    return $c2 > 0 ? $c2 : (float) $ps->unit_cost_usd;
                 }
-                return (float) ($ps->unit_cost_usd > 0 ? $ps->unit_cost_usd : ($ps->unit_cost_usd_with_discount ?? 999999));
+                $c1 = (float) $ps->unit_cost_usd;
+                return $c1 > 0 ? $c1 : (float) ($ps->unit_cost_usd_with_discount ?? 999999);
             })->values();
 
             if ($sortedOffers->isEmpty()) {
@@ -285,8 +287,8 @@ class AutoReplenishmentCommand extends Command
             $baseCost = (float) ($product->unit_cost ?? 0);
 
             foreach ($sortedOffers as $ps) {
-                $cost = $conDescuento && $ps->unit_cost_usd_with_discount > 0
-                    ? (float) $ps->unit_cost_usd_with_discount
+                $cost = $conDescuento
+                    ? (float) ($ps->unit_cost_usd_with_discount > 0 ? $ps->unit_cost_usd_with_discount : $ps->unit_cost_usd)
                     : (float) ($ps->unit_cost_usd > 0 ? $ps->unit_cost_usd : ($product->unit_cost ?? 0));
 
                 // Validación de sobrecosto máximo si está parametrizado

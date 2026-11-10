@@ -483,24 +483,23 @@ class SupplierQueryService
                     }
                 }
 
+                $cost1 = is_numeric($row['unit_cost_usd']) ? (float)$row['unit_cost_usd'] : ((is_numeric($row['unit_cost']) ? (float)$row['unit_cost'] : 0));
+                $cost2 = is_numeric($row['unit_cost_usd_with_discount']) ? (float)$row['unit_cost_usd_with_discount'] : ((is_numeric($row['unit_cost_with_discount']) ? (float)$row['unit_cost_with_discount'] : 0));
+
+                if ($cost2 <= 0 && $cost1 > 0) {
+                    $cost2 = $cost1;
+                } elseif ($cost1 <= 0 && $cost2 > 0) {
+                    $cost1 = $cost2;
+                }
+
                 $row['supplier_id'] = $supplier->id;
-                $row['unit_cost'] = is_numeric($row['unit_cost']) ? (float)$row['unit_cost'] : 0;
-                $row['unit_cost_usd'] = is_numeric($row['unit_cost_usd']) ? (float)$row['unit_cost_usd'] : 0;
+                $row['unit_cost'] = $cost1;
+                $row['unit_cost_usd'] = $cost1;
+                $row['unit_cost_with_discount'] = $cost2;
+                $row['unit_cost_usd_with_discount'] = $cost2;
                 $row['discount_percentage'] = is_numeric($row['discount_percentage']) ? (float)$row['discount_percentage'] : 0;
                 $row['is_ai_matched'] = (bool)($row['is_ai_matched'] ?? false);
                 $row['is_active'] = (bool)($row['is_active'] ?? true);
-
-                if (empty($row['unit_cost_with_discount']) || !is_numeric($row['unit_cost_with_discount'])) {
-                    $row['unit_cost_with_discount'] = $row['unit_cost'];
-                } else {
-                    $row['unit_cost_with_discount'] = (float)$row['unit_cost_with_discount'];
-                }
-
-                if (empty($row['unit_cost_usd_with_discount']) || !is_numeric($row['unit_cost_usd_with_discount'])) {
-                    $row['unit_cost_usd_with_discount'] = $row['unit_cost_usd'];
-                } else {
-                    $row['unit_cost_usd_with_discount'] = (float)$row['unit_cost_usd_with_discount'];
-                }
 
                 if (empty($row['quantity']) || !is_numeric($row['quantity']) || (float)$row['quantity'] <= 0) {
                     $row['quantity'] = 1000;
@@ -918,8 +917,8 @@ class SupplierQueryService
             "product_suppliers.id",
             "product_suppliers.unit_cost",
             "product_suppliers.unit_cost_usd",
-            "product_suppliers.unit_cost_with_discount",
-            "product_suppliers.unit_cost_usd_with_discount",
+            DB::raw("COALESCE(NULLIF(product_suppliers.unit_cost_with_discount, 0), product_suppliers.unit_cost, 0) as unit_cost_with_discount"),
+            DB::raw("COALESCE(NULLIF(product_suppliers.unit_cost_usd_with_discount, 0), product_suppliers.unit_cost_usd, 0) as unit_cost_usd_with_discount"),
             DB::raw("ROUND(CASE WHEN product_suppliers.unit_cost > 0 AND product_suppliers.unit_cost_with_discount > 0 AND product_suppliers.unit_cost_with_discount < product_suppliers.unit_cost THEN (1 - (product_suppliers.unit_cost_with_discount / product_suppliers.unit_cost)) * 100 ELSE 0 END, 2) as discount_percentage"),
             "product_suppliers.quantity",
             "product_suppliers.expiration",
@@ -1000,38 +999,8 @@ class SupplierQueryService
 
     public function addDiscountsToProducts(Supplier $supplier): void
     {
-        $supplierId = $supplier->id;
-
-        try {
-            DB::transaction(function () use ($supplierId) {
-                $factor = DB::scalar(
-                    "SELECT COALESCE(1 - MAX(rate), 1)
-                              FROM (
-                                    SELECT discount_percentage / 100 AS rate
-                                      FROM supplier_discounts
-                                     WHERE supplier_id = ?
-                                     UNION ALL
-                                    SELECT discount_percentage / 100
-                                      FROM payment_rules
-                                     WHERE supplier_id = ?
-                                   ) AS x",
-                    [$supplierId, $supplierId],
-                );
-
-                if ($factor === null) {
-                    return;
-                }
-                DB::update(
-                    'UPDATE product_suppliers
-                       SET unit_cost_with_discount    = ROUND(unit_cost     * ?, 2),
-                           unit_cost_usd_with_discount = ROUND(unit_cost_usd * ?, 2)
-                     WHERE supplier_id = ?',
-                    [$factor, $factor, $supplierId],
-                );
-            });
-        } catch (\Throwable $e) {
-            Log::error($e);
-        }
+        // Se preserva Costo 2 (unit_cost_usd_with_discount) mapeado directamente de los catálogos de droguerías.
+        return;
     }
 
     public function getProducts(Request $request)
@@ -1085,8 +1054,8 @@ class SupplierQueryService
             "suppliers.name as supplier_name",
             "product_suppliers.unit_cost as unit_cost_bs",
             "product_suppliers.unit_cost_usd as unit_cost_usd",
-            DB::raw("COALESCE(product_suppliers.unit_cost_with_discount, 0) as final_cost_bs"),
-            DB::raw("COALESCE(product_suppliers.unit_cost_usd_with_discount, 0) as final_cost_usd"),
+            DB::raw("COALESCE(NULLIF(product_suppliers.unit_cost_with_discount, 0), product_suppliers.unit_cost, 0) as final_cost_bs"),
+            DB::raw("COALESCE(NULLIF(product_suppliers.unit_cost_usd_with_discount, 0), product_suppliers.unit_cost_usd, 0) as final_cost_usd"),
             DB::raw("COALESCE(products.unit_cost, 0) as our_unit_cost_usd"),
             "product_suppliers.expiration as expiration",
             "product_suppliers.active_ingredient as active_ingredient",

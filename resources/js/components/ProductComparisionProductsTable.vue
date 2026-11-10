@@ -114,6 +114,15 @@ const formatUsd = (amount) => {
   }).format(num);
 };
 
+const getEffectiveCost = (item) => {
+  const c1 = parseFloat(item.unit_cost_usd || 0);
+  const c2 = parseFloat(item.final_cost_usd || 0);
+  if (props.enableDiscounts) {
+    return c2 > 0 ? c2 : c1;
+  }
+  return c1 > 0 ? c1 : c2;
+};
+
 const getPriceDiff = (item) => {
   const currentCost = parseFloat(
     props.selectedProduct?.current_unit_cost ?? 
@@ -123,12 +132,8 @@ const getPriceDiff = (item) => {
   );
   if (!currentCost || currentCost === 0) return null;
 
-  const supplierCost = parseFloat(
-    (props.enableDiscounts && parseFloat(item.final_cost_usd) > 0) 
-      ? item.final_cost_usd 
-      : item.unit_cost_usd
-  );
-  if (!supplierCost || isNaN(supplierCost)) return null;
+  const supplierCost = getEffectiveCost(item);
+  if (!supplierCost || isNaN(supplierCost) || supplierCost <= 0) return null;
 
   const diff = ((currentCost - supplierCost) / currentCost) * 100;
   const absDiff = Math.abs(diff).toFixed(1);
@@ -182,11 +187,12 @@ const onActionClick = (item) => {
 };
 
 const headers = computed(() => [
-  { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "180px" },
-  { title: props.enableUsdAmountCol ? "COSTO" : "COSTO (BS)", key: "our_cost", sortable: false, width: "100px", align: 'end' },
-  { title: props.enableUsdAmountCol ? "COSTO USD" : "COSTO BS", key: "unit_cost", sortable: true, width: "110px", align: 'end' },
-  { title: "CRÉDITO", key: "credit_days", sortable: true, width: "90px", align: 'center' },
-  { title: "EXP", key: "expiration", sortable: true, width: "95px", align: 'center' },
+  { title: "PRODUCTO / PROVEEDOR", key: "name", sortable: true, width: "170px" },
+  { title: "MI COSTO", key: "our_cost", sortable: false, width: "95px", align: 'end' },
+  { title: "COSTO 1", key: "unit_cost_usd", sortable: true, width: "105px", align: 'end' },
+  { title: "COSTO 2", key: "final_cost_usd", sortable: true, width: "105px", align: 'end' },
+  { title: "CRÉDITO", key: "credit_days", sortable: true, width: "85px", align: 'center' },
+  { title: "EXP", key: "expiration", sortable: true, width: "90px", align: 'center' },
   { title: "ACCIÓN", key: "actions", sortable: false, width: "110px", align: "end" },
 ]);
 </script>
@@ -387,20 +393,15 @@ const headers = computed(() => [
                 <div class="d-flex flex-wrap ga-6 align-center">
                   <VSwitch
                     :model-value="props.enableDiscounts"
-                    label="Descuentos"
+                    label="Usar Costo 2"
                     color="primary"
                     density="compact"
                     hide-details
                     @update:model-value="emit('update:enableDiscounts', $event)"
                   />
-                  <VSwitch
-                    :model-value="props.enableUsdAmountCol"
-                    label="Ver Divisas"
-                    color="success"
-                    density="compact"
-                    hide-details
-                    @update:model-value="emit('update:enableUsdAmountCol', $event)"
-                  />
+                  <span class="text-caption text-disabled">
+                    {{ props.enableDiscounts ? 'Comparando y pidiendo con Costo 2' : 'Comparando y pidiendo con Costo 1' }}
+                  </span>
                   <VSpacer />
                 </div>
               </VCol>
@@ -490,77 +491,51 @@ const headers = computed(() => [
           </template>
 
           <template #item.our_cost="{ item }">
-            <template v-if="props.enableUsdAmountCol">
-              <span v-if="parseFloat(selectedProduct?.current_unit_cost ?? selectedProduct?.unit_cost ?? item.our_cost_usd ?? 0) > 0" class="text-sm font-weight-medium text-disabled">
-                ${{ formatUsd(selectedProduct?.current_unit_cost ?? selectedProduct?.unit_cost ?? item.our_cost_usd) }}
-              </span>
-              <span v-else class="text-disabled text-xs">—</span>
-            </template>
-            <template v-else>
-              <span v-if="parseFloat(selectedProduct?.current_unit_cost ?? selectedProduct?.unit_cost ?? item.our_cost_usd ?? 0) > 0" class="text-sm font-weight-medium text-disabled">
-                Bs. {{ formatUsd(selectedProduct?.unit_cost_bs ?? item.unit_cost) }}
-              </span>
-              <span v-else class="text-disabled text-xs">—</span>
-            </template>
+            <span v-if="parseFloat(selectedProduct?.current_unit_cost ?? selectedProduct?.unit_cost ?? item.our_cost_usd ?? 0) > 0" class="text-sm font-weight-medium text-disabled">
+              ${{ formatUsd(selectedProduct?.current_unit_cost ?? selectedProduct?.unit_cost ?? item.our_cost_usd) }}
+            </span>
+            <span v-else class="text-disabled text-xs">—</span>
           </template>
 
-          <template #item.unit_cost="{ item }">
+          <template #item.unit_cost_usd="{ item }">
             <div class="d-flex flex-column align-end ga-1">
-              <template v-if="props.enableUsdAmountCol">
-                <template v-if="props.enableDiscounts && hasUsdDiscount(item)">
-                  <div class="d-flex align-center gap-1">
-                    <span class="text-sm font-weight-black text-primary">
-                      ${{ formatUsd(item.final_cost_usd) }}
-                    </span>
-                    <VChip
-                      color="success"
-                      size="x-small"
-                      variant="flat"
-                      density="compact"
-                      class="text-super-xs font-weight-bold px-1"
-                    >
-                      -{{ usdDiscountPercent(item) }}%
-                    </VChip>
-                  </div>
-                  <span class="text-xs text-disabled text-decoration-line-through">
-                    ${{ formatUsd(item.unit_cost_usd) }}
-                  </span>
-                </template>
-                <template v-else>
-                  <span class="text-sm font-weight-bold text-high-emphasis">
-                    ${{ formatUsd(props.enableDiscounts && parseFloat(item.final_cost_usd) > 0 ? item.final_cost_usd : item.unit_cost_usd) }}
-                  </span>
-                </template>
-              </template>
-              <template v-else>
-                <template v-if="props.enableDiscounts && hasBsDiscount(item)">
-                  <div class="d-flex align-center gap-1">
-                    <span class="text-sm font-weight-black text-primary">
-                      Bs. {{ formatUsd(item.final_cost_bs) }}
-                    </span>
-                    <VChip
-                      color="success"
-                      size="x-small"
-                      variant="flat"
-                      density="compact"
-                      class="text-super-xs font-weight-bold px-1"
-                    >
-                      -{{ bsDiscountPercent(item) }}%
-                    </VChip>
-                  </div>
-                  <span class="text-xs text-disabled text-decoration-line-through">
-                    Bs. {{ formatUsd(item.unit_cost) }}
-                  </span>
-                </template>
-                <template v-else>
-                  <span class="text-sm font-weight-bold text-high-emphasis">
-                    Bs. {{ formatUsd(props.enableDiscounts && parseFloat(item.final_cost_bs) > 0 ? item.final_cost_bs : item.unit_cost) }}
-                  </span>
-                </template>
-              </template>
+              <span
+                class="text-sm font-weight-bold"
+                :class="!props.enableDiscounts ? 'text-primary font-weight-black' : 'text-high-emphasis'"
+              >
+                ${{ formatUsd(item.unit_cost_usd) }}
+              </span>
 
-              <!-- Ahorro / Diferencia de Precio debajo del Costo -->
-              <div v-if="getPriceDiff(item)">
+              <!-- Ahorro / Diferencia cuando se usa Costo 1 -->
+              <div v-if="!props.enableDiscounts && getPriceDiff(item)">
+                <VChip
+                  :color="getPriceDiff(item).color"
+                  size="x-small"
+                  variant="tonal"
+                  density="compact"
+                  :prepend-icon="getPriceDiff(item).icon"
+                  class="font-weight-bold text-super-xs"
+                >
+                  {{ props.isNeedsVisible ? getPriceDiff(item).shortLabel : getPriceDiff(item).label }}
+                  <VTooltip activator="parent" location="top">
+                    {{ getPriceDiff(item).label }}
+                  </VTooltip>
+                </VChip>
+              </div>
+            </div>
+          </template>
+
+          <template #item.final_cost_usd="{ item }">
+            <div class="d-flex flex-column align-end ga-1">
+              <span
+                class="text-sm font-weight-bold"
+                :class="props.enableDiscounts ? 'text-primary font-weight-black' : 'text-high-emphasis'"
+              >
+                ${{ formatUsd(parseFloat(item.final_cost_usd) > 0 ? item.final_cost_usd : item.unit_cost_usd) }}
+              </span>
+
+              <!-- Ahorro / Diferencia cuando se usa Costo 2 -->
+              <div v-if="props.enableDiscounts && getPriceDiff(item)">
                 <VChip
                   :color="getPriceDiff(item).color"
                   size="x-small"
@@ -704,31 +679,23 @@ const headers = computed(() => [
 
               <div class="d-flex justify-space-between align-center mb-3">
                 <div class="d-flex flex-column">
-                  <span class="text-xs text-disabled uppercase font-weight-bold">COSTO PROVEEDOR</span>
-                  <template v-if="props.enableDiscounts && hasUsdDiscount(item)">
-                    <div class="d-flex align-center gap-1">
-                      <span class="text-sm font-weight-black text-primary">
-                        ${{ formatUsd(item.final_cost_usd) }}
-                      </span>
-                      <VChip
-                        color="success"
-                        size="x-small"
-                        variant="flat"
-                        density="compact"
-                        class="text-super-xs font-weight-bold px-1"
-                      >
-                        -{{ usdDiscountPercent(item) }}%
-                      </VChip>
-                    </div>
-                    <span class="text-xs text-disabled text-decoration-line-through">
-                      ${{ formatUsd(item.unit_cost_usd) }}
-                    </span>
-                  </template>
-                  <template v-else>
-                    <span class="text-sm font-weight-bold text-high-emphasis">
-                      ${{ formatUsd(props.enableDiscounts && parseFloat(item.final_cost_usd) > 0 ? item.final_cost_usd : item.unit_cost_usd) }}
-                    </span>
-                  </template>
+                  <span class="text-xs text-disabled uppercase font-weight-bold">COSTO 1</span>
+                  <span
+                    class="text-sm font-weight-bold"
+                    :class="!props.enableDiscounts ? 'text-primary font-weight-black' : 'text-high-emphasis'"
+                  >
+                    ${{ formatUsd(item.unit_cost_usd) }}
+                  </span>
+                </div>
+
+                <div class="d-flex flex-column align-center">
+                  <span class="text-xs text-disabled uppercase font-weight-bold">COSTO 2</span>
+                  <span
+                    class="text-sm font-weight-bold"
+                    :class="props.enableDiscounts ? 'text-primary font-weight-black' : 'text-high-emphasis'"
+                  >
+                    ${{ formatUsd(parseFloat(item.final_cost_usd) > 0 ? item.final_cost_usd : item.unit_cost_usd) }}
+                  </span>
                 </div>
 
                 <div class="d-flex flex-column align-end">

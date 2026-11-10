@@ -46,8 +46,8 @@ const productsHeaders = [
   { title: "Laboratorio", key: "laboratory", sortable: false },
   { title: "Días Crédito", key: "credit_days", sortable: false, align: "center" },
   { title: "Vencimiento", key: "expiration", sortable: false, align: "center" },
-  { title: "Coste (BS)", key: "unit_cost", sortable: false },
-  { title: "Coste (Usd)", key: "unit_cost_usd", sortable: false },
+  { title: "Costo 1 ($)", key: "unit_cost_usd", sortable: false, align: "end" },
+  { title: "Costo 2 ($)", key: "unit_cost_usd_with_discount", sortable: false, align: "end" },
 ];
 
 const formatBs = (amount) => {
@@ -223,11 +223,13 @@ const updateTableOptions = (options) => {
               </span>
               <span v-else class="text-disabled text-xs">—</span>
             </template>
-            <template #item.unit_cost="{ item }">
-              <span class="text-sm font-weight-bold text-high-emphasis">{{ formatBs(item.unit_cost) }}</span>
-            </template>
             <template #item.unit_cost_usd="{ item }">
-              <span class="text-sm font-weight-bold text-success">{{ formatUsd(item.unit_cost_usd) }}</span>
+              <span class="text-sm font-weight-bold text-high-emphasis">${{ formatUsd(item.unit_cost_usd) }}</span>
+            </template>
+            <template #item.unit_cost_usd_with_discount="{ item }">
+              <span class="text-sm font-weight-bold text-primary">
+                ${{ formatUsd(parseFloat(item.unit_cost_usd_with_discount) > 0 ? item.unit_cost_usd_with_discount : item.unit_cost_usd) }}
+              </span>
             </template>
           </VDataTableServer>
 
@@ -276,12 +278,14 @@ const updateTableOptions = (options) => {
                   
                   <div class="d-flex justify-space-between align-center">
                     <div class="d-flex flex-column">
-                      <span class="text-super-xs text-disabled uppercase font-weight-black">Precio BS</span>
-                      <span class="text-sm font-weight-bold text-high-emphasis">{{ formatBs(item.unit_cost) }}</span>
+                      <span class="text-super-xs text-disabled uppercase font-weight-black">Costo 1 ($)</span>
+                      <span class="text-sm font-weight-bold text-high-emphasis">${{ formatUsd(item.unit_cost_usd) }}</span>
                     </div>
                     <div class="d-flex flex-column align-end">
-                      <span class="text-super-xs text-disabled uppercase font-weight-black">Precio USD</span>
-                      <span class="text-sm font-weight-bold text-success">{{ formatUsd(item.unit_cost_usd) }}</span>
+                      <span class="text-super-xs text-disabled uppercase font-weight-black">Costo 2 ($)</span>
+                      <span class="text-sm font-weight-bold text-primary">
+                        ${{ formatUsd(parseFloat(item.unit_cost_usd_with_discount) > 0 ? item.unit_cost_usd_with_discount : item.unit_cost_usd) }}
+                      </span>
                     </div>
                   </div>
                 </VCardText>

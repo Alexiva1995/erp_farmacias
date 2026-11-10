@@ -112,7 +112,8 @@ function getActiveExclusions(item) {
   if (item.max_price_increase_percentage !== null && item.max_price_increase_percentage !== undefined) {
     list.push(`Sobrecosto máx. permitido: +${item.max_price_increase_percentage}%`);
   }
-  if (item.con_descuento) list.push("Aplica precios con descuento");
+  if (item.con_descuento) list.push("Usa Costo 2");
+  else list.push("Usa Costo 1");
   if (item.include_ignored === false) list.push("Omite productos ignorados");
   if (item.supplier) list.push(`Proveedor exclusivo: ${item.supplier.name}`);
   if (Array.isArray(item.group_ids) && item.group_ids.length > 0) {

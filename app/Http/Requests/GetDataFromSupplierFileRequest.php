@@ -27,7 +27,7 @@ class GetDataFromSupplierFileRequest extends FormRequest
             "name" => ["required", "string"],
             "barcode_match" => ["nullable", "string"],
             "quantity" => ["nullable", "string"],
-            "currency" => ["nullable", "decimal:0,2"],
+            "currency" => ["nullable"],
             "unit_cost" => ["nullable", "string"],
             "unit_cost_usd" => ["nullable", "string"],
             "expiration" => ["nullable", "string"],
@@ -44,10 +44,8 @@ class GetDataFromSupplierFileRequest extends FormRequest
 
     public function withValidator($validator)
     {
-        $validator->sometimes('unit_cost', 'required', function ($input) {
-            $currencyNotEmpty = !empty($input->currency);
-            $usdNotEmpty = !empty($input->unit_cost_usd);
-            return !($currencyNotEmpty && $usdNotEmpty);
+        $validator->sometimes('unit_cost_usd', 'required', function ($input) {
+            return empty($input->unit_cost_usd) && empty($input->unit_cost);
         });
     }
 
@@ -58,15 +56,10 @@ class GetDataFromSupplierFileRequest extends FormRequest
             "start_row.min" => "La fila de inicio debe ser al menos 1.",
             "name.required" => "La columna de nombre es obligatoria.",
             "barcode_match.required" => "La columna de código de barras es obligatoria.",
-            "currency.decimal" => "La columna de tasa de cambio debe ser un número.",
             "quantity.integer" => "La columna de cantidad debe ser un número entero.",
             "quantity.min" => "La cantidad debe ser mayor o igual a 0.",
-            "unit_cost.required" => "La columna de coste unitario es obligatoria.",
-            "unit_cost.numeric" => "El coste unitario debe ser un número.",
-            "unit_cost.min" => "El coste unitario debe ser mayor o igual a 0.",
-            "unit_cost_usd.numeric" => "El coste unitario USD debe ser un número.",
-            "unit_cost_usd.min" => "El coste unitario USD debe ser mayor o igual a 0.",
-            "expiration.date_format" => "La fecha de expiración debe estar en el formato día/mes/año.",
+            "unit_cost_usd.required" => "Debe indicar la columna para Costo 1.",
+            "unit_cost.required" => "Debe indicar la columna de costo.",
             "file.required" => "Debes seleccionar un archivo.",
             "file.file" => "Debes seleccionar un archivo.",
             "file.mimes" => "El archivo debe ser de tipo Excel (.xlsx o .xls).",

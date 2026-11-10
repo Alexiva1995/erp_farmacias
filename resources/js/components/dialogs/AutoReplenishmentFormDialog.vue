@@ -218,7 +218,7 @@ function handleSave() {
                 <VCol cols="12" sm="6" class="py-1">
                   <VSwitch
                     v-model="configForm.con_descuento"
-                    label="Usar precios con descuento"
+                    label="Usar Costo 2"
                     density="compact"
                     hide-details
                     color="primary"

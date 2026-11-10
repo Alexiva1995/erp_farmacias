@@ -46,8 +46,8 @@ const emit = defineEmits([
 ]);
 
 const precioOpciones = [
-  { title: "Full", value: true },
-  { title: "Descuento", value: false },
+  { title: "Costo 1", value: false },
+  { title: "Costo 2", value: true },
 ];
 
 const tipoFiltracionOpciones = [
@@ -326,7 +326,7 @@ const isSelected = (item) => props.modelValue && props.modelValue.id === item.id
                 <VSelect
                   :model-value="props.selectConDescuento"
                   :items="precioOpciones"
-                  placeholder="Precio"
+                  placeholder="Costo a Evaluar"
                   hide-details
                   density="compact"
                   prepend-inner-icon="tabler-tag"

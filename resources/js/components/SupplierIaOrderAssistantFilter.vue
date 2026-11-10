@@ -60,8 +60,8 @@ const emit = defineEmits([
 ]);
 
 const precio = [
-  { title: "Full",      value: false },
-  { title: "Descuento", value: true  },
+  { title: "Costo 1", value: false },
+  { title: "Costo 2", value: true  },
 ];
 
 const tipoDeVistaOpcion = [
@@ -313,7 +313,7 @@ const hasAdvancedFilters = computed(() => (
         <VSelect
           :model-value="props.selectConDescuento"
           :items="precio"
-          placeholder="Precios"
+          placeholder="Costo a Evaluar"
           density="compact"
           hide-details
           prepend-inner-icon="tabler-currency-dollar"
