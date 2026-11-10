@@ -32,6 +32,17 @@ class GeneralSettingRepository implements GeneralSettingRepositoryInterface
     {
         $settings = $this->getSettings();
 
+        // Asegurar que la columna enable_ecommerce_toggle exista en la tabla actual (central o tenant)
+        if (array_key_exists('enable_ecommerce_toggle', $data) && !Schema::hasColumn('general_settings', 'enable_ecommerce_toggle')) {
+            try {
+                Schema::table('general_settings', function (Blueprint $table) {
+                    $table->boolean('enable_ecommerce_toggle')->default(true)->after('enable_bulk_toggle_active');
+                });
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo crear automáticamente la columna enable_ecommerce_toggle en general_settings: ' . $e->getMessage());
+            }
+        }
+
         // Asegurar que la columna enable_zoom exista en la tabla actual (central o tenant)
         if (array_key_exists('enable_zoom', $data) && !Schema::hasColumn('general_settings', 'enable_zoom')) {
             try {

@@ -689,7 +689,7 @@ const getMergedLots = (lots) => {
           <div class="d-flex justify-center gap-1">
             <template v-if="mode === 'products'">
               <IconBtn
-                v-if="brandingStore.settings.enable_bulk_toggle_active !== false"
+                v-if="brandingStore.settings.enable_ecommerce_toggle !== false"
                 @click="toggleActiveProduct(item)"
                 :color="item.is_active !== false && item.is_active !== 0 ? 'success' : 'error'"
                 size="small"

@@ -29,6 +29,7 @@ const enableProductTypes      = ref(true)
 const enabledProductTypes     = ref([])
 const enableFavorites         = ref(true)
 const enableBulkToggleActive  = ref(true)
+const enableEcommerceToggle   = ref(true)
 const enableVariations        = ref(true)
 const enableMerge             = ref(false)
 const enableGroups            = ref(true)
@@ -59,6 +60,7 @@ const fetchSettings = async () => {
     'enabled_product_types',
     'enable_favorites',
     'enable_bulk_toggle_active',
+    'enable_ecommerce_toggle',
     'enable_variations',
     'enable_merge',
     'enable_groups',
@@ -89,6 +91,7 @@ const fetchSettings = async () => {
       enabledProductTypes.value    = settings.enabled_product_types    ?? []
       enableFavorites.value        = settings.enable_favorites         ?? true
       enableBulkToggleActive.value = settings.enable_bulk_toggle_active ?? true
+      enableEcommerceToggle.value  = settings.enable_ecommerce_toggle  ?? true
       enableVariations.value       = settings.enable_variations        ?? true
       enableMerge.value            = settings.enable_merge             ?? false
       enableGroups.value           = settings.enable_groups            ?? true
@@ -132,6 +135,7 @@ const updateSettings = () => {
         enabled_product_types:     enabledProductTypes.value,
         enable_favorites:          enableFavorites.value,
         enable_bulk_toggle_active: enableBulkToggleActive.value,
+        enable_ecommerce_toggle:   enableEcommerceToggle.value,
         enable_variations:         enableVariations.value,
         enable_merge:              enableMerge.value,
         enable_groups:             enableGroups.value,
@@ -233,6 +237,7 @@ onMounted(fetchSettings)
         v-model:enable-product-types="enableProductTypes"
         v-model:enable-favorites="enableFavorites"
         v-model:enable-bulk-toggle-active="enableBulkToggleActive"
+        v-model:enable-ecommerce-toggle="enableEcommerceToggle"
         v-model:enable-variations="enableVariations"
         v-model:enable-merge="enableMerge"
         v-model:enable-groups="enableGroups"

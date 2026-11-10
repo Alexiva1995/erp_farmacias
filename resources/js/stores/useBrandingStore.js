@@ -22,6 +22,7 @@ export const useBrandingStore = defineStore('branding', () => {
     enabled_product_types: ['redundantes', 'col', 'iva', 'exento', 'novaventa', 'eliminados', 'pvp', 'ingredients', 'mixed'],
     enable_favorites:  true,
     enable_bulk_toggle_active: true,
+    enable_ecommerce_toggle: true,
     enable_variations: true,
     enable_merge:      false,
     enable_groups:     true,
