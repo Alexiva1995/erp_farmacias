@@ -39,6 +39,16 @@ class ProductQueryService
      */
     private function applyFilters(Builder $query, array $filters): Builder
     {
+        // Excluir sub-recetas por defecto salvo solicitud explícita
+        if (empty($filters['include_sub_recipes']) && empty($filters['is_sub_recipe'])) {
+            $query->where(function ($q) {
+                $q->where('products.is_sub_recipe', false)
+                    ->orWhereNull('products.is_sub_recipe');
+            });
+        } elseif (!empty($filters['is_sub_recipe'])) {
+            $query->where('products.is_sub_recipe', true);
+        }
+
         if (!empty($filters['null_barcodes'])) {
             $query->whereNull('barcode');
         }
@@ -313,6 +323,10 @@ class ProductQueryService
     {
         $product = Product::where('barcode', $request->barcode)
             ->where('no_pvp', '!=', 1)
+            ->where(function ($q) {
+                $q->where('products.is_sub_recipe', false)
+                    ->orWhereNull('products.is_sub_recipe');
+            })
             ->with(['laboratory', 'origin', 'category'])
             ->first();
         return $product;
@@ -343,6 +357,8 @@ class ProductQueryService
             'onlyDeleted'    => filter_var($request->get('onlyDeleted'), FILTER_VALIDATE_BOOLEAN),
             'product_type'   => $request->input('product_type') ?? $request->input('productType'),
             'restaurant_type'=> $request->input('restaurant_type') ?? $request->input('restaurantType'),
+            'include_sub_recipes' => filter_var($request->get('include_sub_recipes'), FILTER_VALIDATE_BOOLEAN),
+            'is_sub_recipe'  => $request->has('is_sub_recipe') ? filter_var($request->get('is_sub_recipe'), FILTER_VALIDATE_BOOLEAN) : null,
         ];
 
         $this->applyFilters($query, $filters);
@@ -495,6 +511,10 @@ class ProductQueryService
         $totalValue = Product::selectRaw('SUM(stock * unit_cost) as total_value')
             ->where('stock', '>', 0)
             ->where('unit_cost', '>', 0)
+            ->where(function ($q) {
+                $q->where('products.is_sub_recipe', false)
+                    ->orWhereNull('products.is_sub_recipe');
+            })
             ->value('total_value');
 
         return (float) ($totalValue ?? 0);

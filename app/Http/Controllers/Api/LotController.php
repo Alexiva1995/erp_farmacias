@@ -187,7 +187,11 @@ class LotController extends Controller
     public function getProductLots(Request $request, $productId)
     {
         try {
-            $product = \App\Models\Product::find($productId);
+            $product = \App\Models\Product::where('id', $productId)
+                ->where(function ($q) {
+                    $q->where('is_sub_recipe', false)->orWhereNull('is_sub_recipe');
+                })
+                ->first();
             if (!$product) {
                 return response()->json([
                     'message' => 'Producto no encontrado.',
@@ -220,7 +224,11 @@ class LotController extends Controller
     public function getAvailableStock(Request $request, $productId)
     {
         try {
-            $product = \App\Models\Product::find($productId);
+            $product = \App\Models\Product::where('id', $productId)
+                ->where(function ($q) {
+                    $q->where('is_sub_recipe', false)->orWhereNull('is_sub_recipe');
+                })
+                ->first();
             if (!$product) {
                 return response()->json([
                     'message' => 'Producto no encontrado.',

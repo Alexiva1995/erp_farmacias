@@ -16,6 +16,9 @@ class LotQueryService
     {
         $query = ProductLot::query()
             ->select('product_lots.*')
+            ->whereHas('product', function ($productQuery) {
+                $productQuery->where('is_sub_recipe', false)->orWhereNull('is_sub_recipe');
+            })
             ->with(['product.laboratory', 'supplier', 'product.origin']);
 
         $isStrictSearch = filter_var($request->get('isStrictSearch'), FILTER_VALIDATE_BOOLEAN);
@@ -127,6 +130,9 @@ class LotQueryService
     {
         $query = ProductLot::query()
             ->select('product_lots.*')
+            ->whereHas('product', function ($productQuery) {
+                $productQuery->where('is_sub_recipe', false)->orWhereNull('is_sub_recipe');
+            })
             ->with(['product.laboratory', 'product.origin', 'supplier'])
             ->where(function ($q) {
                 // Mostrar lotes que les falte ubicación o nombre (lot_number)
@@ -226,6 +232,9 @@ class LotQueryService
     public function getProductsWithoutLot()
     {
         return Product::with('laboratory', 'origin')
+            ->where(function ($q) {
+                $q->where('is_sub_recipe', false)->orWhereNull('is_sub_recipe');
+            })
             ->orderBy('name', 'asc')
             ->get();
     }
@@ -242,7 +251,9 @@ class LotQueryService
                 'product_lots.quantity',
                 'product_lots.location',
             ])
-            ->whereHas('product')
+            ->whereHas('product', function ($productQuery) {
+                $productQuery->where('is_sub_recipe', false)->orWhereNull('is_sub_recipe');
+            })
             ->with([
                 'product:id,name,active_ingredient,presentation,unit_of_measure,photo_url,psychotropic,iva,is_colombian_origin,laboratory_id,origin_id',
                 'product.laboratory:id,name',
@@ -351,7 +362,10 @@ class LotQueryService
             ])
             ->where('products.lotification_completed', false)
             ->where('products.is_deleted', false)
-            ->where('products.is_active', true);
+            ->where('products.is_active', true)
+            ->where(function ($q) {
+                $q->where('products.is_sub_recipe', false)->orWhereNull('products.is_sub_recipe');
+            });
 
         // Búsqueda por término (q)
         if ($request->filled('q')) {

@@ -40,8 +40,16 @@ class ProductController extends Controller
         // Acepta product_id (snake_case) y productId (camelCase)
         $productId = $request->input('product_id') ?? $request->input('productId') ?? $request->input('id');
         if ($productId && is_numeric($productId)) {
-            $product = Product::with(['category', 'laboratory', 'origin', 'group', 'profitability', 'lots', 'productSuppliers', 'variants'])
-                ->find((int) $productId);
+            $productQuery = Product::with(['category', 'laboratory', 'origin', 'group', 'profitability', 'lots', 'productSuppliers', 'variants'])
+                ->where('id', (int) $productId);
+
+            if (!$request->boolean('include_sub_recipes')) {
+                $productQuery->where(function ($q) {
+                    $q->where('is_sub_recipe', false)->orWhereNull('is_sub_recipe');
+                });
+            }
+
+            $product = $productQuery->first();
             if ($product) {
                 $product->stock_calculado = $product->lots->sum('quantity');
                 if ($isMasterContext) {
@@ -309,6 +317,9 @@ class ProductController extends Controller
         try {
             // Consulta base con relaciones esenciales
             $products = Product::where('no_pvp', '!=', 1)
+                ->where(function ($q) {
+                    $q->where('is_sub_recipe', false)->orWhereNull('is_sub_recipe');
+                })
                 ->with(['laboratory', 'category', 'lots'])
                 ->withSum('lots as stock_calculado', 'quantity')
                 ->orderBy('name', 'asc')   // Orden alfabético por defecto
@@ -471,7 +482,10 @@ class ProductController extends Controller
             $q = trim((string) request()->query('q'));
             
             // Buscar productos ordenados por nombre
-            $query = Product::with(['lots', 'laboratory']);
+            $query = Product::with(['lots', 'laboratory'])
+                ->where(function ($q) {
+                    $q->where('is_sub_recipe', false)->orWhereNull('is_sub_recipe');
+                });
 
             // Si se proporciona un término de búsqueda, filtrar
             if ($q !== '') {
