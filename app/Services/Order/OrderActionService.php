@@ -184,14 +184,22 @@ class OrderActionService
                     foreach ($modifiersInput as $mod) {
                         $option = null;
                         if (!empty($mod['modifier_option_id'])) {
-                            $option = \App\Models\ModifierOption::with('product')->find($mod['modifier_option_id']);
+                            $option = \App\Models\ModifierOption::with(['product', 'group'])->find($mod['modifier_option_id']);
                         }
 
                         $modName = $mod['name'] ?? ($option?->name ?? 'Modificador');
                         $modType = $mod['modifier_type'] ?? ($option?->modifier_type?->value ?? ($option?->modifier_type ?? 'add'));
                         $modExtraPrice = (float)($mod['extra_price_usd'] ?? ($option?->extra_price_usd ?? 0));
                         $modProductId = $mod['product_id'] ?? ($option?->product_id ?? null);
+                        $baseProductId = $mod['base_product_id'] ?? ($option?->group?->base_product_id ?? null);
+
+                        // Si sustituye a un ingrediente base de la receta, hereda automáticamente la porción de la receta
+                        $dishBaseIng = $baseProductId ? $dish->ingredients->firstWhere('id', $baseProductId) : null;
+                        $recipePortion = (float)($dishBaseIng?->pivot?->portion ?? 0);
                         $modPortion = (float)($mod['portion'] ?? ($option?->portion ?? 0));
+                        if ($modPortion <= 0 && $recipePortion > 0) {
+                            $modPortion = $recipePortion;
+                        }
 
                         if ($modType === 'add') {
                             $extraPriceUsd += $modExtraPrice;
@@ -207,6 +215,17 @@ class OrderActionService
                                 $portionToRemove = $modPortion > 0 ? $modPortion : (float)($dishIng?->pivot?->portion ?? 0);
                                 $extraCostUsd -= ($portionToRemove * (float)($targetProduct->unit_cost ?? 0)) / $pres;
                             }
+                        } elseif ($modType === 'substitute' || (!empty($baseProductId) && $modProductId)) {
+                            $extraPriceUsd += $modExtraPrice;
+                            if ($dishBaseIng) {
+                                $basePres = (float)($dishBaseIng->presentation ?? 1) > 0 ? (float)$dishBaseIng->presentation : 1.0;
+                                $extraCostUsd -= ($modPortion * (float)($dishBaseIng->unit_cost ?? 0)) / $basePres;
+                            }
+                            $targetProduct = $option?->product ?: ($modProductId ? \App\Models\Product::find($modProductId) : null);
+                            if ($targetProduct) {
+                                $targetPres = (float)($targetProduct->presentation ?? 1) > 0 ? (float)$targetProduct->presentation : 1.0;
+                                $extraCostUsd += ($modPortion * (float)($targetProduct->unit_cost ?? 0)) / $targetPres;
+                            }
                         }
 
                         $normalizedModifiers[] = [
@@ -215,6 +234,7 @@ class OrderActionService
                             'modifier_type' => $modType,
                             'extra_price_usd' => $modExtraPrice,
                             'product_id' => $modProductId,
+                            'base_product_id' => $baseProductId,
                             'portion' => $modPortion,
                         ];
                     }
@@ -1506,9 +1526,9 @@ class OrderActionService
 
                 if ($detail->product_type === 'dish') {
                     $dish = \App\Models\Dish::with('ingredients')->findOrFail($detail->dish_id);
-                    $detail->load('modifiers');
+                    $detail->load(['modifiers.option.group']);
 
-                    // Construir consumo por producto considerando modificadores add y remove
+                    // Construir consumo por producto considerando modificadores add, remove y substitute
                     $effectiveIngredients = [];
                     foreach ($dish->ingredients as $ingredient) {
                         $effectiveIngredients[$ingredient->id] = [
@@ -1520,9 +1540,34 @@ class OrderActionService
                     foreach ($detail->modifiers as $mod) {
                         if (!$mod->product_id) continue;
                         $mType = $mod->modifier_type instanceof \App\Enums\ModifierTypeEnum ? $mod->modifier_type->value : (string)$mod->modifier_type;
+                        $baseProductId = $mod->base_product_id ?? ($mod->option?->group?->base_product_id ?? null);
                         $modPortion = (float)$mod->portion;
 
-                        if ($mType === 'remove') {
+                        if ($mType === 'substitute' || (!empty($baseProductId) && isset($effectiveIngredients[$baseProductId]))) {
+                            $recipeBasePortion = isset($effectiveIngredients[$baseProductId]) ? $effectiveIngredients[$baseProductId]['portion'] : 0;
+                            $portionToUse = $modPortion > 0 ? $modPortion : $recipeBasePortion;
+
+                            // Reducir o eliminar el insumo base de la receta
+                            if (isset($effectiveIngredients[$baseProductId])) {
+                                $effectiveIngredients[$baseProductId]['portion'] = max(0, $effectiveIngredients[$baseProductId]['portion'] - $portionToUse);
+                                if ($effectiveIngredients[$baseProductId]['portion'] <= 0) {
+                                    unset($effectiveIngredients[$baseProductId]);
+                                }
+                            }
+
+                            // Añadir el insumo sustituto (sabor) con la misma porción de la receta
+                            if (isset($effectiveIngredients[$mod->product_id])) {
+                                $effectiveIngredients[$mod->product_id]['portion'] += $portionToUse;
+                            } else {
+                                $pObj = \App\Models\Product::find($mod->product_id);
+                                if ($pObj) {
+                                    $effectiveIngredients[$mod->product_id] = [
+                                        'product' => $pObj,
+                                        'portion' => $portionToUse,
+                                    ];
+                                }
+                            }
+                        } elseif ($mType === 'remove') {
                             if (isset($effectiveIngredients[$mod->product_id])) {
                                 if ($modPortion <= 0) {
                                     unset($effectiveIngredients[$mod->product_id]);

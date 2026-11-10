@@ -119,6 +119,7 @@ const dishStatus = ref(1);
 // Diálogo de edición / creación
 const isEditDialogVisible = ref(false);
 const kitchenStations = ref([]);
+const modifierGroups = ref([]);
 const currentDish = ref({
   id: null,
   name: "",
@@ -133,6 +134,7 @@ const currentDish = ref({
   tax_rate: 16.0,
   preparation_time_minutes: 15,
   kitchen_station_id: null,
+  modifier_group_ids: [],
   ingredients: [],
 });
 
@@ -299,6 +301,15 @@ const fetchKitchenStations = async () => {
     kitchenStations.value = data.data || [];
   } catch (error) {
     console.error("Error al obtener estaciones de cocina:", error);
+  }
+};
+
+const fetchModifierGroups = async () => {
+  try {
+    const { data } = await axios.get("/modifier-groups");
+    modifierGroups.value = data.data || [];
+  } catch (error) {
+    console.error("Error al obtener grupos de modificadores:", error);
   }
 };
 
@@ -533,6 +544,7 @@ const handleAddDish = () => {
     tax_rate: 16.0,
     preparation_time_minutes: 15,
     kitchen_station_id: null,
+    modifier_group_ids: [],
     ingredients: [],
   };
   dishStatus.value = 1;
@@ -561,6 +573,7 @@ const handleEditDish = async (dish) => {
       tax_rate: details.tax_rate !== null && details.tax_rate !== undefined ? details.tax_rate : 16.0,
       preparation_time_minutes: details.preparation_time_minutes || 15,
       kitchen_station_id: details.kitchen_station_id || null,
+      modifier_group_ids: (details.modifier_groups || []).map((g) => g.id),
       expected_yield_quantity: details.expected_yield_quantity || 1,
       shelf_life_days: details.shelf_life_days || 7,
       ingredients: details.ingredients.map((ing) => {
@@ -616,6 +629,7 @@ const handleDuplicateDish = async (dish) => {
       tax_rate: details.tax_rate !== null && details.tax_rate !== undefined ? details.tax_rate : 16.0,
       preparation_time_minutes: details.preparation_time_minutes || 15,
       kitchen_station_id: details.kitchen_station_id || null,
+      modifier_group_ids: (details.modifier_groups || []).map((g) => g.id),
       expected_yield_quantity: details.expected_yield_quantity || 1,
       shelf_life_days: details.shelf_life_days || 7,
       ingredients: details.ingredients.map((ing) => {
@@ -809,6 +823,7 @@ onMounted(() => {
   brandingStore.fetchSettings();
   fetchCategories();
   fetchKitchenStations();
+  fetchModifierGroups();
   fetchDishes();
 });
 
@@ -1214,6 +1229,25 @@ onUnmounted(() => {
                       clearable
                       hide-details
                       prepend-inner-icon="tabler-flame"
+                    />
+                  </VCol>
+
+                  <!-- Grupos de Modificadores (Sabores / Opciones) -->
+                  <VCol cols="12" class="mt-1">
+                    <VSelect
+                      v-model="currentDish.modifier_group_ids"
+                      :items="modifierGroups"
+                      item-title="name"
+                      item-value="id"
+                      label="Grupos de Modificadores (Sabores / Opciones)"
+                      placeholder="Seleccionar grupos (ej: Sabor de helado)"
+                      density="compact"
+                      multiple
+                      chips
+                      closable-chips
+                      clearable
+                      hide-details
+                      prepend-inner-icon="tabler-adjustments-alt"
                     />
                   </VCol>
                 </VRow>

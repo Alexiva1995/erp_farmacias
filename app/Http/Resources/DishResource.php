@@ -87,6 +87,7 @@ class DishResource extends JsonResource
                     return [
                         'id' => $group->id,
                         'name' => $group->name,
+                        'base_product_id' => $group->base_product_id,
                         'min_selections' => (int) $group->min_selections,
                         'max_selections' => (int) $group->max_selections,
                         'options' => $group->options ? $group->options->map(function ($opt) {

@@ -55,6 +55,7 @@ const toggleOption = (group, option) => {
       modifier_type: option.modifier_type,
       extra_price_usd: option.extra_price_usd,
       product_id: option.product_id,
+      base_product_id: group.base_product_id || null,
       portion: option.portion,
     })
   }
