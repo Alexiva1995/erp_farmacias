@@ -470,6 +470,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
+            \App\Contracts\Suppliers\ContinentalFtpServiceInterface::class,
+            \App\Services\Suppliers\ContinentalFtpService::class
+        );
+
+        $this->app->bind(
             \App\Contracts\Suppliers\DrosymcaScraperServiceInterface::class,
             \App\Services\Suppliers\DrosymcaScraperService::class
         );

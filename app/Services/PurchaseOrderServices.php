@@ -23,6 +23,7 @@ class PurchaseOrderServices implements PurchaseOrder
     protected \App\Contracts\Suppliers\MarfartaPcCorreoServiceInterface $marfartaPcCorreoService,
     protected \App\Contracts\Suppliers\CristmedicalsApiServiceInterface $cristmedicalsApiService,
     protected \App\Contracts\Suppliers\DromegaFtpServiceInterface $dromegaFtpService,
+    protected \App\Contracts\Suppliers\ContinentalFtpServiceInterface $continentalFtpService,
   ) {
   }
 
@@ -83,13 +84,14 @@ class PurchaseOrderServices implements PurchaseOrder
     
     // Si no es confirmación manual forzada, intentar transmisión automatizada
     if (!$force) {
-      // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca, Mafarta, Cristmedicals, Dromega)
+      // Identificar proveedor automatizado (Dronena, Vitalclinic, Drocerca, Mafarta, Cristmedicals, Dromega, Continental)
       $isDronena = false;
     $isVitalclinic = false;
     $isDrocerca = false;
     $isMafarta = false;
     $isCristmedicals = false;
     $isDromega = false;
+    $isContinental = false;
 
     if ($supplier) {
       $supplierName = strtoupper($supplier->name);
@@ -151,6 +153,19 @@ class PurchaseOrderServices implements PurchaseOrder
           $isDromega = true;
         }
       }
+
+      if (str_contains($supplierName, 'CONTIN') || (int)$supplier->id === 1032) {
+        $isContinental = true;
+      } else {
+        $hasContinentalFtp = $supplier->connections()->where(function ($query) {
+          $query->where('host', 'LIKE', '%186.167.68.54%')
+            ->orWhere('host', 'LIKE', '%contin%')
+            ->orWhere('username', 'LIKE', '%contin%');
+        })->exists();
+        if ($hasContinentalFtp) {
+          $isContinental = true;
+        }
+      }
     }
 
     if ($isDronena) {
@@ -204,6 +219,15 @@ class PurchaseOrderServices implements PurchaseOrder
       } catch (\Throwable $e) {
         \Illuminate\Support\Facades\Log::error("[DROMEGA FTP] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
         throw new \Exception("Error al transmitir el pedido a Dromega por FTP: " . $e->getMessage());
+      }
+    }
+
+    if ($isContinental) {
+      try {
+        $this->continentalFtpService->sendOrderFtp($autoOrder);
+      } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("[CONTINENTAL FTP] Error transmitiendo pedido automático #{$autoOrder->id}: " . $e->getMessage());
+        throw new \Exception("Error al transmitir el pedido a Droguería Intercontinental por FTP: " . $e->getMessage());
       }
     }
     }
