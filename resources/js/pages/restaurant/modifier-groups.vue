@@ -65,15 +65,15 @@ const newOption = ref({
 
 // ─── Autocompletes filtrados ────────────────────────────────────────────────
 const filteredProducts = computed(() => {
-  if (!searchProducts.value) return products.value.slice(0, 50)
+  if (!searchProducts.value) return products.value.slice(0, 60)
   const q = searchProducts.value.toLowerCase()
-  return products.value.filter(p => p.name.toLowerCase().includes(q)).slice(0, 50)
+  return products.value.filter(p => p.name.toLowerCase().includes(q)).slice(0, 60)
 })
 
 const filteredBaseProducts = computed(() => {
-  if (!searchBaseProduct.value) return products.value.slice(0, 50)
+  if (!searchBaseProduct.value) return products.value.slice(0, 60)
   const q = searchBaseProduct.value.toLowerCase()
-  return products.value.filter(p => p.name.toLowerCase().includes(q)).slice(0, 50)
+  return products.value.filter(p => p.name.toLowerCase().includes(q)).slice(0, 60)
 })
 
 // ─── Grupos filtrados para la tabla ─────────────────────────────────────────
@@ -275,8 +275,10 @@ onMounted(() => {
             item-title="title"
             item-value="value"
             placeholder="Filtrar por Estado"
+            variant="outlined"
+            density="comfortable"
+            class="rounded-lg"
             clearable
-            density="compact"
             hide-details
           />
         </VCol>
@@ -476,47 +478,84 @@ onMounted(() => {
       </div>
     </VCard>
 
-    <!-- ── Modal Diálogo Crear / Editar (Estilo ProductEditDialog) ────────── -->
-    <VDialog v-model="dialog" max-width="840px" persistent scrollable>
-      <VCard class="rounded-lg">
-        <!-- Cabecera del Diálogo -->
-        <VCardTitle class="d-flex align-center justify-space-between pa-4 bg-primary text-white">
-          <div class="d-flex align-center gap-2">
-            <VIcon icon="tabler-adjustments-alt" color="white" />
-            <span class="text-subtitle-1 font-weight-black text-uppercase text-white">
-              {{ form.id ? 'Editar Grupo de Modificadores' : 'Nuevo Grupo de Modificadores' }}
-            </span>
+    <!-- ── Modal Diálogo Crear / Editar (Estilo ProductEditDialog Premium) ──── -->
+    <VDialog
+      v-model="dialog"
+      max-width="860px"
+      persistent
+      scrollable
+      content-class="d-flex"
+    >
+      <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+        <!-- Cabecera con degradado del tema -->
+        <VCardTitle class="pa-0">
+          <div class="header-gradient d-flex align-center shadow-sm pa-4">
+            <VAvatar
+              color="white"
+              variant="flat"
+              size="40"
+              class="me-3 elevation-1 rounded-lg"
+            >
+              <VIcon
+                icon="tabler-adjustments-alt"
+                size="24"
+                class="modal-avatar-icon"
+              />
+            </VAvatar>
+            <div class="d-flex flex-column leading-none">
+              <h2 class="text-h6 font-weight-black text-white leading-tight mb-0 uppercase">
+                {{ form.id ? 'Editar Grupo de Modificadores' : 'Añadir Nuevo Grupo de Modificadores' }}
+              </h2>
+              <div class="d-flex align-center gap-2 mt-1">
+                <span
+                  class="text-white opacity-75 uppercase font-weight-bold"
+                  style="font-size: 0.65rem; letter-spacing: 0.05em;"
+                >
+                  Gestión de Sabores y Personalizaciones para Platos de Restaurante
+                </span>
+              </div>
+            </div>
+            <VSpacer />
+            <VBtn
+              icon="tabler-x"
+              variant="text"
+              color="white"
+              size="small"
+              @click="dialog = false"
+            />
           </div>
-          <VBtn icon variant="text" color="white" size="small" @click="dialog = false">
-            <VIcon icon="tabler-x" />
-          </VBtn>
         </VCardTitle>
 
-        <VCardText class="pa-5 d-flex flex-column gap-4">
+        <!-- Contenido del Diálogo con fondo suave y tarjetas internas -->
+        <VCardText class="pa-4 pa-sm-6 bg-light d-flex flex-column gap-6">
 
-          <!-- Tarjeta 1: Información General del Grupo -->
-          <VCard variant="flat" class="border rounded-lg pa-4">
-            <div class="d-flex align-center justify-space-between mb-3">
-              <h4 class="text-subtitle-2 font-weight-black text-high-emphasis text-uppercase">
-                1. Información Básica del Grupo
-              </h4>
-              <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
-                Configuración
-              </VChip>
+          <!-- 1. Información General del Grupo -->
+          <div class="d-flex flex-column gap-3">
+            <div class="d-flex align-center gap-2">
+              <div class="header-indicator primary shadow-sm" />
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
+                Información del Grupo
+              </span>
             </div>
 
-            <VRow dense>
-              <VCol cols="12" sm="8">
-                <AppTextField
-                  v-model="form.name"
-                  label="Nombre del Grupo *"
-                  placeholder="Ej: Sabor de helado, Término de la carne, Tipo de pan"
-                  density="compact"
-                  required
-                />
-              </VCol>
-              <VCol cols="12" sm="4">
-                <div class="d-flex align-center justify-end h-100 pt-2">
+            <VCard variant="flat" class="pa-4 pa-sm-5 bg-surface rounded-xl border shadow-sm">
+              <VRow dense>
+                <!-- Nombre del Grupo -->
+                <VCol cols="12" md="8">
+                  <VTextField
+                    v-model="form.name"
+                    label="Nombre del Grupo *"
+                    placeholder="Ej: Sabor de Helado"
+                    variant="outlined"
+                    density="comfortable"
+                    class="rounded-lg font-weight-black"
+                    hide-details="auto"
+                    required
+                  />
+                </VCol>
+
+                <!-- Switch Activo -->
+                <VCol cols="12" md="4" class="d-flex align-center justify-md-end pt-1">
                   <VSwitch
                     v-model="form.is_active"
                     label="Grupo Activo"
@@ -524,220 +563,261 @@ onMounted(() => {
                     density="compact"
                     hide-details
                   />
-                </div>
-              </VCol>
-
-              <VCol cols="12">
-                <AppTextField
-                  v-model="form.description"
-                  label="Descripción (Opcional)"
-                  placeholder="Ej: El cliente elige un sabor por cada bola de helado"
-                  density="compact"
-                />
-              </VCol>
-
-              <!-- Insumo base a sustituir en recetas -->
-              <VCol cols="12">
-                <VAutocomplete
-                  v-model="form.base_product_id"
-                  v-model:search="searchBaseProduct"
-                  :items="filteredBaseProducts"
-                  item-title="name"
-                  item-value="id"
-                  label="Insumo base que sustituye en la receta (Ej: Helado General)"
-                  placeholder="Seleccionar insumo de la receta..."
-                  clearable
-                  density="compact"
-                  prepend-inner-icon="tabler-replace"
-                  hint="Si seleccionas un insumo base (ej: Helado General), cualquier sabor elegido heredará automáticamente los gramos exactos que tenga la receta de cada plato."
-                  persistent-hint
-                  no-data-text="No se encontraron productos en inventario"
-                />
-              </VCol>
-
-              <VCol cols="12" sm="6" class="mt-2">
-                <AppTextField
-                  v-model="form.min_selections"
-                  label="Mínimo de Opciones Requeridas"
-                  type="number"
-                  min="0"
-                  density="compact"
-                  hint="1 si es obligatorio elegir (ej: 1 sabor)"
-                  persistent-hint
-                />
-              </VCol>
-              <VCol cols="12" sm="6" class="mt-2">
-                <AppTextField
-                  v-model="form.max_selections"
-                  label="Máximo de Opciones Permitidas"
-                  type="number"
-                  min="1"
-                  density="compact"
-                  hint="1 para selección única"
-                  persistent-hint
-                />
-              </VCol>
-            </VRow>
-          </VCard>
-
-          <!-- Tarjeta 2: Listado de Opciones / Sabores Actuales -->
-          <VCard variant="flat" class="border rounded-lg pa-4">
-            <div class="d-flex align-center justify-space-between mb-3">
-              <h4 class="text-subtitle-2 font-weight-black text-high-emphasis text-uppercase d-flex align-center gap-2">
-                <VIcon icon="tabler-list" size="18" color="primary" />
-                2. Sabores / Opciones Configuradas ({{ form.options.length }})
-              </h4>
-            </div>
-
-            <!-- Tabla de opciones añadidas -->
-            <VTable v-if="form.options.length > 0" density="compact" class="border rounded-lg overflow-hidden mb-4">
-              <thead>
-                <tr>
-                  <th class="text-left font-weight-bold text-xs uppercase">Sabor / Opción</th>
-                  <th class="text-left font-weight-bold text-xs uppercase">Tipo</th>
-                  <th class="text-left font-weight-bold text-xs uppercase">Insumo a Descontar</th>
-                  <th class="text-left font-weight-bold text-xs uppercase">Porción</th>
-                  <th class="text-right font-weight-bold text-xs uppercase">Precio Extra</th>
-                  <th class="text-center font-weight-bold text-xs uppercase" style="width: 50px;">Quitar</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(opt, idx) in form.options" :key="idx">
-                  <td class="font-weight-black text-sm">
-                    {{ opt.name }}
-                  </td>
-                  <td>
-                    <VChip
-                      size="x-small"
-                      :color="opt.modifier_type === 'substitute' ? 'primary' : opt.modifier_type === 'add' ? 'success' : opt.modifier_type === 'remove' ? 'error' : 'secondary'"
-                      variant="tonal"
-                      class="font-weight-medium"
-                    >
-                      {{ opt.modifier_type }}
-                    </VChip>
-                  </td>
-                  <td>
-                    <span v-if="opt.product_id" class="font-weight-medium text-xs text-high-emphasis">
-                      {{ productName(opt.product_id) }}
-                    </span>
-                    <span v-else class="text-disabled text-xs">—</span>
-                  </td>
-                  <td>
-                    <span v-if="form.base_product_id" class="text-xs text-primary font-weight-bold">
-                      Gramos de receta
-                    </span>
-                    <span v-else-if="opt.portion > 0" class="text-xs font-mono">
-                      {{ opt.portion }}
-                    </span>
-                    <span v-else class="text-disabled text-xs">—</span>
-                  </td>
-                  <td class="text-right font-mono text-xs">
-                    <span v-if="opt.extra_price_usd > 0" class="font-weight-bold text-success">
-                      +${{ Number(opt.extra_price_usd).toFixed(2) }}
-                    </span>
-                    <span v-else class="text-disabled">$0.00</span>
-                  </td>
-                  <td class="text-center">
-                    <IconBtn size="small" color="error" variant="text" @click="removeOption(idx)">
-                      <VIcon icon="tabler-trash" size="16" />
-                    </IconBtn>
-                  </td>
-                </tr>
-              </tbody>
-            </VTable>
-
-            <div v-else class="pa-4 text-center text-disabled border rounded-lg mb-4">
-              <VIcon icon="tabler-bulb" size="24" class="opacity-40 mb-1" />
-              <p class="text-xs mb-0">Aún no hay sabores ni opciones configuradas en este grupo.</p>
-            </div>
-
-            <!-- Formulario Inline para agregar nuevo sabor -->
-            <VCard variant="tonal" color="primary" class="pa-3 rounded-lg border">
-              <div class="text-xs font-weight-black uppercase mb-3 d-flex align-center gap-1">
-                <VIcon icon="tabler-plus" size="14" />
-                Agregar Nuevo Sabor / Opción al Grupo
-              </div>
-
-              <VRow dense>
-                <VCol cols="12" sm="5">
-                  <AppTextField
-                    v-model="newOption.name"
-                    label="Nombre de la Opción *"
-                    placeholder="Ej: Vainilla, Chocolate, Fresa"
-                    density="compact"
-                  />
                 </VCol>
-                <VCol cols="12" sm="4">
-                  <VSelect
-                    v-model="newOption.modifier_type"
-                    :items="modifierTypes"
-                    item-title="title"
-                    item-value="value"
-                    label="Tipo de Modificador"
-                    density="compact"
-                  />
-                </VCol>
-                <VCol cols="12" sm="3">
-                  <AppTextField
-                    v-model="newOption.extra_price_usd"
-                    label="Precio Extra USD"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    density="compact"
+
+                <!-- Descripción Opcional -->
+                <VCol cols="12">
+                  <VTextField
+                    v-model="form.description"
+                    label="Descripción (Opcional)"
+                    placeholder="Ej: El cliente elige un sabor por cada bola de helado"
+                    variant="outlined"
+                    density="comfortable"
+                    class="rounded-lg"
+                    hide-details="auto"
                   />
                 </VCol>
 
-                <!-- Insumo del inventario a descontar -->
-                <VCol cols="12" sm="8">
+                <!-- Insumo Base que sustituye en recetas -->
+                <VCol cols="12">
                   <VAutocomplete
-                    v-model="newOption.product_id"
-                    v-model:search="searchProducts"
-                    :items="filteredProducts"
+                    v-model="form.base_product_id"
+                    v-model:search="searchBaseProduct"
+                    :items="filteredBaseProducts"
                     item-title="name"
                     item-value="id"
-                    label="Insumo en Inventario a Descontar (Ej: Helado Vainilla)"
-                    placeholder="Buscar producto de inventario..."
+                    label="¿Qué Insumo de la Receta Sustituye este Grupo? (Ej: Helado General)"
+                    placeholder="Buscar insumo base en recetas..."
+                    variant="outlined"
+                    density="comfortable"
+                    class="rounded-lg"
                     clearable
-                    density="compact"
-                    no-data-text="Sin resultados en inventario"
+                    prepend-inner-icon="tabler-replace"
+                    hint="Al seleccionar un insumo base, los sabores elegidos heredarán automáticamente los gramos de la receta de cada plato sin tener que indicar porción por sabor."
+                    persistent-hint
+                    no-data-text="No se encontraron productos en inventario"
                   />
                 </VCol>
-                <VCol cols="12" sm="4" class="d-flex align-center justify-end pt-2">
-                  <VBtn color="primary" variant="flat" size="small" block height="40" @click="addOption">
-                    <VIcon icon="tabler-plus" start size="16" />
-                    Agregar Opción
-                  </VBtn>
+
+                <!-- Mínimo y Máximo de Selecciones -->
+                <VCol cols="12" sm="6" class="mt-2">
+                  <VTextField
+                    v-model="form.min_selections"
+                    label="Mínimo de Opciones Requeridas"
+                    type="number"
+                    min="0"
+                    variant="outlined"
+                    density="comfortable"
+                    class="rounded-lg"
+                    hint="1 si es obligatorio elegir (ej: 1 sabor)"
+                    persistent-hint
+                  />
+                </VCol>
+                <VCol cols="12" sm="6" class="mt-2">
+                  <VTextField
+                    v-model="form.max_selections"
+                    label="Máximo de Opciones Permitidas"
+                    type="number"
+                    min="1"
+                    variant="outlined"
+                    density="comfortable"
+                    class="rounded-lg"
+                    hint="1 para selección única"
+                    persistent-hint
+                  />
                 </VCol>
               </VRow>
             </VCard>
-          </VCard>
+          </div>
+
+          <!-- 2. Sabores y Opciones del Grupo -->
+          <div class="d-flex flex-column gap-3">
+            <div class="d-flex align-center justify-space-between">
+              <div class="d-flex align-center gap-2">
+                <div class="header-indicator primary shadow-sm" />
+                <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
+                  Sabores / Opciones Configuradas ({{ form.options.length }})
+                </span>
+              </div>
+            </div>
+
+            <VCard variant="flat" class="pa-4 pa-sm-5 bg-surface rounded-xl border shadow-sm">
+              <!-- Tabla de Opciones añadidas -->
+              <VTable v-if="form.options.length > 0" density="compact" class="border rounded-lg overflow-hidden mb-4">
+                <thead>
+                  <tr class="bg-light">
+                    <th class="text-left font-weight-bold text-xs uppercase py-2">Sabor / Opción</th>
+                    <th class="text-left font-weight-bold text-xs uppercase py-2">Tipo</th>
+                    <th class="text-left font-weight-bold text-xs uppercase py-2">Insumo a Descontar</th>
+                    <th class="text-left font-weight-bold text-xs uppercase py-2">Porción</th>
+                    <th class="text-right font-weight-bold text-xs uppercase py-2">Precio Extra</th>
+                    <th class="text-center font-weight-bold text-xs uppercase py-2" style="width: 50px;">Quitar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(opt, idx) in form.options" :key="idx">
+                    <td class="font-weight-black text-sm">
+                      {{ opt.name }}
+                    </td>
+                    <td>
+                      <VChip
+                        size="x-small"
+                        :color="opt.modifier_type === 'substitute' ? 'primary' : opt.modifier_type === 'add' ? 'success' : opt.modifier_type === 'remove' ? 'error' : 'secondary'"
+                        variant="tonal"
+                        class="font-weight-medium"
+                      >
+                        {{ opt.modifier_type }}
+                      </VChip>
+                    </td>
+                    <td>
+                      <span v-if="opt.product_id" class="font-weight-medium text-xs text-high-emphasis">
+                        {{ productName(opt.product_id) }}
+                      </span>
+                      <span v-else class="text-disabled text-xs">—</span>
+                    </td>
+                    <td>
+                      <span v-if="form.base_product_id" class="text-xs text-primary font-weight-bold">
+                        Gramos de receta
+                      </span>
+                      <span v-else-if="opt.portion > 0" class="text-xs font-mono">
+                        {{ opt.portion }}
+                      </span>
+                      <span v-else class="text-disabled text-xs">—</span>
+                    </td>
+                    <td class="text-right font-mono text-xs">
+                      <span v-if="opt.extra_price_usd > 0" class="font-weight-bold text-success">
+                        +${{ Number(opt.extra_price_usd).toFixed(2) }}
+                      </span>
+                      <span v-else class="text-disabled">$0.00</span>
+                    </td>
+                    <td class="text-center">
+                      <IconBtn size="small" color="error" variant="text" @click="removeOption(idx)">
+                        <VIcon icon="tabler-trash" size="16" />
+                      </IconBtn>
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
+
+              <div v-else class="pa-6 text-center text-disabled border rounded-lg mb-4 bg-light">
+                <VIcon icon="tabler-bulb" size="28" class="opacity-40 mb-1" />
+                <p class="text-xs mb-0 font-weight-medium">Aún no hay sabores ni opciones configuradas en este grupo.</p>
+              </div>
+
+              <!-- Bloque para Añadir Nuevo Sabor con inputs flotantes del sistema -->
+              <div class="pa-4 bg-light rounded-xl border">
+                <div class="text-xs font-weight-black uppercase mb-3 d-flex align-center gap-1 text-primary">
+                  <VIcon icon="tabler-plus" size="16" />
+                  Añadir Sabor u Opción
+                </div>
+
+                <VRow dense>
+                  <VCol cols="12" md="5">
+                    <VTextField
+                      v-model="newOption.name"
+                      label="Nombre de la Opción *"
+                      placeholder="Ej: Vainilla, Chocolate, Fresa"
+                      variant="outlined"
+                      density="comfortable"
+                      class="rounded-lg font-weight-black bg-surface"
+                      hide-details="auto"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="4">
+                    <VSelect
+                      v-model="newOption.modifier_type"
+                      :items="modifierTypes"
+                      item-title="title"
+                      item-value="value"
+                      label="Tipo de Modificador"
+                      variant="outlined"
+                      density="comfortable"
+                      class="rounded-lg bg-surface"
+                      hide-details="auto"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="3">
+                    <VTextField
+                      v-model="newOption.extra_price_usd"
+                      label="Precio Extra USD"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      variant="outlined"
+                      density="comfortable"
+                      class="rounded-lg bg-surface"
+                      hide-details="auto"
+                    />
+                  </VCol>
+
+                  <!-- Insumo del inventario a descontar -->
+                  <VCol cols="12" md="8">
+                    <VAutocomplete
+                      v-model="newOption.product_id"
+                      v-model:search="searchProducts"
+                      :items="filteredProducts"
+                      item-title="name"
+                      item-value="id"
+                      label="Insumo en Inventario a Descontar (Ej: Helado Vainilla)"
+                      placeholder="Buscar producto de inventario..."
+                      variant="outlined"
+                      density="comfortable"
+                      class="rounded-lg bg-surface"
+                      clearable
+                      hide-details="auto"
+                      no-data-text="Sin resultados en inventario"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="4" class="d-flex align-center justify-end">
+                    <VBtn
+                      color="primary"
+                      variant="flat"
+                      height="48"
+                      block
+                      class="font-weight-black rounded-lg text-button uppercase shadow-primary"
+                      @click="addOption"
+                    >
+                      <VIcon icon="tabler-plus" start size="18" />
+                      Agregar Sabor
+                    </VBtn>
+                  </VCol>
+                </VRow>
+              </div>
+            </VCard>
+          </div>
         </VCardText>
 
-        <VDivider />
-
-        <!-- Acciones del Diálogo (Botones idénticos a los estándares) -->
-        <VCardActions class="pa-4 bg-surface">
-          <VSpacer />
-          <VBtn
-            variant="outlined"
-            color="secondary"
-            class="font-weight-bold"
-            @click="dialog = false"
-          >
-            Cancelar
-          </VBtn>
-          <VBtn
-            color="primary"
-            variant="flat"
-            class="font-weight-bold"
-            :loading="isSaving"
-            @click="saveGroup"
-          >
-            <VIcon icon="tabler-device-floppy" start size="18" />
-            {{ form.id ? 'Guardar Cambios' : 'Crear Grupo' }}
-          </VBtn>
+        <!-- Botones de Acción Estándar de la App -->
+        <VCardActions class="pa-4 pa-sm-6 bg-surface border-t">
+          <VRow dense class="w-100 ma-0">
+            <VCol cols="6" class="pa-1">
+              <VBtn
+                color="secondary"
+                variant="outlined"
+                height="48"
+                block
+                class="font-weight-black rounded-lg text-button uppercase"
+                @click="dialog = false"
+              >
+                Cancelar
+              </VBtn>
+            </VCol>
+            <VCol cols="6" class="pa-1">
+              <VBtn
+                color="primary"
+                variant="flat"
+                height="48"
+                block
+                class="font-weight-black rounded-lg shadow-primary text-button uppercase"
+                :loading="isSaving"
+                @click="saveGroup"
+              >
+                <VIcon icon="tabler-device-floppy" start size="18" />
+                {{ form.id ? 'Guardar Cambios' : 'Crear Grupo' }}
+              </VBtn>
+            </VCol>
+          </VRow>
         </VCardActions>
       </VCard>
     </VDialog>
@@ -750,6 +830,32 @@ onMounted(() => {
 }
 .text-super-xs {
   font-size: 0.65rem;
+}
+.letter-spacing-1 {
+  letter-spacing: 1px !important;
+}
+.uppercase {
+  text-transform: uppercase;
+}
+.header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-secondary)) 0%, rgb(var(--v-theme-primary)) 100%) !important;
+}
+.detail-dialog-card {
+  border-radius: 12px !important;
+}
+.modal-avatar-icon {
+  color: rgb(var(--v-theme-primary)) !important;
+}
+.shadow-primary {
+  box-shadow: 0 4px 14px 0 rgba(var(--v-theme-primary), 0.39) !important;
+}
+.header-indicator {
+  border-radius: 8px !important;
+  block-size: 16px;
+  inline-size: 4px;
+}
+.header-indicator.primary {
+  background-color: rgb(var(--v-theme-primary));
 }
 .premium-table :deep(th) {
   background-color: #f8fafc !important;
