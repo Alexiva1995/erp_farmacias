@@ -40,6 +40,12 @@ export default [
         subject: 'admin',
       },
       {
+        title: 'Grupos de Modificadores',
+        to: 'restaurant-modifier-groups',
+        action: 'manage',
+        subject: 'admin',
+      },
+      {
         title: 'Auditoría de Procesos',
         to: 'restaurant-process-audit',
         action: 'manage',
