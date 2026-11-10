@@ -20,12 +20,14 @@ class OrderDetailModifier extends Model
         'modifier_type',
         'extra_price_usd',
         'product_id',
+        'base_product_id',
         'portion',
     ];
 
     protected $casts = [
         'extra_price_usd' => 'decimal:4',
         'portion' => 'decimal:4',
+        'base_product_id' => 'integer',
     ];
 
     public function orderDetail(): BelongsTo
@@ -41,5 +43,10 @@ class OrderDetailModifier extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class, 'product_id');
+    }
+
+    public function baseProduct(): BelongsTo
+    {
+        return $this->belongsTo(Product::class, 'base_product_id');
     }
 }

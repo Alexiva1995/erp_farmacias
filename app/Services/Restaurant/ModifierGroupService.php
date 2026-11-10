@@ -16,7 +16,10 @@ class ModifierGroupService implements ModifierGroupServiceInterface
      */
     public function getAll(): Collection
     {
-        return ModifierGroup::with(['options.product:id,name,unit_cost,presentation,unit_of_measure'])
+        return ModifierGroup::with([
+            'baseProduct:id,name,unit_cost,presentation,unit_of_measure',
+            'options.product:id,name,unit_cost,presentation,unit_of_measure',
+        ])
             ->orderBy('id', 'desc')
             ->get();
     }
@@ -26,7 +29,10 @@ class ModifierGroupService implements ModifierGroupServiceInterface
      */
     public function find(int $id): ?ModifierGroup
     {
-        return ModifierGroup::with(['options.product:id,name,unit_cost,presentation,unit_of_measure'])->find($id);
+        return ModifierGroup::with([
+            'baseProduct:id,name,unit_cost,presentation,unit_of_measure',
+            'options.product:id,name,unit_cost,presentation,unit_of_measure',
+        ])->find($id);
     }
 
     /**
@@ -38,6 +44,7 @@ class ModifierGroupService implements ModifierGroupServiceInterface
             $group = ModifierGroup::create([
                 'name' => $data['name'],
                 'description' => $data['description'] ?? null,
+                'base_product_id' => $data['base_product_id'] ?? null,
                 'min_selections' => $data['min_selections'] ?? 0,
                 'max_selections' => $data['max_selections'] ?? 1,
                 'is_active' => $data['is_active'] ?? true,
@@ -57,7 +64,10 @@ class ModifierGroupService implements ModifierGroupServiceInterface
                 }
             }
 
-            return $group->load(['options.product:id,name,unit_cost,presentation,unit_of_measure']);
+            return $group->load([
+                'baseProduct:id,name,unit_cost,presentation,unit_of_measure',
+                'options.product:id,name,unit_cost,presentation,unit_of_measure',
+            ]);
         });
     }
 
@@ -70,6 +80,7 @@ class ModifierGroupService implements ModifierGroupServiceInterface
             $group->update([
                 'name' => $data['name'] ?? $group->name,
                 'description' => $data['description'] ?? $group->description,
+                'base_product_id' => array_key_exists('base_product_id', $data) ? $data['base_product_id'] : $group->base_product_id,
                 'min_selections' => $data['min_selections'] ?? $group->min_selections,
                 'max_selections' => $data['max_selections'] ?? $group->max_selections,
                 'is_active' => $data['is_active'] ?? $group->is_active,
@@ -90,7 +101,10 @@ class ModifierGroupService implements ModifierGroupServiceInterface
                 }
             }
 
-            return $group->load(['options.product:id,name,unit_cost,presentation,unit_of_measure']);
+            return $group->load([
+                'baseProduct:id,name,unit_cost,presentation,unit_of_measure',
+                'options.product:id,name,unit_cost,presentation,unit_of_measure',
+            ]);
         });
     }
 
