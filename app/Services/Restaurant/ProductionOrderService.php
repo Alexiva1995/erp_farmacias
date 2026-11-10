@@ -17,7 +17,7 @@ class ProductionOrderService implements ProductionOrderServiceInterface
 {
     public function listOrders(array $filters = []): array
     {
-        $query = ProductionOrder::with(['dish', 'outputProduct', 'user:id,username,name', 'kitchenStation', 'generatedLot'])
+        $query = ProductionOrder::with(['dish', 'outputProduct', 'user:id,username', 'kitchenStation', 'generatedLot'])
             ->latest();
 
         if (!empty($filters['dish_id'])) {

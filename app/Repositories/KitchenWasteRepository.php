@@ -39,8 +39,8 @@ class KitchenWasteRepository implements KitchenWasteRepositoryInterface
                 'created_at',
             ])
             ->with([
-                'user:id,username,name',
-                'approver:id,username,name',
+                'user:id,username',
+                'approver:id,username',
                 'kitchenStation:id,name',
                 'product:id,name,stock,unit_of_measure,unit_cost',
                 'dish:id,name',
@@ -141,8 +141,8 @@ class KitchenWasteRepository implements KitchenWasteRepositoryInterface
         $waste = KitchenWaste::create($data);
 
         return $waste->load([
-            'user:id,username,name',
-            'approver:id,username,name',
+            'user:id,username',
+            'approver:id,username',
             'kitchenStation:id,name',
             'product:id,name,stock,unit_of_measure,unit_cost',
             'dish:id,name',
@@ -160,8 +160,8 @@ class KitchenWasteRepository implements KitchenWasteRepositoryInterface
         $waste->update($data);
 
         return $waste->refresh()->load([
-            'user:id,username,name',
-            'approver:id,username,name',
+            'user:id,username',
+            'approver:id,username',
             'kitchenStation:id,name',
             'product:id,name,stock,unit_of_measure,unit_cost',
             'dish:id,name',
