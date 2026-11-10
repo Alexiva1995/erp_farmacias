@@ -1653,11 +1653,27 @@ class IaAssistantReportService
             ->get()
             ->keyBy('product_id');
 
+        // 4. Movimientos de inventario para cálculo en vivo de días de quiebre exactos en los últimos 90 días
+        $inventoryMovements = \Illuminate\Support\Facades\DB::table('inventory_movements')
+            ->whereIn('product_id', $productIds)
+            ->where('movement_date', '>=', $dateM3)
+            ->orderBy('product_id')
+            ->orderBy('movement_date', 'asc')
+            ->get()
+            ->groupBy('product_id');
+
+        // Primer movimiento histórico para evitar truncar indebidamente la edad del producto
+        $firstMovementDates = \Illuminate\Support\Facades\DB::table('inventory_movements')
+            ->whereIn('product_id', $productIds)
+            ->select('product_id', \Illuminate\Support\Facades\DB::raw('MIN(movement_date) as first_date'))
+            ->groupBy('product_id')
+            ->pluck('first_date', 'product_id');
+
         $coverageDays = $this->extractCoverageDays($filtros['lapso_de_tiempo'] ?? '1 month');
         $leadTimeDays = 7;
         $bufferDays = 7;
 
-        $items->transform(function ($item) use ($salesByMonth, $lotsData, $now, $coverageDays, $leadTimeDays, $bufferDays) {
+        $items->transform(function ($item) use ($salesByMonth, $lotsData, $inventoryMovements, $firstMovementDates, $now, $dateM1, $dateM2, $dateM3, $coverageDays, $leadTimeDays, $bufferDays) {
             $isColombian = (bool)((int)($item->is_colombian_origin ?? 0) === 1);
             $effectiveLeadTime = $isColombian ? 14 : $leadTimeDays;
 
@@ -1672,37 +1688,95 @@ class IaAssistantReportService
             $autoOrder = (float)($item->totalQuantityInAutoOrder ?? 0);
             $stockEfectivo = $currentStock + $autoOrder;
 
-            $isCachedQuiebre = isset($item->dias_quiebre_90d_cache) && $item->dias_quiebre_90d_cache !== null;
-            $hasMonthlyCache = isset($item->dias_quiebre_m1) && $item->dias_quiebre_m1 !== null;
+            // Determinar la edad histórica real del producto considerando lotes, movimientos y created_at
+            $firstLot = $lotRow ? \Carbon\Carbon::parse($lotRow->first_lot_date) : null;
+            $firstMove = isset($firstMovementDates[$item->id]) ? \Carbon\Carbon::parse($firstMovementDates[$item->id]) : null;
+            $createdAt = !empty($item->created_at) ? \Carbon\Carbon::parse($item->created_at) : null;
 
-            if ($hasMonthlyCache) {
-                $qM1 = (int)$item->dias_quiebre_m1;
-                $qM2 = (int)$item->dias_quiebre_m2;
-                $qM3 = (int)$item->dias_quiebre_m3;
-                $diasQuiebre90d = (int)($item->dias_quiebre_90d_cache ?? ($qM1 + $qM2 + $qM3));
+            $ageCandidates = array_filter([$createdAt, $firstLot, $firstMove]);
+            $ageDays = !empty($ageCandidates) ? max(1, min(90, (int)collect($ageCandidates)->min()->diffInDays($now))) : 90;
+
+            $ageM1 = min(30, $ageDays);
+            $ageM2 = min(30, max(0, $ageDays - 30));
+            $ageM3 = min(30, max(0, $ageDays - 60));
+
+            $productMoves = $inventoryMovements->get($item->id);
+
+            if ($productMoves && $productMoves->isNotEmpty()) {
+                $intervals = [];
+                $lastZeroDate = null;
+                $cDateM1 = \Carbon\Carbon::parse($dateM1);
+                $cDateM2 = \Carbon\Carbon::parse($dateM2);
+                $cDateM3 = \Carbon\Carbon::parse($dateM3);
+
+                $firstM = $productMoves->first();
+                if ((float)$firstM->stock_before <= 0) {
+                    $lastZeroDate = $cDateM3->copy();
+                }
+
+                foreach ($productMoves as $move) {
+                    $moveDate = \Carbon\Carbon::parse($move->movement_date);
+
+                    if ((float)$move->stock_after <= 0 && $lastZeroDate === null) {
+                        $lastZeroDate = $moveDate->copy();
+                    } elseif ((float)$move->stock_after > 0 && $lastZeroDate !== null) {
+                        $intervals[] = [$lastZeroDate, $moveDate->copy()];
+                        $lastZeroDate = null;
+                    }
+                }
+
+                // Si al final del periodo sigue en 0 o actualmente no tiene stock físico
+                if ($lastZeroDate !== null || $currentStock <= 0) {
+                    $zeroStart = $lastZeroDate ?? $cDateM3->copy();
+                    $intervals[] = [$zeroStart, $now->copy()];
+                }
+
+                $calcOverlapHours = function ($startWindow, $endWindow) use ($intervals) {
+                    $totalHours = 0;
+                    foreach ($intervals as [$iStart, $iEnd]) {
+                        $overlapStart = $iStart->greaterThan($startWindow) ? $iStart : $startWindow;
+                        $overlapEnd   = $iEnd->lessThan($endWindow) ? $iEnd : $endWindow;
+
+                        if ($overlapStart->lessThan($overlapEnd)) {
+                            $totalHours += $overlapStart->diffInHours($overlapEnd);
+                        }
+                    }
+                    return $totalHours;
+                };
+
+                $hM3 = $calcOverlapHours($cDateM3, $cDateM2);
+                $hM2 = $calcOverlapHours($cDateM2, $cDateM1);
+                $hM1 = $calcOverlapHours($cDateM1, $now);
+
+                $qM3 = min($ageM3, (int)round($hM3 / 24));
+                $qM2 = min($ageM2, (int)round($hM2 / 24));
+                $qM1 = min($ageM1, (int)round($hM1 / 24));
+                $diasQuiebre90d = min($ageDays, $qM1 + $qM2 + $qM3);
 
                 $d1 = max(0, 30 - $qM1);
                 $d2 = max(0, 30 - $qM2);
                 $d3 = max(0, 30 - $qM3);
-            } elseif ($isCachedQuiebre) {
-                $diasQuiebre90d = (int) $item->dias_quiebre_90d_cache;
-                $d1 = max(0, 30 - min(30, $diasQuiebre90d));
-                $d2 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 30)));
-                $d3 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 60)));
             } else {
+                // Sin movimientos registrados en la ventana de 90 días
                 if ($currentStock <= 0) {
                     if ($lastSaleDate) {
-                        $daysSinceLastSale = (int) $lastSaleDate->diffInDays($now);
-                        $diasQuiebre90d = min(90, $daysSinceLastSale);
+                        $daysSinceSale = (int)$lastSaleDate->diffInDays($now);
+                        $diasQuiebre90d = min($ageDays, $daysSinceSale);
                     } else {
-                        $diasQuiebre90d = 90; // Sin stock y sin ventas en 90 días = quiebre total
+                        $diasQuiebre90d = $ageDays;
                     }
+                    $qM1 = min($ageM1, $diasQuiebre90d);
+                    $qM2 = min($ageM2, max(0, $diasQuiebre90d - 30));
+                    $qM3 = min($ageM3, max(0, $diasQuiebre90d - 60));
+                    $d1 = max(0, 30 - $qM1);
+                    $d2 = max(0, 30 - $qM2);
+                    $d3 = max(0, 30 - $qM3);
                 } else {
                     $diasQuiebre90d = 0;
+                    $d1 = $ageM1;
+                    $d2 = $ageM2;
+                    $d3 = $ageM3;
                 }
-                $d1 = max(0, 30 - min(30, $diasQuiebre90d));
-                $d2 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 30)));
-                $d3 = max(0, 30 - min(30, max(0, $diasQuiebre90d - 60)));
             }
 
             // Si hubo ventas en el mes, por definición física tuvo stock al menos los días de esas ventas
@@ -1714,19 +1788,6 @@ class IaAssistantReportService
             }
             if ($v3 > 0 && $d3 == 0) {
                 $d3 = max(1, min(30, (int)ceil($v3)));
-            }
-
-            $firstLot = $lotRow ? \Carbon\Carbon::parse($lotRow->first_lot_date) : null;
-            $ageDays = $firstLot ? max(1, $firstLot->diffInDays($now)) : 90;
-
-            if ($ageDays < 90 && !$hasMonthlyCache) {
-                $d3 = min($d3, max(0, $ageDays - 60));
-                $d2 = min($d2, max(0, $ageDays - 30));
-                $d1 = min($d1, $ageDays);
-                
-                if (!$isCachedQuiebre) {
-                    $diasQuiebre90d = min($diasQuiebre90d, $ageDays);
-                }
             }
 
             $totalVentas90d = $v1 + $v2 + $v3;

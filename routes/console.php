@@ -43,6 +43,7 @@ $scheduleTenantAware = function (string $command, callable $scheduleConfig) use 
     }
 };
 
+$scheduleTenantAware('inventory:calculate-quiebres', fn ($event) => $event->dailyAt('01:30')->withoutOverlapping());
 $scheduleTenantAware('app:update-exchange-rate', fn ($event) => $event->dailyAt('00:10'));
 $scheduleTenantAware('app:generate-fixed-expenses', fn ($event) => $event->dailyAt('00:30'));
 $scheduleTenantAware('dishes:sync-costs-and-review', fn ($event) => $event->dailyAt('02:00'));

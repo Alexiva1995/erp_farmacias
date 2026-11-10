@@ -26,6 +26,18 @@ class CalculateStockoutsCommand extends Command
             ->where('is_scarce', 0)
             ->chunk(200, function ($products) use ($dateM1, $dateM2, $dateM3, $date90dStr, $now) {
                 $productIds = $products->pluck('id')->toArray();
+
+                $firstLotDates = DB::table('product_lots')
+                    ->whereIn('product_id', $productIds)
+                    ->select('product_id', DB::raw('MIN(created_at) as first_date'))
+                    ->groupBy('product_id')
+                    ->pluck('first_date', 'product_id');
+
+                $firstMovementDates = DB::table('inventory_movements')
+                    ->whereIn('product_id', $productIds)
+                    ->select('product_id', DB::raw('MIN(movement_date) as first_date'))
+                    ->groupBy('product_id')
+                    ->pluck('first_date', 'product_id');
                 
                 $movements = DB::table('inventory_movements')
                     ->whereIn('product_id', $productIds)
@@ -40,9 +52,13 @@ class CalculateStockoutsCommand extends Command
                     $pid = $product->id;
                     $productMoves = $grouped->get($pid);
                     
-                    // Toparlo a la edad del producto
-                    $ageDays = Carbon::parse($product->created_at)->diffInDays($now);
-                    $ageDays = max(1, min($ageDays, 90));
+                    // Toparlo a la edad histórica real del producto (lotes, movimientos, created_at)
+                    $firstLot = isset($firstLotDates[$pid]) ? Carbon::parse($firstLotDates[$pid]) : null;
+                    $firstMove = isset($firstMovementDates[$pid]) ? Carbon::parse($firstMovementDates[$pid]) : null;
+                    $createdAt = !empty($product->created_at) ? Carbon::parse($product->created_at) : null;
+
+                    $candidates = array_filter([$createdAt, $firstLot, $firstMove]);
+                    $ageDays = !empty($candidates) ? max(1, min(90, (int)collect($candidates)->min()->diffInDays($now))) : 90;
 
                     $ageM1 = min(30, $ageDays);
                     $ageM2 = min(30, max(0, $ageDays - 30));
@@ -68,8 +84,8 @@ class CalculateStockoutsCommand extends Command
                     $lastZeroDate = null;
 
                     // Estado inicial antes del inicio del periodo (hace 90 días)
-                    $firstMove = $productMoves->first();
-                    if ($firstMove->stock_before <= 0) {
+                    $firstMoveItem = $productMoves->first();
+                    if ((float)$firstMoveItem->stock_before <= 0) {
                         $lastZeroDate = $dateM3->copy();
                     }
 
@@ -77,19 +93,20 @@ class CalculateStockoutsCommand extends Command
                         $moveDate = Carbon::parse($move->movement_date);
 
                         // Si cayó a 0
-                        if ($move->stock_after <= 0 && $lastZeroDate === null) {
+                        if ((float)$move->stock_after <= 0 && $lastZeroDate === null) {
                             $lastZeroDate = $moveDate->copy();
                         } 
                         // Si salió de 0
-                        elseif ($move->stock_after > 0 && $lastZeroDate !== null) {
+                        elseif ((float)$move->stock_after > 0 && $lastZeroDate !== null) {
                             $intervals[] = [$lastZeroDate, $moveDate->copy()];
                             $lastZeroDate = null; 
                         }
                     }
 
-                    // Si al final del periodo sigue en 0
-                    if ($lastZeroDate !== null) {
-                        $intervals[] = [$lastZeroDate, $now->copy()];
+                    // Si al final del periodo sigue en 0 o actualmente el stock físico es 0
+                    if ($lastZeroDate !== null || (float)$product->stock <= 0) {
+                        $zeroStart = $lastZeroDate ?? $dateM3->copy();
+                        $intervals[] = [$zeroStart, $now->copy()];
                     }
 
                     // Función auxiliar para calcular horas de solapamiento con una ventana
