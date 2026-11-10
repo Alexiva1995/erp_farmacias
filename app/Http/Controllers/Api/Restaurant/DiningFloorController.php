@@ -11,6 +11,7 @@ use App\Http\Requests\Restaurant\TransferTableRequest;
 use App\Http\Requests\Restaurant\UpdateDiningLayoutRequest;
 use App\Http\Resources\Restaurant\DiningTableResource;
 use App\Http\Resources\Restaurant\DiningZoneResource;
+use App\Http\Resources\Restaurant\KitchenStationResource;
 use App\Models\DiningTable;
 use App\Models\DiningZone;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +31,7 @@ class DiningFloorController extends Controller
         return response()->json([
             'zones' => DiningZoneResource::collection($overview['zones']),
             'tables' => DiningTableResource::collection($overview['tables']),
+            'kitchen_stations' => KitchenStationResource::collection($overview['kitchen_stations'] ?? []),
         ]);
     }
 

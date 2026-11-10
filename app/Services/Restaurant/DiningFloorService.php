@@ -4,11 +4,15 @@ namespace App\Services\Restaurant;
 
 use App\Contracts\DiningFloorServiceInterface;
 use App\Enums\DiningTableStatusEnum;
+use App\Enums\KitchenStatusEnum;
 use App\Models\Client;
 use App\Models\DiningTable;
 use App\Models\DiningZone;
+use App\Models\KitchenStation;
 use App\Models\Order;
+use App\Models\OrderDetail;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 
 class DiningFloorService implements DiningFloorServiceInterface
@@ -22,8 +26,8 @@ class DiningFloorService implements DiningFloorServiceInterface
         $zones = $zonesQuery->get();
 
         $tablesQuery = DiningTable::with([
-            'currentOrder.details.dish',
-            'currentOrder.seller:id,username',
+            'currentOrder.details.dish.kitchenStation',
+            'currentOrder.seller:id,username,name',
             'currentOrder.client:id,name,identification',
         ])->where('is_active', true);
 
@@ -32,9 +36,45 @@ class DiningFloorService implements DiningFloorServiceInterface
         }
         $tables = $tablesQuery->get();
 
+        $stations = collect();
+        if (Schema::hasTable('kitchen_stations')) {
+            $stationsCollection = KitchenStation::where('is_active', true)
+                ->orderBy('sort_order')
+                ->get();
+
+            $activeDetails = OrderDetail::query()
+                ->whereIn('kitchen_status', [
+                    KitchenStatusEnum::QUEUED->value,
+                    KitchenStatusEnum::PREPARING->value,
+                    KitchenStatusEnum::READY->value,
+                ])
+                ->with([
+                    'dish:id,name,kitchen_station_id',
+                    'order.diningTable:id,name',
+                ])
+                ->get();
+
+            $groupedByStation = $activeDetails->groupBy(fn ($item) => $item->dish?->kitchen_station_id ?? 0);
+
+            $stations = $stationsCollection->map(function ($st) use ($groupedByStation) {
+                $items = $groupedByStation->get($st->id, collect());
+                $st->queued_count = $items->where('kitchen_status', KitchenStatusEnum::QUEUED->value)->count();
+                $st->preparing_count = $items->where('kitchen_status', KitchenStatusEnum::PREPARING->value)->count();
+                $st->ready_count = $items->where('kitchen_status', KitchenStatusEnum::READY->value)->count();
+                $st->active_items = $items->map(fn ($it) => [
+                    'id' => $it->id,
+                    'dish_name' => $it->dish?->name ?? 'Platillo',
+                    'table_name' => $it->order?->diningTable?->name ?? 'Salón',
+                    'status' => $it->kitchen_status,
+                ])->values()->all();
+                return $st;
+            });
+        }
+
         return [
             'zones' => $zones,
             'tables' => $tables,
+            'kitchen_stations' => $stations,
         ];
     }
 
