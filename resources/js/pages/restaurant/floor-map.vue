@@ -16,15 +16,15 @@
 
         <!-- Modos de Vista & Acciones -->
         <div class="d-flex align-center flex-wrap gap-2">
-          <!-- Toggle 3D vs 2D -->
+          <!-- Toggle Live vs 2D -->
           <v-btn-toggle v-model="viewMode" mandatory density="compact" color="primary" rounded="lg">
-            <v-btn value="3d">
-              <v-icon start size="18">tabler-box-model</v-icon>
-              3D Simulator
+            <v-btn value="live">
+              <v-icon start size="18">tabler-chef-hat</v-icon>
+              Restaurante en Vivo
             </v-btn>
             <v-btn value="2d">
               <v-icon start size="18">tabler-layout-dashboard</v-icon>
-              2D Editor / Plano
+              Editor 2D / Plano
             </v-btn>
           </v-btn-toggle>
 
@@ -109,22 +109,17 @@
       </v-col>
     </v-row>
 
-    <!-- Canvas Principal (3D o 2D) -->
+    <!-- Canvas Principal (Restaurante en Vivo o Plano 2D) -->
     <v-card class="floor-canvas-card position-relative overflow-hidden" elevation="2">
-      <!-- MODO 3D: Simulador Interactivo Three.js -->
-      <div
-        v-show="viewMode === '3d'"
-        ref="threeContainer"
-        class="three-canvas-container"
-      >
-        <div class="three-overlay-legend pa-2 text-caption">
-          <span class="mr-2"><v-icon size="14" color="success">tabler-circle-filled</v-icon> Libre</span>
-          <span class="mr-2"><v-icon size="14" color="error">tabler-circle-filled</v-icon> Ocupada</span>
-          <span class="mr-2"><v-icon size="14" color="warning">tabler-circle-filled</v-icon> Cuenta</span>
-          <span><v-icon size="14" color="info">tabler-circle-filled</v-icon> Reservada</span>
-          <div class="text-muted mt-1">Arrastra para rotar la cámara 3D | Clic en mesa para abrir menú</div>
-        </div>
-      </div>
+      <!-- MODO RESTAURANTE EN VIVO: Motor 2.5D Estilo Overcooked -->
+      <OvercookedLiveMap
+        v-if="viewMode === 'live'"
+        :tables="filteredTables"
+        :stations="kitchenStations"
+        :selected-table-id="selectedTable?.id"
+        @select-table="selectAndInteractTable"
+        @select-station="handleSelectStation"
+      />
 
       <!-- MODO 2D: Plano Interactivo con Drag & Drop -->
       <div
@@ -526,15 +521,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import axios from '@axios'
 import { toast } from '@/plugins/sweetalert'
 import RestaurantSimulatorWidget from '@/components/restaurant/RestaurantSimulatorWidget.vue'
+import OvercookedLiveMap from '@/components/restaurant/OvercookedLiveMap.vue'
 
 // Estados Generales
-const viewMode = ref('3d') // '3d' o '2d'
+const viewMode = ref('live') // 'live' o '2d'
 const zones = ref([])
 const tables = ref([])
+const kitchenStations = ref([])
 const selectedZoneIndex = ref(null)
 const loadingOverview = ref(false)
 const savingLayout = ref(false)
@@ -575,16 +572,6 @@ const selectedSplitItemIds = ref([])
 const draggedTable = ref(null)
 const dragOffset = reactive({ x: 0, y: 0 })
 
-// Three.js References
-const threeContainer = ref(null)
-let threeScene = null
-let threeCamera = null
-let threeRenderer = null
-let threeAnimationId = null
-let tableMeshes = []
-let raycaster = null
-let mouseVector = null
-
 // Computadas
 const filteredTables = computed(() => {
   if (!selectedZoneIndex.value) return tables.value
@@ -613,15 +600,20 @@ const fetchOverview = async (silent = false) => {
     const res = await axios.get('/dining-floor/overview')
     zones.value = res.data.zones || []
     tables.value = res.data.tables || []
+    kitchenStations.value = res.data.kitchen_stations || []
     if (!selectedZoneIndex.value && zones.value.length) {
       selectedZoneIndex.value = zones.value[0].id
     }
-    updateThreeScene()
   } catch (err) {
     if (!silent) toast.error('Error al cargar salón y mesas.')
   } finally {
     if (!silent) loadingOverview.value = false
   }
+}
+
+const handleSelectStation = (station) => {
+  if (!station) return
+  toast.info(`Estación activa: ${station.name || 'Cocina'}`)
 }
 
 // Acciones de Mesa
@@ -809,186 +801,12 @@ const submitCreateTable = async () => {
   }
 }
 
-// ==========================================
-// SIMULADOR 3D INTERACTIVO (THREE.JS)
-// ==========================================
-let THREE = null
-
-const initThree = async () => {
-  if (!threeContainer.value) return
-
-  // Importar Three.js dinámicamente o usar CDN global si está disponible
-  try {
-    if (window.THREE) {
-      THREE = window.THREE
-    } else {
-      // Cargar script Three.js dinámicamente si no está en bundle
-      await new Promise((resolve, reject) => {
-        const script = document.createElement('script')
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
-        script.onload = () => {
-          THREE = window.THREE
-          resolve()
-        }
-        script.onerror = reject
-        document.head.appendChild(script)
-      })
-    }
-  } catch (e) {
-    console.warn('Three.js no disponible para 3D, usando fallback 2D:', e)
-    viewMode.value = '2d'
-    return
-  }
-
-  const width = threeContainer.value.clientWidth || 800
-  const height = 550
-
-  // 1. Scene
-  threeScene = new THREE.Scene()
-  threeScene.background = new THREE.Color(0x1e1e2d)
-
-  // 2. Camera
-  threeCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000)
-  threeCamera.position.set(0, 35, 45)
-  threeCamera.lookAt(0, 0, 0)
-
-  // 3. Renderer
-  threeRenderer = new THREE.WebGLRenderer({ antialias: true })
-  threeRenderer.setSize(width, height)
-  threeRenderer.shadowMap.enabled = true
-  threeContainer.value.innerHTML = ''
-  threeContainer.value.appendChild(threeRenderer.domElement)
-
-  // 4. Luces
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7)
-  threeScene.add(ambientLight)
-
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8)
-  dirLight.position.set(20, 40, 20)
-  dirLight.castShadow = true
-  threeScene.add(dirLight)
-
-  // 5. Suelo del Restaurante
-  const floorGeo = new THREE.PlaneGeometry(60, 40)
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x27293d, roughness: 0.8 })
-  const floorMesh = new THREE.Mesh(floorGeo, floorMat)
-  floorMesh.rotation.x = -Math.PI / 2
-  floorMesh.receiveShadow = true
-  threeScene.add(floorMesh)
-
-  // Raycaster para clics en mesas 3D
-  raycaster = new THREE.Raycaster()
-  mouseVector = new THREE.Vector2()
-
-  threeContainer.value.addEventListener('click', onThreeClick)
-
-  // Render Loop
-  const animate = () => {
-    threeAnimationId = requestAnimationFrame(animate)
-    threeRenderer.render(threeScene, threeCamera)
-  }
-  animate()
-
-  updateThreeScene()
-}
-
-const updateThreeScene = () => {
-  if (!threeScene || !THREE) return
-
-  // Limpiar mesas previas
-  tableMeshes.forEach(mesh => threeScene.remove(mesh))
-  tableMeshes = []
-
-  const currentTables = filteredTables.value
-
-  currentTables.forEach((table, idx) => {
-    // Coordenadas normalizadas a la grilla 3D
-    const x3d = ((table.pos_x || 100) / 15) - 25
-    const z3d = ((table.pos_y || 100) / 15) - 15
-
-    let color = 0x28c76f // available (verde)
-    if (table.status === 'occupied') color = 0xea5455 // red
-    if (table.status === 'bill_requested') color = 0xff9f43 // orange
-    if (table.status === 'reserved') color = 0x00cfe8 // cyan
-
-    let tableGeo
-    if (table.shape === 'round') {
-      tableGeo = new THREE.CylinderGeometry(2, 2, 1.2, 32)
-    } else {
-      tableGeo = new THREE.BoxGeometry(3.5, 1.2, 3.5)
-    }
-
-    const tableMat = new THREE.MeshStandardMaterial({ color, roughness: 0.4 })
-    const tableMesh = new THREE.Mesh(tableGeo, tableMat)
-    tableMesh.position.set(x3d, 0.6, z3d)
-    tableMesh.castShadow = true
-    tableMesh.receiveShadow = true
-    tableMesh.userData = { table }
-
-    // Sillas alrededor
-    const chairGeo = new THREE.BoxGeometry(0.8, 1, 0.8)
-    const chairMat = new THREE.MeshStandardMaterial({ color: 0x4a4a5a })
-
-    const chairOffsets = [
-      [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]
-    ]
-
-    for (let c = 0; c < Math.min(table.capacity, 4); c++) {
-      const chairMesh = new THREE.Mesh(chairGeo, chairMat)
-      chairMesh.position.set(x3d + chairOffsets[c][0], 0.5, z3d + chairOffsets[c][1])
-      threeScene.add(chairMesh)
-      tableMeshes.push(chairMesh)
-    }
-
-    threeScene.add(tableMesh)
-    tableMeshes.push(tableMesh)
-  })
-}
-
-const onThreeClick = (event) => {
-  if (!threeRenderer || !threeCamera) return
-  const rect = threeRenderer.domElement.getBoundingClientRect()
-  mouseVector.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-  mouseVector.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-
-  raycaster.setFromCamera(mouseVector, threeCamera)
-  const intersects = raycaster.intersectObjects(tableMeshes)
-
-  if (intersects.length > 0) {
-    const clickedTable = intersects[0].object.userData?.table
-    if (clickedTable) {
-      selectAndInteractTable(clickedTable)
-    }
-  }
-}
-
-watch(viewMode, (newVal) => {
-  if (newVal === '3d') {
-    nextTick(() => {
-      if (!threeScene) {
-        initThree()
-      } else {
-        updateThreeScene()
-      }
-    })
-  }
-})
-
-watch(selectedZoneIndex, () => {
-  updateThreeScene()
-})
-
 let floorPollInterval = null
 
 onMounted(async () => {
   await fetchOverview()
-  if (viewMode.value === '3d') {
-    nextTick(() => {
-      initThree()
-    })
-  }
 
-  // Polling silencioso cada 5 segundos para actualizar mesas y 3D en tiempo real sin recargar página
+  // Polling silencioso cada 5 segundos para actualizar el restaurante en vivo
   floorPollInterval = setInterval(() => {
     fetchOverview(true)
   }, 5000)
@@ -996,12 +814,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (floorPollInterval) clearInterval(floorPollInterval)
-  if (threeAnimationId) {
-    cancelAnimationFrame(threeAnimationId)
-  }
-  if (threeRenderer) {
-    threeRenderer.dispose()
-  }
 })
 </script>
 
@@ -1011,28 +823,9 @@ onUnmounted(() => {
 }
 
 .floor-canvas-card {
-  min-height: 550px;
-  background-color: #1a1a24;
+  min-height: 600px;
+  background-color: #12121a;
   border-radius: 12px;
-}
-
-.three-canvas-container {
-  width: 100%;
-  height: 550px;
-  position: relative;
-  cursor: grab;
-}
-
-.three-overlay-legend {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  background: rgba(30, 30, 45, 0.85);
-  backdrop-filter: blur(6px);
-  border-radius: 8px;
-  color: #fff;
-  z-index: 10;
-  pointer-events: none;
 }
 
 /* 2D CANVAS STYLES */
