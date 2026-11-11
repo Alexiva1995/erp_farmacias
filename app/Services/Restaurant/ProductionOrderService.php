@@ -79,35 +79,37 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 $yieldPct = (float) ($ingredient->yield_percentage > 0 ? $ingredient->yield_percentage : 100.0);
                 $grossQuantityToDeduct = $portionNeeded / ($yieldPct / 100.0);
 
-                // Descuento FEFO sobre los lotes del ingrediente
-                $remainingToDeduct = $grossQuantityToDeduct;
+                $presentation = (float) ($ingredient->presentation ?? 1.0);
+                $safePresentation = $presentation > 0 ? $presentation : 1.0;
+                // Convertir la porción bruta en unidades de receta a paquetes de almacén
+                $packsToDeduct = $grossQuantityToDeduct / $safePresentation;
+
+                // Descuento FEFO sobre los lotes del ingrediente (en paquetes)
+                $remainingToDeduct = $packsToDeduct;
                 $lots = ProductLot::where('product_id', $ingredient->id)
                     ->where('quantity', '>', 0)
                     ->orderBy('expiration_date', 'asc')
                     ->lockForUpdate()
                     ->get();
 
-                $presentation = (float) ($ingredient->presentation ?? 1.0);
-                $safePresentation = $presentation > 0 ? $presentation : 1.0;
-
                 foreach ($lots as $lot) {
                     if ($remainingToDeduct <= 0) break;
-                    $deductFromLot = min($lot->quantity, $remainingToDeduct);
+                    $deductFromLot = min((float) $lot->quantity, $remainingToDeduct);
                     $lot->quantity -= $deductFromLot;
                     $lot->save();
 
                     $remainingToDeduct -= $deductFromLot;
                     $lotCost = (float) ($lot->unit_cost ?: ($ingredient->unit_cost ?: 0));
-                    $totalProductionCost += (($deductFromLot * $lotCost) / $safePresentation);
+                    $totalProductionCost += ($deductFromLot * $lotCost);
                 }
 
                 // Si queda cantidad por descontar (sin lotes suficientes), calcular el costo con el unit_cost de inventario
                 if ($remainingToDeduct > 0) {
-                    $totalProductionCost += (($remainingToDeduct * (float) ($ingredient->unit_cost ?: 0)) / $safePresentation);
+                    $totalProductionCost += ($remainingToDeduct * (float) ($ingredient->unit_cost ?: 0));
                 }
 
-                // Descontar stock general del producto ingrediente
-                $ingredient->stock = max(0, $ingredient->stock - $grossQuantityToDeduct);
+                // Descontar stock general del producto ingrediente en paquetes
+                $ingredient->stock = max(0, (float) $ingredient->stock - $packsToDeduct);
                 $ingredient->save();
             }
 

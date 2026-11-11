@@ -353,6 +353,10 @@ const searchProducts = async (query) => {
       unit_cost: parseFloat(p.unit_cost || 0),
       presentation: parseFloat(p.presentation || 1),
       unit_of_measure: p.unit_of_measure || "und",
+      purchase_unit_name: p.purchase_unit_name || "Paquete",
+      pack_unit_name: p.pack_unit_name || "Paquete",
+      units_per_inner_pack: parseFloat(p.units_per_inner_pack || 1),
+      purchase_cost: parseFloat(p.purchase_cost || 0),
       is_sub_recipe: Boolean(p.is_sub_recipe),
       is_base_dish: p.is_base_dish || false,
       ingredients: p.ingredients || [],
@@ -1347,9 +1351,20 @@ onUnmounted(() => {
                   </VCol>
 
                   <VCol cols="12" v-if="selectedProduct" class="pt-2">
-                    <div class="pa-2 bg-light rounded border text-xs text-disabled d-flex justify-space-between align-center">
-                      <span>Costo unitario: <strong>{{ formatCurrency(selectedProduct.unit_cost) }}</strong></span>
-                      <span>Presentación: <strong>{{ selectedProduct.presentation }} {{ selectedProduct.unit_of_measure }}</strong></span>
+                    <div class="pa-2.5 bg-light rounded-lg border text-xs text-medium-emphasis d-flex flex-wrap justify-space-between align-center gap-2">
+                      <div>
+                        <span v-if="selectedProduct.units_per_inner_pack > 1" class="me-2">
+                          Compra: <strong>1 {{ selectedProduct.purchase_unit_name }} = {{ selectedProduct.units_per_inner_pack }} {{ selectedProduct.pack_unit_name }}s</strong>
+                        </span>
+                        <span>
+                          Empaque: <strong>{{ selectedProduct.presentation }} {{ selectedProduct.unit_of_measure }} / {{ selectedProduct.pack_unit_name }}</strong>
+                        </span>
+                      </div>
+                      <div class="d-flex align-center gap-2">
+                        <span>Costo empaque: <strong>{{ formatCurrency(selectedProduct.unit_cost) }}</strong></span>
+                        <span class="text-disabled">|</span>
+                        <span>Costo unitario en receta: <strong class="text-success">{{ formatCurrency(selectedProduct.presentation > 0 ? (selectedProduct.unit_cost / selectedProduct.presentation) : selectedProduct.unit_cost) }}</strong> / {{ selectedProduct.unit_of_measure }}</span>
+                      </div>
                     </div>
                   </VCol>
                 </VRow>

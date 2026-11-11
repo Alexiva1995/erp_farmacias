@@ -27,7 +27,7 @@ class Product extends Model
         });
 
         static::saving(function ($product) {
-            $checkColumns = ['is_chronic', 'treatment_duration_days', 'consumption_type'];
+            $checkColumns = ['is_chronic', 'treatment_duration_days', 'consumption_type', 'purchase_unit_name', 'pack_unit_name', 'purchase_cost'];
             foreach ($checkColumns as $col) {
                 if (array_key_exists($col, $product->attributes) && !\Illuminate\Support\Facades\Schema::hasColumn('products', $col)) {
                     unset($product->attributes[$col]);
@@ -96,6 +96,9 @@ class Product extends Model
         'min_wholesale_units',
         'units_per_inner_pack',
         'units_per_master_box',
+        'purchase_unit_name',
+        'pack_unit_name',
+        'purchase_cost',
         'requires_cold_chain',
         'sanitary_registration',
         'cost_price',
@@ -144,7 +147,8 @@ class Product extends Model
         'max_units_per_client_day' => 'integer',
         'max_units_per_client_month' => 'integer',
         'min_wholesale_units' => 'integer',
-        'units_per_inner_pack' => 'integer',
+        'units_per_inner_pack' => 'float',
+        'purchase_cost' => 'float',
         'units_per_master_box' => 'integer',
         'requires_cold_chain' => 'boolean',
         'is_sub_recipe' => 'boolean',

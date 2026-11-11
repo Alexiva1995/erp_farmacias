@@ -202,37 +202,112 @@ const isFieldEnabled = (fieldKey) => {
               />
             </VCol>
 
-            <!-- Presentación -->
-            <VCol v-if="isRestaurant && isFieldEnabled('presentation')" cols="12" md="4">
-              <VTextField v-model="formData.presentation" label="Presentación"
-                type="number"
-                step="any"
-                variant="outlined"
-                density="comfortable"
-                :error-messages="formErrors.presentation"
-                class="rounded-lg font-weight-black"
-                hide-details="auto"
-              />
-            </VCol>
+            <!-- Configuración de Unidades de 3 Niveles (Compra -> Almacén -> Receta) para Restaurante -->
+            <template v-if="isRestaurant">
+              <!-- Nivel 1: Unidad de Compra (Empaque mayorista del proveedor) -->
+              <VCol cols="12" sm="6" md="3">
+                <VCombobox
+                  v-model="formData.purchase_unit_name"
+                  label="Unidad de Compra"
+                  placeholder="Ej: Display, Caja"
+                  :items="['Display', 'Caja', 'Fardo', 'Bulto', 'Saco', 'Paquete', 'Galón', 'Cubeta']"
+                  variant="outlined"
+                  density="comfortable"
+                  class="rounded-lg font-weight-black"
+                  hide-details="auto"
+                  :error-messages="formErrors.purchase_unit_name"
+                />
+              </VCol>
 
-            <!-- Unidad de Medida -->
-            <VCol v-if="isRestaurant && isFieldEnabled('unit_of_measure')" cols="12" md="4">
-              <VSelect v-model="formData.unit_of_measure" label="Unidad de Medida"
-                :items="[
-                  { title: 'Gramos (g)', value: 'g' },
-                  { title: 'Mililitros (ml)', value: 'ml' },
-                  { title: 'Unidades (und)', value: 'und' }
-                ]"
-                item-title="title"
-                item-value="value"
-                variant="outlined"
-                density="comfortable"
-                clearable
-                :error-messages="formErrors.unit_of_measure"
-                class="rounded-lg font-weight-black"
-                hide-details="auto"
-              />
-            </VCol>
+              <VCol cols="12" sm="6" md="3">
+                <VTextField
+                  v-model.number="formData.units_per_inner_pack"
+                  label="Paquetes por Compra"
+                  placeholder="12"
+                  type="number"
+                  step="any"
+                  min="0.0001"
+                  variant="outlined"
+                  density="comfortable"
+                  class="rounded-lg font-weight-black"
+                  hide-details="auto"
+                  :error-messages="formErrors.units_per_inner_pack"
+                />
+              </VCol>
+
+              <!-- Nivel 2: Unidad de Almacén (Paquete / Envase individual) -->
+              <VCol cols="12" sm="6" md="2">
+                <VCombobox
+                  v-model="formData.pack_unit_name"
+                  label="Unidad de Almacén"
+                  placeholder="Paquete"
+                  :items="['Paquete', 'Envase', 'Bolsa', 'Botella', 'Lata', 'Porción']"
+                  variant="outlined"
+                  density="comfortable"
+                  class="rounded-lg font-weight-black"
+                  hide-details="auto"
+                  :error-messages="formErrors.pack_unit_name"
+                />
+              </VCol>
+
+              <!-- Nivel 3: Contenido por paquete y Unidad en Receta -->
+              <VCol cols="12" sm="6" md="2">
+                <VTextField
+                  v-model.number="formData.presentation"
+                  label="Contenido / Paq."
+                  placeholder="4"
+                  type="number"
+                  step="any"
+                  min="0.0001"
+                  variant="outlined"
+                  density="comfortable"
+                  class="rounded-lg font-weight-black"
+                  hide-details="auto"
+                  :error-messages="formErrors.presentation"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" md="2">
+                <VSelect
+                  v-model="formData.unit_of_measure"
+                  label="Unidad en Receta"
+                  :items="[
+                    { title: 'Unidades (und)', value: 'und' },
+                    { title: 'Gramos (g)', value: 'g' },
+                    { title: 'Mililitros (ml)', value: 'ml' },
+                    { title: 'Onzas (oz)', value: 'oz' },
+                    { title: 'Porciones (porción)', value: 'porción' }
+                  ]"
+                  item-title="title"
+                  item-value="value"
+                  variant="outlined"
+                  density="comfortable"
+                  clearable
+                  class="rounded-lg font-weight-black"
+                  hide-details="auto"
+                  :error-messages="formErrors.unit_of_measure"
+                />
+              </VCol>
+
+              <!-- Cintilla Informativa de Equivalencia en Vivo -->
+              <VCol cols="12" class="pt-0">
+                <div class="pa-2.5 bg-light rounded-lg border text-xs d-flex align-center gap-2 flex-wrap text-medium-emphasis">
+                  <VIcon icon="tabler-scale" size="18" color="primary" />
+                  <span class="font-weight-bold text-high-emphasis">Equivalencia logística:</span>
+                  <VChip size="x-small" color="primary" variant="flat" class="font-weight-black">
+                    1 {{ formData.purchase_unit_name || 'Compra' }}
+                  </VChip>
+                  <span>=</span>
+                  <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-bold">
+                    {{ formData.units_per_inner_pack || 1 }} {{ formData.pack_unit_name || 'paquete(s)' }}
+                  </VChip>
+                  <span>=</span>
+                  <VChip size="x-small" color="success" variant="tonal" class="font-weight-black">
+                    {{ ((Number(formData.units_per_inner_pack) || 1) * (Number(formData.presentation) || 1)).toLocaleString() }} {{ formData.unit_of_measure || 'und' }} en cocina
+                  </VChip>
+                </div>
+              </VCol>
+            </template>
 
             <!-- Descripción -->
             <VCol v-if="isFieldEnabled('description')" cols="12">

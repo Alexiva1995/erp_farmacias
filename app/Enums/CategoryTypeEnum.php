@@ -41,6 +41,7 @@ enum CategoryTypeEnum: string
     {
         return [
             self::INVENTORY->value,
+            'products',
             self::BOTH->value,
         ];
     }
@@ -54,6 +55,7 @@ enum CategoryTypeEnum: string
     {
         return [
             self::DISH->value,
+            'dishes',
             self::BOTH->value,
         ];
     }

@@ -47,12 +47,21 @@ const loadingOptionProducts = ref(false)
 let baseDebounceTimer = null
 let optionDebounceTimer = null
 
-// Registro de productos en el mapa de nombres
+// Registro de productos en el mapa de productos con medidas y unidades
 const registerProducts = (items) => {
   if (!Array.isArray(items)) return
   items.forEach((p) => {
     if (p && p.id) {
-      productCatalog.value.set(p.id, p.name || `ID #${p.id}`)
+      productCatalog.value.set(p.id, {
+        id: p.id,
+        name: p.name || `ID #${p.id}`,
+        unit_of_measure: p.unit_of_measure || 'und',
+        presentation: Number(p.presentation) || 1,
+        unit_cost: Number(p.unit_cost) || 0,
+        purchase_unit_name: p.purchase_unit_name || 'Paquete',
+        pack_unit_name: p.pack_unit_name || 'Paquete',
+        units_per_inner_pack: Number(p.units_per_inner_pack) || 1,
+      })
     }
   })
 }
@@ -181,11 +190,11 @@ const fetchGroups = async () => {
     // Registrar en caché todos los productos que vengan en los grupos
     list.forEach((g) => {
       if (g.base_product) {
-        productCatalog.value.set(g.base_product.id, g.base_product.name)
+        registerProducts([g.base_product])
       }
       (g.options || []).forEach((opt) => {
         if (opt.product) {
-          productCatalog.value.set(opt.product.id, opt.product.name)
+          registerProducts([opt.product])
         }
       })
     })
@@ -249,10 +258,32 @@ const removeOption = (index) => {
   form.value.options.splice(index, 1)
 }
 
-const productName = (productId) => {
-  if (!productId) return '—'
-  return productCatalog.value.get(productId) || `ID #${productId}`
+const productObj = (productId) => {
+  if (!productId) return null
+  const entry = productCatalog.value.get(productId)
+  if (!entry) return null
+  return typeof entry === 'object' ? entry : { id: productId, name: entry, unit_of_measure: 'und', presentation: 1, unit_cost: 0 }
 }
+
+const productName = (productId) => {
+  const p = productObj(productId)
+  return p ? p.name : '—'
+}
+
+const productUnitOfMeasure = (productId) => {
+  const p = productObj(productId)
+  return p?.unit_of_measure || 'und'
+}
+
+const calculatedOptionPortionCost = computed(() => {
+  if (!newOption.value.product_id) return 0
+  const p = productObj(newOption.value.product_id)
+  if (!p) return 0
+  const portion = parseFloat(newOption.value.portion) || 0
+  const cost = parseFloat(p.unit_cost) || 0
+  const pres = parseFloat(p.presentation) || 1
+  return pres > 0 ? parseFloat(((portion * cost) / pres).toFixed(4)) : 0
+})
 
 // ─── Guardar Grupo ──────────────────────────────────────────────────────────
 const saveGroup = async () => {
@@ -742,11 +773,11 @@ onMounted(() => {
                       <span v-else class="text-disabled text-xs">—</span>
                     </td>
                     <td>
-                      <span v-if="form.base_product_id" class="text-xs text-primary font-weight-bold">
-                        Gramos de receta
+                      <span v-if="form.base_product_id && (Number(opt.portion) <= 0)" class="text-xs text-primary font-weight-bold">
+                        Hereda receta ({{ productUnitOfMeasure(form.base_product_id) }})
                       </span>
-                      <span v-else-if="opt.portion > 0" class="text-xs font-mono">
-                        {{ opt.portion }}
+                      <span v-else-if="Number(opt.portion) > 0" class="text-xs font-mono font-weight-bold">
+                        {{ opt.portion }} {{ productUnitOfMeasure(opt.product_id || form.base_product_id) }}
                       </span>
                       <span v-else class="text-disabled text-xs">—</span>
                     </td>
@@ -818,7 +849,7 @@ onMounted(() => {
                   </VCol>
 
                   <!-- Insumo del inventario a descontar con búsqueda dinámica contra servidor -->
-                  <VCol cols="12" md="8">
+                  <VCol cols="12" md="5">
                     <VAutocomplete
                       v-model="newOption.product_id"
                       v-model:search="searchOptionInput"
@@ -827,8 +858,8 @@ onMounted(() => {
                       item-value="id"
                       :loading="loadingOptionProducts"
                       :custom-filter="() => true"
-                      label="Insumo en Inventario a Descontar (Ej: Helado Vainilla)"
-                      placeholder="Escribe para buscar cualquier insumo en el inventario..."
+                      label="Insumo a Descontar"
+                      placeholder="Buscar insumo..."
                       variant="outlined"
                       density="comfortable"
                       class="rounded-lg bg-surface"
@@ -837,7 +868,26 @@ onMounted(() => {
                       no-data-text="Escribe el nombre del insumo para buscar..."
                     />
                   </VCol>
-                  <VCol cols="12" md="4" class="d-flex align-center justify-end">
+
+                  <!-- Porción a descontar con unidad de medida dinámica -->
+                  <VCol cols="12" sm="6" md="4">
+                    <VTextField
+                      v-model.number="newOption.portion"
+                      :label="form.base_product_id ? 'Porción (0 = heredar receta)' : 'Porción a Descontar'"
+                      :suffix="productUnitOfMeasure(newOption.product_id || form.base_product_id)"
+                      type="number"
+                      step="any"
+                      min="0"
+                      variant="outlined"
+                      density="comfortable"
+                      class="rounded-lg bg-surface font-weight-bold"
+                      hide-details="auto"
+                      :hint="newOption.product_id && Number(newOption.portion) > 0 ? `Costo porción: $${calculatedOptionPortionCost.toFixed(4)}` : undefined"
+                      :persistent-hint="Boolean(newOption.product_id && Number(newOption.portion) > 0)"
+                    />
+                  </VCol>
+
+                  <VCol cols="12" sm="6" md="3" class="d-flex align-center justify-end">
                     <VBtn
                       color="primary"
                       variant="flat"

@@ -123,6 +123,10 @@ class Category extends Authenticatable
                 unset($category->attributes['type']);
             } elseif (empty($category->type)) {
                 $category->type = CategoryTypeEnum::INVENTORY->value;
+            } elseif ($category->type === 'dishes') {
+                $category->type = CategoryTypeEnum::DISH->value;
+            } elseif ($category->type === 'products') {
+                $category->type = CategoryTypeEnum::INVENTORY->value;
             }
         });
 

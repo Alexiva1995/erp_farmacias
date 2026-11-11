@@ -63,6 +63,20 @@ class ProductActionService
             }
         }
         
+        // Sincronizar purchase_cost y unit_cost en base a units_per_inner_pack
+        $innerUnits = isset($validatedData['units_per_inner_pack']) && (float)$validatedData['units_per_inner_pack'] > 0
+            ? (float)$validatedData['units_per_inner_pack']
+            : 1.0;
+
+        if (isset($validatedData['purchase_cost']) && $validatedData['purchase_cost'] !== null && (float)$validatedData['purchase_cost'] > 0) {
+            $validatedData['purchase_cost'] = (float)$validatedData['purchase_cost'];
+            if (!isset($validatedData['unit_cost']) || (float)$validatedData['unit_cost'] <= 0) {
+                $validatedData['unit_cost'] = round($validatedData['purchase_cost'] / $innerUnits, 4);
+            }
+        } elseif (isset($validatedData['unit_cost']) && (float)$validatedData['unit_cost'] > 0 && (!isset($validatedData['purchase_cost']) || (float)$validatedData['purchase_cost'] <= 0)) {
+            $validatedData['purchase_cost'] = round((float)$validatedData['unit_cost'] * $innerUnits, 4);
+        }
+
         // Asegurar que unit_cost sea numérico
         $validatedData['unit_cost'] = (float)($validatedData['unit_cost'] ?? 0);
         
@@ -343,6 +357,19 @@ class ProductActionService
             $validatedData['sale_price'] !== null && 
             $validatedData['sale_price'] !== '' && 
             (float)$validatedData['sale_price'] > 0;
+
+        $innerUnits = isset($validatedData['units_per_inner_pack']) && (float)$validatedData['units_per_inner_pack'] > 0
+            ? (float)$validatedData['units_per_inner_pack']
+            : ((float)$product->units_per_inner_pack > 0 ? (float)$product->units_per_inner_pack : 1.0);
+
+        if (isset($validatedData['purchase_cost']) && $validatedData['purchase_cost'] !== null && (float)$validatedData['purchase_cost'] > 0) {
+            $validatedData['purchase_cost'] = (float)$validatedData['purchase_cost'];
+            if (!isset($validatedData['unit_cost']) || (float)$validatedData['unit_cost'] <= 0) {
+                $validatedData['unit_cost'] = round($validatedData['purchase_cost'] / $innerUnits, 4);
+            }
+        } elseif (isset($validatedData['unit_cost']) && (float)$validatedData['unit_cost'] > 0 && (!isset($validatedData['purchase_cost']) || (float)$validatedData['purchase_cost'] <= 0)) {
+            $validatedData['purchase_cost'] = round((float)$validatedData['unit_cost'] * $innerUnits, 4);
+        }
 
         $unitCost = isset($validatedData['unit_cost']) && $validatedData['unit_cost'] !== null 
             ? (float)$validatedData['unit_cost'] 

@@ -29,6 +29,30 @@ const lotHeaders = [
   { title: "FECHA EXPIRACIÓN", key: "expiration_date", sortable: false },
   { title: "UBICACIÓN", key: "location", sortable: false },
 ];
+
+const onPurchaseCostChange = (val) => {
+  const pCost = parseFloat(val) || 0;
+  props.formData.purchase_cost = pCost > 0 ? pCost : null;
+  const inner = parseFloat(props.formData.units_per_inner_pack) || 1;
+  if (inner > 0 && pCost > 0) {
+    props.formData.unit_cost = parseFloat((pCost / inner).toFixed(4));
+  }
+};
+
+const onUnitCostChange = (val) => {
+  const uCost = parseFloat(val) || 0;
+  props.formData.unit_cost = uCost;
+  const inner = parseFloat(props.formData.units_per_inner_pack) || 1;
+  if (inner > 0 && uCost > 0) {
+    props.formData.purchase_cost = parseFloat((uCost * inner).toFixed(4));
+  }
+};
+
+const recipeUnitCost = computed(() => {
+  const uCost = parseFloat(props.formData.unit_cost) || 0;
+  const pres = parseFloat(props.formData.presentation) || 1;
+  return pres > 0 ? (uCost / pres) : uCost;
+});
 </script>
 
 <template>
@@ -204,24 +228,67 @@ const lotHeaders = [
             />
           </VCol>
 
-          <!-- Costo de Compra -->
-          <VCol v-if="isFieldEnabled('unit_cost')" cols="12" :md="isNewProduct ? 4 : 6" class="mt-4">
-            <VTextField v-model="formData.unit_cost" label="Costo de Compra"
-              type="number"
-              prefix="$"
-              variant="outlined"
-              density="comfortable"
-              :readonly="!authStore.isAdmin && !isNewProduct"
-              :error-messages="formErrors.unit_cost"
-              class="rounded-lg font-weight-black"
-              hide-details="auto"
-            />
-          </VCol>
+          <!-- Costo de Compra / Empaque Mayorista (Restaurante) -->
+          <template v-if="isRestaurant && (Number(formData.units_per_inner_pack) > 1)">
+            <VCol cols="12" sm="6" :md="isNewProduct ? 3 : 4" class="mt-4">
+              <VTextField
+                :model-value="formData.purchase_cost"
+                @update:model-value="onPurchaseCostChange"
+                :label="`Costo por ${formData.purchase_unit_name || 'Compra'} (x${formData.units_per_inner_pack})`"
+                type="number"
+                step="any"
+                prefix="$"
+                variant="outlined"
+                density="comfortable"
+                :readonly="!authStore.isAdmin && !isNewProduct"
+                :error-messages="formErrors.purchase_cost"
+                class="rounded-lg font-weight-black"
+                hide-details="auto"
+              />
+            </VCol>
+
+            <VCol cols="12" sm="6" :md="isNewProduct ? 3 : 4" class="mt-4">
+              <VTextField
+                :model-value="formData.unit_cost"
+                @update:model-value="onUnitCostChange"
+                :label="`Costo por ${formData.pack_unit_name || 'Paquete'}`"
+                type="number"
+                step="any"
+                prefix="$"
+                variant="outlined"
+                density="comfortable"
+                :readonly="!authStore.isAdmin && !isNewProduct"
+                :error-messages="formErrors.unit_cost"
+                class="rounded-lg font-weight-black"
+                hide-details="auto"
+              />
+            </VCol>
+          </template>
+
+          <template v-else>
+            <!-- Costo de Compra Estándar -->
+            <VCol v-if="isFieldEnabled('unit_cost')" cols="12" :md="isNewProduct ? 4 : 6" class="mt-4">
+              <VTextField
+                v-model="formData.unit_cost"
+                :label="isRestaurant ? `Costo por ${formData.pack_unit_name || 'Paquete'}` : 'Costo de Compra'"
+                type="number"
+                step="any"
+                prefix="$"
+                variant="outlined"
+                density="comfortable"
+                :readonly="!authStore.isAdmin && !isNewProduct"
+                :error-messages="formErrors.unit_cost"
+                class="rounded-lg font-weight-black"
+                hide-details="auto"
+              />
+            </VCol>
+          </template>
 
           <!-- Precio de Venta -->
-          <VCol v-if="isFieldEnabled('sale_price')" cols="12" :md="isNewProduct ? 4 : 6" class="mt-4">
+          <VCol v-if="isFieldEnabled('sale_price')" cols="12" :md="isRestaurant && (Number(formData.units_per_inner_pack) > 1) ? (isNewProduct ? 3 : 4) : (isNewProduct ? 4 : 6)" class="mt-4">
             <VTextField v-model="formData.sale_price" label="Precio de Venta"
               type="number"
+              step="any"
               prefix="$"
               variant="outlined"
               density="comfortable"
@@ -233,19 +300,33 @@ const lotHeaders = [
           </VCol>
 
           <!-- Stock Inicial -->
-          <VCol v-if="isNewProduct && isFieldEnabled('stock')" cols="12" md="4" class="mt-4">
+          <VCol v-if="isNewProduct && isFieldEnabled('stock')" cols="12" :md="isRestaurant && (Number(formData.units_per_inner_pack) > 1) ? 3 : 4" class="mt-4">
             <VTextField v-model="formData.initial_stock"
-              :label="isRestaurant && Number(formData.presentation) > 0 ? `Stock Inicial (Empaques de ${formData.presentation} ${formData.unit_of_measure || ''})` : 'Stock Inicial'"
+              :label="isRestaurant && Number(formData.presentation) > 0 ? `Stock Inicial (${formData.pack_unit_name || 'Paquetes'})` : 'Stock Inicial'"
               type="number"
               step="any"
               variant="outlined"
               density="comfortable"
               :error-messages="formErrors.initial_stock"
               class="rounded-lg font-weight-black"
-              :hint="isRestaurant && Number(formData.presentation) > 0 ? `Cantidad en empaques o paquetes (ej: 3 para 3 envases de ${formData.presentation} ${formData.unit_of_measure || ''})` : undefined"
+              :hint="isRestaurant && Number(formData.presentation) > 0 ? `En paquetes/envases (${formData.presentation} ${formData.unit_of_measure || ''} c/u)` : undefined"
               :persistent-hint="Boolean(isRestaurant && Number(formData.presentation) > 0)"
               hide-details="auto"
             />
+          </VCol>
+
+          <!-- Desglose de Costo Unitario de Receta para Restaurante -->
+          <VCol v-if="isRestaurant && Number(formData.presentation) > 0" cols="12" class="pt-2">
+            <div class="pa-2 bg-light rounded-lg border text-xs d-flex align-center justify-space-between flex-wrap text-medium-emphasis">
+              <span class="d-flex align-center gap-1">
+                <VIcon icon="tabler-calculator" size="16" color="success" />
+                Costo en receta: 
+                <strong class="text-success">${{ recipeUnitCost.toFixed(4) }}</strong> por cada <strong>1 {{ formData.unit_of_measure || 'und' }}</strong>
+              </span>
+              <span class="text-super-xs text-disabled">
+                ({{ formData.presentation }} {{ formData.unit_of_measure || 'und' }} por {{ formData.pack_unit_name || 'paquete' }})
+              </span>
+            </div>
           </VCol>
         </VRow>
       </VCard>

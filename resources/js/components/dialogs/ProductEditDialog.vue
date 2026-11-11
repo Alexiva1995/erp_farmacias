@@ -154,6 +154,10 @@ const resetFormData = () => {
     presentation: null,
     initial_stock: null,
     unit_of_measure: null,
+    purchase_unit_name: "Paquete",
+    pack_unit_name: "Paquete",
+    units_per_inner_pack: 1,
+    purchase_cost: null,
     supplier_ids: [],
     supplier_id: null,
     master_id: null,
@@ -178,6 +182,10 @@ watch(
       clonedProduct.is_scarce = clonedProduct.is_scarce ? 1 : 0;
       clonedProduct.is_unified_group = clonedProduct.is_unified_group ? 1 : 0;
       clonedProduct.no_pvp = clonedProduct.no_pvp ? 1 : 0;
+      clonedProduct.purchase_unit_name = clonedProduct.purchase_unit_name || "Paquete";
+      clonedProduct.pack_unit_name = clonedProduct.pack_unit_name || "Paquete";
+      clonedProduct.units_per_inner_pack = clonedProduct.units_per_inner_pack ? Number(clonedProduct.units_per_inner_pack) : 1;
+      clonedProduct.purchase_cost = clonedProduct.purchase_cost !== undefined && clonedProduct.purchase_cost !== null ? Number(clonedProduct.purchase_cost) : null;
       if (clonedProduct.product_suppliers) {
         clonedProduct.supplier_ids = clonedProduct.product_suppliers.map((ps) => ps.supplier_id);
       } else {
