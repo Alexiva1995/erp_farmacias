@@ -70,6 +70,14 @@ class InventoryStockService
             $filtros['isColombian'] = (bool) $validated['isColombian'];
         }
 
+        if (isset($validated['include_sub_recipes'])) {
+            $filtros['include_sub_recipes'] = (bool) $validated['include_sub_recipes'];
+        }
+
+        if (isset($validated['include_recipes'])) {
+            $filtros['include_recipes'] = (bool) $validated['include_recipes'];
+        }
+
         return $filtros;
     }
 

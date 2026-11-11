@@ -37,6 +37,8 @@ class InventoryStockFilterRequest extends FormRequest
             'isStrictSearch' => ['nullable', 'boolean'],
             'tipo_filtracion' => ['nullable', 'string', 'in:average,sales,combinado,weighted,stockout_adjusted_rop,stockout_adjusted_rop_plus,stockout_adjusted_rop_hiperplus'],
             'isColombian' => ['nullable', 'boolean'],
+            'include_sub_recipes' => ['nullable', 'boolean'],
+            'include_recipes' => ['nullable', 'boolean'],
             'page' => ['nullable', 'integer', 'min:1'],
             'itemsPerPage' => ['nullable', 'integer', 'min:1'],
             'formato' => ['nullable', 'string', 'in:xlsx,csv,pdf'],

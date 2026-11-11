@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ProductRepository
 {
@@ -234,6 +235,60 @@ class ProductRepository
                 });
             })
             ->with(["laboratory"]);
+
+        // Excluir recetas y sub-recetas de la consulta de stock
+        $includeSubRecipes = filter_var($filtros['include_sub_recipes'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $includeRecipes = filter_var($filtros['include_recipes'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if (!$includeSubRecipes) {
+            $consulta->where(function ($q) {
+                $q->where('products.is_sub_recipe', false)
+                  ->orWhereNull('products.is_sub_recipe');
+            })->where(function ($q) {
+                $q->whereNull('products.barcode')
+                  ->orWhere('products.barcode', 'not like', 'SUB-%');
+            })->where(function ($q) {
+                $q->whereNull('products.active_ingredient')
+                  ->orWhere(function ($sq) {
+                      $sq->where('products.active_ingredient', 'not like', '%sub-receta%')
+                         ->where('products.active_ingredient', 'not like', '%subreceta%');
+                  });
+            });
+        }
+
+        if (!$includeRecipes) {
+            try {
+                $conn = (new Product())->getConnection();
+                $schema = $conn->getSchemaBuilder();
+
+                if ($schema->hasTable('dishes') && $schema->hasColumn('dishes', 'output_product_id')) {
+                    $consulta->whereNotExists(function ($subQ) {
+                        $subQ->select(DB::raw(1))
+                            ->from('dishes')
+                            ->whereColumn('dishes.output_product_id', 'products.id');
+                    });
+                }
+
+                if ($schema->hasTable('categories') && $schema->hasColumn('categories', 'type')) {
+                    $consulta->whereNotExists(function ($subQ) {
+                        $subQ->select(DB::raw(1))
+                            ->from('categories')
+                            ->whereColumn('categories.id', 'products.category_id')
+                            ->where('categories.type', 'dish');
+                    });
+                }
+            } catch (\Throwable $e) {
+                // Prevenir interrupciones en entornos de prueba o migraciones pendientes
+            }
+
+            $consulta->where(function ($q) {
+                $q->whereNull('products.barcode')
+                  ->orWhere('products.barcode', 'not like', 'REC-%');
+            })->where(function ($q) {
+                $q->whereNull('products.active_ingredient')
+                  ->orWhere('products.active_ingredient', 'not like', '%receta producida%');
+            });
+        }
 
         if (array_key_exists("expProd", $filtros) && ($filtros["expProd"] === true || $filtros["expProd"] === "true" || $filtros["expProd"] === 1)) {
             $consulta->whereExists(function ($query) use ($days) {
