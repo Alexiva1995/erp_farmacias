@@ -16,9 +16,10 @@ const brandingStore = useBrandingStore()
 
 const showDishesColumn = computed(() => {
   const enableDishes = brandingStore.settings.enable_dishes ?? false
+  const isRest = brandingStore.settings.business_type === 'restaurant' || brandingStore.settings.business_type === 'fast_food'
   const types = brandingStore.settings.enabled_product_types || []
   const hasIngredients = Array.isArray(types) && types.includes('ingredients')
-  return Boolean(enableDishes && hasIngredients)
+  return Boolean(isRest || (enableDishes && hasIngredients))
 })
 
 // --- Estados ---
@@ -27,6 +28,7 @@ const loading = ref(false)
 const isSaving = ref(false)
 const totalCategories = ref(0)
 const searchQuery = ref('')
+const selectedTypeFilter = ref('all')
 const page = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref('name')
@@ -35,14 +37,42 @@ const orderBy = ref('asc')
 let debounceTimer = null
 
 const isDialogOpen = ref(false)
-const categoryForm = ref({ id: null, name: '' })
+const categoryForm = ref({ id: null, name: '', type: 'inventory' })
 const isRunningAi = ref(false)
+
+const categoryTypeOptions = [
+  {
+    title: 'Inventario (Insumos / Productos)',
+    value: 'inventory',
+    color: 'primary',
+    icon: 'tabler-package',
+    shortLabel: 'Inventario',
+  },
+  {
+    title: 'Menú (Platos / Recetas)',
+    value: 'dish',
+    color: 'success',
+    icon: 'tabler-tools-kitchen-2',
+    shortLabel: 'Menú / Platos',
+  },
+  {
+    title: 'Ambos (Inventario y Menú)',
+    value: 'both',
+    color: 'info',
+    icon: 'tabler-arrows-Split-2',
+    shortLabel: 'Ambos',
+  },
+]
+
+const getTypeMeta = (type) => {
+  return categoryTypeOptions.find(opt => opt.value === type) || categoryTypeOptions[0]
+}
 
 // Ejecutar categorización con IA manualmente
 const runAiCategorize = async () => {
   const result = await Swal.fire({
     title: "¿Categorizar productos con IA?",
-    text: "La Inteligencia Artificial (Gemini) analizará los productos que aún no tienen categoría y los asignará automáticamente.",
+    text: "La Inteligencia Artificial (Gemini) analizará los productos que aún no tienen categoría y los asignará automáticamente en categorías de inventario.",
     icon: "info",
     showCancelButton: true,
     confirmButtonText: "Sí, analizar y categorizar",
@@ -77,14 +107,19 @@ const headers = computed(() => {
       headerClass: 'd-none d-sm-table-cell',
       width: '80px',
     },
-    { title: "Categoría de Inventario", key: "name", sortable: true, width: '40%' },
-    { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' },
+    { title: "Nombre de Categoría", key: "name", sortable: true, width: '35%' },
   ]
-  
+
+  if (showDishesColumn.value) {
+    list.push({ title: "Ámbito / Tipo", key: "type", sortable: true, align: 'center', width: '160px' })
+  }
+
+  list.push({ title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' })
+
   if (showDishesColumn.value) {
     list.push({ title: "Platos / Menú", key: "dishes_count", sortable: true, align: 'center', width: '140px' })
   }
-  
+
   list.push({ title: "Acciones", key: "actions", sortable: false, align: 'center', width: '140px' })
   return list
 })
@@ -95,10 +130,11 @@ const fetchCategories = async () => {
   try {
     const params = {
       search: searchQuery.value,
+      type: selectedTypeFilter.value,
       page: page.value,
       itemsPerPage: itemsPerPage.value,
       sortBy: sortBy.value,
-      orderBy: orderBy.value
+      orderBy: orderBy.value,
     }
     const { data } = await axios.get('/inventory/categories-manage', { params })
     categories.value = data.data
@@ -113,11 +149,18 @@ const fetchCategories = async () => {
 
 // Abrir diálogo de creación/edición
 const openEdit = (category = null) => {
-  categoryForm.value = category ? { id: category.id, name: category.name } : { id: null, name: '' }
+  const defaultType = selectedTypeFilter.value === 'dish' ? 'dish' : 'inventory'
+  categoryForm.value = category
+    ? { id: category.id, name: category.name, type: category.type || 'inventory' }
+    : { id: null, name: '', type: defaultType }
   isDialogOpen.value = true
 }
 
-const goToProducts = (category) => {
+const goToItems = (category) => {
+  if (category.type === 'dish') {
+    router.push({ path: '/inventory/dishes', query: { categoryId: category.id } })
+    return
+  }
   router.push({ path: '/inventory/products', query: { categoryId: category.id } })
 }
 
@@ -129,12 +172,16 @@ const saveCategory = async () => {
   }
   isSaving.value = true
   try {
-    await axios.post('/inventory/categories-manage', categoryForm.value)
+    await axios.post('/inventory/categories-manage', {
+      id: categoryForm.value.id,
+      name: categoryForm.value.name.trim(),
+      type: showDishesColumn.value ? categoryForm.value.type : 'inventory',
+    })
     toast.success("Categoría guardada correctamente")
     isDialogOpen.value = false
     fetchCategories()
   } catch (error) {
-    toast.error('Error al guardar la categoría')
+    toast.error(error.response?.data?.message || 'Error al guardar la categoría')
   } finally {
     isSaving.value = false
   }
@@ -185,6 +232,11 @@ watch([searchQuery], () => {
   }, 300)
 })
 
+watch([selectedTypeFilter], () => {
+  page.value = 1
+  fetchCategories()
+})
+
 watch([page, itemsPerPage, sortBy, orderBy], () => {
   fetchCategories()
 })
@@ -199,7 +251,7 @@ onUnmounted(() => clearTimeout(debounceTimer))
       v-model:search="searchQuery"
       :show-add="true"
       add-button-text="Añadir Categoría"
-      @clear="searchQuery = ''; fetchCategories()"
+      @clear="searchQuery = ''; selectedTypeFilter = 'all'; fetchCategories()"
       @add="openEdit()"
     >
       <template #actions-extra>
@@ -219,11 +271,38 @@ onUnmounted(() => clearTimeout(debounceTimer))
       </template>
     </AppFilterBase>
 
+    <!-- Selector de ámbito (Inventario vs Menú de Platos) cuando el restaurante/platos está activo -->
+    <VCard v-if="showDishesColumn" class="rounded-lg border shadow-sm mt-3 pa-2">
+      <div class="d-flex flex-wrap align-center justify-space-between gap-2">
+        <VTabs
+          v-model="selectedTypeFilter"
+          color="primary"
+          density="compact"
+          show-arrows
+        >
+          <VTab value="all" class="font-weight-bold text-xs">
+            <VIcon icon="tabler-layout-grid" size="16" class="me-1" />
+            Todas
+          </VTab>
+          <VTab value="inventory" class="font-weight-bold text-xs">
+            <VIcon icon="tabler-package" size="16" class="me-1" />
+            Inventario (Insumos / Productos)
+          </VTab>
+          <VTab value="dish" class="font-weight-bold text-xs">
+            <VIcon icon="tabler-tools-kitchen-2" size="16" class="me-1" />
+            Menú (Platos / Recetas)
+          </VTab>
+        </VTabs>
+      </div>
+    </VCard>
+
     <!-- Card de la Tabla -->
     <VCard class="rounded-lg border shadow-sm mt-4 overflow-hidden">
       <!-- Cabecera Estándar -->
       <VCardTitle class="d-flex align-center pa-4">
-        <span class="text-h6 font-weight-bold">Listado de Categorías de Inventario</span>
+        <span class="text-h6 font-weight-bold">
+          {{ selectedTypeFilter === 'dish' ? 'Categorías de Menú (Platos)' : selectedTypeFilter === 'inventory' ? 'Categorías de Inventario (Insumos y Productos)' : 'Listado de Categorías' }}
+        </span>
         <VSpacer />
         <VChip size="small" color="primary" variant="tonal" class="font-weight-black">
           {{ totalCategories }} CATEGORÍAS
@@ -257,6 +336,21 @@ onUnmounted(() => clearTimeout(debounceTimer))
             </div>
           </template>
 
+          <template #item.type="{ item }">
+            <div class="text-center">
+              <VChip
+                :color="getTypeMeta(item.type).color"
+                size="x-small"
+                variant="tonal"
+                label
+                class="font-weight-black text-uppercase"
+              >
+                <VIcon :icon="getTypeMeta(item.type).icon" size="13" class="me-1" />
+                {{ getTypeMeta(item.type).shortLabel }}
+              </VChip>
+            </div>
+          </template>
+
           <template #item.products_count="{ item }">
             <div class="text-center">
               <VChip
@@ -287,9 +381,9 @@ onUnmounted(() => clearTimeout(debounceTimer))
 
           <template #item.actions="{ item }">
             <div class="d-flex align-center justify-center gap-1 px-2">
-              <VTooltip text="Ver productos" location="top">
+              <VTooltip :text="item.type === 'dish' ? 'Ver platos' : 'Ver productos'" location="top">
                 <template #activator="{ props: tooltipProps }">
-                  <IconBtn v-bind="tooltipProps" @click="goToProducts(item)" color="info" size="small">
+                  <IconBtn v-bind="tooltipProps" @click="goToItems(item)" color="info" size="small">
                     <VIcon icon="tabler-eye" size="18" />
                   </IconBtn>
                 </template>
@@ -314,7 +408,7 @@ onUnmounted(() => clearTimeout(debounceTimer))
           <template #no-data>
             <AppEmptyState
               title="No se encontraron categorías"
-              message="Registra categorías para clasificar tus productos y facilitar su búsqueda en el inventario."
+              message="Registra categorías separadas para clasificar tus insumos de inventario o los platos de tu menú."
               icon="tabler-category"
             >
               <template #actions>
@@ -347,12 +441,26 @@ onUnmounted(() => clearTimeout(debounceTimer))
             class="border mb-1 rounded-lg pa-3"
           >
             <div class="d-flex justify-space-between align-center mb-2">
-              <div class="d-flex align-center gap-2">
-                <span class="text-xs font-weight-black text-primary">#{{ item.id }}</span>
-                <span class="text-sm font-weight-black text-high-emphasis text-uppercase">{{ item.name }}</span>
+              <div class="d-flex flex-column gap-1">
+                <div class="d-flex align-center gap-2">
+                  <span class="text-xs font-weight-black text-primary">#{{ item.id }}</span>
+                  <span class="text-sm font-weight-black text-high-emphasis text-uppercase">{{ item.name }}</span>
+                </div>
+                <div v-if="showDishesColumn">
+                  <VChip
+                    :color="getTypeMeta(item.type).color"
+                    size="x-small"
+                    variant="tonal"
+                    label
+                    class="font-weight-black text-uppercase"
+                  >
+                    <VIcon :icon="getTypeMeta(item.type).icon" size="12" class="me-1" />
+                    {{ getTypeMeta(item.type).shortLabel }}
+                  </VChip>
+                </div>
               </div>
               <div class="d-flex gap-1">
-                <IconBtn size="small" color="info" @click="goToProducts(item)">
+                <IconBtn size="small" color="info" @click="goToItems(item)">
                   <VIcon icon="tabler-eye" size="18" />
                 </IconBtn>
                 <IconBtn size="small" color="warning" @click="openEdit(item)">
@@ -433,7 +541,7 @@ onUnmounted(() => clearTimeout(debounceTimer))
                 {{ categoryForm.id ? 'Editar' : 'Nueva' }} Categoría
               </h2>
               <span class="text-super-xs text-white opacity-75 uppercase font-weight-bold mt-1">
-                Clasificación de productos e ingredientes
+                Clasificación de inventario y menú
               </span>
             </div>
             <VSpacer />
@@ -448,10 +556,23 @@ onUnmounted(() => clearTimeout(debounceTimer))
               <AppTextField
                 v-model="categoryForm.name"
                 label="Nombre de la Categoría"
-                placeholder="Ej: Waffles, Bebidas, Helados..."
+                :placeholder="categoryForm.type === 'dish' ? 'Ej: Entradas, Hamburguesas, Postres...' : 'Ej: Carnes, Lácteos, Empaques, Bebidas...'"
                 persistent-placeholder
                 class="mb-4"
                 @keyup.enter="saveCategory"
+              />
+            </VCol>
+
+            <VCol v-if="showDishesColumn" cols="12">
+              <p class="text-xs font-weight-black text-primary text-uppercase mb-2 ls-1">Ámbito de Uso</p>
+              <AppSelect
+                v-model="categoryForm.type"
+                :items="categoryTypeOptions"
+                item-title="title"
+                item-value="value"
+                label="¿Dónde se usará esta categoría?"
+                hint="Las categorías de Menú solo aparecen en Platos/Recetas; las de Inventario solo aparecen en Productos/Insumos."
+                persistent-hint
               />
             </VCol>
           </VRow>

@@ -106,8 +106,8 @@ class StoreProductRequest extends FormRequest
 
             // Categoría: required si está habilitado
             'category_id' => $fieldEnabled('category_id')
-                ? ['required', 'exists:categories,id']
-                : ['nullable', 'exists:categories,id'],
+                ? ['required', \App\Models\Category::ensureTypeColumn() ? \Illuminate\Validation\Rule::exists('categories', 'id')->whereIn('type', \App\Enums\CategoryTypeEnum::inventoryValues()) : 'exists:categories,id']
+                : ['nullable', \App\Models\Category::ensureTypeColumn() ? \Illuminate\Validation\Rule::exists('categories', 'id')->whereIn('type', \App\Enums\CategoryTypeEnum::inventoryValues()) : 'exists:categories,id'],
 
             // Origen: required solo en farmacias y si está habilitado
             'origin_id' => ($isRestaurant || !$fieldEnabled('origin_id'))

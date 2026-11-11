@@ -1,6 +1,7 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatPrice, formatDateSimple } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/currencyFormatter";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed } from "vue";
 
@@ -48,15 +49,37 @@ const headers = computed(() => {
   return list;
 });
 
-const formatPriceWithDecimals = (price) => {
+const formatPriceWithCurrency = (price, isAlreadyConverted = false) => {
   const numPrice = Number(price);
-  if (isNaN(numPrice)) return "$ 0.00";
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(numPrice);
+  if (isNaN(numPrice)) return "—";
+
+  const currency = brandingStore.settings?.default_currency || "USD";
+
+  if (isAlreadyConverted || currency === "USD") {
+    return formatCurrency(numPrice, currency);
+  }
+
+  const rates = Array.isArray(brandingStore.exchangeRates) ? brandingStore.exchangeRates : [];
+
+  if (currency === "COP") {
+    const copObj = rates.find((r) => r && (r.currency_code === "COP" || r.currency_code === "COPC"));
+    const copRate = Number(copObj?.rate || 4000);
+    const rawCop = numPrice * copRate;
+    if (rawCop > 0 && rawCop < 100) {
+      return formatCurrency(Math.round(rawCop), "COP");
+    }
+    const cleanInt = Math.round(rawCop);
+    const rounded = cleanInt % 100 === 0 ? cleanInt : Math.ceil(cleanInt / 100) * 100;
+    return formatCurrency(rounded, "COP");
+  }
+
+  if (currency === "BS" || currency === "Bs") {
+    const bsObj = rates.find((r) => r && r.currency_code === "BS");
+    const bsRate = Number(bsObj?.rate || 1);
+    return formatCurrency(numPrice * bsRate, "BS");
+  }
+
+  return formatCurrency(numPrice, currency);
 };
 
 const formatInteger = (val) => {
@@ -197,7 +220,7 @@ const formatDifference = (val, item) => {
 
         <template #item.unit_cost="{ item }">
           <span class="font-weight-black text-high-emphasis">
-            {{ isMiniMarket ? formatPriceWithDecimals(item.unit_cost) : formatPrice(item.unit_cost) }}
+            {{ formatPriceWithCurrency(item.unit_cost) }}
           </span>
         </template>
         <template #item.total_sold_completed="{ item }">
@@ -321,7 +344,7 @@ const formatDifference = (val, item) => {
               <div class="text-center flex-1 px-1">
                 <span class="text-super-xs text-disabled d-block font-weight-black uppercase leading-tight mb-1">Costo</span>
                 <span class="text-sm font-weight-black text-high-emphasis">
-                  {{ isMiniMarket ? formatPriceWithDecimals(item.unit_cost) : formatPrice(item.unit_cost) }}
+                  {{ formatPriceWithCurrency(item.unit_cost) }}
                 </span>
               </div>
               <VDivider vertical class="mx-1" />

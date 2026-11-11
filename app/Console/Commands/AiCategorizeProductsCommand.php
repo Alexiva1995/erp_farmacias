@@ -31,9 +31,9 @@ class AiCategorizeProductsCommand extends Command
             return 1;
         }
 
-        $categories = \App\Models\Category::all();
+        $categories = \App\Models\Category::forInventory()->get();
         if ($categories->isEmpty()) {
-            $this->error('No existen categorías. Ejecuta primero categories:renew-ecommerce.');
+            $this->error('No existen categorías de inventario. Ejecuta primero categories:renew-ecommerce.');
             return 1;
         }
 

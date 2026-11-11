@@ -188,6 +188,7 @@ const updateTableOptions = (options) => {
 };
 
 onMounted(async () => {
+  await brandingStore.fetchSettings();
   await fetchSelectOptions();
   await actualizarTabla();
 });

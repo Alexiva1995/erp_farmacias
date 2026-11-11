@@ -3,88 +3,55 @@
 namespace App\Http\Controllers\Api\Inventory;
 
 use App\Http\Controllers\Controller;
-use App\Models\Category;
 use App\Http\Requests\Inventory\StoreCategoryRequest;
-use Illuminate\Http\Request;
+use App\Http\Resources\Inventory\CategoryManagementResource;
+use App\Models\Category;
+use App\Services\Inventory\CategoryManagementService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * Clase CategoryManagementController
  *
- * Gestiona el ABM/CRUD de categorías de inventario en el módulo de administración.
+ * Gestiona el ABM/CRUD de categorías de inventario y menú en el módulo de administración.
  */
 class CategoryManagementController extends Controller
 {
+    public function __construct(
+        private readonly CategoryManagementService $categoryService
+    ) {}
+
     /**
-     * Listar categorías de inventario con conteo de productos y platos.
-     *
-     * @param Request $request
-     * @return JsonResponse
+     * Listar categorías con conteo de productos y platos.
      */
     public function index(Request $request): JsonResponse
     {
-        $enabledTypes = config('branding.enabled_product_types', ['ingredients']);
-        // Verificar si el tipo 'ingredients' está habilitado para cargar el conteo de platos
-        $hasIngredients = in_array('ingredients', (array) $enabledTypes);
+        $paginator = $this->categoryService->paginate($request->only([
+            'search',
+            'type',
+            'sortBy',
+            'orderBy',
+            'itemsPerPage',
+        ]));
 
-        $query = Category::query()
-            ->select(['id', 'name'])
-            ->withCount(['products']);
-
-        if ($hasIngredients) {
-            $query->withCount(['dishes']);
-        }
-
-        if ($request->filled('search')) {
-            $query->where('name', 'like', "%{$request->search}%");
-        }
-
-        $sortBy = $request->get('sortBy', 'name');
-        $orderBy = $request->get('orderBy', 'asc');
-        $itemsPerPage = (int) $request->get('itemsPerPage', 10);
-
-        if (!in_array($sortBy, ['id', 'name', 'products_count', 'dishes_count'])) {
-            $sortBy = 'name';
-        }
-        $orderBy = strtolower($orderBy) === 'desc' ? 'desc' : 'asc';
-
-        if ($itemsPerPage === -1) {
-            $itemsPerPage = Category::count() ?: 10;
-        }
-
-        return response()->json($query->orderBy($sortBy, $orderBy)->paginate($itemsPerPage));
+        return response()->json($paginator);
     }
 
     /**
      * Guardar o actualizar una categoría.
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function store(StoreCategoryRequest $request): JsonResponse
     {
-        $category = Category::updateOrCreate(
-            ['id' => $request->id],
-            ['name' => $request->name]
-        );
-
-        // Limpiar cachés de recursos (incluyendo llave por conexión de tenant)
-        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
-        \Cache::forget('resources.categories');
-        \Cache::forget('resources.categories.dishes');
-        \Cache::forget("resources.categories.{$conn}");
-        \Cache::forget("resources.categories.dishes.{$conn}");
+        $category = $this->categoryService->save($request->validated());
 
         return response()->json([
             'message' => 'Categoría guardada correctamente.',
-            'category' => $category,
+            'category' => (new CategoryManagementResource($category))->resolve(),
         ]);
     }
 
     /**
      * Ejecutar la categorización automática de productos mediante Inteligencia Artificial.
-     *
-     * @return JsonResponse
      */
     public function aiCategorize(): JsonResponse
     {
@@ -97,28 +64,19 @@ class CategoryManagementController extends Controller
                 ], 422);
             }
 
-            // Ejecutar categorización con IA mediante Gemini
-            $exitCode = \Illuminate\Support\Facades\Artisan::call('products:ai-categorize', [
-                '--limit' => 60,
-                '--batch' => 30,
-            ]);
+            $result = $this->categoryService->runAiCategorization();
 
-            $output = \Illuminate\Support\Facades\Artisan::output();
-
-            \Cache::forget('resources.categories');
-            \Cache::forget('resources.categories.dishes');
-
-            if ($exitCode !== 0) {
+            if ($result['exit_code'] !== 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se pudo completar la categorización con IA: ' . trim($output),
+                    'message' => 'No se pudo completar la categorización con IA: ' . $result['output'],
                 ], 500);
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Productos categorizados con Inteligencia Artificial exitosamente.',
-                'output' => trim($output),
+                'output' => $result['output'],
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -130,24 +88,10 @@ class CategoryManagementController extends Controller
 
     /**
      * Eliminar una categoría y desvincular productos y platos.
-     *
-     * @param Category $category
-     * @return JsonResponse
      */
     public function destroy(Category $category): JsonResponse
     {
-        // Desvincular productos y platos antes de eliminar
-        $category->products()->update(['category_id' => null]);
-        $category->dishes()->update(['category_id' => null]);
-
-        $category->delete();
-
-        // Limpiar cachés de recursos (incluyendo llave por conexión de tenant)
-        $conn = \Illuminate\Support\Facades\DB::getDefaultConnection();
-        \Cache::forget('resources.categories');
-        \Cache::forget('resources.categories.dishes');
-        \Cache::forget("resources.categories.{$conn}");
-        \Cache::forget("resources.categories.dishes.{$conn}");
+        $this->categoryService->delete($category);
 
         return response()->json([
             'message' => 'Categoría eliminada y elementos desvinculados correctamente.',

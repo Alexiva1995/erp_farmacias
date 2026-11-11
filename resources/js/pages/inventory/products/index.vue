@@ -68,7 +68,7 @@ const fetchSelectOptions = async () => {
     const [labResponse, originResponse, categoryResponse, groupsResponse, suppliersResponse] = await Promise.all([
       axios.get("/laboratories"),
       axios.get("/origins"),
-      axios.get("/categories"),
+      axios.get("/categories", { params: { type: "inventory" } }),
       axios.get("/groups/consult-all"),
       axios.get("/suppliers"),
     ]);

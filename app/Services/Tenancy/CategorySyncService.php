@@ -27,9 +27,14 @@ class CategorySyncService
             return [];
         }
 
+        $hasTypeInMaster = Schema::connection($masterConnection)->hasColumn('categories', 'type');
+        $columns = $hasTypeInMaster
+            ? ['id', 'name', 'type', 'created_at', 'updated_at']
+            : ['id', 'name', 'created_at', 'updated_at'];
+
         return DB::connection($masterConnection)
             ->table('categories')
-            ->select(['id', 'name', 'created_at', 'updated_at'])
+            ->select($columns)
             ->get()
             ->map(fn ($item) => (array) $item)
             ->toArray();
@@ -55,13 +60,23 @@ class CategorySyncService
                 return;
             }
 
+            $hasTypeInTenant = Schema::hasColumn('categories', 'type');
+            $updateCols = $hasTypeInTenant ? ['name', 'type', 'updated_at'] : ['name', 'updated_at'];
+
+            if (!$hasTypeInTenant) {
+                $categories = array_map(function (array $row) {
+                    unset($row['type']);
+                    return $row;
+                }, $categories);
+            }
+
             DB::statement('SET FOREIGN_KEY_CHECKS=0;');
             try {
                 foreach (array_chunk($categories, 500) as $chunk) {
                     DB::table('categories')->upsert(
                         $chunk,
                         ['id'],
-                        ['name', 'updated_at']
+                        $updateCols
                     );
                 }
             } finally {

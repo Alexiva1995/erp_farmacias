@@ -80,24 +80,34 @@ class ResourceService
     }
 
     /**
-     * Obtiene una lista de todas las categorías aplicando filtros solicitados.
+     * Obtiene una lista de todas las categorías aplicando filtros por tipo (dishes, inventory o all).
      */
     public function getCategories(array $filters = []): Collection
     {
-        if (isset($filters['type']) && $filters['type'] === 'dishes') {
-            $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+        $hasTypeCol = Category::ensureTypeColumn();
+        $columns = $hasTypeCol ? ['id', 'name', 'type'] : ['id', 'name'];
+        $requestedType = $filters['type'] ?? 'inventory';
 
-            if ($isRestaurant) {
-                return Category::orderBy('name')->get(['id', 'name']);
+        if (in_array($requestedType, ['dishes', 'dish'], true)) {
+            if ($hasTypeCol) {
+                return Category::forDishes()
+                    ->orderBy('name')
+                    ->get($columns);
             }
 
             return Category::whereHas('dishes')
                 ->orWhereDoesntHave('products')
                 ->orderBy('name')
-                ->get(['id', 'name']);
+                ->get($columns);
         }
 
-        return Category::orderBy('name')->get(['id', 'name']);
+        if ($requestedType === 'all') {
+            return Category::orderBy('name')->get($columns);
+        }
+
+        return Category::forInventory()
+            ->orderBy('name')
+            ->get($columns);
     }
 
     public function getAllProducts(): Collection

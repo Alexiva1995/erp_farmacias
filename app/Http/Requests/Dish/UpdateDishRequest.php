@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests\Dish;
 
+use App\Enums\CategoryTypeEnum;
+use App\Models\Category;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateDishRequest extends FormRequest
 {
@@ -21,9 +24,14 @@ class UpdateDishRequest extends FormRequest
     {
         $dishId = $this->route('dish') ?? $this->route('id');
 
+        $categoryExistsRule = Rule::exists('categories', 'id');
+        if (Category::ensureTypeColumn()) {
+            $categoryExistsRule = $categoryExistsRule->whereIn('type', CategoryTypeEnum::dishValues());
+        }
+
         return [
             'name' => 'required|string|min:2|max:255|unique:dishes,name,' . $dishId,
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => ['required', $categoryExistsRule],
             'percentage_profit' => 'required|numeric|min:0',
             'cost_price' => 'required|numeric|min:0',
             'suggested_price' => 'required|numeric|min:0',

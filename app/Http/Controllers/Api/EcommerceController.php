@@ -160,7 +160,8 @@ class EcommerceController extends Controller
         $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
 
         if ($isRestaurant) {
-            $categories = Category::withCount(['dishes' => function ($q) {
+            $categories = Category::forDishes()
+                ->withCount(['dishes' => function ($q) {
                     $q->where('status', 1);
                 }])
                 ->select('id', 'name')
@@ -177,8 +178,9 @@ class EcommerceController extends Controller
             ]);
         }
 
-        // Obtener categorías reales con conteo de productos activos
-        $categories = Category::withCount(['products' => function ($q) {
+        // Obtener categorías reales de inventario con conteo de productos activos
+        $categories = Category::forInventory()
+            ->withCount(['products' => function ($q) {
                 $q->where('is_active', true)->where('is_deleted', false);
             }])
             ->select('id', 'name')

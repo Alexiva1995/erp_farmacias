@@ -283,6 +283,7 @@ const handleQuickCreateCategory = async () => {
       const { data } = await axios.post("/inventory/categories-manage", {
         id: null,
         name: categoryName.trim(),
+        type: "dish",
       });
       await fetchCategories();
       if (data?.category?.id) {

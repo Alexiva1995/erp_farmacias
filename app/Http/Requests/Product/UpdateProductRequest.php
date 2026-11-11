@@ -84,7 +84,13 @@ class UpdateProductRequest extends FormRequest
             'unit_cost' => 'nullable|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
             'origin_id' => 'nullable|integer|exists:origins,id',
-            'category_id' => 'nullable|integer|exists:categories,id',
+            'category_id' => [
+                'nullable',
+                'integer',
+                \App\Models\Category::ensureTypeColumn()
+                    ? \Illuminate\Validation\Rule::exists('categories', 'id')->whereIn('type', \App\Enums\CategoryTypeEnum::inventoryValues())
+                    : 'exists:categories,id',
+            ],
             'barcode' => [
                 'nullable',
                 'string',

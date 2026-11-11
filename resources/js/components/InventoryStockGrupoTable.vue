@@ -1,6 +1,7 @@
 <script setup>
 import AppMobilePagination from "@/components/AppMobilePagination.vue";
 import { formatPrice } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/currencyFormatter";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { ref, computed } from 'vue';
 
@@ -36,15 +37,37 @@ const toggleGroup = (key) => {
 
 const isExpanded = (key) => expandedGroupId.value === key;
 
-const formatPriceWithDecimals = (price) => {
+const formatPriceWithCurrency = (price, isAlreadyConverted = false) => {
   const numPrice = Number(price);
-  if (isNaN(numPrice)) return "$ 0.00";
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(numPrice);
+  if (isNaN(numPrice)) return "—";
+
+  const currency = brandingStore.settings?.default_currency || "USD";
+
+  if (isAlreadyConverted || currency === "USD") {
+    return formatCurrency(numPrice, currency);
+  }
+
+  const rates = Array.isArray(brandingStore.exchangeRates) ? brandingStore.exchangeRates : [];
+
+  if (currency === "COP") {
+    const copObj = rates.find((r) => r && (r.currency_code === "COP" || r.currency_code === "COPC"));
+    const copRate = Number(copObj?.rate || 4000);
+    const rawCop = numPrice * copRate;
+    if (rawCop > 0 && rawCop < 100) {
+      return formatCurrency(Math.round(rawCop), "COP");
+    }
+    const cleanInt = Math.round(rawCop);
+    const rounded = cleanInt % 100 === 0 ? cleanInt : Math.ceil(cleanInt / 100) * 100;
+    return formatCurrency(rounded, "COP");
+  }
+
+  if (currency === "BS" || currency === "Bs") {
+    const bsObj = rates.find((r) => r && r.currency_code === "BS");
+    const bsRate = Number(bsObj?.rate || 1);
+    return formatCurrency(numPrice * bsRate, "BS");
+  }
+
+  return formatCurrency(numPrice, currency);
 };
 
 const formatQuantity = (val) => {
@@ -204,7 +227,7 @@ const uniqueProducts = computed(() => {
                       </div>
                     </td>
                     <td class="text-right text-xs font-weight-medium">
-                      {{ isMiniMarket ? formatPriceWithDecimals(item.unit_cost) : formatPrice(item.unit_cost) }}
+                      {{ formatPriceWithCurrency(item.unit_cost) }}
                     </td>
                     <td class="text-center text-xs font-weight-bold">
                       {{ formatQuantity(item.total_sold_completed) }}
@@ -271,7 +294,7 @@ const uniqueProducts = computed(() => {
                 
                 <div class="d-flex align-center justify-space-between text-super-xs mb-2 text-disabled font-weight-bold">
                     <span class="truncate">{{ item.laboratory?.name || (isRestaurant ? 'SIN MARCA' : 'SIN LABORATORIO') }}</span>
-                   <span>Costo: {{ isMiniMarket ? formatPriceWithDecimals(item.unit_cost) : formatPrice(item.unit_cost) }}</span>
+                   <span>Costo: {{ formatPriceWithCurrency(item.unit_cost) }}</span>
                 </div>
 
                 <div class="d-flex align-center justify-space-between gap-1">

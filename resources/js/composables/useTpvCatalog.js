@@ -80,7 +80,7 @@ export function useTpvCatalog({
       const [labResponse, originResponse, catResponse] = await Promise.all([
         axios.get('/laboratories'),
         axios.get('/origins'),
-        axios.get('/categories'),
+        axios.get('/categories', { params: { type: 'inventory' } }),
       ])
       laboratories.value = labResponse.data
       origins.value = originResponse.data
