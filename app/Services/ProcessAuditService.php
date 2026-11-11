@@ -47,7 +47,7 @@ class ProcessAuditService
                 'flow_id' => $data['flow_id'],
                 'order_id' => $data['order_id'] ?? null,
                 'cashier_id' => $data['cashier_id'] ?? null,
-                'cook_id' => $data['cook_id'],
+                'cook_id' => $data['cook_id'] ?? null,
                 'total_seconds' => $data['total_seconds'],
             ]);
 

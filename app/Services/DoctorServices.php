@@ -26,7 +26,7 @@ class DoctorServices implements Doctor
 
     public function edit(string $id, array $data): Model
     {
-        return $this->doctorRepository->edit($data);
+        return $this->doctorRepository->edit($id, $data);
     }
 
     public function consultById(string $id): ?Model

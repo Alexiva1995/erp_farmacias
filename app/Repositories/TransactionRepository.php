@@ -403,6 +403,7 @@ class TransactionRepository implements TransactionContract
         $record->category_id = $data->category_id;
         $record->description = $data->description;
         $record->currency = $data->currency;
+        $record->type = $data->type;
         $record->amount = $data->amount;
         $record->movement_type = $data->movement_type;
         $record->transaction_date = $data->transaction_date;
