@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
 import Swal from 'sweetalert2'
@@ -8,7 +8,6 @@ import AppEmptyState from '@/components/AppEmptyState.vue'
 
 // ─── Estado principal ───────────────────────────────────────────────────────
 const groups = ref([])
-const products = ref([])
 const loading = ref(false)
 const isSaving = ref(false)
 const dialog = ref(false)
@@ -18,8 +17,6 @@ const searchQuery = ref('')
 const selectedStatusFilter = ref(null)
 const page = ref(1)
 const itemsPerPage = ref(10)
-const searchProducts = ref('')
-const searchBaseProduct = ref('')
 
 const statusFilterOptions = [
   { title: 'Todos los estados', value: null },
@@ -38,11 +35,98 @@ const tableHeaders = [
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end', width: '110px' },
 ]
 
-// ─── Formulario de grupo ────────────────────────────────────────────────────
+// ─── Catálogo reactivo de productos para autocompletes ───────────────────────
+const productCatalog = ref(new Map())
+const baseProductOptions = ref([])
+const optionProductOptions = ref([])
+const searchBaseInput = ref('')
+const searchOptionInput = ref('')
+const loadingBaseProducts = ref(false)
+const loadingOptionProducts = ref(false)
+
+let baseDebounceTimer = null
+let optionDebounceTimer = null
+
+// Registro de productos en el mapa de nombres
+const registerProducts = (items) => {
+  if (!Array.isArray(items)) return
+  items.forEach((p) => {
+    if (p && p.id) {
+      productCatalog.value.set(p.id, p.name || `ID #${p.id}`)
+    }
+  })
+}
+
+// Búsqueda en servidor de insumo base a sustituir
+const searchBaseProducts = async (q = '') => {
+  loadingBaseProducts.value = true
+  try {
+    const { data } = await axios.get('/products/autocomplete', {
+      params: { q: q ? q.trim() : '', include_sub_recipes: 1 },
+    })
+    const items = data.data || data || []
+    registerProducts(items)
+
+    // Preservar el producto actualmente seleccionado si existe
+    if (form.value.base_product_id && !items.some(i => i.id === form.value.base_product_id)) {
+      items.unshift({
+        id: form.value.base_product_id,
+        name: productName(form.value.base_product_id),
+      })
+    }
+
+    baseProductOptions.value = items
+  } catch (error) {
+    console.error('Error al buscar insumos base:', error)
+  } finally {
+    loadingBaseProducts.value = false
+  }
+}
+
+// Búsqueda en servidor de insumo a descontar por sabor
+const searchOptionProducts = async (q = '') => {
+  loadingOptionProducts.value = true
+  try {
+    const { data } = await axios.get('/products/autocomplete', {
+      params: { q: q ? q.trim() : '', include_sub_recipes: 1 },
+    })
+    const items = data.data || data || []
+    registerProducts(items)
+
+    if (newOption.value.product_id && !items.some(i => i.id === newOption.value.product_id)) {
+      items.unshift({
+        id: newOption.value.product_id,
+        name: productName(newOption.value.product_id),
+      })
+    }
+
+    optionProductOptions.value = items
+  } catch (error) {
+    console.error('Error al buscar insumos de opciones:', error)
+  } finally {
+    loadingOptionProducts.value = false
+  }
+}
+
+// Observadores de búsqueda reactiva en tiempo real con debounce
+watch(searchBaseInput, (val) => {
+  clearTimeout(baseDebounceTimer)
+  baseDebounceTimer = setTimeout(() => {
+    searchBaseProducts(val || '')
+  }, 250)
+})
+
+watch(searchOptionInput, (val) => {
+  clearTimeout(optionDebounceTimer)
+  optionDebounceTimer = setTimeout(() => {
+    searchOptionProducts(val || '')
+  }, 250)
+})
+
+// ─── Formulario de grupo (sin descripción) ──────────────────────────────────
 const defaultForm = () => ({
   id: null,
   name: '',
-  description: '',
   base_product_id: null,
   min_selections: 1,
   max_selections: 1,
@@ -63,62 +147,52 @@ const newOption = ref({
   is_active: true,
 })
 
-// ─── Autocompletes filtrados ────────────────────────────────────────────────
-const filteredProducts = computed(() => {
-  if (!searchProducts.value) return products.value.slice(0, 60)
-  const q = searchProducts.value.toLowerCase()
-  return products.value.filter(p => p.name.toLowerCase().includes(q)).slice(0, 60)
-})
-
-const filteredBaseProducts = computed(() => {
-  if (!searchBaseProduct.value) return products.value.slice(0, 60)
-  const q = searchBaseProduct.value.toLowerCase()
-  return products.value.filter(p => p.name.toLowerCase().includes(q)).slice(0, 60)
-})
-
 // ─── Grupos filtrados para la tabla ─────────────────────────────────────────
 const filteredGroups = computed(() => {
   let list = [...groups.value]
 
   if (searchQuery.value && searchQuery.value.trim() !== '') {
     const q = searchQuery.value.toLowerCase().trim()
-    list = list.filter(g => {
+    list = list.filter((g) => {
       const matchName = g.name?.toLowerCase().includes(q)
-      const matchDesc = g.description?.toLowerCase().includes(q)
       const matchBase = g.base_product?.name?.toLowerCase().includes(q)
-      const matchOpts = (g.options || []).some(o => 
+      const matchOpts = (g.options || []).some((o) =>
         o.name?.toLowerCase().includes(q) || o.product?.name?.toLowerCase().includes(q)
       )
-      return matchName || matchDesc || matchBase || matchOpts
+      return matchName || matchBase || matchOpts
     })
   }
 
   if (selectedStatusFilter.value !== null) {
-    list = list.filter(g => Boolean(g.is_active) === Boolean(selectedStatusFilter.value))
+    list = list.filter((g) => Boolean(g.is_active) === Boolean(selectedStatusFilter.value))
   }
 
   return list
 })
 
-// ─── Carga de datos ─────────────────────────────────────────────────────────
+// ─── Carga de grupos ────────────────────────────────────────────────────────
 const fetchGroups = async () => {
   loading.value = true
   try {
     const { data } = await axios.get('/modifier-groups')
-    groups.value = data.data || []
+    const list = data.data || []
+    groups.value = list
+
+    // Registrar en caché todos los productos que vengan en los grupos
+    list.forEach((g) => {
+      if (g.base_product) {
+        productCatalog.value.set(g.base_product.id, g.base_product.name)
+      }
+      (g.options || []).forEach((opt) => {
+        if (opt.product) {
+          productCatalog.value.set(opt.product.id, opt.product.name)
+        }
+      })
+    })
   } catch {
     toast.error('No se pudieron cargar los grupos de modificadores.')
   } finally {
     loading.value = false
-  }
-}
-
-const fetchProducts = async () => {
-  try {
-    const { data } = await axios.get('/products', { params: { per_page: 500, is_active: 1 } })
-    products.value = data.data || data || []
-  } catch {
-    // Silencioso
   }
 }
 
@@ -128,18 +202,26 @@ const openDialog = (group = null) => {
     form.value = {
       id: group.id,
       name: group.name,
-      description: group.description || '',
       base_product_id: group.base_product_id || null,
       min_selections: group.min_selections,
       max_selections: group.max_selections,
       is_active: group.is_active,
-      options: (group.options || []).map(o => ({ ...o })),
+      options: (group.options || []).map((o) => ({ ...o })),
+    }
+
+    if (group.base_product) {
+      productCatalog.value.set(group.base_product.id, group.base_product.name)
     }
   } else {
     form.value = defaultForm()
   }
+
   resetNewOption()
   dialog.value = true
+
+  // Cargar catálogo inicial de opciones para autocompletes
+  searchBaseProducts('')
+  searchOptionProducts('')
 }
 
 const resetNewOption = () => {
@@ -169,8 +251,7 @@ const removeOption = (index) => {
 
 const productName = (productId) => {
   if (!productId) return '—'
-  const p = products.value.find(p => p.id === productId)
-  return p ? p.name : `ID ${productId}`
+  return productCatalog.value.get(productId) || `ID #${productId}`
 }
 
 // ─── Guardar Grupo ──────────────────────────────────────────────────────────
@@ -188,7 +269,7 @@ const saveGroup = async () => {
   try {
     const payload = {
       name: form.value.name,
-      description: form.value.description || null,
+      description: null,
       base_product_id: form.value.base_product_id || null,
       min_selections: Number(form.value.min_selections),
       max_selections: Number(form.value.max_selections),
@@ -249,7 +330,6 @@ const modifierTypes = [
 
 onMounted(() => {
   fetchGroups()
-  fetchProducts()
 })
 </script>
 
@@ -318,14 +398,11 @@ onMounted(() => {
             </span>
           </template>
 
-          <!-- Nombre y Descripción -->
+          <!-- Nombre -->
           <template #item.name="{ item }">
-            <div class="d-flex flex-column py-2">
+            <div class="py-2">
               <span class="font-weight-black text-sm text-high-emphasis">
                 {{ item.name }}
-              </span>
-              <span v-if="item.description" class="text-xs text-medium-emphasis">
-                {{ item.description }}
               </span>
             </div>
           </template>
@@ -361,8 +438,8 @@ onMounted(() => {
                   class="font-weight-medium"
                 >
                   {{ opt.name }}
-                  <span v-if="opt.product" class="opacity-70 ms-1 text-super-xs">
-                    ({{ opt.product.name }})
+                  <span v-if="opt.product || opt.product_id" class="opacity-70 ms-1 text-super-xs">
+                    ({{ opt.product?.name || productName(opt.product_id) }})
                   </span>
                 </VChip>
                 <VChip
@@ -565,37 +642,26 @@ onMounted(() => {
                   />
                 </VCol>
 
-                <!-- Descripción Opcional -->
-                <VCol cols="12">
-                  <VTextField
-                    v-model="form.description"
-                    label="Descripción (Opcional)"
-                    placeholder="Ej: El cliente elige un sabor por cada bola de helado"
-                    variant="outlined"
-                    density="comfortable"
-                    class="rounded-lg"
-                    hide-details="auto"
-                  />
-                </VCol>
-
-                <!-- Insumo Base que sustituye en recetas -->
+                <!-- Insumo Base que sustituye en recetas con búsqueda dinámica contra servidor -->
                 <VCol cols="12">
                   <VAutocomplete
                     v-model="form.base_product_id"
-                    v-model:search="searchBaseProduct"
-                    :items="filteredBaseProducts"
+                    v-model:search="searchBaseInput"
+                    :items="baseProductOptions"
                     item-title="name"
                     item-value="id"
+                    :loading="loadingBaseProducts"
+                    :custom-filter="() => true"
                     label="¿Qué Insumo de la Receta Sustituye este Grupo? (Ej: Helado General)"
-                    placeholder="Buscar insumo base en recetas..."
+                    placeholder="Escribe para buscar cualquier insumo en el inventario..."
                     variant="outlined"
                     density="comfortable"
-                    class="rounded-lg"
+                    class="rounded-lg font-weight-bold"
                     clearable
                     prepend-inner-icon="tabler-replace"
                     hint="Al seleccionar un insumo base, los sabores elegidos heredarán automáticamente los gramos de la receta de cada plato sin tener que indicar porción por sabor."
                     persistent-hint
-                    no-data-text="No se encontraron productos en inventario"
+                    no-data-text="Escribe el nombre del insumo para buscar..."
                   />
                 </VCol>
 
@@ -751,22 +817,24 @@ onMounted(() => {
                     />
                   </VCol>
 
-                  <!-- Insumo del inventario a descontar -->
+                  <!-- Insumo del inventario a descontar con búsqueda dinámica contra servidor -->
                   <VCol cols="12" md="8">
                     <VAutocomplete
                       v-model="newOption.product_id"
-                      v-model:search="searchProducts"
-                      :items="filteredProducts"
+                      v-model:search="searchOptionInput"
+                      :items="optionProductOptions"
                       item-title="name"
                       item-value="id"
+                      :loading="loadingOptionProducts"
+                      :custom-filter="() => true"
                       label="Insumo en Inventario a Descontar (Ej: Helado Vainilla)"
-                      placeholder="Buscar producto de inventario..."
+                      placeholder="Escribe para buscar cualquier insumo en el inventario..."
                       variant="outlined"
                       density="comfortable"
                       class="rounded-lg bg-surface"
                       clearable
                       hide-details="auto"
-                      no-data-text="Sin resultados en inventario"
+                      no-data-text="Escribe el nombre del insumo para buscar..."
                     />
                   </VCol>
                   <VCol cols="12" md="4" class="d-flex align-center justify-end">

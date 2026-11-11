@@ -482,10 +482,13 @@ class ProductController extends Controller
             $q = trim((string) request()->query('q'));
             
             // Buscar productos ordenados por nombre
-            $query = Product::with(['lots', 'laboratory'])
-                ->where(function ($q) {
+            $query = Product::with(['lots', 'laboratory']);
+
+            if (!request()->boolean('include_sub_recipes')) {
+                $query->where(function ($q) {
                     $q->where('is_sub_recipe', false)->orWhereNull('is_sub_recipe');
                 });
+            }
 
             // Si se proporciona un término de búsqueda, filtrar
             if ($q !== '') {
