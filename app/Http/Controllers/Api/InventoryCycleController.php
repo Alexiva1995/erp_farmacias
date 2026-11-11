@@ -72,6 +72,22 @@ class InventoryCycleController extends Controller
                     // Si no existe cuota inicial para hoy, generar el primer lote (ABC en restaurante, orden alfabético por estante en farmacia)
                     if ($quotas->isEmpty()) {
                         $quotaQuery = (clone $query);
+
+                        // Excluir productos que ya fueron asignados hoy a otros usuarios para evitar colisiones
+                        $otherUsersAssignedIds = UserCyclicQuota::where('cycle_id', $activeCycleId)
+                            ->where('quota_date', $today)
+                            ->where('user_id', '!=', $userId)
+                            ->pluck('assigned_product_ids')
+                            ->flatten()
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->toArray();
+
+                        if (!empty($otherUsersAssignedIds)) {
+                            $quotaQuery->whereNotIn('products.id', $otherUsersAssignedIds);
+                        }
+
                         if ($isRestaurant) {
                             $quotaQuery->reorder()
                                 ->orderByRaw('(COALESCE(products.stock, 0) * COALESCE(products.unit_cost, 0)) DESC')
@@ -222,9 +238,8 @@ class InventoryCycleController extends Controller
             $userId = Auth::id() ?? $request->user()?->id;
             $today = now()->toDateString();
 
-            // Obtener todos los IDs de productos ya asignados al usuario hoy
-            $existingAssignedIds = UserCyclicQuota::where('user_id', $userId)
-                ->where('cycle_id', $activeCycleId)
+            // Obtener todos los IDs de productos ya asignados hoy (al usuario actual y a otros usuarios) para evitar colisiones
+            $allAssignedTodayIds = UserCyclicQuota::where('cycle_id', $activeCycleId)
                 ->where('quota_date', $today)
                 ->pluck('assigned_product_ids')
                 ->flatten()
@@ -233,10 +248,10 @@ class InventoryCycleController extends Controller
                 ->values()
                 ->toArray();
 
-            // Obtener productos disponibles en el ciclo excluyendo los ya asignados hoy
+            // Obtener productos disponibles en el ciclo excluyendo los ya asignados hoy a cualquier operador
             $baseQuery = $this->inventoryCycleQueryService->getProductsFilteredQuery($request);
-            if (!empty($existingAssignedIds)) {
-                $baseQuery->whereNotIn('products.id', $existingAssignedIds);
+            if (!empty($allAssignedTodayIds)) {
+                $baseQuery->whereNotIn('products.id', $allAssignedTodayIds);
             }
 
             $settings = \App\Models\GeneralSetting::first();
