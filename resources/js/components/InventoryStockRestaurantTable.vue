@@ -151,7 +151,6 @@ const getReplenishmentSuggestion = (item) => {
   const innerUnits = Number(item.units_per_inner_pack) || 1;
   const purchaseUnit = item.purchase_unit_name || "Display";
   const packName = item.pack_unit_name || "paq";
-  const packCost = Number(item.unit_cost || 0);
 
   // Superávit (stock suficiente)
   if (diff >= 0) {
@@ -159,7 +158,6 @@ const getReplenishmentSuggestion = (item) => {
       isDeficit: false,
       text: `+${diff} ${packName}`,
       subText: innerUnits > 1 ? `+${(diff / innerUnits).toFixed(1)} ${purchaseUnit}` : null,
-      costText: null,
       color: "secondary",
     };
   }
@@ -168,26 +166,21 @@ const getReplenishmentSuggestion = (item) => {
   const deficitPacks = Math.abs(diff);
   if (innerUnits > 1) {
     const purchaseUnitsToOrder = Math.ceil(deficitPacks / innerUnits);
-    const purchaseCost = item.purchase_cost ? Number(item.purchase_cost) : packCost * innerUnits;
-    const estimatedCost = purchaseUnitsToOrder * purchaseCost;
 
     return {
       isDeficit: true,
       text: `Pedir ${purchaseUnitsToOrder} ${purchaseUnit}${purchaseUnitsToOrder === 1 ? '' : 's'}`,
       subText: `${deficitPacks} ${packName} requeridos`,
-      costText: estimatedCost > 0 ? formatMoney(estimatedCost) : null,
       color: "error",
     };
   }
 
   // Sin empaque mayorista
   const packsToOrder = Math.ceil(deficitPacks);
-  const estimatedCost = packsToOrder * packCost;
   return {
     isDeficit: true,
     text: `Pedir ${packsToOrder} ${packName}`,
     subText: null,
-    costText: estimatedCost > 0 ? formatMoney(estimatedCost) : null,
     color: "error",
   };
 };
@@ -327,9 +320,6 @@ const getReplenishmentSuggestion = (item) => {
             </VChip>
             <span v-if="getReplenishmentSuggestion(item).subText" class="text-super-xs text-disabled mt-0.5">
               {{ getReplenishmentSuggestion(item).subText }}
-            </span>
-            <span v-if="getReplenishmentSuggestion(item).costText" class="text-super-xs text-primary font-weight-bold">
-              {{ getReplenishmentSuggestion(item).costText }}
             </span>
           </div>
         </template>
