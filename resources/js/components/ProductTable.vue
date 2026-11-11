@@ -275,19 +275,33 @@ const formatSecondaryStock = (item, customStock = null) => {
   if (presentation <= 1) return null;
 
   const unit = item.unit_of_measure || "und";
+  const packName = item.pack_unit_name || "paq";
+  const purchaseUnit = item.purchase_unit_name || "Display";
+  const innerUnits = Number(item.units_per_inner_pack) || 1;
   const totalUnits = Math.round(stock * presentation);
   if (totalUnits <= 0) return null;
 
   const fullPackages = Math.floor(totalUnits / presentation);
   const remainder = totalUnits % presentation;
 
+  if (innerUnits > 1) {
+    const fullPurchaseUnits = Math.floor(fullPackages / innerUnits);
+    const remainderPacks = fullPackages % innerUnits;
+    if (fullPurchaseUnits > 0 && remainderPacks > 0) {
+      return `${fullPurchaseUnits} ${purchaseUnit} + ${remainderPacks} ${packName}${remainder > 0 ? ` + ${remainder} ${unit}` : ''}`;
+    }
+    if (fullPurchaseUnits > 0 && remainder === 0) {
+      return `${fullPurchaseUnits} ${purchaseUnit} (${fullPackages} ${packName}s)`;
+    }
+  }
+
   if (fullPackages > 0 && remainder > 0) {
-    return `${fullPackages} paq + ${remainder} ${unit}`;
+    return `${fullPackages} ${packName} + ${remainder} ${unit}`;
   }
   if (fullPackages > 0) {
-    return `${fullPackages} paq ${fullPackages === 1 ? 'completo' : 'completos'}`;
+    return `${fullPackages} ${packName} ${fullPackages === 1 ? 'completo' : 'completos'}`;
   }
-  return `0 paq (${remainder} ${unit} abierto)`;
+  return `0 ${packName} (${remainder} ${unit} abierto)`;
 };
 
 const formatStock = (item, customStock = null) => formatPrimaryStock(item, customStock);
