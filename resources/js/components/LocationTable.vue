@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { useDisplay } from "vuetify";
 import AppEmptyState from "@/components/AppEmptyState.vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
   locations: { type: Array, required: true },
@@ -9,47 +10,63 @@ const props = defineProps({
 });
 
 const { mobile } = useDisplay();
+const brandingStore = useBrandingStore();
+
+// Determina si la vertical activa corresponde a restaurante
+const isRestaurant = computed(() => Boolean(brandingStore.isRestaurant));
 
 const emit = defineEmits([
   "edit-location",
   "delete-location",
 ]);
 
-const headers = [
-  {
-    title: "ID",
-    key: "id",
-    sortable: true,
-    cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
-    headerClass: "d-none d-sm-table-cell",
-    width: "80px",
-  },
-  {
-    title: "Ubicación",
-    key: "name",
-    sortable: true,
-    width: "40%",
-  },
-  {
-    title: "Productos",
-    key: "products_count",
-    sortable: true,
-    align: "center",
-  },
-  {
-    title: "Unidades",
-    key: "units_count",
-    sortable: true,
-    align: "end",
-  },
-  {
+const headers = computed(() => {
+  const list = [
+    {
+      title: "ID",
+      key: "id",
+      sortable: true,
+      cellClass: "font-weight-black text-primary d-none d-sm-table-cell",
+      headerClass: "d-none d-sm-table-cell",
+      width: "80px",
+    },
+    {
+      title: "Ubicación",
+      key: "name",
+      sortable: true,
+      width: isRestaurant.value ? "55%" : "40%",
+    },
+    {
+      title: "Productos",
+      key: "products_count",
+      sortable: true,
+      align: "center",
+    },
+  ];
+
+  if (!isRestaurant.value) {
+    list.push({
+      title: "Unidades",
+      key: "units_count",
+      sortable: true,
+      align: "end",
+    });
+  }
+
+  list.push({
     title: "Acciones",
     key: "actions",
     sortable: false,
     align: "center",
     width: "120px",
-  },
-];
+  });
+
+  return list;
+});
+
+const defaultSortBy = computed(() => [
+  { key: isRestaurant.value ? "products_count" : "units_count", order: "desc" },
+]);
 
 const formatUnits = (units) => {
   const num = Number(units || 0);
@@ -77,7 +94,7 @@ const formatUnits = (units) => {
           :headers="headers"
           :items="props.locations"
           :loading="props.loading"
-          :sort-by="[{ key: 'units_count', order: 'desc' }]"
+          :sort-by="defaultSortBy"
           class="text-no-wrap"
           density="compact"
           hover
@@ -207,7 +224,7 @@ const formatUnits = (units) => {
                     {{ location.products_count }}
                   </VChip>
                 </div>
-                <div class="d-flex align-center gap-2">
+                <div v-if="!isRestaurant" class="d-flex align-center gap-2">
                   <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Unidades:</span>
                   <VChip
                     :color="location.units_count > 0 ? 'success' : 'secondary'"

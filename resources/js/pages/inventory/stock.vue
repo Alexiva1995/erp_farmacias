@@ -2,6 +2,7 @@
 import InventoryStockFilters from "@/components/InventoryStockFilters.vue";
 import InventoryStockTable from "@/components/InventoryStockTable.vue";
 import InventoryStockGrupoTable from "@/components/InventoryStockGrupoTable.vue";
+import InventoryStockRestaurantTable from "@/components/InventoryStockRestaurantTable.vue";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import pdfStockProductsGenerator from "@/utils/pdfStockProductsGenerator";
@@ -15,7 +16,10 @@ let skipPaginationWatch = false;
 
 // Estado global de marca
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
+const isRestaurant = computed(() => {
+  const v = (brandingStore.settings?.vertical || brandingStore.settings?.business_type || '').toLowerCase();
+  return v === 'restaurant' || v === 'fast_food';
+});
 
 // Filtros encapsulados en un objeto reactivo estructurado
 const filters = reactive({
@@ -331,8 +335,23 @@ async function exportarExcel(formato) {
       @export-excel="exportarExcel"
     />
 
+    <!-- Vista de Restaurante: Enfocada en Logística de 3 Niveles y Reabastecimiento -->
+    <InventoryStockRestaurantTable
+      v-if="isRestaurant"
+      :products="modulo.items"
+      :loading="loading"
+      :total-product="modulo.totalItems"
+      :items-per-page="itemsPerPage"
+      :page="page"
+      :sort-by="sortBy"
+      :order-by="orderBy"
+      :days="filters.days"
+      @update:options="updateTableOptions"
+    />
+
+    <!-- Vista Estándar (Farmacia y otros frentes): Individual o Grupal -->
     <InventoryStockTable
-      v-if="filters.viewType === 'individual'"
+      v-else-if="filters.viewType === 'individual'"
       :products="modulo.items"
       :loading="loading"
       :total-product="modulo.totalItems"

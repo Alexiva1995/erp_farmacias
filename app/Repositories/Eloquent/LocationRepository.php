@@ -17,6 +17,9 @@ class LocationRepository implements LocationContract
      */
     public function getAll(): Collection
     {
+        $businessType = \App\Models\GeneralSetting::query()->value('business_type');
+        $isRestaurant = in_array($businessType, ['restaurant', 'fast_food'], true);
+
         return Location::query()
             ->select([
                 'locations.id',
@@ -27,7 +30,7 @@ class LocationRepository implements LocationContract
             ->leftJoin('product_lots', 'locations.name', '=', 'product_lots.location')
             ->selectRaw('COUNT(DISTINCT product_lots.product_id) as products_count, COALESCE(SUM(product_lots.quantity), 0) as units_count')
             ->groupBy('locations.id', 'locations.name', 'locations.created_at', 'locations.updated_at')
-            ->orderByDesc('units_count')
+            ->orderByDesc($isRestaurant ? 'products_count' : 'units_count')
             ->orderBy('locations.name')
             ->get();
     }

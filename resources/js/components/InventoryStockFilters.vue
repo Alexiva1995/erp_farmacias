@@ -40,7 +40,10 @@ const emit = defineEmits([
 ]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
+const isRestaurant = computed(() => {
+  const v = (brandingStore.settings?.vertical || brandingStore.settings?.business_type || '').toLowerCase();
+  return v === 'restaurant' || v === 'fast_food';
+});
 
 const isAdvancedFiltersVisible = ref(false);
 
