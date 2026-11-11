@@ -93,6 +93,18 @@ abstract class TestCase extends BaseTestCase
                 'day' => function ($date) {
                     return $date ? (int) (new DateTime((string) $date))->format('d') : null;
                 },
+                'dayofweek' => function ($date) {
+                    return $date ? (int) (new DateTime((string) $date))->format('w') + 1 : null;
+                },
+                'hour' => function ($date) {
+                    return $date ? (int) (new DateTime((string) $date))->format('H') : null;
+                },
+                'minute' => function ($date) {
+                    return $date ? (int) (new DateTime((string) $date))->format('i') : null;
+                },
+                'second' => function ($date) {
+                    return $date ? (int) (new DateTime((string) $date))->format('s') : null;
+                },
             ];
 
             foreach ($functions as $name => $fn) {
