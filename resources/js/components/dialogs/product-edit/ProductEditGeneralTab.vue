@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const props = defineProps({
@@ -35,6 +35,27 @@ const isFieldEnabled = (fieldKey) => {
   if (!fields || !Array.isArray(fields) || fields.length === 0) return true;
   return fields.includes(fieldKey);
 };
+
+// Opciones concisas para unidad de receta (solo el símbolo o abreviatura)
+const recipeUnits = [
+  { title: "und", value: "und" },
+  { title: "g", value: "g" },
+  { title: "ml", value: "ml" },
+  { title: "oz", value: "oz" },
+  { title: "porción", value: "porción" },
+];
+
+// Limpiar formato si contiene paréntesis heredados
+watch(
+  () => props.formData.unit_of_measure,
+  (val) => {
+    if (val && /\(([^)]+)\)/.test(val)) {
+      const match = val.match(/\(([^)]+)\)/);
+      if (match) props.formData.unit_of_measure = match[1];
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -219,7 +240,7 @@ const isFieldEnabled = (fieldKey) => {
                 />
               </VCol>
 
-              <VCol cols="12" sm="6" md="3">
+              <VCol cols="12" sm="6" md="2">
                 <VTextField
                   v-model.number="formData.units_per_inner_pack"
                   label="Paquetes por Compra"
@@ -236,7 +257,7 @@ const isFieldEnabled = (fieldKey) => {
               </VCol>
 
               <!-- Nivel 2: Unidad de Almacén (Paquete / Envase individual) -->
-              <VCol cols="12" sm="6" md="2">
+              <VCol cols="12" sm="6" md="3">
                 <VCombobox
                   v-model="formData.pack_unit_name"
                   label="Unidad de Almacén"
@@ -271,13 +292,7 @@ const isFieldEnabled = (fieldKey) => {
                 <VSelect
                   v-model="formData.unit_of_measure"
                   label="Unidad en Receta"
-                  :items="[
-                    { title: 'Unidades (und)', value: 'und' },
-                    { title: 'Gramos (g)', value: 'g' },
-                    { title: 'Mililitros (ml)', value: 'ml' },
-                    { title: 'Onzas (oz)', value: 'oz' },
-                    { title: 'Porciones (porción)', value: 'porción' }
-                  ]"
+                  :items="recipeUnits"
                   item-title="title"
                   item-value="value"
                   variant="outlined"
