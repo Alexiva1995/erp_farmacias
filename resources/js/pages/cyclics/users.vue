@@ -225,12 +225,13 @@ const handleSaveCount = async (countData) => {
     counted_quantity: countData.countedQuantity,
     system_quantity:  systemQuantity,
     discrepancy:      countData.countedQuantity - systemQuantity,
+    ...(countData.lots_breakdown ? { lots_breakdown: countData.lots_breakdown } : {}),
     ...(countData.allowWithoutBarcode
       ? { allow_without_barcode: true }
       : { barcode: countData.barcode }),
   };
 
-  // Modo simple con lotes → derivar al modal de distribución
+  // Modo simple con lotes → derivar al modal de distribución solo si no se auditó ya el desglose en el diálogo
   const enableLots = brandingStore.settings?.enable_lots ?? true;
   const isRestaurant = Boolean(brandingStore.isRestaurant || brandingStore.settings?.enable_dishes);
   const isSubRecipe = Boolean(
@@ -247,8 +248,8 @@ const handleSaveCount = async (countData) => {
   );
 
   // En restaurantes o cuando el producto se cuenta en modo consumo/fraccionado (Opción A),
-  // el ajuste de lotes se realiza automáticamente en el backend (FEFO) sin abrir el modal manual.
-  if (!isRestaurant && !isDualOrConsumption && enableLots && isSimpleMode.value && countType.value === "product") {
+  // o cuando el operador ya auditó el desglose de lotes en el modal de conteo, no abrir modal secundario.
+  if (!countData.lots_breakdown && !isRestaurant && !isDualOrConsumption && enableLots && isSimpleMode.value && countType.value === "product") {
     isCountDialogVisible.value      = false;
     pendingCountData.value          = { endpoint, payload };
     itemForLotDistribution.value    = currentProduct.value;

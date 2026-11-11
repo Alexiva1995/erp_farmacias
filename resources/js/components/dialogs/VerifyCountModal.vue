@@ -127,6 +127,8 @@ watch(
   async (isOpening) => {
     if (isOpening && props.countRecord) {
       newCountedQuantity.value = null;
+      packagesCount.value = "";
+      openedQuantity.value = "";
       loadError.value = null;
       currentStock.value = null;
       barcodeInput.value = "";
@@ -138,6 +140,12 @@ watch(
         if (!isManualEntryAllowed.value) {
           const barcodeElement = document.querySelector("#verify-barcode-input");
           if (barcodeElement) barcodeElement.focus();
+        } else if (isDualCountMode.value) {
+          const pkgInput = document.querySelector("#verify-packages-input");
+          if (pkgInput) {
+            pkgInput.focus();
+            if (typeof pkgInput.select === "function") pkgInput.select();
+          }
         } else {
           const quantityInput = document.querySelector("#recounter-quantity-input");
           if (quantityInput) {
@@ -209,6 +217,52 @@ const isSubRecipe = computed(() => {
   return false;
 });
 
+// Soporte para modo restaurante / consumo dual
+const isConsumptionMode = computed(
+  () =>
+    brandingStore.settings?.traceability_mode === "consumption" ||
+    brandingStore.settings?.business_type === "restaurant" ||
+    !!brandingStore.settings?.enable_dishes
+);
+
+const productPresentation = computed(
+  () => Number(props.countRecord?.product?.presentation) || 0
+);
+
+const isDualCountMode = computed(() => {
+  if (isSubRecipe.value) return false;
+  return isConsumptionMode.value && productPresentation.value > 0;
+});
+
+const packagesCount = ref("");
+const openedQuantity = ref("");
+
+const dualTotalQuantity = computed(() => {
+  const pkgs = Number(packagesCount.value) || 0;
+  const opened = Number(openedQuantity.value) || 0;
+  return pkgs * productPresentation.value + opened;
+});
+
+const dualSystemQuantity = computed(() => {
+  if (productPresentation.value <= 0) return dualTotalQuantity.value;
+  return parseFloat(
+    (
+      (Number(packagesCount.value) || 0) +
+      (Number(openedQuantity.value) || 0) / productPresentation.value
+    ).toFixed(4)
+  );
+});
+
+watch([packagesCount, openedQuantity], () => {
+  if (isDualCountMode.value) {
+    if (packagesCount.value === "" && openedQuantity.value === "") {
+      newCountedQuantity.value = null;
+    } else {
+      newCountedQuantity.value = dualSystemQuantity.value;
+    }
+  }
+});
+
 const differenceText = computed(() => {
   if (difference.value === null) return "";
   if (difference.value === 0) return "Stock Correcto";
@@ -219,12 +273,14 @@ const differenceText = computed(() => {
 });
 
 const canVerify = computed(() => {
+  if (!isBarcodeValid.value || isProcessing.value || isLoading.value) return false;
+  if (isDualCountMode.value) {
+    const hasAnyInput = packagesCount.value !== "" || openedQuantity.value !== "";
+    return hasAnyInput && newCountedQuantity.value !== null && newCountedQuantity.value >= 0;
+  }
   return (
-    isBarcodeValid.value &&
     newCountedQuantity.value !== null &&
-    newCountedQuantity.value >= 0 &&
-    !isProcessing.value &&
-    !isLoading.value
+    newCountedQuantity.value >= 0
   );
 });
 
@@ -254,6 +310,7 @@ const handleVerify = async () => {
             <div><strong>Conteo Definitivo:</strong> <span style="color: #dc3545; font-weight: bold;">0 und</span></div>
             <div><strong>Ajuste a Aplicar:</strong> <span style="color: #dc3545; font-weight: bold;">-${systemStock} und (Pérdida Total)</span></div>
           </div>
+          ${isDualCountMode.value ? `<p class="text-caption text-muted mb-0 mt-1">${Number(packagesCount.value) || 0} paquete(s) + ${Number(openedQuantity.value) || 0} ${productUnit.value} abierto(s) (${dualTotalQuantity.value} ${productUnit.value} en total = ${qty} und)</p>` : ''}
           <p class="mt-2 mb-0 text-muted" style="font-size: 0.85rem;">
             ¿Confirmas como Supervisor que el producto físicamente NO tiene existencias?
           </p>
@@ -547,27 +604,95 @@ const handleClose = () => {
               </span>
             </div>
 
-            <!-- Input Destacado -->
-            <div class="solid-input-container mt-1">
-              <VTextField
-                id="recounter-quantity-input"
-                v-model.number="newCountedQuantity"
-                type="number"
-                step="any"
-                :suffix="productUnit !== 'und' ? productUnit : undefined"
-                min="0"
-                placeholder="0"
-                variant="outlined"
-                bg-color="white"
-                class="conteo-definitivo-input font-weight-black"
-                density="comfortable"
-                hide-details
-                autofocus
-                :disabled="!isBarcodeValid"
-                @keyup.enter="handleVerify"
-                @focus="$event.target.select()"
-              />
-            </div>
+            <!-- Modo Dual (Restaurante / Consumo): Paquetes Completos + Contenido Abierto -->
+            <template v-if="isDualCountMode">
+              <div class="d-flex flex-column gap-2 mt-1">
+                <!-- Paquetes completos -->
+                <div class="bg-grey-50 rounded-xl border pa-3">
+                  <div class="d-flex align-center gap-1 mb-1">
+                    <VIcon icon="tabler-package" size="16" color="primary" />
+                    <span class="text-xs font-weight-black text-primary uppercase">
+                      Paquetes completos ({{ productPresentation }} {{ productUnit }} c/u)
+                    </span>
+                  </div>
+                  <VTextField
+                    id="verify-packages-input"
+                    v-model.number="packagesCount"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    variant="outlined"
+                    bg-color="white"
+                    class="conteo-definitivo-input font-weight-black"
+                    density="comfortable"
+                    hide-details
+                    :disabled="!isBarcodeValid"
+                    @keyup.enter="handleBarcodeEnter"
+                  />
+                </div>
+
+                <!-- Contenido destapado / parcial -->
+                <div class="bg-grey-50 rounded-xl border pa-3">
+                  <div class="d-flex align-center gap-1 mb-1">
+                    <VIcon icon="tabler-box-seam" size="16" color="warning" />
+                    <span class="text-xs font-weight-black text-warning uppercase">
+                      Contenido destapado / parcial ({{ productUnit }})
+                    </span>
+                  </div>
+                  <VTextField
+                    id="verify-opened-input"
+                    v-model.number="openedQuantity"
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="0"
+                    variant="outlined"
+                    bg-color="white"
+                    class="conteo-definitivo-input font-weight-black"
+                    density="comfortable"
+                    hide-details
+                    :disabled="!isBarcodeValid"
+                    @keyup.enter="handleVerify"
+                  />
+                </div>
+
+                <!-- Total calculado -->
+                <div
+                  v-if="packagesCount !== '' || openedQuantity !== ''"
+                  class="d-flex align-center justify-space-between rounded-xl pa-3 bg-primary-lighten-5 border mt-1"
+                >
+                  <span class="text-xs font-weight-black text-primary uppercase">Total calculado</span>
+                  <VChip size="small" color="primary" variant="flat" class="font-weight-black">
+                    {{ dualTotalQuantity }} {{ productUnit }} ({{ dualSystemQuantity }} und)
+                  </VChip>
+                </div>
+              </div>
+            </template>
+
+            <!-- Modo Estándar / Recetas: Input simple -->
+            <template v-else>
+              <div class="solid-input-container mt-1">
+                <VTextField
+                  id="recounter-quantity-input"
+                  v-model.number="newCountedQuantity"
+                  type="number"
+                  step="any"
+                  :suffix="productUnit !== 'und' ? productUnit : undefined"
+                  min="0"
+                  placeholder="0"
+                  variant="outlined"
+                  bg-color="white"
+                  class="conteo-definitivo-input font-weight-black"
+                  density="comfortable"
+                  hide-details
+                  autofocus
+                  :disabled="!isBarcodeValid"
+                  @keyup.enter="handleVerify"
+                  @focus="$event.target.select()"
+                />
+              </div>
+            </template>
 
             <VExpandTransition>
               <div

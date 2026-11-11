@@ -373,12 +373,32 @@ class InventoryCycleQueryService
             case 'latest_sale_date':
                 return $query->orderBy('latest_sale_date', $orderBy);
 
+            case 'abc':
+                return $query->orderByRaw('(COALESCE(products.stock, 0) * COALESCE(products.unit_cost, 0)) ' . $orderBy)
+                    ->orderByDesc('products.sales_average')
+                    ->orderByDesc('products.unit_cost')
+                    ->orderBy('products.id', $orderBy);
+
             default:
                 // Si existe la columna virtual latest_sale_date, ordenar por ella por defecto
                 if (str_contains($query->toSql(), 'latest_sale_date')) {
                     return $query->orderBy('latest_sale_date', $orderBy);
                 }
-                return $query->orderBy('products.id', $orderBy);
+
+                $settings = \App\Models\GeneralSetting::first();
+                $isRestaurant = ($settings?->business_type === 'restaurant') || (bool) ($settings?->enable_dishes ?? false);
+
+                // En restaurante, priorizar SIEMPRE la clasificación ABC (mayor valor inmovilizado y mayor rotación primero)
+                if ($isRestaurant) {
+                    return $query->orderByRaw('(COALESCE(products.stock, 0) * COALESCE(products.unit_cost, 0)) DESC')
+                        ->orderByDesc('products.sales_average')
+                        ->orderByDesc('products.unit_cost')
+                        ->orderBy('products.id', $orderBy);
+                }
+
+                // En farmacia, ordenar por Estante / Ubicación física de la A a la Z, y alfabéticamente por producto
+                return $query->orderByRaw("COALESCE((SELECT MIN(product_lots.location) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.location IS NOT NULL AND product_lots.location != ''), 'ZZZ_SIN_UBICACION') " . $orderBy)
+                    ->orderBy('products.name', $orderBy);
         }
     }
 
@@ -525,32 +545,67 @@ class InventoryCycleQueryService
         $activeCycleId  = $activeCycle->id;
         $afterCycleStart = Carbon::parse($activeCycle->start_date)->addSecond();
 
-        $query->addSelect([
-            'latest_sale_date' => DB::table('order_details')
-                ->join('orders', 'order_details.order_id', '=', 'orders.id')
-                ->whereColumn('order_details.product_id', 'products.id')
-                ->where('orders.status', 'completed')
-                ->where('orders.order_date', '>', $afterCycleStart)
-                ->selectRaw('MAX(orders.order_date)')
-        ]);
+        $settings = \App\Models\GeneralSetting::first();
+        $isRestaurant = ($settings?->business_type === 'restaurant') || (bool) ($settings?->enable_dishes ?? false);
 
-        $query->whereExists(function ($sub) use ($activeCycleId, $afterCycleStart) {
-            $sub->select(DB::raw(1))
-                ->from('order_details')
-                ->join('orders', 'order_details.order_id', '=', 'orders.id')
-                ->whereColumn('order_details.product_id', 'products.id')
-                ->where('orders.status', 'completed')
-                ->where('orders.order_date', '>', $afterCycleStart);
+        if ($isRestaurant) {
+            // En restaurante, auditar insumos y recetas consumidas por platos o ventas directas
+            $query->addSelect([
+                'latest_sale_date' => DB::table('inventory_movements')
+                    ->whereColumn('inventory_movements.product_id', 'products.id')
+                    ->where('inventory_movements.movement_type', 'sale')
+                    ->where(function ($dateQ) use ($afterCycleStart) {
+                        $dateQ->where('inventory_movements.created_at', '>', $afterCycleStart)
+                            ->orWhere('inventory_movements.movement_date', '>', $afterCycleStart);
+                    })
+                    ->selectRaw('MAX(COALESCE(inventory_movements.movement_date, inventory_movements.created_at))')
+            ]);
 
-            // Solo mostrar si no hay un conteo posterior a esta venta en el ciclo actual
-            $sub->whereNotExists(function ($countSub) use ($activeCycleId) {
-                $countSub->select(DB::raw(1))
-                    ->from('sales_counts')
-                    ->whereColumn('sales_counts.product_id', 'products.id')
-                    ->where('sales_counts.cycle_id', $activeCycleId)
-                    ->whereRaw('sales_counts.created_at >= orders.order_date');
+            $query->whereExists(function ($sub) use ($activeCycleId, $afterCycleStart) {
+                $sub->select(DB::raw(1))
+                    ->from('inventory_movements')
+                    ->whereColumn('inventory_movements.product_id', 'products.id')
+                    ->where('inventory_movements.movement_type', 'sale')
+                    ->where(function ($dateQ) use ($afterCycleStart) {
+                        $dateQ->where('inventory_movements.created_at', '>', $afterCycleStart)
+                            ->orWhere('inventory_movements.movement_date', '>', $afterCycleStart);
+                    })
+                    ->whereNotExists(function ($countSub) use ($activeCycleId) {
+                        $countSub->select(DB::raw(1))
+                            ->from('sales_counts')
+                            ->whereColumn('sales_counts.product_id', 'products.id')
+                            ->where('sales_counts.cycle_id', $activeCycleId)
+                            ->whereRaw('sales_counts.created_at >= COALESCE(inventory_movements.movement_date, inventory_movements.created_at)');
+                    });
             });
-        });
+        } else {
+            $query->addSelect([
+                'latest_sale_date' => DB::table('order_details')
+                    ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                    ->whereColumn('order_details.product_id', 'products.id')
+                    ->where('orders.status', 'completed')
+                    ->where('orders.order_date', '>', $afterCycleStart)
+                    ->selectRaw('MAX(orders.order_date)')
+            ]);
+
+            $query->whereExists(function ($sub) use ($activeCycleId, $afterCycleStart) {
+                $sub->select(DB::raw(1))
+                    ->from('order_details')
+                    ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                    ->whereColumn('order_details.product_id', 'products.id')
+                    ->where('orders.status', 'completed')
+                    ->where('orders.order_date', '>', $afterCycleStart);
+
+                // Solo mostrar si no hay un conteo posterior a esta venta en el ciclo actual
+                $sub->whereNotExists(function ($countSub) use ($activeCycleId) {
+                    $countSub->select(DB::raw(1))
+                        ->from('sales_counts')
+                        ->whereColumn('sales_counts.product_id', 'products.id')
+                        ->where('sales_counts.cycle_id', $activeCycleId)
+                        ->whereRaw('sales_counts.created_at >= orders.order_date');
+                });
+            });
+        }
 
         $filters = [
             'q'            => $request->q,

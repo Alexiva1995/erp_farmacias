@@ -1,6 +1,7 @@
 <script setup>
 import BarcodeScannerDialog from "@/components/dialogs/BarcodeScannerDialog.vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
+import { formatDateSimple } from "@/utils/formatters";
 import Swal from "sweetalert2";
 import { computed, nextTick, ref, watch } from "vue";
 
@@ -113,6 +114,59 @@ const dualSystemQuantity = computed(() => {
   return parseFloat(((Number(packagesCount.value) || 0) + ((Number(openedQuantity.value) || 0) / productPresentation.value)).toFixed(4));
 });
 
+// Modo Farmacia: Desglose por lotes activos y ubicación
+const isPharmacyLotsMode = computed(() => {
+  if (isDualCountMode.value || isProducedRecipe.value) return false;
+  const isRestaurant = Boolean(
+    brandingStore.isRestaurant || brandingStore.settings?.enable_dishes
+  );
+  if (isRestaurant) return false;
+  const lots = props.product?.lots;
+  return Array.isArray(lots) && lots.length > 0;
+});
+
+const countedLots = ref([]);
+
+const lotsTotalCounted = computed(() => {
+  if (!isPharmacyLotsMode.value) return 0;
+  return countedLots.value.reduce((sum, item) => {
+    const val = Number(item.counted_quantity);
+    return sum + (isNaN(val) || item.counted_quantity === "" ? 0 : val);
+  }, 0);
+});
+
+const hasAnyLotCounted = computed(() => {
+  if (!isPharmacyLotsMode.value) return false;
+  return countedLots.value.some(
+    (item) => item.counted_quantity !== "" && !isNaN(Number(item.counted_quantity))
+  );
+});
+
+watch(
+  countedLots,
+  () => {
+    if (isPharmacyLotsMode.value) {
+      if (hasAnyLotCounted.value) {
+        countedQuantity.value = lotsTotalCounted.value;
+      } else {
+        countedQuantity.value = "";
+      }
+    }
+  },
+  { deep: true }
+);
+
+const handleLotEnter = (index) => {
+  const nextIndex = index + 1;
+  const nextInput = document.querySelector(`#lot-input-${nextIndex}`);
+  if (nextInput) {
+    nextInput.focus();
+    if (typeof nextInput.select === "function") nextInput.select();
+  } else {
+    handleSave();
+  }
+};
+
 const canSave = computed(() => {
   const allowManual = isManualEntryAllowed.value;
 
@@ -121,6 +175,15 @@ const canSave = computed(() => {
       (packagesCount.value !== "" || openedQuantity.value !== "");
     if (allowManual) return hasValidDual;
     return barcodeInput.value.trim() !== "" && hasValidDual && !barcodeError.value;
+  }
+
+  if (isPharmacyLotsMode.value) {
+    const hasLotsFilled =
+      hasAnyLotCounted.value &&
+      countedQuantity.value !== "" &&
+      Number(countedQuantity.value) >= 0;
+    if (allowManual) return hasLotsFilled;
+    return barcodeInput.value.trim() !== "" && hasLotsFilled && !barcodeError.value;
   }
 
   const isQuantityValid =
@@ -142,6 +205,7 @@ const resetForm = () => {
   countedQuantity.value = "";
   packagesCount.value = "";
   openedQuantity.value = "";
+  countedLots.value = [];
   barcodeError.value = "";
   isScannerVisible.value = false;
   allowWithoutBarcode.value = isProducedRecipe.value || (canBypassBarcode.value && !barcodeRequiredGlobal.value);
@@ -156,10 +220,30 @@ watch(
   (newVal) => {
     if (newVal) {
       allowWithoutBarcode.value = isProducedRecipe.value || (canBypassBarcode.value && !barcodeRequiredGlobal.value);
+      if (isPharmacyLotsMode.value) {
+        countedLots.value = (props.product?.lots || []).map((lot) => ({
+          id: lot.id,
+          lot_number: lot.lot_number || "S/L",
+          expiration_date: lot.expiration_date || null,
+          location: lot.location || props.product?.location || "",
+          system_quantity: Number(lot.quantity || 0),
+          counted_quantity: "",
+        }));
+      } else {
+        countedLots.value = [];
+      }
       nextTick(() => {
         if (isManualEntryAllowed.value) {
-          const quantityInput = document.querySelector("#quantity-input");
-          if (quantityInput) quantityInput.focus();
+          if (isPharmacyLotsMode.value) {
+            const firstLotInput = document.querySelector("#lot-input-0");
+            if (firstLotInput) {
+              firstLotInput.focus();
+              if (typeof firstLotInput.select === "function") firstLotInput.select();
+            }
+          } else {
+            const quantityInput = document.querySelector("#quantity-input");
+            if (quantityInput) quantityInput.focus();
+          }
         } else {
           const barcodeInputElement = document.querySelector("#barcode-input");
           if (barcodeInputElement) barcodeInputElement.focus();
@@ -289,6 +373,7 @@ const handleSave = async () => {
             </div>
           </div>
           ${isDualCountMode.value ? `<p class="text-caption text-muted mb-0">${Number(packagesCount.value) || 0} paquete(s) + ${Number(openedQuantity.value) || 0} ${productUnit.value} abierto(s) (${dualTotalQuantity.value} ${productUnit.value} en total = ${quantity} und)</p>` : ''}
+          ${isPharmacyLotsMode.value ? `<div class="mt-2 text-super-xs text-start text-muted border-t pt-1">${countedLots.value.filter(l => l.counted_quantity !== '').map(l => `<div>• Lote ${l.lot_number} (${l.location || 'Sin ubic.'}): <strong>${Number(l.counted_quantity) || 0} und</strong></div>`).join('')}</div>` : ''}
         </div>
       `,
       icon: "question",
@@ -310,6 +395,13 @@ const handleSave = async () => {
     countedQuantity: quantity,
     allowWithoutBarcode: isWithoutBarcode,
     isDualCount: isDualCountMode.value,
+    lots_breakdown: isPharmacyLotsMode.value
+      ? countedLots.value.map((l) => ({
+          lot_id: l.id,
+          lot_number: l.lot_number,
+          quantity: Number(l.counted_quantity) || 0,
+        }))
+      : null,
   };
 
   emit("save", countData);
@@ -544,6 +636,76 @@ const handleSave = async () => {
                   <span class="text-xs font-weight-black text-primary uppercase">Total calculado</span>
                   <VChip size="small" color="primary" variant="flat" class="font-weight-black">
                     {{ dualTotalQuantity }} {{ productUnit }} ({{ dualSystemQuantity }} und)
+                  </VChip>
+                </div>
+              </div>
+            </template>
+
+            <!-- Modo Farmacia: Desglose por Lotes y Ubicación -->
+            <template v-else-if="isPharmacyLotsMode">
+              <div class="d-flex flex-column gap-2 mt-1">
+                <div class="text-caption text-medium-emphasis mb-1">
+                  Ingrese las unidades físicas encontradas para cada lote en anaquel:
+                </div>
+
+                <div
+                  v-for="(lotItem, index) in countedLots"
+                  :key="lotItem.id"
+                  class="bg-grey-50 rounded-xl border pa-3"
+                >
+                  <div class="d-flex align-center justify-space-between mb-1">
+                    <div class="d-flex align-center gap-1">
+                      <VIcon icon="tabler-barcode" size="16" color="primary" />
+                      <span class="text-xs font-weight-black text-primary uppercase">
+                        Lote: {{ lotItem.lot_number }}
+                      </span>
+                    </div>
+                    <VChip
+                      v-if="lotItem.location"
+                      size="x-small"
+                      variant="tonal"
+                      color="secondary"
+                      prepend-icon="tabler-map-pin"
+                      class="font-weight-bold"
+                    >
+                      {{ lotItem.location }}
+                    </VChip>
+                  </div>
+
+                  <div class="d-flex align-center justify-space-between mb-2 text-super-xs text-disabled">
+                    <span v-if="lotItem.expiration_date">
+                      Vence: {{ formatDateSimple(lotItem.expiration_date) }}
+                    </span>
+                    <span v-else>Sin vencimiento registrado</span>
+                    <span>Sistema: {{ lotItem.system_quantity }} und</span>
+                  </div>
+
+                  <VTextField
+                    :id="`lot-input-${index}`"
+                    v-model.number="lotItem.counted_quantity"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    variant="outlined"
+                    bg-color="white"
+                    class="conteo-definitivo-input font-weight-black"
+                    density="comfortable"
+                    hide-details
+                    :disabled="barcodeRequiredGlobal && !allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
+                    @keyup.enter="handleLotEnter(index)"
+                    @focus="$event.target.select()"
+                  />
+                </div>
+
+                <!-- Total Sumado de Lotes -->
+                <div
+                  v-if="hasAnyLotCounted"
+                  class="d-flex align-center justify-space-between rounded-xl pa-3 bg-primary-lighten-5 border mt-1"
+                >
+                  <span class="text-xs font-weight-black text-primary uppercase">Total Físico (Suma de Lotes)</span>
+                  <VChip size="small" color="primary" variant="flat" class="font-weight-black">
+                    {{ lotsTotalCounted }} {{ productUnit }}
                   </VChip>
                 </div>
               </div>

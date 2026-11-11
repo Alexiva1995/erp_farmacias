@@ -89,9 +89,25 @@ class InventoryCycleActionService
                 }
 
                 // Si no hay discrepancia y no es simple, aprobar automáticamente sin supervisor
-                $isSimple = \App\Models\GeneralSetting::first()?->cyclic_inventory_mode === 'simple';
+                $generalSetting = \App\Models\GeneralSetting::first();
+                $isSimple = $generalSetting?->cyclic_inventory_mode === 'simple';
+                $isRestaurant = ($generalSetting?->business_type === 'restaurant') || (bool) ($generalSetting?->enable_dishes ?? false);
                 $finalDiscrepancy = round((float) ($data['discrepancy'] ?? 0), 3);
-                $status = (abs($finalDiscrepancy) < 0.0001 && !$isSimple) ? 'approved' : 'pending';
+
+                // Margen de tolerancia para mermas culinarias en restaurante (peso/volumen/fracciones)
+                $tolerance = 0.0001;
+                if ($isRestaurant && $systemStock > 0) {
+                    $uom = strtolower(trim((string) ($product->unit_of_measure ?? '')));
+                    $isFractionable = $isSubRecipe
+                        || in_array($uom, ['kg', 'g', 'gr', 'l', 'ml', 'lt', 'kg.', 'lt.', 'porción', 'porcion'])
+                        || ((float) ($product->presentation ?? 0) > 0);
+                    if ($isFractionable) {
+                        $tolerance = max(0.05, round($systemStock * 0.015, 3));
+                    }
+                }
+
+                $isWithinTolerance = abs($finalDiscrepancy) <= $tolerance;
+                $status = ($isWithinTolerance && !$isSimple) ? 'approved' : 'pending';
                 $userId = Auth::id();
                 $today = now()->toDateString();
                 
@@ -148,6 +164,25 @@ class InventoryCycleActionService
                 ]);
 
                 $productCount->load(['product', 'user', 'cycle']);
+
+                // Registrar desglose por lotes si fue auditado en farmacia
+                if (!empty($data['lots_breakdown']) && is_array($data['lots_breakdown'])) {
+                    foreach ($data['lots_breakdown'] as $lotItem) {
+                        if (!empty($lotItem['lot_id'])) {
+                            ProductDistribution::create([
+                                'product_count_id' => $productCount->id,
+                                'product_lot_id'   => $lotItem['lot_id'],
+                                'quantity'         => max(0, (float) ($lotItem['quantity'] ?? 0)),
+                            ]);
+
+                            if ($status === 'approved') {
+                                ProductLot::where('id', $lotItem['lot_id'])
+                                    ->where('product_id', $product->id)
+                                    ->update(['quantity' => max(0, (float) ($lotItem['quantity'] ?? 0))]);
+                            }
+                        }
+                    }
+                }
 
                 if ($status === 'approved') {
                     $this->createVerificationMovement($product, $systemStock, $productCount->created_at, $productCount->id, 'product_count');
@@ -635,6 +670,25 @@ class InventoryCycleActionService
 
                 $invoiceCount->load(['product', 'user', 'cycle']);
 
+                // Registrar desglose por lotes si fue auditado en farmacia
+                if (!empty($data['lots_breakdown']) && is_array($data['lots_breakdown'])) {
+                    foreach ($data['lots_breakdown'] as $lotItem) {
+                        if (!empty($lotItem['lot_id'])) {
+                            \App\Models\InvoiceCountDistribution::create([
+                                'invoice_count_id' => $invoiceCount->id,
+                                'product_lot_id'   => $lotItem['lot_id'],
+                                'quantity'         => max(0, (float) ($lotItem['quantity'] ?? 0)),
+                            ]);
+
+                            if ($status === 'approved') {
+                                ProductLot::where('id', $lotItem['lot_id'])
+                                    ->where('product_id', $product->id)
+                                    ->update(['quantity' => max(0, (float) ($lotItem['quantity'] ?? 0))]);
+                            }
+                        }
+                    }
+                }
+
                 if ($status === 'approved') {
                     $this->createVerificationMovement($product, $data['system_quantity'], $invoiceCount->created_at, $invoiceCount->id, 'invoice_count');
                 }
@@ -990,6 +1044,25 @@ class InventoryCycleActionService
 
                 $saleCount->load(['product', 'user', 'cycle']);
 
+                // Registrar desglose por lotes si fue auditado en farmacia
+                if (!empty($data['lots_breakdown']) && is_array($data['lots_breakdown'])) {
+                    foreach ($data['lots_breakdown'] as $lotItem) {
+                        if (!empty($lotItem['lot_id'])) {
+                            \App\Models\SaleCountDistribution::create([
+                                'sale_count_id'  => $saleCount->id,
+                                'product_lot_id' => $lotItem['lot_id'],
+                                'quantity'       => max(0, (float) ($lotItem['quantity'] ?? 0)),
+                            ]);
+
+                            if ($status === 'approved') {
+                                ProductLot::where('id', $lotItem['lot_id'])
+                                    ->where('product_id', $product->id)
+                                    ->update(['quantity' => max(0, (float) ($lotItem['quantity'] ?? 0))]);
+                            }
+                        }
+                    }
+                }
+
                 if ($status === 'approved') {
                     $this->createVerificationMovement($product, $data['system_quantity'], $saleCount->created_at, $saleCount->id, 'sale_count');
                 }
@@ -1303,11 +1376,11 @@ class InventoryCycleActionService
         });
     }
 
-    public function updateExemption($model, int $exemptQuantity, ?string $reason = null): array
+    public function updateExemption($model, float|int $exemptQuantity, ?string $reason = null): array
     {
         return DB::transaction(function () use ($model, $exemptQuantity, $reason) {
             try {
-                $maxExempt = abs((int) $model->discrepancy);
+                $maxExempt = abs((float) $model->discrepancy);
                 if ($exemptQuantity > $maxExempt) {
                     $exemptQuantity = $maxExempt;
                 }

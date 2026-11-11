@@ -20,6 +20,9 @@ class StoreSaleCountRequest extends FormRequest
             'counted_quantity' => 'required|numeric|min:0',
             'system_quantity'  => 'required|numeric',
             'discrepancy'      => 'required|numeric',
+            'lots_breakdown'   => 'nullable|array',
+            'lots_breakdown.*.lot_id' => 'required_with:lots_breakdown|integer|exists:product_lots,id',
+            'lots_breakdown.*.quantity' => 'required_with:lots_breakdown|numeric|min:0',
         ];
 
         if (!$allowWithoutBarcode) {

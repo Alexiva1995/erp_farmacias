@@ -50,6 +50,7 @@ class InventoryCycleController extends Controller
             $settings = \App\Models\GeneralSetting::first();
             $scope = $settings?->cyclic_inventory_scope ?? 'all';
             $dailyQuota = (int) ($settings?->cyclic_inventory_daily_quota ?? 50);
+            $isRestaurant = ($settings?->business_type === 'restaurant') || (bool) ($settings?->enable_dishes ?? false);
 
             $hasSearchFilters = $request->filled('q') || $request->filled('laboratoryId') || $request->filled('originId');
 
@@ -68,9 +69,22 @@ class InventoryCycleController extends Controller
                         ->where('quota_date', $today)
                         ->get();
 
-                    // Si no existe cuota inicial para hoy, generar el primer lote aleatorio
+                    // Si no existe cuota inicial para hoy, generar el primer lote (ABC en restaurante, orden alfabético por estante en farmacia)
                     if ($quotas->isEmpty()) {
-                        $availableProductIds = (clone $query)->inRandomOrder()->limit($dailyQuota)->pluck('products.id')->toArray();
+                        $quotaQuery = (clone $query);
+                        if ($isRestaurant) {
+                            $quotaQuery->reorder()
+                                ->orderByRaw('(COALESCE(products.stock, 0) * COALESCE(products.unit_cost, 0)) DESC')
+                                ->orderByDesc('products.sales_average')
+                                ->orderByDesc('products.unit_cost')
+                                ->orderBy('products.id');
+                        } else {
+                            $quotaQuery->reorder()
+                                ->orderByRaw("COALESCE((SELECT MIN(product_lots.location) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.location IS NOT NULL AND product_lots.location != ''), 'ZZZ_SIN_UBICACION') ASC")
+                                ->orderBy('products.name', 'asc');
+                        }
+
+                        $availableProductIds = $quotaQuery->limit($dailyQuota)->pluck('products.id')->toArray();
                         UserCyclicQuota::create([
                             'user_id'              => $userId,
                             'cycle_id'             => $activeCycleId,
@@ -225,7 +239,22 @@ class InventoryCycleController extends Controller
                 $baseQuery->whereNotIn('products.id', $existingAssignedIds);
             }
 
-            $newProductIds = $baseQuery->inRandomOrder()->limit($dailyQuota)->pluck('products.id')->toArray();
+            $settings = \App\Models\GeneralSetting::first();
+            $isRestaurant = ($settings?->business_type === 'restaurant') || (bool) ($settings?->enable_dishes ?? false);
+
+            if ($isRestaurant) {
+                $baseQuery->reorder()
+                    ->orderByRaw('(COALESCE(products.stock, 0) * COALESCE(products.unit_cost, 0)) DESC')
+                    ->orderByDesc('products.sales_average')
+                    ->orderByDesc('products.unit_cost')
+                    ->orderBy('products.id');
+            } else {
+                $baseQuery->reorder()
+                    ->orderByRaw("COALESCE((SELECT MIN(product_lots.location) FROM product_lots WHERE product_lots.product_id = products.id AND product_lots.location IS NOT NULL AND product_lots.location != ''), 'ZZZ_SIN_UBICACION') ASC")
+                    ->orderBy('products.name', 'asc');
+            }
+
+            $newProductIds = $baseQuery->limit($dailyQuota)->pluck('products.id')->toArray();
 
             if (empty($newProductIds)) {
                 return response()->json(['message' => 'No hay más productos pendientes por contar en este ciclo.'], 400);
@@ -318,6 +347,7 @@ class InventoryCycleController extends Controller
                 'system_quantity' => $request->input('system_quantity'),
                 'discrepancy' => $request->input('discrepancy'),
                 'allow_without_barcode' => $allowWithoutBarcode,
+                'lots_breakdown' => $request->input('lots_breakdown'),
             ];
 
             // Solo incluir barcode si no se permite sin código de barras
