@@ -15,6 +15,9 @@ class DiningZone extends Model
     protected $fillable = [
         'name',
         'background_style',
+        'width_meters',
+        'height_meters',
+        'layout_config',
         'sort_order',
         'is_active',
     ];
@@ -22,6 +25,9 @@ class DiningZone extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'sort_order' => 'integer',
+        'width_meters' => 'decimal:2',
+        'height_meters' => 'decimal:2',
+        'layout_config' => 'array',
     ];
 
     public function tables(): HasMany

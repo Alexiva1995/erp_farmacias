@@ -87,6 +87,10 @@ const props = defineProps({
     type: [Number, String],
     default: null,
   },
+  zone: {
+    type: Object,
+    default: () => null,
+  },
 })
 
 const emit = defineEmits(['select-table', 'select-station'])
@@ -144,19 +148,29 @@ const initChefs = () => {
     { id: 3, name: 'Barra de Bebidas', code: 'BAR', color: 'info', icon: 'tabler-glass-full' },
   ]
 
+  const kitchenArea = props.zone?.layout_config?.areas?.find(a => a.type === 'kitchen')
+  const scale = 65
+  const offsetX = 50
+  const offsetY = 50
+
   stationList.forEach((station, index) => {
-    const stationX = 140 + index * 160
-    const stationY = 130
+    let stationX = 140 + index * 160
+    let stationY = 130
+    if (kitchenArea) {
+      stationX = offsetX + kitchenArea.x * scale + 50 + (index % 3) * 100
+      stationY = offsetY + kitchenArea.y * scale + 40 + Math.floor(index / 3) * 50
+    }
+
     chefs.push({
       id: station.id,
       name: `Chef ${station.code || station.name}`,
       stationName: station.name,
       x: stationX,
-      y: stationY + 45,
+      y: stationY + 35,
       targetX: stationX,
-      targetY: stationY + 45,
+      targetY: stationY + 35,
       homeX: stationX,
-      homeY: stationY + 45,
+      homeY: stationY + 35,
       color: station.color || '#e056fd',
       state: 'cooking', // 'cooking', 'delivering', 'idle'
       bobOffset: Math.random() * Math.PI * 2,
@@ -355,7 +369,119 @@ const drawEnvironment = () => {
   ctx.fillStyle = '#1e1e2d'
   ctx.fillRect(-100, -100, worldWidth + 200, worldHeight + 200)
 
-  // --- ZONA COCINA (Superior) ---
+  const areas = props.zone?.layout_config?.areas || []
+
+  if (areas.length > 0) {
+    // Modo Plano Personalizado del Usuario
+    const scale = 65
+    const offsetX = 50
+    const offsetY = 50
+
+    // Piso base del salón comedor
+    ctx.fillStyle = THEME.bgDiningFloor
+    ctx.fillRect(offsetX, offsetY, worldWidth - 100, worldHeight - 100)
+
+    // Vetas de madera
+    ctx.strokeStyle = THEME.bgDiningWoodDark
+    ctx.lineWidth = 1
+    for (let y = offsetY; y <= worldHeight - 50; y += 45) {
+      ctx.beginPath()
+      ctx.moveTo(offsetX, y)
+      ctx.lineTo(worldWidth - 50, y)
+      ctx.stroke()
+    }
+
+    // Dibujar cada área arquitectónica personalizada
+    areas.forEach((area) => {
+      const ax = offsetX + area.x * scale
+      const ay = offsetY + area.y * scale
+      const aw = area.w * scale
+      const ah = area.h * scale
+
+      if (area.type === 'kitchen') {
+        // Azulejos de cocina
+        ctx.fillStyle = THEME.bgKitchenFloor
+        ctx.fillRect(ax, ay, aw, ah)
+
+        ctx.strokeStyle = THEME.bgKitchenTiles
+        ctx.lineWidth = 1.2
+        for (let x = ax; x <= ax + aw; x += 30) {
+          ctx.beginPath()
+          ctx.moveTo(x, ay)
+          ctx.lineTo(x, ay + ah)
+          ctx.stroke()
+        }
+        for (let y = ay; y <= ay + ah; y += 30) {
+          ctx.beginPath()
+          ctx.moveTo(ax, y)
+          ctx.lineTo(ax + aw, y)
+          ctx.stroke()
+        }
+        ctx.strokeStyle = '#e74c3c'
+        ctx.lineWidth = 2
+        ctx.strokeRect(ax, ay, aw, ah)
+
+        ctx.fillStyle = '#333'
+        ctx.font = 'bold 11px sans-serif'
+        ctx.textAlign = 'left'
+        ctx.fillText(area.name || 'COCINA', ax + 8, ay + 18)
+      } else if (area.type === 'storage') {
+        // Depósito
+        ctx.fillStyle = '#2c3e50'
+        ctx.fillRect(ax, ay, aw, ah)
+        ctx.strokeStyle = '#7f8c8d'
+        ctx.lineWidth = 2
+        ctx.strokeRect(ax, ay, aw, ah)
+
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 11px sans-serif'
+        ctx.textAlign = 'left'
+        ctx.fillText(area.name || 'DEPÓSITO', ax + 8, ay + 18)
+      } else if (area.type === 'terrace') {
+        // Terraza / Césped
+        ctx.fillStyle = '#27ae60'
+        ctx.fillRect(ax, ay, aw, ah)
+        ctx.strokeStyle = '#2ecc71'
+        ctx.lineWidth = 2
+        ctx.strokeRect(ax, ay, aw, ah)
+
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 11px sans-serif'
+        ctx.textAlign = 'left'
+        ctx.fillText(area.name || 'TERRAZA', ax + 8, ay + 18)
+      } else if (area.type === 'wall') {
+        // Muro
+        ctx.fillStyle = '#1a1a1a'
+        ctx.fillRect(ax, ay, aw, ah)
+      } else if (area.type === 'entrance') {
+        // Alfombra de entrada
+        ctx.fillStyle = THEME.carpetRed
+        ctx.fillRect(ax, ay, aw, ah)
+        ctx.strokeStyle = THEME.carpetBorder
+        ctx.lineWidth = 2.5
+        ctx.strokeRect(ax + 3, ay + 3, aw - 6, ah - 6)
+
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 11px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('ENTRADA', ax + aw / 2, ay + ah / 2 + 4)
+      } else if (area.type === 'pass_counter') {
+        // Mostrador de Pase
+        ctx.fillStyle = THEME.passCounter
+        ctx.fillRect(ax, ay, aw, ah)
+        ctx.fillStyle = THEME.passCounterTop
+        ctx.fillRect(ax + 2, ay + 2, aw - 4, ah - 4)
+
+        ctx.fillStyle = '#333'
+        ctx.font = 'bold 10px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('PASE DE PLATOS', ax + aw / 2, ay + ah / 2 + 3)
+      }
+    })
+    return
+  }
+
+  // --- MODO FALLBACK (Si el usuario aún no configuró áreas) ---
   const kitchenHeight = 270
   ctx.fillStyle = THEME.bgKitchenFloor
   ctx.fillRect(40, 40, worldWidth - 80, kitchenHeight)
@@ -420,9 +546,18 @@ const drawKitchenStations = () => {
     { id: 3, name: 'Barra de Bebidas', code: 'BAR', icon: '🍹' },
   ]
 
+  const kitchenArea = props.zone?.layout_config?.areas?.find(a => a.type === 'kitchen')
+  const scale = 65
+  const offsetX = 50
+  const offsetY = 50
+
   stationList.forEach((st, idx) => {
-    const x = 140 + idx * 160
-    const y = 80
+    let x = 140 + idx * 160
+    let y = 80
+    if (kitchenArea) {
+      x = offsetX + kitchenArea.x * scale + 50 + (idx % 3) * 100
+      y = offsetY + kitchenArea.y * scale + 40 + Math.floor(idx / 3) * 50
+    }
 
     // Mueble de Cocina con Acero Inoxidable
     ctx.fillStyle = '#3f4654'
@@ -471,23 +606,35 @@ const drawKitchenStations = () => {
 
 // 3. MOSTRADOR DE PASE (PASS COUNTER)
 const drawPassCounter = () => {
-  const counterY = 280
-  const counterWidth = worldWidth - 120
+  const passArea = props.zone?.layout_config?.areas?.find(a => a.type === 'pass_counter')
+  const scale = 65
+  const offsetX = 50
+  const offsetY = 50
+
+  let counterX = 60
+  let counterY = 280
+  let counterWidth = worldWidth - 120
+
+  if (passArea) {
+    counterX = offsetX + passArea.x * scale
+    counterY = offsetY + passArea.y * scale
+    counterWidth = passArea.w * scale
+  }
 
   // Sombra del mostrador
   ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
-  ctx.fillRect(60, counterY + 16, counterWidth, 12)
+  ctx.fillRect(counterX, counterY + 16, counterWidth, 12)
 
   // Cuerpo de Madera
   ctx.fillStyle = THEME.passCounter
-  drawRoundedRect(ctx, 60, counterY - 10, counterWidth, 24, 6, true, false)
+  drawRoundedRect(ctx, counterX, counterY - 10, counterWidth, 24, 6, true, false)
 
   // Encimera
   ctx.fillStyle = THEME.passCounterTop
-  drawRoundedRect(ctx, 55, counterY - 14, counterWidth + 10, 12, 6, true, false)
+  drawRoundedRect(ctx, counterX - 5, counterY - 14, counterWidth + 10, 12, 6, true, false)
 
   // Campana de Pedidos en el centro
-  const bellX = worldWidth / 2
+  const bellX = counterX + counterWidth / 2
   ctx.fillStyle = '#d4af37' // Dorado
   ctx.beginPath()
   ctx.arc(bellX, counterY - 18, 9, Math.PI, Math.PI * 2)

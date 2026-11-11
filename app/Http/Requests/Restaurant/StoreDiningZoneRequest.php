@@ -16,6 +16,9 @@ class StoreDiningZoneRequest extends FormRequest
         return [
             'name' => 'required|string|max:100',
             'background_style' => 'nullable|string|in:grid,wooden,concrete,grass',
+            'width_meters' => 'nullable|numeric|min:2|max:100',
+            'height_meters' => 'nullable|numeric|min:2|max:100',
+            'layout_config' => 'nullable|array',
             'sort_order' => 'nullable|integer',
             'is_active' => 'nullable|boolean',
         ];

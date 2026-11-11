@@ -1,10 +1,10 @@
 <template>
-  <div class="dining-floor-view">
-    <!-- Barra Superior de Control y Zonas -->
+  <div class="restaurant-builder-view">
+    <!-- BARRA SUPERIOR: GESTIÓN DE PLANTAS/ZONAS Y MODOS -->
     <v-card class="mb-4" elevation="1">
       <v-card-text class="py-3">
         <div class="d-flex flex-wrap align-center justify-space-between gap-3">
-          <!-- Selector y Gestión de Zonas -->
+          <!-- Selector y Configuración de Plantas / Zonas -->
           <div class="d-flex align-center flex-wrap gap-2">
             <v-tabs
               v-if="zones.length"
@@ -16,47 +16,40 @@
               <v-tab v-for="zone in zones" :key="zone.id" :value="zone.id">
                 <v-icon start size="18">tabler-map-pin</v-icon>
                 <span>{{ zone.name }}</span>
-                <v-chip
-                  size="x-small"
-                  variant="tonal"
-                  color="primary"
-                  class="ml-1"
-                >
-                  {{ getTablesCountByZone(zone.id) }}
+                <v-chip size="x-small" variant="tonal" color="primary" class="ml-1">
+                  {{ zoneAreaM2(zone) }} m²
                 </v-chip>
               </v-tab>
             </v-tabs>
 
             <div class="d-flex align-center gap-1">
-              <!-- Botón Nueva Zona -->
+              <!-- Nueva Planta / Zona -->
               <v-btn
                 icon="tabler-plus"
                 size="small"
                 variant="tonal"
                 color="primary"
-                title="Crear Nueva Zona"
+                title="Nueva Zona / Planta"
                 @click="openCreateZoneModal"
               />
-
-              <!-- Botón Editar Zona Actual -->
+              <!-- Editar Dimensiones y Estilo de Zona -->
               <v-btn
                 v-if="currentZone"
-                icon="tabler-pencil"
+                icon="tabler-adjustments"
                 size="small"
                 variant="text"
                 color="secondary"
-                title="Editar Zona Actual"
+                title="Configurar Metros y Estilo"
                 @click="openEditZoneModal"
               />
-
-              <!-- Botón Eliminar Zona Actual -->
+              <!-- Eliminar Planta -->
               <v-btn
                 v-if="currentZone && zones.length > 1"
                 icon="tabler-trash"
                 size="small"
                 variant="text"
                 color="error"
-                title="Eliminar Zona Actual"
+                title="Eliminar Zona"
                 @click="showDeleteZoneConfirm = true"
               />
             </div>
@@ -64,7 +57,7 @@
 
           <!-- Modos de Vista & Acciones Principales -->
           <div class="d-flex align-center flex-wrap gap-2">
-            <!-- Alternador de Modos: Editor 2D (Diseñar) vs Restaurante en Vivo (Operación) -->
+            <!-- Alternador de Modos -->
             <v-btn-toggle
               v-model="viewMode"
               mandatory
@@ -72,40 +65,27 @@
               color="primary"
               rounded="lg"
             >
-              <v-btn value="2d" prepend-icon="tabler-layout-dashboard">
-                Editor / Diseñar Salón
+              <v-btn value="builder" prepend-icon="tabler-tools">
+                Constructor de Espacios
               </v-btn>
               <v-btn value="live" prepend-icon="tabler-chef-hat">
                 Salón en Vivo
               </v-btn>
             </v-btn-toggle>
 
-            <!-- Acciones específicas del Modo Diseñador 2D -->
-            <template v-if="viewMode === '2d'">
-              <v-btn
-                color="primary"
-                variant="flat"
-                size="small"
-                prepend-icon="tabler-plus"
-                :disabled="!currentZone"
-                @click="openCreateTableModal"
-              >
-                Nueva Mesa
-              </v-btn>
-
+            <!-- Acciones del Constructor -->
+            <template v-if="viewMode === 'builder'">
               <v-btn
                 color="success"
                 variant="flat"
                 size="small"
                 prepend-icon="tabler-device-floppy"
                 :loading="savingLayout"
-                :disabled="!filteredTables.length"
-                @click="saveCurrentLayout"
+                @click="saveFullRestaurantDesign"
               >
-                Guardar Plano
+                Guardar Restaurante
               </v-btn>
 
-              <!-- Menú de Acciones de Limpieza / Plantillas -->
               <v-menu location="bottom end">
                 <template #activator="{ props: menuProps }">
                   <v-btn
@@ -114,34 +94,19 @@
                     size="small"
                     color="secondary"
                     v-bind="menuProps"
-                    title="Más opciones de diseño"
+                    title="Opciones avanzadas"
                   />
                 </template>
                 <v-list density="compact">
                   <v-list-item
                     prepend-icon="tabler-trash-x"
                     class="text-error"
-                    :disabled="!filteredTables.length"
                     @click="showClearZoneModal = true"
                   >
-                    <v-list-item-title>Vaciar Mesas de Esta Zona</v-list-item-title>
+                    <v-list-item-title>Vaciar Objetos de Esta Zona</v-list-item-title>
                   </v-list-item>
                 </v-list>
               </v-menu>
-            </template>
-
-            <!-- Acciones específicas del Modo En Vivo -->
-            <template v-else>
-              <v-btn
-                color="primary"
-                variant="tonal"
-                size="small"
-                prepend-icon="tabler-plus"
-                :disabled="!currentZone"
-                @click="openCreateTableModal"
-              >
-                Nueva Mesa
-              </v-btn>
             </template>
 
             <v-btn
@@ -155,290 +120,473 @@
           </div>
         </div>
 
-        <!-- Barra informativa contextual del Diseñador -->
-        <v-alert
-          v-if="viewMode === '2d'"
-          density="compact"
-          variant="tonal"
-          color="info"
-          icon="tabler-info-circle"
-          class="mt-3 mb-0 text-caption"
-        >
-          <strong>Modo Diseñador de Restaurante:</strong> Arrastra las mesas libremente para replicar la distribución física de tu local.
-          Haz clic en cualquier mesa para editar su nombre, número de sillas, dimensiones o rotarla. Pulsa <strong>Guardar Plano</strong> al terminar.
-        </v-alert>
-      </v-card-text>
-    </v-card>
+        <!-- Barra Métrica de la Zona Activa -->
+        <div v-if="currentZone && viewMode === 'builder'" class="d-flex flex-wrap align-center justify-space-between gap-3 mt-3 pt-2 border-t text-caption">
+          <div class="d-flex align-center flex-wrap gap-3">
+            <span class="d-flex align-center gap-1">
+              <v-icon size="16" color="primary">tabler-ruler-2</v-icon>
+              <strong>Dimensiones del Local:</strong>
+              {{ currentZoneWidth }} m × {{ currentZoneHeight }} m
+              <v-chip size="x-small" color="primary" variant="flat" class="font-weight-bold ml-1">
+                {{ currentZoneArea }} m²
+              </v-chip>
+            </span>
 
-    <!-- Resumen Rápido de Estados (Visible en Salón en Vivo o como referencia) -->
-    <v-row v-if="viewMode === 'live'" class="mb-4" dense>
-      <v-col cols="6" sm="3">
-        <v-card class="pa-2 d-flex align-center gap-3" border flat>
-          <v-avatar color="success" variant="tonal" rounded size="38">
-            <v-icon>tabler-check</v-icon>
-          </v-avatar>
-          <div>
-            <div class="text-caption text-medium-emphasis">Libres</div>
-            <div class="text-h6 font-weight-bold">{{ availableTablesCount }}</div>
-          </div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card class="pa-2 d-flex align-center gap-3" border flat>
-          <v-avatar color="error" variant="tonal" rounded size="38">
-            <v-icon>tabler-tools-kitchen-2</v-icon>
-          </v-avatar>
-          <div>
-            <div class="text-caption text-medium-emphasis">Ocupadas</div>
-            <div class="text-h6 font-weight-bold">{{ occupiedTablesCount }}</div>
-          </div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card class="pa-2 d-flex align-center gap-3" border flat>
-          <v-avatar color="warning" variant="tonal" rounded size="38">
-            <v-icon>tabler-receipt</v-icon>
-          </v-avatar>
-          <div>
-            <div class="text-caption text-medium-emphasis">Pre-Cuenta Pedida</div>
-            <div class="text-h6 font-weight-bold">{{ billRequestedTablesCount }}</div>
-          </div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card class="pa-2 d-flex align-center gap-3" border flat>
-          <v-avatar color="info" variant="tonal" rounded size="38">
-            <v-icon>tabler-calendar-time</v-icon>
-          </v-avatar>
-          <div>
-            <div class="text-caption text-medium-emphasis">Reservadas</div>
-            <div class="text-h6 font-weight-bold">{{ reservedTablesCount }}</div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
+            <span class="text-medium-emphasis">|</span>
 
-    <!-- Canvas Principal: Diseñador 2D o Restaurante en Vivo -->
-    <v-card class="floor-canvas-card position-relative overflow-hidden mb-4" elevation="2">
-      <!-- MODO SALÓN EN VIVO (2.5D) -->
-      <OvercookedLiveMap
-        v-if="viewMode === 'live'"
-        :tables="filteredTables"
-        :stations="kitchenStations"
-        :selected-table-id="selectedTable?.id"
-        @select-table="selectAndInteractTable"
-        @select-station="handleSelectStation"
-      />
-
-      <!-- MODO EDITOR 2D / PLANO INTERACTIVO -->
-      <div
-        v-show="viewMode === '2d'"
-        class="floor-2d-canvas pa-4"
-        :class="currentZoneBackgroundClass"
-        @dragover.prevent
-        @drop="handleDropTable"
-        @click.self="clearEditingSelection"
-      >
-        <!-- Rejilla de Fondo y Regla Visual -->
-        <div class="canvas-watermark text-caption">
-          Zona: {{ currentZone?.name || 'Salón' }} • Arrastra mesas para diseñar
-        </div>
-
-        <!-- Nodos de Mesa con Drag & Drop y Estilos de Forma -->
-        <div
-          v-for="table in filteredTables"
-          :key="table.id"
-          class="floor-table-node"
-          :class="[
-            `shape-${table.shape || 'square'}`,
-            `status-${table.status || 'available'}`,
-            { 'is-editing-selected': editingTable?.id === table.id }
-          ]"
-          :style="{
-            left: `${table.pos_x}px`,
-            top: `${table.pos_y}px`,
-            width: `${table.width || 80}px`,
-            height: `${table.height || 80}px`,
-            transform: `rotate(${table.rotation || 0}deg)`
-          }"
-          draggable="true"
-          @dragstart="handleDragStart(table, $event)"
-          @click.stop="handleTableClickInDesigner(table)"
-        >
-          <div class="table-inner d-flex flex-column align-center justify-center text-center">
-            <span class="table-title font-weight-bold">{{ table.name }}</span>
-            <span class="table-capacity text-caption">Cap: {{ table.capacity }}</span>
-            <span v-if="table.current_order" class="table-amount font-weight-bold text-caption mt-1">
-              ${{ Number(table.current_order.total_amount_usd || 0).toFixed(2) }}
+            <span>
+              <strong>Mesas:</strong> {{ filteredTables.length }}
+            </span>
+            <span>
+              <strong>Áreas Arquitectónicas:</strong> {{ layoutAreas.length }}
             </span>
           </div>
 
-          <!-- Puntos / Sillas Visuales Alrededor -->
-          <div class="seat-dot seat-top" />
-          <div class="seat-dot seat-bottom" />
-          <div v-if="table.capacity > 2" class="seat-dot seat-left" />
-          <div v-if="table.capacity > 3" class="seat-dot seat-right" />
-        </div>
+          <!-- Controles Rápidos de Medidas y Snap -->
+          <div class="d-flex align-center gap-3">
+            <div class="d-flex align-center gap-1">
+              <span class="text-medium-emphasis">Ancho (m):</span>
+              <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="changeDimension('width', -1)" />
+              <strong class="mx-1">{{ currentZoneWidth }}m</strong>
+              <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="changeDimension('width', 1)" />
+            </div>
 
-        <!-- Estado Vacío si la Zona no tiene Mesas -->
-        <div
-          v-if="!filteredTables.length && !loadingOverview"
-          class="canvas-empty-state d-flex flex-column align-center justify-center py-12"
-        >
-          <v-icon size="56" color="secondary" class="mb-3">tabler-layout-grid-add</v-icon>
-          <h3 class="text-h6 font-weight-bold mb-1">Esta zona no tiene mesas todavía</h3>
-          <p class="text-body-2 text-medium-emphasis mb-4 text-center" style="max-width: 420px;">
-            Diseña el salón de tu restaurante agregando mesas cuadradas, redondas, barras o rectangulares.
-          </p>
-          <v-btn
-            color="primary"
-            prepend-icon="tabler-plus"
-            @click="openCreateTableModal"
-          >
-            Agregar Primera Mesa
-          </v-btn>
+            <div class="d-flex align-center gap-1">
+              <span class="text-medium-emphasis">Largo (m):</span>
+              <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="changeDimension('height', -1)" />
+              <strong class="mx-1">{{ currentZoneHeight }}m</strong>
+              <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="changeDimension('height', 1)" />
+            </div>
+
+            <v-btn
+              size="x-small"
+              variant="tonal"
+              :color="snapToGrid ? 'primary' : 'secondary'"
+              prepend-icon="tabler-magnet"
+              @click="snapToGrid = !snapToGrid"
+            >
+              Snap Cuadrícula {{ snapToGrid ? 'ON' : 'OFF' }}
+            </v-btn>
+          </div>
         </div>
-      </div>
+      </v-card-text>
     </v-card>
 
-    <!-- PANEL FLOTANTE DE PROPIEDADES DE MESA (EN MODO DISEÑADOR 2D) -->
-    <v-expand-transition>
-      <v-card
-        v-if="viewMode === '2d' && editingTable"
-        class="mb-4"
-        elevation="3"
-        border
-      >
-        <v-card-text class="py-3 px-4">
-          <div class="d-flex flex-wrap align-center justify-space-between gap-3">
-            <div class="d-flex align-center gap-2">
-              <v-avatar color="primary" variant="tonal" rounded size="36">
-                <v-icon>tabler-table</v-icon>
-              </v-avatar>
-              <div>
-                <div class="text-subtitle-2 font-weight-bold">{{ editingTable.name }}</div>
-                <div class="text-caption text-medium-emphasis">
-                  Capacidad: {{ editingTable.capacity }} pers. • Forma: {{ getShapeLabel(editingTable.shape) }}
-                </div>
+    <!-- MODO 1: CONSTRUCTOR DE ESPACIOS (TIPO VIDEOJUEGO / MAP EDITOR) -->
+    <v-row v-if="viewMode === 'builder'" dense>
+      <!-- PANEL IZQUIERDO: PALETA DE CONSTRUCCIÓN -->
+      <v-col cols="12" md="3" lg="2">
+        <v-card class="builder-toolbox-card" elevation="2" border>
+          <v-tabs v-model="toolboxTab" density="compact" grow color="primary" class="border-b">
+            <v-tab value="tables">
+              <v-icon size="16">tabler-table</v-icon>
+              <span class="text-caption ml-1">Mesas</span>
+            </v-tab>
+            <v-tab value="spaces">
+              <v-icon size="16">tabler-layout-grid</v-icon>
+              <span class="text-caption ml-1">Espacios</span>
+            </v-tab>
+            <v-tab value="equip">
+              <v-icon size="16">tabler-flame</v-icon>
+              <span class="text-caption ml-1">Equipos</span>
+            </v-tab>
+          </v-tabs>
+
+          <v-card-text class="pa-2 toolbox-content">
+            <!-- PESTAÑA A: CATÁLOGO DE MESAS (1 CLIC PARA AÑADIR A ESCALA) -->
+            <div v-show="toolboxTab === 'tables'">
+              <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
+                Haz clic para colocar:
+              </div>
+
+              <div class="d-flex flex-column gap-2">
+                <v-btn
+                  v-for="preset in tablePresets"
+                  :key="preset.id"
+                  variant="tonal"
+                  color="primary"
+                  block
+                  class="justify-start text-left py-2 h-auto"
+                  @click="addTablePreset(preset)"
+                >
+                  <v-avatar size="32" color="primary" variant="flat" class="mr-2 rounded">
+                    <v-icon size="18">{{ preset.icon }}</v-icon>
+                  </v-avatar>
+                  <div class="d-flex flex-column text-left">
+                    <span class="font-weight-bold text-caption text-truncate">{{ preset.title }}</span>
+                    <span class="text-caption text-medium-emphasis" style="font-size: 11px;">
+                      {{ preset.capacity }} personas • {{ preset.dimMeters }}m
+                    </span>
+                  </div>
+                </v-btn>
               </div>
             </div>
 
-            <!-- Controles Rápidos de Rotación y Dimensiones -->
-            <div class="d-flex align-center flex-wrap gap-2">
-              <!-- Rotación rápida -->
-              <span class="text-caption text-medium-emphasis mr-1">Rotación:</span>
-              <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                prepend-icon="tabler-rotate-clockwise-2"
-                @click="rotateEditingTable(-15)"
-              >
-                -15°
-              </v-btn>
-              <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                append-icon="tabler-rotate-clockwise"
-                @click="rotateEditingTable(15)"
-              >
-                +15°
-              </v-btn>
-              <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                @click="rotateEditingTable(90)"
-              >
-                90°
-              </v-btn>
+            <!-- PESTAÑA B: PINTAR ESPACIOS / ÁREAS DEL LOCAL -->
+            <div v-show="toolboxTab === 'spaces'">
+              <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
+                Áreas y Divisiones:
+              </div>
 
-              <v-divider vertical class="mx-1" />
+              <div class="d-flex flex-column gap-2">
+                <v-btn
+                  v-for="areaType in spaceAreaTypes"
+                  :key="areaType.id"
+                  variant="tonal"
+                  :color="areaType.btnColor"
+                  block
+                  class="justify-start text-left py-2 h-auto"
+                  @click="addArchitecturalArea(areaType)"
+                >
+                  <v-avatar size="32" :color="areaType.btnColor" variant="flat" class="mr-2 rounded">
+                    <v-icon size="18">{{ areaType.icon }}</v-icon>
+                  </v-avatar>
+                  <div class="d-flex flex-column text-left">
+                    <span class="font-weight-bold text-caption">{{ areaType.title }}</span>
+                    <span class="text-caption text-medium-emphasis" style="font-size: 11px;">
+                      {{ areaType.desc }}
+                    </span>
+                  </div>
+                </v-btn>
+              </div>
+            </div>
 
-              <!-- Tamaño rápido -->
-              <span class="text-caption text-medium-emphasis mr-1">Tamaño:</span>
-              <v-btn
-                icon="tabler-minus"
-                size="small"
-                variant="tonal"
-                color="secondary"
-                title="Reducir tamaño"
-                @click="scaleEditingTable(-10)"
-              />
-              <v-btn
-                icon="tabler-plus"
-                size="small"
-                variant="tonal"
-                color="secondary"
-                title="Aumentar tamaño"
-                @click="scaleEditingTable(10)"
-              />
+            <!-- PESTAÑA C: EQUIPAMIENTO OPERATIVO (COCINA, POS, PASE) -->
+            <div v-show="toolboxTab === 'equip'">
+              <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
+                Mobiliario y Equipos:
+              </div>
 
-              <v-divider vertical class="mx-1" />
+              <div class="d-flex flex-column gap-2">
+                <v-btn
+                  v-for="equip in equipmentItems"
+                  :key="equip.id"
+                  variant="tonal"
+                  color="warning"
+                  block
+                  class="justify-start text-left py-2 h-auto"
+                  @click="addEquipmentItem(equip)"
+                >
+                  <v-avatar size="32" color="warning" variant="flat" class="mr-2 rounded">
+                    <v-icon size="18">{{ equip.icon }}</v-icon>
+                  </v-avatar>
+                  <div class="d-flex flex-column text-left">
+                    <span class="font-weight-bold text-caption">{{ equip.title }}</span>
+                    <span class="text-caption text-medium-emphasis" style="font-size: 11px;">
+                      {{ equip.desc }}
+                    </span>
+                  </div>
+                </v-btn>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
 
-              <!-- Acciones de Mesa -->
-              <v-btn
-                size="small"
-                variant="tonal"
-                color="primary"
-                prepend-icon="tabler-pencil"
-                @click="openEditTableModal(editingTable)"
-              >
-                Editar Propiedades
-              </v-btn>
+      <!-- ÁREA CENTRAL: LIENZO MÉTRICO INTERACTIVO -->
+      <v-col cols="12" md="9" lg="10">
+        <v-card class="builder-canvas-wrapper overflow-hidden" elevation="2">
+          <!-- Barra de Controles de Lienzo -->
+          <div class="canvas-header-bar d-flex align-center justify-space-between px-3 py-2 bg-surface-variant text-caption">
+            <div class="d-flex align-center gap-2">
+              <v-icon size="16">tabler-grid-dots</v-icon>
+              <span>Escala: 1 celda = 1 metro ({{ cellPixelSize }} px)</span>
+              <span class="text-medium-emphasis">• Arrastra cualquier elemento para ubicarlo</span>
+            </div>
 
-              <v-btn
-                size="small"
-                variant="tonal"
-                color="secondary"
-                prepend-icon="tabler-copy"
-                :loading="submittingAction"
-                @click="duplicateEditingTable"
-              >
-                Duplicar
-              </v-btn>
-
-              <v-btn
-                size="small"
-                variant="text"
-                color="error"
-                prepend-icon="tabler-trash"
-                :loading="submittingAction"
-                @click="confirmDeleteTable(editingTable)"
-              >
-                Eliminar
-              </v-btn>
-
-              <v-btn
-                icon="tabler-x"
-                size="small"
-                variant="text"
-                title="Cerrar panel"
-                @click="clearEditingSelection"
-              />
+            <div class="d-flex align-center gap-1">
+              <v-btn icon="tabler-zoom-in" size="x-small" variant="text" @click="zoomIn" />
+              <v-btn icon="tabler-zoom-out" size="x-small" variant="text" @click="zoomOut" />
+              <v-btn icon="tabler-refresh" size="x-small" variant="text" title="Reset Zoom" @click="zoomLevel = 1.0" />
             </div>
           </div>
-        </v-card-text>
-      </v-card>
-    </v-expand-transition>
 
-    <!-- MODAL: GESTIÓN DE ZONA (CREAR / EDITAR) -->
-    <v-dialog v-model="showZoneModal" max-width="500">
+          <!-- Contenedor con Scroll para el Lienzo Métrica -->
+          <div class="canvas-scroll-container pa-4" @click.self="clearSelection">
+            <div
+              class="metric-grid-canvas position-relative"
+              :class="`zone-bg-${currentZone?.background_style || 'wooden'}`"
+              :style="{
+                width: `${canvasPixelWidth}px`,
+                height: `${canvasPixelHeight}px`,
+                transform: `scale(${zoomLevel})`,
+                transformOrigin: 'top left',
+              }"
+              @dragover.prevent
+              @drop="handleCanvasDrop"
+              @click.self="clearSelection"
+            >
+              <!-- REGLAS MÉTRICAS SUPERIOR E IZQUIERDA -->
+              <div class="ruler-top">
+                <span
+                  v-for="m in currentZoneWidth"
+                  :key="`m-top-${m}`"
+                  class="ruler-mark-x text-caption"
+                  :style="{ left: `${(m - 1) * cellPixelSize + 4}px` }"
+                >
+                  {{ m }}m
+                </span>
+              </div>
+              <div class="ruler-left">
+                <span
+                  v-for="m in currentZoneHeight"
+                  :key="`m-left-${m}`"
+                  class="ruler-mark-y text-caption"
+                  :style="{ top: `${(m - 1) * cellPixelSize + 2}px` }"
+                >
+                  {{ m }}m
+                </span>
+              </div>
+
+              <!-- 1. CAPA DE ÁREAS ARQUITECTÓNICAS PINTADAS (Cocina, Depósito, Terraza, Muros) -->
+              <div
+                v-for="area in layoutAreas"
+                :key="area.id"
+                class="architectural-area-block position-absolute"
+                :class="[
+                  `area-type-${area.type}`,
+                  { 'is-selected': selectedObject?.id === area.id && selectedObject?.kind === 'area' }
+                ]"
+                :style="{
+                  left: `${area.x * cellPixelSize}px`,
+                  top: `${area.y * cellPixelSize}px`,
+                  width: `${area.w * cellPixelSize}px`,
+                  height: `${area.h * cellPixelSize}px`,
+                }"
+                draggable="true"
+                @dragstart="handleAreaDragStart(area, $event)"
+                @click.stop="selectObject(area, 'area')"
+              >
+                <div class="area-badge d-flex align-center gap-1 pa-1">
+                  <v-icon size="14">{{ getAreaIcon(area.type) }}</v-icon>
+                  <span class="font-weight-bold text-caption">{{ area.name }}</span>
+                  <span class="text-caption opacity-75">({{ area.w }}m×{{ area.h }}m)</span>
+                </div>
+              </div>
+
+              <!-- 2. CAPA DE EQUIPAMIENTO (Pase, Caja, KDS) -->
+              <div
+                v-for="eq in layoutEquipment"
+                :key="eq.id"
+                class="equipment-block position-absolute d-flex flex-column align-center justify-center"
+                :class="{ 'is-selected': selectedObject?.id === eq.id && selectedObject?.kind === 'equipment' }"
+                :style="{
+                  left: `${eq.x * cellPixelSize}px`,
+                  top: `${eq.y * cellPixelSize}px`,
+                  width: `${eq.w * cellPixelSize}px`,
+                  height: `${eq.h * cellPixelSize}px`,
+                }"
+                draggable="true"
+                @dragstart="handleEquipmentDragStart(eq, $event)"
+                @click.stop="selectObject(eq, 'equipment')"
+              >
+                <v-icon size="18">{{ eq.icon || 'tabler-box' }}</v-icon>
+                <span class="font-weight-bold text-caption text-center">{{ eq.name }}</span>
+              </div>
+
+              <!-- 3. CAPA DE MESAS (CON SNAP Y ESTILOS) -->
+              <div
+                v-for="table in filteredTables"
+                :key="table.id"
+                class="floor-table-node position-absolute"
+                :class="[
+                  `shape-${table.shape || 'square'}`,
+                  `status-${table.status || 'available'}`,
+                  { 'is-selected': selectedObject?.id === table.id && selectedObject?.kind === 'table' }
+                ]"
+                :style="{
+                  left: `${table.pos_x}px`,
+                  top: `${table.pos_y}px`,
+                  width: `${table.width || 60}px`,
+                  height: `${table.height || 60}px`,
+                  transform: `rotate(${table.rotation || 0}deg)`
+                }"
+                draggable="true"
+                @dragstart="handleTableDragStart(table, $event)"
+                @click.stop="selectObject(table, 'table')"
+              >
+                <div class="table-inner d-flex flex-column align-center justify-center text-center">
+                  <span class="table-title font-weight-bold">{{ table.name }}</span>
+                  <span class="table-capacity text-caption">Cap: {{ table.capacity }}</span>
+                </div>
+
+                <!-- Sillas visuales -->
+                <div class="seat-dot seat-top" />
+                <div class="seat-dot seat-bottom" />
+                <div v-if="table.capacity > 2" class="seat-dot seat-left" />
+                <div v-if="table.capacity > 3" class="seat-dot seat-right" />
+              </div>
+            </div>
+          </div>
+        </v-card>
+
+        <!-- PANEL INFERIOR INSPECTOR: PROPIEDADES DEL OBJETO SELECCIONADO -->
+        <v-expand-transition>
+          <v-card v-if="selectedObject" class="mt-3" elevation="2" border>
+            <v-card-text class="py-2 px-3">
+              <div class="d-flex flex-wrap align-center justify-space-between gap-3">
+                <!-- Info Objeto -->
+                <div class="d-flex align-center gap-2">
+                  <v-avatar color="primary" variant="tonal" rounded size="36">
+                    <v-icon>{{ selectedObjectIcon }}</v-icon>
+                  </v-avatar>
+                  <div>
+                    <div class="text-subtitle-2 font-weight-bold">{{ selectedObjectName }}</div>
+                    <div class="text-caption text-medium-emphasis">
+                      {{ selectedObjectSubtext }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Controles de Edición -->
+                <div class="d-flex align-center flex-wrap gap-2">
+                  <!-- Si es Mesa -->
+                  <template v-if="selectedObject.kind === 'table'">
+                    <span class="text-caption text-medium-emphasis">Rotar:</span>
+                    <v-btn size="x-small" variant="tonal" color="secondary" @click="rotateSelectedTable(-15)">-15°</v-btn>
+                    <v-btn size="x-small" variant="tonal" color="secondary" @click="rotateSelectedTable(15)">+15°</v-btn>
+                    <v-btn size="x-small" variant="tonal" color="secondary" @click="rotateSelectedTable(90)">90°</v-btn>
+
+                    <v-divider vertical class="mx-1" />
+
+                    <span class="text-caption text-medium-emphasis">Tamaño:</span>
+                    <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="scaleSelectedTable(-10)" />
+                    <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="scaleSelectedTable(10)" />
+
+                    <v-divider vertical class="mx-1" />
+
+                    <v-btn
+                      size="small"
+                      variant="tonal"
+                      color="primary"
+                      prepend-icon="tabler-pencil"
+                      @click="openEditTableModal(selectedObject.data)"
+                    >
+                      Editar Mesa
+                    </v-btn>
+
+                    <v-btn
+                      size="small"
+                      variant="tonal"
+                      color="secondary"
+                      prepend-icon="tabler-copy"
+                      @click="duplicateSelectedTable"
+                    >
+                      Duplicar
+                    </v-btn>
+                  </template>
+
+                  <!-- Si es Área Arquitectónica (Cocina, Depósito, etc.) -->
+                  <template v-else-if="selectedObject.kind === 'area'">
+                    <span class="text-caption text-medium-emphasis">Ancho (m):</span>
+                    <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="resizeSelectedArea('w', -1)" />
+                    <strong>{{ selectedObject.data.w }}m</strong>
+                    <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="resizeSelectedArea('w', 1)" />
+
+                    <span class="text-caption text-medium-emphasis ml-2">Largo (m):</span>
+                    <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="resizeSelectedArea('h', -1)" />
+                    <strong>{{ selectedObject.data.h }}m</strong>
+                    <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="resizeSelectedArea('h', 1)" />
+                  </template>
+
+                  <!-- Botón Eliminar Universal -->
+                  <v-btn
+                    size="small"
+                    variant="text"
+                    color="error"
+                    prepend-icon="tabler-trash"
+                    @click="deleteSelectedObject"
+                  >
+                    Eliminar
+                  </v-btn>
+
+                  <v-btn icon="tabler-x" size="x-small" variant="text" @click="clearSelection" />
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-expand-transition>
+      </v-col>
+    </v-row>
+
+    <!-- MODO 2: SALÓN EN VIVO (OPERACIÓN, COMANDAS, PRE-CUENTAS) -->
+    <div v-else>
+      <!-- Resumen Rápido de Estados -->
+      <v-row class="mb-4" dense>
+        <v-col cols="6" sm="3">
+          <v-card class="pa-2 d-flex align-center gap-3" border flat>
+            <v-avatar color="success" variant="tonal" rounded size="38">
+              <v-icon>tabler-check</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-caption text-medium-emphasis">Libres</div>
+              <div class="text-h6 font-weight-bold">{{ availableTablesCount }}</div>
+            </div>
+          </v-card>
+        </v-col>
+        <v-col cols="6" sm="3">
+          <v-card class="pa-2 d-flex align-center gap-3" border flat>
+            <v-avatar color="error" variant="tonal" rounded size="38">
+              <v-icon>tabler-tools-kitchen-2</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-caption text-medium-emphasis">Ocupadas</div>
+              <div class="text-h6 font-weight-bold">{{ occupiedTablesCount }}</div>
+            </div>
+          </v-card>
+        </v-col>
+        <v-col cols="6" sm="3">
+          <v-card class="pa-2 d-flex align-center gap-3" border flat>
+            <v-avatar color="warning" variant="tonal" rounded size="38">
+              <v-icon>tabler-receipt</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-caption text-medium-emphasis">Pre-Cuenta Pedida</div>
+              <div class="text-h6 font-weight-bold">{{ billRequestedTablesCount }}</div>
+            </div>
+          </v-card>
+        </v-col>
+        <v-col cols="6" sm="3">
+          <v-card class="pa-2 d-flex align-center gap-3" border flat>
+            <v-avatar color="info" variant="tonal" rounded size="38">
+              <v-icon>tabler-calendar-time</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-caption text-medium-emphasis">Reservadas</div>
+              <div class="text-h6 font-weight-bold">{{ reservedTablesCount }}</div>
+            </div>
+          </v-card>
+        </v-col>
+      </v-row>
+
+      <!-- Motor en Vivo 2.5D sincronizado con las áreas diseñadas -->
+      <v-card class="live-map-card overflow-hidden" elevation="2">
+        <OvercookedLiveMap
+          :tables="filteredTables"
+          :stations="kitchenStations"
+          :zone="currentZone"
+          :selected-table-id="selectedTable?.id"
+          @select-table="selectAndInteractTable"
+          @select-station="handleSelectStation"
+        />
+      </v-card>
+    </div>
+
+    <!-- MODAL: GESTIÓN DE PLANTA / ZONA (NOMBRE, DIMENSIONES Y ESTILO) -->
+    <v-dialog v-model="showZoneModal" max-width="520">
       <v-card>
         <v-card-title class="bg-surface-variant py-3 px-4 d-flex align-center justify-space-between">
           <span class="font-weight-bold">
-            {{ isEditingZone ? 'Editar Zona del Restaurante' : 'Nueva Zona del Restaurante' }}
+            {{ isEditingZone ? 'Configurar Planta / Zona' : 'Nueva Planta / Zona del Restaurante' }}
           </span>
           <v-btn icon="tabler-x" variant="text" size="small" @click="showZoneModal = false" />
         </v-card-title>
-
         <v-card-text class="pa-4">
           <v-form @submit.prevent="submitZoneForm">
             <v-text-field
               v-model="zoneForm.name"
               label="Nombre de la Zona"
-              placeholder="Ej: Salón Principal, Terraza, Balcón VIP, Barra"
+              placeholder="Ej: Salón Principal, Terraza, Balcón VIP"
               prepend-inner-icon="tabler-map-pin"
               density="compact"
               variant="outlined"
@@ -446,162 +594,61 @@
               required
             />
 
-            <v-select
-              v-model="zoneForm.background_style"
-              :items="[
-                { title: 'Cuadrícula Técnica / Plano', value: 'grid' },
-                { title: 'Madera Parquet Clásica', value: 'wooden' },
-                { title: 'Terraza / Césped al Aire Libre', value: 'grass' },
-                { title: 'Cemento Pulido Industrial', value: 'concrete' }
-              ]"
-              label="Estilo de Suelo / Ambiente"
-              prepend-inner-icon="tabler-brush"
-              density="compact"
-              variant="outlined"
-              class="mb-3"
-            />
-
-            <v-text-field
-              v-model.number="zoneForm.sort_order"
-              type="number"
-              label="Orden de Visualización"
-              prepend-inner-icon="tabler-arrows-sort"
-              density="compact"
-              variant="outlined"
-              class="mb-4"
-            />
-
-            <div class="d-flex justify-end gap-2">
-              <v-btn variant="text" @click="showZoneModal = false">Cancelar</v-btn>
-              <v-btn
-                type="submit"
-                color="primary"
-                :loading="submittingAction"
-              >
-                {{ isEditingZone ? 'Guardar Cambios' : 'Crear Zona' }}
-              </v-btn>
-            </div>
-          </v-form>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
-
-    <!-- MODAL: CONFIRMAR ELIMINAR ZONA -->
-    <v-dialog v-model="showDeleteZoneConfirm" max-width="450">
-      <v-card>
-        <v-card-title class="bg-error text-white py-3 px-4">Eliminar Zona</v-card-title>
-        <v-card-text class="pa-4">
-          <p class="text-body-2 mb-2">
-            ¿Estás seguro de eliminar la zona <strong>{{ currentZone?.name }}</strong>?
-          </p>
-          <p class="text-caption text-error mb-0">
-            Esta acción eliminará todas las mesas pertenecientes a esta zona.
-          </p>
-        </v-card-text>
-        <v-card-actions class="px-4 pb-4 justify-end gap-2">
-          <v-btn variant="text" @click="showDeleteZoneConfirm = false">Cancelar</v-btn>
-          <v-btn
-            color="error"
-            variant="flat"
-            :loading="submittingAction"
-            @click="submitDeleteZone"
-          >
-            Eliminar Zona
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- MODAL: CREAR MESA -->
-    <v-dialog v-model="showCreateTableModal" max-width="480">
-      <v-card>
-        <v-card-title class="bg-surface-variant py-3 px-4 d-flex align-center justify-space-between">
-          <span class="font-weight-bold">Nueva Mesa en {{ currentZone?.name }}</span>
-          <v-btn icon="tabler-x" variant="text" size="small" @click="showCreateTableModal = false" />
-        </v-card-title>
-
-        <v-card-text class="pa-4">
-          <v-form @submit.prevent="submitCreateTable">
-            <v-text-field
-              v-model="createTableForm.name"
-              label="Nombre / Identificador"
-              placeholder="Ej: Mesa 1, Terraza 3, Barra 2"
-              prepend-inner-icon="tabler-tag"
-              density="compact"
-              variant="outlined"
-              class="mb-3"
-              required
-            />
-
+            <!-- Medidas en Metros y Cálculo de m² -->
             <v-row dense>
               <v-col cols="6">
                 <v-text-field
-                  v-model.number="createTableForm.capacity"
+                  v-model.number="zoneForm.width_meters"
                   type="number"
-                  min="1"
-                  max="50"
-                  label="Capacidad (sillas)"
-                  prepend-inner-icon="tabler-users"
+                  min="3"
+                  max="100"
+                  label="Ancho en metros"
+                  prepend-inner-icon="tabler-ruler"
                   density="compact"
                   variant="outlined"
                   class="mb-3"
                   required
                 />
               </v-col>
-
               <v-col cols="6">
-                <v-select
-                  v-model="createTableForm.shape"
-                  :items="[
-                    { title: 'Cuadrada', value: 'square' },
-                    { title: 'Redonda', value: 'round' },
-                    { title: 'Rectangular', value: 'rectangle' },
-                    { title: 'Barra', value: 'bar' }
-                  ]"
-                  label="Forma Geométrica"
+                <v-text-field
+                  v-model.number="zoneForm.height_meters"
+                  type="number"
+                  min="3"
+                  max="100"
+                  label="Largo en metros"
+                  prepend-inner-icon="tabler-ruler"
                   density="compact"
                   variant="outlined"
                   class="mb-3"
-                  @update:model-value="applyShapeDefaultDimensions"
+                  required
                 />
               </v-col>
             </v-row>
 
-            <v-row dense>
-              <v-col cols="6">
-                <v-text-field
-                  v-model.number="createTableForm.width"
-                  type="number"
-                  min="40"
-                  max="300"
-                  label="Ancho (px)"
-                  density="compact"
-                  variant="outlined"
-                  class="mb-3"
-                />
-              </v-col>
-              <v-col cols="6">
-                <v-text-field
-                  v-model.number="createTableForm.height"
-                  type="number"
-                  min="40"
-                  max="300"
-                  label="Alto (px)"
-                  density="compact"
-                  variant="outlined"
-                  class="mb-3"
-                />
-              </v-col>
-            </v-row>
+            <v-alert density="compact" variant="tonal" color="primary" class="mb-3 text-caption">
+              Superficie calculada: <strong>{{ (Number(zoneForm.width_meters || 12) * Number(zoneForm.height_meters || 8)).toFixed(0) }} m²</strong>
+            </v-alert>
+
+            <v-select
+              v-model="zoneForm.background_style"
+              :items="[
+                { title: 'Madera Parquet Cálida', value: 'wooden' },
+                { title: 'Cuadrícula Técnica / Plano', value: 'grid' },
+                { title: 'Terraza / Césped al Aire Libre', value: 'grass' },
+                { title: 'Cemento Pulido Industrial', value: 'concrete' }
+              ]"
+              label="Estilo de Suelo Base"
+              prepend-inner-icon="tabler-brush"
+              density="compact"
+              variant="outlined"
+              class="mb-3"
+            />
 
             <div class="d-flex justify-end gap-2 mt-2">
-              <v-btn variant="text" @click="showCreateTableModal = false">Cancelar</v-btn>
-              <v-btn
-                type="submit"
-                color="primary"
-                :loading="submittingAction"
-              >
-                Crear Mesa
+              <v-btn variant="text" @click="showZoneModal = false">Cancelar</v-btn>
+              <v-btn type="submit" color="primary" :loading="submittingAction">
+                {{ isEditingZone ? 'Guardar Cambios' : 'Crear Zona' }}
               </v-btn>
             </div>
           </v-form>
@@ -613,32 +660,18 @@
     <v-dialog v-model="showEditTableModal" max-width="480">
       <v-card v-if="editingTable">
         <v-card-title class="bg-surface-variant py-3 px-4 d-flex align-center justify-space-between">
-          <span class="font-weight-bold">Editar Mesa: {{ editingTable.name }}</span>
+          <span class="font-weight-bold">Propiedades: {{ editingTable.name }}</span>
           <v-btn icon="tabler-x" variant="text" size="small" @click="showEditTableModal = false" />
         </v-card-title>
-
         <v-card-text class="pa-4">
           <v-form @submit.prevent="submitUpdateTable">
             <v-text-field
               v-model="editTableForm.name"
               label="Nombre / Identificador"
-              prepend-inner-icon="tabler-tag"
               density="compact"
               variant="outlined"
               class="mb-3"
               required
-            />
-
-            <v-select
-              v-model="editTableForm.dining_zone_id"
-              :items="zones"
-              item-title="name"
-              item-value="id"
-              label="Zona del Restaurante"
-              prepend-inner-icon="tabler-map-pin"
-              density="compact"
-              variant="outlined"
-              class="mb-3"
             />
 
             <v-row dense>
@@ -649,7 +682,6 @@
                   min="1"
                   max="50"
                   label="Capacidad (sillas)"
-                  prepend-inner-icon="tabler-users"
                   density="compact"
                   variant="outlined"
                   class="mb-3"
@@ -675,44 +707,19 @@
 
             <v-row dense>
               <v-col cols="4">
-                <v-text-field
-                  v-model.number="editTableForm.width"
-                  type="number"
-                  label="Ancho (px)"
-                  density="compact"
-                  variant="outlined"
-                  class="mb-3"
-                />
+                <v-text-field v-model.number="editTableForm.width" type="number" label="Ancho (px)" density="compact" variant="outlined" />
               </v-col>
               <v-col cols="4">
-                <v-text-field
-                  v-model.number="editTableForm.height"
-                  type="number"
-                  label="Alto (px)"
-                  density="compact"
-                  variant="outlined"
-                  class="mb-3"
-                />
+                <v-text-field v-model.number="editTableForm.height" type="number" label="Alto (px)" density="compact" variant="outlined" />
               </v-col>
               <v-col cols="4">
-                <v-text-field
-                  v-model.number="editTableForm.rotation"
-                  type="number"
-                  label="Giro (°)"
-                  density="compact"
-                  variant="outlined"
-                  class="mb-3"
-                />
+                <v-text-field v-model.number="editTableForm.rotation" type="number" label="Giro (°)" density="compact" variant="outlined" />
               </v-col>
             </v-row>
 
-            <div class="d-flex justify-end gap-2 mt-2">
+            <div class="d-flex justify-end gap-2 mt-3">
               <v-btn variant="text" @click="showEditTableModal = false">Cancelar</v-btn>
-              <v-btn
-                type="submit"
-                color="primary"
-                :loading="submittingAction"
-              >
+              <v-btn type="submit" color="primary" :loading="submittingAction">
                 Actualizar Mesa
               </v-btn>
             </div>
@@ -721,37 +728,50 @@
       </v-card>
     </v-dialog>
 
-    <!-- MODAL: CONFIRMAR VACIAR ZONA (PARA EMPEZAR DESDE CERO) -->
-    <v-dialog v-model="showClearZoneModal" max-width="480">
+    <!-- MODAL: ELIMINAR ZONA -->
+    <v-dialog v-model="showDeleteZoneConfirm" max-width="450">
       <v-card>
-        <v-card-title class="bg-warning text-white py-3 px-4 d-flex align-center gap-2">
-          <v-icon>tabler-alert-triangle</v-icon>
-          <span>Vaciar Mesas de la Zona</span>
-        </v-card-title>
+        <v-card-title class="bg-error text-white py-3 px-4">Eliminar Zona</v-card-title>
         <v-card-text class="pa-4">
           <p class="text-body-2 mb-2">
-            ¿Deseas eliminar todas las mesas de la zona <strong>{{ currentZone?.name }}</strong>?
+            ¿Eliminar la zona <strong>{{ currentZone?.name }}</strong>?
           </p>
-          <p class="text-caption text-medium-emphasis mb-0">
-            Esto te permite comenzar con el lienzo totalmente limpio para diseñar la distribución exacta de tu restaurante.
+          <p class="text-caption text-error mb-0">
+            Se eliminarán todas sus mesas y áreas diseñadas.
           </p>
         </v-card-text>
         <v-card-actions class="px-4 pb-4 justify-end gap-2">
-          <v-btn variant="text" @click="showClearZoneModal = false">Cancelar</v-btn>
-          <v-btn
-            color="warning"
-            variant="flat"
-            :loading="submittingAction"
-            @click="submitClearZoneTables"
-          >
-            Vaciar Zona
+          <v-btn variant="text" @click="showDeleteZoneConfirm = false">Cancelar</v-btn>
+          <v-btn color="error" variant="flat" :loading="submittingAction" @click="submitDeleteZone">
+            Eliminar
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- MODAL: ACCIONES OPERATIVAS DE MESA (EN MODO SALÓN EN VIVO) -->
-    <v-dialog v-model="showTableActionModal" max-width="650">
+    <!-- MODAL: VACIAR OBJETOS DE LA ZONA -->
+    <v-dialog v-model="showClearZoneModal" max-width="450">
+      <v-card>
+        <v-card-title class="bg-warning text-white py-3 px-4 d-flex align-center gap-2">
+          <v-icon>tabler-alert-triangle</v-icon>
+          <span>Vaciar Zona</span>
+        </v-card-title>
+        <v-card-text class="pa-4">
+          <p class="text-body-2 mb-2">
+            ¿Deseas eliminar todas las mesas y áreas de <strong>{{ currentZone?.name }}</strong> para empezar desde un lienzo en blanco?
+          </p>
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4 justify-end gap-2">
+          <v-btn variant="text" @click="showClearZoneModal = false">Cancelar</v-btn>
+          <v-btn color="warning" variant="flat" :loading="submittingAction" @click="submitClearZone">
+            Vaciar Lienzo
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- MODAL: ACCIONES OPERATIVAS EN SALÓN EN VIVO -->
+    <v-dialog v-model="showTableActionModal" max-width="600">
       <v-card v-if="selectedTable">
         <v-card-title class="d-flex align-center justify-space-between bg-surface-variant py-3 px-4">
           <div class="d-flex align-center gap-2">
@@ -767,321 +787,62 @@
         <v-card-text class="pa-4">
           <!-- CASO 1: MESA LIBRE -> ABRIR ORDEN -->
           <div v-if="selectedTable.status === 'available'">
-            <p class="text-body-2 mb-3">Esta mesa se encuentra libre. Abre una nueva cuenta comensal para empezar a comandar.</p>
+            <p class="text-body-2 mb-3">Mesa libre. Indica el número de comensales para abrir la cuenta:</p>
             <v-form @submit.prevent="submitOpenOrder">
               <v-text-field
                 v-model.number="openOrderForm.guests_count"
                 type="number"
                 min="1"
                 max="50"
-                label="Número de Comensales / Sillas"
-                prepend-inner-icon="tabler-users"
+                label="Comensales / Sillas"
                 density="compact"
                 variant="outlined"
                 class="mb-3"
               />
-              <v-btn
-                type="submit"
-                color="primary"
-                block
-                prepend-icon="tabler-player-play"
-                :loading="submittingAction"
-              >
-                Abrir Mesa y Crear Orden
+              <v-btn type="submit" color="primary" block :loading="submittingAction">
+                Abrir Mesa
               </v-btn>
             </v-form>
           </div>
 
-          <!-- CASO 2: MESA OCUPADA / PRE-CUENTA -->
+          <!-- CASO 2: MESA OCUPADA -->
           <div v-else>
             <div class="d-flex justify-space-between align-center mb-3">
               <div>
                 <span class="text-caption text-medium-emphasis">Comensales: </span>
                 <span class="font-weight-bold">{{ selectedTable.current_order?.guests_count || 1 }}</span>
-                <span class="text-caption text-medium-emphasis ml-3">Mesero: </span>
-                <span class="font-weight-bold">{{ selectedTable.current_order?.seller_name || 'N/A' }}</span>
               </div>
               <div class="text-h6 font-weight-bold text-primary">
                 Total: ${{ Number(selectedTable.current_order?.total_amount_usd || 0).toFixed(2) }} USD
               </div>
             </div>
 
-            <!-- Lista de Consumo Rápido -->
-            <v-table density="compact" class="border rounded mb-4">
+            <!-- Lista de Consumo -->
+            <v-table density="compact" class="border rounded mb-3">
               <thead>
                 <tr>
-                  <th>Silla</th>
-                  <th>Platillo / Producto</th>
+                  <th>Platillo</th>
                   <th class="text-center">Cant.</th>
                   <th class="text-right">Total USD</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="item in (selectedTable.current_order?.details || [])" :key="item.id">
-                  <td>
-                    <v-chip size="x-small" variant="tonal" color="primary">
-                      {{ item.seat_number ? `Silla ${item.seat_number}` : 'Mesa' }}
-                    </v-chip>
-                  </td>
                   <td>{{ item.name }}</td>
                   <td class="text-center">{{ item.quantity }}</td>
-                  <td class="text-right font-weight-medium">
-                    ${{ (item.quantity * item.unit_price_usd).toFixed(2) }}
-                  </td>
+                  <td class="text-right">${{ (item.quantity * item.unit_price_usd).toFixed(2) }}</td>
                 </tr>
                 <tr v-if="!selectedTable.current_order?.details?.length">
-                  <td colspan="4" class="text-center text-medium-emphasis py-3">Sin ítems comandados todavía.</td>
+                  <td colspan="3" class="text-center text-medium-emphasis py-2">Sin ítems todavía.</td>
                 </tr>
               </tbody>
             </v-table>
 
-            <!-- Acciones de Restaurante de Salón -->
-            <v-row dense>
-              <!-- Pre-Cuenta Térmica -->
-              <v-col cols="12" sm="4">
-                <v-btn
-                  color="warning"
-                  variant="tonal"
-                  block
-                  prepend-icon="tabler-receipt"
-                  @click="openPreBillDialog"
-                >
-                  Pre-Cuenta
-                </v-btn>
-              </v-col>
-
-              <!-- Dividir Cuenta (Split Check) -->
-              <v-col cols="12" sm="4">
-                <v-btn
-                  color="info"
-                  variant="tonal"
-                  block
-                  prepend-icon="tabler-arrows-split-2"
-                  @click="openSplitDialog"
-                >
-                  Dividir Cuenta
-                </v-btn>
-              </v-col>
-
-              <!-- Cambiar / Transferir Mesa -->
-              <v-col cols="12" sm="4">
-                <v-btn
-                  color="secondary"
-                  variant="tonal"
-                  block
-                  prepend-icon="tabler-arrows-exchange"
-                  @click="openTransferDialog"
-                >
-                  Mover Mesa
-                </v-btn>
-              </v-col>
-            </v-row>
-
-            <v-divider class="my-3" />
-
             <div class="d-flex justify-end gap-2">
-              <v-btn
-                color="error"
-                variant="text"
-                size="small"
-                prepend-icon="tabler-door-exit"
-                :loading="submittingAction"
-                @click="releaseTableAction"
-              >
-                Liberar Mesa Forzada
+              <v-btn color="error" variant="text" size="small" :loading="submittingAction" @click="releaseTableAction">
+                Liberar Mesa
               </v-btn>
             </div>
-          </div>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
-
-    <!-- DIÁLOGO: PRE-CUENTA TÉRMICA -->
-    <v-dialog v-model="showPreBillModal" max-width="450">
-      <v-card v-if="preBillData" class="thermal-ticket-card pa-4">
-        <div class="text-center mb-3">
-          <div class="text-h6 font-weight-bold">{{ preBillData.restaurant_name }}</div>
-          <div class="text-caption">RIF: {{ preBillData.restaurant_rif }}</div>
-          <div class="text-subtitle-2 font-weight-bold mt-2">*** PRE-CUENTA DE CONSUMO ***</div>
-          <div class="text-caption">Mesa: {{ preBillData.table_name }} | Comensales: {{ preBillData.guests_count }}</div>
-          <div class="text-caption">{{ preBillData.date }}</div>
-        </div>
-
-        <v-divider class="my-2 dashed" />
-
-        <div v-for="it in preBillData.items" :key="it.id" class="d-flex justify-space-between text-body-2 py-1">
-          <span>{{ it.quantity }}x {{ it.name }}</span>
-          <span class="font-weight-medium">${{ Number(it.subtotal_usd).toFixed(2) }}</span>
-        </div>
-
-        <v-divider class="my-2 dashed" />
-
-        <div class="d-flex justify-space-between text-body-2">
-          <span>Subtotal:</span>
-          <span>${{ Number(preBillData.subtotal_usd).toFixed(2) }}</span>
-        </div>
-
-        <div class="d-flex justify-space-between text-body-2 align-center my-1">
-          <span class="d-flex align-center gap-1">
-            Servicio Sugerido:
-            <v-select
-              v-model="servicePercentageInput"
-              :items="[0, 5, 10, 12, 15]"
-              density="compact"
-              variant="plain"
-              hide-details
-              style="width: 75px;"
-              @update:model-value="recalculatePreBill"
-            />
-          </span>
-          <span>${{ Number(preBillData.service_amount_usd).toFixed(2) }}</span>
-        </div>
-
-        <v-divider class="my-2" />
-
-        <div class="d-flex justify-space-between text-h6 font-weight-bold">
-          <span>TOTAL SUGERIDO:</span>
-          <span class="text-primary">${{ Number(preBillData.grand_total_usd).toFixed(2) }} USD</span>
-        </div>
-
-        <div v-if="preBillData.guests_count > 1" class="text-caption text-center mt-2 text-medium-emphasis">
-          Sugerido por comensal ({{ preBillData.guests_count }} pers): ${{ Number(preBillData.per_guest_usd).toFixed(2) }} USD
-        </div>
-
-        <div class="text-caption text-center mt-4 text-medium-emphasis">
-          Este documento no representa factura fiscal.
-        </div>
-
-        <v-card-actions class="mt-4 pa-0 d-flex justify-space-between">
-          <v-btn variant="text" size="small" @click="showPreBillModal = false">Cerrar</v-btn>
-          <v-btn color="primary" variant="flat" size="small" prepend-icon="tabler-printer" @click="printPreBill">
-            Imprimir Ticket
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- DIÁLOGO: TRANSFERIR / MOVER MESA -->
-    <v-dialog v-model="showTransferDialog" max-width="480">
-      <v-card>
-        <v-card-title class="bg-surface-variant py-3 px-4 d-flex align-center justify-space-between">
-          <span class="font-weight-bold">Mover Comensales de Mesa</span>
-          <v-btn icon="tabler-x" variant="text" size="small" @click="showTransferDialog = false" />
-        </v-card-title>
-        <v-card-text class="pa-4">
-          <p class="text-body-2 mb-3">
-            Selecciona la mesa destino a la que deseas transferir la comanda activa de <strong>{{ selectedTable?.name }}</strong>:
-          </p>
-          <v-select
-            v-model="transferTargetTableId"
-            :items="availableTransferTables"
-            item-title="name"
-            item-value="id"
-            label="Mesa Destino"
-            density="compact"
-            variant="outlined"
-            prepend-inner-icon="tabler-table"
-            class="mb-3"
-          />
-          <div class="d-flex justify-end gap-2">
-            <v-btn variant="text" @click="showTransferDialog = false">Cancelar</v-btn>
-            <v-btn
-              color="primary"
-              :disabled="!transferTargetTableId"
-              :loading="submittingAction"
-              @click="submitTransferTable"
-            >
-              Transferir Mesa
-            </v-btn>
-          </div>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
-
-    <!-- DIÁLOGO: DIVISIÓN DE CUENTAS (SPLIT CHECK) -->
-    <v-dialog v-model="showSplitModal" max-width="600">
-      <v-card>
-        <v-card-title class="bg-primary text-white py-3 px-4 d-flex align-center justify-space-between">
-          <div class="d-flex align-center gap-2">
-            <v-icon>tabler-arrows-split-2</v-icon>
-            <span>Dividir Cuenta - {{ selectedTable?.name }}</span>
-          </div>
-          <v-btn icon="tabler-x" variant="text" size="small" color="white" @click="showSplitModal = false" />
-        </v-card-title>
-
-        <v-card-text class="pa-4">
-          <v-tabs v-model="splitType" color="primary" density="compact" class="mb-4">
-            <v-tab value="equal">Partes Iguales</v-tab>
-            <v-tab value="seats_items">Por Ítems / Asiento</v-tab>
-          </v-tabs>
-
-          <!-- OPCIÓN 1: PARTES IGUALES -->
-          <div v-if="splitType === 'equal'">
-            <p class="text-body-2">Divide el total exacto entre varios comensales para pagos mixtos:</p>
-            <div class="d-flex align-center gap-3 mb-4">
-              <v-text-field
-                v-model.number="equalPartsCount"
-                type="number"
-                min="2"
-                max="20"
-                label="Cantidad de Partes"
-                density="compact"
-                variant="outlined"
-                style="max-width: 160px;"
-              />
-              <div class="text-h6 font-weight-bold text-primary">
-                ${{ (Number(selectedTable?.current_order?.total_amount_usd || 0) / (equalPartsCount || 1)).toFixed(2) }} USD / persona
-              </div>
-            </div>
-
-            <v-btn
-              color="primary"
-              block
-              prepend-icon="tabler-check"
-              :loading="submittingAction"
-              @click="submitEqualSplit"
-            >
-              Confirmar División en {{ equalPartsCount }} Partes
-            </v-btn>
-          </div>
-
-          <!-- OPCIÓN 2: POR SILLAS / ÍTEMS -->
-          <div v-else>
-            <p class="text-body-2 mb-3">Selecciona los ítems que se separarán en una nueva cuenta independiente:</p>
-            <v-list density="compact" select-strategy="multiple">
-              <v-list-item
-                v-for="item in (selectedTable?.current_order?.details || [])"
-                :key="item.id"
-                :value="item.id"
-                class="border rounded mb-1"
-                @click="toggleSplitItem(item.id)"
-              >
-                <template #prepend>
-                  <v-checkbox-btn :model-value="selectedSplitItemIds.includes(item.id)" />
-                </template>
-                <v-list-item-title class="font-weight-medium">
-                  {{ item.quantity }}x {{ item.name }}
-                </v-list-item-title>
-                <v-list-item-subtitle v-if="item.seat_number">
-                  Silla {{ item.seat_number }}
-                </v-list-item-subtitle>
-                <template #append>
-                  <span class="font-weight-bold">${{ (item.quantity * item.unit_price_usd).toFixed(2) }}</span>
-                </template>
-              </v-list-item>
-            </v-list>
-
-            <v-btn
-              color="primary"
-              block
-              class="mt-4"
-              prepend-icon="tabler-scissors"
-              :disabled="!selectedSplitItemIds.length"
-              :loading="submittingAction"
-              @click="submitItemsSplit"
-            >
-              Separar {{ selectedSplitItemIds.length }} ítems en Nueva Cuenta
-            </v-btn>
           </div>
         </v-card-text>
       </v-card>
@@ -1099,58 +860,62 @@ import { toast } from '@/plugins/sweetalert'
 import RestaurantSimulatorWidget from '@/components/restaurant/RestaurantSimulatorWidget.vue'
 import OvercookedLiveMap from '@/components/restaurant/OvercookedLiveMap.vue'
 
-// Modos de trabajo: '2d' (diseño del restaurante) o 'live' (operación)
-const viewMode = ref('2d')
+// ==========================================
+// ESTADOS PRINCIPALES
+// ==========================================
+const viewMode = ref('builder') // 'builder' (constructor) o 'live' (salón en vivo)
+const toolboxTab = ref('tables')
 const zones = ref([])
 const tables = ref([])
 const kitchenStations = ref([])
 const selectedZoneIndex = ref(null)
+
 const loadingOverview = ref(false)
 const savingLayout = ref(false)
 const submittingAction = ref(false)
 
 // Modales
-const showTableActionModal = ref(false)
-const showPreBillModal = ref(false)
-const showSplitModal = ref(false)
-const showCreateTableModal = ref(false)
-const showEditTableModal = ref(false)
-const showTransferDialog = ref(false)
 const showZoneModal = ref(false)
 const showDeleteZoneConfirm = ref(false)
 const showClearZoneModal = ref(false)
+const showEditTableModal = ref(false)
+const showTableActionModal = ref(false)
 const isEditingZone = ref(false)
 
-// Mesa seleccionada en operación
-const selectedTable = ref(null)
+// Objeto seleccionado en el canvas del constructor
+const selectedObject = ref(null) // { kind: 'table'|'area'|'equipment', id, data }
 
-// Mesa seleccionada en el diseñador 2D
+// Mesa seleccionada en salón en vivo
+const selectedTable = ref(null)
 const editingTable = ref(null)
+
+// Dragging
+const draggedTable = ref(null)
+const draggedArea = ref(null)
+const draggedEquipment = ref(null)
+const dragOffset = reactive({ x: 0, y: 0 })
+
+// Parámetros de Escala Métrica
+const cellPixelSize = 60 // 1 metro = 60px
+const snapToGrid = ref(true)
+const zoomLevel = ref(1.0)
 
 // Formularios
 const zoneForm = reactive({
   id: null,
   name: '',
-  background_style: 'grid',
-  sort_order: 0,
-})
-
-const createTableForm = reactive({
-  name: '',
-  capacity: 4,
-  shape: 'square',
-  width: 80,
-  height: 80,
+  background_style: 'wooden',
+  width_meters: 12,
+  height_meters: 8,
 })
 
 const editTableForm = reactive({
   id: null,
-  dining_zone_id: null,
   name: '',
   capacity: 4,
   shape: 'square',
-  width: 80,
-  height: 80,
+  width: 70,
+  height: 70,
   rotation: 0,
 })
 
@@ -1158,59 +923,94 @@ const openOrderForm = reactive({
   guests_count: 2,
 })
 
-// Pre-cuenta
-const preBillData = ref(null)
-const servicePercentageInput = ref(10)
+// ==========================================
+// CATÁLOGO DE OBJETOS PRE-CONFIGURADOS
+// ==========================================
+const tablePresets = [
+  { id: 't2', title: 'Mesa 2 Personas', capacity: 2, shape: 'square', width: 60, height: 60, dimMeters: '1x1', icon: 'tabler-square' },
+  { id: 't4', title: 'Mesa 4 Personas', capacity: 4, shape: 'square', width: 72, height: 72, dimMeters: '1.2x1.2', icon: 'tabler-grid-pattern' },
+  { id: 't4r', title: 'Mesa Redonda 4P', capacity: 4, shape: 'round', width: 72, height: 72, dimMeters: 'Ø 1.2', icon: 'tabler-circle' },
+  { id: 't6', title: 'Mesa 6 Personas', capacity: 6, shape: 'rectangle', width: 110, height: 72, dimMeters: '1.8x1.2', icon: 'tabler-rectangle' },
+  { id: 't8', title: 'Mesa Imperial 8P', capacity: 8, shape: 'rectangle', width: 140, height: 72, dimMeters: '2.4x1.2', icon: 'tabler-rectangle-vertical' },
+  { id: 'bar', title: 'Módulo de Barra', capacity: 1, shape: 'bar', width: 50, height: 50, dimMeters: '0.8x0.8', icon: 'tabler-glass-full' },
+]
 
-// Split Check
-const splitType = ref('equal')
-const equalPartsCount = ref(2)
-const selectedSplitItemIds = ref([])
+const spaceAreaTypes = [
+  { id: 'kitchen', title: 'Zona de Cocina', type: 'kitchen', w: 4, h: 3, btnColor: 'error', icon: 'tabler-tools-kitchen-2', desc: 'Piso cerámico blanco' },
+  { id: 'pass_counter', title: 'Mostrador de Pase', type: 'pass_counter', w: 3, h: 1, btnColor: 'warning', icon: 'tabler-bell', desc: 'Entrega de platos a meseros' },
+  { id: 'storage', title: 'Depósito / Almacén', type: 'storage', w: 3, h: 2, btnColor: 'secondary', icon: 'tabler-archive', desc: 'Insumos y neveras' },
+  { id: 'bar_zone', title: 'Zona de Barra / Bar', type: 'bar_zone', w: 4, h: 2, btnColor: 'info', icon: 'tabler-glass', desc: 'Coctelería y tragos' },
+  { id: 'terrace', title: 'Terraza / Jardín', type: 'terrace', w: 4, h: 3, btnColor: 'success', icon: 'tabler-plant', desc: 'Piso deck / césped' },
+  { id: 'wall', title: 'Muro / Pared', type: 'wall', w: 3, h: 1, btnColor: 'grey-darken-2', icon: 'tabler-wall', desc: 'División estructural' },
+  { id: 'entrance', title: 'Entrada / Puerta', type: 'entrance', w: 2, h: 1, btnColor: 'purple', icon: 'tabler-door-enter', desc: 'Recepción y bienvenida' },
+]
 
-// Transferir mesa
-const transferTargetTableId = ref(null)
+const equipmentItems = [
+  { id: 'eq_grill', title: 'Parrilla & Fuego', name: 'Parrilla', w: 2, h: 1, icon: 'tabler-flame', desc: 'Estación de cocción KDS' },
+  { id: 'eq_prep', title: 'Mesa de Corte', name: 'Mesa Corte', w: 2, h: 1, icon: 'tabler-tools-kitchen', desc: 'Preparación y ensaladas' },
+  { id: 'eq_pos', title: 'Caja / Punto POS', name: 'Caja POS', w: 1, h: 1, icon: 'tabler-device-laptop', desc: 'Cobro y facturación' },
+  { id: 'eq_fridge', title: 'Cámara / Nevera', name: 'Nevera', w: 1, h: 1, icon: 'tabler-snowflake', desc: 'Refrigeración de alimentos' },
+]
 
-// Drag & Drop
-const draggedTable = ref(null)
-const dragOffset = reactive({ x: 0, y: 0 })
-
-// Computadas
+// ==========================================
+// COMPUTADAS
+// ==========================================
 const currentZone = computed(() => {
-  return zones.value.find(z => z.id === selectedZoneIndex.value) || null
+  return zones.value.find(z => z.id === selectedZoneIndex.value) || zones.value[0] || null
 })
 
-const currentZoneBackgroundClass = computed(() => {
-  const style = currentZone.value?.background_style || 'grid'
-  return `zone-bg-${style}`
-})
+const currentZoneWidth = computed(() => Math.max(4, Number(currentZone.value?.width_meters || 12)))
+const currentZoneHeight = computed(() => Math.max(4, Number(currentZone.value?.height_meters || 8)))
+const currentZoneArea = computed(() => currentZoneWidth.value * currentZoneHeight.value)
+
+const canvasPixelWidth = computed(() => currentZoneWidth.value * cellPixelSize)
+const canvasPixelHeight = computed(() => currentZoneHeight.value * cellPixelSize)
 
 const filteredTables = computed(() => {
-  if (!selectedZoneIndex.value) return tables.value
-  return tables.value.filter(t => t.dining_zone_id === selectedZoneIndex.value)
+  if (!currentZone.value) return []
+  return tables.value.filter(t => t.dining_zone_id === currentZone.value.id)
 })
 
-const availableTransferTables = computed(() => {
-  if (!selectedTable.value) return []
-  return tables.value.filter(t => t.id !== selectedTable.value.id)
+const layoutAreas = computed({
+  get() {
+    if (!currentZone.value) return []
+    if (!currentZone.value.layout_config) return []
+    return currentZone.value.layout_config.areas || []
+  },
+  set(val) {
+    if (!currentZone.value) return
+    if (!currentZone.value.layout_config) currentZone.value.layout_config = {}
+    currentZone.value.layout_config.areas = val
+  }
 })
 
-const availableTablesCount = computed(() => tables.value.filter(t => t.status === 'available').length)
-const occupiedTablesCount = computed(() => tables.value.filter(t => t.status === 'occupied').length)
-const billRequestedTablesCount = computed(() => tables.value.filter(t => t.status === 'bill_requested').length)
-const reservedTablesCount = computed(() => tables.value.filter(t => t.status === 'reserved').length)
+const layoutEquipment = computed({
+  get() {
+    if (!currentZone.value) return []
+    if (!currentZone.value.layout_config) return []
+    return currentZone.value.layout_config.equipment || []
+  },
+  set(val) {
+    if (!currentZone.value) return
+    if (!currentZone.value.layout_config) currentZone.value.layout_config = {}
+    currentZone.value.layout_config.equipment = val
+  }
+})
 
-const getTablesCountByZone = (zoneId) => {
-  return tables.value.filter(t => t.dining_zone_id === zoneId).length
+const availableTablesCount = computed(() => filteredTables.value.filter(t => t.status === 'available').length)
+const occupiedTablesCount = computed(() => filteredTables.value.filter(t => t.status === 'occupied').length)
+const billRequestedTablesCount = computed(() => filteredTables.value.filter(t => t.status === 'bill_requested').length)
+const reservedTablesCount = computed(() => filteredTables.value.filter(t => t.status === 'reserved').length)
+
+const zoneAreaM2 = (zone) => {
+  const w = Number(zone.width_meters || 12)
+  const h = Number(zone.height_meters || 8)
+  return (w * h).toFixed(0)
 }
 
-const getShapeLabel = (shape) => {
-  switch (shape) {
-    case 'square': return 'Cuadrada'
-    case 'round': return 'Redonda'
-    case 'rectangle': return 'Rectangular'
-    case 'bar': return 'Barra'
-    default: return shape || 'Cuadrada'
-  }
+const getAreaIcon = (type) => {
+  const item = spaceAreaTypes.find(s => s.type === type)
+  return item?.icon || 'tabler-layout'
 }
 
 const getStatusColor = (status) => {
@@ -1223,7 +1023,33 @@ const getStatusColor = (status) => {
   }
 }
 
-// Cargar overview del restaurante
+// Datos computados para el Inspector
+const selectedObjectName = computed(() => {
+  if (!selectedObject.value) return ''
+  return selectedObject.value.data?.name || selectedObject.value.data?.title || 'Objeto'
+})
+
+const selectedObjectIcon = computed(() => {
+  if (!selectedObject.value) return 'tabler-box'
+  if (selectedObject.value.kind === 'table') return 'tabler-table'
+  if (selectedObject.value.kind === 'area') return getAreaIcon(selectedObject.value.data?.type)
+  return selectedObject.value.data?.icon || 'tabler-flame'
+})
+
+const selectedObjectSubtext = computed(() => {
+  if (!selectedObject.value) return ''
+  if (selectedObject.value.kind === 'table') {
+    return `Capacidad: ${selectedObject.value.data?.capacity} pers. • ${selectedObject.value.data?.width}x${selectedObject.value.data?.height}px`
+  }
+  if (selectedObject.value.kind === 'area') {
+    return `Área de ${selectedObject.value.data?.w}m × ${selectedObject.value.data?.h}m (${selectedObject.value.data?.w * selectedObject.value.data?.h} m²)`
+  }
+  return `Dimensiones: ${selectedObject.value.data?.w}m × ${selectedObject.value.data?.h}m`
+})
+
+// ==========================================
+// CARGA Y SINCRONIZACIÓN DE DATOS
+// ==========================================
 const fetchOverview = async (silent = false) => {
   if (!silent) loadingOverview.value = true
   try {
@@ -1235,28 +1061,308 @@ const fetchOverview = async (silent = false) => {
     if (!selectedZoneIndex.value && zones.value.length) {
       selectedZoneIndex.value = zones.value[0].id
     }
-
-    // Si la mesa que se estaba editando aún existe, refrescarla
-    if (editingTable.value) {
-      const refreshed = tables.value.find(t => t.id === editingTable.value.id)
-      if (refreshed) editingTable.value = refreshed
-    }
   } catch (err) {
-    if (!silent) toast.error('Error al cargar salón y mesas.')
+    if (!silent) toast.error('Error al cargar datos del restaurante.')
   } finally {
     if (!silent) loadingOverview.value = false
   }
 }
 
 // ==========================================
-// GESTIÓN DE ZONAS DEL RESTAURANTE
+// CREACIÓN Y MANIPULACIÓN DE OBJETOS
+// ==========================================
+
+// 1. Agregar Mesa con 1 Clic desde Presets
+const addTablePreset = async (preset) => {
+  if (!currentZone.value) return
+  submittingAction.value = true
+  try {
+    const existingCount = filteredTables.value.length
+    const offsetIndex = existingCount % 8
+    const gridX = 2 + (offsetIndex % 4) * 2
+    const gridY = 2 + Math.floor(offsetIndex / 4) * 2
+
+    const posX = snapToGrid.value ? gridX * cellPixelSize : 120 + offsetIndex * 30
+    const posY = snapToGrid.value ? gridY * cellPixelSize : 120 + offsetIndex * 30
+
+    const res = await axios.post('/dining-floor/tables', {
+      dining_zone_id: currentZone.value.id,
+      name: `Mesa ${existingCount + 1}`,
+      capacity: preset.capacity,
+      shape: preset.shape,
+      width: preset.width,
+      height: preset.height,
+      pos_x: posX,
+      pos_y: posY,
+      rotation: 0,
+    })
+
+    toast.success(`${preset.title} agregada al plano.`)
+    await fetchOverview(true)
+    if (res.data?.table) {
+      selectObject(res.data.table, 'table')
+    }
+  } catch (err) {
+    toast.error('Error al agregar mesa.')
+  } finally {
+    submittingAction.value = false
+  }
+}
+
+// 2. Agregar Área Arquitectónica (Cocina, Pase, Depósito, Muro)
+const addArchitecturalArea = (areaType) => {
+  if (!currentZone.value) return
+  const currentAreas = [...layoutAreas.value]
+  const newArea = {
+    id: `area_${Date.now()}`,
+    type: areaType.type,
+    name: areaType.title,
+    x: 1,
+    y: 1,
+    w: areaType.w,
+    h: areaType.h,
+  }
+  currentAreas.push(newArea)
+  layoutAreas.value = currentAreas
+  selectObject(newArea, 'area')
+  toast.info(`${areaType.title} agregada. Ubícala en la cuadrícula.`)
+}
+
+// 3. Agregar Equipamiento
+const addEquipmentItem = (equip) => {
+  if (!currentZone.value) return
+  const currentEq = [...layoutEquipment.value]
+  const newEq = {
+    id: `eq_${Date.now()}`,
+    name: equip.title,
+    icon: equip.icon,
+    x: 2,
+    y: 2,
+    w: equip.w,
+    h: equip.h,
+  }
+  currentEq.push(newEq)
+  layoutEquipment.value = currentEq
+  selectObject(newEq, 'equipment')
+  toast.info(`${equip.title} agregado al plano.`)
+}
+
+// Selección de Objeto
+const selectObject = (data, kind) => {
+  selectedObject.value = { kind, id: data.id, data }
+}
+
+const clearSelection = () => {
+  selectedObject.value = null
+}
+
+// ==========================================
+// DRAG AND DROP EN EL LIENZO MÉTRICO
+// ==========================================
+const handleTableDragStart = (table, event) => {
+  draggedTable.value = table
+  dragOffset.x = event.offsetX
+  dragOffset.y = event.offsetY
+  selectObject(table, 'table')
+}
+
+const handleAreaDragStart = (area, event) => {
+  draggedArea.value = area
+  dragOffset.x = event.offsetX
+  dragOffset.y = event.offsetY
+  selectObject(area, 'area')
+}
+
+const handleEquipmentDragStart = (eq, event) => {
+  draggedEquipment.value = eq
+  dragOffset.x = event.offsetX
+  dragOffset.y = event.offsetY
+  selectObject(eq, 'equipment')
+}
+
+const handleCanvasDrop = (event) => {
+  const rect = event.currentTarget.getBoundingClientRect()
+  const rawX = (event.clientX - rect.left - dragOffset.x) / zoomLevel.value
+  const rawY = (event.clientY - rect.top - dragOffset.y) / zoomLevel.value
+
+  if (draggedTable.value) {
+    let finalX = Math.max(0, Math.min(canvasPixelWidth.value - (draggedTable.value.width || 60), rawX))
+    let finalY = Math.max(0, Math.min(canvasPixelHeight.value - (draggedTable.value.height || 60), rawY))
+
+    if (snapToGrid.value) {
+      finalX = Math.round(finalX / (cellPixelSize / 2)) * (cellPixelSize / 2)
+      finalY = Math.round(finalY / (cellPixelSize / 2)) * (cellPixelSize / 2)
+    }
+
+    draggedTable.value.pos_x = finalX
+    draggedTable.value.pos_y = finalY
+    draggedTable.value = null
+  }
+
+  if (draggedArea.value) {
+    let gridX = Math.round(rawX / cellPixelSize)
+    let gridY = Math.round(rawY / cellPixelSize)
+    gridX = Math.max(0, Math.min(currentZoneWidth.value - draggedArea.value.w, gridX))
+    gridY = Math.max(0, Math.min(currentZoneHeight.value - draggedArea.value.h, gridY))
+
+    draggedArea.value.x = gridX
+    draggedArea.value.y = gridY
+    draggedArea.value = null
+  }
+
+  if (draggedEquipment.value) {
+    let gridX = Math.round(rawX / cellPixelSize)
+    let gridY = Math.round(rawY / cellPixelSize)
+    gridX = Math.max(0, Math.min(currentZoneWidth.value - draggedEquipment.value.w, gridX))
+    gridY = Math.max(0, Math.min(currentZoneHeight.value - draggedEquipment.value.h, gridY))
+
+    draggedEquipment.value.x = gridX
+    draggedEquipment.value.y = gridY
+    draggedEquipment.value = null
+  }
+}
+
+// ==========================================
+// CONTROLES DE OBJETO SELECCIONADO
+// ==========================================
+const rotateSelectedTable = (deg) => {
+  if (selectedObject.value?.kind !== 'table') return
+  const table = selectedObject.value.data
+  table.rotation = ((Number(table.rotation || 0) + deg) % 360)
+}
+
+const scaleSelectedTable = (delta) => {
+  if (selectedObject.value?.kind !== 'table') return
+  const table = selectedObject.value.data
+  table.width = Math.max(40, Math.min(300, (Number(table.width || 60) + delta)))
+  table.height = Math.max(40, Math.min(300, (Number(table.height || 60) + delta)))
+}
+
+const resizeSelectedArea = (dimension, delta) => {
+  if (selectedObject.value?.kind !== 'area') return
+  const area = selectedObject.value.data
+  if (dimension === 'w') {
+    area.w = Math.max(1, Math.min(currentZoneWidth.value - area.x, area.w + delta))
+  } else {
+    area.h = Math.max(1, Math.min(currentZoneHeight.value - area.y, area.h + delta))
+  }
+}
+
+const duplicateSelectedTable = async () => {
+  if (selectedObject.value?.kind !== 'table') return
+  const t = selectedObject.value.data
+  submittingAction.value = true
+  try {
+    await axios.post('/dining-floor/tables', {
+      dining_zone_id: t.dining_zone_id || currentZone.value.id,
+      name: `${t.name} (Copia)`,
+      capacity: t.capacity,
+      shape: t.shape,
+      width: t.width,
+      height: t.height,
+      pos_x: Math.min(canvasPixelWidth.value - 80, Number(t.pos_x || 50) + 40),
+      pos_y: Math.min(canvasPixelHeight.value - 80, Number(t.pos_y || 50) + 40),
+      rotation: t.rotation || 0,
+    })
+    toast.success('Mesa duplicada.')
+    await fetchOverview(true)
+  } catch (err) {
+    toast.error('Error al duplicar mesa.')
+  } finally {
+    submittingAction.value = false
+  }
+}
+
+const deleteSelectedObject = async () => {
+  if (!selectedObject.value) return
+
+  if (selectedObject.value.kind === 'table') {
+    const tableId = selectedObject.value.id
+    if (!confirm('¿Eliminar esta mesa del plano?')) return
+    submittingAction.value = true
+    try {
+      await axios.delete(`/dining-floor/tables/${tableId}`)
+      toast.info('Mesa eliminada.')
+      clearSelection()
+      await fetchOverview(true)
+    } catch (err) {
+      toast.error('Error al eliminar mesa.')
+    } finally {
+      submittingAction.value = false
+    }
+  } else if (selectedObject.value.kind === 'area') {
+    const areaId = selectedObject.value.id
+    layoutAreas.value = layoutAreas.value.filter(a => a.id !== areaId)
+    clearSelection()
+    toast.info('Área retirada del plano.')
+  } else if (selectedObject.value.kind === 'equipment') {
+    const eqId = selectedObject.value.id
+    layoutEquipment.value = layoutEquipment.value.filter(e => e.id !== eqId)
+    clearSelection()
+    toast.info('Equipo retirado.')
+  }
+}
+
+// ==========================================
+// GUARDAR DISEÑO COMPLETO (MESAS + ÁREAS + METROS)
+// ==========================================
+const saveFullRestaurantDesign = async () => {
+  if (!currentZone.value) return
+  savingLayout.value = true
+  try {
+    // 1. Guardar distribución de mesas
+    const tablePayload = filteredTables.value.map(t => ({
+      id: t.id,
+      pos_x: t.pos_x,
+      pos_y: t.pos_y,
+      width: t.width,
+      height: t.height,
+      rotation: t.rotation,
+    }))
+    if (tablePayload.length) {
+      await axios.post('/dining-floor/layout', { tables: tablePayload })
+    }
+
+    // 2. Guardar dimensiones y layout_config de la zona
+    await axios.put(`/dining-floor/zones/${currentZone.value.id}`, {
+      name: currentZone.value.name,
+      background_style: currentZone.value.background_style || 'wooden',
+      width_meters: currentZoneWidth.value,
+      height_meters: currentZoneHeight.value,
+      layout_config: {
+        areas: layoutAreas.value,
+        equipment: layoutEquipment.value,
+      },
+    })
+
+    toast.success('¡Diseño del restaurante guardado exitosamente!')
+  } catch (err) {
+    toast.error('Error al guardar el diseño.')
+  } finally {
+    savingLayout.value = false
+  }
+}
+
+// Modificar Dimensiones de Zona al Vuelo
+const changeDimension = (dimension, delta) => {
+  if (!currentZone.value) return
+  if (dimension === 'width') {
+    currentZone.value.width_meters = Math.max(4, Math.min(100, currentZoneWidth.value + delta))
+  } else {
+    currentZone.value.height_meters = Math.max(4, Math.min(100, currentZoneHeight.value + delta))
+  }
+}
+
+// ==========================================
+// MODALES Y FORMULARIOS DE ZONA Y MESAS
 // ==========================================
 const openCreateZoneModal = () => {
   isEditingZone.value = false
   zoneForm.id = null
-  zoneForm.name = `Zona ${zones.value.length + 1}`
-  zoneForm.background_style = 'grid'
-  zoneForm.sort_order = zones.value.length + 1
+  zoneForm.name = `Planta ${zones.value.length + 1}`
+  zoneForm.width_meters = 12
+  zoneForm.height_meters = 8
+  zoneForm.background_style = 'wooden'
   showZoneModal.value = true
 }
 
@@ -1265,14 +1371,15 @@ const openEditZoneModal = () => {
   isEditingZone.value = true
   zoneForm.id = currentZone.value.id
   zoneForm.name = currentZone.value.name
-  zoneForm.background_style = currentZone.value.background_style || 'grid'
-  zoneForm.sort_order = currentZone.value.sort_order || 1
+  zoneForm.width_meters = currentZoneWidth.value
+  zoneForm.height_meters = currentZoneHeight.value
+  zoneForm.background_style = currentZone.value.background_style || 'wooden'
   showZoneModal.value = true
 }
 
 const submitZoneForm = async () => {
   if (!zoneForm.name.trim()) {
-    toast.error('El nombre de la zona es obligatorio.')
+    toast.error('Indica un nombre para la zona.')
     return
   }
 
@@ -1281,17 +1388,25 @@ const submitZoneForm = async () => {
     if (isEditingZone.value && zoneForm.id) {
       await axios.put(`/dining-floor/zones/${zoneForm.id}`, {
         name: zoneForm.name,
+        width_meters: zoneForm.width_meters,
+        height_meters: zoneForm.height_meters,
         background_style: zoneForm.background_style,
-        sort_order: zoneForm.sort_order,
       })
-      toast.success('Zona actualizada correctamente.')
+      toast.success('Dimensiones de la zona actualizadas.')
     } else {
       const res = await axios.post('/dining-floor/zones', {
         name: zoneForm.name,
+        width_meters: zoneForm.width_meters,
+        height_meters: zoneForm.height_meters,
         background_style: zoneForm.background_style,
-        sort_order: zoneForm.sort_order,
+        layout_config: {
+          areas: [
+            { id: 'kitchen_1', type: 'kitchen', name: 'Cocina', x: 1, y: 1, w: 4, h: 3 },
+            { id: 'pass_1', type: 'pass_counter', name: 'Mostrador de Pase', x: 1, y: 4, w: 4, h: 1 },
+          ],
+        },
       })
-      toast.success('Zona creada correctamente.')
+      toast.success('Nueva zona creada.')
       if (res.data?.zone?.id) {
         selectedZoneIndex.value = res.data.zone.id
       }
@@ -1299,7 +1414,7 @@ const submitZoneForm = async () => {
     showZoneModal.value = false
     await fetchOverview()
   } catch (err) {
-    toast.error(err.response?.data?.message || 'Error al guardar la zona.')
+    toast.error('Error al guardar zona.')
   } finally {
     submittingAction.value = false
   }
@@ -1313,98 +1428,47 @@ const submitDeleteZone = async () => {
     toast.info('Zona eliminada.')
     showDeleteZoneConfirm.value = false
     selectedZoneIndex.value = null
-    editingTable.value = null
+    clearSelection()
     await fetchOverview()
   } catch (err) {
-    toast.error('Error al eliminar la zona.')
+    toast.error('Error al eliminar zona.')
   } finally {
     submittingAction.value = false
   }
 }
 
-// ==========================================
-// DISEÑADOR DE MESAS (MODO 2D)
-// ==========================================
-const handleTableClickInDesigner = (table) => {
-  editingTable.value = table
-}
-
-const clearEditingSelection = () => {
-  editingTable.value = null
-}
-
-const applyShapeDefaultDimensions = (shape) => {
-  switch (shape) {
-    case 'square':
-      createTableForm.width = 80
-      createTableForm.height = 80
-      break
-    case 'round':
-      createTableForm.width = 80
-      createTableForm.height = 80
-      break
-    case 'rectangle':
-      createTableForm.width = 120
-      createTableForm.height = 80
-      break
-    case 'bar':
-      createTableForm.width = 60
-      createTableForm.height = 60
-      break
-  }
-}
-
-const openCreateTableModal = () => {
-  const currentCount = filteredTables.value.length
-  createTableForm.name = `Mesa ${currentCount + 1}`
-  createTableForm.capacity = 4
-  createTableForm.shape = 'square'
-  createTableForm.width = 80
-  createTableForm.height = 80
-  showCreateTableModal.value = true
-}
-
-const submitCreateTable = async () => {
-  if (!selectedZoneIndex.value) {
-    toast.error('Debes seleccionar o crear una zona primero.')
-    return
-  }
-
+const submitClearZone = async () => {
+  if (!currentZone.value) return
   submittingAction.value = true
   try {
-    const tableOffset = (filteredTables.value.length * 30) % 300
-    const res = await axios.post('/dining-floor/tables', {
-      dining_zone_id: selectedZoneIndex.value,
-      name: createTableForm.name,
-      capacity: createTableForm.capacity,
-      shape: createTableForm.shape,
-      width: createTableForm.width || 80,
-      height: createTableForm.height || 80,
-      pos_x: 60 + tableOffset,
-      pos_y: 60 + tableOffset,
-      rotation: 0,
+    // Vaciar mesas
+    await Promise.all(filteredTables.value.map(t => axios.delete(`/dining-floor/tables/${t.id}`)))
+    // Vaciar áreas y equipamiento
+    layoutAreas.value = []
+    layoutEquipment.value = []
+    await axios.put(`/dining-floor/zones/${currentZone.value.id}`, {
+      name: currentZone.value.name,
+      layout_config: { areas: [], equipment: [] },
     })
-    toast.success('Mesa agregada al plano.')
-    showCreateTableModal.value = false
+    toast.success('Lienzo vaciado para diseñar desde cero.')
+    showClearZoneModal.value = false
+    clearSelection()
     await fetchOverview()
-    if (res.data?.table) {
-      editingTable.value = res.data.table
-    }
   } catch (err) {
-    toast.error(err.response?.data?.message || 'Error al crear mesa.')
+    toast.error('Error al vaciar zona.')
   } finally {
     submittingAction.value = false
   }
 }
 
 const openEditTableModal = (table) => {
+  editingTable.value = table
   editTableForm.id = table.id
-  editTableForm.dining_zone_id = table.dining_zone_id
   editTableForm.name = table.name
   editTableForm.capacity = table.capacity
   editTableForm.shape = table.shape || 'square'
-  editTableForm.width = table.width || 80
-  editTableForm.height = table.height || 80
+  editTableForm.width = table.width || 60
+  editTableForm.height = table.height || 60
   editTableForm.rotation = table.rotation || 0
   showEditTableModal.value = true
 }
@@ -1413,8 +1477,8 @@ const submitUpdateTable = async () => {
   if (!editTableForm.id) return
   submittingAction.value = true
   try {
-    const res = await axios.put(`/dining-floor/tables/${editTableForm.id}`, {
-      dining_zone_id: editTableForm.dining_zone_id,
+    await axios.put(`/dining-floor/tables/${editTableForm.id}`, {
+      dining_zone_id: currentZone.value.id,
       name: editTableForm.name,
       capacity: editTableForm.capacity,
       shape: editTableForm.shape,
@@ -1422,146 +1486,28 @@ const submitUpdateTable = async () => {
       height: editTableForm.height,
       rotation: editTableForm.rotation,
     })
-    toast.success('Propiedades de la mesa actualizadas.')
+    toast.success('Mesa actualizada.')
     showEditTableModal.value = false
-    editingTable.value = res.data.table || null
-    await fetchOverview()
+    await fetchOverview(true)
   } catch (err) {
-    toast.error(err.response?.data?.message || 'Error al actualizar mesa.')
+    toast.error('Error al actualizar mesa.')
   } finally {
     submittingAction.value = false
-  }
-}
-
-const rotateEditingTable = async (degrees) => {
-  if (!editingTable.value) return
-  const currentRotation = Number(editingTable.value.rotation || 0)
-  const newRotation = (currentRotation + degrees) % 360
-  editingTable.value.rotation = newRotation
-}
-
-const scaleEditingTable = async (delta) => {
-  if (!editingTable.value) return
-  const currentWidth = Number(editingTable.value.width || 80)
-  const currentHeight = Number(editingTable.value.height || 80)
-  const newWidth = Math.max(50, Math.min(300, currentWidth + delta))
-  const newHeight = Math.max(50, Math.min(300, currentHeight + delta))
-  editingTable.value.width = newWidth
-  editingTable.value.height = newHeight
-}
-
-const duplicateEditingTable = async () => {
-  if (!editingTable.value) return
-  submittingAction.value = true
-  try {
-    await axios.post('/dining-floor/tables', {
-      dining_zone_id: editingTable.value.dining_zone_id || selectedZoneIndex.value,
-      name: `${editingTable.value.name} (Copia)`,
-      capacity: editingTable.value.capacity,
-      shape: editingTable.value.shape || 'square',
-      width: editingTable.value.width || 80,
-      height: editingTable.value.height || 80,
-      pos_x: Math.min(800, Number(editingTable.value.pos_x || 100) + 30),
-      pos_y: Math.min(600, Number(editingTable.value.pos_y || 100) + 30),
-      rotation: editingTable.value.rotation || 0,
-    })
-    toast.success('Mesa duplicada.')
-    await fetchOverview()
-  } catch (err) {
-    toast.error('Error al duplicar mesa.')
-  } finally {
-    submittingAction.value = false
-  }
-}
-
-const confirmDeleteTable = async (table) => {
-  if (!confirm(`¿Eliminar la ${table.name}?`)) return
-  submittingAction.value = true
-  try {
-    await axios.delete(`/dining-floor/tables/${table.id}`)
-    toast.info(`${table.name} eliminada.`)
-    editingTable.value = null
-    await fetchOverview()
-  } catch (err) {
-    toast.error('Error al eliminar la mesa.')
-  } finally {
-    submittingAction.value = false
-  }
-}
-
-const submitClearZoneTables = async () => {
-  if (!currentZone.value) return
-  const tablesToDelete = filteredTables.value
-  if (!tablesToDelete.length) {
-    showClearZoneModal.value = false
-    return
-  }
-
-  submittingAction.value = true
-  try {
-    await Promise.all(tablesToDelete.map(t => axios.delete(`/dining-floor/tables/${t.id}`)))
-    toast.success('Mesas vaciadas. ¡Ahora puedes diseñar tu salón desde cero!')
-    showClearZoneModal.value = false
-    editingTable.value = null
-    await fetchOverview()
-  } catch (err) {
-    toast.error('Error al vaciar mesas de la zona.')
-  } finally {
-    submittingAction.value = false
-  }
-}
-
-// Drag and Drop 2D
-const handleDragStart = (table, event) => {
-  draggedTable.value = table
-  dragOffset.x = event.offsetX
-  dragOffset.y = event.offsetY
-  editingTable.value = table
-}
-
-const handleDropTable = (event) => {
-  if (!draggedTable.value) return
-  const containerRect = event.currentTarget.getBoundingClientRect()
-  const newX = Math.max(10, Math.round(event.clientX - containerRect.left - dragOffset.x))
-  const newY = Math.max(10, Math.round(event.clientY - containerRect.top - dragOffset.y))
-
-  draggedTable.value.pos_x = newX
-  draggedTable.value.pos_y = newY
-  draggedTable.value = null
-}
-
-const saveCurrentLayout = async () => {
-  savingLayout.value = true
-  try {
-    const payload = tables.value.map(t => ({
-      id: t.id,
-      pos_x: t.pos_x,
-      pos_y: t.pos_y,
-      width: t.width,
-      height: t.height,
-      rotation: t.rotation,
-    }))
-    await axios.post('/dining-floor/layout', { tables: payload })
-    toast.success('Diseño y distribución de mesas guardados.')
-  } catch (err) {
-    toast.error('Error al guardar el plano.')
-  } finally {
-    savingLayout.value = false
   }
 }
 
 // ==========================================
-// OPERACIÓN EN SALÓN EN VIVO
+// SALÓN EN VIVO (OPERACIÓN)
 // ==========================================
-const handleSelectStation = (station) => {
-  if (!station) return
-  toast.info(`Estación activa: ${station.name || 'Cocina'}`)
-}
-
 const selectAndInteractTable = (table) => {
   selectedTable.value = table
   openOrderForm.guests_count = table.capacity || 2
   showTableActionModal.value = true
+}
+
+const handleSelectStation = (station) => {
+  if (!station) return
+  toast.info(`Estación activa: ${station.name || 'Cocina'}`)
 }
 
 const submitOpenOrder = async () => {
@@ -1575,7 +1521,7 @@ const submitOpenOrder = async () => {
     showTableActionModal.value = false
     await fetchOverview()
   } catch (err) {
-    toast.error(err.response?.data?.message || 'Error al abrir mesa.')
+    toast.error('Error al abrir mesa.')
   } finally {
     submittingAction.value = false
   }
@@ -1596,115 +1542,19 @@ const releaseTableAction = async () => {
   }
 }
 
-// Pre-cuenta
-const openPreBillDialog = async () => {
-  if (!selectedTable.value?.current_order?.id) return
-  try {
-    const res = await axios.post(`/orders/${selectedTable.value.current_order.id}/pre-bill`, {
-      service_percentage: servicePercentageInput.value,
-    })
-    preBillData.value = res.data.pre_bill
-    showPreBillModal.value = true
-    await fetchOverview()
-  } catch (err) {
-    toast.error('Error al generar pre-cuenta.')
-  }
+const zoomIn = () => {
+  zoomLevel.value = Math.min(1.8, zoomLevel.value + 0.1)
 }
 
-const recalculatePreBill = async () => {
-  await openPreBillDialog()
+const zoomOut = () => {
+  zoomLevel.value = Math.max(0.6, zoomLevel.value - 0.1)
 }
 
-const printPreBill = () => {
-  window.print()
-}
-
-// Split Check
-const openSplitDialog = () => {
-  selectedSplitItemIds.value = []
-  showSplitModal.value = true
-}
-
-const toggleSplitItem = (id) => {
-  const index = selectedSplitItemIds.value.indexOf(id)
-  if (index > -1) {
-    selectedSplitItemIds.value.splice(index, 1)
-  } else {
-    selectedSplitItemIds.value.push(id)
-  }
-}
-
-const submitEqualSplit = async () => {
-  if (!selectedTable.value?.current_order?.id) return
-  submittingAction.value = true
-  try {
-    const res = await axios.post(`/orders/${selectedTable.value.current_order.id}/split`, {
-      type: 'equal',
-      parts: equalPartsCount.value,
-    })
-    toast.success(res.data.message || 'Cuenta dividida en partes iguales.')
-    showSplitModal.value = false
-    showTableActionModal.value = false
-    await fetchOverview()
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Error al dividir cuenta.')
-  } finally {
-    submittingAction.value = false
-  }
-}
-
-const submitItemsSplit = async () => {
-  if (!selectedTable.value?.current_order?.id) return
-  submittingAction.value = true
-  try {
-    const res = await axios.post(`/orders/${selectedTable.value.current_order.id}/split`, {
-      type: 'seats_items',
-      splits: [
-        { detail_ids: selectedTable.value.current_order.details.filter(d => !selectedSplitItemIds.value.includes(d.id)).map(d => d.id) },
-        { detail_ids: selectedSplitItemIds.value },
-      ],
-    })
-    toast.success(res.data.message || 'Cuenta dividida por ítems.')
-    showSplitModal.value = false
-    showTableActionModal.value = false
-    await fetchOverview()
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Error al dividir por ítems.')
-  } finally {
-    submittingAction.value = false
-  }
-}
-
-// Transferir Mesa
-const openTransferDialog = () => {
-  transferTargetTableId.value = null
-  showTransferDialog.value = true
-}
-
-const submitTransferTable = async () => {
-  if (!selectedTable.value || !transferTargetTableId.value) return
-  submittingAction.value = true
-  try {
-    await axios.post(`/dining-floor/tables/${selectedTable.value.id}/transfer`, {
-      target_table_id: transferTargetTableId.value,
-    })
-    toast.success('Mesa transferida exitosamente.')
-    showTransferDialog.value = false
-    showTableActionModal.value = false
-    await fetchOverview()
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Error al transferir mesa.')
-  } finally {
-    submittingAction.value = false
-  }
-}
-
+// Polling silencioso solo en Modo En Vivo
 let floorPollInterval = null
 
 onMounted(async () => {
   await fetchOverview()
-
-  // Polling silencioso solo en Modo En Vivo para no interrumpir el diseño 2D
   floorPollInterval = setInterval(() => {
     if (viewMode.value === 'live') {
       fetchOverview(true)
@@ -1718,8 +1568,8 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.dining-floor-view {
-  min-height: 80vh;
+.restaurant-builder-view {
+  min-height: 85vh;
 }
 
 .zone-tabs :deep(.v-tab) {
@@ -1727,105 +1577,208 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-.floor-canvas-card {
-  min-height: 600px;
+.builder-toolbox-card {
+  max-height: 720px;
+  overflow-y: auto;
+}
+
+.toolbox-content {
+  max-height: 660px;
+  overflow-y: auto;
+}
+
+.builder-canvas-wrapper {
   background-color: #12121a;
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
-/* 2D CANVAS STYLES */
-.floor-2d-canvas {
-  min-height: 580px;
-  position: relative;
+.canvas-scroll-container {
+  overflow: auto;
+  max-height: 680px;
+  min-height: 520px;
+  background-color: #0f1016;
+}
+
+/* LIENZO MÉTRICO CON CUADRÍCULA */
+.metric-grid-canvas {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
   user-select: none;
-  transition: background-color 0.3s ease;
+  transition: transform 0.1s ease;
 }
 
-.canvas-watermark {
-  position: absolute;
-  top: 12px;
-  right: 16px;
-  opacity: 0.35;
-  pointer-events: none;
-  color: #fff;
-  letter-spacing: 0.5px;
-}
-
-/* FONDOS TEMÁTICOS POR ZONA */
-.zone-bg-grid {
-  background-color: #1e1e2d;
+/* FONDOS SEGÚN ESTILO */
+.zone-bg-wooden {
+  background-color: #432812;
   background-image:
     linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: 25px 25px;
+  background-size: 60px 60px;
 }
 
-.zone-bg-wooden {
-  background-color: #4a2c11;
+.zone-bg-grid {
+  background-color: #191c28;
   background-image:
-    repeating-linear-gradient(90deg, #5c3818 0, #5c3818 40px, #42250d 41px, #42250d 80px),
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0, rgba(0, 0, 0, 0.2) 1px, transparent 1px, transparent 90px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 60px 60px;
 }
 
 .zone-bg-grass {
-  background-color: #1a3824;
+  background-color: #1b3824;
   background-image:
-    radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-    linear-gradient(to right, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
-  background-size: 25px 25px;
+    linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 60px 60px;
 }
 
 .zone-bg-concrete {
   background-color: #2b2e38;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 30px 30px;
+    linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 60px 60px;
 }
 
-.floor-table-node {
+/* MARCAS REGLA MÉTRICA */
+.ruler-top {
   position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 18px;
+  pointer-events: none;
+}
+
+.ruler-mark-x {
+  position: absolute;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: bold;
+}
+
+.ruler-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+}
+
+.ruler-mark-y {
+  position: absolute;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: bold;
+}
+
+/* CAPAS ARQUITECTÓNICAS */
+.architectural-area-block {
+  border-radius: 6px;
+  cursor: grab;
+  transition: box-shadow 0.2s ease, outline 0.2s ease;
+  overflow: hidden;
+}
+
+.architectural-area-block:active {
+  cursor: grabbing;
+}
+
+.area-type-kitchen {
+  background: repeating-linear-gradient(45deg, #ded9ce, #ded9ce 12px, #f2ede4 12px, #f2ede4 24px);
+  border: 3px solid #e74c3c;
+  color: #111;
+}
+
+.area-type-pass_counter {
+  background: #d35400;
+  border: 2px dashed #f39c12;
+  color: #fff;
+}
+
+.area-type-storage {
+  background: #34495e;
+  border: 2px solid #7f8c8d;
+  color: #fff;
+}
+
+.area-type-bar_zone {
+  background: #2c3e50;
+  border: 2px solid #3498db;
+  color: #fff;
+}
+
+.area-type-terrace {
+  background: rgba(46, 204, 113, 0.25);
+  border: 2px dashed #2ecc71;
+  color: #fff;
+}
+
+.area-type-wall {
+  background: #222;
+  border: 2px solid #111;
+  color: #fff;
+}
+
+.area-type-entrance {
+  background: #8e44ad;
+  border: 2px dashed #9b59b6;
+  color: #fff;
+}
+
+.area-badge {
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  border-radius: 4px;
+  display: inline-flex;
+}
+
+.architectural-area-block.is-selected {
+  outline: 3px solid #00cfe8;
+  box-shadow: 0 0 20px rgba(0, 207, 232, 0.7);
+}
+
+/* EQUIPAMIENTO */
+.equipment-block {
+  background: #2c3e50;
+  border: 2px solid #f1c40f;
+  border-radius: 6px;
+  color: #fff;
+  cursor: grab;
+}
+
+.equipment-block.is-selected {
+  outline: 3px solid #00cfe8;
+}
+
+/* MESAS */
+.floor-table-node {
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
-  transition: transform 0.1s ease, box-shadow 0.2s ease, border 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 10;
 }
 
 .floor-table-node:active {
   cursor: grabbing;
 }
 
-.floor-table-node:hover {
-  transform: scale(1.04);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
-}
-
-.floor-table-node.is-editing-selected {
+.floor-table-node.is-selected {
   outline: 3px solid #00cfe8;
   outline-offset: 3px;
-  box-shadow: 0 0 20px rgba(0, 207, 232, 0.7);
+  box-shadow: 0 0 20px rgba(0, 207, 232, 0.8);
 }
 
-/* FORMAS DE MESAS */
-.floor-table-node.shape-square {
-  border-radius: 8px;
-}
+.floor-table-node.shape-square { border-radius: 8px; }
+.floor-table-node.shape-round { border-radius: 50%; }
+.floor-table-node.shape-rectangle { border-radius: 10px; }
+.floor-table-node.shape-bar { border-radius: 6px; }
 
-.floor-table-node.shape-round {
-  border-radius: 50%;
-}
-
-.floor-table-node.shape-rectangle {
-  border-radius: 10px;
-}
-
-.floor-table-node.shape-bar {
-  border-radius: 6px;
-}
-
-/* COLORES DE ESTADO EN 2D */
 .floor-table-node.status-available {
   background: linear-gradient(135deg, #28c76f, #1f9d55);
   color: #fff;
@@ -1841,39 +1794,24 @@ onUnmounted(() => {
   color: #fff;
 }
 
-.floor-table-node.status-reserved {
-  background: linear-gradient(135deg, #00cfe8, #009cb0);
-  color: #fff;
-}
-
 .seat-dot {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   background: #e2e8f0;
   border: 2px solid #475569;
   border-radius: 50%;
   pointer-events: none;
 }
 
-.seat-top { top: -18px; }
-.seat-bottom { bottom: -18px; }
-.seat-left { left: -18px; }
-.seat-right { right: -18px; }
+.seat-top { top: -14px; }
+.seat-bottom { bottom: -14px; }
+.seat-left { left: -14px; }
+.seat-right { right: -14px; }
 
-.canvas-empty-state {
-  min-height: 500px;
-}
-
-/* PRE-CUENTA TÉRMICA */
-.thermal-ticket-card {
-  font-family: 'Courier New', Courier, monospace;
-  background-color: #fdfdfd;
-  color: #111;
-  border: 1px dashed #bbb;
-}
-
-.dashed {
-  border-style: dashed;
+.live-map-card {
+  min-height: 600px;
+  background-color: #12121a;
+  border-radius: 8px;
 }
 </style>

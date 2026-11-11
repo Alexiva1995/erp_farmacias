@@ -19,6 +19,25 @@ class DiningFloorService implements DiningFloorServiceInterface
 {
     public function getFloorOverview(?int $zoneId = null): array
     {
+        // Auto-crear zona inicial base si el restaurante aún no tiene ninguna
+        if (DiningZone::count() === 0) {
+            DiningZone::create([
+                'name' => 'Salón Principal',
+                'background_style' => 'wooden',
+                'width_meters' => 12.00,
+                'height_meters' => 8.00,
+                'layout_config' => [
+                    'areas' => [
+                        ['id' => 'kitchen_1', 'type' => 'kitchen', 'name' => 'Cocina', 'x' => 1, 'y' => 1, 'w' => 4, 'h' => 3],
+                        ['id' => 'pass_1', 'type' => 'pass_counter', 'name' => 'Mostrador de Pase', 'x' => 1, 'y' => 4, 'w' => 4, 'h' => 1],
+                        ['id' => 'storage_1', 'type' => 'storage', 'name' => 'Depósito / Almacén', 'x' => 9, 'y' => 1, 'w' => 2, 'h' => 3],
+                    ],
+                ],
+                'sort_order' => 1,
+                'is_active' => true,
+            ]);
+        }
+
         $zonesQuery = DiningZone::where('is_active', true)->orderBy('sort_order');
         if ($zoneId) {
             $zonesQuery->where('id', $zoneId);
@@ -83,6 +102,9 @@ class DiningFloorService implements DiningFloorServiceInterface
         return DiningZone::create([
             'name' => $data['name'],
             'background_style' => $data['background_style'] ?? 'grid',
+            'width_meters' => $data['width_meters'] ?? 12.00,
+            'height_meters' => $data['height_meters'] ?? 8.00,
+            'layout_config' => $data['layout_config'] ?? null,
             'sort_order' => $data['sort_order'] ?? 0,
             'is_active' => $data['is_active'] ?? true,
         ]);
