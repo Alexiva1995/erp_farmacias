@@ -1271,6 +1271,10 @@ class InventoryCycleActionService
     {
         return DB::transaction(function () use ($model, $newDiscrepancy) {
             try {
+                $settings = \App\Models\GeneralSetting::first();
+                $isRestaurant = ($settings?->business_type === 'restaurant') || (bool) ($settings?->enable_dishes ?? false);
+                $newDiscrepancy = $isRestaurant ? round((float) $newDiscrepancy, 4) : (int) round((float) $newDiscrepancy);
+
                 $oldDiscrepancy = (float) $model->discrepancy;
                 $difference = (float) $newDiscrepancy - $oldDiscrepancy;
 
@@ -1380,6 +1384,10 @@ class InventoryCycleActionService
     {
         return DB::transaction(function () use ($model, $exemptQuantity, $reason) {
             try {
+                $settings = \App\Models\GeneralSetting::first();
+                $isRestaurant = ($settings?->business_type === 'restaurant') || (bool) ($settings?->enable_dishes ?? false);
+                $exemptQuantity = $isRestaurant ? round((float) $exemptQuantity, 4) : (int) round((float) $exemptQuantity);
+
                 $maxExempt = abs((float) $model->discrepancy);
                 if ($exemptQuantity > $maxExempt) {
                     $exemptQuantity = $maxExempt;

@@ -77,6 +77,22 @@ const getChargeableDiscrepancy = (item) => {
   return 0;
 };
 
+const formatQuantity = (val) => {
+  if (val === null || val === undefined || isNaN(Number(val))) return "0";
+  const num = Number(val);
+  if (isRestaurant.value) {
+    return parseFloat(num.toFixed(4)).toString();
+  }
+  return Math.round(num).toString();
+};
+
+const formatDiscrepancy = (val) => {
+  if (val === null || val === undefined || isNaN(Number(val))) return "0";
+  const num = Number(val);
+  const formatted = formatQuantity(num);
+  return num > 0 ? `+${formatted}` : formatted;
+};
+
 const getItemAmount = (item) => {
   const chargeable = getChargeableDiscrepancy(item);
   const unitPrice = Number(item?.product?.sale_price) > 0 
@@ -87,7 +103,8 @@ const getItemAmount = (item) => {
 
 const startEdit = (item) => {
   editingId.value = item.id;
-  editingValue.value = item.discrepancy;
+  const num = Number(item.discrepancy || 0);
+  editingValue.value = isRestaurant.value ? parseFloat(num.toFixed(4)) : Math.round(num);
 };
 
 const cancelEdit = () => {
@@ -100,8 +117,10 @@ const saveEdit = async (item) => {
   
   isSaving.value = true;
   try {
+    const rawVal = Number(editingValue.value || 0);
+    const finalValue = isRestaurant.value ? parseFloat(rawVal.toFixed(4)) : Math.round(rawVal);
     const response = await axios.patch(`/inventory/count/${item.sourceType}/${item.id}/discrepancy`, {
-      discrepancy: editingValue.value
+      discrepancy: finalValue
     });
     
     if (response.data.success) {
@@ -121,7 +140,8 @@ const saveEdit = async (item) => {
 
 const openExemptDialog = (item) => {
   selectedItemForExemption.value = item;
-  exemptForm.quantity = Number(item.exemptQuantity || 0);
+  const rawExempt = Number(item.exemptQuantity || 0);
+  exemptForm.quantity = isRestaurant.value ? parseFloat(rawExempt.toFixed(4)) : Math.round(rawExempt);
   exemptForm.reason = item.exemptionReason || "";
   isExemptDialogOpen.value = true;
 };
@@ -136,9 +156,11 @@ const closeExemptDialog = () => {
 const saveExemption = async () => {
   if (!selectedItemForExemption.value || isSavingExemption.value) return;
 
+  const rawQty = Number(exemptForm.quantity || 0);
+  const finalExempt = isRestaurant.value ? parseFloat(rawQty.toFixed(4)) : Math.round(rawQty);
   const maxExempt = Math.abs(Number(selectedItemForExemption.value.discrepancy || 0));
-  if (exemptForm.quantity < 0 || exemptForm.quantity > maxExempt) {
-    toast.warning(`La cantidad exonerada debe estar entre 0 y ${maxExempt}.`);
+  if (finalExempt < 0 || finalExempt > maxExempt) {
+    toast.warning(`La cantidad exonerada debe estar entre 0 y ${formatQuantity(maxExempt)}.`);
     return;
   }
 
@@ -146,7 +168,7 @@ const saveExemption = async () => {
   try {
     const item = selectedItemForExemption.value;
     const response = await axios.patch(`/inventory/count/${item.sourceType}/${item.id}/exemption`, {
-      exempt_quantity: Number(exemptForm.quantity || 0),
+      exempt_quantity: finalExempt,
       exemption_reason: exemptForm.reason || null,
     });
 
@@ -251,6 +273,7 @@ const handleDelete = (item) => {
             <AppTextField
               v-model.number="editingValue"
               type="number"
+              :step="isRestaurant ? '0.0001' : '1'"
               density="compact"
               hide-details
               autofocus
@@ -266,7 +289,7 @@ const handleDelete = (item) => {
               variant="tonal"
               class="font-weight-black"
             >
-              {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
+              {{ formatDiscrepancy(item.discrepancy) }}
             </VChip>
             <VChip
               v-if="item.exemptQuantity > 0"
@@ -276,7 +299,7 @@ const handleDelete = (item) => {
               class="text-super-xs font-weight-bold"
             >
               <VIcon start icon="tabler-shield-check" size="12" />
-              {{ item.exemptQuantity }} Exon.
+              {{ formatQuantity(item.exemptQuantity) }} Exon.
               <VTooltip v-if="item.exemptionReason" activator="parent" location="top">
                 Motivo: {{ item.exemptionReason }}
               </VTooltip>
@@ -498,6 +521,7 @@ const handleDelete = (item) => {
                 <AppTextField
                   v-model.number="editingValue"
                   type="number"
+                  :step="isRestaurant ? '0.0001' : '1'"
                   density="compact"
                   hide-details
                   @keyup.enter="saveEdit(item)"
@@ -511,7 +535,7 @@ const handleDelete = (item) => {
                 variant="tonal"
                 class="font-weight-black mt-1"
               >
-                {{ item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy }}
+                {{ formatDiscrepancy(item.discrepancy) }}
               </VChip>
             </div>
             <div class="d-flex flex-column text-center px-2">
@@ -599,7 +623,7 @@ const handleDelete = (item) => {
           <div class="d-flex align-center justify-space-between text-xs mt-2 pt-2 border-t">
             <span>Discrepancia física: 
               <strong :class="selectedItemForExemption.discrepancy > 0 ? 'text-success' : 'text-error'">
-                {{ selectedItemForExemption.discrepancy > 0 ? `+${selectedItemForExemption.discrepancy}` : selectedItemForExemption.discrepancy }} unidades
+                {{ formatDiscrepancy(selectedItemForExemption.discrepancy) }} unidades
               </strong>
             </span>
             <span>Precio venta: <strong>{{ formatPrice(selectedItemForExemption.product.sale_price) }}</strong></span>
@@ -612,6 +636,7 @@ const handleDelete = (item) => {
             <AppTextField
               v-model.number="exemptForm.quantity"
               type="number"
+              :step="isRestaurant ? '0.0001' : '1'"
               label="Unidades a exonerar"
               placeholder="0"
               min="0"
@@ -639,7 +664,7 @@ const handleDelete = (item) => {
           <div class="d-flex align-center justify-space-between text-xs mb-1">
             <span>Unidades a descontar/cobrar en dinero:</span>
             <strong class="text-high-emphasis">
-              {{ Math.max(0, Math.abs(selectedItemForExemption.discrepancy) - (exemptForm.quantity || 0)) }} un.
+              {{ formatQuantity(Math.max(0, Math.abs(selectedItemForExemption.discrepancy) - (exemptForm.quantity || 0))) }} un.
             </strong>
           </div>
           <div class="d-flex align-center justify-space-between text-xs mb-1">
@@ -651,7 +676,7 @@ const handleDelete = (item) => {
           <div class="d-flex align-center justify-space-between text-xs">
             <span>Stock físico ajustado en inventario:</span>
             <strong class="text-primary">
-              {{ selectedItemForExemption.discrepancy > 0 ? `+${selectedItemForExemption.discrepancy}` : selectedItemForExemption.discrepancy }} un. (Sin alterar)
+              {{ formatDiscrepancy(selectedItemForExemption.discrepancy) }} un. (Sin alterar)
             </strong>
           </div>
         </div>
