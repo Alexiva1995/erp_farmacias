@@ -25,7 +25,7 @@ const emit = defineEmits([
 ]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
+const isRestaurant = computed(() => Boolean(brandingStore.isRestaurant || brandingStore.settings?.business_type === "restaurant"));
 
 const sortOptions = computed(() => [
   { title: "Producto (A-Z)",         icon: "tabler-sort-ascending-letters",  key: "product.name",    order: "asc"  },

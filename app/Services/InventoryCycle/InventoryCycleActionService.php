@@ -230,9 +230,12 @@ class InventoryCycleActionService
                 $targetLot->quantity = round($targetLot->quantity + $diff, 4);
                 $targetLot->saveQuietly();
             } else {
-                // Reducir stock: descontar secuencialmente de los lotes con stock para no dejarlos en negativo
+                // Reducir stock: descontar secuencialmente con criterio FEFO (vencimiento más cercano / más antiguo primero)
                 $remainingToReduce = abs($diff);
-                $lotsWithStock = $existingLots->where('quantity', '>', 0)->sortByDesc('id');
+                $lotsWithStock = $existingLots->where('quantity', '>', 0)
+                    ->sortBy(function ($lot) {
+                        return [$lot->expiration_date ?? '9999-12-31', $lot->id];
+                    });
 
                 foreach ($lotsWithStock as $lot) {
                     if ($remainingToReduce <= 0) {

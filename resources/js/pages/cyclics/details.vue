@@ -27,7 +27,7 @@ const isLoadingFilters = ref(false);
 const isAdvancedFiltersVisible = ref(false);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
+const isRestaurant = computed(() => Boolean(brandingStore.isRestaurant || brandingStore.settings?.business_type === "restaurant"));
 
 // Degradado dinámico igual que el login: secondary (inicio) → primary (fin)
 const headerGradient = computed(() => {
@@ -304,9 +304,10 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
               color="success"
               size="38"
               class="rounded-circle"
+              @click="router.push('/cyclics/closing')"
             >
               <VIcon icon="tabler-lock" />
-              <VTooltip activator="parent">Cerrar Ciclo</VTooltip>
+              <VTooltip activator="parent">Ir a Cierre de Ciclo</VTooltip>
             </IconBtn>
 
             <VDivider vertical class="mx-1 my-2" />
@@ -509,7 +510,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
 
           <template #item.amount="{ item }">
             <span class="text-sm font-weight-black" :class="Number(item.discrepancy ?? 0) >= 0 ? 'text-success' : 'text-error'">
-              {{ formatPrice((Number(item.discrepancy) || 0) * (Number(item.product?.sale_price) || 0)) }}
+              {{ formatPrice((Number(item.discrepancy) || 0) * (Number(item.product?.sale_price) > 0 ? Number(item.product.sale_price) : (Number(item.product?.unit_cost) || 0))) }}
             </span>
           </template>
 
@@ -599,7 +600,7 @@ watch([searchQuery, selectedLaboratory, discrepancyFilter, selectedUserId, selec
                 <div class="d-flex flex-column text-right">
                   <span class="text-super-xs text-disabled text-uppercase font-weight-black">MONTO</span>
                   <span class="text-sm font-weight-black" :class="item.discrepancy >= 0 ? 'text-success' : 'text-error'">
-                    {{ formatPrice((item.discrepancy || 0) * (item.product?.sale_price || 0)) }}
+                    {{ formatPrice((item.discrepancy || 0) * (Number(item.product?.sale_price) > 0 ? Number(item.product.sale_price) : (Number(item.product?.unit_cost) || 0))) }}
                   </span>
                 </div>
               </div>

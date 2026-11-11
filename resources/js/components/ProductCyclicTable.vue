@@ -17,7 +17,7 @@ const emits = defineEmits([
 ]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
+const isRestaurant = computed(() => Boolean(brandingStore.isRestaurant || brandingStore.settings?.business_type === "restaurant"));
 
 const headers = [
   { title: "ID", key: "product_id", align: "center", width: "80px" },

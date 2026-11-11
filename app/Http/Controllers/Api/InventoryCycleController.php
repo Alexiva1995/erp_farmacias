@@ -721,8 +721,8 @@ class InventoryCycleController extends Controller
         
         $totalsRaw = $totalsQuery
             ->select(DB::raw("
-                SUM(CASE WHEN discrepancies.discrepancy > 0 AND (discrepancies.discrepancy - discrepancies.exempt_quantity) > 0 THEN products.sale_price * (discrepancies.discrepancy - discrepancies.exempt_quantity) ELSE 0 END) as surplus,
-                SUM(CASE WHEN discrepancies.discrepancy < 0 AND (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) > 0 THEN products.sale_price * (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) ELSE 0 END) as shortage
+                SUM(CASE WHEN discrepancies.discrepancy > 0 AND (discrepancies.discrepancy - discrepancies.exempt_quantity) > 0 THEN (CASE WHEN COALESCE(products.sale_price, 0) > 0 THEN products.sale_price ELSE COALESCE(products.unit_cost, 0) END) * (discrepancies.discrepancy - discrepancies.exempt_quantity) ELSE 0 END) as surplus,
+                SUM(CASE WHEN discrepancies.discrepancy < 0 AND (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) > 0 THEN (CASE WHEN COALESCE(products.sale_price, 0) > 0 THEN products.sale_price ELSE COALESCE(products.unit_cost, 0) END) * (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) ELSE 0 END) as shortage
             "))
             ->first();
 
@@ -939,7 +939,8 @@ class InventoryCycleController extends Controller
         ];
 
         foreach ($items as $item) {
-            $amount = ($item->product_sale_price ?? 0) * $item->discrepancy;
+            $unitVal = (float) (($item->product_sale_price ?? 0) > 0 ? $item->product_sale_price : ($item->product_unit_cost ?? 0));
+            $amount = $unitVal * $item->discrepancy;
 
             if ($amount > 0) {
                 $totals['surplus'] += $amount;

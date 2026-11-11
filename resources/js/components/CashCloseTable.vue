@@ -21,7 +21,7 @@ const props = defineProps({
 const emit = defineEmits(["update:options", "delete", "refresh"]);
 
 const brandingStore = useBrandingStore();
-const isRestaurant = computed(() => false);
+const isRestaurant = computed(() => Boolean(brandingStore.isRestaurant || brandingStore.settings?.business_type === "restaurant"));
 
 const headers = computed(() => {
   const list = [
@@ -79,7 +79,10 @@ const getChargeableDiscrepancy = (item) => {
 
 const getItemAmount = (item) => {
   const chargeable = getChargeableDiscrepancy(item);
-  return (Number(item?.product?.sale_price) || 0) * chargeable;
+  const unitPrice = Number(item?.product?.sale_price) > 0 
+    ? Number(item.product.sale_price) 
+    : (Number(item?.product?.unit_cost) || 0);
+  return unitPrice * chargeable;
 };
 
 const startEdit = (item) => {
