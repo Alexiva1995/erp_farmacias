@@ -148,7 +148,11 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
   const product = backendItem.product || {}
   const isZoomItem =
     product.barcode === 'ZOOM-SERVICE' ||
+    product.barcode === 'ZOOM-SERVICE-EXEMPT' ||
+    (product.barcode && product.barcode.startsWith('ZOOM-SERVICE')) ||
     product.name === 'SERVICIO ZOOM' ||
+    product.name === 'SERVICIO ZOOM EXENTO' ||
+    (product.name && product.name.startsWith('SERVICIO ZOOM')) ||
     (parseFloat(product.sale_price ?? product.price ?? 0) <= 0 &&
       (parseFloat(backendItem.unit_price_usd ?? 0) > 0 || parseFloat(backendItem.price ?? 0) > 0))
 

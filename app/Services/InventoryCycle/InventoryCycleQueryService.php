@@ -648,16 +648,12 @@ class InventoryCycleQueryService
                 });
             });
 
-        // Filtrar solo productos que estén en facturas con fecha >= 2026-01-25
-        $query->whereHas('product.invoiceDetails.invoice', function ($subQuery) {
-            $subQuery->where('created_invoice_date', '>=', '2026-01-25');
-        });
-
-        // Solo conteos con fecha superior (al menos 1 segundo) a la fecha de apertura del ciclo
+        // Solo conteos pertenecientes al ciclo activo con fecha superior a la apertura del ciclo
         $query->whereExists(function ($sub) {
             $sub->select(DB::raw(1))
                 ->from('inventory_cycles')
                 ->whereColumn('inventory_cycles.id', 'invoices_counts.cycle_id')
+                ->where('inventory_cycles.status', 'active')
                 ->whereRaw('invoices_counts.created_at > DATE_ADD(inventory_cycles.start_date, INTERVAL 1 SECOND)');
         });
 
@@ -753,7 +749,7 @@ class InventoryCycleQueryService
                 'product.laboratory.name' => 'laboratories.name',
                 'discrepancy' => 'discrepancies.discrepancy',
                 'product.unit_cost' => 'products.unit_cost',
-                'amount' => DB::raw('products.sale_price * (CASE WHEN discrepancies.discrepancy > 0 THEN (CASE WHEN (discrepancies.discrepancy - discrepancies.exempt_quantity) > 0 THEN (discrepancies.discrepancy - discrepancies.exempt_quantity) ELSE 0 END) ELSE -(CASE WHEN (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) > 0 THEN (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) ELSE 0 END) END)'),
+                'amount' => DB::raw('(CASE WHEN COALESCE(products.sale_price, 0) > 0 THEN products.sale_price ELSE COALESCE(products.unit_cost, 0) END) * (CASE WHEN discrepancies.discrepancy > 0 THEN (CASE WHEN (discrepancies.discrepancy - discrepancies.exempt_quantity) > 0 THEN (discrepancies.discrepancy - discrepancies.exempt_quantity) ELSE 0 END) ELSE -(CASE WHEN (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) > 0 THEN (ABS(discrepancies.discrepancy) - discrepancies.exempt_quantity) ELSE 0 END) END)'),
                 'processed_date' => 'discrepancies.updated_at'
             ];
 
@@ -766,37 +762,40 @@ class InventoryCycleQueryService
 
         return $query;
     }
+
     public function getCycleSummaryQuery(Request $request)
     {
         $unionQuery = $this->buildDiscrepanciesUnionQuery();
+        $unitValuationSql = 'CASE WHEN COALESCE(p.sale_price, 0) > 0 THEN p.sale_price ELSE COALESCE(p.unit_cost, 0) END';
 
-        $query = DB::query()->fromSub($unionQuery, 'discrepancies')
-            ->join('inventory_cycles as ic', 'discrepancies.cycle_id', '=', 'ic.id')
+        $query = DB::table('inventory_cycles as ic')
+            ->leftJoinSub($unionQuery, 'discrepancies', function ($join) {
+                $join->on('discrepancies.cycle_id', '=', 'ic.id');
+            })
             ->leftJoin('products as p', 'discrepancies.product_id', '=', 'p.id')
             ->select([
-                'discrepancies.cycle_id',
+                'ic.id as cycle_id',
                 'ic.start_date',
                 'ic.end_date',
                 'ic.status as cycle_status',
                 DB::raw('COUNT(discrepancies.id) as total_products'),
-                DB::raw('SUM(CASE 
-                    WHEN discrepancies.discrepancy > 0 AND p.sale_price IS NOT NULL 
-                    THEN discrepancies.discrepancy * p.sale_price 
+                DB::raw("COALESCE(SUM(CASE 
+                    WHEN discrepancies.discrepancy > 0 
+                    THEN discrepancies.discrepancy * ({$unitValuationSql}) 
                     ELSE 0 
-                END) as total_surplus'),
-                DB::raw('SUM(CASE 
-                    WHEN discrepancies.discrepancy < 0 AND p.sale_price IS NOT NULL 
-                    THEN ABS(discrepancies.discrepancy) * p.sale_price 
+                END), 0) as total_surplus"),
+                DB::raw("COALESCE(SUM(CASE 
+                    WHEN discrepancies.discrepancy < 0 
+                    THEN ABS(discrepancies.discrepancy) * ({$unitValuationSql}) 
                     ELSE 0 
-                END) as total_shortage'),
-                DB::raw('SUM(CASE 
-                    WHEN discrepancies.discrepancy IS NOT NULL AND p.sale_price IS NOT NULL 
-                    THEN discrepancies.discrepancy * p.sale_price 
+                END), 0) as total_shortage"),
+                DB::raw("COALESCE(SUM(CASE 
+                    WHEN discrepancies.discrepancy IS NOT NULL 
+                    THEN discrepancies.discrepancy * ({$unitValuationSql}) 
                     ELSE 0 
-                END) as net_total'),
+                END), 0) as net_total"),
             ])
-            ->whereNotNull('discrepancies.cycle_id')
-            ->groupBy('discrepancies.cycle_id', 'ic.start_date', 'ic.end_date', 'ic.status');
+            ->groupBy('ic.id', 'ic.start_date', 'ic.end_date', 'ic.status');
 
         $filters = [
             'startDate'   => $request->startDate,
@@ -989,7 +988,7 @@ class InventoryCycleQueryService
     private function applyCycleSummarySorting($query, ?string $sortBy, string $orderBy = 'desc')
     {
         $validSortFields = [
-            'cycle_id' => 'discrepancies.cycle_id',
+            'cycle_id' => 'ic.id',
             'start_date' => 'ic.start_date',
             'end_date' => 'ic.end_date',
             'cycle_status' => 'ic.status',
@@ -1059,21 +1058,22 @@ class InventoryCycleQueryService
     public function getCycleFinancialTotals($cycleId)
     {
         $unionQuery = $this->buildDiscrepanciesUnionQuery($cycleId, true);
+        $unitValuationSql = 'CASE WHEN COALESCE(p.sale_price, 0) > 0 THEN p.sale_price ELSE COALESCE(p.unit_cost, 0) END';
 
         return DB::query()->fromSub($unionQuery, 'counts')
             ->leftJoin('products as p', 'counts.product_id', '=', 'p.id')
             ->select([
-                DB::raw('SUM(CASE 
+                DB::raw("COALESCE(SUM(CASE 
                     WHEN counts.discrepancy > 0 
-                    THEN counts.discrepancy * p.unit_cost 
+                    THEN counts.discrepancy * ({$unitValuationSql}) 
                     ELSE 0 
-                END) as total_surplus'),
-                DB::raw('SUM(CASE 
+                END), 0) as total_surplus"),
+                DB::raw("COALESCE(SUM(CASE 
                     WHEN counts.discrepancy < 0 
-                    THEN ABS(counts.discrepancy) * p.unit_cost 
+                    THEN ABS(counts.discrepancy) * ({$unitValuationSql}) 
                     ELSE 0 
-                END) as total_shortage'),
-                DB::raw('SUM(counts.discrepancy * p.unit_cost) as net_total'),
+                END), 0) as total_shortage"),
+                DB::raw("COALESCE(SUM(counts.discrepancy * ({$unitValuationSql})), 0) as net_total"),
             ])
             ->where('counts.cycle_id', $cycleId)
             ->first();

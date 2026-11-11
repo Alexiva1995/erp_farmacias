@@ -21,6 +21,10 @@ class ClientRepository implements \App\Contracts\Client
             $data['user_id'] = Auth::id();
         }
 
+        if (array_key_exists('is_spe', $data) && $data['is_spe'] === null) {
+            $data['is_spe'] = false;
+        }
+
         $record = Client::create($data);
         return $record;
     }
@@ -37,6 +41,10 @@ class ClientRepository implements \App\Contracts\Client
 
         if (Auth::check()) {
             $data['updated_by'] = Auth::id();
+        }
+
+        if (array_key_exists('is_spe', $data) && $data['is_spe'] === null) {
+            $data['is_spe'] = false;
         }
 
         Client::where("id", "=", $data["id"])->update($data);

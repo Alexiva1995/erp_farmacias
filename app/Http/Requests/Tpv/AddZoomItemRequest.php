@@ -26,6 +26,7 @@ class AddZoomItemRequest extends FormRequest
             'amount_net' => ['required', 'numeric', 'gt:0'],
             'currency' => ['nullable', 'string', 'in:USD,BS,COP'],
             'client_id' => ['nullable', 'integer', 'exists:clients,id'],
+            'is_taxable' => ['nullable', 'boolean'],
         ];
     }
 
@@ -45,6 +46,7 @@ class AddZoomItemRequest extends FormRequest
             'amount_net.gt' => 'El monto sin IVA debe ser mayor a 0.',
             'currency.in' => 'La moneda seleccionada debe ser USD, BS o COP.',
             'client_id.exists' => 'El cliente especificado no existe.',
+            'is_taxable.boolean' => 'El indicador de condición fiscal (G/IVA) debe ser booleano.',
         ];
     }
 }

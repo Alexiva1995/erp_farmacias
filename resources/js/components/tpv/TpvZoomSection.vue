@@ -25,6 +25,7 @@ const emit = defineEmits(["zoomItemAdded", "openBuysModal"]);
 const description = ref("");
 const amountNet = ref("");
 const selectedCurrency = ref(props.selectedDisplayCurrency || "USD");
+const isTaxable = ref(true);
 const isSubmitting = ref(false);
 const autoOpenCheckout = ref(false);
 
@@ -63,6 +64,7 @@ const netValue = computed(() => {
 });
 
 const ivaValue = computed(() => {
+  if (!isTaxable.value) return 0;
   return netValue.value * TAX_PERCENTAGE;
 });
 
@@ -109,6 +111,7 @@ const handleAddZoomToOrder = async (openCheckoutImmediately = false) => {
       description: description.value.trim(),
       amount_net: netValue.value,
       currency: chosenCurrency,
+      is_taxable: isTaxable.value,
     };
 
     const response = await axios.post("/tpv/zoom/add-to-order", payload);
@@ -242,6 +245,47 @@ const handleAddZoomToOrder = async (openCheckoutImmediately = false) => {
                   class="mb-3"
                 />
               </VCol>
+
+              <!-- Selector de Condición Fiscal: Gravado (G) o Exento -->
+              <VCol cols="12">
+                <div class="d-flex align-center justify-space-between bg-surface rounded-lg border pa-3 mb-2">
+                  <div class="d-flex align-center gap-2">
+                    <VIcon
+                      :icon="isTaxable ? 'tabler-receipt-tax' : 'tabler-receipt-off'"
+                      size="22"
+                      :color="isTaxable ? 'primary' : 'secondary'"
+                    />
+                    <div>
+                      <div class="text-caption font-weight-bold text-high-emphasis leading-tight">
+                        Condición Fiscal (IVA)
+                      </div>
+                      <div class="text-super-xs text-medium-emphasis">
+                        {{ isTaxable ? 'Renglón Gravado con alícuota general (G - 16%)' : 'Renglón Exento de IVA (E - 0%)' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex align-center gap-3">
+                    <VChip
+                      :color="isTaxable ? 'primary' : 'secondary'"
+                      size="small"
+                      variant="flat"
+                      class="font-weight-black text-uppercase"
+                    >
+                      {{ isTaxable ? 'G (16%)' : 'NO G / EXENTO (0%)' }}
+                    </VChip>
+
+                    <VSwitch
+                      v-model="isTaxable"
+                      color="primary"
+                      inset
+                      density="compact"
+                      hide-details
+                      :disabled="isSubmitting"
+                    />
+                  </div>
+                </div>
+              </VCol>
             </VRow>
 
             <!-- Acciones -->
@@ -283,8 +327,13 @@ const handleAddZoomToOrder = async (openCheckoutImmediately = false) => {
                 <span class="text-subtitle-2 font-weight-black text-uppercase text-medium-emphasis">
                   Resumen de Ingreso
                 </span>
-                <VChip size="x-small" color="success" variant="tonal" class="font-weight-bold">
-                  Ingreso Zoom
+                <VChip
+                  size="x-small"
+                  :color="isTaxable ? 'primary' : 'secondary'"
+                  variant="tonal"
+                  class="font-weight-bold"
+                >
+                  {{ isTaxable ? 'Ingreso Zoom (G)' : 'Ingreso Zoom (Exento)' }}
                 </VChip>
               </div>
 
@@ -298,9 +347,11 @@ const handleAddZoomToOrder = async (openCheckoutImmediately = false) => {
                 </div>
 
                 <div class="d-flex justify-space-between align-center py-1 border-b">
-                  <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">IVA Calculado (16%):</span>
-                  <span class="text-subtitle-2 font-weight-bold text-warning">
-                    + {{ formatCurrency(ivaValue, selectedCurrency) }}
+                  <span class="text-caption text-medium-emphasis font-weight-bold text-uppercase">
+                    {{ isTaxable ? 'IVA Calculado (16% - G):' : 'IVA Calculado (0% - Exento):' }}
+                  </span>
+                  <span :class="['text-subtitle-2 font-weight-bold', isTaxable ? 'text-warning' : 'text-medium-emphasis']">
+                    {{ isTaxable ? '+ ' : '' }}{{ formatCurrency(ivaValue, selectedCurrency) }}
                   </span>
                 </div>
 

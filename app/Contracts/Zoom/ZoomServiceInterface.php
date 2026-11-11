@@ -9,7 +9,7 @@ interface ZoomServiceInterface
     /**
      * Obtener el producto base de Zoom configurado.
      */
-    public function getZoomProduct(): Product;
+    public function getZoomProduct(bool $isTaxable = true): Product;
 
     /**
      * Agregar un ítem de Zoom a la orden activa del vendedor con su descripción y monto sin IVA.

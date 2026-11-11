@@ -80,7 +80,13 @@ const activeDiscount = computed(() => {
 const productLab = (item) => item.laboratory || item.laboratory_name || null;
 const productLineText = (item) => {
   const qty = item.selectedQuantity || item.quantity || 1;
-  const isZoom = item.is_zoom || item.itemCode === "ZOOM-SERVICE" || item.product?.barcode === "ZOOM-SERVICE";
+  const isZoom = item.is_zoom ||
+    item.itemCode === "ZOOM-SERVICE" ||
+    item.itemCode === "ZOOM-SERVICE-EXEMPT" ||
+    (item.itemCode && item.itemCode.startsWith("ZOOM-SERVICE")) ||
+    item.product?.barcode === "ZOOM-SERVICE" ||
+    item.product?.barcode === "ZOOM-SERVICE-EXEMPT" ||
+    (item.product?.barcode && item.product.barcode.startsWith("ZOOM-SERVICE"));
   const rawTitle = (isZoom && item.notes)
     ? item.notes
     : (item.title || item.name || item.dish?.name || item.product?.name || "—");

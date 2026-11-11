@@ -23,9 +23,9 @@ class ZoomService implements ZoomServiceInterface
     /**
      * Obtener el producto base de Zoom configurado.
      */
-    public function getZoomProduct(): Product
+    public function getZoomProduct(bool $isTaxable = true): Product
     {
-        return $this->zoomProductRepository->findOrCreateZoomProduct();
+        return $this->zoomProductRepository->findOrCreateZoomProduct($isTaxable);
     }
 
     /**
@@ -34,7 +34,8 @@ class ZoomService implements ZoomServiceInterface
     public function addZoomItemToOrder(array $data, int $sellerId): array
     {
         return DB::transaction(function () use ($data, $sellerId) {
-            $zoomProduct = $this->zoomProductRepository->findOrCreateZoomProduct();
+            $isTaxable = filter_var($data['is_taxable'] ?? true, FILTER_VALIDATE_BOOLEAN);
+            $zoomProduct = $this->zoomProductRepository->findOrCreateZoomProduct($isTaxable);
 
             // 1. Obtener orden activa o crear una nueva para el vendedor
             $order = Order::where('seller_id', $sellerId)

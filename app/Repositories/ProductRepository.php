@@ -352,6 +352,9 @@ class ProductRepository
         }
 
         if (array_key_exists("hasStock", $filtros)) {
+            if (!$isGroup && DB::connection()->getDriverName() === 'sqlite') {
+                $consulta->groupBy('products.id');
+            }
             if ($filtros["hasStock"] == true) {
                 $consulta->having("lote_quantity", ">", 0);
             } else {
@@ -360,6 +363,9 @@ class ProductRepository
         }
 
         if (array_key_exists("stock", $filtros) && $filtros["stock"] !== 'all') {
+            if (!$isGroup && DB::connection()->getDriverName() === 'sqlite') {
+                $consulta->groupBy('products.id');
+            }
             if ($filtros["stock"] == "exceso") {
                 $consulta->having("diferencia_product", ">", 0);
             } elseif ($filtros["stock"] == "fallas") {

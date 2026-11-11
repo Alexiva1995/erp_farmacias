@@ -13,7 +13,7 @@ class BsPricingStrategy implements CurrencyPricingStrategy
     public function calculatePrice(Product $product, ?OrderDetail $detail = null): float
     {
         if ($detail && ($detail->unit_price_usd > 0 || $detail->price_bs > 0)) {
-            $isZoom = $product->barcode === 'ZOOM-SERVICE' || $product->name === 'SERVICIO ZOOM' || (float) ($product->sale_price ?? 0) <= 0;
+            $isZoom = str_starts_with($product->barcode ?? '', 'ZOOM-SERVICE') || str_starts_with($product->name ?? '', 'SERVICIO ZOOM') || (float) ($product->sale_price ?? 0) <= 0;
 
             if ($isZoom) {
                 if ((float) ($detail->price_bs ?? 0) > 0) {

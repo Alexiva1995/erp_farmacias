@@ -1042,6 +1042,14 @@ const getIva = (product, currency) => {
                   <h3 class="text-caption font-weight-950 text-high-emphasis text-uppercase leading-tight mb-0">
                     {{ (product.title || '').toUpperCase() }}
                   </h3>
+                  <VChip
+                    :color="(product.taxRate || 0) > 0 ? 'primary' : 'secondary'"
+                    size="x-small"
+                    variant="tonal"
+                    class="font-weight-black text-super-xs px-1"
+                  >
+                    {{ (product.taxRate || 0) > 0 ? 'G' : 'E' }}
+                  </VChip>
                   <div 
                     class="d-flex align-center gap-1 text-super-xs flex-wrap"
                     style="white-space: pre-wrap;"

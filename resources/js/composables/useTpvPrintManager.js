@@ -77,7 +77,13 @@ export function useTpvPrintManager({
         itemsToPrint.value = rawDetails.map((detail) => {
           // Si ya está formateado en el frontend
           if (detail.title || detail.name) {
-            const isZoom = detail.is_zoom || detail.itemCode === 'ZOOM-SERVICE' || detail.product?.barcode === 'ZOOM-SERVICE'
+            const isZoom = detail.is_zoom ||
+              detail.itemCode === 'ZOOM-SERVICE' ||
+              detail.itemCode === 'ZOOM-SERVICE-EXEMPT' ||
+              (detail.itemCode && detail.itemCode.startsWith('ZOOM-SERVICE')) ||
+              detail.product?.barcode === 'ZOOM-SERVICE' ||
+              detail.product?.barcode === 'ZOOM-SERVICE-EXEMPT' ||
+              (detail.product?.barcode && detail.product.barcode.startsWith('ZOOM-SERVICE'))
             const resolvedTitle = (isZoom && detail.notes)
               ? detail.notes
               : (detail.title || detail.name || detail.dish?.name || detail.product?.name || "—")

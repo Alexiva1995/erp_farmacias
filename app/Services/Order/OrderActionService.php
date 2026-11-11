@@ -995,7 +995,10 @@ class OrderActionService
                 $itemIvaSubtotal = $isTaxable ? ($itemSubtotalBs * 0.16) : 0;
                 $itemTotalAmount = $itemSubtotalBs + $itemIvaSubtotal;
 
-                $isZoomItem = !empty($detail->notes) && ($product->barcode === 'ZOOM-SERVICE' || $product->name === 'SERVICIO ZOOM');
+                $isZoomItem = !empty($detail->notes) && (
+                    str_starts_with($product->barcode ?? '', 'ZOOM-SERVICE') ||
+                    str_starts_with($product->name ?? '', 'SERVICIO ZOOM')
+                );
                 $printedProductName = $isZoomItem ? $detail->notes : $product->name;
 
                 // Insertamos en la tabla de detalles (multiplicado por la cantidad del renglón)
@@ -1161,7 +1164,10 @@ class OrderActionService
                 $itemIva = 0;
             }
 
-            $isZoomItem = !empty($detail->notes) && ($product?->barcode === 'ZOOM-SERVICE' || $product?->name === 'SERVICIO ZOOM');
+            $isZoomItem = !empty($detail->notes) && (
+                str_starts_with($product?->barcode ?? '', 'ZOOM-SERVICE') ||
+                str_starts_with($product?->name ?? '', 'SERVICIO ZOOM')
+            );
             $printedProductName = $isZoomItem ? $detail->notes : ($product?->name ?? 'Producto');
 
             $items[] = [
@@ -2524,7 +2530,7 @@ class OrderActionService
                 if ($discountPct <= 0) continue;
 
                 foreach ($details as $detail) {
-                    if ($detail->product && ($detail->product->barcode === 'ZOOM-SERVICE' || $detail->product->name === 'SERVICIO ZOOM')) {
+                    if ($detail->product && (str_starts_with($detail->product->barcode ?? '', 'ZOOM-SERVICE') || str_starts_with($detail->product->name ?? '', 'SERVICIO ZOOM'))) {
                         continue;
                     }
                     $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
@@ -2548,7 +2554,7 @@ class OrderActionService
         $fixedPricePromos = $promotions->where('type', 'fixed_price');
         if ($fixedPricePromos->isNotEmpty()) {
             foreach ($details as $detail) {
-                if ($detail->product && ($detail->product->barcode === 'ZOOM-SERVICE' || $detail->product->name === 'SERVICIO ZOOM')) {
+                if ($detail->product && (str_starts_with($detail->product->barcode ?? '', 'ZOOM-SERVICE') || str_starts_with($detail->product->name ?? '', 'SERVICIO ZOOM'))) {
                     continue;
                 }
                 // Obtener ID de categoría del producto o plato
@@ -2588,7 +2594,7 @@ class OrderActionService
         // 4. Agrupar los detalles por categoría
         $detailsByCategory = [];
         foreach ($details as $detail) {
-            if ($detail->product && ($detail->product->barcode === 'ZOOM-SERVICE' || $detail->product->name === 'SERVICIO ZOOM')) {
+            if ($detail->product && (str_starts_with($detail->product->barcode ?? '', 'ZOOM-SERVICE') || str_starts_with($detail->product->name ?? '', 'SERVICIO ZOOM'))) {
                 continue;
             }
             $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
@@ -2735,8 +2741,8 @@ class OrderActionService
             $product = $detail->product;
             $pricingStrategy = \App\Services\Order\Strategies\PricingStrategyFactory::make($targetCurrency);
             $priceToSet = $pricingStrategy->calculatePrice($product, $detail);
-            $isCustomOrZoom = $product->barcode === 'ZOOM-SERVICE'
-                || $product->name === 'SERVICIO ZOOM'
+            $isCustomOrZoom = str_starts_with($product->barcode ?? '', 'ZOOM-SERVICE')
+                || str_starts_with($product->name ?? '', 'SERVICIO ZOOM')
                 || ((float) ($product->sale_price ?? 0) <= 0 && (float) ($detail->unit_price_usd ?? 0) > 0);
             $usdPrice = $isCustomOrZoom ? (float) $detail->unit_price_usd : $product->sale_price;
         }

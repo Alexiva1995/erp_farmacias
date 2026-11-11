@@ -329,7 +329,7 @@ class InventoryBookRepository implements InventoryBookContract
             if (
                 str_contains($nameUpper, 'SERVICIO ZOOM') ||
                 str_contains($nameUpper, 'ZOOM-SERVICE') ||
-                $product->barcode === 'ZOOM-SERVICE' ||
+                str_starts_with($product->barcode ?? '', 'ZOOM-SERVICE') ||
                 (float) $product->stock >= 500000
             ) {
                 continue;

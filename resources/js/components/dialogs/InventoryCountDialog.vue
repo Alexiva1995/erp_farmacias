@@ -246,8 +246,8 @@ const handleSave = async () => {
 
   const rawSystemStock = Number(props.product?.stock ?? props.product?.system_quantity ?? props.product?.stock_calculado ?? 0);
   const systemStock = Math.max(0, rawSystemStock);
-  const difference = parseFloat((quantity - systemStock).toFixed(4));
   const isZeroWhenHadStock = systemStock > 0 && quantity === 0;
+  const displayUnit = isProducedRecipe.value ? recipeUnitLabel.value : "und";
 
   let result;
   if (isZeroWhenHadStock) {
@@ -256,13 +256,11 @@ const handleSave = async () => {
       html: `
         <div class="text-start py-2" style="font-size: 0.95rem; line-height: 1.5;">
           <p class="mb-2 font-weight-bold" style="color: #dc3545;">
-            El sistema registra <strong>${systemStock} unidades</strong> y estás a punto de reportar <strong>0 unidades</strong> (Pérdida Total: -${systemStock}).
+            Estás a punto de reportar <strong>0 ${displayUnit}</strong> para un producto que presenta existencias registradas.
           </p>
           <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px;">
             <div><strong>Producto:</strong> ${props.product?.name || ''}</div>
-            <div><strong>Stock en Sistema:</strong> ${systemStock} und</div>
-            <div><strong>Tu Conteo Físico:</strong> <span style="color: #dc3545; font-weight: bold;">0 und</span></div>
-            <div><strong>Diferencia:</strong> <span style="color: #dc3545; font-weight: bold;">-${systemStock} und (Faltante Total)</span></div>
+            <div><strong>Tu Conteo Físico:</strong> <span style="color: #dc3545; font-weight: bold;">0 ${displayUnit}</span></div>
           </div>
           <p class="mt-2 mb-0 text-muted" style="font-size: 0.85rem;">
             ¿Confirmas conscientemente que NO hay existencias físicas de este producto?
@@ -279,36 +277,25 @@ const handleSave = async () => {
       focusCancel: true,
     });
   } else {
-    const diffColor = difference > 0 ? "#0d6efd" : (difference < 0 ? "#dc3545" : "#198754");
-    const diffLabel = difference > 0 ? `+${difference} (Sobrante)` : (difference < 0 ? `${difference} (Faltante)` : "0 (Exacto)");
-
     result = await Swal.fire({
-      title: difference === 0 ? "Confirmar Conteo Exacto" : "Confirmar Conteo con Discrepancia",
+      title: "Confirmar Conteo Físico",
       html: `
         <div class="text-start py-2" style="font-size: 0.95rem; line-height: 1.5;">
           <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px; margin-bottom: 8px;">
             <div style="font-weight: bold; margin-bottom: 4px;">${props.product?.name || ''}</div>
-            <div style="display: flex; justify-content: space-between;">
-              <span>Stock en Sistema:</span>
-              <strong>${systemStock} und</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span>Tu Conteo Físico:</span>
-              <strong style="color: ${diffColor};">${quantity} und</strong>
-            </div>
             <div style="display: flex; justify-content: space-between; border-top: 1px dashed #ccc; padding-top: 4px; margin-top: 4px;">
-              <span>Diferencia:</span>
-              <strong style="color: ${diffColor};">${diffLabel}</strong>
+              <span>Tu Conteo Físico:</span>
+              <strong style="color: #0d6efd;">${quantity} ${displayUnit}</strong>
             </div>
           </div>
           ${isDualCountMode.value ? `<p class="text-caption text-muted mb-0">${Number(packagesCount.value) || 0} paquete(s) + ${Number(openedQuantity.value) || 0} ${productUnit.value} abierto(s) (${dualTotalQuantity.value} ${productUnit.value} en total = ${quantity} und)</p>` : ''}
         </div>
       `,
-      icon: difference === 0 ? "question" : "warning",
+      icon: "question",
       showCancelButton: true,
       confirmButtonText: "Confirmar Conteo",
       cancelButtonText: "Cancelar",
-      confirmButtonColor: difference === 0 ? "rgba(var(--v-theme-primary), 1)" : "#f59e0b",
+      confirmButtonColor: "rgba(var(--v-theme-primary), 1)",
       cancelButtonColor: "rgba(var(--v-theme-secondary), 1)",
       reverseButtons: true,
     });

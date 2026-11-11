@@ -22,7 +22,8 @@ class TpvZoomController extends Controller
     public function getProduct(): JsonResponse
     {
         try {
-            $product = $this->zoomService->getZoomProduct();
+            $isTaxable = request()->boolean('is_taxable', true);
+            $product = $this->zoomService->getZoomProduct($isTaxable);
 
             return response()->json([
                 'success' => true,
