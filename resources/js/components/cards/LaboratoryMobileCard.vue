@@ -3,6 +3,7 @@ const props = defineProps({
   item: { type: Object, required: true },
   enableBrandGroups: { type: Boolean, default: false },
   canDelete: { type: Boolean, default: false },
+  isRestaurant: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["view", "merge", "edit", "delete"]);
@@ -47,7 +48,7 @@ const formatUnits = (units) => {
             {{ item.products_count || 0 }}
           </VChip>
         </div>
-        <div class="d-flex align-center gap-2">
+        <div v-if="!props.isRestaurant" class="d-flex align-center gap-2">
           <span class="text-super-xs text-disabled text-uppercase font-weight-bold letter-spacing-1">Unidades:</span>
           <VChip
             :color="item.units_count > 0 ? 'success' : 'secondary'"

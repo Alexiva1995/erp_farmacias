@@ -24,14 +24,14 @@ const sortByModel = computed(() => {
 });
 
 const headers = [
-  { title: "ID", key: "id", sortable: true, cellClass: "font-weight-black text-primary", width: "70px" },
-  { title: "INSUMO / MARCA", key: "name", sortable: true, width: "320px" },
-  { title: "COSTO LOGÍSTICO", key: "unit_cost", sortable: true, align: "end" },
+  { title: "ID", key: "id", sortable: true, cellClass: "font-weight-black text-primary", width: "65px" },
+  { title: "INSUMO", key: "name", sortable: true, width: "300px" },
+  { title: "COSTO", key: "unit_cost", sortable: true, align: "end" },
   { title: "CONSUMO", key: "total_sold_completed", sortable: true, align: "center" },
-  { title: "STOCK ACTUAL", key: "lote_quantity", sortable: true, align: "center" },
-  { title: "DEMANDA (PROM.)", key: "promedio_calculado", sortable: true, align: "center" },
-  { title: "COBERTURA", key: "coverage", sortable: false, align: "center" },
-  { title: "REABASTECER (A PEDIR)", key: "diferencia_product", sortable: true, align: "center" },
+  { title: "STOCK", key: "lote_quantity", sortable: true, align: "center" },
+  { title: "PROM.", key: "promedio_calculado", sortable: true, align: "center" },
+  { title: "DÍAS", key: "coverage", sortable: false, align: "center" },
+  { title: "A PEDIR", key: "diferencia_product", sortable: true, align: "center" },
 ];
 
 const formatMoney = (val) => {
@@ -50,7 +50,6 @@ const getLogisticsStockBreakdown = (item) => {
   const purchaseUnit = item.purchase_unit_name || "Display";
   const innerUnits = Number(item.units_per_inner_pack) || 1;
 
-  // En base de datos el stock de lotes representa paquetes/almacén
   const totalPackages = stock;
   const totalRecipeUnits = Math.round(stock * presentation);
 
@@ -67,15 +66,15 @@ const getLogisticsStockBreakdown = (item) => {
       mainText = `${remainderPacks} ${packName}`;
     }
 
-    const subText = `${totalPackages} ${packName}s · ${totalRecipeUnits.toLocaleString("es-CO")} ${unit}`;
+    const subText = `${totalPackages} ${packName} · ${totalRecipeUnits.toLocaleString("es-CO")} ${unit}`;
     return { mainText, subText, totalPackages, isWarning: stock <= 0, isLow: stock > 0 && fullPurchaseUnits < 1 };
   }
 
-  // Sin unidad de empaque mayorista (1 nivel compra = 1 paquete)
+  // Sin empaque mayorista (1 nivel compra = 1 almacén)
   const formattedPacks = stock % 1 === 0 ? stock.toString() : stock.toFixed(2).replace(".", ",");
   return {
-    mainText: `${formattedPacks} ${packName}${stock === 1 ? '' : 's'}`,
-    subText: presentation > 1 ? `${totalRecipeUnits.toLocaleString("es-CO")} ${unit} en cocina` : null,
+    mainText: `${formattedPacks} ${packName}`,
+    subText: presentation > 1 && stock > 0 ? `${totalRecipeUnits.toLocaleString("es-CO")} ${unit} cocina` : null,
     totalPackages,
     isWarning: stock <= 0,
     isLow: stock > 0 && stock < 2,
@@ -91,10 +90,19 @@ const getLogisticsCostBreakdown = (item) => {
   const presentation = Number(item.presentation) || 1;
   const unit = item.unit_of_measure || "und";
 
+  if (packCost <= 0) {
+    return {
+      mainCost: formatMoney(0),
+      mainLabel: "",
+      subCost: null,
+      recipeCost: null,
+    };
+  }
+
   if (innerUnits > 1) {
     const purchaseCost = item.purchase_cost ? Number(item.purchase_cost) : packCost * innerUnits;
     return {
-      mainCost: `${formatMoney(purchaseCost)}`,
+      mainCost: formatMoney(purchaseCost),
       mainLabel: `/ ${purchaseUnit}`,
       subCost: `${formatMoney(packCost)} / ${packName}`,
       recipeCost: presentation > 1 ? `${formatMoney(packCost / presentation)} / ${unit}` : null,
@@ -102,7 +110,7 @@ const getLogisticsCostBreakdown = (item) => {
   }
 
   return {
-    mainCost: `${formatMoney(packCost)}`,
+    mainCost: formatMoney(packCost),
     mainLabel: `/ ${packName}`,
     subCost: presentation > 1 ? `${formatMoney(packCost / presentation)} / ${unit}` : null,
     recipeCost: null,
@@ -116,25 +124,25 @@ const getCoverageInfo = (item) => {
   const daysWindow = Number(props.days) || 30;
 
   if (stock <= 0) {
-    return { text: "0 días", color: "error", icon: "tabler-alert-octagon", label: "Agotado" };
+    return { text: "0d", color: "secondary", variant: "tonal", label: "Sin stock" };
   }
 
   const dailyDemand = promedioMensual > 0 ? (promedioMensual / daysWindow) : 0;
   if (dailyDemand <= 0) {
-    return { text: "+90 días", color: "secondary", icon: "tabler-clock", label: "Sin demanda reciente" };
+    return { text: "+90d", color: "secondary", variant: "tonal", label: "Sin rotación reciente" };
   }
 
   const daysCoverage = Math.round(stock / dailyDemand);
   if (daysCoverage <= 3) {
-    return { text: `${daysCoverage}d`, color: "error", icon: "tabler-alert-triangle", label: "Crítico (<3d)" };
+    return { text: `${daysCoverage}d`, color: "error", variant: "tonal", label: "Stock crítico (< 3 días)" };
   }
   if (daysCoverage <= 7) {
-    return { text: `${daysCoverage}d`, color: "warning", icon: "tabler-clock-exclamation", label: "Alerta (<7d)" };
+    return { text: `${daysCoverage}d`, color: "warning", variant: "tonal", label: "Stock ajustado (< 7 días)" };
   }
   if (daysCoverage <= 30) {
-    return { text: `${daysCoverage}d`, color: "success", icon: "tabler-circle-check", label: "Óptimo" };
+    return { text: `${daysCoverage}d`, color: "success", variant: "tonal", label: "Stock saludable" };
   }
-  return { text: `${daysCoverage}d`, color: "info", icon: "tabler-box", label: "Sobre-stock" };
+  return { text: `${daysCoverage}d`, color: "info", variant: "tonal", label: "Sobrestock" };
 };
 
 // Cálculo de unidades de reabastecimiento en unidades de compra
@@ -147,20 +155,12 @@ const getReplenishmentSuggestion = (item) => {
 
   // Superávit (stock suficiente)
   if (diff >= 0) {
-    if (innerUnits > 1) {
-      const displays = (diff / innerUnits).toFixed(1);
-      return {
-        isDeficit: false,
-        text: `+${diff} ${packName}`,
-        subText: `+${displays} ${purchaseUnit}`,
-        color: "success",
-      };
-    }
     return {
       isDeficit: false,
       text: `+${diff} ${packName}`,
-      subText: "Stock cubierto",
-      color: "success",
+      subText: innerUnits > 1 ? `+${(diff / innerUnits).toFixed(1)} ${purchaseUnit}` : null,
+      costText: null,
+      color: "secondary",
     };
   }
 
@@ -168,27 +168,26 @@ const getReplenishmentSuggestion = (item) => {
   const deficitPacks = Math.abs(diff);
   if (innerUnits > 1) {
     const purchaseUnitsToOrder = Math.ceil(deficitPacks / innerUnits);
-    const totalPacksOrdered = purchaseUnitsToOrder * innerUnits;
     const purchaseCost = item.purchase_cost ? Number(item.purchase_cost) : packCost * innerUnits;
     const estimatedCost = purchaseUnitsToOrder * purchaseCost;
 
     return {
       isDeficit: true,
-      text: `PEDIR ${purchaseUnitsToOrder} ${purchaseUnit}${purchaseUnitsToOrder === 1 ? '' : 's'}`,
-      subText: `Faltan ${deficitPacks} ${packName} (Recibes ${totalPacksOrdered})`,
-      costText: estimatedCost > 0 ? `Est. ${formatMoney(estimatedCost)}` : null,
+      text: `Pedir ${purchaseUnitsToOrder} ${purchaseUnit}${purchaseUnitsToOrder === 1 ? '' : 's'}`,
+      subText: `${deficitPacks} ${packName} requeridos`,
+      costText: estimatedCost > 0 ? formatMoney(estimatedCost) : null,
       color: "error",
     };
   }
 
-  // Sin empaque mayorista: se piden paquetes exactos
+  // Sin empaque mayorista
   const packsToOrder = Math.ceil(deficitPacks);
   const estimatedCost = packsToOrder * packCost;
   return {
     isDeficit: true,
-    text: `PEDIR ${packsToOrder} ${packName}${packsToOrder === 1 ? '' : 's'}`,
-    subText: `Faltan ${deficitPacks} ${packName}`,
-    costText: estimatedCost > 0 ? `Est. ${formatMoney(estimatedCost)}` : null,
+    text: `Pedir ${packsToOrder} ${packName}`,
+    subText: null,
+    costText: estimatedCost > 0 ? formatMoney(estimatedCost) : null,
     color: "error",
   };
 };
@@ -222,21 +221,23 @@ const getReplenishmentSuggestion = (item) => {
 
         <!-- Insumo y equivalencia logística -->
         <template #item.name="{ item }">
-          <div class="d-flex flex-column py-2 truncate" style="max-inline-size: 340px;">
-            <span class="text-sm font-weight-black text-high-emphasis text-uppercase truncate">
+          <div class="d-flex flex-column py-1.5 truncate" style="max-inline-size: 320px;">
+            <span class="text-sm font-weight-bold text-high-emphasis text-uppercase truncate">
               {{ item.name || 'N/A' }}
             </span>
-            <div class="d-flex align-center gap-1 text-super-xs mt-1 text-disabled flex-wrap">
-              <span class="text-primary font-weight-black text-uppercase">
+            <div class="d-flex align-center gap-1 text-super-xs mt-0.5 text-disabled flex-wrap">
+              <span class="text-primary font-weight-bold text-uppercase">
                 {{ item.laboratory?.name || 'S/M' }}
               </span>
-              <span>•</span>
-              <span class="font-weight-medium">
-                1 {{ item.purchase_unit_name || 'Display' }} = {{ item.units_per_inner_pack || 1 }} {{ item.pack_unit_name || 'paq' }}
-                <template v-if="Number(item.presentation) > 1">
-                  = {{ ((Number(item.units_per_inner_pack) || 1) * (Number(item.presentation) || 1)).toLocaleString() }} {{ item.unit_of_measure || 'und' }}
-                </template>
-              </span>
+              <template v-if="Number(item.units_per_inner_pack) > 1 || Number(item.presentation) > 1">
+                <span>•</span>
+                <span class="font-weight-medium">
+                  1 {{ item.purchase_unit_name || 'Disp' }} = {{ item.units_per_inner_pack || 1 }} {{ item.pack_unit_name || 'paq' }}
+                  <template v-if="Number(item.presentation) > 1">
+                    = {{ ((Number(item.units_per_inner_pack) || 1) * (Number(item.presentation) || 1)).toLocaleString() }} {{ item.unit_of_measure || 'und' }}
+                  </template>
+                </span>
+              </template>
             </div>
           </div>
         </template>
@@ -244,14 +245,14 @@ const getReplenishmentSuggestion = (item) => {
         <!-- Costo Logístico (Compra -> Almacén) -->
         <template #item.unit_cost="{ item }">
           <div class="d-flex flex-column align-end py-1">
-            <span class="font-weight-black text-sm text-high-emphasis">
+            <span class="font-weight-bold text-sm text-high-emphasis">
               {{ getLogisticsCostBreakdown(item).mainCost }}
-              <span class="text-super-xs text-disabled">{{ getLogisticsCostBreakdown(item).mainLabel }}</span>
+              <span v-if="getLogisticsCostBreakdown(item).mainLabel" class="text-super-xs text-disabled">{{ getLogisticsCostBreakdown(item).mainLabel }}</span>
             </span>
             <span v-if="getLogisticsCostBreakdown(item).subCost" class="text-super-xs text-disabled">
               {{ getLogisticsCostBreakdown(item).subCost }}
             </span>
-            <span v-if="getLogisticsCostBreakdown(item).recipeCost" class="text-super-xs text-success font-weight-bold">
+            <span v-if="getLogisticsCostBreakdown(item).recipeCost" class="text-super-xs text-success font-weight-medium">
               {{ getLogisticsCostBreakdown(item).recipeCost }}
             </span>
           </div>
@@ -260,7 +261,7 @@ const getReplenishmentSuggestion = (item) => {
         <!-- Consumo en período -->
         <template #item.total_sold_completed="{ item }">
           <div class="d-flex flex-column align-center py-1">
-            <span class="font-weight-black text-sm text-high-emphasis">
+            <span class="font-weight-bold text-sm text-high-emphasis">
               {{ Math.round(Number(item.total_sold_completed || 0)) }} {{ item.pack_unit_name || 'paq' }}
             </span>
             <span v-if="Number(item.units_per_inner_pack) > 1" class="text-super-xs text-disabled">
@@ -273,14 +274,14 @@ const getReplenishmentSuggestion = (item) => {
         <template #item.lote_quantity="{ item }">
           <div class="d-flex flex-column align-center py-1">
             <VChip
-              :color="getLogisticsStockBreakdown(item).isWarning ? 'error' : (getLogisticsStockBreakdown(item).isLow ? 'warning' : 'success')"
-              size="small"
-              variant="flat"
-              class="font-weight-black px-2 shadow-xs"
+              :color="Number(item.lote_quantity || 0) <= 0 ? 'secondary' : (Number(item.diferencia_product || 0) < 0 ? 'warning' : 'success')"
+              size="x-small"
+              :variant="Number(item.lote_quantity || 0) <= 0 ? 'tonal' : 'flat'"
+              class="font-weight-bold px-2"
             >
               {{ getLogisticsStockBreakdown(item).mainText }}
             </VChip>
-            <span v-if="getLogisticsStockBreakdown(item).subText" class="text-super-xs text-disabled mt-0-5 font-weight-bold">
+            <span v-if="getLogisticsStockBreakdown(item).subText" class="text-super-xs text-disabled mt-0.5">
               {{ getLogisticsStockBreakdown(item).subText }}
             </span>
           </div>
@@ -289,7 +290,7 @@ const getReplenishmentSuggestion = (item) => {
         <!-- Demanda / Promedio Calculado -->
         <template #item.promedio_calculado="{ item }">
           <div class="d-flex flex-column align-center py-1">
-            <span class="font-weight-black text-sm text-medium-emphasis">
+            <span class="font-weight-bold text-sm text-medium-emphasis">
               {{ parseFloat(item.promedio_calculado || 0).toFixed(1) }} {{ item.pack_unit_name || 'paq' }}
             </span>
             <span v-if="Number(item.units_per_inner_pack) > 1" class="text-super-xs text-disabled">
@@ -300,37 +301,34 @@ const getReplenishmentSuggestion = (item) => {
 
         <!-- Cobertura de días -->
         <template #item.coverage="{ item }">
-          <div class="d-flex align-center justify-center gap-1">
-            <VChip
-              :color="getCoverageInfo(item).color"
-              size="x-small"
-              variant="tonal"
-              class="font-weight-black"
-            >
-              <VIcon start :icon="getCoverageInfo(item).icon" size="13" />
-              {{ getCoverageInfo(item).text }}
-              <VTooltip activator="parent" location="top">
-                {{ getCoverageInfo(item).label }}
-              </VTooltip>
-            </VChip>
-          </div>
+          <VChip
+            :color="getCoverageInfo(item).color"
+            size="x-small"
+            variant="tonal"
+            class="font-weight-bold px-2"
+          >
+            {{ getCoverageInfo(item).text }}
+            <VTooltip activator="parent" location="top">
+              {{ getCoverageInfo(item).label }}
+            </VTooltip>
+          </VChip>
         </template>
 
         <!-- Reabastecer (A Pedir al Proveedor) -->
         <template #item.diferencia_product="{ item }">
           <div class="d-flex flex-column align-center py-1">
             <VChip
-              :color="getReplenishmentSuggestion(item).color"
-              size="small"
-              :variant="getReplenishmentSuggestion(item).isDeficit ? 'flat' : 'tonal'"
-              class="font-weight-black px-2.5 shadow-xs"
+              :color="getReplenishmentSuggestion(item).isDeficit ? 'error' : 'secondary'"
+              size="x-small"
+              variant="tonal"
+              class="font-weight-bold px-2"
             >
               {{ getReplenishmentSuggestion(item).text }}
             </VChip>
-            <span class="text-super-xs font-weight-bold mt-0-5" :class="getReplenishmentSuggestion(item).isDeficit ? 'text-error' : 'text-disabled'">
+            <span v-if="getReplenishmentSuggestion(item).subText" class="text-super-xs text-disabled mt-0.5">
               {{ getReplenishmentSuggestion(item).subText }}
             </span>
-            <span v-if="getReplenishmentSuggestion(item).costText" class="text-super-xs text-disabled">
+            <span v-if="getReplenishmentSuggestion(item).costText" class="text-super-xs text-primary font-weight-bold">
               {{ getReplenishmentSuggestion(item).costText }}
             </span>
           </div>
@@ -365,11 +363,15 @@ const getReplenishmentSuggestion = (item) => {
                   {{ item.name }}
                 </span>
               </div>
-              <span class="text-super-xs text-disabled text-uppercase">
-                {{ item.laboratory?.name || 'S/M' }} • 1 {{ item.purchase_unit_name || 'Disp' }} = {{ item.units_per_inner_pack || 1 }} {{ item.pack_unit_name || 'paq' }}
-              </span>
+              <div class="d-flex align-center gap-1 text-super-xs text-disabled text-uppercase mt-0.5">
+                <span class="font-weight-bold text-primary">{{ item.laboratory?.name || 'S/M' }}</span>
+                <template v-if="Number(item.units_per_inner_pack) > 1 || Number(item.presentation) > 1">
+                  <span>•</span>
+                  <span>1 {{ item.purchase_unit_name || 'Disp' }} = {{ item.units_per_inner_pack || 1 }} {{ item.pack_unit_name || 'paq' }}</span>
+                </template>
+              </div>
             </div>
-            <VChip :color="getCoverageInfo(item).color" size="x-small" variant="tonal" class="font-weight-black flex-shrink-0">
+            <VChip :color="getCoverageInfo(item).color" size="x-small" variant="tonal" class="font-weight-bold flex-shrink-0">
               {{ getCoverageInfo(item).text }}
             </VChip>
           </div>
@@ -378,7 +380,7 @@ const getReplenishmentSuggestion = (item) => {
           <div class="d-flex align-center justify-space-between bg-light pa-2 rounded-lg border mb-2 text-xs">
             <div class="text-center flex-1">
               <span class="text-super-xs text-disabled d-block uppercase font-weight-bold">Stock</span>
-              <span class="font-weight-black text-primary">{{ getLogisticsStockBreakdown(item).mainText }}</span>
+              <span class="font-weight-bold text-high-emphasis">{{ getLogisticsStockBreakdown(item).mainText }}</span>
             </div>
             <VDivider vertical class="mx-1" />
             <div class="text-center flex-1">
@@ -394,12 +396,12 @@ const getReplenishmentSuggestion = (item) => {
 
           <!-- Acción de Reabastecimiento -->
           <div class="d-flex align-center justify-space-between pt-1">
-            <span class="text-super-xs font-weight-bold text-disabled">Reabastecimiento sugerido:</span>
+            <span class="text-super-xs font-weight-medium text-disabled">Reabastecimiento sugerido:</span>
             <VChip
-              :color="getReplenishmentSuggestion(item).color"
+              :color="getReplenishmentSuggestion(item).isDeficit ? 'error' : 'secondary'"
               size="x-small"
-              :variant="getReplenishmentSuggestion(item).isDeficit ? 'flat' : 'tonal'"
-              class="font-weight-black"
+              variant="tonal"
+              class="font-weight-bold"
             >
               {{ getReplenishmentSuggestion(item).text }}
             </VChip>

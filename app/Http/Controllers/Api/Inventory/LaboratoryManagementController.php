@@ -44,7 +44,14 @@ class LaboratoryManagementController extends Controller
             $query->where('laboratories.name', 'like', "%{$request->search}%");
         }
 
-        $sortBy = $request->get('sortBy', 'units_count');
+        $businessType = \App\Models\GeneralSetting::query()->value('business_type');
+        $isRestaurant = in_array($businessType, ['restaurant', 'fast_food'], true);
+
+        $defaultSort = $isRestaurant ? 'products_count' : 'units_count';
+        $sortBy = $request->get('sortBy', $defaultSort);
+        if ($isRestaurant && $sortBy === 'units_count') {
+            $sortBy = 'products_count';
+        }
         $orderBy = $request->get('orderBy', 'desc');
         $itemsPerPage = (int) $request->get('itemsPerPage', 10);
 
@@ -72,6 +79,9 @@ class LaboratoryManagementController extends Controller
      */
     public function groups(): JsonResponse
     {
+        $businessType = \App\Models\GeneralSetting::query()->value('business_type');
+        $isRestaurant = in_array($businessType, ['restaurant', 'fast_food'], true);
+
         $groups = GroupsLaboratory::with(['laboratories:id,name,group_id'])
             ->leftJoin('laboratories', 'groups_laboratories.id', '=', 'laboratories.group_id')
             ->leftJoin('products', 'laboratories.id', '=', 'products.laboratory_id')
@@ -82,7 +92,7 @@ class LaboratoryManagementController extends Controller
             ])
             ->selectRaw('COUNT(DISTINCT laboratories.id) as labs_count, COUNT(DISTINCT products.id) as products_count, COALESCE(SUM(product_lots.quantity), 0) as units_count')
             ->groupBy('groups_laboratories.id', 'groups_laboratories.name')
-            ->orderByDesc('units_count')
+            ->orderByDesc($isRestaurant ? 'products_count' : 'units_count')
             ->get();
 
         return response()->json($groups);

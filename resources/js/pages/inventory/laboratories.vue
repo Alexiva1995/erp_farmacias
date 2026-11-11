@@ -48,8 +48,19 @@ const isSavingGroup = ref(false)
 const isSyncingMaster = ref(false)
 
 const brandingStore = useBrandingStore()
-const isRestaurant = computed(() => false)
+// Determina si la vertical activa corresponde a restaurante
+const isRestaurant = computed(() => Boolean(brandingStore.isRestaurant))
 const enableBrandGroups = computed(() => brandingStore.settings.enable_brand_groups ?? false)
+
+if (isRestaurant.value && sortBy.value === 'units_count') {
+  sortBy.value = 'products_count'
+}
+
+watch(isRestaurant, (val) => {
+  if (val && sortBy.value === 'units_count') {
+    sortBy.value = 'products_count'
+  }
+})
 
 const formatUnits = (units) => {
   const num = Number(units || 0)
@@ -66,34 +77,43 @@ const headers = computed(() => {
       headerClass: 'd-none d-sm-table-cell',
       width: '80px',
     },
-    { title: isRestaurant.value ? "Marca" : "Laboratorio", key: "name", sortable: true, width: '30%' },
+    { title: isRestaurant.value ? "Marca" : "Laboratorio", key: "name", sortable: true, width: isRestaurant.value ? '45%' : '30%' },
   ];
   if (enableBrandGroups.value) {
     list.push({ title: isRestaurant.value ? "Grupo de Marcas" : "Grupo Corporativo", key: "group.name", sortable: false });
   }
   list.push(
-    { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' },
-    { title: "Unidades", key: "units_count", sortable: true, align: 'end', width: '120px' },
+    { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' }
+  );
+  if (!isRestaurant.value) {
+    list.push({ title: "Unidades", key: "units_count", sortable: true, align: 'end', width: '120px' });
+  }
+  list.push(
     { title: "Acciones", key: "actions", sortable: false, align: 'center', width: '140px' }
   );
   return list;
 })
 
-const groupHeaders = [
-  {
-    title: "ID",
-    key: "id",
-    sortable: true,
-    cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
-    headerClass: 'd-none d-sm-table-cell',
-    width: '80px',
-  },
-  { title: "Grupo Corporativo", key: "name", sortable: true, width: '30%' },
-  { title: "Laboratorios", key: "labs_count", sortable: true, align: 'center', width: '130px' },
-  { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' },
-  { title: "Unidades", key: "units_count", sortable: true, align: 'end', width: '120px' },
-  { title: "Acciones", key: "actions", sortable: false, align: 'center', width: '140px' },
-]
+const groupHeaders = computed(() => {
+  const list = [
+    {
+      title: "ID",
+      key: "id",
+      sortable: true,
+      cellClass: 'font-weight-black text-primary d-none d-sm-table-cell',
+      headerClass: 'd-none d-sm-table-cell',
+      width: '80px',
+    },
+    { title: "Grupo Corporativo", key: "name", sortable: true, width: isRestaurant.value ? '45%' : '30%' },
+    { title: "Laboratorios", key: "labs_count", sortable: true, align: 'center', width: '130px' },
+    { title: "Productos", key: "products_count", sortable: true, align: 'center', width: '120px' },
+  ];
+  if (!isRestaurant.value) {
+    list.push({ title: "Unidades", key: "units_count", sortable: true, align: 'end', width: '120px' });
+  }
+  list.push({ title: "Acciones", key: "actions", sortable: false, align: 'center', width: '140px' });
+  return list;
+})
 
 // --- Filtro de grupos en la pestaña ---
 const filteredGroups = computed(() => {
@@ -522,6 +542,7 @@ onMounted(async () => {
                 :item="item"
                 :enable-brand-groups="enableBrandGroups"
                 :can-delete="can('manage', 'admin')"
+                :is-restaurant="isRestaurant"
                 @view="goToProducts"
                 @merge="openMergeDialog"
                 @edit="openLabEdit"
@@ -581,7 +602,7 @@ onMounted(async () => {
             <VDataTable
               :headers="groupHeaders"
               :items="filteredGroups"
-              :sort-by="[{ key: 'units_count', order: 'desc' }]"
+              :sort-by="[{ key: isRestaurant ? 'products_count' : 'units_count', order: 'desc' }]"
               density="compact"
               hover
               class="text-no-wrap"
@@ -720,7 +741,7 @@ onMounted(async () => {
                       {{ group.products_count || 0 }}
                     </VChip>
                   </div>
-                  <div class="d-flex flex-column align-end">
+                  <div v-if="!isRestaurant" class="d-flex flex-column align-end">
                     <span class="text-super-xs text-medium-emphasis text-uppercase font-weight-bold">Unidades</span>
                     <VChip size="x-small" color="success" variant="tonal" label class="font-weight-black mt-1">
                       {{ formatUnits(group.units_count) }}
