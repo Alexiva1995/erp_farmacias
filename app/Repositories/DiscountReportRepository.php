@@ -138,8 +138,8 @@ class DiscountReportRepository
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where(function ($q) {
-                $q->where('discount_percentage', '>', 0)
-                  ->orWhereNotNull('pack_id');
+                $q->where('order_details.discount_percentage', '>', 0)
+                  ->orWhereNotNull('order_details.pack_id');
             })
             ->groupBy('promo_type')
             ->get();
@@ -229,8 +229,8 @@ class DiscountReportRepository
             ->where('orders.status', 'Completed')
             ->whereBetween('orders.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where(function ($q) {
-                $q->where('discount_percentage', '>', 0)
-                  ->orWhereNotNull('pack_id');
+                $q->where('order_details.discount_percentage', '>', 0)
+                  ->orWhereNotNull('order_details.pack_id');
             })
             ->groupBy('product_name', 'type');
 
@@ -332,8 +332,8 @@ class DiscountReportRepository
         } else {
             // Consulta base de registros con algún descuento o pack
             $query->where(function ($q) {
-                $q->where('discount_percentage', '>', 0)
-                  ->orWhereNotNull('pack_id');
+                $q->where('order_details.discount_percentage', '>', 0)
+                  ->orWhereNotNull('order_details.pack_id');
             });
         }
 
