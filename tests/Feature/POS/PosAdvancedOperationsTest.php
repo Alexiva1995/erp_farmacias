@@ -245,6 +245,7 @@ class PosAdvancedOperationsTest extends TestCase
             'money_returns' => 0.00,
             'currency' => 'USD',
             'total_amount_usd' => 30.00,
+            'order_date' => now(),
             'payment_methods' => json_encode([['method' => 'USD_CASH', 'amount' => 30.00]]),
         ]);
 

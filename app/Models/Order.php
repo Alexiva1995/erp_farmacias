@@ -71,6 +71,15 @@ class Order extends Model
         'credit_term_days' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order): void {
+            if (empty($order->order_date)) {
+                $order->order_date = now();
+            }
+        });
+    }
+
     public function client()
     {
         return $this->belongsTo(Client::class);
