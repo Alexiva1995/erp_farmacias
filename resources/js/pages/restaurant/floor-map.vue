@@ -450,6 +450,7 @@
                     </span>
                   </div>
                 </v-btn>
+              </div>
               <!-- Selector Rápido de Piso 2.5D -->
               <div v-if="currentZone" class="mb-3 pa-2 rounded border bg-surface">
                 <div class="text-caption font-weight-bold text-medium-emphasis mb-1">
