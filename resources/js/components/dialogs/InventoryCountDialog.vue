@@ -419,7 +419,7 @@ const handleSave = async () => {
     transition="dialog-bottom-transition"
     class="premium-dialog"
   >
-    <VCard class="detail-dialog-card rounded-xl overflow-hidden border-0 shadow-xl bg-surface">
+    <VCard class="detail-dialog-card rounded-xl overflow-hidden border-0 shadow-xl bg-surface d-flex flex-column" max-height="90vh">
       <!-- Cabecera Premium -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
@@ -460,7 +460,7 @@ const handleSave = async () => {
         </div>
       </VCardTitle>
 
-      <VCardText class="pa-3 pa-sm-4 bg-light d-flex flex-column gap-3">
+      <VCardText class="pa-3 pa-sm-4 bg-light d-flex flex-column gap-3 overflow-y-auto" style="flex: 1 1 auto; max-height: calc(90vh - 135px);">
         <!-- 1. Perfil del Producto Estructurado (Jerarquía Limpia y Neutra) -->
         <VCard
           variant="flat"
@@ -758,7 +758,7 @@ const handleSave = async () => {
 
       <VDivider />
 
-      <VCardActions class="pa-3 bg-white border-t px-4">
+      <VCardActions class="pa-3 bg-white border-t px-4 flex-shrink-0">
         <VRow dense class="w-100 ma-0">
           <VCol cols="6" class="pa-1">
             <VBtn
