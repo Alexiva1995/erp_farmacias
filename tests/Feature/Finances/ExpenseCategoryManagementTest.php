@@ -36,7 +36,7 @@ class ExpenseCategoryManagementTest extends TestCase
 
     public function test_can_list_expense_categories(): void
     {
-        $this->getJson('/api/expense-categories')
+        $this->getJson('/api/expenses/category')
             ->assertOk();
     }
 }

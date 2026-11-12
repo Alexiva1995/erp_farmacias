@@ -36,7 +36,7 @@ class CompanyManagementTest extends TestCase
 
     public function test_can_list_companies(): void
     {
-        $this->getJson('/api/companies')
+        $this->getJson('/api/crm/companies')
             ->assertOk();
     }
 }

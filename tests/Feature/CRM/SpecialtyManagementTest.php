@@ -36,7 +36,7 @@ class SpecialtyManagementTest extends TestCase
 
     public function test_can_list_specialties(): void
     {
-        $this->getJson('/api/specialties')
+        $this->getJson('/api/crm/specialties')
             ->assertOk();
     }
 }

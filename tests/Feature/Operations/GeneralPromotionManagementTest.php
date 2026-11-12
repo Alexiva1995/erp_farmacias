@@ -36,7 +36,7 @@ class GeneralPromotionManagementTest extends TestCase
 
     public function test_can_list_general_promotions(): void
     {
-        $this->getJson('/api/general-promotions')
+        $this->getJson('/api/tpv/promotions/general-promotions')
             ->assertOk();
     }
 }
