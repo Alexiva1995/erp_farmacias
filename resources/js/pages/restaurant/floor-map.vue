@@ -197,28 +197,66 @@
       <!-- PANEL IZQUIERDO: PALETA DE CONSTRUCCIÓN -->
       <v-col cols="12" md="4" lg="3">
         <v-card class="builder-toolbox-card" elevation="2" border>
-          <v-tabs v-model="toolboxTab" density="compact" grow color="primary" class="border-b">
-            <v-tab value="tables">
-              <v-icon size="15">tabler-table</v-icon>
-              <span class="text-caption ml-1">Mesas</span>
-            </v-tab>
-            <v-tab value="counters">
-              <v-icon size="15">tabler-brand-shopee</v-icon>
-              <span class="text-caption ml-1">Mostrador</span>
-            </v-tab>
-            <v-tab value="kitchen">
-              <v-icon size="15">tabler-flame</v-icon>
-              <span class="text-caption ml-1">Cocina</span>
-            </v-tab>
-            <v-tab value="cooling">
-              <v-icon size="15">tabler-snowflake</v-icon>
-              <span class="text-caption ml-1">Frío/Nevera</span>
-            </v-tab>
-            <v-tab value="spaces">
-              <v-icon size="15">tabler-layout-grid</v-icon>
-              <span class="text-caption ml-1">Áreas</span>
-            </v-tab>
-          </v-tabs>
+          <!-- Navegación en Cuadrícula 2x2 Siempre Visible (Sin pestañas ocultas) -->
+          <div class="pa-2 border-b bg-surface">
+            <div class="text-caption font-weight-bold text-medium-emphasis mb-2 px-1">
+              CONSTRUYE PASO A PASO:
+            </div>
+            <v-row dense>
+              <v-col cols="6">
+                <v-btn
+                  block
+                  size="small"
+                  :variant="toolboxTab === 'spaces' ? 'flat' : 'tonal'"
+                  :color="toolboxTab === 'spaces' ? 'primary' : 'secondary'"
+                  prepend-icon="tabler-layout-grid"
+                  class="text-caption font-weight-bold justify-start"
+                  @click="toolboxTab = 'spaces'"
+                >
+                  1. Áreas
+                </v-btn>
+              </v-col>
+              <v-col cols="6">
+                <v-btn
+                  block
+                  size="small"
+                  :variant="toolboxTab === 'kitchen' ? 'flat' : 'tonal'"
+                  :color="toolboxTab === 'kitchen' ? 'warning' : 'secondary'"
+                  prepend-icon="tabler-flame"
+                  class="text-caption font-weight-bold justify-start"
+                  @click="toolboxTab = 'kitchen'"
+                >
+                  2. Cocina/Frío
+                </v-btn>
+              </v-col>
+              <v-col cols="6">
+                <v-btn
+                  block
+                  size="small"
+                  :variant="toolboxTab === 'counters' ? 'flat' : 'tonal'"
+                  :color="toolboxTab === 'counters' ? 'info' : 'secondary'"
+                  prepend-icon="tabler-brand-shopee"
+                  class="text-caption font-weight-bold justify-start"
+                  @click="toolboxTab = 'counters'"
+                >
+                  3. Mostrador
+                </v-btn>
+              </v-col>
+              <v-col cols="6">
+                <v-btn
+                  block
+                  size="small"
+                  :variant="toolboxTab === 'tables' ? 'flat' : 'tonal'"
+                  :color="toolboxTab === 'tables' ? 'success' : 'secondary'"
+                  prepend-icon="tabler-table"
+                  class="text-caption font-weight-bold justify-start"
+                  @click="toolboxTab = 'tables'"
+                >
+                  4. Mesas/Barra
+                </v-btn>
+              </v-col>
+            </v-row>
+          </div>
 
           <v-card-text class="pa-2 toolbox-content">
             <!-- PESTAÑA A: CATÁLOGO DE MESAS -->
@@ -345,11 +383,9 @@
                   </div>
                 </v-btn>
               </div>
-            </div>
 
-            <!-- PESTAÑA D: FRÍO, NEVERAS Y REFRIGERADORES -->
-            <div v-show="toolboxTab === 'cooling'">
-              <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
+              <!-- SUBSECCIÓN: FRÍO, NEVERAS Y REFRIGERADORES -->
+              <div class="text-caption font-weight-bold text-medium-emphasis mt-4 mb-2 text-uppercase">
                 Refrigeración & Frío Comercial:
               </div>
 
@@ -461,11 +497,11 @@
               @drop="handleCanvasDrop"
               @click.self="clearSelection"
             >
-              <!-- REGLAS MÉTRICAS SUPERIOR E IZQUIERDA CON ALTO CONTRASTE -->
+              <!-- REGLAS MÉTRICAS EXTERIORES LIMPIAS (SIN MARCAS INTERNAS NI HUÉRFANAS) -->
               <div class="ruler-top">
                 <div class="ruler-origin-badge">0m</div>
                 <div
-                  v-for="m in Math.ceil(currentZoneWidth)"
+                  v-for="m in Math.floor(currentZoneWidth)"
                   :key="`m-top-${m}`"
                   class="ruler-mark-x"
                   :style="{ left: `${m * cellPixelSize}px` }"
@@ -473,10 +509,18 @@
                   <span class="ruler-badge">{{ m }}m</span>
                   <div class="ruler-tick-top" />
                 </div>
+                <div
+                  v-if="currentZoneWidth % 1 !== 0"
+                  class="ruler-mark-x"
+                  :style="{ left: `${currentZoneWidth * cellPixelSize}px` }"
+                >
+                  <span class="ruler-badge ruler-badge-end">{{ Number(currentZoneWidth).toFixed(1) }}m</span>
+                  <div class="ruler-tick-top" />
+                </div>
               </div>
               <div class="ruler-left">
                 <div
-                  v-for="m in Math.ceil(currentZoneHeight)"
+                  v-for="m in Math.floor(currentZoneHeight)"
                   :key="`m-left-${m}`"
                   class="ruler-mark-y"
                   :style="{ top: `${m * cellPixelSize}px` }"
@@ -484,32 +528,14 @@
                   <span class="ruler-badge">{{ m }}m</span>
                   <div class="ruler-tick-left" />
                 </div>
-              </div>
-
-              <!-- MARCAS DE METRO INTERNAS PARA VISIBILIDAD PERMANENTE -->
-              <div class="inner-grid-markers pointer-events-none">
-                <span
-                  v-for="m in Math.ceil(currentZoneWidth)"
-                  :key="`in-top-${m}`"
-                  class="inner-grid-tag-x"
-                  :style="{ left: `${(m - 1) * cellPixelSize + 4}px` }"
+                <div
+                  v-if="currentZoneHeight % 1 !== 0"
+                  class="ruler-mark-y"
+                  :style="{ top: `${currentZoneHeight * cellPixelSize}px` }"
                 >
-                  {{ m }}m
-                </span>
-                <span
-                  v-for="m in Math.ceil(currentZoneHeight)"
-                  :key="`in-left-${m}`"
-                  class="inner-grid-tag-y"
-                  :style="{ top: `${(m - 1) * cellPixelSize + 4}px` }"
-                >
-                  {{ m }}m
-                </span>
-              </div>
-
-              <!-- ETIQUETA DE LÍMITE DE LA ZONA (ESQUINA INFERIOR DERECHA) -->
-              <div class="zone-boundary-tag d-flex align-center gap-1">
-                <v-icon size="13" color="#ffd54f">tabler-border-outer</v-icon>
-                <span>Límite de Planta: {{ currentZoneWidth }}m × {{ currentZoneHeight }}m ({{ currentZoneArea }} m²)</span>
+                  <span class="ruler-badge ruler-badge-end">{{ Number(currentZoneHeight).toFixed(1) }}m</span>
+                  <div class="ruler-tick-left" />
+                </div>
               </div>
 
               <!-- 1. CAPA DE ÁREAS ARQUITECTÓNICAS (Cocina, Depósito, Terraza, Muros, Secciones) -->
@@ -532,34 +558,45 @@
                 @dragstart="handleAreaDragStart(area, $event)"
                 @click.stop="selectObject(area, 'area')"
               >
-                <!-- Badge Superior de Área con Icono, Nombre y Dimensiones -->
+                <!-- Badge Único Limpio del Área -->
                 <div class="area-header-pill d-flex align-center justify-space-between px-2 py-1" :style="{ borderLeft: `3px solid ${area.color || '#ff9f43'}` }">
                   <div class="d-flex align-center gap-1 overflow-hidden mr-1">
-                    <v-icon size="16" color="white" class="flex-shrink-0">{{ getAreaIcon(area.type) }}</v-icon>
+                    <v-icon size="14" color="white" class="flex-shrink-0">{{ getAreaIcon(area.type) }}</v-icon>
                     <span class="area-name-text font-weight-black text-truncate">{{ area.name }}</span>
                   </div>
                   <span class="area-dimension-tag flex-shrink-0 font-weight-black">
-                    {{ Number(area.w).toFixed(1) }}m × {{ Number(area.h).toFixed(1) }}m
+                    {{ Number(area.w).toFixed(1) }}×{{ Number(area.h).toFixed(1) }}m
                   </span>
                 </div>
 
-                <!-- Marca Central Visible de Agua con Nombre y Metros Cuadrados -->
-                <div class="area-center-watermark d-flex flex-column align-center justify-center">
-                  <span class="watermark-name font-weight-black text-truncate px-2">{{ area.name }}</span>
-                  <span class="watermark-surface font-weight-black">
-                    {{ (Number(area.w) * Number(area.h)).toFixed(1) }} m²
-                  </span>
+                <!-- Mini-barra Contextual Flotante -->
+                <div
+                  v-if="selectedObject?.id === area.id && selectedObject?.kind === 'area'"
+                  class="floating-object-toolbar"
+                  @mousedown.stop
+                  @click.stop
+                >
+                  <v-btn icon="tabler-trash" size="x-small" color="error" variant="flat" title="Eliminar área" @click="deleteSelectedObject" />
                 </div>
+
+                <!-- Tirador de Redimensión Directa -->
+                <div
+                  v-if="selectedObject?.id === area.id && selectedObject?.kind === 'area'"
+                  class="canvas-resize-handle"
+                  title="Arrastra para redimensionar"
+                  @mousedown.stop.prevent="startResize(area, 'area', $event)"
+                />
               </div>
 
-              <!-- 2. CAPA DE MOSTRADORES, NEVERAS Y EQUIPAMIENTO (DISEÑO BRILLANTE Y ALTO CONTRASTE) -->
+              <!-- 2. CAPA DE MOSTRADORES, NEVERAS Y EQUIPAMIENTO -->
               <div
                 v-for="eq in layoutEquipment"
                 :key="eq.id"
-                class="equipment-block position-absolute d-flex flex-column align-center justify-center px-2 py-1 text-center"
+                class="equipment-block position-absolute d-flex flex-column align-center justify-center px-1 py-1 text-center"
                 :class="[
                   `equip-kind-${eq.type || 'station'}`,
-                  { 'is-selected': selectedObject?.id === eq.id && selectedObject?.kind === 'equipment' }
+                  { 'is-selected': selectedObject?.id === eq.id && selectedObject?.kind === 'equipment' },
+                  { 'is-vertical-eq': Number(eq.h) > Number(eq.w) * 1.25 && Number(eq.w) <= 1.2 }
                 ]"
                 :style="{
                   left: `${eq.x * cellPixelSize}px`,
@@ -571,24 +608,46 @@
                 @dragstart="handleEquipmentDragStart(eq, $event)"
                 @click.stop="selectObject(eq, 'equipment')"
               >
-                <div class="equipment-label-row d-flex align-center justify-center gap-1 text-truncate w-100">
-                  <v-icon size="17" color="white" class="flex-shrink-0">{{ eq.icon || 'tabler-box' }}</v-icon>
-                  <span class="equipment-title-text font-weight-black text-truncate">{{ eq.name }}</span>
+                <div class="equipment-content-inner d-flex flex-column align-center justify-center">
+                  <div class="equipment-label-row d-flex align-center justify-center gap-1">
+                    <v-icon size="15" color="white" class="flex-shrink-0">{{ eq.icon || 'tabler-box' }}</v-icon>
+                    <span class="equipment-title-text font-weight-black">{{ eq.name }}</span>
+                  </div>
+                  <div class="equipment-measure-pill font-weight-black mt-1">
+                    {{ Number(eq.w).toFixed(1) }}m×{{ Number(eq.h).toFixed(1) }}m
+                  </div>
                 </div>
-                <div class="equipment-measure-pill font-weight-black mt-1">
-                  {{ Number(eq.w).toFixed(1) }}m × {{ Number(eq.h).toFixed(1) }}m
+
+                <!-- Mini-barra Contextual Flotante -->
+                <div
+                  v-if="selectedObject?.id === eq.id && selectedObject?.kind === 'equipment'"
+                  class="floating-object-toolbar"
+                  @mousedown.stop
+                  @click.stop
+                >
+                  <v-btn icon="tabler-arrows-exchange" size="x-small" color="info" variant="flat" title="Rotar / Invertir ancho y largo" @click="swapEquipmentDimensions(eq)" />
+                  <v-btn icon="tabler-trash" size="x-small" color="error" variant="flat" title="Eliminar equipo" @click="deleteSelectedObject" />
                 </div>
+
+                <!-- Tirador de Redimensión Directa -->
+                <div
+                  v-if="selectedObject?.id === eq.id && selectedObject?.kind === 'equipment'"
+                  class="canvas-resize-handle"
+                  title="Arrastra para redimensionar"
+                  @mousedown.stop.prevent="startResize(eq, 'equipment', $event)"
+                />
               </div>
 
-              <!-- 3. CAPA DE MESAS (CON SILLAS DINÁMICAS POR CAPACIDAD Y DETECCIÓN DE PARED) -->
+              <!-- 3. CAPA DE MESAS Y BARRAS (IDENTIDAD REAL DE MOBILIARIO + COLISIONES + RESIZE DIRECTO) -->
               <div
                 v-for="table in filteredTables"
                 :key="table.id"
                 class="floor-table-node position-absolute"
                 :class="[
                   `shape-${table.shape || 'square'}`,
-                  `status-${table.status || 'available'}`,
+                  table.shape === 'bar' ? 'builder-furniture-bar' : 'builder-furniture-wood',
                   { 'is-selected': selectedObject?.id === table.id && selectedObject?.kind === 'table' },
+                  { 'is-colliding': isTableColliding(table) },
                   { 'has-wall-top': isTableSideBlocked(table, 'top') },
                   { 'has-wall-bottom': isTableSideBlocked(table, 'bottom') },
                   { 'has-wall-left': isTableSideBlocked(table, 'left') },
@@ -605,10 +664,13 @@
                 @dragstart="handleTableDragStart(table, $event)"
                 @click.stop="selectObject(table, 'table')"
               >
+                <!-- Indicador sutil de estado operativo (punto de color en esquina) -->
+                <span class="table-status-dot" :class="`dot-${table.status || 'available'}`" :title="`Estado actual: ${table.status || 'available'}`" />
+
                 <div class="table-inner d-flex flex-column align-center justify-center text-center px-1">
                   <span class="table-title font-weight-black text-truncate w-100">{{ table.name }}</span>
                   <span class="table-capacity font-weight-bold mt-0-5">
-                    <v-icon size="11" color="white" class="mr-0-5">tabler-users</v-icon>
+                    <v-icon size="10" color="white" class="mr-0-5">tabler-users</v-icon>
                     {{ table.capacity }}p
                   </span>
                 </div>
@@ -623,11 +685,33 @@
                   :title="seat.isBarStool ? 'Taburete de barra' : 'Silla'"
                 />
 
-                <!-- Indicador visual de borde pegado a la pared (sin comensales en ese lado) -->
+                <!-- Indicador visual de borde pegado a la pared -->
                 <div v-if="isTableSideBlocked(table, 'top')" class="wall-edge-indicator edge-top" title="Lado pegado a pared (sin sillas)" />
                 <div v-if="isTableSideBlocked(table, 'bottom')" class="wall-edge-indicator edge-bottom" title="Lado pegado a pared (sin sillas)" />
                 <div v-if="isTableSideBlocked(table, 'left')" class="wall-edge-indicator edge-left" title="Lado pegado a pared (sin sillas)" />
                 <div v-if="isTableSideBlocked(table, 'right')" class="wall-edge-indicator edge-right" title="Lado pegado a pared (sin sillas)" />
+
+                <!-- Mini-barra Contextual Flotante sobre la Mesa Seleccionada -->
+                <div
+                  v-if="selectedObject?.id === table.id && selectedObject?.kind === 'table'"
+                  class="floating-object-toolbar"
+                  :style="{ transform: `rotate(-${table.rotation || 0}deg)` }"
+                  @mousedown.stop
+                  @click.stop
+                >
+                  <v-btn icon="tabler-rotate-clockwise-2" size="x-small" color="secondary" variant="flat" title="Rotar 90°" @click="rotateSelectedTable(90)" />
+                  <v-btn icon="tabler-copy" size="x-small" color="info" variant="flat" title="Duplicar" @click="duplicateSelectedTable" />
+                  <v-btn icon="tabler-pencil" size="x-small" color="primary" variant="flat" title="Editar propiedades" @click="openEditTableModal(table)" />
+                  <v-btn icon="tabler-trash" size="x-small" color="error" variant="flat" title="Eliminar mesa" @click="deleteSelectedObject" />
+                </div>
+
+                <!-- Tirador de Redimensión Directa -->
+                <div
+                  v-if="selectedObject?.id === table.id && selectedObject?.kind === 'table'"
+                  class="canvas-resize-handle"
+                  title="Arrastra para redimensionar"
+                  @mousedown.stop.prevent="startResize(table, 'table', $event)"
+                />
               </div>
             </div>
           </div>
@@ -1986,9 +2070,11 @@ const handleCanvasDrop = (event) => {
     let finalY = Math.max(0, Math.min(canvasPixelHeight.value - (draggedTable.value.height || 60), rawY))
 
     if (snapToGrid.value) {
-      // Snap a medios metros (30px)
+      // Snap a medios metros (30px) respetando límite de planta
       finalX = Math.round(finalX / (cellPixelSize / 2)) * (cellPixelSize / 2)
       finalY = Math.round(finalY / (cellPixelSize / 2)) * (cellPixelSize / 2)
+      finalX = Math.max(0, Math.min(canvasPixelWidth.value - (draggedTable.value.width || 60), finalX))
+      finalY = Math.max(0, Math.min(canvasPixelHeight.value - (draggedTable.value.height || 60), finalY))
     }
 
     draggedTable.value.pos_x = finalX
@@ -2614,6 +2700,89 @@ const zoomOut = () => {
   zoomLevel.value = Math.max(0.6, zoomLevel.value - 0.1)
 }
 
+// ==========================================
+// MANIPULACIÓN DIRECTA (RESIZE EN LIENZO) Y COLISIONES
+// ==========================================
+let activeResize = null
+
+const startResize = (obj, kind, event) => {
+  activeResize = {
+    obj,
+    kind,
+    startX: event.clientX,
+    startY: event.clientY,
+    initW: kind === 'table' ? Number(obj.width || 60) : Number(obj.w || 1) * cellPixelSize,
+    initH: kind === 'table' ? Number(obj.height || 60) : Number(obj.h || 1) * cellPixelSize,
+  }
+  window.addEventListener('mousemove', onResizeMove)
+  window.addEventListener('mouseup', stopResize)
+}
+
+const onResizeMove = (event) => {
+  if (!activeResize) return
+  const { obj, kind, startX, startY, initW, initH } = activeResize
+  const dx = (event.clientX - startX) / zoomLevel.value
+  const dy = (event.clientY - startY) / zoomLevel.value
+
+  const stepPx = snapToGrid.value ? (cellPixelSize * 0.5) : (cellPixelSize * 0.1)
+  const rawW = Math.max(cellPixelSize * 0.5, initW + dx)
+  const rawH = Math.max(cellPixelSize * 0.5, initH + dy)
+
+  const snappedW = Math.round(rawW / stepPx) * stepPx
+  const snappedH = Math.round(rawH / stepPx) * stepPx
+
+  if (kind === 'table') {
+    const maxW = canvasPixelWidth.value - Number(obj.pos_x || 0)
+    const maxH = canvasPixelHeight.value - Number(obj.pos_y || 0)
+    obj.width = Math.max(30, Math.min(maxW, Math.round(snappedW)))
+    obj.height = Math.max(30, Math.min(maxH, Math.round(snappedH)))
+  } else {
+    const maxWm = currentZoneWidth.value - Number(obj.x || 0)
+    const maxHm = currentZoneHeight.value - Number(obj.y || 0)
+    obj.w = Math.max(0.4, Math.min(maxWm, Number((snappedW / cellPixelSize).toFixed(1))))
+    obj.h = Math.max(0.4, Math.min(maxHm, Number((snappedH / cellPixelSize).toFixed(1))))
+  }
+}
+
+const stopResize = () => {
+  activeResize = null
+  window.removeEventListener('mousemove', onResizeMove)
+  window.removeEventListener('mouseup', stopResize)
+}
+
+// Invertir ancho y alto de un mostrador o equipo rápidamente
+const swapEquipmentDimensions = (eq) => {
+  if (!eq) return
+  const oldW = eq.w
+  eq.w = eq.h
+  eq.h = oldW
+}
+
+// Detectar si una mesa se superpone con otra mesa o sale de los límites de planta
+const isTableColliding = (table) => {
+  const x1 = Number(table.pos_x || 0)
+  const y1 = Number(table.pos_y || 0)
+  const w1 = Number(table.width || 60)
+  const h1 = Number(table.height || 60)
+
+  if (x1 < 0 || y1 < 0 || (x1 + w1) > canvasPixelWidth.value + 1 || (y1 + h1) > canvasPixelHeight.value + 1) {
+    return true
+  }
+
+  for (const other of filteredTables.value) {
+    if (other.id === table.id) continue
+    const x2 = Number(other.pos_x || 0)
+    const y2 = Number(other.pos_y || 0)
+    const w2 = Number(other.width || 60)
+    const h2 = Number(other.height || 60)
+
+    const overlap = x1 < x2 + w2 - 4 && x1 + w1 - 4 > x2 && y1 < y2 + h2 - 4 && y1 + h1 - 4 > y2
+    if (overlap) return true
+  }
+
+  return false
+}
+
 // Polling silencioso solo en Modo En Vivo
 let floorPollInterval = null
 
@@ -2628,6 +2797,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (floorPollInterval) clearInterval(floorPollInterval)
+  stopResize()
 })
 </script>
 
@@ -3126,6 +3296,88 @@ onUnmounted(() => {
 .edge-bottom { bottom: 0; left: 0; right: 0; height: 4px; }
 .edge-left { top: 0; bottom: 0; left: 0; width: 4px; }
 .edge-right { top: 0; bottom: 0; right: 0; width: 4px; }
+
+.equipment-block.is-vertical-eq .equipment-content-inner {
+  transform: rotate(-90deg);
+  white-space: nowrap;
+}
+
+.ruler-badge-end {
+  background: #e91e63 !important;
+  border-color: #ffffff !important;
+}
+
+/* MANIPULACIÓN DIRECTA EN EL LIENZO (TIRADOR RESIZE + MINI BARRA FLOTANTE) */
+.canvas-resize-handle {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 14px;
+  height: 14px;
+  background: #00cfe8;
+  border: 2px solid #ffffff;
+  border-radius: 3px;
+  cursor: nwse-resize;
+  z-index: 35;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+.canvas-resize-handle:hover {
+  transform: scale(1.2);
+  background: #ffd54f;
+}
+
+.floating-object-toolbar {
+  position: absolute;
+  top: -36px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.96);
+  padding: 3px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 207, 232, 0.65);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  z-index: 40;
+  white-space: nowrap;
+}
+
+/* IDENTIDAD VISUAL DE MOBILIARIO EN MODO CONSTRUCTOR */
+.builder-furniture-wood {
+  background: linear-gradient(135deg, #8d6e63, #5d4037) !important;
+  border: 2px solid #d7ccc8 !important;
+  color: #ffffff;
+}
+
+.builder-furniture-bar {
+  background: linear-gradient(135deg, #37474f, #263238) !important;
+  border: 2px solid #90a4ae !important;
+  box-shadow: inset 0 4px 0 rgba(255, 213, 79, 0.45), 0 6px 16px rgba(0, 0, 0, 0.65) !important;
+  color: #ffffff;
+}
+
+.table-status-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid #ffffff;
+  z-index: 12;
+}
+.dot-available { background: #22c55e; }
+.dot-occupied { background: #ef4444; }
+.dot-bill_requested { background: #f59e0b; }
+.dot-reserved { background: #38bdf8; }
+
+.floor-table-node.is-colliding {
+  outline: 3px dashed #ff4757 !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 18px rgba(255, 71, 87, 0.95) !important;
+}
 
 .live-map-card {
   min-height: 600px;
