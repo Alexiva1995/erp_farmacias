@@ -135,6 +135,19 @@ let globalTick = 0
 const activeChefsCount = computed(() => chefs.length)
 const activeWaitersCount = computed(() => waiters.length)
 
+// Precarga de Sprites 2.5D del Exterior (Estilo Overcooked 3D cartoon suave)
+const exteriorSprites = {}
+const loadExteriorSprites = () => {
+  const keys = ['tree', 'awning', 'bench', 'street_lamp']
+  keys.forEach((key) => {
+    const img = new Image()
+    img.src = `/images/restaurant-sprites/exterior/${key}.png`
+    img.onload = () => {
+      exteriorSprites[key] = img
+    }
+  })
+}
+
 // ==========================================
 // INICIALIZACIÓN DE AGENTES (CONFINADOS AL INTERIOR REAL)
 // ==========================================
@@ -417,38 +430,38 @@ const drawExteriorStreetAndSidewalk = () => {
     true
   )
 
-  // Árboles decorativos automáticos en la acera superior
+  // Árboles y Farolas decorativas automáticas en la acera superior
   const treeCount = Math.max(2, Math.floor(zW / 240))
   for (let i = 0; i < treeCount; i++) {
     const tx = offsetX + 60 + i * (zW / treeCount)
-    const ty = offsetY - 26
-    drawTree25D(tx, ty, 20)
+    const ty = offsetY - 28
+    drawTree25D(tx, ty, 24)
+    if (exteriorSprites.street_lamp && i < treeCount - 1) {
+      ctx.drawImage(exteriorSprites.street_lamp, tx + 95, ty - 24, 34, 48)
+    }
   }
 }
 
-const drawTree25D = (x, y, r = 20) => {
+const drawTree25D = (x, y, r = 24) => {
   // Sombra
   ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
   ctx.beginPath()
-  ctx.ellipse(x + 6, y + 10, r, r * 0.65, 0, 0, Math.PI * 2)
+  ctx.ellipse(x + 4, y + 10, r, r * 0.65, 0, 0, Math.PI * 2)
   ctx.fill()
 
-  // Copa base verde oscuro
+  if (exteriorSprites.tree) {
+    ctx.drawImage(exteriorSprites.tree, x - r * 1.15, y - r * 1.25, r * 2.3, r * 2.3)
+    return
+  }
+
+  // Fallback vectorial
   ctx.fillStyle = '#2e7d32'
   ctx.beginPath()
   ctx.arc(x, y, r, 0, Math.PI * 2)
   ctx.fill()
-
-  // Volumen superior verde claro
   ctx.fillStyle = '#4caf50'
   ctx.beginPath()
   ctx.arc(x - 3, y - 4, r * 0.78, 0, Math.PI * 2)
-  ctx.fill()
-
-  // Brillo
-  ctx.fillStyle = '#81c784'
-  ctx.beginPath()
-  ctx.arc(x - 6, y - 8, r * 0.4, 0, Math.PI * 2)
   ctx.fill()
 }
 
@@ -722,17 +735,25 @@ const drawEquipment25D = () => {
       ctx.arc(cx, cy - 2, 12, 0, Math.PI * 2)
       ctx.fill()
     } else if (eq.type === 'awning') {
-      const stripes = Math.max(4, Math.floor(ew / 12))
-      const sw = ew / stripes
-      for (let i = 0; i < stripes; i++) {
-        ctx.fillStyle = i % 2 === 0 ? '#dc2626' : '#ffffff'
-        ctx.fillRect(ex + i * sw, ey, sw + 0.5, eh)
+      if (exteriorSprites.awning) {
+        ctx.drawImage(exteriorSprites.awning, ex, ey, ew, eh)
+      } else {
+        const stripes = Math.max(4, Math.floor(ew / 12))
+        const sw = ew / stripes
+        for (let i = 0; i < stripes; i++) {
+          ctx.fillStyle = i % 2 === 0 ? '#dc2626' : '#ffffff'
+          ctx.fillRect(ex + i * sw, ey, sw + 0.5, eh)
+        }
+        ctx.strokeStyle = '#7f1d1d'
+        ctx.lineWidth = 2
+        ctx.strokeRect(ex, ey, ew, eh)
       }
-      ctx.strokeStyle = '#7f1d1d'
-      ctx.lineWidth = 2
-      ctx.strokeRect(ex, ey, ew, eh)
     } else if (eq.type === 'bench') {
-      drawCounterBlock3D(ex, ey, ew, eh, '#b45309', '#78350f', '#fbbf24')
+      if (exteriorSprites.bench) {
+        ctx.drawImage(exteriorSprites.bench, ex, ey, ew, eh)
+      } else {
+        drawCounterBlock3D(ex, ey, ew, eh, '#b45309', '#78350f', '#fbbf24')
+      }
     } else if (eq.type === 'barrel') {
       ctx.fillStyle = '#78350f'
       ctx.beginPath()
@@ -1259,6 +1280,7 @@ watch(
 )
 
 onMounted(() => {
+  loadExteriorSprites()
   if (canvasRef.value) {
     ctx = canvasRef.value.getContext('2d')
     resizeCanvas()
