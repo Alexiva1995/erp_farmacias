@@ -120,12 +120,12 @@
           </div>
         </div>
 
-        <!-- Barra Métrica de la Zona Activa -->
+        <!-- Barra Métrica de la Zona Activa (Con Soporte Decimal Directo) -->
         <div v-if="currentZone && viewMode === 'builder'" class="d-flex flex-wrap align-center justify-space-between gap-3 mt-3 pt-2 border-t text-caption">
           <div class="d-flex align-center flex-wrap gap-3">
             <span class="d-flex align-center gap-1">
               <v-icon size="16" color="primary">tabler-ruler-2</v-icon>
-              <strong>Dimensiones del Local:</strong>
+              <strong>Dimensiones:</strong>
               {{ currentZoneWidth }} m × {{ currentZoneHeight }} m
               <v-chip size="x-small" color="primary" variant="flat" class="font-weight-bold ml-1">
                 {{ currentZoneArea }} m²
@@ -134,28 +134,47 @@
 
             <span class="text-medium-emphasis">|</span>
 
-            <span>
-              <strong>Mesas:</strong> {{ filteredTables.length }}
-            </span>
-            <span>
-              <strong>Áreas Arquitectónicas:</strong> {{ layoutAreas.length }}
-            </span>
+            <span><strong>Mesas:</strong> {{ filteredTables.length }}</span>
+            <span><strong>Equipos/Frío:</strong> {{ layoutEquipment.length }}</span>
+            <span><strong>Secciones:</strong> {{ layoutAreas.length }}</span>
           </div>
 
-          <!-- Controles Rápidos de Medidas y Snap -->
-          <div class="d-flex align-center gap-3">
+          <!-- Controles Rápidos de Medidas con Decimales y Snap -->
+          <div class="d-flex align-center flex-wrap gap-2">
             <div class="d-flex align-center gap-1">
-              <span class="text-medium-emphasis">Ancho (m):</span>
-              <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="changeDimension('width', -1)" />
-              <strong class="mx-1">{{ currentZoneWidth }}m</strong>
-              <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="changeDimension('width', 1)" />
+              <span class="text-medium-emphasis">Ancho:</span>
+              <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="changeDimension('width', -0.5)" />
+              <v-text-field
+                v-model.number="currentZone.width_meters"
+                type="number"
+                step="0.1"
+                min="2"
+                max="100"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="width: 75px;"
+              />
+              <span class="text-caption font-weight-medium">m</span>
+              <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="changeDimension('width', 0.5)" />
             </div>
 
-            <div class="d-flex align-center gap-1">
-              <span class="text-medium-emphasis">Largo (m):</span>
-              <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="changeDimension('height', -1)" />
-              <strong class="mx-1">{{ currentZoneHeight }}m</strong>
-              <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="changeDimension('height', 1)" />
+            <div class="d-flex align-center gap-1 ml-2">
+              <span class="text-medium-emphasis">Largo:</span>
+              <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="changeDimension('height', -0.5)" />
+              <v-text-field
+                v-model.number="currentZone.height_meters"
+                type="number"
+                step="0.1"
+                min="2"
+                max="100"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="width: 75px;"
+              />
+              <span class="text-caption font-weight-medium">m</span>
+              <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="changeDimension('height', 0.5)" />
             </div>
 
             <v-btn
@@ -163,6 +182,7 @@
               variant="tonal"
               :color="snapToGrid ? 'primary' : 'secondary'"
               prepend-icon="tabler-magnet"
+              class="ml-2"
               @click="snapToGrid = !snapToGrid"
             >
               Snap Cuadrícula {{ snapToGrid ? 'ON' : 'OFF' }}
@@ -175,25 +195,33 @@
     <!-- MODO 1: CONSTRUCTOR DE ESPACIOS (TIPO VIDEOJUEGO / MAP EDITOR) -->
     <v-row v-if="viewMode === 'builder'" dense>
       <!-- PANEL IZQUIERDO: PALETA DE CONSTRUCCIÓN -->
-      <v-col cols="12" md="3" lg="2">
+      <v-col cols="12" md="4" lg="3">
         <v-card class="builder-toolbox-card" elevation="2" border>
           <v-tabs v-model="toolboxTab" density="compact" grow color="primary" class="border-b">
             <v-tab value="tables">
-              <v-icon size="16">tabler-table</v-icon>
+              <v-icon size="15">tabler-table</v-icon>
               <span class="text-caption ml-1">Mesas</span>
             </v-tab>
-            <v-tab value="spaces">
-              <v-icon size="16">tabler-layout-grid</v-icon>
-              <span class="text-caption ml-1">Espacios</span>
+            <v-tab value="counters">
+              <v-icon size="15">tabler-brand-shopee</v-icon>
+              <span class="text-caption ml-1">Mostrador</span>
             </v-tab>
-            <v-tab value="equip">
-              <v-icon size="16">tabler-flame</v-icon>
-              <span class="text-caption ml-1">Equipos</span>
+            <v-tab value="kitchen">
+              <v-icon size="15">tabler-flame</v-icon>
+              <span class="text-caption ml-1">Cocina</span>
+            </v-tab>
+            <v-tab value="cooling">
+              <v-icon size="15">tabler-snowflake</v-icon>
+              <span class="text-caption ml-1">Frío/Nevera</span>
+            </v-tab>
+            <v-tab value="spaces">
+              <v-icon size="15">tabler-layout-grid</v-icon>
+              <span class="text-caption ml-1">Áreas</span>
             </v-tab>
           </v-tabs>
 
           <v-card-text class="pa-2 toolbox-content">
-            <!-- PESTAÑA A: CATÁLOGO DE MESAS (1 CLIC PARA AÑADIR A ESCALA) -->
+            <!-- PESTAÑA A: CATÁLOGO DE MESAS -->
             <div v-show="toolboxTab === 'tables'">
               <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
                 Haz clic para colocar:
@@ -222,10 +250,148 @@
               </div>
             </div>
 
-            <!-- PESTAÑA B: PINTAR ESPACIOS / ÁREAS DEL LOCAL -->
-            <div v-show="toolboxTab === 'spaces'">
+            <!-- PESTAÑA B: MOSTRADORES & BARRAS -->
+            <div v-show="toolboxTab === 'counters'">
               <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
-                Áreas y Divisiones:
+                Mostradores de Salón y Atención:
+              </div>
+
+              <div class="d-flex flex-column gap-2">
+                <v-btn
+                  v-for="counter in counterPresets"
+                  :key="counter.id"
+                  variant="tonal"
+                  :color="counter.color || 'info'"
+                  block
+                  class="justify-start text-left py-2 h-auto"
+                  @click="addCounterItem(counter)"
+                >
+                  <v-avatar size="32" :color="counter.color || 'info'" variant="flat" class="mr-2 rounded">
+                    <v-icon size="18">{{ counter.icon }}</v-icon>
+                  </v-avatar>
+                  <div class="d-flex flex-column text-left">
+                    <span class="font-weight-bold text-caption">{{ counter.title }}</span>
+                    <span class="text-caption text-medium-emphasis" style="font-size: 11px;">
+                      {{ counter.desc }} • {{ counter.w }}m×{{ counter.h }}m
+                    </span>
+                  </div>
+                </v-btn>
+              </div>
+            </div>
+
+            <!-- PESTAÑA C: COCINA & ESTACIONES KDS -->
+            <div v-show="toolboxTab === 'kitchen'">
+              <!-- Botón Prominente: Crear Nueva Estación de Cocina -->
+              <v-btn
+                color="warning"
+                variant="flat"
+                block
+                prepend-icon="tabler-plus"
+                class="mb-3 font-weight-bold"
+                @click="openCreateStationModal"
+              >
+                + Nueva Estación de Cocina
+              </v-btn>
+
+              <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
+                Estaciones KDS Disponibles:
+              </div>
+
+              <!-- Listado de Estaciones de Cocina Registradas -->
+              <div class="d-flex flex-column gap-2 mb-3">
+                <v-btn
+                  v-for="st in kitchenStationsList"
+                  :key="`st_${st.id}`"
+                  variant="tonal"
+                  color="warning"
+                  block
+                  class="justify-start text-left py-2 h-auto"
+                  @click="addStationToCanvas(st)"
+                >
+                  <v-avatar size="32" color="warning" variant="flat" class="mr-2 rounded">
+                    <v-icon size="18">{{ st.icon || 'tabler-flame' }}</v-icon>
+                  </v-avatar>
+                  <div class="d-flex flex-column text-left">
+                    <span class="font-weight-bold text-caption">{{ st.name }}</span>
+                    <span class="text-caption text-medium-emphasis" style="font-size: 11px;">
+                      Código: {{ st.code || 'KDS' }} • 2.0m×1.0m
+                    </span>
+                  </div>
+                </v-btn>
+              </div>
+
+              <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
+                Mobiliario de Cocina:
+              </div>
+
+              <div class="d-flex flex-column gap-2">
+                <v-btn
+                  v-for="equip in kitchenEquipPresets"
+                  :key="equip.id"
+                  variant="tonal"
+                  color="secondary"
+                  block
+                  class="justify-start text-left py-2 h-auto"
+                  @click="addEquipmentItem(equip)"
+                >
+                  <v-avatar size="32" color="secondary" variant="flat" class="mr-2 rounded">
+                    <v-icon size="18">{{ equip.icon }}</v-icon>
+                  </v-avatar>
+                  <div class="d-flex flex-column text-left">
+                    <span class="font-weight-bold text-caption">{{ equip.title }}</span>
+                    <span class="text-caption text-medium-emphasis" style="font-size: 11px;">
+                      {{ equip.desc }} • {{ equip.w }}m×{{ equip.h }}m
+                    </span>
+                  </div>
+                </v-btn>
+              </div>
+            </div>
+
+            <!-- PESTAÑA D: FRÍO, NEVERAS Y REFRIGERADORES -->
+            <div v-show="toolboxTab === 'cooling'">
+              <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
+                Refrigeración & Frío Comercial:
+              </div>
+
+              <div class="d-flex flex-column gap-2">
+                <v-btn
+                  v-for="cooler in coolingPresets"
+                  :key="cooler.id"
+                  variant="tonal"
+                  color="cyan-darken-1"
+                  block
+                  class="justify-start text-left py-2 h-auto"
+                  @click="addCoolerItem(cooler)"
+                >
+                  <v-avatar size="32" color="cyan-darken-1" variant="flat" class="mr-2 rounded">
+                    <v-icon size="18">{{ cooler.icon }}</v-icon>
+                  </v-avatar>
+                  <div class="d-flex flex-column text-left">
+                    <span class="font-weight-bold text-caption">{{ cooler.title }}</span>
+                    <span class="text-caption text-medium-emphasis" style="font-size: 11px;">
+                      {{ cooler.desc }}
+                    </span>
+                  </div>
+                </v-btn>
+              </div>
+            </div>
+
+            <!-- PESTAÑA E: ÁREAS Y SECCIONES ARQUITECTÓNICAS -->
+            <div v-show="toolboxTab === 'spaces'">
+              <!-- Botón Prominente: Crear Nueva Sección Personalizada -->
+              <v-btn
+                color="primary"
+                variant="flat"
+                block
+                prepend-icon="tabler-plus"
+                class="mb-3 font-weight-bold"
+                @click="openCreateCustomAreaModal"
+              >
+                + Nueva Sección Personalizada
+              </v-btn>
+
+              <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
+                Secciones Prediseñadas:
               </div>
 
               <div class="d-flex flex-column gap-2">
@@ -244,36 +410,7 @@
                   <div class="d-flex flex-column text-left">
                     <span class="font-weight-bold text-caption">{{ areaType.title }}</span>
                     <span class="text-caption text-medium-emphasis" style="font-size: 11px;">
-                      {{ areaType.desc }}
-                    </span>
-                  </div>
-                </v-btn>
-              </div>
-            </div>
-
-            <!-- PESTAÑA C: EQUIPAMIENTO OPERATIVO (COCINA, POS, PASE) -->
-            <div v-show="toolboxTab === 'equip'">
-              <div class="text-caption font-weight-bold text-medium-emphasis mb-2 text-uppercase">
-                Mobiliario y Equipos:
-              </div>
-
-              <div class="d-flex flex-column gap-2">
-                <v-btn
-                  v-for="equip in equipmentItems"
-                  :key="equip.id"
-                  variant="tonal"
-                  color="warning"
-                  block
-                  class="justify-start text-left py-2 h-auto"
-                  @click="addEquipmentItem(equip)"
-                >
-                  <v-avatar size="32" color="warning" variant="flat" class="mr-2 rounded">
-                    <v-icon size="18">{{ equip.icon }}</v-icon>
-                  </v-avatar>
-                  <div class="d-flex flex-column text-left">
-                    <span class="font-weight-bold text-caption">{{ equip.title }}</span>
-                    <span class="text-caption text-medium-emphasis" style="font-size: 11px;">
-                      {{ equip.desc }}
+                      {{ areaType.desc }} • {{ areaType.w }}m×{{ areaType.h }}m
                     </span>
                   </div>
                 </v-btn>
@@ -284,14 +421,14 @@
       </v-col>
 
       <!-- ÁREA CENTRAL: LIENZO MÉTRICO INTERACTIVO -->
-      <v-col cols="12" md="9" lg="10">
+      <v-col cols="12" md="8" lg="9">
         <v-card class="builder-canvas-wrapper overflow-hidden" elevation="2">
           <!-- Barra de Controles de Lienzo -->
           <div class="canvas-header-bar d-flex align-center justify-space-between px-3 py-2 bg-surface-variant text-caption">
             <div class="d-flex align-center gap-2">
               <v-icon size="16">tabler-grid-dots</v-icon>
               <span>Escala: 1 celda = 1 metro ({{ cellPixelSize }} px)</span>
-              <span class="text-medium-emphasis">• Arrastra cualquier elemento para ubicarlo</span>
+              <span class="text-medium-emphasis">• Soporta medidas decimales y snap magnético</span>
             </div>
 
             <div class="d-flex align-center gap-1">
@@ -319,7 +456,7 @@
               <!-- REGLAS MÉTRICAS SUPERIOR E IZQUIERDA -->
               <div class="ruler-top">
                 <span
-                  v-for="m in currentZoneWidth"
+                  v-for="m in Math.ceil(currentZoneWidth)"
                   :key="`m-top-${m}`"
                   class="ruler-mark-x text-caption"
                   :style="{ left: `${(m - 1) * cellPixelSize + 4}px` }"
@@ -329,7 +466,7 @@
               </div>
               <div class="ruler-left">
                 <span
-                  v-for="m in currentZoneHeight"
+                  v-for="m in Math.ceil(currentZoneHeight)"
                   :key="`m-left-${m}`"
                   class="ruler-mark-y text-caption"
                   :style="{ top: `${(m - 1) * cellPixelSize + 2}px` }"
@@ -338,7 +475,7 @@
                 </span>
               </div>
 
-              <!-- 1. CAPA DE ÁREAS ARQUITECTÓNICAS PINTADAS (Cocina, Depósito, Terraza, Muros) -->
+              <!-- 1. CAPA DE ÁREAS ARQUITECTÓNICAS (Cocina, Depósito, Terraza, Muros, Secciones) -->
               <div
                 v-for="area in layoutAreas"
                 :key="area.id"
@@ -352,24 +489,28 @@
                   top: `${area.y * cellPixelSize}px`,
                   width: `${area.w * cellPixelSize}px`,
                   height: `${area.h * cellPixelSize}px`,
+                  borderColor: area.color || undefined,
                 }"
                 draggable="true"
                 @dragstart="handleAreaDragStart(area, $event)"
                 @click.stop="selectObject(area, 'area')"
               >
-                <div class="area-badge d-flex align-center gap-1 pa-1">
+                <div class="area-badge d-flex align-center gap-1 pa-1" :style="{ backgroundColor: area.color ? `${area.color}dd` : undefined }">
                   <v-icon size="14">{{ getAreaIcon(area.type) }}</v-icon>
-                  <span class="font-weight-bold text-caption">{{ area.name }}</span>
-                  <span class="text-caption opacity-75">({{ area.w }}m×{{ area.h }}m)</span>
+                  <span class="font-weight-bold text-caption text-truncate">{{ area.name }}</span>
+                  <span class="text-caption opacity-75">({{ Number(area.w).toFixed(1) }}m×{{ Number(area.h).toFixed(1) }}m)</span>
                 </div>
               </div>
 
-              <!-- 2. CAPA DE EQUIPAMIENTO (Pase, Caja, KDS) -->
+              <!-- 2. CAPA DE MOSTRADORES, NEVERAS Y EQUIPAMIENTO -->
               <div
                 v-for="eq in layoutEquipment"
                 :key="eq.id"
-                class="equipment-block position-absolute d-flex flex-column align-center justify-center"
-                :class="{ 'is-selected': selectedObject?.id === eq.id && selectedObject?.kind === 'equipment' }"
+                class="equipment-block position-absolute d-flex flex-column align-center justify-center pa-1"
+                :class="[
+                  `equip-kind-${eq.type || 'station'}`,
+                  { 'is-selected': selectedObject?.id === eq.id && selectedObject?.kind === 'equipment' }
+                ]"
                 :style="{
                   left: `${eq.x * cellPixelSize}px`,
                   top: `${eq.y * cellPixelSize}px`,
@@ -380,11 +521,16 @@
                 @dragstart="handleEquipmentDragStart(eq, $event)"
                 @click.stop="selectObject(eq, 'equipment')"
               >
-                <v-icon size="18">{{ eq.icon || 'tabler-box' }}</v-icon>
-                <span class="font-weight-bold text-caption text-center">{{ eq.name }}</span>
+                <div class="d-flex align-center gap-1 text-truncate">
+                  <v-icon size="16">{{ eq.icon || 'tabler-box' }}</v-icon>
+                  <span class="font-weight-bold text-caption text-truncate">{{ eq.name }}</span>
+                </div>
+                <span class="text-caption opacity-75" style="font-size: 10px;">
+                  {{ Number(eq.w).toFixed(1) }}m × {{ Number(eq.h).toFixed(1) }}m
+                </span>
               </div>
 
-              <!-- 3. CAPA DE MESAS (CON SNAP Y ESTILOS) -->
+              <!-- 3. CAPA DE MESAS -->
               <div
                 v-for="table in filteredTables"
                 :key="table.id"
@@ -420,7 +566,7 @@
           </div>
         </v-card>
 
-        <!-- PANEL INFERIOR INSPECTOR: PROPIEDADES DEL OBJETO SELECCIONADO -->
+        <!-- PANEL INFERIOR INSPECTOR: PROPIEDADES DEL OBJETO SELECCIONADO (CON DECIMALES) -->
         <v-expand-transition>
           <v-card v-if="selectedObject" class="mt-3" elevation="2" border>
             <v-card-text class="py-2 px-3">
@@ -438,7 +584,7 @@
                   </div>
                 </div>
 
-                <!-- Controles de Edición -->
+                <!-- Controles de Edición de Medidas y Rotación -->
                 <div class="d-flex align-center flex-wrap gap-2">
                   <!-- Si es Mesa -->
                   <template v-if="selectedObject.kind === 'table'">
@@ -476,17 +622,92 @@
                     </v-btn>
                   </template>
 
-                  <!-- Si es Área Arquitectónica (Cocina, Depósito, etc.) -->
-                  <template v-else-if="selectedObject.kind === 'area'">
-                    <span class="text-caption text-medium-emphasis">Ancho (m):</span>
-                    <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="resizeSelectedArea('w', -1)" />
-                    <strong>{{ selectedObject.data.w }}m</strong>
-                    <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="resizeSelectedArea('w', 1)" />
+                  <!-- Si es Estación, Mostrador o Nevera/Frío (Equipment) -->
+                  <template v-else-if="selectedObject.kind === 'equipment'">
+                    <div class="d-flex align-center gap-1">
+                      <span class="text-caption text-medium-emphasis">Ancho (m):</span>
+                      <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="resizeSelectedEquipment('w', -0.5)" />
+                      <v-text-field
+                        v-model.number="selectedObject.data.w"
+                        type="number"
+                        step="0.1"
+                        min="0.3"
+                        max="50"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="width: 76px;"
+                      />
+                      <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="resizeSelectedEquipment('w', 0.5)" />
+                    </div>
 
-                    <span class="text-caption text-medium-emphasis ml-2">Largo (m):</span>
-                    <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="resizeSelectedArea('h', -1)" />
-                    <strong>{{ selectedObject.data.h }}m</strong>
-                    <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="resizeSelectedArea('h', 1)" />
+                    <div class="d-flex align-center gap-1 ml-1">
+                      <span class="text-caption text-medium-emphasis">Largo (m):</span>
+                      <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="resizeSelectedEquipment('h', -0.5)" />
+                      <v-text-field
+                        v-model.number="selectedObject.data.h"
+                        type="number"
+                        step="0.1"
+                        min="0.3"
+                        max="50"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="width: 76px;"
+                      />
+                      <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="resizeSelectedEquipment('h', 0.5)" />
+                    </div>
+
+                    <v-chip size="small" variant="tonal" color="primary" class="ml-1 font-weight-bold">
+                      {{ (Number(selectedObject.data.w || 1) * Number(selectedObject.data.h || 1)).toFixed(2) }} m²
+                    </v-chip>
+
+                    <v-divider vertical class="mx-1" />
+
+                    <v-btn size="x-small" variant="tonal" color="secondary" prepend-icon="tabler-rotate" @click="rotateSelectedEquipment">
+                      Girar 90°
+                    </v-btn>
+                  </template>
+
+                  <!-- Si es Área / Sección Arquitectónica -->
+                  <template v-else-if="selectedObject.kind === 'area'">
+                    <div class="d-flex align-center gap-1">
+                      <span class="text-caption text-medium-emphasis">Ancho (m):</span>
+                      <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="resizeSelectedArea('w', -0.5)" />
+                      <v-text-field
+                        v-model.number="selectedObject.data.w"
+                        type="number"
+                        step="0.1"
+                        min="0.5"
+                        max="100"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="width: 76px;"
+                      />
+                      <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="resizeSelectedArea('w', 0.5)" />
+                    </div>
+
+                    <div class="d-flex align-center gap-1 ml-1">
+                      <span class="text-caption text-medium-emphasis">Largo (m):</span>
+                      <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="resizeSelectedArea('h', -0.5)" />
+                      <v-text-field
+                        v-model.number="selectedObject.data.h"
+                        type="number"
+                        step="0.1"
+                        min="0.5"
+                        max="100"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="width: 76px;"
+                      />
+                      <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="resizeSelectedArea('h', 0.5)" />
+                    </div>
+
+                    <v-chip size="small" variant="tonal" color="primary" class="ml-1 font-weight-bold">
+                      {{ (Number(selectedObject.data.w || 1) * Number(selectedObject.data.h || 1)).toFixed(2) }} m²
+                    </v-chip>
                   </template>
 
                   <!-- Botón Eliminar Universal -->
@@ -572,7 +793,190 @@
       </v-card>
     </div>
 
-    <!-- MODAL: GESTIÓN DE PLANTA / ZONA (NOMBRE, DIMENSIONES Y ESTILO) -->
+    <!-- MODAL: CREAR NUEVA SECCIÓN PERSONALIZADA -->
+    <v-dialog v-model="showCreateCustomAreaModal" max-width="500">
+      <v-card>
+        <v-card-title class="bg-primary text-white py-3 px-4 d-flex align-center justify-space-between">
+          <div class="d-flex align-center gap-2">
+            <v-icon>tabler-layout-grid-add</v-icon>
+            <span class="font-weight-bold">Nueva Sección / Área Personalizada</span>
+          </div>
+          <v-btn icon="tabler-x" variant="text" size="small" color="white" @click="showCreateCustomAreaModal = false" />
+        </v-card-title>
+        <v-card-text class="pa-4">
+          <v-form @submit.prevent="submitCreateCustomArea">
+            <v-text-field
+              v-model="customAreaForm.name"
+              label="Nombre de la Sección"
+              placeholder="Ej: Área de Lavado, Zona Buffet, Cava de Vinos, Delivery, Baños"
+              density="compact"
+              variant="outlined"
+              prepend-inner-icon="tabler-tag"
+              class="mb-3"
+              required
+            />
+
+            <v-select
+              v-model="customAreaForm.type"
+              :items="[
+                { title: 'Zona de Cocina (Azulejo)', value: 'kitchen' },
+                { title: 'Depósito / Almacén (Concreto)', value: 'storage' },
+                { title: 'Barra / Bar (Madera/Azul)', value: 'bar_zone' },
+                { title: 'Terraza / Jardín (Césped)', value: 'terrace' },
+                { title: 'Muro / Pared Divisoria', value: 'wall' },
+                { title: 'Entrada / Recepción', value: 'entrance' },
+                { title: 'Área Demarcada Genérica', value: 'pass_counter' }
+              ]"
+              label="Estilo de Suelo / Textura"
+              density="compact"
+              variant="outlined"
+              class="mb-3"
+            />
+
+            <div class="text-caption font-weight-bold text-medium-emphasis mb-1">
+              Dimensiones de la Sección (con decimales):
+            </div>
+            <v-row dense>
+              <v-col cols="6">
+                <v-text-field
+                  v-model.number="customAreaForm.w"
+                  type="number"
+                  step="0.1"
+                  min="0.5"
+                  max="50"
+                  label="Ancho en metros"
+                  density="compact"
+                  variant="outlined"
+                  class="mb-3"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-text-field
+                  v-model.number="customAreaForm.h"
+                  type="number"
+                  step="0.1"
+                  min="0.5"
+                  max="50"
+                  label="Largo en metros"
+                  density="compact"
+                  variant="outlined"
+                  class="mb-3"
+                />
+              </v-col>
+            </v-row>
+
+            <v-alert density="compact" variant="tonal" color="primary" class="mb-3 text-caption">
+              Superficie: <strong>{{ (Number(customAreaForm.w || 1) * Number(customAreaForm.h || 1)).toFixed(2) }} m²</strong>
+            </v-alert>
+
+            <div class="d-flex justify-end gap-2 mt-2">
+              <v-btn variant="text" @click="showCreateCustomAreaModal = false">Cancelar</v-btn>
+              <v-btn type="submit" color="primary" :loading="submittingAction">
+                Crear y Colocar en Plano
+              </v-btn>
+            </div>
+          </v-form>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- MODAL: CREAR NUEVA ESTACIÓN DE COCINA -->
+    <v-dialog v-model="showCreateStationModal" max-width="500">
+      <v-card>
+        <v-card-title class="bg-warning text-white py-3 px-4 d-flex align-center justify-space-between">
+          <div class="d-flex align-center gap-2">
+            <v-icon>tabler-flame</v-icon>
+            <span class="font-weight-bold">Nueva Estación de Cocina KDS</span>
+          </div>
+          <v-btn icon="tabler-x" variant="text" size="small" color="white" @click="showCreateStationModal = false" />
+        </v-card-title>
+        <v-card-text class="pa-4">
+          <v-form @submit.prevent="submitCreateStation">
+            <v-text-field
+              v-model="createStationForm.name"
+              label="Nombre de la Estación"
+              placeholder="Ej: Freidoras, Horno de Pizza, Plancha, Repostería"
+              density="compact"
+              variant="outlined"
+              prepend-inner-icon="tabler-tag"
+              class="mb-3"
+              required
+            />
+
+            <v-row dense>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="createStationForm.code"
+                  label="Código KDS (opcional)"
+                  placeholder="Ej: FRY, PIZZA"
+                  density="compact"
+                  variant="outlined"
+                  class="mb-3"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-select
+                  v-model="createStationForm.icon"
+                  :items="[
+                    { title: 'Fuego / Parrilla', value: 'tabler-flame' },
+                    { title: 'Pizza / Horno', value: 'tabler-pizza' },
+                    { title: 'Cuchillo / Corte', value: 'tabler-tools-kitchen-2' },
+                    { title: 'Bebidas / Bar', value: 'tabler-glass-full' },
+                    { title: 'Pescado / Mar', value: 'tabler-fish' },
+                    { title: 'Panadería / Horno', value: 'tabler-bread' }
+                  ]"
+                  label="Icono"
+                  density="compact"
+                  variant="outlined"
+                  class="mb-3"
+                />
+              </v-col>
+            </v-row>
+
+            <div class="text-caption font-weight-bold text-medium-emphasis mb-1">
+              Dimensiones de la Estación en el Plano (metros con decimales):
+            </div>
+            <v-row dense>
+              <v-col cols="6">
+                <v-text-field
+                  v-model.number="createStationForm.width_m"
+                  type="number"
+                  step="0.1"
+                  min="0.5"
+                  max="10"
+                  label="Ancho (metros)"
+                  density="compact"
+                  variant="outlined"
+                  class="mb-3"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-text-field
+                  v-model.number="createStationForm.height_m"
+                  type="number"
+                  step="0.1"
+                  min="0.5"
+                  max="10"
+                  label="Largo (metros)"
+                  density="compact"
+                  variant="outlined"
+                  class="mb-3"
+                />
+              </v-col>
+            </v-row>
+
+            <div class="d-flex justify-end gap-2 mt-2">
+              <v-btn variant="text" @click="showCreateStationModal = false">Cancelar</v-btn>
+              <v-btn type="submit" color="warning" :loading="submittingAction">
+                Crear y Colocar en Plano
+              </v-btn>
+            </div>
+          </v-form>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- MODAL: GESTIÓN DE PLANTA / ZONA -->
     <v-dialog v-model="showZoneModal" max-width="520">
       <v-card>
         <v-card-title class="bg-surface-variant py-3 px-4 d-flex align-center justify-space-between">
@@ -594,13 +998,14 @@
               required
             />
 
-            <!-- Medidas en Metros y Cálculo de m² -->
+            <!-- Medidas en Metros con decimales -->
             <v-row dense>
               <v-col cols="6">
                 <v-text-field
                   v-model.number="zoneForm.width_meters"
                   type="number"
-                  min="3"
+                  step="0.1"
+                  min="2"
                   max="100"
                   label="Ancho en metros"
                   prepend-inner-icon="tabler-ruler"
@@ -614,7 +1019,8 @@
                 <v-text-field
                   v-model.number="zoneForm.height_meters"
                   type="number"
-                  min="3"
+                  step="0.1"
+                  min="2"
                   max="100"
                   label="Largo en metros"
                   prepend-inner-icon="tabler-ruler"
@@ -627,7 +1033,7 @@
             </v-row>
 
             <v-alert density="compact" variant="tonal" color="primary" class="mb-3 text-caption">
-              Superficie calculada: <strong>{{ (Number(zoneForm.width_meters || 12) * Number(zoneForm.height_meters || 8)).toFixed(0) }} m²</strong>
+              Superficie calculada: <strong>{{ (Number(zoneForm.width_meters || 12) * Number(zoneForm.height_meters || 8)).toFixed(2) }} m²</strong>
             </v-alert>
 
             <v-select
@@ -758,7 +1164,7 @@
         </v-card-title>
         <v-card-text class="pa-4">
           <p class="text-body-2 mb-2">
-            ¿Deseas eliminar todas las mesas y áreas de <strong>{{ currentZone?.name }}</strong> para empezar desde un lienzo en blanco?
+            ¿Deseas eliminar todas las mesas, áreas y equipos de <strong>{{ currentZone?.name }}</strong> para empezar desde un lienzo en blanco?
           </p>
         </v-card-text>
         <v-card-actions class="px-4 pb-4 justify-end gap-2">
@@ -880,6 +1286,8 @@ const showDeleteZoneConfirm = ref(false)
 const showClearZoneModal = ref(false)
 const showEditTableModal = ref(false)
 const showTableActionModal = ref(false)
+const showCreateStationModal = ref(false)
+const showCreateCustomAreaModal = ref(false)
 const isEditingZone = ref(false)
 
 // Objeto seleccionado en el canvas del constructor
@@ -905,8 +1313,8 @@ const zoneForm = reactive({
   id: null,
   name: '',
   background_style: 'wooden',
-  width_meters: 12,
-  height_meters: 8,
+  width_meters: 12.0,
+  height_meters: 8.0,
 })
 
 const editTableForm = reactive({
@@ -917,6 +1325,23 @@ const editTableForm = reactive({
   width: 70,
   height: 70,
   rotation: 0,
+})
+
+const createStationForm = reactive({
+  name: '',
+  code: '',
+  color: '#ff9f43',
+  icon: 'tabler-flame',
+  width_m: 2.0,
+  height_m: 1.0,
+})
+
+const customAreaForm = reactive({
+  name: '',
+  type: 'custom',
+  color: '#00cfe8',
+  w: 3.5,
+  h: 2.5,
 })
 
 const openOrderForm = reactive({
@@ -935,21 +1360,38 @@ const tablePresets = [
   { id: 'bar', title: 'Módulo de Barra', capacity: 1, shape: 'bar', width: 50, height: 50, dimMeters: '0.8x0.8', icon: 'tabler-glass-full' },
 ]
 
-const spaceAreaTypes = [
-  { id: 'kitchen', title: 'Zona de Cocina', type: 'kitchen', w: 4, h: 3, btnColor: 'error', icon: 'tabler-tools-kitchen-2', desc: 'Piso cerámico blanco' },
-  { id: 'pass_counter', title: 'Mostrador de Pase', type: 'pass_counter', w: 3, h: 1, btnColor: 'warning', icon: 'tabler-bell', desc: 'Entrega de platos a meseros' },
-  { id: 'storage', title: 'Depósito / Almacén', type: 'storage', w: 3, h: 2, btnColor: 'secondary', icon: 'tabler-archive', desc: 'Insumos y neveras' },
-  { id: 'bar_zone', title: 'Zona de Barra / Bar', type: 'bar_zone', w: 4, h: 2, btnColor: 'info', icon: 'tabler-glass', desc: 'Coctelería y tragos' },
-  { id: 'terrace', title: 'Terraza / Jardín', type: 'terrace', w: 4, h: 3, btnColor: 'success', icon: 'tabler-plant', desc: 'Piso deck / césped' },
-  { id: 'wall', title: 'Muro / Pared', type: 'wall', w: 3, h: 1, btnColor: 'grey-darken-2', icon: 'tabler-wall', desc: 'División estructural' },
-  { id: 'entrance', title: 'Entrada / Puerta', type: 'entrance', w: 2, h: 1, btnColor: 'purple', icon: 'tabler-door-enter', desc: 'Recepción y bienvenida' },
+// MOSTRADORES & BARRAS
+const counterPresets = [
+  { id: 'cnt_reception', title: 'Mostrador de Recepción', name: 'Recepción', type: 'counter', w: 2.5, h: 1.0, color: 'info', icon: 'tabler-user-check', desc: 'Atención y reservas' },
+  { id: 'cnt_pass', title: 'Mostrador de Pase (KDS)', name: 'Pase KDS', type: 'pass_counter', w: 3.0, h: 1.0, color: 'warning', icon: 'tabler-bell', desc: 'Despacho de comandas' },
+  { id: 'cnt_bar', title: 'Mostrador de Barra / Bar', name: 'Barra', type: 'counter', w: 4.0, h: 1.2, color: 'primary', icon: 'tabler-glass-full', desc: 'Licores y coctelería' },
+  { id: 'cnt_cashier', title: 'Mostrador de Caja / POS', name: 'Caja POS', type: 'counter', w: 1.8, h: 1.0, color: 'success', icon: 'tabler-device-laptop', desc: 'Cobro y facturación' },
+  { id: 'cnt_buffet', title: 'Mostrador Buffet / Autoservicio', name: 'Buffet', type: 'counter', w: 3.5, h: 1.5, color: 'secondary', icon: 'tabler-meat', desc: 'Isla de comida' },
 ]
 
-const equipmentItems = [
-  { id: 'eq_grill', title: 'Parrilla & Fuego', name: 'Parrilla', w: 2, h: 1, icon: 'tabler-flame', desc: 'Estación de cocción KDS' },
-  { id: 'eq_prep', title: 'Mesa de Corte', name: 'Mesa Corte', w: 2, h: 1, icon: 'tabler-tools-kitchen', desc: 'Preparación y ensaladas' },
-  { id: 'eq_pos', title: 'Caja / Punto POS', name: 'Caja POS', w: 1, h: 1, icon: 'tabler-device-laptop', desc: 'Cobro y facturación' },
-  { id: 'eq_fridge', title: 'Cámara / Nevera', name: 'Nevera', w: 1, h: 1, icon: 'tabler-snowflake', desc: 'Refrigeración de alimentos' },
+// REFRIGERACIÓN Y FRÍO COMERCIAL
+const coolingPresets = [
+  { id: 'cool_fridge', title: 'Refrigerador Vertical', name: 'Refrigerador', type: 'cooling', w: 1.0, h: 1.0, icon: 'tabler-fridge', desc: '1 puerta vertical (1.0m × 1.0m)' },
+  { id: 'cool_double', title: 'Refrigerador 2 Puertas', name: 'Refrig. Doble', type: 'cooling', w: 1.6, h: 1.0, icon: 'tabler-fridge', desc: 'Acero inoxidable (1.6m × 1.0m)' },
+  { id: 'cool_freezer', title: 'Congelador Horizontal', name: 'Congelador', type: 'cooling', w: 1.8, h: 0.9, icon: 'tabler-snowflake', desc: 'Arcón congelador (1.8m × 0.9m)' },
+  { id: 'cool_walkin', title: 'Cámara Frigorífica', name: 'Cámara Frío', type: 'cooling', w: 3.0, h: 2.5, icon: 'tabler-building-warehouse', desc: 'Walk-in cooler (3.0m × 2.5m)' },
+  { id: 'cool_table', title: 'Mesa Fría de Prep', name: 'Mesa Fría', type: 'cooling', w: 2.0, h: 1.0, icon: 'tabler-salad', desc: 'Bajo mesada ensaladas (2.0m × 1.0m)' },
+  { id: 'cool_display', title: 'Vitrina de Bebidas', name: 'Vitrina Fría', type: 'cooling', w: 1.4, h: 0.8, icon: 'tabler-glass', desc: 'Puertas de cristal (1.4m × 0.8m)' },
+]
+
+const spaceAreaTypes = [
+  { id: 'kitchen', title: 'Zona de Cocina', type: 'kitchen', w: 4.0, h: 3.0, btnColor: 'error', icon: 'tabler-tools-kitchen-2', desc: 'Piso cerámico blanco' },
+  { id: 'storage', title: 'Depósito / Almacén', type: 'storage', w: 3.0, h: 2.0, btnColor: 'secondary', icon: 'tabler-archive', desc: 'Insumos secos' },
+  { id: 'bar_zone', title: 'Zona de Barra / Bar', type: 'bar_zone', w: 4.0, h: 2.0, btnColor: 'info', icon: 'tabler-glass', desc: 'Coctelería y tragos' },
+  { id: 'terrace', title: 'Terraza / Jardín', type: 'terrace', w: 4.0, h: 3.0, btnColor: 'success', icon: 'tabler-plant', desc: 'Piso deck / césped' },
+  { id: 'wall', title: 'Muro / Pared', type: 'wall', w: 3.0, h: 0.4, btnColor: 'grey-darken-2', icon: 'tabler-wall', desc: 'División estructural' },
+  { id: 'entrance', title: 'Entrada / Puerta', type: 'entrance', w: 2.0, h: 1.0, btnColor: 'purple', icon: 'tabler-door-enter', desc: 'Recepción y bienvenida' },
+]
+
+const kitchenEquipPresets = [
+  { id: 'eq_shelf', title: 'Estantería de Insumos', name: 'Estante Insumos', w: 2.0, h: 0.6, icon: 'tabler-archive', desc: 'Almacén de víveres' },
+  { id: 'eq_hood', title: 'Campana Extractora', name: 'Campana', w: 3.0, h: 1.0, icon: 'tabler-wind', desc: 'Extracción de humos' },
+  { id: 'eq_sink', title: 'Pila / Lavavajillas', name: 'Área Lavado', w: 2.0, h: 0.8, icon: 'tabler-droplet', desc: 'Fregadero y lavado' },
 ]
 
 // ==========================================
@@ -959,9 +1401,9 @@ const currentZone = computed(() => {
   return zones.value.find(z => z.id === selectedZoneIndex.value) || zones.value[0] || null
 })
 
-const currentZoneWidth = computed(() => Math.max(4, Number(currentZone.value?.width_meters || 12)))
-const currentZoneHeight = computed(() => Math.max(4, Number(currentZone.value?.height_meters || 8)))
-const currentZoneArea = computed(() => currentZoneWidth.value * currentZoneHeight.value)
+const currentZoneWidth = computed(() => Math.max(2, Number(currentZone.value?.width_meters || 12.0)))
+const currentZoneHeight = computed(() => Math.max(2, Number(currentZone.value?.height_meters || 8.0)))
+const currentZoneArea = computed(() => (currentZoneWidth.value * currentZoneHeight.value).toFixed(2))
 
 const canvasPixelWidth = computed(() => currentZoneWidth.value * cellPixelSize)
 const canvasPixelHeight = computed(() => currentZoneHeight.value * cellPixelSize)
@@ -969,6 +1411,15 @@ const canvasPixelHeight = computed(() => currentZoneHeight.value * cellPixelSize
 const filteredTables = computed(() => {
   if (!currentZone.value) return []
   return tables.value.filter(t => t.dining_zone_id === currentZone.value.id)
+})
+
+const kitchenStationsList = computed(() => {
+  if (kitchenStations.value.length) return kitchenStations.value
+  return [
+    { id: 1, name: 'Parrilla & Fuego', code: 'GRILL', icon: 'tabler-flame' },
+    { id: 2, name: 'Estación de Corte', code: 'PREP', icon: 'tabler-tools-kitchen-2' },
+    { id: 3, name: 'Barra de Bebidas', code: 'BAR', icon: 'tabler-glass-full' },
+  ]
 })
 
 const layoutAreas = computed({
@@ -1003,9 +1454,9 @@ const billRequestedTablesCount = computed(() => filteredTables.value.filter(t =>
 const reservedTablesCount = computed(() => filteredTables.value.filter(t => t.status === 'reserved').length)
 
 const zoneAreaM2 = (zone) => {
-  const w = Number(zone.width_meters || 12)
-  const h = Number(zone.height_meters || 8)
-  return (w * h).toFixed(0)
+  const w = Number(zone.width_meters || 12.0)
+  const h = Number(zone.height_meters || 8.0)
+  return (w * h).toFixed(1)
 }
 
 const getAreaIcon = (type) => {
@@ -1039,12 +1490,12 @@ const selectedObjectIcon = computed(() => {
 const selectedObjectSubtext = computed(() => {
   if (!selectedObject.value) return ''
   if (selectedObject.value.kind === 'table') {
-    return `Capacidad: ${selectedObject.value.data?.capacity} pers. • ${selectedObject.value.data?.width}x${selectedObject.value.data?.height}px`
+    return `Mesa • Capacidad: ${selectedObject.value.data?.capacity} pers. • ${selectedObject.value.data?.width}x${selectedObject.value.data?.height}px`
   }
   if (selectedObject.value.kind === 'area') {
-    return `Área de ${selectedObject.value.data?.w}m × ${selectedObject.value.data?.h}m (${selectedObject.value.data?.w * selectedObject.value.data?.h} m²)`
+    return `Área: ${Number(selectedObject.value.data?.w).toFixed(1)}m × ${Number(selectedObject.value.data?.h).toFixed(1)}m (${(Number(selectedObject.value.data?.w) * Number(selectedObject.value.data?.h)).toFixed(2)} m²)`
   }
-  return `Dimensiones: ${selectedObject.value.data?.w}m × ${selectedObject.value.data?.h}m`
+  return `Dimensiones: ${Number(selectedObject.value.data?.w || 1).toFixed(1)}m × ${Number(selectedObject.value.data?.h || 1).toFixed(1)}m`
 })
 
 // ==========================================
@@ -1109,7 +1560,158 @@ const addTablePreset = async (preset) => {
   }
 }
 
-// 2. Agregar Área Arquitectónica (Cocina, Pase, Depósito, Muro)
+// 2. Agregar Mostrador
+const addCounterItem = (counter) => {
+  if (!currentZone.value) return
+  const currentEq = [...layoutEquipment.value]
+  const newCounter = {
+    id: `counter_${Date.now()}`,
+    name: counter.name,
+    type: counter.type || 'counter',
+    icon: counter.icon,
+    x: 2,
+    y: 3,
+    w: counter.w || 3.0,
+    h: counter.h || 1.0,
+  }
+  currentEq.push(newCounter)
+  layoutEquipment.value = currentEq
+  selectObject(newCounter, 'equipment')
+  toast.success(`${counter.title} agregado al plano (${counter.w}m × ${counter.h}m).`)
+}
+
+// 3. Agregar Nevera / Refrigerador / Congelador
+const addCoolerItem = (cooler) => {
+  if (!currentZone.value) return
+  const currentEq = [...layoutEquipment.value]
+  const newCooler = {
+    id: `cooler_${Date.now()}`,
+    name: cooler.name,
+    type: 'cooling',
+    icon: cooler.icon,
+    x: 2,
+    y: 2,
+    w: cooler.w || 1.5,
+    h: cooler.h || 1.0,
+  }
+  currentEq.push(newCooler)
+  layoutEquipment.value = currentEq
+  selectObject(newCooler, 'equipment')
+  toast.success(`${cooler.title} agregado al plano (${cooler.w}m × ${cooler.h}m).`)
+}
+
+// 4. Agregar Estación KDS Existente al Plano
+const addStationToCanvas = (st) => {
+  if (!currentZone.value) return
+  const currentEq = [...layoutEquipment.value]
+  const newStation = {
+    id: `station_${st.id}_${Date.now()}`,
+    station_id: st.id,
+    name: st.name,
+    type: 'station',
+    icon: st.icon || 'tabler-flame',
+    x: 1,
+    y: 1,
+    w: 2.0,
+    h: 1.0,
+  }
+  currentEq.push(newStation)
+  layoutEquipment.value = currentEq
+  selectObject(newStation, 'equipment')
+  toast.success(`Estación ${st.name} colocada en el plano.`)
+}
+
+// 5. Modal para Crear Nueva Estación de Cocina KDS
+const openCreateStationModal = () => {
+  createStationForm.name = ''
+  createStationForm.code = ''
+  createStationForm.color = '#ff9f43'
+  createStationForm.icon = 'tabler-flame'
+  createStationForm.width_m = 2.0
+  createStationForm.height_m = 1.0
+  showCreateStationModal.value = true
+}
+
+const submitCreateStation = async () => {
+  if (!createStationForm.name.trim()) {
+    toast.error('Indica el nombre de la estación.')
+    return
+  }
+
+  const generatedCode = (createStationForm.code || createStationForm.name.substring(0, 5)).toUpperCase().replace(/\s+/g, '')
+
+  submittingAction.value = true
+  try {
+    const res = await axios.post('/kitchen-stations', {
+      name: createStationForm.name,
+      code: generatedCode,
+      color: createStationForm.color,
+      icon: createStationForm.icon,
+    })
+
+    const newStationData = res.data?.data || res.data
+    toast.success('¡Nueva estación de cocina creada con éxito!')
+    showCreateStationModal.value = false
+
+    const currentEq = [...layoutEquipment.value]
+    const newCanvasItem = {
+      id: `station_${newStationData?.id || Date.now()}`,
+      station_id: newStationData?.id,
+      name: createStationForm.name,
+      type: 'station',
+      icon: createStationForm.icon,
+      x: 1,
+      y: 1,
+      w: Number(createStationForm.width_m || 2.0),
+      h: Number(createStationForm.height_m || 1.0),
+    }
+    currentEq.push(newCanvasItem)
+    layoutEquipment.value = currentEq
+    selectObject(newCanvasItem, 'equipment')
+
+    await fetchOverview(true)
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Error al crear estación de cocina.')
+  } finally {
+    submittingAction.value = false
+  }
+}
+
+// 6. Modal para Crear Nueva Sección / Área Personalizada
+const openCreateCustomAreaModal = () => {
+  customAreaForm.name = ''
+  customAreaForm.type = 'custom'
+  customAreaForm.color = '#00cfe8'
+  customAreaForm.w = 3.5
+  customAreaForm.h = 2.5
+  showCreateCustomAreaModal.value = true
+}
+
+const submitCreateCustomArea = () => {
+  if (!customAreaForm.name.trim()) {
+    toast.error('Indica el nombre de la sección.')
+    return
+  }
+
+  const currentAreas = [...layoutAreas.value]
+  const newArea = {
+    id: `area_${Date.now()}`,
+    name: customAreaForm.name,
+    type: customAreaForm.type,
+    color: customAreaForm.color,
+    x: 1,
+    y: 1,
+    w: Number(customAreaForm.w || 3.0),
+    h: Number(customAreaForm.h || 2.0),
+  }
+  currentAreas.push(newArea)
+  layoutAreas.value = currentAreas
+  selectObject(newArea, 'area')
+  showCreateCustomAreaModal.value = false
+  toast.success(`Sección "${customAreaForm.name}" añadida al plano (${customAreaForm.w}m × ${customAreaForm.h}m).`)
+}
+
+// 7. Agregar Área Arquitectónica Prediseñada
 const addArchitecturalArea = (areaType) => {
   if (!currentZone.value) return
   const currentAreas = [...layoutAreas.value]
@@ -1119,8 +1721,8 @@ const addArchitecturalArea = (areaType) => {
     name: areaType.title,
     x: 1,
     y: 1,
-    w: areaType.w,
-    h: areaType.h,
+    w: Number(areaType.w || 3.0),
+    h: Number(areaType.h || 2.0),
   }
   currentAreas.push(newArea)
   layoutAreas.value = currentAreas
@@ -1128,7 +1730,7 @@ const addArchitecturalArea = (areaType) => {
   toast.info(`${areaType.title} agregada. Ubícala en la cuadrícula.`)
 }
 
-// 3. Agregar Equipamiento
+// 8. Agregar Equipamiento Genérico
 const addEquipmentItem = (equip) => {
   if (!currentZone.value) return
   const currentEq = [...layoutEquipment.value]
@@ -1136,10 +1738,11 @@ const addEquipmentItem = (equip) => {
     id: `eq_${Date.now()}`,
     name: equip.title,
     icon: equip.icon,
+    type: 'equipment',
     x: 2,
     y: 2,
-    w: equip.w,
-    h: equip.h,
+    w: Number(equip.w || 2.0),
+    h: Number(equip.h || 1.0),
   }
   currentEq.push(newEq)
   layoutEquipment.value = currentEq
@@ -1157,7 +1760,7 @@ const clearSelection = () => {
 }
 
 // ==========================================
-// DRAG AND DROP EN EL LIENZO MÉTRICO
+// DRAG AND DROP EN EL LIENZO MÉTRICO (CON SOPORTE DECIMAL)
 // ==========================================
 const handleTableDragStart = (table, event) => {
   draggedTable.value = table
@@ -1190,6 +1793,7 @@ const handleCanvasDrop = (event) => {
     let finalY = Math.max(0, Math.min(canvasPixelHeight.value - (draggedTable.value.height || 60), rawY))
 
     if (snapToGrid.value) {
+      // Snap a medios metros (30px)
       finalX = Math.round(finalX / (cellPixelSize / 2)) * (cellPixelSize / 2)
       finalY = Math.round(finalY / (cellPixelSize / 2)) * (cellPixelSize / 2)
     }
@@ -1200,10 +1804,20 @@ const handleCanvasDrop = (event) => {
   }
 
   if (draggedArea.value) {
-    let gridX = Math.round(rawX / cellPixelSize)
-    let gridY = Math.round(rawY / cellPixelSize)
-    gridX = Math.max(0, Math.min(currentZoneWidth.value - draggedArea.value.w, gridX))
-    gridY = Math.max(0, Math.min(currentZoneHeight.value - draggedArea.value.h, gridY))
+    let gridX = rawX / cellPixelSize
+    let gridY = rawY / cellPixelSize
+
+    if (snapToGrid.value) {
+      // Snap a 0.5m
+      gridX = Math.round(gridX * 2) / 2
+      gridY = Math.round(gridY * 2) / 2
+    } else {
+      gridX = Math.round(gridX * 10) / 10
+      gridY = Math.round(gridY * 10) / 10
+    }
+
+    gridX = Math.max(0, Math.min(currentZoneWidth.value - (draggedArea.value.w || 1), gridX))
+    gridY = Math.max(0, Math.min(currentZoneHeight.value - (draggedArea.value.h || 1), gridY))
 
     draggedArea.value.x = gridX
     draggedArea.value.y = gridY
@@ -1211,10 +1825,20 @@ const handleCanvasDrop = (event) => {
   }
 
   if (draggedEquipment.value) {
-    let gridX = Math.round(rawX / cellPixelSize)
-    let gridY = Math.round(rawY / cellPixelSize)
-    gridX = Math.max(0, Math.min(currentZoneWidth.value - draggedEquipment.value.w, gridX))
-    gridY = Math.max(0, Math.min(currentZoneHeight.value - draggedEquipment.value.h, gridY))
+    let gridX = rawX / cellPixelSize
+    let gridY = rawY / cellPixelSize
+
+    if (snapToGrid.value) {
+      // Snap a 0.5m
+      gridX = Math.round(gridX * 2) / 2
+      gridY = Math.round(gridY * 2) / 2
+    } else {
+      gridX = Math.round(gridX * 10) / 10
+      gridY = Math.round(gridY * 10) / 10
+    }
+
+    gridX = Math.max(0, Math.min(currentZoneWidth.value - (draggedEquipment.value.w || 1), gridX))
+    gridY = Math.max(0, Math.min(currentZoneHeight.value - (draggedEquipment.value.h || 1), gridY))
 
     draggedEquipment.value.x = gridX
     draggedEquipment.value.y = gridY
@@ -1223,7 +1847,7 @@ const handleCanvasDrop = (event) => {
 }
 
 // ==========================================
-// CONTROLES DE OBJETO SELECCIONADO
+// CONTROLES DE OBJETO SELECCIONADO (REDIMENSIONAR / ROTAR)
 // ==========================================
 const rotateSelectedTable = (deg) => {
   if (selectedObject.value?.kind !== 'table') return
@@ -1238,13 +1862,37 @@ const scaleSelectedTable = (delta) => {
   table.height = Math.max(40, Math.min(300, (Number(table.height || 60) + delta)))
 }
 
+// Redimensionar Estaciones, Mostradores y Neveras (con decimales)
+const resizeSelectedEquipment = (dimension, delta) => {
+  if (selectedObject.value?.kind !== 'equipment') return
+  const eq = selectedObject.value.data
+  if (dimension === 'w') {
+    const currentVal = Number(eq.w || 1.0)
+    eq.w = Math.max(0.3, Math.min(currentZoneWidth.value - eq.x, Math.round((currentVal + delta) * 10) / 10))
+  } else {
+    const currentVal = Number(eq.h || 1.0)
+    eq.h = Math.max(0.3, Math.min(currentZoneHeight.value - eq.y, Math.round((currentVal + delta) * 10) / 10))
+  }
+}
+
+// Girar Estaciones, Mostradores y Neveras
+const rotateSelectedEquipment = () => {
+  if (selectedObject.value?.kind !== 'equipment') return
+  const eq = selectedObject.value.data
+  const temp = eq.w || 2.0
+  eq.w = eq.h || 1.0
+  eq.h = temp
+}
+
 const resizeSelectedArea = (dimension, delta) => {
   if (selectedObject.value?.kind !== 'area') return
   const area = selectedObject.value.data
   if (dimension === 'w') {
-    area.w = Math.max(1, Math.min(currentZoneWidth.value - area.x, area.w + delta))
+    const currentVal = Number(area.w || 1.0)
+    area.w = Math.max(0.5, Math.min(currentZoneWidth.value - area.x, Math.round((currentVal + delta) * 10) / 10))
   } else {
-    area.h = Math.max(1, Math.min(currentZoneHeight.value - area.y, area.h + delta))
+    const currentVal = Number(area.h || 1.0)
+    area.h = Math.max(0.5, Math.min(currentZoneHeight.value - area.y, Math.round((currentVal + delta) * 10) / 10))
   }
 }
 
@@ -1294,12 +1942,12 @@ const deleteSelectedObject = async () => {
     const areaId = selectedObject.value.id
     layoutAreas.value = layoutAreas.value.filter(a => a.id !== areaId)
     clearSelection()
-    toast.info('Área retirada del plano.')
+    toast.info('Sección retirada del plano.')
   } else if (selectedObject.value.kind === 'equipment') {
     const eqId = selectedObject.value.id
     layoutEquipment.value = layoutEquipment.value.filter(e => e.id !== eqId)
     clearSelection()
-    toast.info('Equipo retirado.')
+    toast.info('Elemento retirado del plano.')
   }
 }
 
@@ -1323,7 +1971,7 @@ const saveFullRestaurantDesign = async () => {
       await axios.post('/dining-floor/layout', { tables: tablePayload })
     }
 
-    // 2. Guardar dimensiones y layout_config de la zona
+    // 2. Guardar dimensiones decimales y layout_config de la zona
     await axios.put(`/dining-floor/zones/${currentZone.value.id}`, {
       name: currentZone.value.name,
       background_style: currentZone.value.background_style || 'wooden',
@@ -1343,13 +1991,15 @@ const saveFullRestaurantDesign = async () => {
   }
 }
 
-// Modificar Dimensiones de Zona al Vuelo
+// Modificar Dimensiones de Zona al Vuelo (con decimales)
 const changeDimension = (dimension, delta) => {
   if (!currentZone.value) return
   if (dimension === 'width') {
-    currentZone.value.width_meters = Math.max(4, Math.min(100, currentZoneWidth.value + delta))
+    const currentVal = Number(currentZone.value.width_meters || 12.0)
+    currentZone.value.width_meters = Math.max(2.0, Math.min(100.0, Math.round((currentVal + delta) * 10) / 10))
   } else {
-    currentZone.value.height_meters = Math.max(4, Math.min(100, currentZoneHeight.value + delta))
+    const currentVal = Number(currentZone.value.height_meters || 8.0)
+    currentZone.value.height_meters = Math.max(2.0, Math.min(100.0, Math.round((currentVal + delta) * 10) / 10))
   }
 }
 
@@ -1360,8 +2010,8 @@ const openCreateZoneModal = () => {
   isEditingZone.value = false
   zoneForm.id = null
   zoneForm.name = `Planta ${zones.value.length + 1}`
-  zoneForm.width_meters = 12
-  zoneForm.height_meters = 8
+  zoneForm.width_meters = 12.0
+  zoneForm.height_meters = 8.0
   zoneForm.background_style = 'wooden'
   showZoneModal.value = true
 }
@@ -1388,21 +2038,21 @@ const submitZoneForm = async () => {
     if (isEditingZone.value && zoneForm.id) {
       await axios.put(`/dining-floor/zones/${zoneForm.id}`, {
         name: zoneForm.name,
-        width_meters: zoneForm.width_meters,
-        height_meters: zoneForm.height_meters,
+        width_meters: Number(zoneForm.width_meters),
+        height_meters: Number(zoneForm.height_meters),
         background_style: zoneForm.background_style,
       })
       toast.success('Dimensiones de la zona actualizadas.')
     } else {
       const res = await axios.post('/dining-floor/zones', {
         name: zoneForm.name,
-        width_meters: zoneForm.width_meters,
-        height_meters: zoneForm.height_meters,
+        width_meters: Number(zoneForm.width_meters),
+        height_meters: Number(zoneForm.height_meters),
         background_style: zoneForm.background_style,
         layout_config: {
           areas: [
-            { id: 'kitchen_1', type: 'kitchen', name: 'Cocina', x: 1, y: 1, w: 4, h: 3 },
-            { id: 'pass_1', type: 'pass_counter', name: 'Mostrador de Pase', x: 1, y: 4, w: 4, h: 1 },
+            { id: 'kitchen_1', type: 'kitchen', name: 'Cocina', x: 1, y: 1, w: 4.0, h: 3.0 },
+            { id: 'pass_1', type: 'pass_counter', name: 'Mostrador de Pase', x: 1, y: 4, w: 3.0, h: 1.0 },
           ],
         },
       })
@@ -1521,7 +2171,7 @@ const submitOpenOrder = async () => {
     showTableActionModal.value = false
     await fetchOverview()
   } catch (err) {
-    toast.error('Error al abrir mesa.')
+    toast.error(err.response?.data?.message || 'Error al abrir mesa.')
   } finally {
     submittingAction.value = false
   }
@@ -1692,12 +2342,6 @@ onUnmounted(() => {
   color: #111;
 }
 
-.area-type-pass_counter {
-  background: #d35400;
-  border: 2px dashed #f39c12;
-  color: #fff;
-}
-
 .area-type-storage {
   background: #34495e;
   border: 2px solid #7f8c8d;
@@ -1728,8 +2372,14 @@ onUnmounted(() => {
   color: #fff;
 }
 
+.area-type-custom {
+  background: rgba(0, 207, 232, 0.15);
+  border: 2px dashed #00cfe8;
+  color: #fff;
+}
+
 .area-badge {
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.7);
   color: #fff;
   border-radius: 4px;
   display: inline-flex;
@@ -1740,17 +2390,49 @@ onUnmounted(() => {
   box-shadow: 0 0 20px rgba(0, 207, 232, 0.7);
 }
 
-/* EQUIPAMIENTO */
+/* MOSTRADORES Y EQUIPAMIENTO */
 .equipment-block {
-  background: #2c3e50;
-  border: 2px solid #f1c40f;
   border-radius: 6px;
   color: #fff;
   cursor: grab;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  transition: box-shadow 0.2s ease, outline 0.2s ease;
+}
+
+.equipment-block:active {
+  cursor: grabbing;
+}
+
+/* Estilos diferenciados para mostradores, estaciones y frío */
+.equip-kind-counter {
+  background: linear-gradient(135deg, #2980b9, #1c5982);
+  border: 2px solid #3498db;
+}
+
+.equip-kind-pass_counter {
+  background: linear-gradient(135deg, #d35400, #a04000);
+  border: 2px dashed #f39c12;
+}
+
+.equip-kind-station {
+  background: linear-gradient(135deg, #c0392b, #962d22);
+  border: 2px solid #f39c12;
+}
+
+.equip-kind-cooling {
+  background: linear-gradient(135deg, #1f4068, #162447);
+  border: 2px solid #00cfe8;
+  box-shadow: 0 0 10px rgba(0, 207, 232, 0.3);
+}
+
+.equip-kind-equipment {
+  background: #34495e;
+  border: 2px solid #bdc3c7;
 }
 
 .equipment-block.is-selected {
   outline: 3px solid #00cfe8;
+  box-shadow: 0 0 20px rgba(0, 207, 232, 0.8);
 }
 
 /* MESAS */

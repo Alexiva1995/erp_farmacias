@@ -344,6 +344,9 @@ const render = () => {
   // 3. Dibujar Mostrador de Pase (Pass Counter)
   drawPassCounter()
 
+  // 3.5 Dibujar Neveras, Congeladores y Equipamiento Personalizado
+  drawCustomEquipment()
+
   // 4. Dibujar Mesas y Comensales
   drawDiningTables()
 
@@ -646,6 +649,71 @@ const drawPassCounter = () => {
   ctx.font = 'bold 10px sans-serif'
   ctx.textAlign = 'center'
   ctx.fillText('PASE DE PLATOS & COMANDAS', bellX, counterY + 28)
+}
+
+// 3.5 EQUIPAMIENTO PERSONALIZADO (NEVERAS, CONGELADORES, MOSTRADORES)
+const drawCustomEquipment = () => {
+  const equipList = props.zone?.layout_config?.equipment || []
+  if (!equipList.length) return
+
+  const scale = 65
+  const offsetX = 50
+  const offsetY = 50
+
+  equipList.forEach((eq) => {
+    // Si es estación ya dibujada en drawKitchenStations, omitir duplicado
+    if (eq.type === 'station') return
+
+    const ex = offsetX + (eq.x || 0) * scale
+    const ey = offsetY + (eq.y || 0) * scale
+    const ew = (eq.w || 1.5) * scale
+    const eh = (eq.h || 1.0) * scale
+
+    // Sombra
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+    ctx.fillRect(ex + 4, ey + 4, ew, eh)
+
+    if (eq.type === 'cooling') {
+      // Nevera / Refrigerador / Congelador (Estilo Acero Inoxidable y Frío)
+      ctx.fillStyle = '#2c3e50'
+      drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
+
+      // Puertas con reflejo cian
+      ctx.fillStyle = '#34495e'
+      drawRoundedRect(ctx, ex + 3, ey + 3, ew - 6, eh - 6, 4, true, false)
+
+      // Tirador metálico
+      ctx.fillStyle = '#00cfe8'
+      ctx.fillRect(ex + ew - 10, ey + 8, 4, eh - 16)
+
+      // Icono o texto de frío
+      ctx.fillStyle = '#e0f7fa'
+      ctx.font = 'bold 10px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(`❄ ${eq.name || 'FRÍO'}`, ex + ew / 2, ey + eh / 2 + 3)
+    } else if (eq.type === 'counter') {
+      // Mostrador / Barra
+      ctx.fillStyle = '#1f3a52'
+      drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
+
+      ctx.fillStyle = '#4a90e2'
+      drawRoundedRect(ctx, ex + 2, ey + 2, ew - 4, eh - 4, 4, true, false)
+
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 10px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(eq.name || 'MOSTRADOR', ex + ew / 2, ey + eh / 2 + 3)
+    } else {
+      // Otro equipamiento
+      ctx.fillStyle = '#3d4451'
+      drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
+
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 10px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(eq.name || 'EQUIPO', ex + ew / 2, ey + eh / 2 + 3)
+    }
+  })
 }
 
 // 4. MESAS Y COMENSALES

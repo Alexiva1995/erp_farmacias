@@ -34,7 +34,7 @@ class ReturnsActionService
 
             // Órdenes de las últimas 48 horas para devoluciones
             // Usamos NOW() de MySQL para evitar discrepancias de zona horaria entre PHP y DB
-            $query = Order::whereRaw('order_date >= (NOW() - INTERVAL 48 HOUR)')
+            $query = Order::where('order_date', '>=', Carbon::now()->subHours(48))
                 ->where('status', Order::COMPLETED)
                 ->with(['client', 'details.product.laboratory', 'returns'])
                 ->where(function ($q) use ($searchTerm, $normalizedSearch) {
