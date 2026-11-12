@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Central;
 
+use App\Contracts\Suppliers\SupplierAuditServiceInterface;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
+use Stancl\Tenancy\Events\DatabaseCreated;
+use Stancl\Tenancy\Events\DatabaseMigrated;
+use Stancl\Tenancy\Events\TenantCreated;
+use Stancl\Tenancy\Events\TenantDeleted;
 use Tests\TestCase;
 
 class TenantAndBranchManagementTest extends TestCase
@@ -19,6 +25,13 @@ class TenantAndBranchManagementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Event::fake([
+            TenantCreated::class,
+            TenantDeleted::class,
+            DatabaseCreated::class,
+            DatabaseMigrated::class,
+        ]);
 
         $role = Role::firstOrCreate(['id' => 1], [
             'name' => 'Admin',

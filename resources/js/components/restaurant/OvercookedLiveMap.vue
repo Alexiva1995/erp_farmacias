@@ -424,10 +424,13 @@ const drawEnvironment = () => {
         ctx.lineWidth = 2
         ctx.strokeRect(ax, ay, aw, ah)
 
-        ctx.fillStyle = '#333'
+        // Badge con fondo oscuro para máximo contraste en el plano de cocina
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
+        drawRoundedRect(ctx, ax + 6, ay + 6, Math.min(aw - 12, 110), 20, 4, true, false)
+        ctx.fillStyle = '#ffffff'
         ctx.font = 'bold 11px sans-serif'
         ctx.textAlign = 'left'
-        ctx.fillText(area.name || 'COCINA', ax + 8, ay + 18)
+        ctx.fillText(area.name || 'COCINA', ax + 12, ay + 20)
       } else if (area.type === 'storage') {
         // Depósito
         ctx.fillStyle = '#2c3e50'
@@ -436,10 +439,12 @@ const drawEnvironment = () => {
         ctx.lineWidth = 2
         ctx.strokeRect(ax, ay, aw, ah)
 
-        ctx.fillStyle = '#fff'
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
+        drawRoundedRect(ctx, ax + 6, ay + 6, Math.min(aw - 12, 110), 20, 4, true, false)
+        ctx.fillStyle = '#ffffff'
         ctx.font = 'bold 11px sans-serif'
         ctx.textAlign = 'left'
-        ctx.fillText(area.name || 'DEPÓSITO', ax + 8, ay + 18)
+        ctx.fillText(area.name || 'DEPÓSITO', ax + 12, ay + 20)
       } else if (area.type === 'terrace') {
         // Terraza / Césped
         ctx.fillStyle = '#27ae60'
@@ -448,10 +453,12 @@ const drawEnvironment = () => {
         ctx.lineWidth = 2
         ctx.strokeRect(ax, ay, aw, ah)
 
-        ctx.fillStyle = '#fff'
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
+        drawRoundedRect(ctx, ax + 6, ay + 6, Math.min(aw - 12, 110), 20, 4, true, false)
+        ctx.fillStyle = '#ffffff'
         ctx.font = 'bold 11px sans-serif'
         ctx.textAlign = 'left'
-        ctx.fillText(area.name || 'TERRAZA', ax + 8, ay + 18)
+        ctx.fillText(area.name || 'TERRAZA', ax + 12, ay + 20)
       } else if (area.type === 'wall') {
         // Muro
         ctx.fillStyle = '#1a1a1a'
@@ -475,10 +482,12 @@ const drawEnvironment = () => {
         ctx.fillStyle = THEME.passCounterTop
         ctx.fillRect(ax + 2, ay + 2, aw - 4, ah - 4)
 
-        ctx.fillStyle = '#333'
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
+        drawRoundedRect(ctx, ax + aw / 2 - 50, ay + ah / 2 - 9, 100, 18, 4, true, false)
+        ctx.fillStyle = '#ffe082'
         ctx.font = 'bold 10px sans-serif'
         ctx.textAlign = 'center'
-        ctx.fillText('PASE DE PLATOS', ax + aw / 2, ay + ah / 2 + 3)
+        ctx.fillText('PASE DE PLATOS', ax + aw / 2, ay + ah / 2 + 4)
       }
     })
     return

@@ -80,6 +80,13 @@ class SupplierAuditService implements SupplierAuditServiceInterface
                     'relationship_label' => 'Error al conectar',
                     'relationship_color' => 'error',
                 ];
+            } finally {
+                if (function_exists('tenancy') && tenancy()->initialized) {
+                    try {
+                        tenancy()->end();
+                    } catch (\Throwable) {
+                    }
+                }
             }
         }
 
@@ -144,8 +151,9 @@ class SupplierAuditService implements SupplierAuditServiceInterface
 
         // Nombre del proveedor seleccionado
         $targetSupplierName = 'VICKMEDICALS';
-        if (Schema::hasTable('suppliers')) {
-            $sup = DB::table('suppliers')->where('id', $targetSupplierId)->first();
+        $centralConn = config('tenancy.database.central_connection', config('database.default'));
+        if (Schema::connection($centralConn)->hasTable('suppliers')) {
+            $sup = DB::connection($centralConn)->table('suppliers')->where('id', $targetSupplierId)->first();
             if ($sup && !empty($sup->name)) {
                 $targetSupplierName = $sup->name;
             }
@@ -182,13 +190,14 @@ class SupplierAuditService implements SupplierAuditServiceInterface
      */
     public function getAvailableSuppliers(): array
     {
-        if (!Schema::hasTable('suppliers')) {
+        $centralConn = config('tenancy.database.central_connection', config('database.default'));
+        if (!Schema::connection($centralConn)->hasTable('suppliers')) {
             return [
                 ['id' => 1016, 'name' => 'VICKMEDICALS', 'rif' => 'J412279149'],
             ];
         }
 
-        $suppliers = DB::table('suppliers')
+        $suppliers = DB::connection($centralConn)->table('suppliers')
             ->select(['id', 'name', 'rif', 'social_reason', 'is_active'])
             ->where(function ($q) {
                 $q->where('type', 'drogueria')

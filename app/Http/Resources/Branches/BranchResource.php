@@ -16,21 +16,23 @@ class BranchResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $isArr = is_array($this->resource);
+
         return [
-            'id' => $this->resource['id'] ?? $this->id,
-            'parent_tenant_id' => $this->resource['parent_tenant_id'] ?? $this->parent_tenant_id,
-            'company_name' => $this->resource['company_name'] ?? $this->company_name,
-            'branch_code' => $this->resource['branch_code'] ?? $this->branch_code,
-            'branch_address' => $this->resource['branch_address'] ?? $this->branch_address,
-            'branch_phone' => $this->resource['branch_phone'] ?? $this->branch_phone,
-            'is_matriz' => $this->resource['is_matriz'] ?? ($this->parent_tenant_id === null),
-            'is_branch_active' => (bool) ($this->resource['is_branch_active'] ?? $this->is_branch_active ?? true),
-            'can_create_branches' => (bool) ($this->resource['can_create_branches'] ?? $this->can_create_branches ?? false),
-            'max_branches' => (int) ($this->resource['max_branches'] ?? $this->max_branches ?? 5),
-            'domain' => $this->resource['domain'] ?? null,
-            'url' => $this->resource['url'] ?? null,
-            'database' => $this->resource['database'] ?? null,
-            'created_at' => $this->resource['created_at'] ?? $this->created_at?->toIso8601String(),
+            'id' => $isArr ? ($this->resource['id'] ?? null) : $this->id,
+            'parent_tenant_id' => $isArr ? ($this->resource['parent_tenant_id'] ?? null) : $this->parent_tenant_id,
+            'company_name' => $isArr ? ($this->resource['company_name'] ?? null) : $this->company_name,
+            'branch_code' => $isArr ? ($this->resource['branch_code'] ?? null) : $this->branch_code,
+            'branch_address' => $isArr ? ($this->resource['branch_address'] ?? null) : $this->branch_address,
+            'branch_phone' => $isArr ? ($this->resource['branch_phone'] ?? null) : $this->branch_phone,
+            'is_matriz' => $isArr ? ($this->resource['is_matriz'] ?? false) : ($this->parent_tenant_id === null),
+            'is_branch_active' => (bool) ($isArr ? ($this->resource['is_branch_active'] ?? true) : ($this->is_branch_active ?? true)),
+            'can_create_branches' => (bool) ($isArr ? ($this->resource['can_create_branches'] ?? false) : ($this->can_create_branches ?? false)),
+            'max_branches' => (int) ($isArr ? ($this->resource['max_branches'] ?? 5) : ($this->max_branches ?? 5)),
+            'domain' => $isArr ? ($this->resource['domain'] ?? null) : null,
+            'url' => $isArr ? ($this->resource['url'] ?? null) : null,
+            'database' => $isArr ? ($this->resource['database'] ?? null) : null,
+            'created_at' => $isArr ? ($this->resource['created_at'] ?? null) : $this->created_at?->toIso8601String(),
         ];
     }
 }
