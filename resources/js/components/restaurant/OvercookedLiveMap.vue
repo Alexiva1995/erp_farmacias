@@ -2,18 +2,21 @@
   <div class="overcooked-live-container position-relative overflow-hidden rounded-lg">
     <!-- Barra Flotante de Herramientas y Estado HUD -->
     <div class="overcooked-hud-bar d-flex align-center justify-space-between flex-wrap gap-2 pa-3">
-      <div class="d-flex align-center gap-2">
+      <div class="d-flex align-center gap-2 flex-wrap">
         <v-chip color="primary" variant="flat" size="small" prepend-icon="tabler-chef-hat">
-          <strong>Restaurante en Vivo</strong>
+          <strong>Salón en Vivo</strong>
         </v-chip>
-        <v-chip color="success" variant="tonal" size="small" prepend-icon="tabler-clock">
-          60 FPS Activo
+        <v-chip color="secondary" variant="tonal" size="small" prepend-icon="tabler-ruler-2">
+          {{ zoneWidthMeters }}m × {{ zoneHeightMeters }}m ({{ (zoneWidthMeters * zoneHeightMeters).toFixed(1) }} m²)
+        </v-chip>
+        <v-chip color="success" variant="tonal" size="small" prepend-icon="tabler-table">
+          {{ props.tables.length }} Mesas
         </v-chip>
         <v-chip v-if="activeChefsCount" color="warning" variant="tonal" size="small" prepend-icon="tabler-flame">
-          {{ activeChefsCount }} Chefs en Cocina
+          {{ activeChefsCount }} Chefs
         </v-chip>
         <v-chip v-if="activeWaitersCount" color="info" variant="tonal" size="small" prepend-icon="tabler-user-check">
-          {{ activeWaitersCount }} Meseros en Salón
+          {{ activeWaitersCount }} Meseros
         </v-chip>
       </div>
 
@@ -22,24 +25,24 @@
           icon="tabler-zoom-in"
           variant="tonal"
           size="x-small"
-          color="secondary"
-          title="Acercar"
+          color="white"
+          title="Acercar (+)"
           @click="zoomIn"
         />
         <v-btn
           icon="tabler-zoom-out"
           variant="tonal"
           size="x-small"
-          color="secondary"
-          title="Alejar"
+          color="white"
+          title="Alejar (-)"
           @click="zoomOut"
         />
         <v-btn
           icon="tabler-refresh"
           variant="tonal"
           size="x-small"
-          color="secondary"
-          title="Resetear Cámara"
+          color="white"
+          title="Centrar y Resetear Cámara"
           @click="resetCamera"
         />
       </div>
@@ -58,14 +61,14 @@
 
     <!-- Guía de Interacción Inferior -->
     <div class="overcooked-bottom-guide d-flex align-center justify-space-between pa-2 text-caption">
-      <div class="d-flex align-center gap-3">
-        <span><v-icon size="14" color="success">tabler-circle-filled</v-icon> Mesa Libre</span>
-        <span><v-icon size="14" color="error">tabler-circle-filled</v-icon> Mesa Comiendo</span>
+      <div class="d-flex align-center gap-3 flex-wrap">
+        <span><v-icon size="14" color="success">tabler-circle-filled</v-icon> Disponible</span>
+        <span><v-icon size="14" color="error">tabler-circle-filled</v-icon> Comensales Activos</span>
         <span><v-icon size="14" color="warning">tabler-circle-filled</v-icon> Pidiendo Cuenta</span>
         <span><v-icon size="14" color="info">tabler-circle-filled</v-icon> Reservada</span>
       </div>
-      <div class="text-medium-emphasis">
-        Haz clic en cualquier mesa o chef para interactuar • Arrastra para mover la cámara
+      <div class="text-medium-emphasis d-none d-sm-block">
+        Haz clic en cualquier mesa para abrir su comanda • Arrastra para mover la vista
       </div>
     </div>
   </div>
@@ -109,9 +112,18 @@ const camera = ref({
   dragStartY: 0,
 })
 
-// Dimensiones Virtuales del Mundo
-const worldWidth = 1400
-const worldHeight = 850
+// Escala métrica unificada con el diseñador (1 metro = 60px)
+const cellPixelSize = 60
+const offsetX = 50
+const offsetY = 50
+
+const zoneWidthMeters = computed(() => Number(props.zone?.width_meters || 12))
+const zoneHeightMeters = computed(() => Number(props.zone?.height_meters || 8))
+const zonePixelWidth = computed(() => Math.round(zoneWidthMeters.value * cellPixelSize))
+const zonePixelHeight = computed(() => Math.round(zoneHeightMeters.value * cellPixelSize))
+
+const worldWidth = computed(() => zonePixelWidth.value + offsetX * 2)
+const worldHeight = computed(() => zonePixelHeight.value + offsetY * 2)
 
 // Agentes de Simulación (Chefs, Meseros, Comensales, Partículas)
 let chefs = []
@@ -121,111 +133,136 @@ let floatingBubbles = []
 let globalTick = 0
 
 // Conteos computados para el HUD
-const activeChefsCount = computed(() => chefs.length || props.stations.length || 3)
-const activeWaitersCount = computed(() => waiters.length || 2)
+const activeChefsCount = computed(() => chefs.length)
+const activeWaitersCount = computed(() => waiters.length)
 
-// Paleta de Estilos Overcooked
+// Paleta de Estilos y Fondos del Restaurante
 const THEME = {
-  bgKitchenFloor: '#f4ede4',
-  bgKitchenTiles: '#e2d3c1',
-  bgDiningFloor: '#c99a6b',
-  bgDiningWoodDark: '#b07f4f',
-  kitchenWall: '#3d4451',
-  kitchenCounter: '#5c6475',
-  counterTop: '#cfd6e4',
-  passCounter: '#96593a',
-  passCounterTop: '#e0c29e',
-  carpetRed: '#a8292b',
-  carpetBorder: '#e4b647',
+  wooden: {
+    bg: '#3b200b',
+    line: 'rgba(255, 255, 255, 0.18)',
+    border: '#d97706',
+  },
+  grid: {
+    bg: '#10141f',
+    line: 'rgba(0, 207, 232, 0.25)',
+    border: '#00cfe8',
+  },
+  grass: {
+    bg: '#122b19',
+    line: 'rgba(255, 255, 255, 0.16)',
+    border: '#2ecc71',
+  },
+  concrete: {
+    bg: '#222630',
+    line: 'rgba(255, 255, 255, 0.16)',
+    border: '#94a3b8',
+  },
 }
 
-// Inicialización de Agentes Chefs según las Estaciones
+// ==========================================
+// INICIALIZACIÓN DE AGENTES BASADA EN DATOS REALES
+// ==========================================
+
+// Chefs: Solo se crean si hay estaciones reales en el equipamiento o área de cocina
 const initChefs = () => {
   chefs = []
-  const stationList = props.stations.length ? props.stations : [
-    { id: 1, name: 'Parrilla & Fuego', code: 'GRILL', color: 'error', icon: 'tabler-flame' },
-    { id: 2, name: 'Estación de Corte', code: 'PREP', color: 'success', icon: 'tabler-tools-kitchen-2' },
-    { id: 3, name: 'Barra de Bebidas', code: 'BAR', color: 'info', icon: 'tabler-glass-full' },
-  ]
+  const equipStations = (props.zone?.layout_config?.equipment || []).filter(e => e.type === 'station')
+  const kitchenArea = (props.zone?.layout_config?.areas || []).find(a => a.type === 'kitchen')
 
-  const kitchenArea = props.zone?.layout_config?.areas?.find(a => a.type === 'kitchen')
-  const scale = 65
-  const offsetX = 50
-  const offsetY = 50
-
-  stationList.forEach((station, index) => {
-    let stationX = 140 + index * 160
-    let stationY = 130
-    if (kitchenArea) {
-      stationX = offsetX + kitchenArea.x * scale + 50 + (index % 3) * 100
-      stationY = offsetY + kitchenArea.y * scale + 40 + Math.floor(index / 3) * 50
-    }
-
-    chefs.push({
-      id: station.id,
-      name: `Chef ${station.code || station.name}`,
-      stationName: station.name,
-      x: stationX,
-      y: stationY + 35,
-      targetX: stationX,
-      targetY: stationY + 35,
-      homeX: stationX,
-      homeY: stationY + 35,
-      color: station.color || '#e056fd',
-      state: 'cooking', // 'cooking', 'delivering', 'idle'
-      bobOffset: Math.random() * Math.PI * 2,
-      carryingDish: null,
-      cookingProgress: 0.3 + (index * 0.25) % 0.7,
-      station,
+  if (equipStations.length > 0) {
+    equipStations.forEach((eq, idx) => {
+      const sx = offsetX + Number(eq.x || 0) * cellPixelSize + (Number(eq.w || 1.5) * cellPixelSize) / 2
+      const sy = offsetY + Number(eq.y || 0) * cellPixelSize + (Number(eq.h || 1.0) * cellPixelSize) / 2
+      chefs.push({
+        id: eq.id || idx + 1,
+        name: `Chef ${eq.name || 'Cocina'}`,
+        stationName: eq.name || 'Estación',
+        x: sx,
+        y: sy + 14,
+        targetX: sx,
+        targetY: sy + 14,
+        homeX: sx,
+        homeY: sy + 14,
+        color: '#ff9f43',
+        state: 'cooking',
+        bobOffset: idx * 1.2,
+        carryingDish: null,
+        cookingProgress: (idx * 0.3) % 1.0,
+        station: eq,
+      })
     })
-  })
+  } else if (kitchenArea && props.stations.length > 0) {
+    // Si hay área de cocina y estaciones KDS registradas en el sistema
+    const kw = Number(kitchenArea.w || 3) * cellPixelSize
+    const kh = Number(kitchenArea.h || 2) * cellPixelSize
+    const kx = offsetX + Number(kitchenArea.x || 0) * cellPixelSize
+    const ky = offsetY + Number(kitchenArea.y || 0) * cellPixelSize
+
+    props.stations.forEach((station, idx) => {
+      const sx = kx + kw * ((idx + 0.5) / props.stations.length)
+      const sy = ky + kh / 2 + 10
+      chefs.push({
+        id: station.id,
+        name: `Chef ${station.code || station.name}`,
+        stationName: station.name,
+        x: sx,
+        y: sy,
+        targetX: sx,
+        targetY: sy,
+        homeX: sx,
+        homeY: sy,
+        color: station.color || '#ff9f43',
+        state: 'cooking',
+        bobOffset: idx * 1.5,
+        carryingDish: null,
+        cookingProgress: (idx * 0.25) % 1.0,
+        station,
+      })
+    })
+  }
 }
 
-// Inicialización de Agentes Meseros
+// Meseros: Solo se crean si hay mesas reales en el diseño
 const initWaiters = () => {
-  waiters = [
-    {
-      id: 1,
-      name: 'Mesero Alex',
-      x: 350,
-      y: 340,
-      targetX: 350,
-      targetY: 340,
+  waiters = []
+  if (!props.tables || !props.tables.length) return
+
+  const tableCount = props.tables.length
+  const waiterCount = Math.min(3, Math.max(1, Math.ceil(tableCount / 4)))
+
+  for (let i = 0; i < waiterCount; i++) {
+    const t = props.tables[i % tableCount]
+    const wx = offsetX + Number(t.pos_x || 0) + Number(t.width || 60) + 16
+    const wy = offsetY + Number(t.pos_y || 0) + 16
+    waiters.push({
+      id: i + 1,
+      name: i === 0 ? 'Mesero Alex' : i === 1 ? 'Mesera Sofía' : 'Mesero Carlos',
+      x: wx,
+      y: wy,
+      targetX: wx,
+      targetY: wy,
       speed: 2.2,
-      state: 'patrolling', // 'patrolling', 'carrying_order', 'attending_call'
-      carryingDish: null,
-      bobOffset: 0,
-      targetTable: null,
-      taskCooldown: 120,
-    },
-    {
-      id: 2,
-      name: 'Mesera Sofía',
-      x: 750,
-      y: 350,
-      targetX: 750,
-      targetY: 350,
-      speed: 2.4,
       state: 'patrolling',
       carryingDish: null,
-      bobOffset: 1.5,
+      bobOffset: i * 1.5,
       targetTable: null,
-      taskCooldown: 200,
-    },
-  ]
+      taskCooldown: 80 + i * 50,
+    })
+  }
 }
 
 // Partículas de Fuego y Vapor
 const spawnParticle = (x, y, type = 'steam') => {
-  if (particles.length > 50) particles.shift()
+  if (particles.length > 40) particles.shift()
   particles.push({
     x: x + (Math.random() - 0.5) * 16,
     y: y,
-    vx: (Math.random() - 0.5) * 0.8,
-    vy: -0.8 - Math.random() * 0.8,
-    radius: 3 + Math.random() * 3,
+    vx: (Math.random() - 0.5) * 0.6,
+    vy: -0.7 - Math.random() * 0.7,
+    radius: 3 + Math.random() * 2.5,
     alpha: 0.8,
-    type, // 'steam', 'flame', 'sparkle'
+    type,
   })
 }
 
@@ -239,7 +276,6 @@ const updateAgents = () => {
     chef.cookingProgress += 0.003
     if (chef.cookingProgress > 1.0) {
       chef.cookingProgress = 0
-      // Emite una burbuja de plato listo en el pase
       floatingBubbles.push({
         x: chef.x,
         y: chef.y - 45,
@@ -249,20 +285,19 @@ const updateAgents = () => {
       })
     }
 
-    // Partículas de fuego/vapor sobre la estación
-    if (globalTick % 6 === 0) {
+    if (globalTick % 8 === 0) {
       spawnParticle(chef.homeX, chef.homeY - 20, 'flame')
-      spawnParticle(chef.homeX + 10, chef.homeY - 30, 'steam')
+      spawnParticle(chef.homeX + 8, chef.homeY - 28, 'steam')
     }
   })
 
-  // 2. Actualizar Meseros
+  // 2. Actualizar Meseros (Patrullan exclusivamente entre mesas reales)
   const occupiedTables = props.tables.filter(t => t.status === 'occupied' || t.status === 'bill_requested')
+  const allTables = props.tables
 
   waiters.forEach((waiter) => {
     waiter.bobOffset += 0.12
 
-    // Movimiento hacia el destino
     const dx = waiter.targetX - waiter.x
     const dy = waiter.targetY - waiter.y
     const dist = Math.hypot(dx, dy)
@@ -271,24 +306,23 @@ const updateAgents = () => {
       waiter.x += (dx / dist) * waiter.speed
       waiter.y += (dy / dist) * waiter.speed
     } else {
-      // Llegó a su destino -> Cambiar de tarea
       waiter.taskCooldown--
       if (waiter.taskCooldown <= 0) {
-        waiter.taskCooldown = 150 + Math.floor(Math.random() * 120)
+        waiter.taskCooldown = 140 + Math.floor(Math.random() * 100)
 
-        // Asignar nueva mesa o ir a la barra de pase
-        if (occupiedTables.length && Math.random() > 0.4) {
+        // Prioridad: atender comensales activos; si no, pasear a otra mesa del plano
+        if (occupiedTables.length && Math.random() > 0.35) {
           const randomTable = occupiedTables[Math.floor(Math.random() * occupiedTables.length)]
           waiter.targetTable = randomTable
-          // Coordenada junto a la mesa en el salón
-          waiter.targetX = (randomTable.pos_x || 300) + 70
-          waiter.targetY = (randomTable.pos_y || 400) + 30
+          waiter.targetX = offsetX + Number(randomTable.pos_x || 0) + Number(randomTable.width || 60) + 16
+          waiter.targetY = offsetY + Number(randomTable.pos_y || 0) + 20
           waiter.carryingDish = 'Bandeja'
           waiter.state = 'serving'
-        } else {
-          // Volver al pasillo central / pase
-          waiter.targetX = 250 + Math.random() * 450
-          waiter.targetY = 280 + Math.random() * 80
+        } else if (allTables.length) {
+          const randomTable = allTables[Math.floor(Math.random() * allTables.length)]
+          waiter.targetTable = randomTable
+          waiter.targetX = offsetX + Number(randomTable.pos_x || 0) + Number(randomTable.width || 60) + 16
+          waiter.targetY = offsetY + Number(randomTable.pos_y || 0) + 20
           waiter.carryingDish = null
           waiter.state = 'patrolling'
         }
@@ -303,9 +337,7 @@ const updateAgents = () => {
     p.y += p.vy
     p.alpha -= 0.015
     p.radius *= 0.98
-    if (p.alpha <= 0) {
-      particles.splice(i, 1)
-    }
+    if (p.alpha <= 0) particles.splice(i, 1)
   }
 
   // 4. Actualizar Burbujas de Texto
@@ -313,14 +345,12 @@ const updateAgents = () => {
     const b = floatingBubbles[i]
     b.y += b.vy
     b.alpha -= 0.012
-    if (b.alpha <= 0) {
-      floatingBubbles.splice(i, 1)
-    }
+    if (b.alpha <= 0) floatingBubbles.splice(i, 1)
   }
 }
 
 // ==========================================
-// RENDERIZADO PRINCIPAL (CANVAS 2.5D)
+// RENDERIZADO PRINCIPAL (CANVAS 2.5D REAL)
 // ==========================================
 const render = () => {
   if (!ctx || !canvasRef.value) return
@@ -331,32 +361,29 @@ const render = () => {
   ctx.clearRect(0, 0, width, height)
 
   ctx.save()
-  // Aplicar Cámara y Zoom
+  // Cámara y Zoom
   ctx.translate(camera.value.x, camera.value.y)
   ctx.scale(camera.value.zoom, camera.value.zoom)
 
-  // 1. Dibujar Pisos y Escenario General (Cocina vs Salón)
+  // 1. Suelo y Entorno Real de la Zona
   drawEnvironment()
 
-  // 2. Dibujar Estaciones de Cocina
-  drawKitchenStations()
+  // 2. Áreas Arquitectónicas Reales (Cocina, Terraza, Depósito, Paredes, etc.)
+  drawArchitecturalAreas()
 
-  // 3. Dibujar Mostrador de Pase (Pass Counter)
-  drawPassCounter()
+  // 3. Equipamiento Real (Mostradores, Neveras, Estaciones KDS, Pase)
+  drawEquipment()
 
-  // 3.5 Dibujar Neveras, Congeladores y Equipamiento Personalizado
-  drawCustomEquipment()
-
-  // 4. Dibujar Mesas y Comensales
+  // 4. Mesas Reales con Sillas Dinámicas y Comensales
   drawDiningTables()
 
-  // 5. Dibujar Chefs
+  // 5. Agentes Chefs
   chefs.forEach(drawChef)
 
-  // 6. Dibujar Meseros
+  // 6. Agentes Meseros
   waiters.forEach(drawWaiter)
 
-  // 7. Dibujar Partículas y Burbujas
+  // 7. Partículas y Burbujas
   drawParticles()
   drawFloatingBubbles()
 
@@ -366,721 +393,714 @@ const render = () => {
   animationFrameId = requestAnimationFrame(render)
 }
 
-// 1. DIBUJO DEL ENTORNO (PISOS Y PAREDES)
+// ==========================================
+// 1. DIBUJO DEL ENTORNO (SUELO REAL DE LA ZONA)
+// ==========================================
 const drawEnvironment = () => {
-  // Fondo global cálido
-  ctx.fillStyle = '#1e1e2d'
-  ctx.fillRect(-100, -100, worldWidth + 200, worldHeight + 200)
+  // Fondo oscuro exterior del lienzo
+  ctx.fillStyle = '#0f111a'
+  ctx.fillRect(-200, -200, worldWidth.value + 400, worldHeight.value + 400)
 
-  const areas = props.zone?.layout_config?.areas || []
+  const zWidth = zonePixelWidth.value
+  const zHeight = zonePixelHeight.value
+  const bgStyleKey = props.zone?.background_style || 'wooden'
+  const currentTheme = THEME[bgStyleKey] || THEME.wooden
 
-  if (areas.length > 0) {
-    // Modo Plano Personalizado del Usuario
-    const scale = 65
-    const offsetX = 50
-    const offsetY = 50
+  // Sombra proyectada del suelo de la zona
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)'
+  drawRoundedRect(ctx, offsetX + 6, offsetY + 8, zWidth, zHeight, 8, true, false)
 
-    // Piso base del salón comedor
-    ctx.fillStyle = THEME.bgDiningFloor
-    ctx.fillRect(offsetX, offsetY, worldWidth - 100, worldHeight - 100)
+  // Suelo de la zona activa según su estilo real
+  ctx.fillStyle = currentTheme.bg
+  drawRoundedRect(ctx, offsetX, offsetY, zWidth, zHeight, 8, true, false)
 
-    // Vetas de madera
-    ctx.strokeStyle = THEME.bgDiningWoodDark
-    ctx.lineWidth = 1
-    for (let y = offsetY; y <= worldHeight - 50; y += 45) {
-      ctx.beginPath()
-      ctx.moveTo(offsetX, y)
-      ctx.lineTo(worldWidth - 50, y)
-      ctx.stroke()
-    }
-
-    // Dibujar cada área arquitectónica personalizada
-    areas.forEach((area) => {
-      const ax = offsetX + area.x * scale
-      const ay = offsetY + area.y * scale
-      const aw = area.w * scale
-      const ah = area.h * scale
-
-      if (area.type === 'kitchen') {
-        // Azulejos de cocina
-        ctx.fillStyle = THEME.bgKitchenFloor
-        ctx.fillRect(ax, ay, aw, ah)
-
-        ctx.strokeStyle = THEME.bgKitchenTiles
-        ctx.lineWidth = 1.2
-        for (let x = ax; x <= ax + aw; x += 30) {
-          ctx.beginPath()
-          ctx.moveTo(x, ay)
-          ctx.lineTo(x, ay + ah)
-          ctx.stroke()
-        }
-        for (let y = ay; y <= ay + ah; y += 30) {
-          ctx.beginPath()
-          ctx.moveTo(ax, y)
-          ctx.lineTo(ax + aw, y)
-          ctx.stroke()
-        }
-        ctx.strokeStyle = '#e74c3c'
-        ctx.lineWidth = 2
-        ctx.strokeRect(ax, ay, aw, ah)
-
-        // Badge con fondo oscuro para máximo contraste en el plano de cocina
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
-        drawRoundedRect(ctx, ax + 6, ay + 6, Math.min(aw - 12, 110), 20, 4, true, false)
-        ctx.fillStyle = '#ffffff'
-        ctx.font = 'bold 11px sans-serif'
-        ctx.textAlign = 'left'
-        ctx.fillText(area.name || 'COCINA', ax + 12, ay + 20)
-      } else if (area.type === 'storage') {
-        // Depósito
-        ctx.fillStyle = '#2c3e50'
-        ctx.fillRect(ax, ay, aw, ah)
-        ctx.strokeStyle = '#7f8c8d'
-        ctx.lineWidth = 2
-        ctx.strokeRect(ax, ay, aw, ah)
-
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
-        drawRoundedRect(ctx, ax + 6, ay + 6, Math.min(aw - 12, 110), 20, 4, true, false)
-        ctx.fillStyle = '#ffffff'
-        ctx.font = 'bold 11px sans-serif'
-        ctx.textAlign = 'left'
-        ctx.fillText(area.name || 'DEPÓSITO', ax + 12, ay + 20)
-      } else if (area.type === 'terrace') {
-        // Terraza / Césped
-        ctx.fillStyle = '#27ae60'
-        ctx.fillRect(ax, ay, aw, ah)
-        ctx.strokeStyle = '#2ecc71'
-        ctx.lineWidth = 2
-        ctx.strokeRect(ax, ay, aw, ah)
-
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
-        drawRoundedRect(ctx, ax + 6, ay + 6, Math.min(aw - 12, 110), 20, 4, true, false)
-        ctx.fillStyle = '#ffffff'
-        ctx.font = 'bold 11px sans-serif'
-        ctx.textAlign = 'left'
-        ctx.fillText(area.name || 'TERRAZA', ax + 12, ay + 20)
-      } else if (area.type === 'wall') {
-        // Muro
-        ctx.fillStyle = '#1a1a1a'
-        ctx.fillRect(ax, ay, aw, ah)
-      } else if (area.type === 'entrance') {
-        // Alfombra de entrada
-        ctx.fillStyle = THEME.carpetRed
-        ctx.fillRect(ax, ay, aw, ah)
-        ctx.strokeStyle = THEME.carpetBorder
-        ctx.lineWidth = 2.5
-        ctx.strokeRect(ax + 3, ay + 3, aw - 6, ah - 6)
-
-        ctx.fillStyle = '#fff'
-        ctx.font = 'bold 11px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText('ENTRADA', ax + aw / 2, ay + ah / 2 + 4)
-      } else if (area.type === 'pass_counter') {
-        // Mostrador de Pase
-        ctx.fillStyle = THEME.passCounter
-        ctx.fillRect(ax, ay, aw, ah)
-        ctx.fillStyle = THEME.passCounterTop
-        ctx.fillRect(ax + 2, ay + 2, aw - 4, ah - 4)
-
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-        drawRoundedRect(ctx, ax + aw / 2 - 50, ay + ah / 2 - 9, 100, 18, 4, true, false)
-        ctx.fillStyle = '#ffe082'
-        ctx.font = 'bold 10px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.fillText('PASE DE PLATOS', ax + aw / 2, ay + ah / 2 + 4)
-      }
-    })
-    return
-  }
-
-  // --- MODO FALLBACK (Si el usuario aún no configuró áreas) ---
-  const kitchenHeight = 270
-  ctx.fillStyle = THEME.bgKitchenFloor
-  ctx.fillRect(40, 40, worldWidth - 80, kitchenHeight)
-
-  // Patrón de Azulejos de Cocina
-  ctx.strokeStyle = THEME.bgKitchenTiles
-  ctx.lineWidth = 1.5
-  const tileSize = 35
-  for (let x = 40; x <= worldWidth - 40; x += tileSize) {
-    ctx.beginPath()
-    ctx.moveTo(x, 40)
-    ctx.lineTo(x, 40 + kitchenHeight)
-    ctx.stroke()
-  }
-  for (let y = 40; y <= 40 + kitchenHeight; y += tileSize) {
-    ctx.beginPath()
-    ctx.moveTo(40, y)
-    ctx.lineTo(worldWidth - 40, y)
-    ctx.stroke()
-  }
-
-  // Borde superior de pared de cocina
-  ctx.fillStyle = THEME.kitchenWall
-  ctx.fillRect(40, 25, worldWidth - 80, 20)
-
-  // --- ZONA SALÓN (Inferior) ---
-  const salonY = 40 + kitchenHeight + 25
-  const salonHeight = worldHeight - salonY - 20
-  ctx.fillStyle = THEME.bgDiningFloor
-  ctx.fillRect(40, salonY, worldWidth - 80, salonHeight)
-
-  // Vetas de Madera de Parquet en Salón
-  ctx.strokeStyle = THEME.bgDiningWoodDark
+  // Cuadrícula métrica exacta de 1m (60px)
+  ctx.strokeStyle = currentTheme.line
   ctx.lineWidth = 1
-  for (let y = salonY; y <= salonY + salonHeight; y += 45) {
+  for (let x = offsetX; x <= offsetX + zWidth; x += cellPixelSize) {
     ctx.beginPath()
-    ctx.moveTo(40, y)
-    ctx.lineTo(worldWidth - 40, y)
+    ctx.moveTo(x, offsetY)
+    ctx.lineTo(x, offsetY + zHeight)
+    ctx.stroke()
+  }
+  for (let y = offsetY; y <= offsetY + zHeight; y += cellPixelSize) {
+    ctx.beginPath()
+    ctx.moveTo(offsetX, y)
+    ctx.lineTo(offsetX + zWidth, y)
     ctx.stroke()
   }
 
-  // Alfombra de Entrada / Recepción (Extremo Derecho)
-  const carpetX = worldWidth - 200
-  ctx.fillStyle = THEME.carpetRed
-  ctx.fillRect(carpetX, salonY + 40, 120, salonHeight - 80)
-  ctx.strokeStyle = THEME.carpetBorder
-  ctx.lineWidth = 3
-  ctx.strokeRect(carpetX + 4, salonY + 44, 112, salonHeight - 88)
+  // Borde perimetral del plano del restaurante
+  ctx.strokeStyle = currentTheme.border
+  ctx.lineWidth = 2.5
+  drawRoundedRect(ctx, offsetX, offsetY, zWidth, zHeight, 8, false, true)
 
-  // Letrero Chibi de "Entrada / Hostess"
-  ctx.fillStyle = '#fff'
-  ctx.font = 'bold 11px sans-serif'
+  // Marcadores de metro sutiles en la regla superior
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
+  ctx.font = 'bold 9px sans-serif'
+  ctx.textAlign = 'left'
+  const maxMetersX = Math.ceil(zoneWidthMeters.value)
+  for (let m = 1; m < maxMetersX; m++) {
+    const rx = offsetX + m * cellPixelSize
+    ctx.fillStyle = 'rgba(255, 213, 79, 0.45)'
+    ctx.fillText(`${m}m`, rx + 3, offsetY + 12)
+  }
+
+  // Píldora con dimensiones en la esquina inferior derecha
+  const tagText = `Planta: ${zoneWidthMeters.value}m × ${zoneHeightMeters.value}m (${(zoneWidthMeters.value * zoneHeightMeters.value).toFixed(1)} m²)`
+  ctx.font = 'bold 10px sans-serif'
+  const tagW = ctx.measureText(tagText).width + 16
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
+  drawRoundedRect(ctx, offsetX + zWidth - tagW - 8, offsetY + zHeight - 24, tagW, 18, 4, true, false)
+  ctx.strokeStyle = 'rgba(255, 213, 79, 0.5)'
+  ctx.lineWidth = 1
+  drawRoundedRect(ctx, offsetX + zWidth - tagW - 8, offsetY + zHeight - 24, tagW, 18, 4, false, true)
+  ctx.fillStyle = '#ffd54f'
   ctx.textAlign = 'center'
-  ctx.fillText('ENTRADA SALÓN', carpetX + 60, salonY + 65)
+  ctx.fillText(tagText, offsetX + zWidth - tagW / 2 - 8, offsetY + zHeight - 12)
 }
 
-// 2. DIBUJO DE ESTACIONES DE COCINA
-const drawKitchenStations = () => {
-  const stationList = props.stations.length ? props.stations : [
-    { id: 1, name: 'Parrilla & Fuego', code: 'GRILL', icon: '🔥' },
-    { id: 2, name: 'Estación de Corte', code: 'PREP', icon: '🥗' },
-    { id: 3, name: 'Barra de Bebidas', code: 'BAR', icon: '🍹' },
-  ]
+// ==========================================
+// 2. ÁREAS ARQUITECTÓNICAS (COCINA, TERRAZA, DEPÓSITO, ETC.)
+// ==========================================
+const drawArchitecturalAreas = () => {
+  const areas = props.zone?.layout_config?.areas || []
 
-  const kitchenArea = props.zone?.layout_config?.areas?.find(a => a.type === 'kitchen')
-  const scale = 65
-  const offsetX = 50
-  const offsetY = 50
+  areas.forEach((area) => {
+    const ax = offsetX + Number(area.x || 0) * cellPixelSize
+    const ay = offsetY + Number(area.y || 0) * cellPixelSize
+    const aw = Number(area.w || 1) * cellPixelSize
+    const ah = Number(area.h || 1) * cellPixelSize
 
-  stationList.forEach((st, idx) => {
-    let x = 140 + idx * 160
-    let y = 80
-    if (kitchenArea) {
-      x = offsetX + kitchenArea.x * scale + 50 + (idx % 3) * 100
-      y = offsetY + kitchenArea.y * scale + 40 + Math.floor(idx / 3) * 50
-    }
+    ctx.save()
 
-    // Mueble de Cocina con Acero Inoxidable
-    ctx.fillStyle = '#3f4654'
-    drawRoundedRect(ctx, x - 55, y, 110, 65, 8, true, false)
+    if (area.type === 'kitchen') {
+      // Cocina Real: Azulejos crema/gris con borde rojo
+      ctx.fillStyle = '#f4ede4'
+      ctx.fillRect(ax, ay, aw, ah)
 
-    // Superficie Superior
-    ctx.fillStyle = '#cfd6e4'
-    drawRoundedRect(ctx, x - 50, y + 4, 100, 35, 6, true, false)
-
-    // Detalle de Fogón / Utensilios
-    if (idx === 0) {
-      // Hornillas
-      ctx.fillStyle = '#1e1e24'
-      ctx.beginPath()
-      ctx.arc(x - 20, y + 22, 10, 0, Math.PI * 2)
-      ctx.arc(x + 20, y + 22, 10, 0, Math.PI * 2)
-      ctx.fill()
-      // Fuego parpadeante
-      ctx.fillStyle = '#ff4757'
-      ctx.beginPath()
-      ctx.arc(x - 20, y + 22, 5 + Math.sin(globalTick * 0.2) * 2, 0, Math.PI * 2)
-      ctx.fill()
-    } else if (idx === 1) {
-      // Tablas de cortar de madera
-      ctx.fillStyle = '#b7791f'
-      ctx.fillRect(x - 30, y + 14, 25, 16)
-      ctx.fillStyle = '#38a169'
-      ctx.fillRect(x + 10, y + 16, 18, 12)
+      ctx.strokeStyle = '#ded9ce'
+      ctx.lineWidth = 1.2
+      for (let x = ax; x <= ax + aw; x += 20) {
+        ctx.beginPath()
+        ctx.moveTo(x, ay)
+        ctx.lineTo(x, ay + ah)
+        ctx.stroke()
+      }
+      for (let y = ay; y <= ay + ah; y += 20) {
+        ctx.beginPath()
+        ctx.moveTo(ax, y)
+        ctx.lineTo(ax + aw, y)
+        ctx.stroke()
+      }
+      ctx.strokeStyle = '#e74c3c'
+      ctx.lineWidth = 2.5
+      ctx.strokeRect(ax, ay, aw, ah)
+    } else if (area.type === 'storage') {
+      // Depósito
+      ctx.fillStyle = '#283747'
+      ctx.fillRect(ax, ay, aw, ah)
+      ctx.strokeStyle = '#95a5a6'
+      ctx.lineWidth = 2
+      ctx.strokeRect(ax, ay, aw, ah)
+    } else if (area.type === 'bar_zone') {
+      // Zona de Barra
+      ctx.fillStyle = '#1b263b'
+      ctx.fillRect(ax, ay, aw, ah)
+      ctx.strokeStyle = '#3498db'
+      ctx.lineWidth = 2
+      ctx.strokeRect(ax, ay, aw, ah)
+    } else if (area.type === 'terrace') {
+      // Terraza / Jardín
+      ctx.fillStyle = 'rgba(39, 174, 96, 0.45)'
+      ctx.fillRect(ax, ay, aw, ah)
+      ctx.strokeStyle = '#2ecc71'
+      ctx.lineWidth = 2
+      ctx.setLineDash([6, 4])
+      ctx.strokeRect(ax, ay, aw, ah)
+      ctx.setLineDash([])
+    } else if (area.type === 'wall') {
+      // Muro / Pared
+      ctx.fillStyle = '#1c1c1c'
+      ctx.fillRect(ax, ay, aw, ah)
+      ctx.strokeStyle = '#ffb300'
+      ctx.lineWidth = 2
+      ctx.strokeRect(ax, ay, aw, ah)
+    } else if (area.type === 'entrance') {
+      // Entrada / Alfombra
+      ctx.fillStyle = '#5b2c6f'
+      ctx.fillRect(ax, ay, aw, ah)
+      ctx.strokeStyle = '#bb8fce'
+      ctx.lineWidth = 2
+      ctx.setLineDash([5, 3])
+      ctx.strokeRect(ax, ay, aw, ah)
+      ctx.setLineDash([])
+    } else if (area.type === 'pass_counter') {
+      // Mostrador de Pase configurado como área
+      ctx.fillStyle = '#e65100'
+      ctx.fillRect(ax, ay, aw, ah)
+      ctx.strokeStyle = '#ffe082'
+      ctx.lineWidth = 2
+      ctx.setLineDash([6, 3])
+      ctx.strokeRect(ax, ay, aw, ah)
+      ctx.setLineDash([])
     } else {
-      // Máquina de café / vasos
-      ctx.fillStyle = '#4a5568'
-      ctx.fillRect(x - 25, y + 10, 20, 22)
-      ctx.fillStyle = '#3182ce'
-      ctx.fillRect(x + 10, y + 12, 16, 18)
+      // Área personalizada
+      ctx.fillStyle = area.color ? `${area.color}33` : 'rgba(0, 207, 232, 0.2)'
+      ctx.fillRect(ax, ay, aw, ah)
+      ctx.strokeStyle = area.color || '#00cfe8'
+      ctx.lineWidth = 2
+      ctx.strokeRect(ax, ay, aw, ah)
     }
 
-    // Cartel Colgante con Nombre
-    ctx.fillStyle = '#2d3748'
-    drawRoundedRect(ctx, x - 45, y - 24, 90, 20, 4, true, false)
-    ctx.fillStyle = '#fff'
+    // Cabecera del Área (Píldora Oscura con Alto Contraste)
+    const pillW = Math.min(aw - 8, 120)
+    ctx.fillStyle = 'rgba(12, 14, 22, 0.92)'
+    drawRoundedRect(ctx, ax + 4, ay + 4, pillW, 18, 4, true, false)
+    ctx.fillStyle = '#ffffff'
     ctx.font = 'bold 10px sans-serif'
+    ctx.textAlign = 'left'
+    ctx.fillText((area.name || area.type).substring(0, 16), ax + 10, ay + 16)
+
+    // Marca de agua central con nombre y superficie m²
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)'
+    ctx.font = 'bold 12px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(`${st.name.substring(0, 14)}`, x, y - 10)
+    ctx.fillText(`${(Number(area.w || 1) * Number(area.h || 1)).toFixed(1)} m²`, ax + aw / 2, ay + ah / 2 + 5)
+
+    ctx.restore()
   })
 }
 
-// 3. MOSTRADOR DE PASE (PASS COUNTER)
-const drawPassCounter = () => {
-  const passArea = props.zone?.layout_config?.areas?.find(a => a.type === 'pass_counter')
-  const scale = 65
-  const offsetX = 50
-  const offsetY = 50
-
-  let counterX = 60
-  let counterY = 280
-  let counterWidth = worldWidth - 120
-
-  if (passArea) {
-    counterX = offsetX + passArea.x * scale
-    counterY = offsetY + passArea.y * scale
-    counterWidth = passArea.w * scale
-  }
-
-  // Sombra del mostrador
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
-  ctx.fillRect(counterX, counterY + 16, counterWidth, 12)
-
-  // Cuerpo de Madera
-  ctx.fillStyle = THEME.passCounter
-  drawRoundedRect(ctx, counterX, counterY - 10, counterWidth, 24, 6, true, false)
-
-  // Encimera
-  ctx.fillStyle = THEME.passCounterTop
-  drawRoundedRect(ctx, counterX - 5, counterY - 14, counterWidth + 10, 12, 6, true, false)
-
-  // Campana de Pedidos en el centro
-  const bellX = counterX + counterWidth / 2
-  ctx.fillStyle = '#d4af37' // Dorado
-  ctx.beginPath()
-  ctx.arc(bellX, counterY - 18, 9, Math.PI, Math.PI * 2)
-  ctx.fill()
-  ctx.fillRect(bellX - 11, counterY - 18, 22, 4)
-
-  // Texto "ZONA DE PASE (KDS)"
-  ctx.fillStyle = '#5c3a21'
-  ctx.font = 'bold 10px sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText('PASE DE PLATOS & COMANDAS', bellX, counterY + 28)
-}
-
-// 3.5 EQUIPAMIENTO PERSONALIZADO (NEVERAS, CONGELADORES, MOSTRADORES)
-const drawCustomEquipment = () => {
+// ==========================================
+// 3. EQUIPAMIENTO REAL (MOSTRADORES, NEVERAS, ESTACIONES KDS)
+// ==========================================
+const drawEquipment = () => {
   const equipList = props.zone?.layout_config?.equipment || []
-  if (!equipList.length) return
-
-  const scale = 65
-  const offsetX = 50
-  const offsetY = 50
 
   equipList.forEach((eq) => {
-    // Si es estación ya dibujada en drawKitchenStations, omitir duplicado
-    if (eq.type === 'station') return
+    const ex = offsetX + Number(eq.x || 0) * cellPixelSize
+    const ey = offsetY + Number(eq.y || 0) * cellPixelSize
+    const ew = Number(eq.w || 1.5) * cellPixelSize
+    const eh = Number(eq.h || 1.0) * cellPixelSize
 
-    const ex = offsetX + (eq.x || 0) * scale
-    const ey = offsetY + (eq.y || 0) * scale
-    const ew = (eq.w || 1.5) * scale
-    const eh = (eq.h || 1.0) * scale
+    ctx.save()
 
-    // Sombra
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
-    ctx.fillRect(ex + 4, ey + 4, ew, eh)
+    // Sombra del mueble
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
+    drawRoundedRect(ctx, ex + 3, ey + 4, ew, eh, 6, true, false)
 
     if (eq.type === 'cooling') {
-      // Nevera / Refrigerador / Congelador (Estilo Acero Inoxidable y Frío)
-      ctx.fillStyle = '#2c3e50'
+      // Nevera / Congelador (Cian / Petróleo)
+      ctx.fillStyle = '#006064'
       drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
-
-      // Puertas con reflejo cian
-      ctx.fillStyle = '#34495e'
+      ctx.fillStyle = '#00838f'
       drawRoundedRect(ctx, ex + 3, ey + 3, ew - 6, eh - 6, 4, true, false)
 
       // Tirador metálico
-      ctx.fillStyle = '#00cfe8'
-      ctx.fillRect(ex + ew - 10, ey + 8, 4, eh - 16)
+      ctx.fillStyle = '#4dd0e1'
+      ctx.fillRect(ex + ew - 8, ey + 6, 3, eh - 12)
 
-      // Icono o texto de frío
-      ctx.fillStyle = '#e0f7fa'
-      ctx.font = 'bold 10px sans-serif'
+      // Texto de frío
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 11px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(`❄ ${eq.name || 'FRÍO'}`, ex + ew / 2, ey + eh / 2 + 3)
+      ctx.fillText(`❄ ${eq.name || 'FRÍO'}`, ex + ew / 2, ey + eh / 2 + 4)
     } else if (eq.type === 'counter') {
-      // Mostrador / Barra
-      ctx.fillStyle = '#1f3a52'
+      // Mostrador / Barra de Salón
+      ctx.fillStyle = '#01579b'
       drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
+      ctx.fillStyle = '#0288d1'
+      drawRoundedRect(ctx, ex + 3, ey + 3, ew - 6, eh - 6, 4, true, false)
 
-      ctx.fillStyle = '#4a90e2'
-      drawRoundedRect(ctx, ex + 2, ey + 2, ew - 4, eh - 4, 4, true, false)
-
-      ctx.fillStyle = '#fff'
-      ctx.font = 'bold 10px sans-serif'
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 11px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(eq.name || 'MOSTRADOR', ex + ew / 2, ey + eh / 2 + 3)
+      ctx.fillText(eq.name || 'MOSTRADOR', ex + ew / 2, ey + eh / 2 + 4)
+    } else if (eq.type === 'pass_counter') {
+      // Mostrador de Pase de Platos
+      ctx.fillStyle = '#bf360c'
+      drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
+      ctx.fillStyle = '#e65100'
+      drawRoundedRect(ctx, ex + 3, ey + 3, ew - 6, eh - 6, 4, true, false)
+
+      // Campana dorada en el centro
+      const bellX = ex + ew / 2
+      ctx.fillStyle = '#ffd54f'
+      ctx.beginPath()
+      ctx.arc(bellX, ey + 10, 6, Math.PI, Math.PI * 2)
+      ctx.fill()
+      ctx.fillRect(bellX - 8, ey + 10, 16, 3)
+
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 11px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(eq.name || 'PASE DE PLATOS', ex + ew / 2, ey + eh / 2 + 10)
+    } else if (eq.type === 'station') {
+      // Estación KDS de Cocina (Magenta / Púrpura)
+      ctx.fillStyle = '#880e4f'
+      drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
+      ctx.fillStyle = '#c2185b'
+      drawRoundedRect(ctx, ex + 3, ey + 3, ew - 6, eh - 6, 4, true, false)
+
+      // Hornilla o quemador
+      ctx.fillStyle = '#1e1e24'
+      ctx.beginPath()
+      ctx.arc(ex + 18, ey + eh / 2, 8, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#ff4757'
+      ctx.beginPath()
+      ctx.arc(ex + 18, ey + eh / 2, 4 + Math.sin(globalTick * 0.2) * 1.5, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 11px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(eq.name || 'ESTACIÓN', ex + ew / 2 + 8, ey + eh / 2 + 4)
     } else {
-      // Otro equipamiento
-      ctx.fillStyle = '#3d4451'
+      // Otro equipamiento general
+      ctx.fillStyle = '#263238'
       drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
+      ctx.fillStyle = '#455a64'
+      drawRoundedRect(ctx, ex + 3, ey + 3, ew - 6, eh - 6, 4, true, false)
 
-      ctx.fillStyle = '#fff'
-      ctx.font = 'bold 10px sans-serif'
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 11px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(eq.name || 'EQUIPO', ex + ew / 2, ey + eh / 2 + 3)
+      ctx.fillText(eq.name || 'EQUIPO', ex + ew / 2, ey + eh / 2 + 4)
     }
+
+    ctx.restore()
   })
 }
 
-// 4. MESAS Y COMENSALES
+// ==========================================
+// 4. MESAS REALES CON SILLAS Y COMENSALES
+// ==========================================
 const drawDiningTables = () => {
-  const tableList = props.tables.length ? props.tables : [
-    { id: 1, name: 'Mesa 1', status: 'occupied', pos_x: 180, pos_y: 420, capacity: 4, shape: 'square' },
-    { id: 2, name: 'Mesa 2', status: 'available', pos_x: 360, pos_y: 420, capacity: 4, shape: 'round' },
-    { id: 3, name: 'Mesa 3', status: 'bill_requested', pos_x: 540, pos_y: 420, capacity: 4, shape: 'square' },
-    { id: 4, name: 'Mesa 4', status: 'occupied', pos_x: 720, pos_y: 420, capacity: 6, shape: 'rectangle' },
-    { id: 5, name: 'Mesa 5', status: 'available', pos_x: 260, pos_y: 600, capacity: 4, shape: 'round' },
-    { id: 6, name: 'Mesa 6', status: 'available', pos_x: 480, pos_y: 600, capacity: 4, shape: 'square' },
-  ]
-
-  tableList.forEach((table) => {
-    const tx = (table.pos_x || 200) + 40
-    const ty = (table.pos_y || 400) + 40
+  props.tables.forEach((table) => {
+    const tx = offsetX + Number(table.pos_x || 0)
+    const ty = offsetY + Number(table.pos_y || 0)
+    const tw = Number(table.width || 60)
+    const th = Number(table.height || 60)
     const isRound = table.shape === 'round'
     const isSelected = props.selectedTableId === table.id
 
-    // Sombra de Mesa
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
+    ctx.save()
+
+    // 1. Sombra de la Mesa
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
     ctx.beginPath()
     if (isRound) {
-      ctx.arc(tx + 4, ty + 8, 42, 0, Math.PI * 2)
+      ctx.arc(tx + tw / 2 + 3, ty + th / 2 + 5, tw / 2 + 2, 0, Math.PI * 2)
     } else {
-      ctx.roundRect(tx - 38, ty - 34, 84, 84, 12)
+      ctx.roundRect(tx + 3, ty + 5, tw, th, 8)
     }
     ctx.fill()
 
-    // Sillas alrededor
-    drawChairs(tx, ty, table.capacity || 4, isRound)
+    // 2. Sillas alrededor de la mesa proporcionales a su capacidad real
+    drawChairs(table, tx, ty, tw, th)
 
-    // Si está ocupada, dibujar comensales en las sillas
+    // 3. Comensales si está ocupada
     if (table.status === 'occupied' || table.status === 'bill_requested') {
-      drawGuests(tx, ty, table.capacity || 4, table.status, table.capacity || 4, isRound)
+      drawGuests(table, tx, ty, tw, th)
+    }
+
+    // 4. Color y Borde de la Mesa según estado (idéntico al diseñador)
+    let tableBg = '#16a34a' // available
+    let tableBorder = '#22c55e'
+
+    if (table.status === 'occupied') {
+      tableBg = '#dc2626'
+      tableBorder = '#f87171'
+    } else if (table.status === 'bill_requested') {
+      tableBg = '#ea580c'
+      tableBorder = '#fb923c'
+    } else if (table.status === 'reserved') {
+      tableBg = '#0284c7'
+      tableBorder = '#38bdf8'
     }
 
     // Tablero de la Mesa
-    let tableBg = '#ffffff'
-    let tableBorder = '#cbd5e1'
-    if (table.status === 'occupied') {
-      tableBg = '#fee2e2'
-      tableBorder = '#ef4444'
-    } else if (table.status === 'bill_requested') {
-      tableBg = '#fef3c7'
-      tableBorder = '#f59e0b'
-    } else if (table.status === 'available') {
-      tableBg = '#ecfdf5'
-      tableBorder = '#10b981'
-    }
-
-    if (isSelected) {
-      tableBorder = '#3b82f6'
-      // Anillo de pulso de selección
-      ctx.strokeStyle = '#3b82f6'
-      ctx.lineWidth = 3
-      ctx.beginPath()
-      ctx.arc(tx, ty, 48 + Math.sin(globalTick * 0.1) * 3, 0, Math.PI * 2)
-      ctx.stroke()
-    }
-
     ctx.fillStyle = tableBg
     ctx.strokeStyle = tableBorder
-    ctx.lineWidth = 3
+    ctx.lineWidth = 2.5
 
     ctx.beginPath()
     if (isRound) {
-      ctx.arc(tx, ty, 40, 0, Math.PI * 2)
+      ctx.arc(tx + tw / 2, ty + th / 2, tw / 2, 0, Math.PI * 2)
+    } else if (table.shape === 'bar') {
+      ctx.roundRect(tx, ty, tw, th, 5)
     } else {
-      ctx.roundRect(tx - 40, ty - 40, 80, 80, 10)
+      ctx.roundRect(tx, ty, tw, th, 8)
     }
     ctx.fill()
     ctx.stroke()
 
-    // Mantel decorativo estilo Overcooked
-    ctx.fillStyle = tableBorder
-    ctx.beginPath()
-    if (isRound) {
-      ctx.arc(tx, ty, 16, 0, Math.PI * 2)
-    } else {
-      ctx.roundRect(tx - 18, ty - 18, 36, 36, 6)
+    // Resaltado si está seleccionada
+    if (isSelected) {
+      ctx.strokeStyle = '#00cfe8'
+      ctx.lineWidth = 3.5
+      ctx.beginPath()
+      if (isRound) {
+        ctx.arc(tx + tw / 2, ty + th / 2, tw / 2 + 6 + Math.sin(globalTick * 0.15) * 2, 0, Math.PI * 2)
+      } else {
+        ctx.roundRect(tx - 4, ty - 4, tw + 8, th + 8, 10)
+      }
+      ctx.stroke()
     }
-    ctx.fill()
 
-    // Platos encima de la mesa si está ocupada
+    // Detalles sobre la mesa si está ocupada (platos / comida)
     if (table.status === 'occupied' || table.status === 'bill_requested') {
       ctx.fillStyle = '#ffffff'
       ctx.beginPath()
-      ctx.arc(tx - 14, ty - 8, 7, 0, Math.PI * 2)
-      ctx.arc(tx + 14, ty + 8, 7, 0, Math.PI * 2)
+      ctx.arc(tx + tw / 2 - 12, ty + th / 2, 5, 0, Math.PI * 2)
+      ctx.arc(tx + tw / 2 + 12, ty + th / 2, 5, 0, Math.PI * 2)
       ctx.fill()
       ctx.fillStyle = '#e11d48'
       ctx.beginPath()
-      ctx.arc(tx - 14, ty - 8, 3.5, 0, Math.PI * 2)
+      ctx.arc(tx + tw / 2 - 12, ty + th / 2, 2.5, 0, Math.PI * 2)
       ctx.fill()
     }
 
-    // Nombre de la Mesa
-    ctx.fillStyle = '#1e293b'
+    // Nombre de la Mesa con texto nítido y alto contraste
+    ctx.fillStyle = '#ffffff'
     ctx.font = 'bold 12px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(table.name, tx, ty + 4)
+    ctx.fillText(table.name || 'Mesa', tx + tw / 2, ty + th / 2 - 2)
 
-    // Total USD de la comanda si existe
+    // Píldora de Capacidad o Total USD de comanda
     if (table.current_order?.total_amount_usd) {
-      ctx.fillStyle = '#059669'
+      ctx.fillStyle = '#ffd54f'
       ctx.font = 'bold 10px sans-serif'
-      ctx.fillText(`$${Number(table.current_order.total_amount_usd).toFixed(2)}`, tx, ty + 20)
+      ctx.fillText(`$${Number(table.current_order.total_amount_usd).toFixed(2)}`, tx + tw / 2, ty + th / 2 + 14)
+    } else {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+      ctx.font = 'bold 9px sans-serif'
+      ctx.fillText(`${table.capacity || 2}p`, tx + tw / 2, ty + th / 2 + 13)
     }
 
-    // Globo de Estado Sobre la Mesa
+    // Burbujas flotantes sobre la mesa
     if (table.status === 'bill_requested') {
-      drawStatusBubble(tx, ty - 55, '💰 ¡Cuenta!', '#f59e0b')
+      drawStatusBubble(tx + tw / 2, ty - 18, '💰 ¡Cuenta!', '#ea580c')
     } else if (table.status === 'occupied') {
-      drawStatusBubble(tx, ty - 55, '🍽️ Comiendo', '#ef4444')
+      drawStatusBubble(tx + tw / 2, ty - 18, '🍽️ Comiendo', '#dc2626')
     }
+
+    ctx.restore()
   })
 }
 
-// Sillas alrededor de la mesa proporcionales a la capacidad
-const getLiveChairPositions = (tx, ty, capacity, isRound) => {
-  const cap = Math.max(1, capacity || 4)
-  const positions = []
+// Cálculo dinámico de sillas de la mesa (idéntico al diseñador de floor-map)
+const getTableSeatsPositions = (table, tx, ty, tw, th) => {
+  const cap = Math.max(1, Number(table.capacity || 2))
+  const shape = table.shape || 'square'
+  const seats = []
 
-  if (isRound) {
-    const r = 48
+  const isBlocked = (side) => {
+    if (table.blocked_sides && typeof table.blocked_sides[side] !== 'undefined') {
+      return !!table.blocked_sides[side]
+    }
+    const threshold = 18
+    const px = Number(table.pos_x || 0)
+    const py = Number(table.pos_y || 0)
+    const zW = zonePixelWidth.value
+    const zH = zonePixelHeight.value
+
+    if (side === 'top' && py <= threshold) return true
+    if (side === 'left' && px <= threshold) return true
+    if (side === 'right' && (px + tw) >= (zW - threshold)) return true
+    if (side === 'bottom' && (py + th) >= (zH - threshold)) return true
+    return false
+  }
+
+  const blocked = {
+    top: isBlocked('top'),
+    bottom: isBlocked('bottom'),
+    left: isBlocked('left'),
+    right: isBlocked('right'),
+  }
+
+  // Redonda
+  if (shape === 'round') {
+    const rx = tw / 2 + 10
+    const ry = th / 2 + 10
     for (let i = 0; i < cap; i++) {
       const angle = (2 * Math.PI * i) / cap - Math.PI / 2
-      positions.push({
-        x: tx + r * Math.cos(angle),
-        y: ty + r * Math.sin(angle),
-      })
+      const sx = tx + tw / 2 + rx * Math.cos(angle)
+      const sy = ty + th / 2 + ry * Math.sin(angle)
+      seats.push({ x: sx, y: sy, isStool: false })
     }
-  } else if (cap <= 4) {
-    const dist = 46
-    const base = [
-      { x: tx, y: ty - dist },
-      { x: tx, y: ty + dist },
-      { x: tx - dist, y: ty },
-      { x: tx + dist, y: ty },
-    ]
-    positions.push(...base.slice(0, cap))
-  } else {
-    // 5, 6, 8, etc.: 1 en extremos y resto en lados superior/inferior
-    positions.push({ x: tx - 48, y: ty })
-    positions.push({ x: tx + 48, y: ty })
-    const rem = cap - 2
-    const topCount = Math.ceil(rem / 2)
-    const bottomCount = Math.floor(rem / 2)
+    return seats
+  }
 
-    for (let i = 0; i < topCount; i++) {
-      const offset = (i - (topCount - 1) / 2) * 26
-      positions.push({ x: tx + offset, y: ty - 46 })
+  // Módulo de Barra
+  if (shape === 'bar') {
+    let clientSide = 'bottom'
+    if (blocked.bottom && !blocked.top) clientSide = 'top'
+    else if (blocked.top && !blocked.bottom) clientSide = 'bottom'
+    else if (blocked.left && !blocked.right) clientSide = 'right'
+    else if (blocked.right && !blocked.left) clientSide = 'left'
+
+    if (!blocked[clientSide]) {
+      for (let i = 0; i < cap; i++) {
+        const offset = tw * ((i + 0.5) / cap)
+        const sy = clientSide === 'bottom' ? ty + th + 9 : ty - 9
+        seats.push({ x: tx + offset, y: sy, isStool: true })
+      }
     }
-    for (let i = 0; i < bottomCount; i++) {
-      const offset = (i - (bottomCount - 1) / 2) * 26
-      positions.push({ x: tx + offset, y: ty + 46 })
+    return seats
+  }
+
+  // Cuadrada o Rectangular
+  let topCount = 0
+  let bottomCount = 0
+  let leftCount = 0
+  let rightCount = 0
+
+  if (cap === 1) {
+    bottomCount = 1
+  } else if (cap === 2) {
+    if (tw >= th) {
+      topCount = 1
+      bottomCount = 1
+    } else {
+      leftCount = 1
+      rightCount = 1
+    }
+  } else if (cap === 3) {
+    topCount = 1
+    bottomCount = 2
+  } else if (cap === 4) {
+    topCount = 1
+    bottomCount = 1
+    leftCount = 1
+    rightCount = 1
+  } else {
+    if (tw >= th) {
+      leftCount = 1
+      rightCount = 1
+      const rem = cap - 2
+      topCount = Math.ceil(rem / 2)
+      bottomCount = Math.floor(rem / 2)
+    } else {
+      topCount = 1
+      bottomCount = 1
+      const rem = cap - 2
+      leftCount = Math.ceil(rem / 2)
+      rightCount = Math.floor(rem / 2)
     }
   }
 
-  // Filtrar sillas que queden pegadas al muro perimetral
-  return positions.filter(pos => {
-    return pos.y >= 35 && pos.y <= worldHeight - 25 && pos.x >= 35 && pos.x <= worldWidth - 25
-  })
+  if (blocked.top) topCount = 0
+  if (blocked.bottom) bottomCount = 0
+  if (blocked.left) leftCount = 0
+  if (blocked.right) rightCount = 0
+
+  for (let i = 0; i < topCount; i++) {
+    seats.push({ x: tx + tw * ((i + 0.5) / topCount), y: ty - 9, isStool: false })
+  }
+  for (let i = 0; i < bottomCount; i++) {
+    seats.push({ x: tx + tw * ((i + 0.5) / bottomCount), y: ty + th + 9, isStool: false })
+  }
+  for (let i = 0; i < leftCount; i++) {
+    seats.push({ x: tx - 9, y: ty + th * ((i + 0.5) / leftCount), isStool: false })
+  }
+  for (let i = 0; i < rightCount; i++) {
+    seats.push({ x: tx + tw + 9, y: ty + th * ((i + 0.5) / rightCount), isStool: false })
+  }
+
+  return seats
 }
 
-// Sillas alrededor de la mesa
-const drawChairs = (tx, ty, capacity, isRound) => {
-  const positions = getLiveChairPositions(tx, ty, capacity, isRound)
+// Dibujo de sillas alrededor de la mesa
+const drawChairs = (table, tx, ty, tw, th) => {
+  const seats = getTableSeatsPositions(table, tx, ty, tw, th)
 
-  positions.forEach((pos) => {
-    ctx.fillStyle = '#78350f'
-    drawRoundedRect(ctx, pos.x - 11, pos.y - 11, 22, 22, 5, true, false)
-    ctx.fillStyle = '#d97706'
-    drawRoundedRect(ctx, pos.x - 9, pos.y - 9, 18, 18, 4, true, false)
+  seats.forEach((seat) => {
+    ctx.fillStyle = seat.isStool ? '#fbbf24' : '#f8fafc'
+    ctx.strokeStyle = seat.isStool ? '#78350f' : '#334155'
+    ctx.lineWidth = 1.8
+
+    ctx.beginPath()
+    if (seat.isStool) {
+      drawRoundedRect(ctx, seat.x - 6, seat.y - 6, 12, 12, 3, true, true)
+    } else {
+      ctx.arc(seat.x, seat.y, 6, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+    }
   })
 }
 
 // Comensales sentados
-const drawGuests = (tx, ty, count, status, capacity, isRound) => {
-  const positions = getLiveChairPositions(tx, ty, capacity || count || 4, isRound)
+const drawGuests = (table, tx, ty, tw, th) => {
+  const seats = getTableSeatsPositions(table, tx, ty, tw, th)
   const hairColors = ['#451a03', '#1e293b', '#b45309', '#0284c7']
-  const guestsToDraw = Math.min(count, positions.length)
 
-  for (let i = 0; i < guestsToDraw; i++) {
-    const pos = positions[i]
-    // Cabeza del comensal estilo Chibi
-    ctx.fillStyle = '#fde047' // Piel cálida
+  seats.forEach((seat, idx) => {
+    ctx.fillStyle = '#fde047'
     ctx.beginPath()
-    ctx.arc(pos.x, pos.y, 10, 0, Math.PI * 2)
+    ctx.arc(seat.x, seat.y, 6.5, 0, Math.PI * 2)
     ctx.fill()
 
-    // Cabello
-    ctx.fillStyle = hairColors[i % hairColors.length]
+    ctx.fillStyle = hairColors[idx % hairColors.length]
     ctx.beginPath()
-    ctx.arc(pos.x, pos.y - 3, 10, Math.PI, Math.PI * 2)
+    ctx.arc(seat.x, seat.y - 2, 6.5, Math.PI, Math.PI * 2)
     ctx.fill()
-  }
+  })
 }
 
+// ==========================================
 // 5. DIBUJO DE CHEFS (ESTILO OVERCOOKED)
+// ==========================================
 const drawChef = (chef) => {
   const bobY = Math.sin(chef.bobOffset) * 2.5
   const cx = chef.x
   const cy = chef.y + bobY
 
-  // Sombra suave en los pies
+  // Sombra
   ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
   ctx.beginPath()
-  ctx.ellipse(cx, chef.y + 16, 14, 6, 0, 0, Math.PI * 2)
+  ctx.ellipse(cx, chef.y + 14, 12, 5, 0, 0, Math.PI * 2)
   ctx.fill()
 
   // Cuerpo y Delantal
   ctx.fillStyle = '#ffffff'
-  drawRoundedRect(ctx, cx - 11, cy - 6, 22, 20, 6, true, false)
+  drawRoundedRect(ctx, cx - 10, cy - 6, 20, 18, 5, true, false)
 
-  // Delantal coloreado según la estación
-  ctx.fillStyle = chef.color === 'error' ? '#ef4444' : chef.color === 'success' ? '#10b981' : '#3b82f6'
-  ctx.fillRect(cx - 7, cy - 2, 14, 14)
+  // Delantal coloreado
+  ctx.fillStyle = '#ff9f43'
+  ctx.fillRect(cx - 6, cy - 2, 12, 12)
 
   // Cabeza Chibi
   ctx.fillStyle = '#fde68a'
   ctx.beginPath()
-  ctx.arc(cx, cy - 10, 11, 0, Math.PI * 2)
+  ctx.arc(cx, cy - 9, 10, 0, Math.PI * 2)
   ctx.fill()
 
-  // Ojos tiernos
+  // Ojos
   ctx.fillStyle = '#1e293b'
   ctx.beginPath()
-  ctx.arc(cx - 4, cy - 10, 2, 0, Math.PI * 2)
-  ctx.arc(cx + 4, cy - 10, 2, 0, Math.PI * 2)
+  ctx.arc(cx - 3.5, cy - 9, 1.8, 0, Math.PI * 2)
+  ctx.arc(cx + 3.5, cy - 9, 1.8, 0, Math.PI * 2)
   ctx.fill()
 
-  // Bigotito o expresión
-  ctx.strokeStyle = '#78350f'
-  ctx.lineWidth = 1.5
-  ctx.beginPath()
-  ctx.arc(cx, cy - 6, 3, 0, Math.PI)
-  ctx.stroke()
-
-  // Gorro Alto de Chef Esponjado
+  // Gorro de Chef
   ctx.fillStyle = '#ffffff'
   ctx.strokeStyle = '#e2e8f0'
   ctx.lineWidth = 1
   ctx.beginPath()
-  ctx.arc(cx - 7, cy - 23, 7, 0, Math.PI * 2)
-  ctx.arc(cx + 7, cy - 23, 7, 0, Math.PI * 2)
-  ctx.arc(cx, cy - 27, 8, 0, Math.PI * 2)
+  ctx.arc(cx - 6, cy - 20, 6, 0, Math.PI * 2)
+  ctx.arc(cx + 6, cy - 20, 6, 0, Math.PI * 2)
+  ctx.arc(cx, cy - 24, 7, 0, Math.PI * 2)
   ctx.fill()
   ctx.stroke()
-  ctx.fillRect(cx - 10, cy - 19, 20, 6)
+  ctx.fillRect(cx - 8, cy - 17, 16, 5)
 
-  // Sartén o Cuchillo animado en la mano
+  // Sartén animada
   const panAngle = Math.sin(globalTick * 0.15) * 0.3
   ctx.save()
-  ctx.translate(cx + 12, cy)
+  ctx.translate(cx + 10, cy)
   ctx.rotate(panAngle)
   ctx.fillStyle = '#334155'
-  ctx.fillRect(0, -2, 10, 4)
+  ctx.fillRect(0, -2, 8, 3)
   ctx.beginPath()
-  ctx.arc(12, 0, 7, 0, Math.PI * 2)
+  ctx.arc(10, 0, 6, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
 
-  // Barra Circular de Progreso de Cocción sobre la cabeza
+  // Progreso de cocción circular
   ctx.strokeStyle = '#e2e8f0'
-  ctx.lineWidth = 3
+  ctx.lineWidth = 2.5
   ctx.beginPath()
-  ctx.arc(cx, cy - 38, 7, 0, Math.PI * 2)
+  ctx.arc(cx, cy - 34, 6, 0, Math.PI * 2)
   ctx.stroke()
-
   ctx.strokeStyle = '#10b981'
   ctx.beginPath()
-  ctx.arc(cx, cy - 38, 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * chef.cookingProgress)
+  ctx.arc(cx, cy - 34, 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * chef.cookingProgress)
   ctx.stroke()
 
   // Nombre del Chef
   ctx.fillStyle = '#ffffff'
   ctx.font = 'bold 9px sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText(chef.name, cx, cy + 28)
+  ctx.fillText(chef.name, cx, cy + 24)
 }
 
-// 6. DIBUJO DE MESEROS (ESTILO OVERCOOKED)
+// ==========================================
+// 6. DIBUJO DE MESEROS
+// ==========================================
 const drawWaiter = (waiter) => {
   const bobY = Math.sin(waiter.bobOffset) * 2.5
   const wx = waiter.x
   const wy = waiter.y + bobY
 
-  // Sombra en los pies
+  // Sombra
   ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
   ctx.beginPath()
-  ctx.ellipse(wx, waiter.y + 16, 14, 6, 0, 0, Math.PI * 2)
+  ctx.ellipse(wx, waiter.y + 14, 12, 5, 0, 0, Math.PI * 2)
   ctx.fill()
 
-  // Chaleco elegante y Camisa blanca
+  // Camisa y chaleco
   ctx.fillStyle = '#ffffff'
-  drawRoundedRect(ctx, wx - 11, wy - 6, 22, 20, 6, true, false)
+  drawRoundedRect(ctx, wx - 10, wy - 6, 20, 18, 5, true, false)
   ctx.fillStyle = '#1e1b4b'
-  ctx.fillRect(wx - 10, wy - 4, 6, 16)
-  ctx.fillRect(wx + 4, wy - 4, 6, 16)
+  ctx.fillRect(wx - 9, wy - 4, 5, 14)
+  ctx.fillRect(wx + 4, wy - 4, 5, 14)
 
   // Pajarita roja
   ctx.fillStyle = '#dc2626'
   ctx.beginPath()
-  ctx.arc(wx, wy - 4, 2.5, 0, Math.PI * 2)
+  ctx.arc(wx, wy - 4, 2, 0, Math.PI * 2)
   ctx.fill()
 
   // Cabeza Chibi
   ctx.fillStyle = '#fde68a'
   ctx.beginPath()
-  ctx.arc(wx, wy - 10, 11, 0, Math.PI * 2)
+  ctx.arc(wx, wy - 9, 10, 0, Math.PI * 2)
   ctx.fill()
 
   // Cabello
   ctx.fillStyle = '#451a03'
   ctx.beginPath()
-  ctx.arc(wx, wy - 13, 11, Math.PI, Math.PI * 2)
+  ctx.arc(wx, wy - 12, 10, Math.PI, Math.PI * 2)
   ctx.fill()
 
   // Ojos
   ctx.fillStyle = '#1e293b'
   ctx.beginPath()
-  ctx.arc(wx - 4, wy - 10, 2, 0, Math.PI * 2)
-  ctx.arc(wx + 4, wy - 10, 2, 0, Math.PI * 2)
+  ctx.arc(wx - 3.5, wy - 9, 1.8, 0, Math.PI * 2)
+  ctx.arc(wx + 3.5, wy - 9, 1.8, 0, Math.PI * 2)
   ctx.fill()
 
-  // Bandeja de Mozo si lleva pedido
+  // Bandeja si lleva pedido
   if (waiter.carryingDish) {
     ctx.fillStyle = '#cbd5e1'
     ctx.beginPath()
-    ctx.ellipse(wx + 12, wy - 2, 10, 4, 0, 0, Math.PI * 2)
+    ctx.ellipse(wx + 10, wy - 2, 8, 3.5, 0, 0, Math.PI * 2)
     ctx.fill()
-
-    // Campana de plata brillante
     ctx.fillStyle = '#94a3b8'
     ctx.beginPath()
-    ctx.arc(wx + 12, wy - 5, 5, Math.PI, Math.PI * 2)
+    ctx.arc(wx + 10, wy - 5, 4.5, Math.PI, Math.PI * 2)
     ctx.fill()
   }
 
   // Nombre del Mesero
-  ctx.fillStyle = '#1e293b'
+  ctx.fillStyle = '#ffffff'
   ctx.font = 'bold 9px sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText(waiter.name, wx, wy + 26)
+  ctx.fillText(waiter.name, wx, wy + 24)
 }
 
-// 7. DIBUJO DE PARTÍCULAS
+// ==========================================
+// 7. PARTÍCULAS Y BURBUJAS
+// ==========================================
 const drawParticles = () => {
   particles.forEach((p) => {
     ctx.save()
     ctx.globalAlpha = p.alpha
-    if (p.type === 'flame') {
-      ctx.fillStyle = '#ff7675'
-    } else {
-      ctx.fillStyle = '#ffffff'
-    }
+    ctx.fillStyle = p.type === 'flame' ? '#ff7675' : '#ffffff'
     ctx.beginPath()
     ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
     ctx.fill()
@@ -1088,7 +1108,6 @@ const drawParticles = () => {
   })
 }
 
-// 8. BURBUJAS DE ESTADO FLOTANTES
 const drawFloatingBubbles = () => {
   floatingBubbles.forEach((b) => {
     ctx.save()
@@ -1101,25 +1120,22 @@ const drawFloatingBubbles = () => {
 const drawStatusBubble = (x, y, text, color) => {
   ctx.font = 'bold 10px sans-serif'
   const textWidth = ctx.measureText(text).width
-  const padding = 10
+  const padding = 8
   const bubbleW = textWidth + padding * 2
-  const bubbleH = 20
+  const bubbleH = 18
 
-  // Fondo de la burbuja
   ctx.fillStyle = '#ffffff'
   ctx.strokeStyle = color
-  ctx.lineWidth = 2
-  drawRoundedRect(ctx, x - bubbleW / 2, y - bubbleH / 2, bubbleW, bubbleH, 10, true, true)
+  ctx.lineWidth = 1.8
+  drawRoundedRect(ctx, x - bubbleW / 2, y - bubbleH / 2, bubbleW, bubbleH, 8, true, true)
 
-  // Triángulo inferior
   ctx.fillStyle = '#ffffff'
   ctx.beginPath()
-  ctx.moveTo(x - 4, y + bubbleH / 2)
-  ctx.lineTo(x + 4, y + bubbleH / 2)
-  ctx.lineTo(x, y + bubbleH / 2 + 5)
+  ctx.moveTo(x - 3, y + bubbleH / 2)
+  ctx.lineTo(x + 3, y + bubbleH / 2)
+  ctx.lineTo(x, y + bubbleH / 2 + 4)
   ctx.fill()
 
-  // Texto
   ctx.fillStyle = '#0f172a'
   ctx.textAlign = 'center'
   ctx.fillText(text, x, y + 3.5)
@@ -1161,24 +1177,24 @@ const handleMouseUp = () => {
   camera.value.isDragging = false
 }
 
-// Detección de Clic en Mesas o Chefs
+// Detección de Clic en Mesas o Chefs basada en coordenadas reales
 const handleClick = (e) => {
   if (!canvasRef.value) return
   const rect = canvasRef.value.getBoundingClientRect()
   const mouseScreenX = e.clientX - rect.left
   const mouseScreenY = e.clientY - rect.top
 
-  // Transformar coordenadas de pantalla a coordenadas del mundo
   const worldX = (mouseScreenX - camera.value.x) / camera.value.zoom
   const worldY = (mouseScreenY - camera.value.y) / camera.value.zoom
 
-  // 1. Chequear clic en mesas
-  const tableList = props.tables.length ? props.tables : []
-  for (const table of tableList) {
-    const tx = (table.pos_x || 200) + 40
-    const ty = (table.pos_y || 400) + 40
-    const dist = Math.hypot(worldX - tx, worldY - ty)
-    if (dist <= 45) {
+  // 1. Chequear clic en mesas reales
+  for (const table of props.tables) {
+    const tx = offsetX + Number(table.pos_x || 0)
+    const ty = offsetY + Number(table.pos_y || 0)
+    const tw = Number(table.width || 60)
+    const th = Number(table.height || 60)
+
+    if (worldX >= tx && worldX <= tx + tw && worldY >= ty && worldY <= ty + th) {
       emit('select-table', table)
       return
     }
@@ -1187,7 +1203,7 @@ const handleClick = (e) => {
   // 2. Chequear clic en chefs
   for (const chef of chefs) {
     const dist = Math.hypot(worldX - chef.x, worldY - chef.y)
-    if (dist <= 30) {
+    if (dist <= 25) {
       floatingBubbles.push({
         x: chef.x,
         y: chef.y - 45,
@@ -1207,7 +1223,7 @@ const zoomIn = () => {
 }
 
 const zoomOut = () => {
-  camera.value.zoom = Math.max(camera.value.zoom - 0.15, 0.6)
+  camera.value.zoom = Math.max(camera.value.zoom - 0.15, 0.5)
 }
 
 const resetCamera = () => {
@@ -1222,13 +1238,19 @@ const resizeCanvas = () => {
   const parent = canvasRef.value.parentElement
   if (parent) {
     canvasRef.value.width = parent.clientWidth || 1000
-    canvasRef.value.height = 600
+    canvasRef.value.height = 620
   }
 }
 
-watch(() => props.stations, () => {
-  initChefs()
-}, { deep: true })
+// Observar reactividad de zonas, mesas y estaciones KDS
+watch(
+  [() => props.zone, () => props.tables, () => props.stations],
+  () => {
+    initChefs()
+    initWaiters()
+  },
+  { deep: true, immediate: true }
+)
 
 onMounted(() => {
   if (canvasRef.value) {
@@ -1251,9 +1273,9 @@ onUnmounted(() => {
 
 <style scoped>
 .overcooked-live-container {
-  min-height: 600px;
-  background-color: #12121a;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+  min-height: 620px;
+  background-color: #0b0d14;
+  box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.7);
 }
 
 .overcooked-hud-bar {
@@ -1262,10 +1284,10 @@ onUnmounted(() => {
   left: 10px;
   right: 10px;
   z-index: 10;
-  background: rgba(22, 22, 34, 0.85);
+  background: rgba(18, 20, 30, 0.88);
   backdrop-filter: blur(8px);
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .overcooked-bottom-guide {
@@ -1274,16 +1296,16 @@ onUnmounted(() => {
   left: 10px;
   right: 10px;
   z-index: 10;
-  background: rgba(22, 22, 34, 0.85);
+  background: rgba(18, 20, 30, 0.88);
   backdrop-filter: blur(8px);
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
 }
 
 .overcooked-canvas {
   width: 100%;
-  height: 600px;
+  height: 620px;
   display: block;
   cursor: grab;
 }
