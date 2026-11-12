@@ -4,7 +4,7 @@
     <div class="overcooked-hud-bar d-flex align-center justify-space-between flex-wrap gap-2 pa-3">
       <div class="d-flex align-center gap-2 flex-wrap">
         <v-chip color="primary" variant="flat" size="small" prepend-icon="tabler-chef-hat">
-          <strong>Salón en Vivo</strong>
+          <strong>Salón en Vivo 2.5D</strong>
         </v-chip>
         <v-chip color="secondary" variant="tonal" size="small" prepend-icon="tabler-ruler-2">
           {{ zoneWidthMeters }}m × {{ zoneHeightMeters }}m ({{ (zoneWidthMeters * zoneHeightMeters).toFixed(1) }} m²)
@@ -104,8 +104,8 @@ let animationFrameId = null
 
 // Parámetros de Cámara y Zoom
 const camera = ref({
-  x: 0,
-  y: 0,
+  x: 30,
+  y: 20,
   zoom: 1.0,
   isDragging: false,
   dragStartX: 0,
@@ -114,8 +114,8 @@ const camera = ref({
 
 // Escala métrica unificada con el diseñador (1 metro = 60px)
 const cellPixelSize = 60
-const offsetX = 50
-const offsetY = 50
+const offsetX = 110
+const offsetY = 110
 
 const zoneWidthMeters = computed(() => Number(props.zone?.width_meters || 12))
 const zoneHeightMeters = computed(() => Number(props.zone?.height_meters || 8))
@@ -125,152 +125,125 @@ const zonePixelHeight = computed(() => Math.round(zoneHeightMeters.value * cellP
 const worldWidth = computed(() => zonePixelWidth.value + offsetX * 2)
 const worldHeight = computed(() => zonePixelHeight.value + offsetY * 2)
 
-// Agentes de Simulación (Chefs, Meseros, Comensales, Partículas)
+// Agentes de Simulación
 let chefs = []
 let waiters = []
 let particles = []
 let floatingBubbles = []
 let globalTick = 0
 
-// Conteos computados para el HUD
 const activeChefsCount = computed(() => chefs.length)
 const activeWaitersCount = computed(() => waiters.length)
 
-// Paleta de Estilos y Fondos del Restaurante
-const THEME = {
-  wooden: {
-    bg: '#3b200b',
-    line: 'rgba(255, 255, 255, 0.18)',
-    border: '#d97706',
-  },
-  grid: {
-    bg: '#10141f',
-    line: 'rgba(0, 207, 232, 0.25)',
-    border: '#00cfe8',
-  },
-  grass: {
-    bg: '#122b19',
-    line: 'rgba(255, 255, 255, 0.16)',
-    border: '#2ecc71',
-  },
-  concrete: {
-    bg: '#222630',
-    line: 'rgba(255, 255, 255, 0.16)',
-    border: '#94a3b8',
-  },
-}
-
 // ==========================================
-// INICIALIZACIÓN DE AGENTES BASADA EN DATOS REALES
+// INICIALIZACIÓN DE AGENTES (CONFINADOS AL INTERIOR REAL)
 // ==========================================
-
-// Chefs: Solo se crean si hay estaciones reales en el equipamiento o área de cocina
 const initChefs = () => {
   chefs = []
-  const equipStations = (props.zone?.layout_config?.equipment || []).filter(e => e.type === 'station')
+  const equipList = props.zone?.layout_config?.equipment || []
+  const equipStations = equipList.filter(e => ['station', 'stove_pot', 'cutting_board'].includes(e.type))
   const kitchenArea = (props.zone?.layout_config?.areas || []).find(a => a.type === 'kitchen')
 
   if (equipStations.length > 0) {
     equipStations.forEach((eq, idx) => {
-      const sx = offsetX + Number(eq.x || 0) * cellPixelSize + (Number(eq.w || 1.5) * cellPixelSize) / 2
-      const sy = offsetY + Number(eq.y || 0) * cellPixelSize + (Number(eq.h || 1.0) * cellPixelSize) / 2
+      const sx = offsetX + Number(eq.x || 0) * cellPixelSize + (Number(eq.w || 1) * cellPixelSize) / 2
+      const sy = offsetY + Number(eq.y || 0) * cellPixelSize + (Number(eq.h || 1) * cellPixelSize) / 2 + 12
       chefs.push({
         id: eq.id || idx + 1,
-        name: `Chef ${eq.name || 'Cocina'}`,
+        name: `Chef ${eq.name || 'Cocina'}`.substring(0, 14),
         stationName: eq.name || 'Estación',
         x: sx,
-        y: sy + 14,
-        targetX: sx,
-        targetY: sy + 14,
+        y: sy,
         homeX: sx,
-        homeY: sy + 14,
+        homeY: sy,
         color: '#ff9f43',
-        state: 'cooking',
         bobOffset: idx * 1.2,
-        carryingDish: null,
         cookingProgress: (idx * 0.3) % 1.0,
         station: eq,
       })
     })
-  } else if (kitchenArea && props.stations.length > 0) {
-    // Si hay área de cocina y estaciones KDS registradas en el sistema
+  } else if (kitchenArea) {
+    // Si hay área de cocina, colocar al menos 1 chef dentro de ella
     const kw = Number(kitchenArea.w || 3) * cellPixelSize
     const kh = Number(kitchenArea.h || 2) * cellPixelSize
     const kx = offsetX + Number(kitchenArea.x || 0) * cellPixelSize
     const ky = offsetY + Number(kitchenArea.y || 0) * cellPixelSize
+    const count = Math.max(1, Math.min(props.stations.length || 1, 3))
 
-    props.stations.forEach((station, idx) => {
-      const sx = kx + kw * ((idx + 0.5) / props.stations.length)
-      const sy = ky + kh / 2 + 10
+    for (let idx = 0; idx < count; idx++) {
+      const st = props.stations[idx] || { id: idx + 1, name: 'Cocina', code: 'CHEF' }
+      const sx = kx + kw * ((idx + 0.5) / count)
+      const sy = ky + kh / 2 + 6
       chefs.push({
-        id: station.id,
-        name: `Chef ${station.code || station.name}`,
-        stationName: station.name,
+        id: st.id,
+        name: `Chef ${st.code || st.name}`.substring(0, 14),
+        stationName: st.name,
         x: sx,
         y: sy,
-        targetX: sx,
-        targetY: sy,
         homeX: sx,
         homeY: sy,
-        color: station.color || '#ff9f43',
-        state: 'cooking',
+        color: st.color || '#ff9f43',
         bobOffset: idx * 1.5,
-        carryingDish: null,
         cookingProgress: (idx * 0.25) % 1.0,
-        station,
+        station: st,
       })
-    })
+    }
   }
 }
 
-// Meseros: Solo se crean si hay mesas reales en el diseño
+const clampToInterior = (x, y) => {
+  const minX = offsetX + 20
+  const maxX = offsetX + zonePixelWidth.value - 20
+  const minY = offsetY + 24
+  const maxY = offsetY + zonePixelHeight.value - 20
+  return {
+    x: Math.max(minX, Math.min(maxX, x)),
+    y: Math.max(minY, Math.min(maxY, y)),
+  }
+}
+
 const initWaiters = () => {
   waiters = []
   if (!props.tables || !props.tables.length) return
 
-  const tableCount = props.tables.length
-  const waiterCount = Math.min(3, Math.max(1, Math.ceil(tableCount / 4)))
-
+  const waiterCount = Math.min(3, Math.max(1, Math.ceil(props.tables.length / 4)))
   for (let i = 0; i < waiterCount; i++) {
-    const t = props.tables[i % tableCount]
-    const wx = offsetX + Number(t.pos_x || 0) + Number(t.width || 60) + 16
-    const wy = offsetY + Number(t.pos_y || 0) + 16
+    const t = props.tables[i % props.tables.length]
+    const pos = clampToInterior(
+      offsetX + Number(t.pos_x || 0) + Number(t.width || 60) / 2 - 24,
+      offsetY + Number(t.pos_y || 0) + Number(t.height || 60) + 18
+    )
     waiters.push({
       id: i + 1,
       name: i === 0 ? 'Mesero Alex' : i === 1 ? 'Mesera Sofía' : 'Mesero Carlos',
-      x: wx,
-      y: wy,
-      targetX: wx,
-      targetY: wy,
-      speed: 2.2,
-      state: 'patrolling',
+      x: pos.x,
+      y: pos.y,
+      targetX: pos.x,
+      targetY: pos.y,
+      speed: 2.0,
       carryingDish: null,
       bobOffset: i * 1.5,
-      targetTable: null,
       taskCooldown: 80 + i * 50,
     })
   }
 }
 
-// Partículas de Fuego y Vapor
 const spawnParticle = (x, y, type = 'steam') => {
   if (particles.length > 40) particles.shift()
   particles.push({
-    x: x + (Math.random() - 0.5) * 16,
-    y: y,
-    vx: (Math.random() - 0.5) * 0.6,
-    vy: -0.7 - Math.random() * 0.7,
+    x: x + (Math.random() - 0.5) * 14,
+    y,
+    vx: (Math.random() - 0.5) * 0.5,
+    vy: -0.7 - Math.random() * 0.6,
     radius: 3 + Math.random() * 2.5,
     alpha: 0.8,
     type,
   })
 }
 
-// Actualización de Lógica de Agentes (Máquina de Estados)
 const updateAgents = () => {
   globalTick++
 
-  // 1. Actualizar Chefs
   chefs.forEach((chef) => {
     chef.bobOffset += 0.08
     chef.cookingProgress += 0.003
@@ -278,26 +251,22 @@ const updateAgents = () => {
       chef.cookingProgress = 0
       floatingBubbles.push({
         x: chef.x,
-        y: chef.y - 45,
+        y: chef.y - 44,
         text: '¡Plato Listo!',
         alpha: 1.0,
-        vy: -0.6,
+        vy: -0.5,
       })
     }
-
-    if (globalTick % 8 === 0) {
-      spawnParticle(chef.homeX, chef.homeY - 20, 'flame')
-      spawnParticle(chef.homeX + 8, chef.homeY - 28, 'steam')
+    if (globalTick % 9 === 0) {
+      spawnParticle(chef.homeX, chef.homeY - 22, 'steam')
     }
   })
 
-  // 2. Actualizar Meseros (Patrullan exclusivamente entre mesas reales)
   const occupiedTables = props.tables.filter(t => t.status === 'occupied' || t.status === 'bill_requested')
   const allTables = props.tables
 
   waiters.forEach((waiter) => {
     waiter.bobOffset += 0.12
-
     const dx = waiter.targetX - waiter.x
     const dy = waiter.targetY - waiter.y
     const dist = Math.hypot(dx, dy)
@@ -308,29 +277,22 @@ const updateAgents = () => {
     } else {
       waiter.taskCooldown--
       if (waiter.taskCooldown <= 0) {
-        waiter.taskCooldown = 140 + Math.floor(Math.random() * 100)
-
-        // Prioridad: atender comensales activos; si no, pasear a otra mesa del plano
-        if (occupiedTables.length && Math.random() > 0.35) {
-          const randomTable = occupiedTables[Math.floor(Math.random() * occupiedTables.length)]
-          waiter.targetTable = randomTable
-          waiter.targetX = offsetX + Number(randomTable.pos_x || 0) + Number(randomTable.width || 60) + 16
-          waiter.targetY = offsetY + Number(randomTable.pos_y || 0) + 20
-          waiter.carryingDish = 'Bandeja'
-          waiter.state = 'serving'
-        } else if (allTables.length) {
-          const randomTable = allTables[Math.floor(Math.random() * allTables.length)]
-          waiter.targetTable = randomTable
-          waiter.targetX = offsetX + Number(randomTable.pos_x || 0) + Number(randomTable.width || 60) + 16
-          waiter.targetY = offsetY + Number(randomTable.pos_y || 0) + 20
-          waiter.carryingDish = null
-          waiter.state = 'patrolling'
+        waiter.taskCooldown = 140 + Math.floor(Math.random() * 90)
+        const pool = occupiedTables.length && Math.random() > 0.35 ? occupiedTables : allTables
+        if (pool.length) {
+          const target = pool[Math.floor(Math.random() * pool.length)]
+          const clamped = clampToInterior(
+            offsetX + Number(target.pos_x || 0) + Number(target.width || 60) / 2,
+            offsetY + Number(target.pos_y || 0) + Number(target.height || 60) + 18
+          )
+          waiter.targetX = clamped.x
+          waiter.targetY = clamped.y
+          waiter.carryingDish = occupiedTables.includes(target) ? 'Bandeja' : null
         }
       }
     }
   })
 
-  // 3. Actualizar Partículas
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i]
     p.x += p.vx
@@ -340,7 +302,6 @@ const updateAgents = () => {
     if (p.alpha <= 0) particles.splice(i, 1)
   }
 
-  // 4. Actualizar Burbujas de Texto
   for (let i = floatingBubbles.length - 1; i >= 0; i--) {
     const b = floatingBubbles[i]
     b.y += b.vy
@@ -350,122 +311,245 @@ const updateAgents = () => {
 }
 
 // ==========================================
-// RENDERIZADO PRINCIPAL (CANVAS 2.5D REAL)
+// RENDERIZADO PRINCIPAL 2.5D OVERCOOKED
 // ==========================================
 const render = () => {
   if (!ctx || !canvasRef.value) return
-
   const width = canvasRef.value.width
   const height = canvasRef.value.height
 
   ctx.clearRect(0, 0, width, height)
-
   ctx.save()
-  // Cámara y Zoom
   ctx.translate(camera.value.x, camera.value.y)
   ctx.scale(camera.value.zoom, camera.value.zoom)
 
-  // 1. Suelo y Entorno Real de la Zona
-  drawEnvironment()
+  // 1. Entorno Exterior (Calle, Acera, Paso de Cebra, Árboles)
+  drawExteriorStreetAndSidewalk()
 
-  // 2. Áreas Arquitectónicas Reales (Cocina, Terraza, Depósito, Paredes, etc.)
+  // 2. Suelo del Restaurante (Damero / Madera) + Muros 3D Perimetrales
+  drawFloorAndWalls3D()
+
+  // 3. Áreas Arquitectónicas (Cocina Damero, Depósito, Terraza, Paredes)
   drawArchitecturalAreas()
 
-  // 3. Equipamiento Real (Mostradores, Neveras, Estaciones KDS, Pase)
-  drawEquipment()
+  // 4. Equipamiento Modular 2.5D (Mesones, Ollas, Corte, Fregadero, Mostradores)
+  drawEquipment25D()
 
-  // 4. Mesas Reales con Sillas Dinámicas y Comensales
-  drawDiningTables()
+  // 5. Mesas con Mantel Vichy y Sillas 2.5D
+  drawDiningTables25D()
 
-  // 5. Agentes Chefs
+  // 6. Accesorios / Props 2.5D (Plantas, Toldo, Bancos, Atril, Lámparas)
+  drawProps25D()
+
+  // 7. Agentes Chefs y Meseros
   chefs.forEach(drawChef)
-
-  // 6. Agentes Meseros
   waiters.forEach(drawWaiter)
 
-  // 7. Partículas y Burbujas
+  // 8. Partículas y Burbujas
   drawParticles()
   drawFloatingBubbles()
 
   ctx.restore()
-
   updateAgents()
   animationFrameId = requestAnimationFrame(render)
 }
 
 // ==========================================
-// 1. DIBUJO DEL ENTORNO (SUELO REAL DE LA ZONA)
+// 1. ENTORNO EXTERIOR VIVO (ACERA, CALLE, ÁRBOLES 2.5D)
 // ==========================================
-const drawEnvironment = () => {
-  // Fondo oscuro exterior del lienzo
-  ctx.fillStyle = '#0f111a'
-  ctx.fillRect(-200, -200, worldWidth.value + 400, worldHeight.value + 400)
+const drawExteriorStreetAndSidewalk = () => {
+  const exterior = props.zone?.layout_config?.exterior || { enabled: true }
+  const zW = zonePixelWidth.value
+  const zH = zonePixelHeight.value
 
-  const zWidth = zonePixelWidth.value
-  const zHeight = zonePixelHeight.value
-  const bgStyleKey = props.zone?.background_style || 'wooden'
-  const currentTheme = THEME[bgStyleKey] || THEME.wooden
+  // Fondo base
+  ctx.fillStyle = exterior.enabled === false ? '#0f111a' : '#2d323b'
+  ctx.fillRect(-300, -300, worldWidth.value + 600, worldHeight.value + 600)
 
-  // Sombra proyectada del suelo de la zona
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)'
-  drawRoundedRect(ctx, offsetX + 6, offsetY + 8, zWidth, zHeight, 8, true, false)
+  if (exterior.enabled === false) return
 
-  // Suelo de la zona activa según su estilo real
-  ctx.fillStyle = currentTheme.bg
-  drawRoundedRect(ctx, offsetX, offsetY, zWidth, zHeight, 8, true, false)
+  // Calle superior (Asfalto con línea punteada y paso de cebra multicolor)
+  ctx.fillStyle = '#3c424d'
+  ctx.fillRect(-200, -150, worldWidth.value + 400, offsetY + 60)
 
-  // Cuadrícula métrica exacta de 1m (60px)
-  ctx.strokeStyle = currentTheme.line
-  ctx.lineWidth = 1
-  for (let x = offsetX; x <= offsetX + zWidth; x += cellPixelSize) {
-    ctx.beginPath()
-    ctx.moveTo(x, offsetY)
-    ctx.lineTo(x, offsetY + zHeight)
-    ctx.stroke()
+  // Línea blanca discontinua de la calle
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
+  ctx.lineWidth = 3
+  ctx.setLineDash([18, 16])
+  ctx.beginPath()
+  ctx.moveTo(-150, 22)
+  ctx.lineTo(worldWidth.value + 150, 22)
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  // Paso de cebra arcoíris estilo Overcooked en la esquina superior izquierda
+  const zebraColors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#a855f7']
+  zebraColors.forEach((col, i) => {
+    ctx.fillStyle = col
+    ctx.fillRect(offsetX - 75, 8 + i * 10, 42, 6)
+  })
+
+  // Acera peatonal alrededor del restaurante
+  const sidewalkPad = 48
+  ctx.fillStyle = '#b4b8bf'
+  drawRoundedRect(
+    ctx,
+    offsetX - sidewalkPad,
+    offsetY - sidewalkPad,
+    zW + sidewalkPad * 2,
+    zH + sidewalkPad * 2,
+    12,
+    true,
+    false
+  )
+
+  // Losa / Bordillo de acera
+  ctx.strokeStyle = '#8b919c'
+  ctx.lineWidth = 3
+  drawRoundedRect(
+    ctx,
+    offsetX - sidewalkPad,
+    offsetY - sidewalkPad,
+    zW + sidewalkPad * 2,
+    zH + sidewalkPad * 2,
+    12,
+    false,
+    true
+  )
+
+  // Árboles decorativos automáticos en la acera superior
+  const treeCount = Math.max(2, Math.floor(zW / 240))
+  for (let i = 0; i < treeCount; i++) {
+    const tx = offsetX + 60 + i * (zW / treeCount)
+    const ty = offsetY - 26
+    drawTree25D(tx, ty, 20)
   }
-  for (let y = offsetY; y <= offsetY + zHeight; y += cellPixelSize) {
-    ctx.beginPath()
-    ctx.moveTo(offsetX, y)
-    ctx.lineTo(offsetX + zWidth, y)
-    ctx.stroke()
-  }
+}
 
-  // Borde perimetral del plano del restaurante
-  ctx.strokeStyle = currentTheme.border
-  ctx.lineWidth = 2.5
-  drawRoundedRect(ctx, offsetX, offsetY, zWidth, zHeight, 8, false, true)
+const drawTree25D = (x, y, r = 20) => {
+  // Sombra
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
+  ctx.beginPath()
+  ctx.ellipse(x + 6, y + 10, r, r * 0.65, 0, 0, Math.PI * 2)
+  ctx.fill()
 
-  // Marcadores de metro sutiles en la regla superior
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
-  ctx.font = 'bold 9px sans-serif'
-  ctx.textAlign = 'left'
-  const maxMetersX = Math.ceil(zoneWidthMeters.value)
-  for (let m = 1; m < maxMetersX; m++) {
-    const rx = offsetX + m * cellPixelSize
-    ctx.fillStyle = 'rgba(255, 213, 79, 0.45)'
-    ctx.fillText(`${m}m`, rx + 3, offsetY + 12)
-  }
+  // Copa base verde oscuro
+  ctx.fillStyle = '#2e7d32'
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.fill()
 
-  // Píldora con dimensiones en la esquina inferior derecha
-  const tagText = `Planta: ${zoneWidthMeters.value}m × ${zoneHeightMeters.value}m (${(zoneWidthMeters.value * zoneHeightMeters.value).toFixed(1)} m²)`
-  ctx.font = 'bold 10px sans-serif'
-  const tagW = ctx.measureText(tagText).width + 16
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
-  drawRoundedRect(ctx, offsetX + zWidth - tagW - 8, offsetY + zHeight - 24, tagW, 18, 4, true, false)
-  ctx.strokeStyle = 'rgba(255, 213, 79, 0.5)'
-  ctx.lineWidth = 1
-  drawRoundedRect(ctx, offsetX + zWidth - tagW - 8, offsetY + zHeight - 24, tagW, 18, 4, false, true)
-  ctx.fillStyle = '#ffd54f'
-  ctx.textAlign = 'center'
-  ctx.fillText(tagText, offsetX + zWidth - tagW / 2 - 8, offsetY + zHeight - 12)
+  // Volumen superior verde claro
+  ctx.fillStyle = '#4caf50'
+  ctx.beginPath()
+  ctx.arc(x - 3, y - 4, r * 0.78, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Brillo
+  ctx.fillStyle = '#81c784'
+  ctx.beginPath()
+  ctx.arc(x - 6, y - 8, r * 0.4, 0, Math.PI * 2)
+  ctx.fill()
 }
 
 // ==========================================
-// 2. ÁREAS ARQUITECTÓNICAS (COCINA, TERRAZA, DEPÓSITO, ETC.)
+// 2. SUELO Y MUROS PERIMETRALES 3D
+// ==========================================
+const drawFloorAndWalls3D = () => {
+  const zW = zonePixelWidth.value
+  const zH = zonePixelHeight.value
+  const bgStyle = props.zone?.background_style || 'wooden'
+
+  // Sombra proyectada de toda la estructura
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
+  ctx.fillRect(offsetX + 10, offsetY + 12, zW, zH)
+
+  // Suelo según estilo elegido
+  if (bgStyle === 'checker_dark') {
+    drawCheckerFloor(offsetX, offsetY, zW, zH, '#2c303a', '#353a46', 30)
+  } else if (bgStyle === 'checker_warm') {
+    drawCheckerFloor(offsetX, offsetY, zW, zH, '#f3ead8', '#d5decb', 30)
+  } else if (bgStyle === 'grass') {
+    ctx.fillStyle = '#1b4332'
+    ctx.fillRect(offsetX, offsetY, zW, zH)
+  } else if (bgStyle === 'concrete') {
+    ctx.fillStyle = '#2d3340'
+    ctx.fillRect(offsetX, offsetY, zW, zH)
+  } else if (bgStyle === 'grid') {
+    ctx.fillStyle = '#10141f'
+    ctx.fillRect(offsetX, offsetY, zW, zH)
+  } else {
+    // Madera cálida con tablones
+    ctx.fillStyle = '#4a2c11'
+    ctx.fillRect(offsetX, offsetY, zW, zH)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)'
+    ctx.lineWidth = 1.5
+    for (let y = offsetY; y < offsetY + zH; y += 20) {
+      ctx.beginPath()
+      ctx.moveTo(offsetX, y)
+      ctx.lineTo(offsetX + zW, y)
+      ctx.stroke()
+    }
+  }
+
+  // Sombra interior (Ambient Occlusion) bajo las paredes
+  const gradTop = ctx.createLinearGradient(0, offsetY, 0, offsetY + 22)
+  gradTop.addColorStop(0, 'rgba(0, 0, 0, 0.45)')
+  gradTop.addColorStop(1, 'rgba(0, 0, 0, 0)')
+  ctx.fillStyle = gradTop
+  ctx.fillRect(offsetX, offsetY, zW, 22)
+
+  // Muros 3D Perimetrales (Terracota / Ladrillo estilo Overcooked)
+  const wallT = 12
+  ctx.fillStyle = '#8b3a22' // Base muro
+  // Norte (con altura 3D)
+  ctx.fillRect(offsetX - wallT, offsetY - wallT - 10, zW + wallT * 2, wallT + 10)
+  // Sur
+  ctx.fillRect(offsetX - wallT, offsetY + zH, zW + wallT * 2, wallT)
+  // Oeste
+  ctx.fillRect(offsetX - wallT, offsetY - wallT, wallT, zH + wallT * 2)
+  // Este
+  ctx.fillRect(offsetX + zW, offsetY - wallT, wallT, zH + wallT * 2)
+
+  // Tope superior claro de los muros
+  ctx.strokeStyle = '#c46243'
+  ctx.lineWidth = 3
+  ctx.strokeRect(offsetX - wallT / 2, offsetY - wallT / 2, zW + wallT, zH + wallT)
+
+  // Ventanas decorativas en pared Norte
+  const winCount = Math.max(2, Math.floor(zW / 160))
+  for (let i = 0; i < winCount; i++) {
+    const wx = offsetX + 45 + i * (zW / winCount)
+    ctx.fillStyle = '#fde68a'
+    ctx.fillRect(wx, offsetY - 14, 48, 8)
+    ctx.strokeStyle = '#5c2818'
+    ctx.lineWidth = 2
+    ctx.strokeRect(wx, offsetY - 14, 48, 8)
+  }
+}
+
+const drawCheckerFloor = (x, y, w, h, col1, col2, size = 30) => {
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, w, h)
+  ctx.clip()
+
+  const cols = Math.ceil(w / size)
+  const rows = Math.ceil(h / size)
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      ctx.fillStyle = (r + c) % 2 === 0 ? col1 : col2
+      ctx.fillRect(x + c * size, y + r * size, size, size)
+    }
+  }
+  ctx.restore()
+}
+
+// ==========================================
+// 3. ÁREAS ARQUITECTÓNICAS (DAMERO COCINA + MUROS)
 // ==========================================
 const drawArchitecturalAreas = () => {
   const areas = props.zone?.layout_config?.areas || []
-
   areas.forEach((area) => {
     const ax = offsetX + Number(area.x || 0) * cellPixelSize
     const ay = offsetY + Number(area.y || 0) * cellPixelSize
@@ -473,201 +557,193 @@ const drawArchitecturalAreas = () => {
     const ah = Number(area.h || 1) * cellPixelSize
 
     ctx.save()
-
     if (area.type === 'kitchen') {
-      // Cocina Real: Azulejos crema/gris con borde rojo
-      ctx.fillStyle = '#f4ede4'
-      ctx.fillRect(ax, ay, aw, ah)
-
-      ctx.strokeStyle = '#ded9ce'
-      ctx.lineWidth = 1.2
-      for (let x = ax; x <= ax + aw; x += 20) {
-        ctx.beginPath()
-        ctx.moveTo(x, ay)
-        ctx.lineTo(x, ay + ah)
-        ctx.stroke()
-      }
-      for (let y = ay; y <= ay + ah; y += 20) {
-        ctx.beginPath()
-        ctx.moveTo(ax, y)
-        ctx.lineTo(ax + aw, y)
-        ctx.stroke()
-      }
-      ctx.strokeStyle = '#e74c3c'
-      ctx.lineWidth = 2.5
+      // Damero clásico Overcooked en Cocina
+      drawCheckerFloor(ax, ay, aw, ah, '#f3ead8', '#b8c4bb', 20)
+      ctx.strokeStyle = '#8b3a22'
+      ctx.lineWidth = 3
       ctx.strokeRect(ax, ay, aw, ah)
     } else if (area.type === 'storage') {
-      // Depósito
-      ctx.fillStyle = '#283747'
-      ctx.fillRect(ax, ay, aw, ah)
-      ctx.strokeStyle = '#95a5a6'
-      ctx.lineWidth = 2
-      ctx.strokeRect(ax, ay, aw, ah)
-    } else if (area.type === 'bar_zone') {
-      // Zona de Barra
-      ctx.fillStyle = '#1b263b'
-      ctx.fillRect(ax, ay, aw, ah)
-      ctx.strokeStyle = '#3498db'
+      drawCheckerFloor(ax, ay, aw, ah, '#283747', '#212f3d', 24)
+      ctx.strokeStyle = '#7f8c8d'
       ctx.lineWidth = 2
       ctx.strokeRect(ax, ay, aw, ah)
     } else if (area.type === 'terrace') {
-      // Terraza / Jardín
-      ctx.fillStyle = 'rgba(39, 174, 96, 0.45)'
+      ctx.fillStyle = 'rgba(46, 204, 113, 0.35)'
       ctx.fillRect(ax, ay, aw, ah)
       ctx.strokeStyle = '#2ecc71'
       ctx.lineWidth = 2
-      ctx.setLineDash([6, 4])
       ctx.strokeRect(ax, ay, aw, ah)
-      ctx.setLineDash([])
     } else if (area.type === 'wall') {
-      // Muro / Pared
-      ctx.fillStyle = '#1c1c1c'
+      // Muro divisor 3D
+      ctx.fillStyle = '#5c2818'
+      ctx.fillRect(ax, ay + 6, aw, ah)
+      ctx.fillStyle = '#a04529'
       ctx.fillRect(ax, ay, aw, ah)
-      ctx.strokeStyle = '#ffb300'
-      ctx.lineWidth = 2
+      ctx.strokeStyle = '#d47a5b'
+      ctx.lineWidth = 1.5
       ctx.strokeRect(ax, ay, aw, ah)
     } else if (area.type === 'entrance') {
-      // Entrada / Alfombra
-      ctx.fillStyle = '#5b2c6f'
+      ctx.fillStyle = '#a8292b'
       ctx.fillRect(ax, ay, aw, ah)
-      ctx.strokeStyle = '#bb8fce'
+      ctx.strokeStyle = '#ffd54f'
       ctx.lineWidth = 2
-      ctx.setLineDash([5, 3])
-      ctx.strokeRect(ax, ay, aw, ah)
-      ctx.setLineDash([])
-    } else if (area.type === 'pass_counter') {
-      // Mostrador de Pase configurado como área
-      ctx.fillStyle = '#e65100'
-      ctx.fillRect(ax, ay, aw, ah)
-      ctx.strokeStyle = '#ffe082'
-      ctx.lineWidth = 2
-      ctx.setLineDash([6, 3])
-      ctx.strokeRect(ax, ay, aw, ah)
-      ctx.setLineDash([])
+      ctx.strokeRect(ax + 3, ay + 3, aw - 6, ah - 6)
     } else {
-      // Área personalizada
-      ctx.fillStyle = area.color ? `${area.color}33` : 'rgba(0, 207, 232, 0.2)'
+      ctx.fillStyle = area.color ? `${area.color}44` : 'rgba(0, 207, 232, 0.22)'
       ctx.fillRect(ax, ay, aw, ah)
       ctx.strokeStyle = area.color || '#00cfe8'
       ctx.lineWidth = 2
       ctx.strokeRect(ax, ay, aw, ah)
     }
 
-    // Cabecera del Área (Píldora Oscura con Alto Contraste)
-    const pillW = Math.min(aw - 8, 120)
-    ctx.fillStyle = 'rgba(12, 14, 22, 0.92)'
-    drawRoundedRect(ctx, ax + 4, ay + 4, pillW, 18, 4, true, false)
+    // Etiqueta discreta del área
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
+    drawRoundedRect(ctx, ax + 4, ay + 4, Math.min(aw - 8, 95), 16, 4, true, false)
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 10px sans-serif'
+    ctx.font = 'bold 9px sans-serif'
     ctx.textAlign = 'left'
-    ctx.fillText((area.name || area.type).substring(0, 16), ax + 10, ay + 16)
-
-    // Marca de agua central con nombre y superficie m²
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)'
-    ctx.font = 'bold 12px sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText(`${(Number(area.w || 1) * Number(area.h || 1)).toFixed(1)} m²`, ax + aw / 2, ay + ah / 2 + 5)
-
+    ctx.fillText((area.name || area.type).substring(0, 14), ax + 8, ay + 15)
     ctx.restore()
   })
 }
 
 // ==========================================
-// 3. EQUIPAMIENTO REAL (MOSTRADORES, NEVERAS, ESTACIONES KDS)
+// 4. EQUIPAMIENTO MODULAR 2.5D (MESONES, OLLAS, CORTE, MOSTRADORES)
 // ==========================================
-const drawEquipment = () => {
+const drawCounterBlock3D = (x, y, w, h, topColor, frontColor, borderColor) => {
+  const frontH = Math.min(12, h * 0.25)
+  // Sombra
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.32)'
+  drawRoundedRect(ctx, x + 3, y + 5, w, h, 4, true, false)
+  // Cara frontal 3D
+  ctx.fillStyle = frontColor
+  drawRoundedRect(ctx, x, y + frontH, w, h - frontH + 4, 4, true, false)
+  // Encimera superior
+  ctx.fillStyle = topColor
+  drawRoundedRect(ctx, x, y, w, h - frontH, 4, true, false)
+  ctx.strokeStyle = borderColor
+  ctx.lineWidth = 1.5
+  drawRoundedRect(ctx, x, y, w, h - frontH, 4, false, true)
+}
+
+const drawEquipment25D = () => {
   const equipList = props.zone?.layout_config?.equipment || []
 
   equipList.forEach((eq) => {
     const ex = offsetX + Number(eq.x || 0) * cellPixelSize
     const ey = offsetY + Number(eq.y || 0) * cellPixelSize
-    const ew = Number(eq.w || 1.5) * cellPixelSize
-    const eh = Number(eq.h || 1.0) * cellPixelSize
+    const ew = Number(eq.w || 1) * cellPixelSize
+    const eh = Number(eq.h || 1) * cellPixelSize
+    const cx = ex + ew / 2
+    const cy = ey + eh / 2 - 4
 
     ctx.save()
 
-    // Sombra del mueble
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
-    drawRoundedRect(ctx, ex + 3, ey + 4, ew, eh, 6, true, false)
-
     if (eq.type === 'cooling') {
-      // Nevera / Congelador (Cian / Petróleo)
-      ctx.fillStyle = '#006064'
-      drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
-      ctx.fillStyle = '#00838f'
-      drawRoundedRect(ctx, ex + 3, ey + 3, ew - 6, eh - 6, 4, true, false)
-
-      // Tirador metálico
-      ctx.fillStyle = '#4dd0e1'
-      ctx.fillRect(ex + ew - 8, ey + 6, 3, eh - 12)
-
-      // Texto de frío
-      ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 11px sans-serif'
+      // Nevera 3D Acero Inoxidable
+      drawCounterBlock3D(ex, ey, ew, eh, '#0097a7', '#006064', '#4dd0e1')
+      ctx.fillStyle = '#e0f7fa'
+      ctx.font = 'bold 10px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(`❄ ${eq.name || 'FRÍO'}`, ex + ew / 2, ey + eh / 2 + 4)
+      ctx.fillText(`❄ ${eq.name || 'FRÍO'}`, cx, cy + 4)
     } else if (eq.type === 'counter') {
-      // Mostrador / Barra de Salón
-      ctx.fillStyle = '#01579b'
-      drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
-      ctx.fillStyle = '#0288d1'
-      drawRoundedRect(ctx, ex + 3, ey + 3, ew - 6, eh - 6, 4, true, false)
+      // Mostrador Recepción / Caja 3D
+      drawCounterBlock3D(ex, ey, ew, eh, '#d49a59', '#7b4c24', '#f3c68f')
+      // Monitor pequeño encima
+      ctx.fillStyle = '#1e293b'
+      ctx.fillRect(cx - 8, cy - 8, 16, 10)
+      ctx.fillStyle = '#38bdf8'
+      ctx.fillRect(cx - 6, cy - 6, 12, 6)
 
       ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 11px sans-serif'
+      ctx.font = 'bold 10px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(eq.name || 'MOSTRADOR', ex + ew / 2, ey + eh / 2 + 4)
+      ctx.fillText((eq.name || 'Mostrador').substring(0, 14), cx, cy + 12)
     } else if (eq.type === 'pass_counter') {
-      // Mostrador de Pase de Platos
-      ctx.fillStyle = '#bf360c'
-      drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
-      ctx.fillStyle = '#e65100'
-      drawRoundedRect(ctx, ex + 3, ey + 3, ew - 6, eh - 6, 4, true, false)
-
-      // Campana dorada en el centro
-      const bellX = ex + ew / 2
-      ctx.fillStyle = '#ffd54f'
-      ctx.beginPath()
-      ctx.arc(bellX, ey + 10, 6, Math.PI, Math.PI * 2)
-      ctx.fill()
-      ctx.fillRect(bellX - 8, ey + 10, 16, 3)
-
+      // Cinta / Pase de Platos 2.5D
+      drawCounterBlock3D(ex, ey, ew, eh, '#64748b', '#334155', '#cbd5e1')
+      // Platos blancos listos
       ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 11px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText(eq.name || 'PASE DE PLATOS', ex + ew / 2, ey + eh / 2 + 10)
-    } else if (eq.type === 'station') {
-      // Estación KDS de Cocina (Magenta / Púrpura)
-      ctx.fillStyle = '#880e4f'
-      drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
-      ctx.fillStyle = '#c2185b'
-      drawRoundedRect(ctx, ex + 3, ey + 3, ew - 6, eh - 6, 4, true, false)
-
-      // Hornilla o quemador
-      ctx.fillStyle = '#1e1e24'
       ctx.beginPath()
-      ctx.arc(ex + 18, ey + eh / 2, 8, 0, Math.PI * 2)
+      ctx.arc(cx - 12, cy, 7, 0, Math.PI * 2)
+      ctx.arc(cx + 12, cy, 7, 0, Math.PI * 2)
       ctx.fill()
-      ctx.fillStyle = '#ff4757'
+    } else if (eq.type === 'stove_pot' || eq.type === 'station') {
+      // Mesón con Hornilla y Olla 2.5D
+      drawCounterBlock3D(ex, ey, ew, eh, '#e2b073', '#9a6332', '#f7d6a8')
+      // Quemador negro
+      ctx.fillStyle = '#1e293b'
       ctx.beginPath()
-      ctx.arc(ex + 18, ey + eh / 2, 4 + Math.sin(globalTick * 0.2) * 1.5, 0, Math.PI * 2)
+      ctx.arc(cx, cy, 12, 0, Math.PI * 2)
       ctx.fill()
-
+      // Olla metálica
+      ctx.fillStyle = '#94a3b8'
+      ctx.beginPath()
+      ctx.arc(cx, cy - 2, 9, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#ea580c'
+      ctx.beginPath()
+      ctx.arc(cx, cy - 2, 6, 0, Math.PI * 2)
+      ctx.fill()
+    } else if (eq.type === 'cutting_board') {
+      // Mesón con Tabla de Corte
+      drawCounterBlock3D(ex, ey, ew, eh, '#e2b073', '#9a6332', '#f7d6a8')
       ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 11px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText(eq.name || 'ESTACIÓN', ex + ew / 2 + 8, ey + eh / 2 + 4)
+      drawRoundedRect(ctx, cx - 12, cy - 8, 24, 16, 2, true, false)
+      // Cuchillo
+      ctx.fillStyle = '#cbd5e1'
+      ctx.fillRect(cx - 6, cy - 2, 12, 3)
+    } else if (eq.type === 'sink') {
+      // Fregadero 3D
+      drawCounterBlock3D(ex, ey, ew, eh, '#cbd5e1', '#64748b', '#f1f5f9')
+      ctx.fillStyle = '#38bdf8'
+      drawRoundedRect(ctx, cx - 12, cy - 8, 24, 16, 3, true, false)
+    } else if (eq.type === 'ingredient_box') {
+      // Caja de Ingredientes (Tomates)
+      drawCounterBlock3D(ex, ey, ew, eh, '#b45309', '#78350f', '#fbbf24')
+      ctx.fillStyle = '#ef4444'
+      ctx.beginPath()
+      ctx.arc(cx - 5, cy - 2, 4, 0, Math.PI * 2)
+      ctx.arc(cx + 5, cy - 2, 4, 0, Math.PI * 2)
+      ctx.arc(cx, cy + 4, 4, 0, Math.PI * 2)
+      ctx.fill()
+    } else if (eq.type === 'plant') {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
+      ctx.beginPath()
+      ctx.ellipse(cx + 2, cy + 6, 12, 8, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#9a3412'
+      ctx.beginPath()
+      ctx.arc(cx, cy + 2, 10, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#16a34a'
+      ctx.beginPath()
+      ctx.arc(cx, cy - 2, 12, 0, Math.PI * 2)
+      ctx.fill()
+    } else if (eq.type === 'awning') {
+      const stripes = Math.max(4, Math.floor(ew / 12))
+      const sw = ew / stripes
+      for (let i = 0; i < stripes; i++) {
+        ctx.fillStyle = i % 2 === 0 ? '#dc2626' : '#ffffff'
+        ctx.fillRect(ex + i * sw, ey, sw + 0.5, eh)
+      }
+      ctx.strokeStyle = '#7f1d1d'
+      ctx.lineWidth = 2
+      ctx.strokeRect(ex, ey, ew, eh)
+    } else if (eq.type === 'bench') {
+      drawCounterBlock3D(ex, ey, ew, eh, '#b45309', '#78350f', '#fbbf24')
+    } else if (eq.type === 'barrel') {
+      ctx.fillStyle = '#78350f'
+      ctx.beginPath()
+      ctx.arc(cx, cy, 14, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = '#94a3b8'
+      ctx.lineWidth = 2
+      ctx.stroke()
     } else {
-      // Otro equipamiento general
-      ctx.fillStyle = '#263238'
-      drawRoundedRect(ctx, ex, ey, ew, eh, 6, true, false)
-      ctx.fillStyle = '#455a64'
-      drawRoundedRect(ctx, ex + 3, ey + 3, ew - 6, eh - 6, 4, true, false)
-
-      ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 11px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText(eq.name || 'EQUIPO', ex + ew / 2, ey + eh / 2 + 4)
+      // Mesón base
+      drawCounterBlock3D(ex, ey, ew, eh, '#e2b073', '#9a6332', '#f7d6a8')
     }
 
     ctx.restore()
@@ -675,9 +751,9 @@ const drawEquipment = () => {
 }
 
 // ==========================================
-// 4. MESAS REALES CON SILLAS Y COMENSALES
+// 5. MESAS CON MANTEL VICHY Y SILLAS 2.5D
 // ==========================================
-const drawDiningTables = () => {
+const drawDiningTables25D = () => {
   props.tables.forEach((table) => {
     const tx = offsetX + Number(table.pos_x || 0)
     const ty = offsetY + Number(table.pos_y || 0)
@@ -688,110 +764,169 @@ const drawDiningTables = () => {
 
     ctx.save()
 
-    // 1. Sombra de la Mesa
+    // 1. Sombra
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
     ctx.beginPath()
     if (isRound) {
-      ctx.arc(tx + tw / 2 + 3, ty + th / 2 + 5, tw / 2 + 2, 0, Math.PI * 2)
+      ctx.arc(tx + tw / 2 + 4, ty + th / 2 + 6, tw / 2 + 2, 0, Math.PI * 2)
     } else {
-      ctx.roundRect(tx + 3, ty + 5, tw, th, 8)
+      ctx.roundRect(tx + 4, ty + 6, tw, th, 8)
     }
     ctx.fill()
 
-    // 2. Sillas alrededor de la mesa proporcionales a su capacidad real
-    drawChairs(table, tx, ty, tw, th)
+    // 2. Sillas 2.5D acolchadas
+    drawChairs25D(table, tx, ty, tw, th)
 
     // 3. Comensales si está ocupada
     if (table.status === 'occupied' || table.status === 'bill_requested') {
-      drawGuests(table, tx, ty, tw, th)
+      drawGuests25D(table, tx, ty, tw, th)
     }
 
-    // 4. Color y Borde de la Mesa según estado (idéntico al diseñador)
-    let tableBg = '#16a34a' // available
-    let tableBorder = '#22c55e'
+    // 4. Cuerpo 3D de la Mesa / Barra
+    const frontH = 8
+    const isBar = table.shape === 'bar'
+    const clothStyle = table.cloth_style || (isBar ? 'bar_dark' : 'vichy_red')
 
-    if (table.status === 'occupied') {
-      tableBg = '#dc2626'
-      tableBorder = '#f87171'
-    } else if (table.status === 'bill_requested') {
-      tableBg = '#ea580c'
-      tableBorder = '#fb923c'
-    } else if (table.status === 'reserved') {
-      tableBg = '#0284c7'
-      tableBorder = '#38bdf8'
-    }
-
-    // Tablero de la Mesa
-    ctx.fillStyle = tableBg
-    ctx.strokeStyle = tableBorder
-    ctx.lineWidth = 2.5
-
+    // Faldón inferior 3D
+    ctx.fillStyle = isBar ? '#1e293b' : '#5d4037'
     ctx.beginPath()
     if (isRound) {
-      ctx.arc(tx + tw / 2, ty + th / 2, tw / 2, 0, Math.PI * 2)
-    } else if (table.shape === 'bar') {
-      ctx.roundRect(tx, ty, tw, th, 5)
+      ctx.arc(tx + tw / 2, ty + th / 2 + frontH, tw / 2, 0, Math.PI * 2)
     } else {
-      ctx.roundRect(tx, ty, tw, th, 8)
+      ctx.roundRect(tx, ty + frontH, tw, th, 8)
     }
     ctx.fill()
-    ctx.stroke()
 
-    // Resaltado si está seleccionada
-    if (isSelected) {
-      ctx.strokeStyle = '#00cfe8'
-      ctx.lineWidth = 3.5
+    // Superficie superior con Mantel Vichy o Madera
+    if (clothStyle === 'vichy_red' && !isBar) {
+      ctx.save()
       ctx.beginPath()
-      if (isRound) {
-        ctx.arc(tx + tw / 2, ty + th / 2, tw / 2 + 6 + Math.sin(globalTick * 0.15) * 2, 0, Math.PI * 2)
-      } else {
-        ctx.roundRect(tx - 4, ty - 4, tw + 8, th + 8, 10)
-      }
-      ctx.stroke()
+      if (isRound) ctx.arc(tx + tw / 2, ty + th / 2, tw / 2, 0, Math.PI * 2)
+      else ctx.roundRect(tx, ty, tw, th, 8)
+      ctx.clip()
+      drawCheckerFloor(tx, ty, tw, th, '#ffffff', '#ef4444', 10)
+      ctx.restore()
+    } else if (clothStyle === 'vichy_blue' && !isBar) {
+      ctx.save()
+      ctx.beginPath()
+      if (isRound) ctx.arc(tx + tw / 2, ty + th / 2, tw / 2, 0, Math.PI * 2)
+      else ctx.roundRect(tx, ty, tw, th, 8)
+      ctx.clip()
+      drawCheckerFloor(tx, ty, tw, th, '#ffffff', '#3b82f6', 10)
+      ctx.restore()
+    } else {
+      ctx.fillStyle = isBar ? '#334155' : '#8d6e63'
+      ctx.beginPath()
+      if (isRound) ctx.arc(tx + tw / 2, ty + th / 2, tw / 2, 0, Math.PI * 2)
+      else ctx.roundRect(tx, ty, tw, th, 8)
+      ctx.fill()
     }
 
-    // Detalles sobre la mesa si está ocupada (platos / comida)
+    // Borde de estado operativo
+    let statusColor = '#22c55e'
+    if (table.status === 'occupied') statusColor = '#ef4444'
+    else if (table.status === 'bill_requested') statusColor = '#f59e0b'
+    else if (table.status === 'reserved') statusColor = '#38bdf8'
+
+    ctx.strokeStyle = isSelected ? '#00cfe8' : statusColor
+    ctx.lineWidth = isSelected ? 4 : 2.5
+    ctx.beginPath()
+    if (isRound) ctx.arc(tx + tw / 2, ty + th / 2, tw / 2, 0, Math.PI * 2)
+    else ctx.roundRect(tx, ty, tw, th, 8)
+    ctx.stroke()
+
+    // Platos si está ocupada
     if (table.status === 'occupied' || table.status === 'bill_requested') {
       ctx.fillStyle = '#ffffff'
       ctx.beginPath()
-      ctx.arc(tx + tw / 2 - 12, ty + th / 2, 5, 0, Math.PI * 2)
-      ctx.arc(tx + tw / 2 + 12, ty + th / 2, 5, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = '#e11d48'
-      ctx.beginPath()
-      ctx.arc(tx + tw / 2 - 12, ty + th / 2, 2.5, 0, Math.PI * 2)
+      ctx.arc(tx + tw / 2 - 12, ty + th / 2, 6, 0, Math.PI * 2)
+      ctx.arc(tx + tw / 2 + 12, ty + th / 2, 6, 0, Math.PI * 2)
       ctx.fill()
     }
 
-    // Nombre de la Mesa con texto nítido y alto contraste
+    // Píldora oscura con el nombre de la mesa para máxima legibilidad sobre el mantel
+    const label = table.name || 'Mesa'
+    ctx.font = 'bold 11px sans-serif'
+    const lw = Math.min(tw - 6, ctx.measureText(label).width + 12)
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'
+    drawRoundedRect(ctx, tx + tw / 2 - lw / 2, ty + th / 2 - 10, lw, 20, 6, true, false)
+
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 12px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(table.name || 'Mesa', tx + tw / 2, ty + th / 2 - 2)
+    ctx.fillText(label, tx + tw / 2, ty + th / 2 + 4)
 
-    // Píldora de Capacidad o Total USD de comanda
-    if (table.current_order?.total_amount_usd) {
-      ctx.fillStyle = '#ffd54f'
-      ctx.font = 'bold 10px sans-serif'
-      ctx.fillText(`$${Number(table.current_order.total_amount_usd).toFixed(2)}`, tx + tw / 2, ty + th / 2 + 14)
-    } else {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
-      ctx.font = 'bold 9px sans-serif'
-      ctx.fillText(`${table.capacity || 2}p`, tx + tw / 2, ty + th / 2 + 13)
-    }
-
-    // Burbujas flotantes sobre la mesa
     if (table.status === 'bill_requested') {
-      drawStatusBubble(tx + tw / 2, ty - 18, '💰 ¡Cuenta!', '#ea580c')
+      drawStatusBubble(tx + tw / 2, ty - 16, '💰 ¡Cuenta!', '#ea580c')
     } else if (table.status === 'occupied') {
-      drawStatusBubble(tx + tw / 2, ty - 18, '🍽️ Comiendo', '#dc2626')
+      drawStatusBubble(tx + tw / 2, ty - 16, '🍽️ Comiendo', '#dc2626')
     }
 
     ctx.restore()
   })
 }
 
-// Cálculo dinámico de sillas de la mesa (idéntico al diseñador de floor-map)
+// ==========================================
+// 6. ACCESORIOS / PROPS 2.5D
+// ==========================================
+const drawProps25D = () => {
+  const propList = props.zone?.layout_config?.props || []
+  propList.forEach((p) => {
+    const px = offsetX + Number(p.x || 0) * cellPixelSize
+    const py = offsetY + Number(p.y || 0) * cellPixelSize
+    const pw = Number(p.w || 0.8) * cellPixelSize
+    const ph = Number(p.h || 0.8) * cellPixelSize
+    const cx = px + pw / 2
+    const cy = py + ph / 2
+
+    ctx.save()
+    if (p.type === 'plant') {
+      // Maceta terracota + hojas verdes
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
+      ctx.beginPath()
+      ctx.ellipse(cx + 2, cy + 6, 12, 8, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#9a3412'
+      ctx.beginPath()
+      ctx.arc(cx, cy + 2, 10, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#16a34a'
+      ctx.beginPath()
+      ctx.arc(cx, cy - 2, 12, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#4ade80'
+      ctx.beginPath()
+      ctx.arc(cx - 3, cy - 4, 6, 0, Math.PI * 2)
+      ctx.fill()
+    } else if (p.type === 'awning') {
+      // Toldo a rayas rojas y blancas
+      const stripes = Math.max(4, Math.floor(pw / 12))
+      const sw = pw / stripes
+      for (let i = 0; i < stripes; i++) {
+        ctx.fillStyle = i % 2 === 0 ? '#dc2626' : '#ffffff'
+        ctx.fillRect(px + i * sw, py, sw + 0.5, ph)
+      }
+      ctx.strokeStyle = '#7f1d1d'
+      ctx.lineWidth = 2
+      ctx.strokeRect(px, py, pw, ph)
+    } else if (p.type === 'tree') {
+      drawTree25D(cx, cy, Math.min(pw, ph) / 2)
+    } else if (p.type === 'bench') {
+      drawCounterBlock3D(px, py, pw, ph, '#b45309', '#78350f', '#fbbf24')
+    } else if (p.type === 'barrel') {
+      ctx.fillStyle = '#78350f'
+      ctx.beginPath()
+      ctx.arc(cx, cy, 14, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = '#94a3b8'
+      ctx.lineWidth = 2
+      ctx.stroke()
+    } else {
+      drawCounterBlock3D(px, py, pw, ph, '#64748b', '#334155', '#cbd5e1')
+    }
+    ctx.restore()
+  })
+}
+
 const getTableSeatsPositions = (table, tx, ty, tw, th) => {
   const cap = Math.max(1, Number(table.capacity || 2))
   const shape = table.shape || 'square'
@@ -804,13 +939,10 @@ const getTableSeatsPositions = (table, tx, ty, tw, th) => {
     const threshold = 18
     const px = Number(table.pos_x || 0)
     const py = Number(table.pos_y || 0)
-    const zW = zonePixelWidth.value
-    const zH = zonePixelHeight.value
-
     if (side === 'top' && py <= threshold) return true
     if (side === 'left' && px <= threshold) return true
-    if (side === 'right' && (px + tw) >= (zW - threshold)) return true
-    if (side === 'bottom' && (py + th) >= (zH - threshold)) return true
+    if (side === 'right' && (px + tw) >= (zonePixelWidth.value - threshold)) return true
+    if (side === 'bottom' && (py + th) >= (zonePixelHeight.value - threshold)) return true
     return false
   }
 
@@ -821,74 +953,45 @@ const getTableSeatsPositions = (table, tx, ty, tw, th) => {
     right: isBlocked('right'),
   }
 
-  // Redonda
   if (shape === 'round') {
-    const rx = tw / 2 + 10
-    const ry = th / 2 + 10
+    const rx = tw / 2 + 12
+    const ry = th / 2 + 12
     for (let i = 0; i < cap; i++) {
       const angle = (2 * Math.PI * i) / cap - Math.PI / 2
-      const sx = tx + tw / 2 + rx * Math.cos(angle)
-      const sy = ty + th / 2 + ry * Math.sin(angle)
-      seats.push({ x: sx, y: sy, isStool: false })
+      seats.push({ x: tx + tw / 2 + rx * Math.cos(angle), y: ty + th / 2 + ry * Math.sin(angle), isStool: false })
     }
     return seats
   }
 
-  // Módulo de Barra
   if (shape === 'bar') {
     let clientSide = 'bottom'
     if (blocked.bottom && !blocked.top) clientSide = 'top'
     else if (blocked.top && !blocked.bottom) clientSide = 'bottom'
-    else if (blocked.left && !blocked.right) clientSide = 'right'
-    else if (blocked.right && !blocked.left) clientSide = 'left'
-
     if (!blocked[clientSide]) {
       for (let i = 0; i < cap; i++) {
         const offset = tw * ((i + 0.5) / cap)
-        const sy = clientSide === 'bottom' ? ty + th + 9 : ty - 9
+        const sy = clientSide === 'bottom' ? ty + th + 12 : ty - 12
         seats.push({ x: tx + offset, y: sy, isStool: true })
       }
     }
     return seats
   }
 
-  // Cuadrada o Rectangular
-  let topCount = 0
-  let bottomCount = 0
-  let leftCount = 0
-  let rightCount = 0
-
-  if (cap === 1) {
-    bottomCount = 1
-  } else if (cap === 2) {
+  let topCount = 0, bottomCount = 0, leftCount = 0, rightCount = 0
+  if (cap === 1) bottomCount = 1
+  else if (cap === 2) {
+    if (tw >= th) { topCount = 1; bottomCount = 1 } else { leftCount = 1; rightCount = 1 }
+  } else if (cap === 3) { topCount = 1; bottomCount = 2 }
+  else if (cap === 4) { topCount = 1; bottomCount = 1; leftCount = 1; rightCount = 1 }
+  else {
     if (tw >= th) {
-      topCount = 1
-      bottomCount = 1
+      leftCount = 1; rightCount = 1
+      topCount = Math.ceil((cap - 2) / 2)
+      bottomCount = Math.floor((cap - 2) / 2)
     } else {
-      leftCount = 1
-      rightCount = 1
-    }
-  } else if (cap === 3) {
-    topCount = 1
-    bottomCount = 2
-  } else if (cap === 4) {
-    topCount = 1
-    bottomCount = 1
-    leftCount = 1
-    rightCount = 1
-  } else {
-    if (tw >= th) {
-      leftCount = 1
-      rightCount = 1
-      const rem = cap - 2
-      topCount = Math.ceil(rem / 2)
-      bottomCount = Math.floor(rem / 2)
-    } else {
-      topCount = 1
-      bottomCount = 1
-      const rem = cap - 2
-      leftCount = Math.ceil(rem / 2)
-      rightCount = Math.floor(rem / 2)
+      topCount = 1; bottomCount = 1
+      leftCount = Math.ceil((cap - 2) / 2)
+      rightCount = Math.floor((cap - 2) / 2)
     }
   }
 
@@ -897,53 +1000,48 @@ const getTableSeatsPositions = (table, tx, ty, tw, th) => {
   if (blocked.left) leftCount = 0
   if (blocked.right) rightCount = 0
 
-  for (let i = 0; i < topCount; i++) {
-    seats.push({ x: tx + tw * ((i + 0.5) / topCount), y: ty - 9, isStool: false })
-  }
-  for (let i = 0; i < bottomCount; i++) {
-    seats.push({ x: tx + tw * ((i + 0.5) / bottomCount), y: ty + th + 9, isStool: false })
-  }
-  for (let i = 0; i < leftCount; i++) {
-    seats.push({ x: tx - 9, y: ty + th * ((i + 0.5) / leftCount), isStool: false })
-  }
-  for (let i = 0; i < rightCount; i++) {
-    seats.push({ x: tx + tw + 9, y: ty + th * ((i + 0.5) / rightCount), isStool: false })
-  }
+  for (let i = 0; i < topCount; i++) seats.push({ x: tx + tw * ((i + 0.5) / topCount), y: ty - 11, isStool: false })
+  for (let i = 0; i < bottomCount; i++) seats.push({ x: tx + tw * ((i + 0.5) / bottomCount), y: ty + th + 11, isStool: false })
+  for (let i = 0; i < leftCount; i++) seats.push({ x: tx - 11, y: ty + th * ((i + 0.5) / leftCount), isStool: false })
+  for (let i = 0; i < rightCount; i++) seats.push({ x: tx + tw + 11, y: ty + th * ((i + 0.5) / rightCount), isStool: false })
 
   return seats
 }
 
-// Dibujo de sillas alrededor de la mesa
-const drawChairs = (table, tx, ty, tw, th) => {
+const drawChairs25D = (table, tx, ty, tw, th) => {
   const seats = getTableSeatsPositions(table, tx, ty, tw, th)
-
   seats.forEach((seat) => {
-    ctx.fillStyle = seat.isStool ? '#fbbf24' : '#f8fafc'
-    ctx.strokeStyle = seat.isStool ? '#78350f' : '#334155'
-    ctx.lineWidth = 1.8
-
+    // Sombra
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
     ctx.beginPath()
-    if (seat.isStool) {
-      drawRoundedRect(ctx, seat.x - 6, seat.y - 6, 12, 12, 3, true, true)
-    } else {
-      ctx.arc(seat.x, seat.y, 6, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
-    }
+    ctx.arc(seat.x + 2, seat.y + 3, 8, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Base madera + cojín naranja Overcooked
+    ctx.fillStyle = seat.isStool ? '#fbbf24' : '#ea580c'
+    ctx.strokeStyle = '#7c2d12'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(seat.x, seat.y, 7.5, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+
+    // Brillo del cojín
+    ctx.fillStyle = '#fdba74'
+    ctx.beginPath()
+    ctx.arc(seat.x - 1.5, seat.y - 1.5, 3, 0, Math.PI * 2)
+    ctx.fill()
   })
 }
 
-// Comensales sentados
-const drawGuests = (table, tx, ty, tw, th) => {
+const drawGuests25D = (table, tx, ty, tw, th) => {
   const seats = getTableSeatsPositions(table, tx, ty, tw, th)
   const hairColors = ['#451a03', '#1e293b', '#b45309', '#0284c7']
-
   seats.forEach((seat, idx) => {
     ctx.fillStyle = '#fde047'
     ctx.beginPath()
     ctx.arc(seat.x, seat.y, 6.5, 0, Math.PI * 2)
     ctx.fill()
-
     ctx.fillStyle = hairColors[idx % hairColors.length]
     ctx.beginPath()
     ctx.arc(seat.x, seat.y - 2, 6.5, Math.PI, Math.PI * 2)
@@ -951,42 +1049,32 @@ const drawGuests = (table, tx, ty, tw, th) => {
   })
 }
 
-// ==========================================
-// 5. DIBUJO DE CHEFS (ESTILO OVERCOOKED)
-// ==========================================
 const drawChef = (chef) => {
   const bobY = Math.sin(chef.bobOffset) * 2.5
   const cx = chef.x
   const cy = chef.y + bobY
 
-  // Sombra
   ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
   ctx.beginPath()
   ctx.ellipse(cx, chef.y + 14, 12, 5, 0, 0, Math.PI * 2)
   ctx.fill()
 
-  // Cuerpo y Delantal
   ctx.fillStyle = '#ffffff'
   drawRoundedRect(ctx, cx - 10, cy - 6, 20, 18, 5, true, false)
-
-  // Delantal coloreado
   ctx.fillStyle = '#ff9f43'
   ctx.fillRect(cx - 6, cy - 2, 12, 12)
 
-  // Cabeza Chibi
   ctx.fillStyle = '#fde68a'
   ctx.beginPath()
   ctx.arc(cx, cy - 9, 10, 0, Math.PI * 2)
   ctx.fill()
 
-  // Ojos
   ctx.fillStyle = '#1e293b'
   ctx.beginPath()
   ctx.arc(cx - 3.5, cy - 9, 1.8, 0, Math.PI * 2)
   ctx.arc(cx + 3.5, cy - 9, 1.8, 0, Math.PI * 2)
   ctx.fill()
 
-  // Gorro de Chef
   ctx.fillStyle = '#ffffff'
   ctx.strokeStyle = '#e2e8f0'
   ctx.lineWidth = 1
@@ -998,104 +1086,62 @@ const drawChef = (chef) => {
   ctx.stroke()
   ctx.fillRect(cx - 8, cy - 17, 16, 5)
 
-  // Sartén animada
-  const panAngle = Math.sin(globalTick * 0.15) * 0.3
-  ctx.save()
-  ctx.translate(cx + 10, cy)
-  ctx.rotate(panAngle)
-  ctx.fillStyle = '#334155'
-  ctx.fillRect(0, -2, 8, 3)
-  ctx.beginPath()
-  ctx.arc(10, 0, 6, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.restore()
-
-  // Progreso de cocción circular
-  ctx.strokeStyle = '#e2e8f0'
-  ctx.lineWidth = 2.5
-  ctx.beginPath()
-  ctx.arc(cx, cy - 34, 6, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.strokeStyle = '#10b981'
-  ctx.beginPath()
-  ctx.arc(cx, cy - 34, 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * chef.cookingProgress)
-  ctx.stroke()
-
-  // Nombre del Chef
   ctx.fillStyle = '#ffffff'
   ctx.font = 'bold 9px sans-serif'
   ctx.textAlign = 'center'
   ctx.fillText(chef.name, cx, cy + 24)
 }
 
-// ==========================================
-// 6. DIBUJO DE MESEROS
-// ==========================================
 const drawWaiter = (waiter) => {
   const bobY = Math.sin(waiter.bobOffset) * 2.5
   const wx = waiter.x
   const wy = waiter.y + bobY
 
-  // Sombra
   ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
   ctx.beginPath()
   ctx.ellipse(wx, waiter.y + 14, 12, 5, 0, 0, Math.PI * 2)
   ctx.fill()
 
-  // Camisa y chaleco
   ctx.fillStyle = '#ffffff'
   drawRoundedRect(ctx, wx - 10, wy - 6, 20, 18, 5, true, false)
   ctx.fillStyle = '#1e1b4b'
   ctx.fillRect(wx - 9, wy - 4, 5, 14)
   ctx.fillRect(wx + 4, wy - 4, 5, 14)
 
-  // Pajarita roja
   ctx.fillStyle = '#dc2626'
   ctx.beginPath()
   ctx.arc(wx, wy - 4, 2, 0, Math.PI * 2)
   ctx.fill()
 
-  // Cabeza Chibi
   ctx.fillStyle = '#fde68a'
   ctx.beginPath()
   ctx.arc(wx, wy - 9, 10, 0, Math.PI * 2)
   ctx.fill()
 
-  // Cabello
   ctx.fillStyle = '#451a03'
   ctx.beginPath()
   ctx.arc(wx, wy - 12, 10, Math.PI, Math.PI * 2)
   ctx.fill()
 
-  // Ojos
   ctx.fillStyle = '#1e293b'
   ctx.beginPath()
   ctx.arc(wx - 3.5, wy - 9, 1.8, 0, Math.PI * 2)
   ctx.arc(wx + 3.5, wy - 9, 1.8, 0, Math.PI * 2)
   ctx.fill()
 
-  // Bandeja si lleva pedido
   if (waiter.carryingDish) {
     ctx.fillStyle = '#cbd5e1'
     ctx.beginPath()
     ctx.ellipse(wx + 10, wy - 2, 8, 3.5, 0, 0, Math.PI * 2)
     ctx.fill()
-    ctx.fillStyle = '#94a3b8'
-    ctx.beginPath()
-    ctx.arc(wx + 10, wy - 5, 4.5, Math.PI, Math.PI * 2)
-    ctx.fill()
   }
 
-  // Nombre del Mesero
   ctx.fillStyle = '#ffffff'
   ctx.font = 'bold 9px sans-serif'
   ctx.textAlign = 'center'
   ctx.fillText(waiter.name, wx, wy + 24)
 }
 
-// ==========================================
-// 7. PARTÍCULAS Y BURBUJAS
-// ==========================================
 const drawParticles = () => {
   particles.forEach((p) => {
     ctx.save()
@@ -1120,8 +1166,7 @@ const drawFloatingBubbles = () => {
 const drawStatusBubble = (x, y, text, color) => {
   ctx.font = 'bold 10px sans-serif'
   const textWidth = ctx.measureText(text).width
-  const padding = 8
-  const bubbleW = textWidth + padding * 2
+  const bubbleW = textWidth + 16
   const bubbleH = 18
 
   ctx.fillStyle = '#ffffff'
@@ -1129,19 +1174,11 @@ const drawStatusBubble = (x, y, text, color) => {
   ctx.lineWidth = 1.8
   drawRoundedRect(ctx, x - bubbleW / 2, y - bubbleH / 2, bubbleW, bubbleH, 8, true, true)
 
-  ctx.fillStyle = '#ffffff'
-  ctx.beginPath()
-  ctx.moveTo(x - 3, y + bubbleH / 2)
-  ctx.lineTo(x + 3, y + bubbleH / 2)
-  ctx.lineTo(x, y + bubbleH / 2 + 4)
-  ctx.fill()
-
   ctx.fillStyle = '#0f172a'
   ctx.textAlign = 'center'
   ctx.fillText(text, x, y + 3.5)
 }
 
-// Utilidad: Rectángulo con esquinas redondeadas
 const drawRoundedRect = (context, x, y, width, height, radius, fill, stroke) => {
   context.beginPath()
   context.moveTo(x + radius, y)
@@ -1158,9 +1195,6 @@ const drawRoundedRect = (context, x, y, width, height, radius, fill, stroke) => 
   if (stroke) context.stroke()
 }
 
-// ==========================================
-// INTERACCIÓN DE RATÓN Y CÁMARA
-// ==========================================
 const handleMouseDown = (e) => {
   camera.value.isDragging = true
   camera.value.dragStartX = e.clientX - camera.value.x
@@ -1177,72 +1211,44 @@ const handleMouseUp = () => {
   camera.value.isDragging = false
 }
 
-// Detección de Clic en Mesas o Chefs basada en coordenadas reales
 const handleClick = (e) => {
   if (!canvasRef.value) return
   const rect = canvasRef.value.getBoundingClientRect()
-  const mouseScreenX = e.clientX - rect.left
-  const mouseScreenY = e.clientY - rect.top
+  const worldX = (e.clientX - rect.left - camera.value.x) / camera.value.zoom
+  const worldY = (e.clientY - rect.top - camera.value.y) / camera.value.zoom
 
-  const worldX = (mouseScreenX - camera.value.x) / camera.value.zoom
-  const worldY = (mouseScreenY - camera.value.y) / camera.value.zoom
-
-  // 1. Chequear clic en mesas reales
   for (const table of props.tables) {
     const tx = offsetX + Number(table.pos_x || 0)
     const ty = offsetY + Number(table.pos_y || 0)
     const tw = Number(table.width || 60)
     const th = Number(table.height || 60)
-
     if (worldX >= tx && worldX <= tx + tw && worldY >= ty && worldY <= ty + th) {
       emit('select-table', table)
       return
     }
   }
 
-  // 2. Chequear clic en chefs
   for (const chef of chefs) {
-    const dist = Math.hypot(worldX - chef.x, worldY - chef.y)
-    if (dist <= 25) {
-      floatingBubbles.push({
-        x: chef.x,
-        y: chef.y - 45,
-        text: `👨‍🍳 ${chef.stationName}`,
-        alpha: 1.0,
-        vy: -0.6,
-      })
+    if (Math.hypot(worldX - chef.x, worldY - chef.y) <= 25) {
       emit('select-station', chef.station)
       return
     }
   }
 }
 
-// Zoom y Controles
-const zoomIn = () => {
-  camera.value.zoom = Math.min(camera.value.zoom + 0.15, 2.0)
-}
+const zoomIn = () => { camera.value.zoom = Math.min(camera.value.zoom + 0.15, 2.0) }
+const zoomOut = () => { camera.value.zoom = Math.max(camera.value.zoom - 0.15, 0.5) }
+const resetCamera = () => { camera.value.x = 30; camera.value.y = 20; camera.value.zoom = 1.0 }
 
-const zoomOut = () => {
-  camera.value.zoom = Math.max(camera.value.zoom - 0.15, 0.5)
-}
-
-const resetCamera = () => {
-  camera.value.x = 0
-  camera.value.y = 0
-  camera.value.zoom = 1.0
-}
-
-// Resize Canvas responsivo
 const resizeCanvas = () => {
   if (!canvasRef.value) return
   const parent = canvasRef.value.parentElement
   if (parent) {
     canvasRef.value.width = parent.clientWidth || 1000
-    canvasRef.value.height = 620
+    canvasRef.value.height = 640
   }
 }
 
-// Observar reactividad de zonas, mesas y estaciones KDS
 watch(
   [() => props.zone, () => props.tables, () => props.stations],
   () => {
@@ -1264,17 +1270,15 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId)
-  }
+  if (animationFrameId) cancelAnimationFrame(animationFrameId)
   window.removeEventListener('resize', resizeCanvas)
 })
 </script>
 
 <style scoped>
 .overcooked-live-container {
-  min-height: 620px;
-  background-color: #0b0d14;
+  min-height: 640px;
+  background-color: #1e2229;
   box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.7);
 }
 
@@ -1305,7 +1309,7 @@ onUnmounted(() => {
 
 .overcooked-canvas {
   width: 100%;
-  height: 620px;
+  height: 640px;
   display: block;
   cursor: grab;
 }

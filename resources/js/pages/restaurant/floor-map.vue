@@ -450,7 +450,57 @@
                     </span>
                   </div>
                 </v-btn>
+              <!-- Selector Rápido de Piso 2.5D -->
+              <div v-if="currentZone" class="mb-3 pa-2 rounded border bg-surface">
+                <div class="text-caption font-weight-bold text-medium-emphasis mb-1">
+                  ESTILO DE PISO DEL SALÓN:
+                </div>
+                <v-select
+                  v-model="currentZone.background_style"
+                  :items="[
+                    { title: 'Madera Cálida', value: 'wooden' },
+                    { title: 'Damero Salón Oscuro (Overcooked)', value: 'checker_dark' },
+                    { title: 'Damero Crema/Salvia (Cocina)', value: 'checker_warm' },
+                    { title: 'Concreto Moderno', value: 'concrete' },
+                    { title: 'Césped / Terraza', value: 'grass' },
+                    { title: 'Cuadrícula Tech', value: 'grid' },
+                  ]"
+                  item-title="title"
+                  item-value="value"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                />
               </div>
+
+              <!-- Accesorios / Props 2.5D -->
+              <div class="text-caption font-weight-bold text-medium-emphasis mt-3 mb-2 text-uppercase">
+                Accesorios y Decoración 2.5D:
+              </div>
+              <v-row dense class="mb-3">
+                <v-col
+                  v-for="propItem in [
+                    { type: 'plant', title: 'Planta', icon: 'tabler-plant-2', w: 0.6, h: 0.6 },
+                    { type: 'awning', title: 'Toldo', icon: 'tabler-tent', w: 2.0, h: 0.8 },
+                    { type: 'bench', title: 'Banco', icon: 'tabler-armchair', w: 1.5, h: 0.6 },
+                    { type: 'barrel', title: 'Barril', icon: 'tabler-barrel', w: 0.6, h: 0.6 },
+                  ]"
+                  :key="propItem.type"
+                  cols="6"
+                >
+                  <v-btn
+                    block
+                    size="small"
+                    variant="tonal"
+                    color="success"
+                    :prepend-icon="propItem.icon"
+                    class="text-caption justify-start"
+                    @click="addEquipmentItem(propItem)"
+                  >
+                    {{ propItem.title }}
+                  </v-btn>
+                </v-col>
+              </v-row>
             </div>
           </v-card-text>
         </v-card>
@@ -1666,9 +1716,12 @@ const spaceAreaTypes = [
 ]
 
 const kitchenEquipPresets = [
-  { id: 'eq_shelf', title: 'Estantería de Insumos', name: 'Estante Insumos', w: 2.0, h: 0.6, icon: 'tabler-archive', desc: 'Almacén de víveres' },
-  { id: 'eq_hood', title: 'Campana Extractora', name: 'Campana', w: 3.0, h: 1.0, icon: 'tabler-wind', desc: 'Extracción de humos' },
-  { id: 'eq_sink', title: 'Pila / Lavavajillas', name: 'Área Lavado', w: 2.0, h: 0.8, icon: 'tabler-droplet', desc: 'Fregadero y lavado' },
+  { id: 'eq_stove_pot', type: 'stove_pot', title: 'Fogón con Olla', name: 'Fogón Olla', w: 1.0, h: 1.0, icon: 'tabler-soup', desc: 'Cocción estilo Overcooked' },
+  { id: 'eq_cutting', type: 'cutting_board', title: 'Mesón de Corte', name: 'Tabla Corte', w: 1.0, h: 1.0, icon: 'tabler-cut', desc: 'Preparación con tabla' },
+  { id: 'eq_sink', type: 'sink', title: 'Fregadero / Pila', name: 'Fregadero', w: 1.0, h: 1.0, icon: 'tabler-droplet', desc: 'Lavado de platos' },
+  { id: 'eq_ingredients', type: 'ingredient_box', title: 'Caja de Ingredientes', name: 'Insumos', w: 1.0, h: 1.0, icon: 'tabler-box', desc: 'Tomates y víveres' },
+  { id: 'eq_counter_base', type: 'counter_base', title: 'Mesón Base', name: 'Mesón', w: 1.0, h: 1.0, icon: 'tabler-table-row', desc: 'Encimera modular' },
+  { id: 'eq_pass', type: 'pass_counter', title: 'Cinta / Pase Platos', name: 'Pase Platos', w: 2.0, h: 1.0, icon: 'tabler-arrow-bar-right', desc: 'Entrega al salón' },
 ]
 
 // ==========================================
@@ -2015,7 +2068,7 @@ const addEquipmentItem = (equip) => {
     id: `eq_${Date.now()}`,
     name: equip.title,
     icon: equip.icon,
-    type: 'equipment',
+    type: equip.type || 'equipment',
     x: 2,
     y: 2,
     w: Number(equip.w || 2.0),
