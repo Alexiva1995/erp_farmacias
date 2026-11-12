@@ -60,6 +60,7 @@ export const useBrandingStore = defineStore('branding', () => {
     enable_dishes: false,
     enable_tables: false,
     enable_kds: false,
+    enable_live_simulator: false,
     enable_modifiers: false,
     enable_split_check: false,
     enable_tips: false,

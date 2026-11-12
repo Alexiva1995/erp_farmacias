@@ -1580,7 +1580,10 @@
     </v-dialog>
 
     <!-- Widget del Simulador de Tráfico en Vivo -->
-    <RestaurantSimulatorWidget @updated="fetchOverview(true)" />
+    <RestaurantSimulatorWidget
+      v-if="brandingStore.enable_live_simulator"
+      @updated="fetchOverview(true)"
+    />
   </div>
 </template>
 
@@ -1589,6 +1592,9 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import axios from '@axios'
 import { toast } from '@/plugins/sweetalert'
 import RestaurantSimulatorWidget from '@/components/restaurant/RestaurantSimulatorWidget.vue'
+import { useBrandingStore } from '@/stores/useBrandingStore'
+
+const brandingStore = useBrandingStore()
 import OvercookedLiveMap from '@/components/restaurant/OvercookedLiveMap.vue'
 
 // ==========================================

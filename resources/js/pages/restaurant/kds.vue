@@ -4,9 +4,14 @@ import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import Swal from "sweetalert2";
 import RestaurantSimulatorWidget from "@/components/restaurant/RestaurantSimulatorWidget.vue";
+import { useBrandingStore } from "@/stores/useBrandingStore";
+
+const brandingStore = useBrandingStore();
 
 // Estado de KDS
 const loading = ref(false);
+const bumpingTicketId = ref(null);
+const updatingItemId = ref(null);
 const tickets = ref([]);
 const stations = ref([]);
 const selectedStationId = ref(null);
@@ -68,8 +73,9 @@ const handleNextStatus = async (item) => {
     preparing: "ready",
   };
   const next = nextMap[item.kitchen_status];
-  if (!next) return;
+  if (!next || updatingItemId.value === item.id) return;
 
+  updatingItemId.value = item.id;
   try {
     await axios.patch(`/kds/items/${item.id}/status`, { status: next });
     toast.success(`Plato actualizado a ${next === "preparing" ? "Preparando" : "Listo"}`);
@@ -77,11 +83,16 @@ const handleNextStatus = async (item) => {
   } catch (error) {
     console.error("Error al actualizar plato:", error);
     toast.error("No se pudo actualizar el estado.");
+  } finally {
+    updatingItemId.value = null;
   }
 };
 
 // Despachar comanda completa (Bump Ticket)
 const handleBumpTicket = async (ticket) => {
+  if (bumpingTicketId.value === ticket.id) return;
+
+  bumpingTicketId.value = ticket.id;
   try {
     await axios.post(`/kds/orders/${ticket.id}/bump`, {
       station_id: selectedStationId.value,
@@ -91,6 +102,8 @@ const handleBumpTicket = async (ticket) => {
   } catch (error) {
     console.error("Error al despachar comanda:", error);
     toast.error("No se pudo despachar la comanda.");
+  } finally {
+    bumpingTicketId.value = null;
   }
 };
 
@@ -202,7 +215,14 @@ onUnmounted(() => {
             Comandas: {{ tickets.length }}
           </VChip>
 
-          <VBtn icon variant="tonal" color="secondary" size="small" @click="fetchTickets(false)">
+          <VBtn
+            icon
+            variant="tonal"
+            color="secondary"
+            size="small"
+            :loading="loading"
+            @click="fetchTickets(false)"
+          >
             <VIcon icon="tabler-refresh" />
           </VBtn>
 
@@ -241,8 +261,15 @@ onUnmounted(() => {
       </div>
     </VCard>
 
+    <!-- Estado de Carga Inicial -->
+    <VRow v-if="loading && tickets.length === 0">
+      <VCol v-for="n in 4" :key="n" cols="12" sm="6" md="4" lg="3">
+        <VSkeletonLoader type="card, list-item-two-line, actions" class="rounded-lg border" />
+      </VCol>
+    </VRow>
+
     <!-- Estado Vacío (Sin Comandas Pendientes) -->
-    <div v-if="tickets.length === 0 && !loading" class="pa-16 text-center text-disabled">
+    <div v-else-if="tickets.length === 0 && !loading" class="pa-16 text-center text-disabled">
       <VIcon icon="tabler-clipboard-check" size="72" class="mb-4 opacity-30 text-success" />
       <h3 class="text-h6 font-weight-black uppercase text-high-emphasis opacity-60">
         ¡Cocina al día! Sin comandas pendientes
@@ -302,9 +329,15 @@ onUnmounted(() => {
             >
               <!-- Separador de Tiempo (Entrada / Fuerte / Postre) -->
               <div class="d-flex align-center gap-2 mb-2">
-                <div class="course-badge text-super-xs font-weight-black uppercase px-2 py-1 rounded bg-light border">
+                <VChip
+                  size="x-small"
+                  color="secondary"
+                  variant="tonal"
+                  label
+                  class="font-weight-black text-uppercase flex-shrink-0"
+                >
                   {{ courseItems[0]?.course_label || `${courseNum}° Tiempo` }}
-                </div>
+                </VChip>
                 <VDivider />
               </div>
 
@@ -313,19 +346,20 @@ onUnmounted(() => {
                 <div
                   v-for="item in courseItems"
                   :key="item.id"
-                  class="dish-item-card pa-2 rounded border cursor-pointer transition-all"
+                  class="dish-item-card pa-3 rounded border cursor-pointer transition-all"
                   :class="{
-                    'bg-warning-light border-warning': item.kitchen_status === 'preparing',
-                    'bg-light border': item.kitchen_status === 'queued',
+                    'dish-item-preparing': item.kitchen_status === 'preparing',
+                    'dish-item-queued': item.kitchen_status === 'queued',
+                    'opacity-50 pointer-events-none': updatingItemId === item.id,
                   }"
                   @click="handleNextStatus(item)"
                 >
-                  <div class="d-flex align-center justify-space-between mb-1">
-                    <div class="d-flex align-center gap-2">
-                      <span class="font-weight-black text-body-1 text-primary">
+                  <div class="d-flex align-start justify-space-between gap-2 mb-1">
+                    <div class="d-flex align-baseline gap-2">
+                      <span class="font-weight-black text-subtitle-1 text-primary">
                         {{ item.quantity }}x
                       </span>
-                      <span class="font-weight-bold text-sm text-high-emphasis text-uppercase">
+                      <span class="font-weight-bold text-body-2 text-high-emphasis text-uppercase">
                         {{ item.dish_name }}
                       </span>
                     </div>
@@ -335,7 +369,7 @@ onUnmounted(() => {
                       :color="item.kitchen_status_color"
                       size="x-small"
                       label
-                      class="font-weight-black text-uppercase"
+                      class="font-weight-black text-uppercase flex-shrink-0"
                     >
                       <VIcon
                         :icon="item.kitchen_status === 'preparing' ? 'tabler-flame' : 'tabler-clock'"
@@ -346,18 +380,26 @@ onUnmounted(() => {
                     </VChip>
                   </div>
 
-                  <!-- Estación KDS asociada -->
-                  <div v-if="item.kitchen_station" class="mb-1">
-                    <VChip size="x-small" :color="item.kitchen_station.color || 'secondary'" variant="tonal">
+                  <!-- Estación KDS asociada e indicación táctil -->
+                  <div class="d-flex align-center justify-space-between gap-2 mt-1">
+                    <VChip
+                      v-if="item.kitchen_station"
+                      size="x-small"
+                      :color="item.kitchen_station.color || 'secondary'"
+                      variant="tonal"
+                    >
                       <VIcon :icon="item.kitchen_station.icon || 'tabler-flame'" start size="12" />
                       {{ item.kitchen_station.name }}
                     </VChip>
+                    <span class="text-super-xs text-medium-emphasis ms-auto">
+                      {{ item.kitchen_status === 'queued' ? 'Tocar: Iniciar' : 'Tocar: Listo' }}
+                    </span>
                   </div>
 
                   <!-- Preferencias de Cocina y Exclusiones (Sin Cebolla, etc.) -->
-                  <div v-if="item.notes" class="mt-1 pa-1 bg-amber-lighten-5 border rounded text-xs text-amber-darken-4 font-weight-bold">
-                    <VIcon icon="tabler-note" start size="14" />
-                    {{ item.notes }}
+                  <div v-if="item.notes" class="mt-2 pa-2 dish-note-box rounded text-xs font-weight-bold d-flex align-start gap-1">
+                    <VIcon icon="tabler-alert-circle" size="15" class="flex-shrink-0 mt-0.5" color="warning" />
+                    <span>{{ item.notes }}</span>
                   </div>
 
                   <!-- Modificadores Seleccionados -->
@@ -387,6 +429,8 @@ onUnmounted(() => {
               block
               size="default"
               class="font-weight-black text-uppercase rounded"
+              :loading="bumpingTicketId === ticket.id"
+              :disabled="bumpingTicketId === ticket.id"
               @click="handleBumpTicket(ticket)"
             >
               <VIcon icon="tabler-check" start size="18" />
@@ -398,7 +442,10 @@ onUnmounted(() => {
     </VRow>
 
     <!-- Widget del Simulador de Tráfico en Vivo -->
-    <RestaurantSimulatorWidget @updated="fetchTickets(true)" />
+    <RestaurantSimulatorWidget
+      v-if="brandingStore.enable_live_simulator"
+      @updated="fetchTickets(true)"
+    />
   </div>
 </template>
 
@@ -430,7 +477,20 @@ onUnmounted(() => {
   filter: brightness(0.97);
 }
 
-.bg-warning-light {
-  background-color: #fffbeb !important;
+.dish-item-queued {
+  background-color: rgba(var(--v-theme-surface), 1);
+  border-inline-start: 4px solid rgb(var(--v-theme-info)) !important;
+}
+
+.dish-item-preparing {
+  background-color: rgba(var(--v-theme-warning), 0.1) !important;
+  border-color: rgba(var(--v-theme-warning), 0.45) !important;
+  border-inline-start: 4px solid rgb(var(--v-theme-warning)) !important;
+}
+
+.dish-note-box {
+  background-color: rgba(var(--v-theme-warning), 0.12);
+  border: 1px solid rgba(var(--v-theme-warning), 0.35);
+  color: rgb(var(--v-theme-on-surface));
 }
 </style>

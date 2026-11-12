@@ -221,6 +221,7 @@ class GeneralSettingResource extends JsonResource
             'enable_dishes' => (bool) ($this->enable_dishes ?? true),
             'enable_tables' => (bool) ($this->enable_tables ?? false),
             'enable_kds' => (bool) ($this->enable_kds ?? false),
+            'enable_live_simulator' => (bool) ($this->enable_live_simulator ?? false),
             'enable_modifiers' => (bool) ($this->enable_modifiers ?? false),
             'enable_split_check' => (bool) ($this->enable_split_check ?? false),
             'enable_tips' => (bool) ($this->enable_tips ?? false),

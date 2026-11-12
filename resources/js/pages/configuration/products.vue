@@ -42,6 +42,7 @@ const enableDishes            = ref(true)
 const enableReservations      = ref(true)
 const enableTables            = ref(false)
 const enableKds               = ref(false)
+const enableLiveSimulator     = ref(false)
 const enableModifiers         = ref(false)
 const enableSplitCheck        = ref(false)
 const enableTips              = ref(false)
@@ -72,6 +73,7 @@ const fetchSettings = async () => {
     'enable_dishes',
     'enable_tables',
     'enable_kds',
+    'enable_live_simulator',
     'enable_modifiers',
     'enable_split_check',
     'enable_tips',
@@ -104,6 +106,7 @@ const fetchSettings = async () => {
       enableReservations.value     = settings.enable_reservations      ?? true
       enableTables.value           = settings.enable_tables            ?? false
       enableKds.value              = settings.enable_kds               ?? false
+      enableLiveSimulator.value    = settings.enable_live_simulator    ?? false
       enableModifiers.value        = settings.enable_modifiers         ?? false
       enableSplitCheck.value       = settings.enable_split_check       ?? false
       enableTips.value             = settings.enable_tips              ?? false
@@ -147,6 +150,7 @@ const updateSettings = () => {
         enable_dishes:             enableDishes.value,
         enable_tables:             enableTables.value,
         enable_kds:                enableKds.value,
+        enable_live_simulator:     enableLiveSimulator.value,
         enable_modifiers:          enableModifiers.value,
         enable_split_check:        enableSplitCheck.value,
         enable_tips:               enableTips.value,
@@ -250,6 +254,7 @@ onMounted(fetchSettings)
         v-model:enable-reservations="enableReservations"
         v-model:enable-tables="enableTables"
         v-model:enable-kds="enableKds"
+        v-model:enable-live-simulator="enableLiveSimulator"
         v-model:enable-modifiers="enableModifiers"
         v-model:enable-split-check="enableSplitCheck"
         v-model:enable-tips="enableTips"
