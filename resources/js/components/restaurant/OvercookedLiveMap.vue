@@ -757,7 +757,7 @@ const drawDiningTables = () => {
 
     // Si está ocupada, dibujar comensales en las sillas
     if (table.status === 'occupied' || table.status === 'bill_requested') {
-      drawGuests(tx, ty, Math.min(table.capacity || 4, 4), table.status)
+      drawGuests(tx, ty, table.capacity || 4, table.status, table.capacity || 4, isRound)
     }
 
     // Tablero de la Mesa
@@ -842,17 +842,58 @@ const drawDiningTables = () => {
   })
 }
 
+// Sillas alrededor de la mesa proporcionales a la capacidad
+const getLiveChairPositions = (tx, ty, capacity, isRound) => {
+  const cap = Math.max(1, capacity || 4)
+  const positions = []
+
+  if (isRound) {
+    const r = 48
+    for (let i = 0; i < cap; i++) {
+      const angle = (2 * Math.PI * i) / cap - Math.PI / 2
+      positions.push({
+        x: tx + r * Math.cos(angle),
+        y: ty + r * Math.sin(angle),
+      })
+    }
+  } else if (cap <= 4) {
+    const dist = 46
+    const base = [
+      { x: tx, y: ty - dist },
+      { x: tx, y: ty + dist },
+      { x: tx - dist, y: ty },
+      { x: tx + dist, y: ty },
+    ]
+    positions.push(...base.slice(0, cap))
+  } else {
+    // 5, 6, 8, etc.: 1 en extremos y resto en lados superior/inferior
+    positions.push({ x: tx - 48, y: ty })
+    positions.push({ x: tx + 48, y: ty })
+    const rem = cap - 2
+    const topCount = Math.ceil(rem / 2)
+    const bottomCount = Math.floor(rem / 2)
+
+    for (let i = 0; i < topCount; i++) {
+      const offset = (i - (topCount - 1) / 2) * 26
+      positions.push({ x: tx + offset, y: ty - 46 })
+    }
+    for (let i = 0; i < bottomCount; i++) {
+      const offset = (i - (bottomCount - 1) / 2) * 26
+      positions.push({ x: tx + offset, y: ty + 46 })
+    }
+  }
+
+  // Filtrar sillas que queden pegadas al muro perimetral
+  return positions.filter(pos => {
+    return pos.y >= 35 && pos.y <= worldHeight - 25 && pos.x >= 35 && pos.x <= worldWidth - 25
+  })
+}
+
 // Sillas alrededor de la mesa
 const drawChairs = (tx, ty, capacity, isRound) => {
-  const chairDistance = isRound ? 48 : 46
-  const chairPositions = [
-    { x: tx, y: ty - chairDistance }, // Arriba
-    { x: tx, y: ty + chairDistance }, // Abajo
-    { x: tx - chairDistance, y: ty }, // Izquierda
-    { x: tx + chairDistance, y: ty }, // Derecha
-  ]
+  const positions = getLiveChairPositions(tx, ty, capacity, isRound)
 
-  chairPositions.slice(0, Math.min(capacity, 4)).forEach((pos) => {
+  positions.forEach((pos) => {
     ctx.fillStyle = '#78350f'
     drawRoundedRect(ctx, pos.x - 11, pos.y - 11, 22, 22, 5, true, false)
     ctx.fillStyle = '#d97706'
@@ -861,18 +902,13 @@ const drawChairs = (tx, ty, capacity, isRound) => {
 }
 
 // Comensales sentados
-const drawGuests = (tx, ty, count) => {
-  const offsets = [
-    { x: tx, y: ty - 48 },
-    { x: tx, y: ty + 48 },
-    { x: tx - 48, y: ty },
-    { x: tx + 48, y: ty },
-  ]
-
+const drawGuests = (tx, ty, count, status, capacity, isRound) => {
+  const positions = getLiveChairPositions(tx, ty, capacity || count || 4, isRound)
   const hairColors = ['#451a03', '#1e293b', '#b45309', '#0284c7']
+  const guestsToDraw = Math.min(count, positions.length)
 
-  for (let i = 0; i < count; i++) {
-    const pos = offsets[i]
+  for (let i = 0; i < guestsToDraw; i++) {
+    const pos = positions[i]
     // Cabeza del comensal estilo Chibi
     ctx.fillStyle = '#fde047' // Piel cálida
     ctx.beginPath()

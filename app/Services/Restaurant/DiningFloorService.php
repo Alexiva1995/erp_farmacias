@@ -156,13 +156,17 @@ class DiningFloorService implements DiningFloorServiceInterface
                 if (!isset($item['id'])) {
                     continue;
                 }
-                DiningTable::where('id', $item['id'])->update([
+                $updateData = [
                     'pos_x' => $item['pos_x'] ?? 0,
                     'pos_y' => $item['pos_y'] ?? 0,
                     'width' => $item['width'] ?? 80,
                     'height' => $item['height'] ?? 80,
                     'rotation' => $item['rotation'] ?? 0,
-                ]);
+                ];
+                if (isset($item['capacity'])) {
+                    $updateData['capacity'] = (int) $item['capacity'];
+                }
+                DiningTable::where('id', $item['id'])->update($updateData);
             }
             return true;
         });

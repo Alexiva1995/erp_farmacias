@@ -21,6 +21,7 @@ class UpdateDiningLayoutRequest extends FormRequest
             'tables.*.width' => 'nullable|numeric',
             'tables.*.height' => 'nullable|numeric',
             'tables.*.rotation' => 'nullable|numeric',
+            'tables.*.capacity' => 'nullable|integer|min:1|max:50',
         ];
     }
 }

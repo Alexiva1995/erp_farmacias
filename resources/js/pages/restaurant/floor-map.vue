@@ -580,7 +580,7 @@
                 </div>
               </div>
 
-              <!-- 3. CAPA DE MESAS (ALTO CONTRASTE Y TIPOGRAFÍA DEFINIDA) -->
+              <!-- 3. CAPA DE MESAS (CON SILLAS DINÁMICAS POR CAPACIDAD Y DETECCIÓN DE PARED) -->
               <div
                 v-for="table in filteredTables"
                 :key="table.id"
@@ -588,7 +588,11 @@
                 :class="[
                   `shape-${table.shape || 'square'}`,
                   `status-${table.status || 'available'}`,
-                  { 'is-selected': selectedObject?.id === table.id && selectedObject?.kind === 'table' }
+                  { 'is-selected': selectedObject?.id === table.id && selectedObject?.kind === 'table' },
+                  { 'has-wall-top': isTableSideBlocked(table, 'top') },
+                  { 'has-wall-bottom': isTableSideBlocked(table, 'bottom') },
+                  { 'has-wall-left': isTableSideBlocked(table, 'left') },
+                  { 'has-wall-right': isTableSideBlocked(table, 'right') },
                 ]"
                 :style="{
                   left: `${table.pos_x}px`,
@@ -609,17 +613,27 @@
                   </span>
                 </div>
 
-                <!-- Sillas visuales -->
-                <div class="seat-dot seat-top" />
-                <div class="seat-dot seat-bottom" />
-                <div v-if="table.capacity > 2" class="seat-dot seat-left" />
-                <div v-if="table.capacity > 3" class="seat-dot seat-right" />
+                <!-- Sillas que representan la capacidad real y se ocultan si el lado toca una pared -->
+                <div
+                  v-for="seat in getTableSeats(table)"
+                  :key="seat.id"
+                  class="seat-dot"
+                  :class="{ 'seat-stool': seat.isBarStool }"
+                  :style="{ left: `${seat.x}px`, top: `${seat.y}px` }"
+                  :title="seat.isBarStool ? 'Taburete de barra' : 'Silla'"
+                />
+
+                <!-- Indicador visual de borde pegado a la pared (sin comensales en ese lado) -->
+                <div v-if="isTableSideBlocked(table, 'top')" class="wall-edge-indicator edge-top" title="Lado pegado a pared (sin sillas)" />
+                <div v-if="isTableSideBlocked(table, 'bottom')" class="wall-edge-indicator edge-bottom" title="Lado pegado a pared (sin sillas)" />
+                <div v-if="isTableSideBlocked(table, 'left')" class="wall-edge-indicator edge-left" title="Lado pegado a pared (sin sillas)" />
+                <div v-if="isTableSideBlocked(table, 'right')" class="wall-edge-indicator edge-right" title="Lado pegado a pared (sin sillas)" />
               </div>
             </div>
           </div>
         </v-card>
 
-        <!-- PANEL INFERIOR INSPECTOR: PROPIEDADES DEL OBJETO SELECCIONADO (CON DECIMALES) -->
+        <!-- PANEL INFERIOR INSPECTOR: PROPIEDADES DEL OBJETO SELECCIONADO (CON DECIMALES Y CONTROL DE PARED) -->
         <v-expand-transition>
           <v-card v-if="selectedObject" class="mt-3" elevation="2" border>
             <v-card-text class="py-2 px-3">
@@ -637,32 +651,114 @@
                   </div>
                 </div>
 
-                <!-- Controles de Edición de Medidas y Rotación -->
+                <!-- Controles de Edición de Medidas, Capacidad y Rotación -->
                 <div class="d-flex align-center flex-wrap gap-2">
-                  <!-- Si es Mesa -->
+                  <!-- Si es Mesa o Módulo de Barra -->
                   <template v-if="selectedObject.kind === 'table'">
-                    <span class="text-caption text-medium-emphasis">Rotar:</span>
-                    <v-btn size="x-small" variant="tonal" color="secondary" @click="rotateSelectedTable(-15)">-15°</v-btn>
-                    <v-btn size="x-small" variant="tonal" color="secondary" @click="rotateSelectedTable(15)">+15°</v-btn>
+                    <!-- Modificar Medidas en Metros (Ancho y Largo) -->
+                    <div class="d-flex align-center gap-1">
+                      <span class="text-caption font-weight-bold">Ancho:</span>
+                      <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="resizeSelectedTable('w', -0.1)" />
+                      <v-text-field
+                        :model-value="Number(((selectedObject.data.width || 60) / cellPixelSize).toFixed(1))"
+                        type="number"
+                        step="0.1"
+                        min="0.4"
+                        max="20"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="width: 72px;"
+                        @update:model-value="val => setTableDimensionMeters('width', val)"
+                      />
+                      <span class="text-caption font-weight-bold">m</span>
+                      <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="resizeSelectedTable('w', 0.1)" />
+                    </div>
+
+                    <div class="d-flex align-center gap-1 ml-2">
+                      <span class="text-caption font-weight-bold">Largo:</span>
+                      <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="resizeSelectedTable('h', -0.1)" />
+                      <v-text-field
+                        :model-value="Number(((selectedObject.data.height || 60) / cellPixelSize).toFixed(1))"
+                        type="number"
+                        step="0.1"
+                        min="0.4"
+                        max="20"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="width: 72px;"
+                        @update:model-value="val => setTableDimensionMeters('height', val)"
+                      />
+                      <span class="text-caption font-weight-bold">m</span>
+                      <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="resizeSelectedTable('h', 0.1)" />
+                    </div>
+
+                    <!-- Modificar Capacidad (Número de Personas / Sillas) -->
+                    <div class="d-flex align-center gap-1 ml-2">
+                      <span class="text-caption font-weight-bold">Personas:</span>
+                      <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="changeSelectedTableCapacity(-1)" />
+                      <v-text-field
+                        v-model.number="selectedObject.data.capacity"
+                        type="number"
+                        step="1"
+                        min="1"
+                        max="50"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="width: 65px;"
+                      />
+                      <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="changeSelectedTableCapacity(1)" />
+                    </div>
+
+                    <v-divider vertical class="mx-1" />
+
+                    <!-- Control de Lados Pegados a la Pared (Quita sillas del lado activo) -->
+                    <div class="d-flex align-center gap-1">
+                      <span class="text-caption font-weight-bold" title="Lados que están pegados a la pared">Pared 🧱:</span>
+                      <v-btn
+                        size="x-small"
+                        :variant="isTableSideBlocked(selectedObject.data, 'top') ? 'flat' : 'tonal'"
+                        :color="isTableSideBlocked(selectedObject.data, 'top') ? 'warning' : 'secondary'"
+                        title="Pegar lado superior a la pared (quita sillas superiores)"
+                        @click="toggleTableSideBlocked(selectedObject.data, 'top')"
+                      >
+                        Arriba
+                      </v-btn>
+                      <v-btn
+                        size="x-small"
+                        :variant="isTableSideBlocked(selectedObject.data, 'bottom') ? 'flat' : 'tonal'"
+                        :color="isTableSideBlocked(selectedObject.data, 'bottom') ? 'warning' : 'secondary'"
+                        title="Pegar lado inferior a la pared (quita sillas inferiores)"
+                        @click="toggleTableSideBlocked(selectedObject.data, 'bottom')"
+                      >
+                        Abajo
+                      </v-btn>
+                      <v-btn
+                        size="x-small"
+                        :variant="isTableSideBlocked(selectedObject.data, 'left') ? 'flat' : 'tonal'"
+                        :color="isTableSideBlocked(selectedObject.data, 'left') ? 'warning' : 'secondary'"
+                        title="Pegar lado izquierdo a la pared (quita sillas izquierdas)"
+                        @click="toggleTableSideBlocked(selectedObject.data, 'left')"
+                      >
+                        Izq
+                      </v-btn>
+                      <v-btn
+                        size="x-small"
+                        :variant="isTableSideBlocked(selectedObject.data, 'right') ? 'flat' : 'tonal'"
+                        :color="isTableSideBlocked(selectedObject.data, 'right') ? 'warning' : 'secondary'"
+                        title="Pegar lado derecho a la pared (quita sillas derechas)"
+                        @click="toggleTableSideBlocked(selectedObject.data, 'right')"
+                      >
+                        Der
+                      </v-btn>
+                    </div>
+
+                    <v-divider vertical class="mx-1" />
+
+                    <span class="text-caption font-weight-bold">Rotar:</span>
                     <v-btn size="x-small" variant="tonal" color="secondary" @click="rotateSelectedTable(90)">90°</v-btn>
-
-                    <v-divider vertical class="mx-1" />
-
-                    <span class="text-caption text-medium-emphasis">Tamaño:</span>
-                    <v-btn icon="tabler-minus" size="x-small" variant="tonal" @click="scaleSelectedTable(-10)" />
-                    <v-btn icon="tabler-plus" size="x-small" variant="tonal" @click="scaleSelectedTable(10)" />
-
-                    <v-divider vertical class="mx-1" />
-
-                    <v-btn
-                      size="small"
-                      variant="tonal"
-                      color="primary"
-                      prepend-icon="tabler-pencil"
-                      @click="openEditTableModal(selectedObject.data)"
-                    >
-                      Editar Mesa
-                    </v-btn>
 
                     <v-btn
                       size="small"
@@ -672,6 +768,16 @@
                       @click="duplicateSelectedTable"
                     >
                       Duplicar
+                    </v-btn>
+
+                    <v-btn
+                      size="small"
+                      variant="tonal"
+                      color="primary"
+                      prepend-icon="tabler-pencil"
+                      @click="openEditTableModal(selectedObject.data)"
+                    >
+                      Propiedades
                     </v-btn>
                   </template>
 
@@ -1165,14 +1271,46 @@
             </v-row>
 
             <v-row dense>
-              <v-col cols="4">
-                <v-text-field v-model.number="editTableForm.width" type="number" label="Ancho (px)" density="compact" variant="outlined" />
+              <v-col cols="6">
+                <v-text-field
+                  v-model.number="editTableForm.width_meters"
+                  type="number"
+                  step="0.1"
+                  min="0.4"
+                  max="20"
+                  label="Ancho en metros"
+                  suffix="m"
+                  density="compact"
+                  variant="outlined"
+                  class="mb-2"
+                  @update:model-value="v => editTableForm.width = Math.round(Number(v || 1) * cellPixelSize)"
+                />
               </v-col>
-              <v-col cols="4">
-                <v-text-field v-model.number="editTableForm.height" type="number" label="Alto (px)" density="compact" variant="outlined" />
+              <v-col cols="6">
+                <v-text-field
+                  v-model.number="editTableForm.height_meters"
+                  type="number"
+                  step="0.1"
+                  min="0.4"
+                  max="20"
+                  label="Largo en metros"
+                  suffix="m"
+                  density="compact"
+                  variant="outlined"
+                  class="mb-2"
+                  @update:model-value="v => editTableForm.height = Math.round(Number(v || 1) * cellPixelSize)"
+                />
               </v-col>
-              <v-col cols="4">
+            </v-row>
+
+            <v-row dense>
+              <v-col cols="6">
                 <v-text-field v-model.number="editTableForm.rotation" type="number" label="Giro (°)" density="compact" variant="outlined" />
+              </v-col>
+              <v-col cols="6">
+                <v-alert density="compact" variant="tonal" color="info" class="text-caption py-1">
+                  Equivalente: {{ editTableForm.width }}px × {{ editTableForm.height }}px
+                </v-alert>
               </v-col>
             </v-row>
 
@@ -1375,8 +1513,10 @@ const editTableForm = reactive({
   name: '',
   capacity: 4,
   shape: 'square',
-  width: 70,
-  height: 70,
+  width: 72,
+  height: 72,
+  width_meters: 1.2,
+  height_meters: 1.2,
   rotation: 0,
 })
 
@@ -1405,12 +1545,12 @@ const openOrderForm = reactive({
 // CATÁLOGO DE OBJETOS PRE-CONFIGURADOS
 // ==========================================
 const tablePresets = [
-  { id: 't2', title: 'Mesa 2 Personas', capacity: 2, shape: 'square', width: 60, height: 60, dimMeters: '1x1', icon: 'tabler-square' },
+  { id: 't2', title: 'Mesa 2 Personas', capacity: 2, shape: 'square', width: 60, height: 60, dimMeters: '1.0x1.0', icon: 'tabler-square' },
   { id: 't4', title: 'Mesa 4 Personas', capacity: 4, shape: 'square', width: 72, height: 72, dimMeters: '1.2x1.2', icon: 'tabler-grid-pattern' },
   { id: 't4r', title: 'Mesa Redonda 4P', capacity: 4, shape: 'round', width: 72, height: 72, dimMeters: 'Ø 1.2', icon: 'tabler-circle' },
   { id: 't6', title: 'Mesa 6 Personas', capacity: 6, shape: 'rectangle', width: 110, height: 72, dimMeters: '1.8x1.2', icon: 'tabler-rectangle' },
-  { id: 't8', title: 'Mesa Imperial 8P', capacity: 8, shape: 'rectangle', width: 140, height: 72, dimMeters: '2.4x1.2', icon: 'tabler-rectangle-vertical' },
-  { id: 'bar', title: 'Módulo de Barra', capacity: 1, shape: 'bar', width: 50, height: 50, dimMeters: '0.8x0.8', icon: 'tabler-glass-full' },
+  { id: 't8', title: 'Mesa Imperial 8P', capacity: 8, shape: 'rectangle', width: 144, height: 72, dimMeters: '2.4x1.2', icon: 'tabler-rectangle-vertical' },
+  { id: 'bar', title: 'Módulo de Barra (Con Taburetes)', capacity: 4, shape: 'bar', width: 150, height: 48, dimMeters: '2.5x0.8', icon: 'tabler-glass-full' },
 ]
 
 // MOSTRADORES & BARRAS
@@ -1900,7 +2040,7 @@ const handleCanvasDrop = (event) => {
 }
 
 // ==========================================
-// CONTROLES DE OBJETO SELECCIONADO (REDIMENSIONAR / ROTAR)
+// CONTROLES DE OBJETO SELECCIONADO (REDIMENSIONAR / ROTAR / PAREDES)
 // ==========================================
 const rotateSelectedTable = (deg) => {
   if (selectedObject.value?.kind !== 'table') return
@@ -1908,11 +2048,229 @@ const rotateSelectedTable = (deg) => {
   table.rotation = ((Number(table.rotation || 0) + deg) % 360)
 }
 
-const scaleSelectedTable = (delta) => {
-  if (selectedObject.value?.kind !== 'table') return
-  const table = selectedObject.value.data
-  table.width = Math.max(40, Math.min(300, (Number(table.width || 60) + delta)))
-  table.height = Math.max(40, Math.min(300, (Number(table.height || 60) + delta)))
+// Establecer dimensión métrica directa de mesa (decimales)
+const setTableDimensionMeters = (dimension, meters) => {
+  if (!selectedObject.value || selectedObject.value.kind !== 'table') return
+  const m = Math.max(0.4, Math.min(25, Number(meters || 1.0)))
+  selectedObject.value.data[dimension] = Math.round(m * cellPixelSize)
+}
+
+// Redimensionar mesa con saltos decimales (+/- 0.1m)
+const resizeSelectedTable = (dimension, deltaMeters) => {
+  if (!selectedObject.value || selectedObject.value.kind !== 'table') return
+  const prop = dimension === 'w' ? 'width' : 'height'
+  const currentPx = Number(selectedObject.value.data[prop] || 60)
+  const currentM = currentPx / cellPixelSize
+  const newM = Math.max(0.4, Math.min(25, Number((currentM + deltaMeters).toFixed(1))))
+  selectedObject.value.data[prop] = Math.round(newM * cellPixelSize)
+}
+
+// Modificar número de personas / sillas de la mesa
+const changeSelectedTableCapacity = (delta) => {
+  if (!selectedObject.value || selectedObject.value.kind !== 'table') return
+  const current = Number(selectedObject.value.data.capacity || 2)
+  selectedObject.value.data.capacity = Math.max(1, Math.min(50, current + delta))
+}
+
+// Detección automática y manual de lados pegados a la pared
+const isTableSideBlocked = (table, side) => {
+  if (!table) return false
+
+  // 1. Chequeo manual si el usuario bloqueó ese lado explícitamente
+  if (table.blocked_sides && table.blocked_sides[side] !== undefined) {
+    return Boolean(table.blocked_sides[side])
+  }
+
+  const px = Number(table.pos_x || 0)
+  const py = Number(table.pos_y || 0)
+  const pw = Number(table.width || 60)
+  const ph = Number(table.height || 60)
+  const zoneW = Number(canvasPixelWidth.value || 720)
+  const zoneH = Number(canvasPixelHeight.value || 480)
+
+  const wallThreshold = 25 // 25px de distancia al límite de pared
+
+  // 2. Detección automática con el perímetro exterior de la planta
+  if (side === 'top' && py <= wallThreshold) return true
+  if (side === 'left' && px <= wallThreshold) return true
+  if (side === 'right' && px + pw >= zoneW - wallThreshold) return true
+  if (side === 'bottom' && py + ph >= zoneH - wallThreshold) return true
+
+  // 3. Detección automática con áreas arquitectónicas de tipo "wall" (muros divisores)
+  const walls = layoutAreas.value.filter(a => a.type === 'wall')
+  for (const w of walls) {
+    const wx1 = w.x * cellPixelSize
+    const wy1 = w.y * cellPixelSize
+    const wx2 = (w.x + w.w) * cellPixelSize
+    const wy2 = (w.y + w.h) * cellPixelSize
+
+    const overlapX = px < wx2 && (px + pw) > wx1
+    const overlapY = py < wy2 && (py + ph) > wy1
+
+    if (overlapX) {
+      if (side === 'top' && Math.abs(py - wy2) <= wallThreshold) return true
+      if (side === 'bottom' && Math.abs((py + ph) - wy1) <= wallThreshold) return true
+    }
+    if (overlapY) {
+      if (side === 'left' && Math.abs(px - wx2) <= wallThreshold) return true
+      if (side === 'right' && Math.abs((px + pw) - wx1) <= wallThreshold) return true
+    }
+  }
+
+  return false
+}
+
+// Conmutar manualmente el estado de pared de un lado de la mesa
+const toggleTableSideBlocked = (table, side) => {
+  if (!table) return
+  if (!table.blocked_sides) {
+    table.blocked_sides = {
+      top: isTableSideBlocked(table, 'top'),
+      bottom: isTableSideBlocked(table, 'bottom'),
+      left: isTableSideBlocked(table, 'left'),
+      right: isTableSideBlocked(table, 'right'),
+    }
+  }
+  table.blocked_sides[side] = !table.blocked_sides[side]
+}
+
+// Distribución geométrica dinámica de sillas según capacidad y paredes
+const getTableSeats = (table) => {
+  const cap = Math.max(1, Number(table.capacity || 2))
+  const w = Number(table.width || 60)
+  const h = Number(table.height || 60)
+  const shape = table.shape || 'square'
+  const seats = []
+
+  const blocked = {
+    top: isTableSideBlocked(table, 'top'),
+    bottom: isTableSideBlocked(table, 'bottom'),
+    left: isTableSideBlocked(table, 'left'),
+    right: isTableSideBlocked(table, 'right'),
+  }
+
+  // A. Mesas Redondas: distribución polar circular
+  if (shape === 'round') {
+    const rx = w / 2 + 8
+    const ry = h / 2 + 8
+    const zoneW = Number(canvasPixelWidth.value || 720)
+    const zoneH = Number(canvasPixelHeight.value || 480)
+
+    for (let i = 0; i < cap; i++) {
+      const angle = (2 * Math.PI * i) / cap - Math.PI / 2
+      const sx = w / 2 + rx * Math.cos(angle)
+      const sy = h / 2 + ry * Math.sin(angle)
+
+      const absX = Number(table.pos_x || 0) + sx
+      const absY = Number(table.pos_y || 0) + sy
+
+      const hitsTopWall = absY <= 15 && blocked.top
+      const hitsBottomWall = absY >= zoneH - 15 && blocked.bottom
+      const hitsLeftWall = absX <= 15 && blocked.left
+      const hitsRightWall = absX >= zoneW - 15 && blocked.right
+
+      if (!hitsTopWall && !hitsBottomWall && !hitsLeftWall && !hitsRightWall) {
+        seats.push({
+          id: `seat_${i}`,
+          x: sx - 6,
+          y: sy - 6,
+          side: 'round',
+        })
+      }
+    }
+    return seats
+  }
+
+  // B. Módulo de Barra: taburetes colocados en el frente/lado de clientes
+  if (shape === 'bar') {
+    let clientSide = 'bottom'
+    if (blocked.bottom && !blocked.top) clientSide = 'top'
+    else if (blocked.top && !blocked.bottom) clientSide = 'bottom'
+    else if (blocked.left && !blocked.right) clientSide = 'right'
+    else if (blocked.right && !blocked.left) clientSide = 'left'
+
+    if (!blocked[clientSide]) {
+      for (let i = 0; i < cap; i++) {
+        const offset = w * ((i + 0.5) / cap)
+        const sy = clientSide === 'bottom' ? h + 2 : -14
+        seats.push({
+          id: `bar_seat_${i}`,
+          x: offset - 6,
+          y: sy,
+          side: clientSide,
+          isBarStool: true,
+        })
+      }
+    }
+    return seats
+  }
+
+  // C. Mesas Cuadradas y Rectangulares: distribución por 4 lados
+  let topCount = 0
+  let bottomCount = 0
+  let leftCount = 0
+  let rightCount = 0
+
+  if (cap === 1) {
+    bottomCount = 1
+  } else if (cap === 2) {
+    if (w >= h) {
+      topCount = 1
+      bottomCount = 1
+    } else {
+      leftCount = 1
+      rightCount = 1
+    }
+  } else if (cap === 3) {
+    topCount = 1
+    bottomCount = 2
+  } else if (cap === 4) {
+    topCount = 1
+    bottomCount = 1
+    leftCount = 1
+    rightCount = 1
+  } else {
+    // 5, 6, 8, 10, 12...
+    if (w >= h) {
+      leftCount = 1
+      rightCount = 1
+      const remaining = cap - 2
+      topCount = Math.ceil(remaining / 2)
+      bottomCount = Math.floor(remaining / 2)
+    } else {
+      topCount = 1
+      bottomCount = 1
+      const remaining = cap - 2
+      leftCount = Math.ceil(remaining / 2)
+      rightCount = Math.floor(remaining / 2)
+    }
+  }
+
+  // SI UN LADO ESTÁ PEGADO A LA PARED, SE REMUEVEN LAS SILLAS DE ESE LADO
+  if (blocked.top) topCount = 0
+  if (blocked.bottom) bottomCount = 0
+  if (blocked.left) leftCount = 0
+  if (blocked.right) rightCount = 0
+
+  // Coordenadas calculadas
+  for (let i = 0; i < topCount; i++) {
+    const x = w * ((i + 0.5) / topCount) - 6
+    seats.push({ id: `top_${i}`, x, y: -14, side: 'top' })
+  }
+  for (let i = 0; i < bottomCount; i++) {
+    const x = w * ((i + 0.5) / bottomCount) - 6
+    seats.push({ id: `bottom_${i}`, x, y: h + 2, side: 'bottom' })
+  }
+  for (let i = 0; i < leftCount; i++) {
+    const y = h * ((i + 0.5) / leftCount) - 6
+    seats.push({ id: `left_${i}`, x: -14, y, side: 'left' })
+  }
+  for (let i = 0; i < rightCount; i++) {
+    const y = h * ((i + 0.5) / rightCount) - 6
+    seats.push({ id: `right_${i}`, x: w + 2, y, side: 'right' })
+  }
+
+  return seats
 }
 
 // Redimensionar Estaciones, Mostradores y Neveras (con decimales)
@@ -2019,6 +2377,7 @@ const saveFullRestaurantDesign = async () => {
       width: t.width,
       height: t.height,
       rotation: t.rotation,
+      capacity: t.capacity,
     }))
     if (tablePayload.length) {
       await axios.post('/dining-floor/layout', { tables: tablePayload })
@@ -2172,6 +2531,8 @@ const openEditTableModal = (table) => {
   editTableForm.shape = table.shape || 'square'
   editTableForm.width = table.width || 60
   editTableForm.height = table.height || 60
+  editTableForm.width_meters = Number(((table.width || 60) / cellPixelSize).toFixed(1))
+  editTableForm.height_meters = Number(((table.height || 60) / cellPixelSize).toFixed(1))
   editTableForm.rotation = table.rotation || 0
   showEditTableModal.value = true
 }
@@ -2740,13 +3101,31 @@ onUnmounted(() => {
   border: 2px solid #334155;
   border-radius: 50%;
   pointer-events: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+  z-index: 11;
+  transition: all 0.15s ease;
 }
 
-.seat-top { top: -14px; }
-.seat-bottom { bottom: -14px; }
-.seat-left { left: -14px; }
-.seat-right { right: -14px; }
+.seat-dot.seat-stool {
+  background: #fbbf24;
+  border: 2px solid #78350f;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+.wall-edge-indicator {
+  position: absolute;
+  pointer-events: none;
+  background: repeating-linear-gradient(45deg, #1e293b, #1e293b 4px, #f59e0b 4px, #f59e0b 8px);
+  border: 1px solid #ffd54f;
+  z-index: 7;
+  opacity: 0.95;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+.edge-top { top: 0; left: 0; right: 0; height: 4px; }
+.edge-bottom { bottom: 0; left: 0; right: 0; height: 4px; }
+.edge-left { top: 0; bottom: 0; left: 0; width: 4px; }
+.edge-right { top: 0; bottom: 0; right: 0; width: 4px; }
 
 .live-map-card {
   min-height: 600px;
