@@ -16,6 +16,9 @@ return new class extends Migration
                 if (!Schema::hasColumn('tenants', 'parent_tenant_id')) {
                     $table->string('parent_tenant_id', 100)->nullable()->index()->after('id');
                 }
+                if (!Schema::hasColumn('tenants', 'company_name')) {
+                    $table->string('company_name', 150)->nullable()->after('parent_tenant_id');
+                }
                 if (!Schema::hasColumn('tenants', 'branch_code')) {
                     $table->string('branch_code', 30)->nullable()->after('company_name');
                 }
@@ -33,6 +36,12 @@ return new class extends Migration
                 }
                 if (!Schema::hasColumn('tenants', 'is_branch_active')) {
                     $table->boolean('is_branch_active')->default(true)->after('max_branches');
+                }
+                if (!Schema::hasColumn('tenants', 'vertical')) {
+                    $table->string('vertical', 50)->nullable()->after('is_branch_active');
+                }
+                if (!Schema::hasColumn('tenants', 'plan_id')) {
+                    $table->string('plan_id', 50)->nullable()->after('vertical');
                 }
             });
         }

@@ -244,7 +244,7 @@ const emit = defineEmits([
         v-if="isEditableMode && item.id === editingDetailId"
         v-model.number="editedDetailData.quantity"
         type="number"
-        step="1"
+        step="any"
         density="compact"
         hide-details
         variant="outlined"
@@ -256,7 +256,7 @@ const emit = defineEmits([
         :class="{ 'returned-item': isItemReturned(item) }"
         class="font-weight-medium"
       >
-        {{ Math.round(Number(item.quantity) || 0) }}
+        {{ Number(Number(item.quantity || 0).toFixed(3)) }}
       </span>
     </template>
 

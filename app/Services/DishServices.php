@@ -302,7 +302,7 @@ class DishServices implements DishContract
             'status',
             'created_at',
         ];
-        $sortBy = in_array($filters['sortBy'] ?? 'id', $allowedSortColumns, true)
+        $sortBy = isset($filters['sortBy']) && in_array($filters['sortBy'], $allowedSortColumns, true)
             ? $filters['sortBy']
             : 'id';
         $orderBy = strtolower((string) ($filters['orderBy'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';

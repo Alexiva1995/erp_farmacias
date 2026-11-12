@@ -15,7 +15,7 @@ class UpdateLotRequest extends FormRequest
     {
         return [
             'supplier_id' => 'nullable|exists:suppliers,id',
-            'quantity' => 'required|integer|min:0',
+            'quantity' => 'required|numeric|min:0',
             'lot_number' => 'nullable|string|max:255',
             'expiration_date' => 'required|date',
             'location' => 'nullable|string|max:255',

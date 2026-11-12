@@ -423,18 +423,26 @@
       <!-- ÁREA CENTRAL: LIENZO MÉTRICO INTERACTIVO -->
       <v-col cols="12" md="8" lg="9">
         <v-card class="builder-canvas-wrapper overflow-hidden" elevation="2">
-          <!-- Barra de Controles de Lienzo -->
-          <div class="canvas-header-bar d-flex align-center justify-space-between px-3 py-2 bg-surface-variant text-caption">
-            <div class="d-flex align-center gap-2">
-              <v-icon size="16">tabler-grid-dots</v-icon>
-              <span>Escala: 1 celda = 1 metro ({{ cellPixelSize }} px)</span>
-              <span class="text-medium-emphasis">• Soporta medidas decimales y snap magnético</span>
+          <!-- Barra de Controles de Lienzo (Alto Contraste y Tipografía Destacada) -->
+          <div class="canvas-header-bar d-flex align-center justify-space-between px-4 py-2-5 flex-wrap gap-2">
+            <div class="d-flex align-center gap-2 flex-wrap">
+              <v-chip size="small" color="primary" variant="flat" class="font-weight-black text-caption">
+                <v-icon start size="15">tabler-ruler-measure</v-icon>
+                Escala: 1m = {{ cellPixelSize }}px
+              </v-chip>
+              <span class="canvas-info-text font-weight-bold text-caption">
+                Cuadrícula métrica interactiva • Medidas decimales y snap magnético activos
+              </span>
             </div>
 
-            <div class="d-flex align-center gap-1">
-              <v-btn icon="tabler-zoom-in" size="x-small" variant="text" @click="zoomIn" />
-              <v-btn icon="tabler-zoom-out" size="x-small" variant="text" @click="zoomOut" />
-              <v-btn icon="tabler-refresh" size="x-small" variant="text" title="Reset Zoom" @click="zoomLevel = 1.0" />
+            <div class="d-flex align-center gap-2">
+              <v-chip size="small" variant="elevated" color="surface" class="font-weight-black text-caption">
+                <v-icon start size="14" color="primary">tabler-zoom-check</v-icon>
+                Zoom: {{ Math.round(zoomLevel * 100) }}%
+              </v-chip>
+              <v-btn icon="tabler-zoom-in" size="small" variant="tonal" color="white" title="Acercar (+)" @click="zoomIn" />
+              <v-btn icon="tabler-zoom-out" size="small" variant="tonal" color="white" title="Alejar (-)" @click="zoomOut" />
+              <v-btn icon="tabler-refresh" size="small" variant="tonal" color="white" title="Restablecer zoom al 100%" @click="zoomLevel = 1.0" />
             </div>
           </div>
 
@@ -453,26 +461,55 @@
               @drop="handleCanvasDrop"
               @click.self="clearSelection"
             >
-              <!-- REGLAS MÉTRICAS SUPERIOR E IZQUIERDA -->
+              <!-- REGLAS MÉTRICAS SUPERIOR E IZQUIERDA CON ALTO CONTRASTE -->
               <div class="ruler-top">
-                <span
+                <div class="ruler-origin-badge">0m</div>
+                <div
                   v-for="m in Math.ceil(currentZoneWidth)"
                   :key="`m-top-${m}`"
-                  class="ruler-mark-x text-caption"
+                  class="ruler-mark-x"
+                  :style="{ left: `${m * cellPixelSize}px` }"
+                >
+                  <span class="ruler-badge">{{ m }}m</span>
+                  <div class="ruler-tick-top" />
+                </div>
+              </div>
+              <div class="ruler-left">
+                <div
+                  v-for="m in Math.ceil(currentZoneHeight)"
+                  :key="`m-left-${m}`"
+                  class="ruler-mark-y"
+                  :style="{ top: `${m * cellPixelSize}px` }"
+                >
+                  <span class="ruler-badge">{{ m }}m</span>
+                  <div class="ruler-tick-left" />
+                </div>
+              </div>
+
+              <!-- MARCAS DE METRO INTERNAS PARA VISIBILIDAD PERMANENTE -->
+              <div class="inner-grid-markers pointer-events-none">
+                <span
+                  v-for="m in Math.ceil(currentZoneWidth)"
+                  :key="`in-top-${m}`"
+                  class="inner-grid-tag-x"
                   :style="{ left: `${(m - 1) * cellPixelSize + 4}px` }"
                 >
                   {{ m }}m
                 </span>
-              </div>
-              <div class="ruler-left">
                 <span
                   v-for="m in Math.ceil(currentZoneHeight)"
-                  :key="`m-left-${m}`"
-                  class="ruler-mark-y text-caption"
-                  :style="{ top: `${(m - 1) * cellPixelSize + 2}px` }"
+                  :key="`in-left-${m}`"
+                  class="inner-grid-tag-y"
+                  :style="{ top: `${(m - 1) * cellPixelSize + 4}px` }"
                 >
                   {{ m }}m
                 </span>
+              </div>
+
+              <!-- ETIQUETA DE LÍMITE DE LA ZONA (ESQUINA INFERIOR DERECHA) -->
+              <div class="zone-boundary-tag d-flex align-center gap-1">
+                <v-icon size="13" color="#ffd54f">tabler-border-outer</v-icon>
+                <span>Límite de Planta: {{ currentZoneWidth }}m × {{ currentZoneHeight }}m ({{ currentZoneArea }} m²)</span>
               </div>
 
               <!-- 1. CAPA DE ÁREAS ARQUITECTÓNICAS (Cocina, Depósito, Terraza, Muros, Secciones) -->
@@ -495,18 +532,31 @@
                 @dragstart="handleAreaDragStart(area, $event)"
                 @click.stop="selectObject(area, 'area')"
               >
-                <div class="area-badge d-flex align-center gap-1 pa-1" :style="{ backgroundColor: area.color ? `${area.color}dd` : undefined }">
-                  <v-icon size="14">{{ getAreaIcon(area.type) }}</v-icon>
-                  <span class="font-weight-bold text-caption text-truncate">{{ area.name }}</span>
-                  <span class="text-caption opacity-75">({{ Number(area.w).toFixed(1) }}m×{{ Number(area.h).toFixed(1) }}m)</span>
+                <!-- Badge Superior de Área con Icono, Nombre y Dimensiones -->
+                <div class="area-header-pill d-flex align-center justify-space-between px-2 py-1" :style="{ borderLeft: `3px solid ${area.color || '#ff9f43'}` }">
+                  <div class="d-flex align-center gap-1 overflow-hidden mr-1">
+                    <v-icon size="16" color="white" class="flex-shrink-0">{{ getAreaIcon(area.type) }}</v-icon>
+                    <span class="area-name-text font-weight-black text-truncate">{{ area.name }}</span>
+                  </div>
+                  <span class="area-dimension-tag flex-shrink-0 font-weight-black">
+                    {{ Number(area.w).toFixed(1) }}m × {{ Number(area.h).toFixed(1) }}m
+                  </span>
+                </div>
+
+                <!-- Marca Central Visible de Agua con Nombre y Metros Cuadrados -->
+                <div class="area-center-watermark d-flex flex-column align-center justify-center">
+                  <span class="watermark-name font-weight-black text-truncate px-2">{{ area.name }}</span>
+                  <span class="watermark-surface font-weight-black">
+                    {{ (Number(area.w) * Number(area.h)).toFixed(1) }} m²
+                  </span>
                 </div>
               </div>
 
-              <!-- 2. CAPA DE MOSTRADORES, NEVERAS Y EQUIPAMIENTO -->
+              <!-- 2. CAPA DE MOSTRADORES, NEVERAS Y EQUIPAMIENTO (DISEÑO BRILLANTE Y ALTO CONTRASTE) -->
               <div
                 v-for="eq in layoutEquipment"
                 :key="eq.id"
-                class="equipment-block position-absolute d-flex flex-column align-center justify-center pa-1"
+                class="equipment-block position-absolute d-flex flex-column align-center justify-center px-2 py-1 text-center"
                 :class="[
                   `equip-kind-${eq.type || 'station'}`,
                   { 'is-selected': selectedObject?.id === eq.id && selectedObject?.kind === 'equipment' }
@@ -521,16 +571,16 @@
                 @dragstart="handleEquipmentDragStart(eq, $event)"
                 @click.stop="selectObject(eq, 'equipment')"
               >
-                <div class="d-flex align-center gap-1 text-truncate">
-                  <v-icon size="16">{{ eq.icon || 'tabler-box' }}</v-icon>
-                  <span class="font-weight-bold text-caption text-truncate">{{ eq.name }}</span>
+                <div class="equipment-label-row d-flex align-center justify-center gap-1 text-truncate w-100">
+                  <v-icon size="17" color="white" class="flex-shrink-0">{{ eq.icon || 'tabler-box' }}</v-icon>
+                  <span class="equipment-title-text font-weight-black text-truncate">{{ eq.name }}</span>
                 </div>
-                <span class="text-caption opacity-75" style="font-size: 10px;">
+                <div class="equipment-measure-pill font-weight-black mt-1">
                   {{ Number(eq.w).toFixed(1) }}m × {{ Number(eq.h).toFixed(1) }}m
-                </span>
+                </div>
               </div>
 
-              <!-- 3. CAPA DE MESAS -->
+              <!-- 3. CAPA DE MESAS (ALTO CONTRASTE Y TIPOGRAFÍA DEFINIDA) -->
               <div
                 v-for="table in filteredTables"
                 :key="table.id"
@@ -551,9 +601,12 @@
                 @dragstart="handleTableDragStart(table, $event)"
                 @click.stop="selectObject(table, 'table')"
               >
-                <div class="table-inner d-flex flex-column align-center justify-center text-center">
-                  <span class="table-title font-weight-bold">{{ table.name }}</span>
-                  <span class="table-capacity text-caption">Cap: {{ table.capacity }}</span>
+                <div class="table-inner d-flex flex-column align-center justify-center text-center px-1">
+                  <span class="table-title font-weight-black text-truncate w-100">{{ table.name }}</span>
+                  <span class="table-capacity font-weight-bold mt-0-5">
+                    <v-icon size="11" color="white" class="mr-0-5">tabler-users</v-icon>
+                    {{ table.capacity }}p
+                  </span>
                 </div>
 
                 <!-- Sillas visuales -->
@@ -2238,102 +2291,270 @@ onUnmounted(() => {
 }
 
 .builder-canvas-wrapper {
-  background-color: #12121a;
+  background-color: #0b0c10;
   border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.canvas-header-bar {
+  background: #14161f;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.canvas-info-text {
+  color: #f1f5f9 !important;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .canvas-scroll-container {
   overflow: auto;
-  max-height: 680px;
-  min-height: 520px;
-  background-color: #0f1016;
+  max-height: 700px;
+  min-height: 540px;
+  background-color: #090a0f;
+  padding: 44px 30px 40px 52px !important;
 }
 
-/* LIENZO MÉTRICO CON CUADRÍCULA */
+/* LIENZO MÉTRICO CON CUADRÍCULA Y BORDE ESTRUCTURAL ARQUITECTÓNICO */
 .metric-grid-canvas {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85);
+  border: 3px solid #ffb300;
+  border-radius: 8px;
   user-select: none;
   transition: transform 0.1s ease;
+  position: relative;
 }
 
-/* FONDOS SEGÚN ESTILO */
+/* FONDOS SEGÚN ESTILO CON CUADRÍCULA DE ALTA DEFINICIÓN */
 .zone-bg-wooden {
-  background-color: #432812;
+  background-color: #3b200b;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.18) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.18) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
 .zone-bg-grid {
-  background-color: #191c28;
+  background-color: #10141f;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.12) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+    linear-gradient(to right, rgba(0, 207, 232, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 207, 232, 0.25) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
 .zone-bg-grass {
-  background-color: #1b3824;
+  background-color: #122b19;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.16) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
 .zone-bg-concrete {
-  background-color: #2b2e38;
+  background-color: #222630;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.16) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
-/* MARCAS REGLA MÉTRICA */
+/* REGLAS MÉTRICAS EXTERIORES CON PÍLDORAS DE ALTO CONTRASTE */
 .ruler-top {
   position: absolute;
-  top: 0;
+  top: -34px;
   left: 0;
   right: 0;
-  height: 18px;
+  height: 34px;
   pointer-events: none;
+  z-index: 30;
+}
+
+.ruler-origin-badge {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  font-size: 11px;
+  font-weight: 900;
+  color: #ffd54f !important;
+  background: #0f172a;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid #ffd54f;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  letter-spacing: 0.5px;
+  transform: translateX(-50%);
 }
 
 .ruler-mark-x {
   position: absolute;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
-  font-weight: bold;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  top: 2px;
 }
 
 .ruler-left {
   position: absolute;
   top: 0;
-  left: 0;
+  left: -46px;
   bottom: 0;
-  width: 24px;
+  width: 46px;
   pointer-events: none;
+  z-index: 30;
 }
 
 .ruler-mark-y {
   position: absolute;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
-  font-weight: bold;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  left: 2px;
 }
 
-/* CAPAS ARQUITECTÓNICAS */
+.ruler-badge {
+  font-size: 11px;
+  font-weight: 900;
+  color: #ffffff !important;
+  background: #090d16;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.ruler-tick-top {
+  width: 2px;
+  height: 7px;
+  background: #ffb300;
+  margin-top: 2px;
+}
+
+.ruler-tick-left {
+  height: 2px;
+  width: 7px;
+  background: #ffb300;
+  margin-left: 3px;
+}
+
+/* MARCADORES INTERNOS DENTRO DEL LIENZO */
+.inner-grid-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.inner-grid-tag-x {
+  position: absolute;
+  top: 4px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #ffd54f !important;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 213, 79, 0.5);
+  text-shadow: 0 1px 2px #000;
+}
+
+.inner-grid-tag-y {
+  position: absolute;
+  left: 4px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #ffd54f !important;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 213, 79, 0.5);
+  text-shadow: 0 1px 2px #000;
+}
+
+.zone-boundary-tag {
+  position: absolute;
+  bottom: 6px;
+  right: 10px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 179, 0, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* CAPAS ARQUITECTÓNICAS (COCINA, DEPÓSITO, TERRAZA, SECCIONES) */
 .architectural-area-block {
   border-radius: 6px;
   cursor: grab;
   transition: box-shadow 0.2s ease, outline 0.2s ease;
   overflow: hidden;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+  user-select: none;
 }
 
 .architectural-area-block:active {
   cursor: grabbing;
+}
+
+.architectural-area-block.is-selected {
+  outline: 3px solid #00cfe8 !important;
+  box-shadow: 0 0 25px rgba(0, 207, 232, 0.9) !important;
+  z-index: 15;
+}
+
+.area-header-pill {
+  background: rgba(12, 14, 22, 0.95);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.area-name-text {
+  color: #ffffff !important;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 3px #000000;
+}
+
+.area-dimension-tag {
+  background: #ff9f43;
+  color: #000000 !important;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.2px;
+  text-shadow: none;
+}
+
+.area-center-watermark {
+  position: absolute;
+  inset: 26px 0 0 0;
+  pointer-events: none;
+  opacity: 0.45;
+  text-transform: uppercase;
+}
+
+.watermark-name {
+  font-size: 15px;
+  letter-spacing: 2px;
+  color: #ffffff;
+  text-shadow: 0 1px 4px #000000, 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+.watermark-surface {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #ffd54f;
+  text-shadow: 0 1px 3px #000000;
 }
 
 .area-type-kitchen {
@@ -2343,107 +2564,122 @@ onUnmounted(() => {
 }
 
 .area-type-storage {
-  background: #34495e;
-  border: 2px solid #7f8c8d;
+  background: #283747;
+  border: 2px solid #95a5a6;
   color: #fff;
 }
 
 .area-type-bar_zone {
-  background: #2c3e50;
+  background: #1b263b;
   border: 2px solid #3498db;
   color: #fff;
 }
 
 .area-type-terrace {
-  background: rgba(46, 204, 113, 0.25);
+  background: rgba(39, 174, 96, 0.35);
   border: 2px dashed #2ecc71;
   color: #fff;
 }
 
 .area-type-wall {
-  background: #222;
-  border: 2px solid #111;
+  background: #1c1c1c;
+  border: 2px solid #ffb300;
   color: #fff;
 }
 
 .area-type-entrance {
-  background: #8e44ad;
-  border: 2px dashed #9b59b6;
+  background: #5b2c6f;
+  border: 2px dashed #bb8fce;
   color: #fff;
 }
 
 .area-type-custom {
-  background: rgba(0, 207, 232, 0.15);
+  background: rgba(0, 207, 232, 0.2);
   border: 2px dashed #00cfe8;
   color: #fff;
 }
 
-.area-badge {
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  border-radius: 4px;
-  display: inline-flex;
-}
-
-.architectural-area-block.is-selected {
-  outline: 3px solid #00cfe8;
-  box-shadow: 0 0 20px rgba(0, 207, 232, 0.7);
-}
-
-/* MOSTRADORES Y EQUIPAMIENTO */
+/* MOSTRADORES, NEVERAS, CONGELADORES Y ESTACIONES KDS (ALTA DEFINICIÓN Y COLOR VIVO) */
 .equipment-block {
   border-radius: 6px;
-  color: #fff;
+  color: #ffffff !important;
   cursor: grab;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.7);
   transition: box-shadow 0.2s ease, outline 0.2s ease;
+  user-select: none;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  z-index: 12;
 }
 
 .equipment-block:active {
   cursor: grabbing;
 }
 
-/* Estilos diferenciados para mostradores, estaciones y frío */
+.equipment-block.is-selected {
+  outline: 3px solid #00cfe8 !important;
+  box-shadow: 0 0 25px rgba(0, 207, 232, 0.95) !important;
+  z-index: 20;
+}
+
+.equipment-title-text {
+  color: #ffffff !important;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.8);
+}
+
+.equipment-measure-pill {
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffe082 !important;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 1px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.7);
+}
+
 .equip-kind-counter {
-  background: linear-gradient(135deg, #2980b9, #1c5982);
-  border: 2px solid #3498db;
+  background: linear-gradient(135deg, #0288d1, #01579b) !important;
+  border: 2px solid #81d4fa !important;
 }
 
 .equip-kind-pass_counter {
-  background: linear-gradient(135deg, #d35400, #a04000);
-  border: 2px dashed #f39c12;
+  background: linear-gradient(135deg, #e65100, #bf360c) !important;
+  border: 2px dashed #ffe082 !important;
+  box-shadow: 0 0 14px rgba(255, 152, 0, 0.5) !important;
 }
 
 .equip-kind-station {
-  background: linear-gradient(135deg, #c0392b, #962d22);
-  border: 2px solid #f39c12;
+  background: linear-gradient(135deg, #c2185b, #880e4f) !important;
+  border: 2px solid #ff80ab !important;
+  box-shadow: 0 0 14px rgba(233, 30, 99, 0.5) !important;
 }
 
 .equip-kind-cooling {
-  background: linear-gradient(135deg, #1f4068, #162447);
-  border: 2px solid #00cfe8;
-  box-shadow: 0 0 10px rgba(0, 207, 232, 0.3);
+  background: linear-gradient(135deg, #00838f, #006064) !important;
+  border: 2px solid #4dd0e1 !important;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.5) !important;
 }
 
 .equip-kind-equipment {
-  background: #34495e;
-  border: 2px solid #bdc3c7;
+  background: linear-gradient(135deg, #455a64, #263238) !important;
+  border: 2px solid #cfd8dc !important;
 }
 
-.equipment-block.is-selected {
-  outline: 3px solid #00cfe8;
-  box-shadow: 0 0 20px rgba(0, 207, 232, 0.8);
-}
-
-/* MESAS */
+/* MESAS DE COMEDOR (TEXTO DESTACADO Y CONTRASTE MÁXIMO) */
 .floor-table-node {
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
   transition: transform 0.1s ease, box-shadow 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.65);
+  user-select: none;
   z-index: 10;
+  border: 2px solid rgba(255, 255, 255, 0.4);
 }
 
 .floor-table-node:active {
@@ -2453,7 +2689,27 @@ onUnmounted(() => {
 .floor-table-node.is-selected {
   outline: 3px solid #00cfe8;
   outline-offset: 3px;
-  box-shadow: 0 0 20px rgba(0, 207, 232, 0.8);
+  box-shadow: 0 0 25px rgba(0, 207, 232, 0.95);
+  z-index: 22;
+}
+
+.table-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.3px;
+}
+
+.table-capacity {
+  background: rgba(0, 0, 0, 0.8);
+  color: #ffffff !important;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
 }
 
 .floor-table-node.shape-square { border-radius: 8px; }
@@ -2462,17 +2718,17 @@ onUnmounted(() => {
 .floor-table-node.shape-bar { border-radius: 6px; }
 
 .floor-table-node.status-available {
-  background: linear-gradient(135deg, #28c76f, #1f9d55);
+  background: linear-gradient(135deg, #16a34a, #15803d);
   color: #fff;
 }
 
 .floor-table-node.status-occupied {
-  background: linear-gradient(135deg, #ea5455, #bd3435);
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
   color: #fff;
 }
 
 .floor-table-node.status-bill_requested {
-  background: linear-gradient(135deg, #ff9f43, #d9771e);
+  background: linear-gradient(135deg, #ea580c, #c2410c);
   color: #fff;
 }
 
@@ -2480,10 +2736,11 @@ onUnmounted(() => {
   position: absolute;
   width: 12px;
   height: 12px;
-  background: #e2e8f0;
-  border: 2px solid #475569;
+  background: #f8fafc;
+  border: 2px solid #334155;
   border-radius: 50%;
   pointer-events: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .seat-top { top: -14px; }

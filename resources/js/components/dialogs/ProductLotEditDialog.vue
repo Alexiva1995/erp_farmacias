@@ -46,10 +46,10 @@ watch(
 const currentLotsSum = computed(() => {
   return editableLots.value.reduce((sum, lot) => {
     // No contar lotes marcados para eliminación o con cantidad 0
-    if (lot._markedForDeletion || parseInt(lot.quantity) === 0) {
+    if (lot._markedForDeletion || parseFloat(lot.quantity) === 0) {
       return sum;
     }
-    const quantity = parseInt(lot.quantity) || 0;
+    const quantity = parseFloat(lot.quantity) || 0;
     return sum + quantity;
   }, 0);
 });
@@ -91,7 +91,7 @@ const canSave = computed(() => {
 });
 
 const validateLotQuantity = (lot, index) => {
-  const quantity = parseInt(lot.quantity);
+  const quantity = parseFloat(lot.quantity);
 
   // Permitir cantidad 0 (se considera como marcado para eliminación)
   if (quantity === 0) {
@@ -114,7 +114,7 @@ const validateLotQuantity = (lot, index) => {
     const otherLotsSum = editableLots.value.reduce(
       (sum, otherLot, otherIndex) => {
         if (otherIndex !== index && !otherLot._markedForDeletion) {
-          return sum + (parseInt(otherLot.quantity) || 0);
+          return sum + (parseFloat(otherLot.quantity) || 0);
         }
         return sum;
       },
@@ -233,7 +233,7 @@ const restoreLot = (index) => {
   const lot = editableLots.value[index];
   lot._markedForDeletion = false;
   // Si el lote tenía quantity = 0, restaurarlo con cantidad 1
-  if (parseInt(lot.quantity) === 0) {
+  if (parseFloat(lot.quantity) === 0) {
     lot.quantity = 1;
   }
 };
@@ -435,6 +435,7 @@ const getFieldError = (field, index) => {
                   <VTextField
                     v-model="item.quantity"
                     type="number"
+                    step="any"
                     variant="plain"
                     density="compact"
                     :error-messages="getFieldError('quantity', index)"

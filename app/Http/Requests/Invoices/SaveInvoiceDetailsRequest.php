@@ -24,7 +24,7 @@ class SaveInvoiceDetailsRequest extends FormRequest
             'invoice.supplier_discount_id' => 'nullable|exists:supplier_discounts,id',
             'details' => 'present|array',
             'details.*.product.id' => 'required|integer|exists:products,id',
-            'details.*.quantity' => 'required|numeric|min:1',
+            'details.*.quantity' => 'required|numeric|gt:0',
             'details.*.unit_cost' => 'required|numeric|min:0',
             'details.*.lot_number' => 'required|string|max:100',
             'details.*.expiration_date' => 'required|date',
@@ -49,7 +49,8 @@ class SaveInvoiceDetailsRequest extends FormRequest
             'details.*.product.id.exists' => 'Uno de los productos enviados no existe en la base de datos.',
 
             'details.*.quantity.required' => 'La cantidad es obligatoria para todos los productos.',
-            'details.*.quantity.min' => 'La cantidad de los productos debe ser al menos 1.',
+            'details.*.quantity.gt' => 'La cantidad de los productos debe ser mayor a 0.',
+            'details.*.quantity.min' => 'La cantidad de los productos debe ser mayor a 0.',
 
             'details.*.unit_cost.required' => 'El costo es obligatorio.',
             'details.*.unit_cost.min' => 'El costo no puede ser negativo.',

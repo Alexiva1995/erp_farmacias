@@ -130,12 +130,14 @@ const emit = defineEmits([
                 v-if="isEditableMode && item.id === editingDetailId"
                 v-model.number="editedDetailData.quantity"
                 type="number"
+                step="any"
+                min="0"
                 density="compact"
                 hide-details
                 variant="outlined"
                 class="mt-1"
               />
-              <span v-else class="value font-weight-bold">{{ Math.round(Number(item.quantity) || 0) }}</span>
+              <span v-else class="value font-weight-bold">{{ Number(Number(item.quantity || 0).toFixed(3)) }}</span>
             </div>
             <div class="detail-item">
               <span class="label">Costo ({{ invoice.currency }})</span>
