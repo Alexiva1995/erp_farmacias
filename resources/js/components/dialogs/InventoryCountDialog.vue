@@ -122,7 +122,8 @@ const isPharmacyLotsMode = computed(() => {
   );
   if (isRestaurant) return false;
   const lots = props.product?.lots;
-  return Array.isArray(lots) && lots.length > 0;
+  // Solo activar modo lotes si hay al menos un lote con stock mayor a cero
+  return Array.isArray(lots) && lots.some(l => Number(l.quantity || 0) > 0);
 });
 
 const countedLots = ref([]);
@@ -221,7 +222,8 @@ watch(
     if (newVal) {
       allowWithoutBarcode.value = isProducedRecipe.value || (canBypassBarcode.value && !barcodeRequiredGlobal.value);
       if (isPharmacyLotsMode.value) {
-        countedLots.value = (props.product?.lots || []).map((lot) => ({
+        // Solo mostrar lotes que tienen unidades en sistema (excluir agotados)
+        countedLots.value = (props.product?.lots || []).filter(lot => Number(lot.quantity || 0) > 0).map((lot) => ({
           id: lot.id,
           lot_number: lot.lot_number || "S/L",
           expiration_date: lot.expiration_date || null,
