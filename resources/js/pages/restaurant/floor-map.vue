@@ -1555,6 +1555,7 @@
                 <tr>
                   <th>Platillo</th>
                   <th class="text-center">Cant.</th>
+                  <th class="text-center">Cocina</th>
                   <th class="text-right">Total USD</th>
                 </tr>
               </thead>
@@ -1562,10 +1563,46 @@
                 <tr v-for="item in (selectedTable.current_order?.details || [])" :key="item.id">
                   <td>{{ item.name }}</td>
                   <td class="text-center">{{ item.quantity }}</td>
+                  <td class="text-center">
+                    <v-chip
+                      v-if="item.kitchen_status === 'ready'"
+                      size="x-small"
+                      color="success"
+                      variant="flat"
+                      class="cursor-pointer font-weight-bold"
+                      @click="markItemServedFromFloor(item)"
+                    >
+                      Listo • Servir
+                    </v-chip>
+                    <v-chip
+                      v-else-if="item.kitchen_status === 'preparing'"
+                      size="x-small"
+                      color="warning"
+                      variant="tonal"
+                    >
+                      Preparando
+                    </v-chip>
+                    <v-chip
+                      v-else-if="item.kitchen_status === 'served'"
+                      size="x-small"
+                      color="primary"
+                      variant="tonal"
+                    >
+                      Servido
+                    </v-chip>
+                    <v-chip
+                      v-else
+                      size="x-small"
+                      color="info"
+                      variant="tonal"
+                    >
+                      En Cola
+                    </v-chip>
+                  </td>
                   <td class="text-right">${{ (item.quantity * item.unit_price_usd).toFixed(2) }}</td>
                 </tr>
                 <tr v-if="!selectedTable.current_order?.details?.length">
-                  <td colspan="3" class="text-center text-medium-emphasis py-2">Sin ítems todavía.</td>
+                  <td colspan="4" class="text-center text-medium-emphasis py-2">Sin ítems todavía.</td>
                 </tr>
               </tbody>
             </v-table>
@@ -2747,6 +2784,21 @@ const releaseTableAction = async () => {
     await fetchOverview()
   } catch (err) {
     toast.error('Error al liberar mesa.')
+  } finally {
+    submittingAction.value = false
+  }
+}
+
+const markItemServedFromFloor = async (item) => {
+  if (!item?.id) return
+  submittingAction.value = true
+  try {
+    await axios.patch(`/kds/items/${item.id}/status`, { status: 'served' })
+    item.kitchen_status = 'served'
+    toast.success(`${item.name} marcado como servido.`)
+    await fetchOverview(true)
+  } catch (err) {
+    toast.error('No se pudo marcar como servido.')
   } finally {
     submittingAction.value = false
   }

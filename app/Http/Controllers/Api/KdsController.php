@@ -27,7 +27,8 @@ class KdsController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $stationId = $request->query('station_id') ? (int) $request->query('station_id') : null;
-        $orders = $this->kdsService->getActiveTickets($stationId);
+        $includeReady = filter_var($request->query('include_ready', false), FILTER_VALIDATE_BOOLEAN);
+        $orders = $this->kdsService->getActiveTickets($stationId, $includeReady);
 
         return KdsTicketResource::collection($orders);
     }

@@ -16,6 +16,17 @@ const tickets = ref([]);
 const stations = ref([]);
 const selectedStationId = ref(null);
 const fullScreen = ref(false);
+const activeViewTab = ref("active"); // 'active' (En Cocina) | 'ready' (En Pase / Listos)
+const soundEnabled = ref(true);
+const previousTicketIds = ref(new Set());
+
+// Modal de Foto y Receta del Plato
+const showRecipeDialog = ref(false);
+const selectedDishItem = ref(null);
+
+const isMultiStation = computed(() => {
+  return brandingStore.settings?.kds_multi_station !== false;
+});
 
 // Métricas en vivo
 const currentTime = ref(Date.now());
@@ -32,20 +43,94 @@ const fetchStations = async () => {
   }
 };
 
+// Alerta sonora corta con Web Audio API al recibir nueva comanda
+const playNewTicketSound = () => {
+  if (!soundEnabled.value) return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.25);
+  } catch (e) {
+    // Ignorar si el navegador bloquea audio sin interacción previa
+  }
+};
+
 // Cargar comandas activas
 const fetchTickets = async (silent = false) => {
   if (!silent) loading.value = true;
   try {
-    const params = {};
-    if (selectedStationId.value) {
+    const params = {
+      include_ready: activeViewTab.value === "ready" ? 1 : 0,
+    };
+    if (isMultiStation.value && selectedStationId.value) {
       params.station_id = selectedStationId.value;
     }
     const { data } = await axios.get("/kds/tickets", { params });
-    tickets.value = data.data || [];
+    const fetched = data.data || [];
+
+    // Detectar comandas nuevas para emitir alerta sonora
+    if (silent && activeViewTab.value === "active") {
+      const hasNew = fetched.some((t) => !previousTicketIds.value.has(t.id));
+      if (hasNew && previousTicketIds.value.size > 0) {
+        playNewTicketSound();
+      }
+    }
+    previousTicketIds.value = new Set(fetched.map((t) => t.id));
+    tickets.value = fetched;
   } catch (error) {
     console.error("Error al cargar comandas KDS:", error);
   } finally {
     if (!silent) loading.value = false;
+  }
+};
+
+// Tickets filtrados según la pestaña activa (En Cocina vs En Pase)
+const displayedTickets = computed(() => {
+  if (activeViewTab.value === "ready") {
+    return tickets.value
+      .map((t) => ({
+        ...t,
+        items: (t.items || []).filter((i) => i.kitchen_status === "ready"),
+      }))
+      .filter((t) => t.items.length > 0);
+  }
+  return tickets.value
+    .map((t) => ({
+      ...t,
+      items: (t.items || []).filter(
+        (i) => i.kitchen_status === "queued" || i.kitchen_status === "preparing"
+      ),
+    }))
+    .filter((t) => t.items.length > 0);
+});
+
+const openRecipeModal = (item) => {
+  selectedDishItem.value = item;
+  showRecipeDialog.value = true;
+};
+
+const updateItemDirectStatus = async (item, status, label) => {
+  if (updatingItemId.value === item.id) return;
+  updatingItemId.value = item.id;
+  try {
+    await axios.patch(`/kds/items/${item.id}/status`, { status });
+    toast.success(`Plato actualizado a ${label}`);
+    fetchTickets(true);
+  } catch (error) {
+    console.error("Error al actualizar plato:", error);
+    toast.error("No se pudo actualizar el estado.");
+  } finally {
+    updatingItemId.value = null;
   }
 };
 
@@ -218,6 +303,17 @@ onUnmounted(() => {
           <VBtn
             icon
             variant="tonal"
+            :color="soundEnabled ? 'primary' : 'secondary'"
+            size="small"
+            :title="soundEnabled ? 'Silenciar alertas' : 'Activar alertas sonoras'"
+            @click="soundEnabled = !soundEnabled"
+          >
+            <VIcon :icon="soundEnabled ? 'tabler-volume' : 'tabler-volume-off'" />
+          </VBtn>
+
+          <VBtn
+            icon
+            variant="tonal"
             color="secondary"
             size="small"
             :loading="loading"
@@ -232,55 +328,78 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Filtro Táctil por Estación de Cocina -->
+      <!-- Pestañas de Flujo (En Cocina vs En Pase) y Filtro por Estación -->
       <VDivider />
-      <div class="pa-2 px-4 bg-light d-flex flex-wrap gap-2 align-center">
-        <span class="text-xs font-weight-black uppercase text-medium-emphasis me-2">Estación:</span>
-        <VBtn
-          size="small"
-          :variant="selectedStationId === null ? 'flat' : 'outlined'"
-          :color="selectedStationId === null ? 'primary' : 'secondary'"
-          class="font-weight-bold"
-          @click="selectedStationId = null; fetchTickets(false)"
-        >
-          Todas ({{ totalPendingCount }})
-        </VBtn>
+      <div class="pa-2 px-4 bg-light d-flex flex-wrap gap-2 align-center justify-space-between">
+        <div class="d-flex flex-wrap gap-2 align-center">
+          <VBtnToggle
+            v-model="activeViewTab"
+            mandatory
+            density="compact"
+            color="primary"
+            variant="outlined"
+            @update:model-value="fetchTickets(false)"
+          >
+            <VBtn value="active" size="small" prepend-icon="tabler-flame">
+              En Cocina
+            </VBtn>
+            <VBtn value="ready" size="small" prepend-icon="tabler-bell-ringing">
+              En Pase / Listos
+            </VBtn>
+          </VBtnToggle>
 
-        <VBtn
-          v-for="st in stations"
-          :key="st.id"
-          size="small"
-          :variant="selectedStationId === st.id ? 'flat' : 'outlined'"
-          :color="selectedStationId === st.id ? 'primary' : 'secondary'"
-          class="font-weight-bold"
-          @click="selectedStationId = st.id; fetchTickets(false)"
-        >
-          <VIcon :icon="st.icon || 'tabler-chef-hat'" start size="16" />
-          {{ st.name }}
-        </VBtn>
+          <template v-if="isMultiStation">
+            <VDivider vertical class="mx-1" />
+            <span class="text-xs font-weight-black uppercase text-medium-emphasis">Estación:</span>
+            <VBtn
+              size="small"
+              :variant="selectedStationId === null ? 'flat' : 'outlined'"
+              :color="selectedStationId === null ? 'primary' : 'secondary'"
+              class="font-weight-bold"
+              @click="selectedStationId = null; fetchTickets(false)"
+            >
+              Todas ({{ totalPendingCount }})
+            </VBtn>
+
+            <VBtn
+              v-for="st in stations"
+              :key="st.id"
+              size="small"
+              :variant="selectedStationId === st.id ? 'flat' : 'outlined'"
+              :color="selectedStationId === st.id ? 'primary' : 'secondary'"
+              class="font-weight-bold"
+              @click="selectedStationId = st.id; fetchTickets(false)"
+            >
+              <VIcon :icon="st.icon || 'tabler-chef-hat'" start size="16" />
+              {{ st.name }}
+            </VBtn>
+          </template>
+        </div>
       </div>
     </VCard>
 
     <!-- Estado de Carga Inicial -->
-    <VRow v-if="loading && tickets.length === 0">
+    <VRow v-if="loading && displayedTickets.length === 0">
       <VCol v-for="n in 4" :key="n" cols="12" sm="6" md="4" lg="3">
         <VSkeletonLoader type="card, list-item-two-line, actions" class="rounded-lg border" />
       </VCol>
     </VRow>
 
     <!-- Estado Vacío (Sin Comandas Pendientes) -->
-    <div v-else-if="tickets.length === 0 && !loading" class="pa-16 text-center text-disabled">
+    <div v-else-if="displayedTickets.length === 0 && !loading" class="pa-16 text-center text-disabled">
       <VIcon icon="tabler-clipboard-check" size="72" class="mb-4 opacity-30 text-success" />
       <h3 class="text-h6 font-weight-black uppercase text-high-emphasis opacity-60">
-        ¡Cocina al día! Sin comandas pendientes
+        {{ activeViewTab === 'ready' ? 'Sin platos esperando en el pase' : '¡Cocina al día! Sin comandas pendientes' }}
       </h3>
-      <p class="text-sm">Las órdenes comandadas desde el TPV aparecerán automáticamente aquí.</p>
+      <p class="text-sm">
+        {{ activeViewTab === 'ready' ? 'Los platos marcados como listos aparecerán aquí hasta ser entregados.' : 'Las órdenes comandadas desde el TPV aparecerán automáticamente aquí.' }}
+      </p>
     </div>
 
     <!-- Grid Táctil de Comandas (Tickets) -->
     <VRow v-else>
       <VCol
-        v-for="ticket in tickets"
+        v-for="ticket in displayedTickets"
         :key="ticket.id"
         cols="12"
         sm="6"
@@ -299,13 +418,15 @@ onUnmounted(() => {
           >
             <div>
               <div class="d-flex align-center gap-2">
-                <span class="font-weight-black text-subtitle-1">#{{ ticket.id }}</span>
+                <span class="font-weight-black text-subtitle-1 text-uppercase">
+                  {{ ticket.dining_table_name || `Orden #${ticket.id}` }}
+                </span>
                 <VChip size="x-small" color="white" variant="flat" class="text-dark font-weight-black">
-                  {{ ticket.items?.length }} ítems
+                  #{{ ticket.id }} • {{ ticket.items?.length }} ítems
                 </VChip>
               </div>
-              <div class="text-super-xs font-weight-bold opacity-90 truncate-line" style="max-width: 140px;">
-                {{ ticket.client_name }}
+              <div class="text-super-xs font-weight-bold opacity-90 truncate-line" style="max-width: 185px;">
+                {{ ticket.seller_name }} • {{ ticket.client_name }}
               </div>
             </div>
 
@@ -380,20 +501,63 @@ onUnmounted(() => {
                     </VChip>
                   </div>
 
-                  <!-- Estación KDS asociada e indicación táctil -->
+                  <!-- Estación KDS, Comensal, Botón Foto/Receta e indicación táctil -->
                   <div class="d-flex align-center justify-space-between gap-2 mt-1">
-                    <VChip
-                      v-if="item.kitchen_station"
-                      size="x-small"
-                      :color="item.kitchen_station.color || 'secondary'"
-                      variant="tonal"
-                    >
-                      <VIcon :icon="item.kitchen_station.icon || 'tabler-flame'" start size="12" />
-                      {{ item.kitchen_station.name }}
-                    </VChip>
-                    <span class="text-super-xs text-medium-emphasis ms-auto">
+                    <div class="d-flex align-center gap-1 flex-wrap">
+                      <VChip
+                        v-if="item.kitchen_station && isMultiStation"
+                        size="x-small"
+                        :color="item.kitchen_station.color || 'secondary'"
+                        variant="tonal"
+                      >
+                        <VIcon :icon="item.kitchen_station.icon || 'tabler-flame'" start size="12" />
+                        {{ item.kitchen_station.name }}
+                      </VChip>
+                      <VChip
+                        v-if="item.seat_number"
+                        size="x-small"
+                        color="primary"
+                        variant="tonal"
+                      >
+                        Silla {{ item.seat_number }}
+                      </VChip>
+                      <VBtn
+                        size="x-small"
+                        variant="tonal"
+                        color="info"
+                        prepend-icon="tabler-book-2"
+                        @click.stop="openRecipeModal(item)"
+                      >
+                        Receta / Foto
+                      </VBtn>
+                    </div>
+                    <span v-if="activeViewTab === 'active'" class="text-super-xs text-medium-emphasis ms-auto">
                       {{ item.kitchen_status === 'queued' ? 'Tocar: Iniciar' : 'Tocar: Listo' }}
                     </span>
+                  </div>
+
+                  <!-- Acciones de Pase (solo en pestaña En Pase / Listos) -->
+                  <div v-if="activeViewTab === 'ready'" class="d-flex align-center gap-2 mt-2" @click.stop>
+                    <VBtn
+                      size="x-small"
+                      color="success"
+                      variant="flat"
+                      prepend-icon="tabler-check"
+                      class="flex-grow-1"
+                      :loading="updatingItemId === item.id"
+                      @click="updateItemDirectStatus(item, 'served', 'Servido')"
+                    >
+                      Entregado al Mesero
+                    </VBtn>
+                    <VBtn
+                      size="x-small"
+                      color="warning"
+                      variant="tonal"
+                      icon="tabler-arrow-back-up"
+                      title="Revertir a cocina"
+                      :loading="updatingItemId === item.id"
+                      @click="updateItemDirectStatus(item, 'preparing', 'Preparando')"
+                    />
                   </div>
 
                   <!-- Preferencias de Cocina y Exclusiones (Sin Cebolla, etc.) -->
@@ -422,7 +586,7 @@ onUnmounted(() => {
           <VDivider />
 
           <!-- Acción Rápida: Despachar Comanda Completa -->
-          <div class="pa-2 bg-light">
+          <div v-if="activeViewTab === 'active'" class="pa-2 bg-light">
             <VBtn
               color="success"
               variant="flat"
@@ -440,6 +604,74 @@ onUnmounted(() => {
         </VCard>
       </VCol>
     </VRow>
+
+    <!-- Modal: Foto de Emplatado y Receta Técnica -->
+    <VDialog v-model="showRecipeDialog" max-width="640">
+      <VCard v-if="selectedDishItem">
+        <VCardTitle class="d-flex align-center justify-space-between bg-surface-variant py-3 px-4">
+          <div class="d-flex align-center gap-2">
+            <VIcon icon="tabler-tools-kitchen-2" color="primary" />
+            <span class="font-weight-bold text-uppercase">{{ selectedDishItem.dish_name }}</span>
+            <VChip size="x-small" color="primary" variant="flat">
+              {{ selectedDishItem.quantity }}x
+            </VChip>
+          </div>
+          <VBtn icon="tabler-x" variant="text" size="small" @click="showRecipeDialog = false" />
+        </VCardTitle>
+
+        <VCardText class="pa-4">
+          <VRow>
+            <VCol cols="12" sm="5">
+              <VImg
+                v-if="selectedDishItem.photo_url"
+                :src="selectedDishItem.photo_url"
+                height="200"
+                cover
+                class="rounded-lg border"
+              />
+              <div
+                v-else
+                class="d-flex flex-column align-center justify-center rounded-lg border bg-light text-medium-emphasis"
+                style="height: 200px;"
+              >
+                <VIcon icon="tabler-photo-off" size="42" class="mb-2 opacity-50" />
+                <span class="text-caption">Sin foto de emplatado</span>
+              </div>
+            </VCol>
+
+            <VCol cols="12" sm="7">
+              <div class="text-subtitle-2 font-weight-bold mb-1">Instrucciones / Descripción</div>
+              <p class="text-body-2 text-medium-emphasis mb-3">
+                {{ selectedDishItem.description || 'Sin instrucciones adicionales registradas en la ficha del plato.' }}
+              </p>
+
+              <div class="text-subtitle-2 font-weight-bold mb-2">
+                Ingredientes de Receta (para {{ selectedDishItem.quantity }}x)
+              </div>
+              <VTable v-if="selectedDishItem.recipe_ingredients?.length" density="compact" class="border rounded">
+                <thead>
+                  <tr>
+                    <th>Ingrediente</th>
+                    <th class="text-right">Cant. Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="ing in selectedDishItem.recipe_ingredients" :key="ing.id">
+                    <td>{{ ing.name }}</td>
+                    <td class="text-right font-weight-bold">
+                      {{ (ing.portion * selectedDishItem.quantity).toFixed(2) }} {{ ing.unit }}
+                    </td>
+                  </tr>
+                </tbody>
+              </VTable>
+              <VAlert v-else density="compact" variant="tonal" color="info" class="text-caption">
+                Este plato no tiene ingredientes registrados en su escandallo.
+              </VAlert>
+            </VCol>
+          </VRow>
+        </VCardText>
+      </VCard>
+    </VDialog>
 
     <!-- Widget del Simulador de Tráfico en Vivo -->
     <RestaurantSimulatorWidget

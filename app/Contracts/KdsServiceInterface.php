@@ -19,7 +19,7 @@ interface KdsServiceInterface
     /**
      * Obtener comandas y platos activos en KDS filtrados opcionalmente por estación.
      */
-    public function getActiveTickets(?int $stationId = null): Collection;
+    public function getActiveTickets(?int $stationId = null, bool $includeReady = false): Collection;
 
     /**
      * Actualizar el estado de preparación de un plato en cocina.

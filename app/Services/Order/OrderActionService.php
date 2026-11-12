@@ -332,6 +332,9 @@ class OrderActionService
                         'unit_price_usd' => $price_usd,
                         'product_type' => 'dish',
                         'notes' => $notes,
+                        'kitchen_status' => \App\Enums\KitchenStatusEnum::QUEUED->value,
+                        'course_number' => (int) ($validatedData['course_number'] ?? 1),
+                        'commanded_at' => Carbon::now(),
                     ]);
                     foreach ($normalizedModifiers as $nm) {
                         $orderItem->modifiers()->create($nm);

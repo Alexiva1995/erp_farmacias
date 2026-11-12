@@ -76,6 +76,10 @@ export default [
         to: 'configuration-products',
       },
       {
+        title: 'Restaurante',
+        to: 'configuration-restaurant',
+      },
+      {
         title: 'Facturas',
         to: 'configuration-invoices',
       },

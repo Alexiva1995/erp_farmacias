@@ -16,19 +16,41 @@ class KdsTicketResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        // Obtener nombres de tiempos configurados en el restaurante
+        $configuredCourses = \App\Models\GeneralSetting::first()?->kds_courses;
+        $courseMap = [];
+        if (is_array($configuredCourses)) {
+            foreach ($configuredCourses as $c) {
+                if (isset($c['number'], $c['label'])) {
+                    $courseMap[(int) $c['number']] = $c['label'];
+                }
+            }
+        }
+
         return [
             'id' => $this->id,
             'dining_table_name' => $this->diningTable?->name ?? 'Salón',
             'client_name' => $this->client?->name ?? 'Cliente General',
-            'seller_name' => $this->seller?->name ?? 'Mesonero / Caja',
+            'seller_name' => $this->seller?->name ?? $this->seller?->username ?? 'Mesonero / Caja',
             'order_date' => $this->order_date?->format('Y-m-d H:i:s'),
             'status' => $this->status,
-            'items' => $this->details->map(function ($detail) {
+            'items' => $this->details->map(function ($detail) use ($courseMap) {
+                $courseNum = (int) ($detail->course_number ?? 1);
+                $defaultCourseLabel = match ($courseNum) {
+                    1 => '1° Tiempo (Entrada)',
+                    2 => '2° Tiempo (Fuerte)',
+                    3 => '3° Tiempo (Postre)',
+                    default => "{$courseNum}° Tiempo",
+                };
+
                 return [
                     'id' => $detail->id,
                     'dish_id' => $detail->dish_id,
                     'dish_name' => $detail->dish?->name ?? 'Plato sin nombre',
+                    'photo_url' => $detail->dish?->photo_url,
+                    'description' => $detail->dish?->description,
                     'category_name' => $detail->dish?->category?->name,
+                    'seat_number' => $detail->seat_number,
                     'quantity' => (float) $detail->quantity,
                     'kitchen_status' => $detail->kitchen_status instanceof \App\Enums\KitchenStatusEnum 
                         ? $detail->kitchen_status->value 
@@ -39,13 +61,8 @@ class KdsTicketResource extends JsonResource
                     'kitchen_status_color' => $detail->kitchen_status instanceof \App\Enums\KitchenStatusEnum 
                         ? $detail->kitchen_status->color() 
                         : 'info',
-                    'course_number' => (int) ($detail->course_number ?? 1),
-                    'course_label' => match ((int) ($detail->course_number ?? 1)) {
-                        1 => '1° Tiempo (Entrada)',
-                        2 => '2° Tiempo (Fuerte)',
-                        3 => '3° Tiempo (Postre)',
-                        default => '1° Tiempo',
-                    },
+                    'course_number' => $courseNum,
+                    'course_label' => $courseMap[$courseNum] ?? $defaultCourseLabel,
                     'notes' => $detail->notes,
                     'preparation_time_minutes' => (int) ($detail->dish?->preparation_time_minutes ?? 15),
                     'kitchen_station' => $detail->dish?->kitchenStation ? [
@@ -65,6 +82,15 @@ class KdsTicketResource extends JsonResource
                             'extra_price_usd' => (float) $mod->extra_price_usd,
                         ];
                     }),
+                    'recipe_ingredients' => $detail->dish?->ingredients ? $detail->dish->ingredients->map(function ($ing) {
+                        return [
+                            'id' => $ing->id,
+                            'name' => $ing->name,
+                            'portion' => (float) ($ing->pivot?->portion ?? 0),
+                            'unit' => $ing->unit_measurement ?? 'und',
+                            'is_removable' => (bool) ($ing->pivot?->is_removable ?? false),
+                        ];
+                    })->values() : [],
                     'removable_ingredients' => $detail->dish?->ingredients ? $detail->dish->ingredients->filter(function ($ing) {
                         return (bool) ($ing->pivot?->is_removable ?? false);
                     })->map(function ($ing) {

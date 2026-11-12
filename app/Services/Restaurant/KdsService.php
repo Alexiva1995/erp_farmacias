@@ -54,17 +54,21 @@ class KdsService implements KdsServiceInterface
     /**
      * @inheritDoc
      */
-    public function getActiveTickets(?int $stationId = null): Collection
+    public function getActiveTickets(?int $stationId = null, bool $includeReady = false): Collection
     {
         $activeStatuses = [
             KitchenStatusEnum::QUEUED->value,
             KitchenStatusEnum::PREPARING->value,
         ];
 
+        if ($includeReady) {
+            $activeStatuses[] = KitchenStatusEnum::READY->value;
+        }
+
         return Order::query()
             ->with([
                 'client:id,name',
-                'seller:id,username',
+                'seller:id,name,username',
                 'diningTable:id,name',
                 'details' => function ($q) use ($stationId, $activeStatuses) {
                     $q->where('product_type', 'dish')
@@ -79,9 +83,7 @@ class KdsService implements KdsServiceInterface
                     $q->with([
                         'dish.kitchenStation',
                         'dish.category:id,name',
-                        'dish.ingredients' => function ($ingQ) {
-                            $ingQ->wherePivot('is_removable', true);
-                        },
+                        'dish.ingredients',
                         'modifiers',
                     ])
                     ->orderBy('course_number', 'asc')
