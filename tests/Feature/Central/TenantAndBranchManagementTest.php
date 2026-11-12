@@ -43,12 +43,27 @@ class TenantAndBranchManagementTest extends TestCase
         $this->actingAs($this->user);
     }
 
+    protected function tearDown(): void
+    {
+        if (function_exists('tenancy') && tenancy()->initialized) {
+            tenancy()->end();
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::purge('tenant');
+        } catch (\Throwable) {
+        }
+
+        parent::tearDown();
+    }
+
     public function test_can_list_tenants_and_domains(): void
     {
         $tenant = Tenant::create([
             'id' => 'farmacia_central',
             'company_name' => 'Farmacia Central Matriz',
             'branch_code' => 'MATRIZ',
+            'vertical' => 'pharmacy',
             'is_branch_active' => true,
         ]);
 
@@ -73,6 +88,7 @@ class TenantAndBranchManagementTest extends TestCase
             'id' => 'farmacia_audit_test',
             'company_name' => 'Farmacia Para Auditoria',
             'branch_code' => 'AUDIT-01',
+            'vertical' => 'pharmacy',
         ]);
 
         $response = $this->getJson('/api/central/suppliers-audit?supplier_id=1016');
@@ -95,6 +111,7 @@ class TenantAndBranchManagementTest extends TestCase
             'id' => 'matriz_corp',
             'company_name' => 'Corporativo Farmacéutico',
             'branch_code' => 'MATRIZ',
+            'vertical' => 'pharmacy',
             'can_create_branches' => true,
             'max_branches' => 10,
         ]);
@@ -104,6 +121,7 @@ class TenantAndBranchManagementTest extends TestCase
             'parent_tenant_id' => 'matriz_corp',
             'company_name' => 'Sucursal Este',
             'branch_code' => 'SUC-02',
+            'vertical' => 'pharmacy',
             'is_branch_active' => true,
         ]);
 

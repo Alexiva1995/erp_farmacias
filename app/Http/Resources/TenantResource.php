@@ -22,12 +22,22 @@ class TenantResource extends JsonResource
         // Si la vertical no está guardada en la tabla central de tenants, resolverla desde la BD del tenant
         if (empty($vertical)) {
             try {
-                $this->run(function () use (&$vertical) {
-                    $setting = GeneralSetting::select('business_type')->first();
-                    if ($setting?->business_type) {
-                        $vertical = $setting->business_type;
-                    }
-                });
+                $dbName = $this->database()->getName();
+                $dbExists = false;
+                try {
+                    $dbExists = $this->database()->manager()->databaseExists($dbName);
+                } catch (\Throwable) {
+                    $dbExists = false;
+                }
+
+                if ($dbExists) {
+                    $this->run(function () use (&$vertical) {
+                        $setting = GeneralSetting::select('business_type')->first();
+                        if ($setting?->business_type) {
+                            $vertical = $setting->business_type;
+                        }
+                    });
+                }
             } catch (\Throwable $e) {
                 // Silencioso ante excepciones de conexión
             }

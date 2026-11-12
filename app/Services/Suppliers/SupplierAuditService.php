@@ -39,15 +39,27 @@ class SupplierAuditService implements SupplierAuditServiceInterface
                 $tenantDomain = $tenant->domains->first()?->domain ?? "{$tenant->id}.tovaerp.com";
                 $tenantData = null;
 
-                $tenant->run(function () use (&$tenantData, $targetSupplierId, $startOfMonth, $endOfMonth, $tenant, $tenantDomain) {
-                    $tenantData = $this->extractDataForCurrentDatabase(
-                        $targetSupplierId,
-                        $startOfMonth,
-                        $endOfMonth,
-                        (string) $tenant->id,
-                        $tenantDomain
-                    );
-                });
+                $dbName = $tenant->database()->getName();
+                $dbExists = false;
+                try {
+                    $dbExists = $tenant->database()->manager()->databaseExists($dbName);
+                } catch (\Throwable) {
+                    $dbExists = false;
+                }
+
+                if ($dbExists) {
+                    $tenant->run(function () use (&$tenantData, $targetSupplierId, $startOfMonth, $endOfMonth, $tenant, $tenantDomain) {
+                        $tenantData = $this->extractDataForCurrentDatabase(
+                            $targetSupplierId,
+                            $startOfMonth,
+                            $endOfMonth,
+                            (string) $tenant->id,
+                            $tenantDomain
+                        );
+                    });
+                } else {
+                    $tenantData = $this->createEmptyRow((string) $tenant->id, $tenantDomain, 'Base de datos no inicializada');
+                }
 
                 if ($tenantData) {
                     $tenantRows[] = $tenantData;
