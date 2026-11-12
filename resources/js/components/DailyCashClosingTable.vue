@@ -101,7 +101,7 @@ const getPaymentDetail = (item, currency) => {
 
   if (currency === "USD") {
     const currencyObj = methods.USD || {};
-    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
     activeMethods.forEach((m) => {
       let val = 0;
       if (m.value === "cash")          val = parseFloat(item.usd_cash || 0);
@@ -111,18 +111,30 @@ const getPaymentDetail = (item, currency) => {
       else if (m.value === "credit")   val = parseFloat(item.total_credits || 0);
       if (val > 0) details.push({ label: m.label || m.value, value: fmtUsd(val) });
     });
+    if (details.length === 0) {
+      if (parseFloat(item.usd_cash || 0) > 0) details.push({ label: "Efectivo", value: fmtUsd(item.usd_cash) });
+      if (parseFloat(item.usd_transfer || 0) > 0) details.push({ label: "Transferencia", value: fmtUsd(item.usd_transfer) });
+    }
   } else if (currency === "COP") {
     const currencyObj = methods.COP || {};
-    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
     activeMethods.forEach((m) => {
       let val = 0;
-      if (m.value === "cash")          val = parseFloat(item.cop_cash || 0);
-      else if (m.value === "bank_transfer") val = parseFloat(item.cop_transfer || 0);
+      if (m.value === "cash" || m.value === "cash_cop")          val = parseFloat(item.cop_cash || 0);
+      else if (m.value === "bank_transfer" || m.value === "bank_transfer_cop") val = parseFloat(item.cop_transfer || 0);
       if (val > 0) details.push({ label: m.label || m.value, value: fmtCop(val) });
     });
+    if (details.length === 0) {
+      if (parseFloat(item.cop_cash || 0) > 0) details.push({ label: "Efectivo", value: fmtCop(item.cop_cash) });
+      if (parseFloat(item.cop_transfer || 0) > 0) details.push({ label: "Transferencia", value: fmtCop(item.cop_transfer) });
+    }
+    const spare = parseFloat(item.cop_spare || 0) || (item.cash_closings ? item.cash_closings.reduce((acc, c) => acc + parseFloat(c.cop_spare || 0), 0) : 0);
+    if (spare > 0) {
+      details.push({ label: "Sobrante", value: fmtCop(spare) });
+    }
   } else if (currency === "BS") {
     const currencyObj = methods.BS || {};
-    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
     activeMethods.forEach((m) => {
       let val = 0;
       if (m.value === "cash_bs")           val = parseFloat(item.bs_cash || 0);
@@ -132,6 +144,13 @@ const getPaymentDetail = (item, currency) => {
       else if (m.value === "bank_transfer_bs") val = parseFloat(item.bs_transfer || 0);
       if (val > 0) details.push({ label: m.label || m.value, value: fmtBs(val) });
     });
+    if (details.length === 0) {
+      if (parseFloat(item.bs_cash || 0) > 0) details.push({ label: "Efectivo", value: fmtBs(item.bs_cash) });
+      if (parseFloat(item.bs_mobile || 0) > 0) details.push({ label: "Pago Móvil", value: fmtBs(item.bs_mobile) });
+      if (parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0) + parseFloat(item.bs_card || 0) > 0) {
+        details.push({ label: "Punto de Venta", value: fmtBs(parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0) + parseFloat(item.bs_card || 0)) });
+      }
+    }
   }
   return details;
 };

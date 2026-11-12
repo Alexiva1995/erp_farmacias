@@ -101,7 +101,7 @@ const getPaymentDetail = (item, currency) => {
 
   if (currency === "USD") {
     const currencyObj = methods.USD || {};
-    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
 
     activeMethods.forEach((m) => {
       let val = 0;
@@ -115,22 +115,39 @@ const getPaymentDetail = (item, currency) => {
         details.push({ label: m.label || m.value, value: fmtUsd(val) });
       }
     });
+
+    if (details.length === 0) {
+      if (parseFloat(item.usd_cash || 0) > 0) details.push({ label: "Efectivo", value: fmtUsd(item.usd_cash) });
+      if (parseFloat(item.usd_transfer || 0) > 0) details.push({ label: "Transferencia", value: fmtUsd(item.usd_transfer) });
+    }
   } else if (currency === "COP") {
     const currencyObj = methods.COP || {};
-    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
 
     activeMethods.forEach((m) => {
       let val = 0;
-      if (m.value === "cash_cop") val = parseFloat(item.cop_cash || 0);
-      else if (m.value === "bank_transfer_cop") val = parseFloat(item.cop_transfer || 0);
+      if (m.value === "cash" || m.value === "cash_cop") val = parseFloat(item.cop_cash || 0);
+      else if (m.value === "bank_transfer" || m.value === "bank_transfer_cop") val = parseFloat(item.cop_transfer || 0);
 
       if (val > 0) {
         details.push({ label: m.label || m.value, value: fmtCop(val) });
       }
     });
+
+    if (details.length === 0) {
+      if (parseFloat(item.cop_cash || 0) > 0) details.push({ label: "Efectivo", value: fmtCop(item.cop_cash) });
+      if (parseFloat(item.cop_transfer || 0) > 0) details.push({ label: "Transferencia", value: fmtCop(item.cop_transfer) });
+    }
+
+    if (parseFloat(item.cop_cash_payment_credit || 0) > 0) {
+      details.push({ label: "Abono Crédito", value: fmtCop(item.cop_cash_payment_credit) });
+    }
+    if (parseFloat(item.cop_spare || 0) > 0) {
+      details.push({ label: "Sobrante", value: fmtCop(item.cop_spare) });
+    }
   } else if (currency === "BS") {
     const currencyObj = methods.BS || {};
-    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : [];
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
 
     activeMethods.forEach((m) => {
       let val = 0;
@@ -144,6 +161,24 @@ const getPaymentDetail = (item, currency) => {
         details.push({ label: m.label || m.value, value: fmtBs(val) });
       }
     });
+
+    if (details.length === 0) {
+      if (parseFloat(item.bs_cash || 0) > 0) details.push({ label: "Efectivo", value: fmtBs(item.bs_cash) });
+      if (parseFloat(item.bs_mobile || 0) > 0) details.push({ label: "Pago Móvil", value: fmtBs(item.bs_mobile) });
+      if (parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0) + parseFloat(item.bs_card || 0) > 0) {
+        details.push({ label: "Punto de Venta", value: fmtBs(parseFloat(item.bs_card_debito || 0) + parseFloat(item.bs_card_credit || 0) + parseFloat(item.bs_card || 0)) });
+      }
+    }
+
+    if (parseFloat(item.bs_cash_payment_credit || 0) > 0) {
+      details.push({ label: "Abono Efectivo", value: fmtBs(item.bs_cash_payment_credit) });
+    }
+    if (parseFloat(item.bs_mobile_payment_credit || 0) > 0 || parseFloat(item.bs_transfer_payment_credit || 0) > 0) {
+      details.push({
+        label: "Abono Transf/PM",
+        value: fmtBs(parseFloat(item.bs_mobile_payment_credit || 0) + parseFloat(item.bs_transfer_payment_credit || 0)),
+      });
+    }
   }
   return details;
 };
@@ -249,7 +284,7 @@ const getMismatchText = (closing, currency) => {
                 </VMenu>
 
                 <!-- Detalle Métodos USD -->
-                <VMenu v-if="getPaymentDetail(c, 'USD').length > 1" open-on-hover close-on-content-click location="top">
+                <VMenu v-if="getPaymentDetail(c, 'USD').length > 0" open-on-hover close-on-content-click location="top">
                   <template #activator="{ props: menuProps }">
                     <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer" />
                   </template>
@@ -280,7 +315,7 @@ const getMismatchText = (closing, currency) => {
                 </VMenu>
 
                 <!-- Detalle Métodos COP -->
-                <VMenu v-if="getPaymentDetail(c, 'COP').length > 1" open-on-hover close-on-content-click location="top">
+                <VMenu v-if="getPaymentDetail(c, 'COP').length > 0" open-on-hover close-on-content-click location="top">
                   <template #activator="{ props: menuProps }">
                     <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer" />
                   </template>
@@ -311,7 +346,7 @@ const getMismatchText = (closing, currency) => {
                 </VMenu>
 
                 <!-- Detalle Métodos BS -->
-                <VMenu v-if="getPaymentDetail(c, 'BS').length > 1" open-on-hover close-on-content-click location="top">
+                <VMenu v-if="getPaymentDetail(c, 'BS').length > 0" open-on-hover close-on-content-click location="top">
                   <template #activator="{ props: menuProps }">
                     <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer" />
                   </template>

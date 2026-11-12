@@ -43,6 +43,7 @@ class DailyCashClosureResource extends JsonResource
             'cop_cash'             => (float)$this->cop_cash,
             'cop_transfer'         => (float)$this->cop_transfer,
             'cop_delivered'        => (float)$this->cop_delivered,
+            'cop_spare'            => (float)($this->cop_spare > 0 ? $this->cop_spare : ($this->relationLoaded('cashClosings') ? $this->cashClosings->sum('cop_spare') : 0)),
             // Bs por método
             'bs_cash'              => (float)$this->bs_cash,
             'bs_card_debito'       => (float)$this->bs_card_debito,

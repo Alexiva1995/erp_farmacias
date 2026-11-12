@@ -154,6 +154,64 @@ const totalCashUsdGlobal = computed(() => {
   return filteredCashClosings.value.reduce((acc, c) => acc + (parseFloat(c.usd_cash || 0) + parseFloat(c.usd_cash_payment_credit || 0)), 0);
 });
 
+const getGlobalPaymentDetail = (currency) => {
+  const details = [];
+  let rawMethods = props.tpvPaymentMethods;
+  if (typeof rawMethods === "string") {
+    try { rawMethods = JSON.parse(rawMethods); } catch (e) { rawMethods = {}; }
+  }
+  const methods = rawMethods || {};
+
+  if (currency === "USD") {
+    const currencyObj = methods.USD || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
+    activeMethods.forEach((m) => {
+      let val = 0;
+      if (m.value === "cash") val = totalCashUsdGlobal.value;
+      else if (m.value === "bank_transfer") val = totalTransferUsdGlobal.value;
+      else if (m.value === "credit") val = totalCreditsUsdGlobal.value;
+      if (val > 0) details.push({ label: m.label || m.value, value: formatCurrency(val, 'USD') });
+    });
+    if (details.length === 0) {
+      if (totalCashUsdGlobal.value > 0) details.push({ label: "Efectivo", value: formatCurrency(totalCashUsdGlobal.value, 'USD') });
+      if (totalTransferUsdGlobal.value > 0) details.push({ label: "Transferencia", value: formatCurrency(totalTransferUsdGlobal.value, 'USD') });
+    }
+  } else if (currency === "COP") {
+    const currencyObj = methods.COP || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
+    activeMethods.forEach((m) => {
+      let val = 0;
+      if (m.value === "cash" || m.value === "cash_cop") val = totalCashCopGlobal.value;
+      else if (m.value === "bank_transfer" || m.value === "bank_transfer_cop") val = totalTransferCopGlobal.value;
+      if (val > 0) details.push({ label: m.label || m.value, value: formatCurrency(val, 'COP') });
+    });
+    if (details.length === 0) {
+      if (totalCashCopGlobal.value > 0) details.push({ label: "Efectivo", value: formatCurrency(totalCashCopGlobal.value, 'COP') });
+      if (totalTransferCopGlobal.value > 0) details.push({ label: "Transferencia", value: formatCurrency(totalTransferCopGlobal.value, 'COP') });
+    }
+    const spare = parseFloat(props.cashData?.cop_spare || 0) || filteredCashClosings.value.reduce((acc, c) => acc + parseFloat(c.cop_spare || 0), 0);
+    if (spare > 0) {
+      details.push({ label: "Sobrante", value: formatCurrency(spare, 'COP') });
+    }
+  } else if (currency === "BS") {
+    const currencyObj = methods.BS || {};
+    const activeMethods = Array.isArray(currencyObj.methods) ? currencyObj.methods : (Array.isArray(currencyObj) ? currencyObj : []);
+    activeMethods.forEach((m) => {
+      let val = 0;
+      if (m.value === "cash_bs") val = totalCashBsGlobal.value;
+      else if (m.value === "mobile_payment" || m.value === "bank_transfer_bs") val = totalTransferBsGlobal.value;
+      else if (m.value === "debit_card" || m.value === "credit_card") val = totalPosBsGlobal.value;
+      if (val > 0) details.push({ label: m.label || m.value, value: formatCurrency(val, 'BS') });
+    });
+    if (details.length === 0) {
+      if (totalCashBsGlobal.value > 0) details.push({ label: "Efectivo", value: formatCurrency(totalCashBsGlobal.value, 'BS') });
+      if (totalTransferBsGlobal.value > 0) details.push({ label: "Pago Móvil / Transf.", value: formatCurrency(totalTransferBsGlobal.value, 'BS') });
+      if (totalPosBsGlobal.value > 0) details.push({ label: "Punto de Venta", value: formatCurrency(totalPosBsGlobal.value, 'BS') });
+    }
+  }
+  return details;
+};
+
 const ticketStyles = `
   body { font-family: 'Roboto', sans-serif; font-size: 10pt; color: #1a1a1a; margin: 0; padding: 0; }
   .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #2c3e50; padding-bottom: 5px; }
@@ -410,6 +468,17 @@ defineExpose({ printReport });
                   <h4 class="text-subtitle-2 font-weight-black text-primary mb-0">
                     {{ formatCurrency(totalUsdGlobal, 'USD') }}
                   </h4>
+                  <VMenu v-if="getGlobalPaymentDetail('USD').length > 0" open-on-hover close-on-content-click location="top">
+                    <template #activator="{ props: menuProps }">
+                      <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer ms-1" />
+                    </template>
+                    <VCard class="pa-2 text-xs" min-width="160">
+                      <div v-for="det in getGlobalPaymentDetail('USD')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                        <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                        <span class="font-weight-black">{{ det.value }}</span>
+                      </div>
+                    </VCard>
+                  </VMenu>
                 </div>
               </div>
             </VCol>
@@ -430,6 +499,17 @@ defineExpose({ printReport });
                   <h4 class="text-subtitle-2 font-weight-black text-success mb-0">
                     {{ formatCurrency(totalCopGlobal, 'COP') }}
                   </h4>
+                  <VMenu v-if="getGlobalPaymentDetail('COP').length > 0" open-on-hover close-on-content-click location="top">
+                    <template #activator="{ props: menuProps }">
+                      <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer ms-1" />
+                    </template>
+                    <VCard class="pa-2 text-xs" min-width="160">
+                      <div v-for="det in getGlobalPaymentDetail('COP')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                        <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                        <span class="font-weight-black">{{ det.value }}</span>
+                      </div>
+                    </VCard>
+                  </VMenu>
                 </div>
               </div>
             </VCol>
@@ -450,6 +530,17 @@ defineExpose({ printReport });
                   <h4 class="text-subtitle-2 font-weight-black text-warning mb-0">
                     {{ formatCurrency(totalBsGlobal, 'BS') }}
                   </h4>
+                  <VMenu v-if="getGlobalPaymentDetail('BS').length > 0" open-on-hover close-on-content-click location="top">
+                    <template #activator="{ props: menuProps }">
+                      <VIcon v-bind="menuProps" icon="tabler-info-circle" size="14" class="text-disabled cursor-pointer ms-1" />
+                    </template>
+                    <VCard class="pa-2 text-xs" min-width="160">
+                      <div v-for="det in getGlobalPaymentDetail('BS')" :key="det.label" class="d-flex justify-space-between py-1 border-bottom">
+                        <span class="font-weight-medium me-4 uppercase text-disabled text-super-xs">{{ det.label }}:</span>
+                        <span class="font-weight-black">{{ det.value }}</span>
+                      </div>
+                    </VCard>
+                  </VMenu>
                 </div>
               </div>
             </VCol>
