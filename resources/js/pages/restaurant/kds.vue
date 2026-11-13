@@ -728,17 +728,19 @@ onUnmounted(() => {
     </VRow>
 
     <!-- Modal: Foto de Emplatado y Receta Técnica -->
-    <VDialog v-model="showRecipeDialog" max-width="640">
-      <VCard v-if="selectedDishItem">
-        <VCardTitle class="d-flex align-center justify-space-between bg-surface-variant py-3 px-4">
+    <VDialog v-model="showRecipeDialog" max-width="680">
+      <VCard v-if="selectedDishItem" class="rounded-lg">
+        <VCardTitle class="d-flex align-center justify-space-between bg-surface border-b py-3 px-4">
           <div class="d-flex align-center gap-2">
-            <VIcon icon="tabler-tools-kitchen-2" color="primary" />
-            <span class="font-weight-bold text-uppercase">{{ selectedDishItem.dish_name }}</span>
-            <VChip size="x-small" color="primary" variant="flat">
+            <VAvatar color="primary" variant="tonal" size="34" class="rounded-lg">
+              <VIcon icon="tabler-tools-kitchen-2" size="20" />
+            </VAvatar>
+            <span class="font-weight-black text-subtitle-1 text-uppercase">{{ selectedDishItem.dish_name }}</span>
+            <VChip size="small" color="primary" variant="flat" class="font-weight-black">
               {{ selectedDishItem.quantity }}x
             </VChip>
           </div>
-          <VBtn icon="tabler-x" variant="text" size="small" @click="showRecipeDialog = false" />
+          <VBtn icon="tabler-x" variant="text" color="secondary" size="small" @click="showRecipeDialog = false" />
         </VCardTitle>
 
         <VCardText class="pa-4">
@@ -747,14 +749,14 @@ onUnmounted(() => {
               <VImg
                 v-if="selectedDishItem.photo_url"
                 :src="selectedDishItem.photo_url"
-                height="200"
+                height="210"
                 cover
                 class="rounded-lg border"
               />
               <div
                 v-else
                 class="d-flex flex-column align-center justify-center rounded-lg border bg-light text-medium-emphasis"
-                style="height: 200px;"
+                style="height: 210px;"
               >
                 <VIcon icon="tabler-photo-off" size="42" class="mb-2 opacity-50" />
                 <span class="text-caption">Sin foto de emplatado</span>
@@ -774,14 +776,14 @@ onUnmounted(() => {
                 <thead>
                   <tr>
                     <th>Ingrediente</th>
-                    <th class="text-right">Cant. Total</th>
+                    <th class="text-right" style="white-space: nowrap;">Porción</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="ing in selectedDishItem.recipe_ingredients" :key="ing.id">
-                    <td>{{ ing.name }}</td>
-                    <td class="text-right font-weight-bold">
-                      {{ (ing.portion * selectedDishItem.quantity).toFixed(2) }} {{ ing.unit }}
+                    <td class="font-weight-medium">{{ ing.name }}</td>
+                    <td class="text-right font-weight-black text-primary" style="white-space: nowrap;">
+                      {{ parseFloat((ing.portion * selectedDishItem.quantity).toFixed(4)) }} {{ ing.unit }}
                     </td>
                   </tr>
                 </tbody>

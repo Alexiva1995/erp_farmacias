@@ -87,7 +87,7 @@ class KdsTicketResource extends JsonResource
                             'id' => $ing->id,
                             'name' => $ing->name,
                             'portion' => (float) ($ing->pivot?->portion ?? 0),
-                            'unit' => $ing->unit_measurement ?? 'und',
+                            'unit' => $ing->unit_of_measure ?? 'und',
                             'is_removable' => (bool) ($ing->pivot?->is_removable ?? false),
                         ];
                     })->values() : [],
