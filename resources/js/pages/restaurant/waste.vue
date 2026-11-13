@@ -713,10 +713,10 @@ onUnmounted(() => {
 <template>
   <div>
     <!-- Tarjetas de Resumen Operativo (Estilo Vuexy del Sistema) -->
-    <VRow class="mb-6">
-      <VCol cols="12" sm="6" md="3">
-        <VCard>
-          <VCardText class="d-flex align-center justify-space-between">
+    <v-row class="mb-6">
+      <v-col cols="12" sm="6" md="3">
+        <v-card>
+          <v-card-text class="d-flex align-center justify-space-between">
             <div>
               <span class="text-body-2 text-medium-emphasis">Pendientes de Revisión</span>
               <h4 class="text-h4 font-weight-bold text-warning my-1">
@@ -726,16 +726,16 @@ onUnmounted(() => {
                 En espera: {{ formatCurrency(summary.total_loss_pending_usd) }}
               </span>
             </div>
-            <VAvatar color="warning" variant="tonal" rounded size="44">
-              <VIcon icon="tabler-clock-exclamation" size="26" />
-            </VAvatar>
-          </VCardText>
-        </VCard>
-      </VCol>
+            <v-avatar color="warning" variant="tonal" rounded size="44">
+              <v-icon icon="tabler-clock-exclamation" size="26" />
+            </v-avatar>
+          </v-card-text>
+        </v-card>
+      </v-col>
 
-      <VCol cols="12" sm="6" md="3">
-        <VCard>
-          <VCardText class="d-flex align-center justify-space-between">
+      <v-col cols="12" sm="6" md="3">
+        <v-card>
+          <v-card-text class="d-flex align-center justify-space-between">
             <div>
               <span class="text-body-2 text-medium-emphasis">Merma Operativa</span>
               <h4 class="text-h4 font-weight-bold text-error my-1">
@@ -745,16 +745,16 @@ onUnmounted(() => {
                 {{ summary.operational_approved_count }} bajas (Desperdicio)
               </span>
             </div>
-            <VAvatar color="error" variant="tonal" rounded size="44">
-              <VIcon icon="tabler-flame" size="26" />
-            </VAvatar>
-          </VCardText>
-        </VCard>
-      </VCol>
+            <v-avatar color="error" variant="tonal" rounded size="44">
+              <v-icon icon="tabler-flame" size="26" />
+            </v-avatar>
+          </v-card-text>
+        </v-card>
+      </v-col>
 
-      <VCol cols="12" sm="6" md="3">
-        <VCard>
-          <VCardText class="d-flex align-center justify-space-between">
+      <v-col cols="12" sm="6" md="3">
+        <v-card>
+          <v-card-text class="d-flex align-center justify-space-between">
             <div>
               <span class="text-body-2 text-medium-emphasis">Personal y Cortesías</span>
               <h4 class="text-h4 font-weight-bold text-info my-1">
@@ -764,16 +764,16 @@ onUnmounted(() => {
                 {{ summary.internal_approved_count }} registros internos
               </span>
             </div>
-            <VAvatar color="info" variant="tonal" rounded size="44">
-              <VIcon icon="tabler-tools-kitchen-2" size="26" />
-            </VAvatar>
-          </VCardText>
-        </VCard>
-      </VCol>
+            <v-avatar color="info" variant="tonal" rounded size="44">
+              <v-icon icon="tabler-tools-kitchen-2" size="26" />
+            </v-avatar>
+          </v-card-text>
+        </v-card>
+      </v-col>
 
-      <VCol cols="12" sm="6" md="3">
-        <VCard>
-          <VCardText class="d-flex align-center justify-space-between">
+      <v-col cols="12" sm="6" md="3">
+        <v-card>
+          <v-card-text class="d-flex align-center justify-space-between">
             <div>
               <span class="text-body-2 text-medium-emphasis">Total Aprobado ({{ summary.approved_count }})</span>
               <h4 class="text-h4 font-weight-bold text-primary my-1">
@@ -783,31 +783,31 @@ onUnmounted(() => {
                 Rechazadas: {{ summary.rejected_count }}
               </span>
             </div>
-            <VAvatar color="primary" variant="tonal" rounded size="44">
-              <VIcon icon="tabler-chart-pie" size="26" />
-            </VAvatar>
-          </VCardText>
-        </VCard>
-      </VCol>
-    </VRow>
+            <v-avatar color="primary" variant="tonal" rounded size="44">
+              <v-icon icon="tabler-chart-pie" size="26" />
+            </v-avatar>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
 
     <!-- Card Principal (Mismo estilo que Inventario de Productos) -->
-    <VCard>
-      <VCardItem class="pb-4">
+    <v-card>
+      <v-card-item class="pb-4">
         <template #prepend>
-          <VAvatar color="primary" variant="tonal" rounded size="40">
-            <VIcon icon="tabler-trash-x" size="22" />
-          </VAvatar>
+          <v-avatar color="primary" variant="tonal" rounded size="40">
+            <v-icon icon="tabler-trash-x" size="22" />
+          </v-avatar>
         </template>
-        <VCardTitle class="text-h5">
+        <v-card-title class="text-h5">
           Control de Mermas y Desperdicios
-        </VCardTitle>
-        <VCardSubtitle>
+        </v-card-title>
+        <v-card-subtitle>
           Valorización por Costo Unificado (Tabla Productos) • Insumos, Sub-recetas y Platillos
-        </VCardSubtitle>
+        </v-card-subtitle>
         <template #append>
           <div class="d-flex flex-wrap align-center gap-2">
-            <VBtn
+            <v-btn
               variant="tonal"
               color="secondary"
               prepend-icon="tabler-refresh"
@@ -815,30 +815,30 @@ onUnmounted(() => {
               @click="fetchWastes"
             >
               Actualizar
-            </VBtn>
-            <VBtn
+            </v-btn>
+            <v-btn
               color="primary"
               prepend-icon="tabler-plus"
               @click="openReportModal"
             >
               Reportar Merma
-            </VBtn>
+            </v-btn>
           </div>
         </template>
-      </VCardItem>
+      </v-card-item>
 
-      <VDivider />
+      <v-divider />
 
       <!-- Pestañas de Estado y Atajos de Fecha -->
-      <VCardText class="d-flex flex-wrap align-center justify-space-between gap-3 py-3">
-        <VTabs v-model="statusFilter" density="compact" color="primary">
-          <VTab value="all">
+      <v-card-text class="d-flex flex-wrap align-center justify-space-between gap-3 py-3">
+        <v-tabs v-model="statusFilter" density="compact" color="primary">
+          <v-tab value="all">
             Todas
-          </VTab>
-          <VTab value="pending">
-            <VIcon start size="18" icon="tabler-clock" />
+          </v-tab>
+          <v-tab value="pending">
+            <v-icon start size="18" icon="tabler-clock" />
             Pendientes
-            <VChip
+            <v-chip
               v-if="summary.pending_count > 0"
               size="x-small"
               color="warning"
@@ -846,81 +846,83 @@ onUnmounted(() => {
               class="ms-2 font-weight-bold"
             >
               {{ summary.pending_count }}
-            </VChip>
-          </VTab>
-          <VTab value="approved">
-            <VIcon start size="18" icon="tabler-check" />
+            </v-chip>
+          </v-tab>
+          <v-tab value="approved">
+            <v-icon start size="18" icon="tabler-check" />
             Aprobadas
-          </VTab>
-          <VTab value="rejected">
-            <VIcon start size="18" icon="tabler-x" />
+          </v-tab>
+          <v-tab value="rejected">
+            <v-icon start size="18" icon="tabler-x" />
             Rechazadas
-          </VTab>
-        </VTabs>
+          </v-tab>
+        </v-tabs>
 
         <div class="d-flex flex-wrap align-center gap-1">
-          <VBtn
+          <v-btn
             size="small"
             :variant="datePreset === 'today' ? 'flat' : 'tonal'"
             :color="datePreset === 'today' ? 'primary' : 'secondary'"
             @click="applyDatePreset('today')"
           >
             Hoy
-          </VBtn>
-          <VBtn
+          </v-btn>
+          <v-btn
             size="small"
             :variant="datePreset === 'week' ? 'flat' : 'tonal'"
             :color="datePreset === 'week' ? 'primary' : 'secondary'"
             @click="applyDatePreset('week')"
           >
             Esta Semana
-          </VBtn>
-          <VBtn
+          </v-btn>
+          <v-btn
             size="small"
             :variant="datePreset === 'month' ? 'flat' : 'tonal'"
             :color="datePreset === 'month' ? 'primary' : 'secondary'"
             @click="applyDatePreset('month')"
           >
             Este Mes
-          </VBtn>
-          <VBtn
+          </v-btn>
+          <v-btn
             size="small"
             :variant="datePreset === 'all' ? 'flat' : 'tonal'"
             :color="datePreset === 'all' ? 'primary' : 'secondary'"
             @click="applyDatePreset('all')"
           >
             Todo
-          </VBtn>
+          </v-btn>
         </div>
-      </VCardText>
+      </v-card-text>
 
-      <VDivider />
+      <v-divider />
 
       <!-- Barra de Filtros -->
-      <VCardText class="py-3">
-        <VRow dense align="center">
-          <VCol cols="6" sm="2">
-            <AppTextField
+      <v-card-text class="py-3">
+        <v-row dense align="center">
+          <v-col cols="6" sm="2">
+            <v-text-field
               v-model="dateFrom"
               type="date"
               label="Desde"
               density="compact"
+              variant="outlined"
               hide-details
               @update:model-value="datePreset = 'custom'"
             />
-          </VCol>
-          <VCol cols="6" sm="2">
-            <AppTextField
+          </v-col>
+          <v-col cols="6" sm="2">
+            <v-text-field
               v-model="dateTo"
               type="date"
               label="Hasta"
               density="compact"
+              variant="outlined"
               hide-details
               @update:model-value="datePreset = 'custom'"
             />
-          </VCol>
-          <VCol cols="6" sm="2">
-            <AppSelect
+          </v-col>
+          <v-col cols="6" sm="2">
+            <v-select
               v-model="itemTypeFilter"
               :items="[
                 { title: 'Todos los tipos', value: 'all' },
@@ -929,32 +931,35 @@ onUnmounted(() => {
               ]"
               label="Tipo de Ítem"
               density="compact"
+              variant="outlined"
               hide-details
             />
-          </VCol>
-          <VCol cols="6" sm="2">
-            <AppSelect
+          </v-col>
+          <v-col cols="6" sm="2">
+            <v-select
               v-model="reasonFilter"
               :items="[{ title: 'Todos los motivos', value: 'all' }, ...wasteReasons.map(r => ({ title: r.label, value: r.value }))]"
               label="Motivo"
               density="compact"
+              variant="outlined"
               hide-details
             />
-          </VCol>
-          <VCol cols="12" sm="4">
-            <AppTextField
+          </v-col>
+          <v-col cols="12" sm="4">
+            <v-text-field
               v-model="searchQuery"
               placeholder="Buscar por nombre, ID o descripción..."
               prepend-inner-icon="tabler-search"
               density="compact"
+              variant="outlined"
               clearable
               hide-details
             />
-          </VCol>
-        </VRow>
-      </VCardText>
+          </v-col>
+        </v-row>
+      </v-card-text>
 
-      <VDivider />
+      <v-divider />
 
       <!-- Estado de Carga -->
       <div v-if="loading && wastes.length === 0" class="pa-6">
@@ -1135,7 +1140,7 @@ onUnmounted(() => {
           />
         </div>
       </div>
-    </VCard>
+    </v-card>
 
     <!-- DIÁLOGO: REPORTAR MERMA (INDIVIDUAL O HOJA DE MERMA DE TURNO) -->
     <v-dialog
