@@ -704,20 +704,6 @@ onUnmounted(() => {
                       />
                     </div>
                   </div>
-
-                  <!-- Detalles estilo lista con guion (-) pegados al plato -->
-                  <ul
-                    v-if="item.notes || (item.modifiers && item.modifiers.length > 0)"
-                    class="dish-details-list mt-0 ps-1 mb-0 text-body-2 font-weight-medium text-medium-emphasis"
-                    style="line-height: 1.25;"
-                  >
-                    <li v-for="mod in (item.modifiers || [])" :key="mod.id">
-                      - {{ mod.name }}
-                    </li>
-                    <li v-if="item.notes" class="text-warning-darken-2">
-                      - {{ item.notes }}
-                    </li>
-                  </ul>
                 </div>
               </div>
             </div>
