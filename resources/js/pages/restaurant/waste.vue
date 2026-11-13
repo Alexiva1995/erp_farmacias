@@ -802,9 +802,6 @@ onUnmounted(() => {
         <v-card-title class="text-h5">
           Control de Mermas y Desperdicios
         </v-card-title>
-        <v-card-subtitle>
-          Valorización por Costo Unificado (Tabla Productos) • Insumos, Sub-recetas y Platillos
-        </v-card-subtitle>
         <template #append>
           <div class="d-flex flex-wrap align-center gap-2">
             <v-btn
@@ -896,9 +893,20 @@ onUnmounted(() => {
 
       <v-divider />
 
-      <!-- Barra de Filtros -->
+      <!-- Barra de Filtros Compacta (Estilo Inventario de Productos) -->
       <v-card-text class="py-3">
         <v-row dense align="center">
+          <v-col cols="12" sm="4">
+            <v-text-field
+              v-model="searchQuery"
+              placeholder="Buscar por nombre, ID o descripción..."
+              prepend-inner-icon="tabler-search"
+              density="compact"
+              variant="outlined"
+              clearable
+              hide-details
+            />
+          </v-col>
           <v-col cols="6" sm="2">
             <v-text-field
               v-model="dateFrom"
@@ -929,7 +937,7 @@ onUnmounted(() => {
                 { title: 'Insumo / Producto', value: 'product' },
                 { title: 'Platillo / Sub-receta', value: 'dish' },
               ]"
-              label="Tipo de Ítem"
+              label="Tipo"
               density="compact"
               variant="outlined"
               hide-details
@@ -942,17 +950,6 @@ onUnmounted(() => {
               label="Motivo"
               density="compact"
               variant="outlined"
-              hide-details
-            />
-          </v-col>
-          <v-col cols="12" sm="4">
-            <v-text-field
-              v-model="searchQuery"
-              placeholder="Buscar por nombre, ID o descripción..."
-              prepend-inner-icon="tabler-search"
-              density="compact"
-              variant="outlined"
-              clearable
               hide-details
             />
           </v-col>
@@ -984,148 +981,103 @@ onUnmounted(() => {
 
       <!-- Tabla de Mermas -->
       <div v-else>
-        <v-table density="comfortable" hover class="text-no-wrap">
+        <v-table density="compact" hover class="text-no-wrap waste-table">
           <thead>
             <tr>
-              <th>Ítem / Código</th>
-              <th>Insumo / Platillo</th>
-              <th class="text-center">Cant. Perdida</th>
-              <th class="text-right">Costo Unificado Unit.</th>
-              <th class="text-right">Pérdida Total</th>
-              <th>Clasificación / Descripción</th>
-              <th class="text-center">Evidencia</th>
-              <th>Reportado Por</th>
-              <th class="text-center">Estado</th>
-              <th>Fecha</th>
-              <th v-if="isApprover" class="text-end">Acciones Admin</th>
+              <th>ID</th>
+              <th>NOMBRE</th>
+              <th class="text-center">CANTIDAD</th>
+              <th class="text-right">PERDIDA</th>
+              <th>TIPO</th>
+              <th>USUARIO</th>
+              <th class="text-end">ACCIONES</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="waste in wastes" :key="waste.id">
               <td>
-                <div class="d-flex flex-column gap-1 py-1">
-                  <v-chip
-                    size="small"
-                    :color="waste.item_type === 'dish' ? 'secondary' : 'primary'"
-                    variant="tonal"
-                    class="font-weight-black"
-                  >
-                    {{ waste.item_type === 'dish' ? `PLATO #${waste.dish_id}` : `PROD #${waste.product_id}` }}
-                  </v-chip>
+                <div class="d-flex flex-column py-1">
+                  <span class="font-weight-bold text-body-2 text-primary">
+                    {{ waste.item_type === 'dish' ? waste.dish_id : waste.product_id }}
+                  </span>
                   <span class="text-caption text-medium-emphasis">
-                    {{ waste.item_type_label }}
+                    {{ waste.occurred_at }}
                   </span>
                 </div>
               </td>
               <td>
                 <div class="d-flex flex-column py-1">
-                  <span class="font-weight-bold text-body-2">{{ waste.item_name }}</span>
-                  <span v-if="waste.item_type === 'product'" class="text-caption text-medium-emphasis">
-                    Stock actual: {{ waste.current_stock }} {{ waste.product_unit }}
-                  </span>
+                  <span class="font-weight-medium text-body-2">{{ waste.item_name }}</span>
                   <span
-                    v-else-if="waste.ingredients_breakdown && waste.ingredients_breakdown.length > 0"
-                    class="text-caption text-info font-weight-medium"
+                    v-if="waste.item_type === 'dish' && waste.ingredients_breakdown && waste.ingredients_breakdown.length > 0"
+                    class="text-caption text-info"
                   >
-                    Descuenta {{ waste.ingredients_breakdown.length }} insumo(s) de receta
+                    {{ waste.ingredients_breakdown.length }} insumo(s)
                   </span>
                 </div>
               </td>
               <td class="text-center">
-                <span class="font-weight-black text-error">
+                <span class="font-weight-bold text-error">
                   -{{ waste.quantity }} {{ waste.product_unit }}
                 </span>
-              </td>
-              <td class="text-right">
-                <div class="d-flex flex-column align-end">
-                  <span class="font-weight-medium">{{ formatCurrency(waste.unified_unit_cost || waste.unit_cost) }}</span>
-                  <span class="text-caption text-medium-emphasis">Costo Unificado</span>
-                </div>
               </td>
               <td class="text-right font-weight-bold text-error">
                 -{{ formatCurrency(waste.total_loss_usd) }}
               </td>
-              <td style="max-width: 280px; white-space: normal;">
-                <div class="py-1">
-                  <div class="d-flex align-center gap-1 mb-1">
-                    <v-chip
-                      size="x-small"
-                      :color="waste.is_operational_waste ? 'error' : 'info'"
-                      variant="tonal"
-                      class="font-weight-bold"
-                    >
-                      {{ waste.reason_label }}
-                    </v-chip>
-                  </div>
-                  <div class="text-body-2 font-weight-medium">
-                    {{ waste.notes || 'Sin descripción' }}
-                  </div>
-                  <div v-if="waste.rejection_reason" class="text-caption text-error font-weight-bold mt-1">
-                    Rechazo: {{ waste.rejection_reason }}
-                  </div>
-                </div>
-              </td>
-              <td class="text-center">
-                <v-btn
-                  v-if="waste.photo_url || (waste.ingredients_breakdown && waste.ingredients_breakdown.length > 0)"
-                  size="small"
-                  variant="tonal"
-                  color="info"
-                  :prepend-icon="waste.photo_url ? 'tabler-photo' : 'tabler-list-Search'"
-                  @click="openPhotoDialog(waste)"
-                >
-                  {{ waste.photo_url ? 'Ver Evidencia' : 'Ver Escandallo' }}
-                </v-btn>
-                <span v-else class="text-caption text-disabled">Opcional / Sin foto</span>
-              </td>
               <td>
-                <div class="d-flex flex-column">
-                  <span class="text-body-2 font-weight-medium">{{ waste.user_name }}</span>
-                  <span v-if="waste.approved_by_name" class="text-caption text-medium-emphasis">
-                    Rev: {{ waste.approved_by_name }}
-                  </span>
-                </div>
-              </td>
-              <td class="text-center">
                 <v-chip
                   size="small"
-                  :color="waste.status_color || (waste.status === 'approved' ? 'success' : waste.status === 'rejected' ? 'error' : 'warning')"
+                  :color="waste.is_operational_waste ? 'error' : 'info'"
                   variant="tonal"
-                  class="font-weight-bold"
+                  class="font-weight-medium"
                 >
-                  {{ waste.status_label }}
+                  {{ waste.reason_label }}
                 </v-chip>
               </td>
-              <td class="text-caption text-medium-emphasis">
-                {{ waste.occurred_at }}
+              <td>
+                <span class="text-body-2">{{ waste.user_name }}</span>
               </td>
-              <td v-if="isApprover" class="text-end">
-                <div v-if="waste.status === 'pending'" class="d-flex justify-end gap-2">
+              <td class="text-end">
+                <div class="d-flex justify-end align-center gap-1">
                   <v-btn
+                    icon
                     size="small"
-                    color="success"
-                    variant="flat"
-                    prepend-icon="tabler-check"
-                    :loading="processingActionId === waste.id"
-                    :disabled="processingActionId !== null"
-                    @click="handleApproveWaste(waste)"
+                    variant="tonal"
+                    color="info"
+                    @click="openPhotoDialog(waste)"
                   >
-                    Aprobar
+                    <v-icon :icon="waste.photo_url ? 'tabler-photo' : 'tabler-eye'" size="18" />
+                    <v-tooltip activator="parent" location="top">
+                      Ver imagen y descripción
+                    </v-tooltip>
                   </v-btn>
-                  <v-btn
-                    size="small"
-                    color="error"
-                    variant="outlined"
-                    prepend-icon="tabler-x"
-                    :disabled="processingActionId !== null"
-                    @click="openRejectDialog(waste)"
-                  >
-                    Rechazar
-                  </v-btn>
+
+                  <template v-if="isApprover && waste.status === 'pending'">
+                    <v-btn
+                      icon
+                      size="small"
+                      color="success"
+                      variant="tonal"
+                      :loading="processingActionId === waste.id"
+                      :disabled="processingActionId !== null"
+                      @click="handleApproveWaste(waste)"
+                    >
+                      <v-icon icon="tabler-check" size="18" />
+                      <v-tooltip activator="parent" location="top">Aprobar</v-tooltip>
+                    </v-btn>
+                    <v-btn
+                      icon
+                      size="small"
+                      color="error"
+                      variant="tonal"
+                      :disabled="processingActionId !== null"
+                      @click="openRejectDialog(waste)"
+                    >
+                      <v-icon icon="tabler-x" size="18" />
+                      <v-tooltip activator="parent" location="top">Rechazar</v-tooltip>
+                    </v-btn>
+                  </template>
                 </div>
-                <span v-else class="text-caption text-medium-emphasis">
-                  {{ waste.approved_at || 'Procesada' }}
-                </span>
               </td>
             </tr>
           </tbody>
