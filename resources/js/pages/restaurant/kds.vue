@@ -684,15 +684,15 @@ onUnmounted(() => {
     </VRow>
 
     <!-- Modal: Foto de Emplatado y Receta Técnica -->
-    <VDialog v-model="showRecipeDialog" max-width="680">
+    <VDialog v-model="showRecipeDialog" :max-width="selectedDishItem?.photo_url ? 640 : 460">
       <VCard v-if="selectedDishItem" class="rounded-lg">
         <VCardTitle class="d-flex align-center justify-space-between bg-surface border-b py-3 px-4">
           <div class="d-flex align-center gap-2">
-            <VAvatar color="primary" variant="tonal" size="34" class="rounded-lg">
-              <VIcon icon="tabler-tools-kitchen-2" size="20" />
+            <VAvatar color="primary" variant="tonal" size="32" class="rounded-lg">
+              <VIcon icon="tabler-tools-kitchen-2" size="18" />
             </VAvatar>
-            <span class="font-weight-black text-subtitle-1 text-uppercase">{{ selectedDishItem.dish_name }}</span>
-            <VChip size="small" color="primary" variant="flat" class="font-weight-black">
+            <span class="font-weight-bold text-body-1 text-uppercase">{{ selectedDishItem.dish_name }}</span>
+            <VChip v-if="selectedDishItem.quantity > 1" size="x-small" color="primary" variant="flat" class="font-weight-black">
               {{ selectedDishItem.quantity }}x
             </VChip>
           </div>
@@ -700,50 +700,49 @@ onUnmounted(() => {
         </VCardTitle>
 
         <VCardText class="pa-4">
-          <VRow>
-            <VCol cols="12" sm="5">
+          <VRow dense>
+            <VCol v-if="selectedDishItem.photo_url" cols="12" sm="5">
               <VImg
-                v-if="selectedDishItem.photo_url"
                 :src="selectedDishItem.photo_url"
-                height="210"
+                height="200"
                 cover
                 class="rounded-lg border"
               />
-              <div
-                v-else
-                class="d-flex flex-column align-center justify-center rounded-lg border bg-light text-medium-emphasis"
-                style="height: 210px;"
-              >
-                <VIcon icon="tabler-photo-off" size="42" class="mb-2 opacity-50" />
-                <span class="text-caption">Sin foto de emplatado</span>
-              </div>
             </VCol>
 
-            <VCol cols="12" sm="7">
-              <div class="text-subtitle-2 font-weight-bold mb-1">Instrucciones / Descripción</div>
-              <p class="text-body-2 text-medium-emphasis mb-3">
-                {{ selectedDishItem.description || 'Sin instrucciones adicionales registradas en la ficha del plato.' }}
-              </p>
+            <VCol cols="12" :sm="selectedDishItem.photo_url ? 7 : 12">
+              <template v-if="selectedDishItem.description">
+                <div class="text-caption font-weight-bold text-uppercase text-medium-emphasis mb-1">
+                  Instrucciones
+                </div>
+                <p class="text-body-2 text-high-emphasis mb-3">
+                  {{ selectedDishItem.description }}
+                </p>
+              </template>
 
-              <div class="text-subtitle-2 font-weight-bold mb-2">
-                Ingredientes de Receta (para {{ selectedDishItem.quantity }}x)
+              <div class="text-caption font-weight-bold text-uppercase text-medium-emphasis mb-2">
+                Ingredientes de Receta{{ selectedDishItem.quantity > 1 ? ` (para ${selectedDishItem.quantity}x)` : '' }}
               </div>
-              <VTable v-if="selectedDishItem.recipe_ingredients?.length" density="compact" class="border rounded">
-                <thead>
-                  <tr>
-                    <th>Ingrediente</th>
-                    <th class="text-right" style="white-space: nowrap;">Porción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="ing in selectedDishItem.recipe_ingredients" :key="ing.id">
-                    <td class="font-weight-medium">{{ ing.name }}</td>
-                    <td class="text-right font-weight-black text-primary" style="white-space: nowrap;">
-                      {{ parseFloat((ing.portion * selectedDishItem.quantity).toFixed(4)) }} {{ ing.unit }}
-                    </td>
-                  </tr>
-                </tbody>
-              </VTable>
+
+              <VList
+                v-if="selectedDishItem.recipe_ingredients?.length"
+                density="compact"
+                class="border rounded-lg py-0"
+              >
+                <template v-for="(ing, idx) in selectedDishItem.recipe_ingredients" :key="ing.id">
+                  <VListItem class="px-3 py-1">
+                    <VListItemTitle class="text-body-2 font-weight-medium text-wrap">
+                      {{ ing.name }}
+                    </VListItemTitle>
+                    <template #append>
+                      <span class="text-body-2 font-weight-bold text-primary ms-3" style="white-space: nowrap;">
+                        {{ parseFloat((ing.portion * selectedDishItem.quantity).toFixed(4)) }} {{ ing.unit }}
+                      </span>
+                    </template>
+                  </VListItem>
+                  <VDivider v-if="idx < selectedDishItem.recipe_ingredients.length - 1" />
+                </template>
+              </VList>
               <VAlert v-else density="compact" variant="tonal" color="info" class="text-caption">
                 Este plato no tiene ingredientes registrados en su escandallo.
               </VAlert>
