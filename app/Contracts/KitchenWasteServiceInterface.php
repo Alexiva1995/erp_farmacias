@@ -13,9 +13,16 @@ interface KitchenWasteServiceInterface
     public function listWastes(array $filters = []): array;
 
     /**
-     * Registra un reporte de merma en estado pendiente con foto de evidencia.
+     * Registra un reporte de merma individual utilizando el costo unificado de la tabla products.
      */
     public function recordWaste(array $data, int $userId, ?UploadedFile $photo = null): KitchenWaste;
+
+    /**
+     * Registra múltiples renglones de merma (Hoja de Merma de turno) en una sola transacción.
+     *
+     * @return array<int, KitchenWaste>
+     */
+    public function recordBatchWaste(array $items, int $userId, ?UploadedFile $photo = null, ?int $defaultStationId = null): array;
 
     /**
      * Aprueba una merma pendiente, descuenta del inventario y registra el movimiento como pérdida.

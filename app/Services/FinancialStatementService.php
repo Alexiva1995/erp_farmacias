@@ -106,6 +106,17 @@ class FinancialStatementService
 
         $totalCosts = $this->repository->getTotalCostsUsd($startDate, $endDate, $search);
 
+        // Integrar mermas operativas aprobadas de restaurante en el Costo de Ventas (COGS)
+        $kitchenWastesUsd = 0.00;
+        if (\Illuminate\Support\Facades\Schema::hasTable('kitchen_wastes')) {
+            $kitchenWastesUsd = (float) \App\Models\KitchenWaste::query()
+                ->where('status', \App\Enums\KitchenWasteStatusEnum::APPROVED->value)
+                ->whereIn('reason', \App\Enums\KitchenWasteReasonEnum::operationalValues())
+                ->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(COALESCE(occurred_at, created_at))'), [$startDate, $endDate])
+                ->sum('total_loss_usd');
+        }
+        $totalCosts += $kitchenWastesUsd;
+
         $expensesUsdSum = $this->repository->getExpensesUsdSum($startDate, $endDate, $search);
         $expensesByCurrency = $this->repository->getExpensesByCurrency($startDate, $endDate, $search);
 
@@ -120,6 +131,7 @@ class FinancialStatementService
         return [
             'income' => round($totalIncome, 2),
             'costs' => round($totalCosts, 2),
+            'kitchen_wastes_usd' => round($kitchenWastesUsd, 2),
             'expenses' => round($totalExpenses, 2),
             'net_profit' => round($netProfit, 2),
             'margin_percentage' => $marginPercentage,

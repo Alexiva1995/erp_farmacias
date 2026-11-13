@@ -127,14 +127,45 @@ class ProductionAndWasteController extends Controller
     {
         try {
             $userId = $request->user()?->id ?? 1;
+            $validated = $request->validated();
+
+            // Soporte para Hoja de Merma en Lote (múltiples renglones al cierre de turno)
+            if (!empty($validated['items']) && is_array($validated['items'])) {
+                $wastes = $this->wasteService->recordBatchWaste(
+                    $validated['items'],
+                    $userId,
+                    $request->file('photo'),
+                    !empty($validated['kitchen_station_id']) ? (int) $validated['kitchen_station_id'] : null
+                );
+
+                $firstStatus = isset($wastes[0])
+                    ? (is_object($wastes[0]->status) ? $wastes[0]->status->value : (string) $wastes[0]->status)
+                    : 'pending';
+
+                $message = $firstStatus === 'approved'
+                    ? 'Hoja de merma (' . count($wastes) . ' ítems) aprobada y descontada del inventario al costo unificado de productos.'
+                    : 'Hoja de merma (' . count($wastes) . ' ítems) registrada como pendiente de aprobación por el administrador.';
+
+                return response()->json([
+                    'message' => $message,
+                    'wastes' => KitchenWasteResource::collection($wastes),
+                    'waste' => isset($wastes[0]) ? new KitchenWasteResource($wastes[0]) : null,
+                ], 201);
+            }
+
             $waste = $this->wasteService->recordWaste(
-                $request->validated(),
+                $validated,
                 $userId,
                 $request->file('photo')
             );
 
+            $statusValue = is_object($waste->status) ? $waste->status->value : (string) $waste->status;
+            $message = $statusValue === 'approved'
+                ? 'Merma aprobada automáticamente y descontada del inventario al costo unificado del producto.'
+                : 'Merma registrada como pendiente de aprobación por el administrador.';
+
             return response()->json([
-                'message' => 'Merma registrada como pendiente de aprobación por el administrador.',
+                'message' => $message,
                 'waste' => new KitchenWasteResource($waste),
             ], 201);
         } catch (\Throwable $e) {

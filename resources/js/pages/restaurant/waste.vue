@@ -60,14 +60,25 @@ const formatCurrency = price => {
   return formatRawCurrency(numPrice, currency)
 }
 
-// Estado del listado y filtros
+// Estado del listado y filtros avanzados
 const wastes = ref([])
 const loading = ref(false)
 const page = ref(1)
 const lastPage = ref(1)
 const totalItems = ref(0)
 const statusFilter = ref('all')
+const itemTypeFilter = ref('all')
+const reasonFilter = ref('all')
+const stationFilter = ref('all')
+const datePreset = ref('month')
+const dateFrom = ref('')
+const dateTo = ref('')
 const searchQuery = ref('')
+
+// Catálogos auxiliares
+const kitchenStations = ref([])
+const dishesCatalog = ref([])
+const loadingDishes = ref(false)
 
 const summary = reactive({
   pending_count: 0,
@@ -75,31 +86,45 @@ const summary = reactive({
   rejected_count: 0,
   total_loss_approved_usd: 0,
   total_loss_pending_usd: 0,
+  operational_loss_approved_usd: 0,
+  operational_approved_count: 0,
+  internal_consumption_approved_usd: 0,
+  internal_approved_count: 0,
 })
 
-// Estado del modal de reporte de merma
+// Estado del modal de reporte de merma (Individual o Hoja de Merma en Lote)
 const showReportModal = ref(false)
+const reportMode = ref('single') // 'single' | 'batch'
 const submitting = ref(false)
 const loadingProductById = ref(false)
 const productNotFoundError = ref('')
 const resolvedProduct = ref(null)
+const resolvedDish = ref(null)
 
-// Buscador auxiliar por nombre de producto
+// Buscador de producto por nombre
 const productSearch = ref('')
 const productOptions = ref([])
 const loadingProductOptions = ref(false)
 const selectedProductOption = ref(null)
+const selectedDishOption = ref(null)
 
 const wasteForm = reactive({
+  item_type: 'product',
   product_id: '',
+  dish_id: null,
+  kitchen_station_id: null,
   quantity: null,
   reason: 'burned_spoiled',
   notes: '',
   photo: null,
 })
 
+// Renglones acumulados para el modo "Hoja de Merma (Múltiples Ítems)"
+const batchItems = ref([])
+
 const formErrors = reactive({
   product_id: '',
+  dish_id: '',
   quantity: '',
   notes: '',
   photo: '',
@@ -107,7 +132,7 @@ const formErrors = reactive({
 
 const photoPreviewUrl = ref(null)
 
-// Estado para visor de foto de evidencia
+// Estado para visor de foto y detalles de escandallo
 const showPhotoViewer = ref(false)
 const selectedWasteForPhoto = ref(null)
 
@@ -118,20 +143,145 @@ const rejectionReason = ref('')
 const processingActionId = ref(null)
 
 const wasteReasons = [
-  { label: 'Quemado / Malogrado', value: 'burned_spoiled' },
-  { label: 'Vencimiento / Caducado', value: 'expired' },
-  { label: 'Merma de Limpieza / Cocción', value: 'preparation_trim' },
-  { label: 'Caída / Accidente', value: 'dropped' },
-  { label: 'Comida de Personal', value: 'staff_meal' },
-  { label: 'Cortesía de la Casa', value: 'courtesy' },
+  { label: 'Quemado / Malogrado', value: 'burned_spoiled', requiresPhoto: true, category: 'Merma Operativa (Desperdicio)' },
+  { label: 'Vencimiento / Caducado', value: 'expired', requiresPhoto: true, category: 'Merma Operativa (Desperdicio)' },
+  { label: 'Caída / Accidente', value: 'dropped', requiresPhoto: true, category: 'Merma Operativa (Desperdicio)' },
+  { label: 'Merma de Limpieza / Cocción', value: 'preparation_trim', requiresPhoto: false, category: 'Merma Operativa (Desperdicio)' },
+  { label: 'Comida de Personal', value: 'staff_meal', requiresPhoto: false, category: 'Consumo Interno / Comercial' },
+  { label: 'Cortesía de la Casa', value: 'courtesy', requiresPhoto: false, category: 'Consumo Interno / Comercial' },
 ]
 
-const estimatedLossUsd = computed(() => {
-  if (!resolvedProduct.value || !wasteForm.quantity) return 0
-  const qty = Number(wasteForm.quantity) || 0
-  const cost = Number(resolvedProduct.value.unit_cost) || 0
-  return parseFloat((qty * cost).toFixed(2))
+const currentReasonObj = computed(() =>
+  wasteReasons.find(r => r.value === wasteForm.reason) || wasteReasons[0]
+)
+
+// Indica si el formulario actual exige fotografía obligatoria
+const isPhotoRequired = computed(() => {
+  if (reportMode.value === 'batch') {
+    return batchItems.value.some(item => {
+      const r = wasteReasons.find(wr => wr.value === item.reason)
+      return Boolean(r?.requiresPhoto)
+    })
+  }
+  return Boolean(currentReasonObj.value?.requiresPhoto)
 })
+
+// Costo unitario unificado según el ítem seleccionado (SIEMPRE desde products.unit_cost)
+const activeUnifiedUnitCost = computed(() => {
+  if (wasteForm.item_type === 'product') {
+    return Number(resolvedProduct.value?.unit_cost || 0)
+  }
+  if (wasteForm.item_type === 'dish') {
+    return Number(resolvedDish.value?.unified_cost || 0)
+  }
+  return 0
+})
+
+const estimatedLossUsd = computed(() => {
+  const qty = Number(wasteForm.quantity) || 0
+  if (qty <= 0) return 0
+  return parseFloat((qty * activeUnifiedUnitCost.value).toFixed(2))
+})
+
+const batchTotalLossUsd = computed(() =>
+  batchItems.value.reduce((acc, item) => acc + (Number(item.total_loss_usd) || 0), 0)
+)
+
+// Formatear fecha YYYY-MM-DD local
+const formatDateInput = dateObj => {
+  const year = dateObj.getFullYear()
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+  const day = String(dateObj.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const applyDatePreset = preset => {
+  datePreset.value = preset
+  const now = new Date()
+
+  if (preset === 'today') {
+    const todayStr = formatDateInput(now)
+    dateFrom.value = todayStr
+    dateTo.value = todayStr
+  } else if (preset === 'week') {
+    const dayOfWeek = now.getDay()
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+    const monday = new Date(now)
+    monday.setDate(now.getDate() + diffToMonday)
+    dateFrom.value = formatDateInput(monday)
+    dateTo.value = formatDateInput(now)
+  } else if (preset === 'month') {
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+    dateFrom.value = formatDateInput(firstDay)
+    dateTo.value = formatDateInput(now)
+  } else {
+    dateFrom.value = ''
+    dateTo.value = ''
+  }
+}
+
+// Cargar estaciones de cocina
+const fetchKitchenStations = async () => {
+  try {
+    const { data } = await axios.get('/kitchen-stations')
+    kitchenStations.value = Array.isArray(data) ? data : (data.data || [])
+  } catch (error) {
+    console.error('Error cargando estaciones de cocina:', error)
+  }
+}
+
+// Cargar platillos y sub-recetas calculando su costo con el costo unificado de products
+const fetchDishesCatalog = async () => {
+  loadingDishes.value = true
+  try {
+    const { data } = await axios.get('/dishes', {
+      params: { itemsPerPage: 500 },
+    })
+    const rawDishes = data?.data || (Array.isArray(data) ? data : [])
+    dishesCatalog.value = rawDishes.map(dish => {
+      const ingredients = Array.isArray(dish.ingredients) ? dish.ingredients : []
+      let unifiedRecipeCost = 0
+      const mappedIngredients = ingredients.map(ing => {
+        const unifiedIngCost = Number(ing.unit_cost ?? ing.cost_price ?? 0)
+        const portion = Number(ing.pivot?.portion ?? ing.portion ?? 0)
+        unifiedRecipeCost += unifiedIngCost * portion
+        return {
+          id: ing.id,
+          name: ing.name,
+          unit_of_measure: ing.unit_of_measure || 'und',
+          portion,
+          unified_unit_cost: unifiedIngCost,
+          stock: Number(ing.stock ?? 0),
+        }
+      })
+
+      const isSubRecipe = Number(dish.status) === 3
+      const yieldQty = Number(dish.expected_yield_quantity) || 1
+      if (isSubRecipe && yieldQty > 0 && unifiedRecipeCost > 0) {
+        unifiedRecipeCost = unifiedRecipeCost / yieldQty
+      }
+
+      const finalUnifiedCost = unifiedRecipeCost > 0
+        ? parseFloat(unifiedRecipeCost.toFixed(4))
+        : Number(dish.cost_price || dish.cpv || 0)
+
+      return {
+        id: dish.id,
+        name: dish.name,
+        is_sub_recipe: isSubRecipe,
+        type_badge: isSubRecipe ? 'Sub-receta (Prep)' : 'Platillo de Menú',
+        label: `#${dish.id} - ${dish.name} (${isSubRecipe ? 'Sub-receta' : 'Platillo'})`,
+        unit_of_measure: dish.unit_of_measure || (isSubRecipe ? 'porción/lote' : 'plato'),
+        unified_cost: finalUnifiedCost,
+        ingredients: mappedIngredients,
+      }
+    })
+  } catch (error) {
+    console.error('Error cargando catálogo de platillos:', error)
+  } finally {
+    loadingDishes.value = false
+  }
+}
 
 // Cargar registros de mermas
 const fetchWastes = async () => {
@@ -142,6 +292,11 @@ const fetchWastes = async () => {
         page: page.value,
         per_page: 15,
         status: statusFilter.value,
+        item_type: itemTypeFilter.value !== 'all' ? itemTypeFilter.value : undefined,
+        reason: reasonFilter.value !== 'all' ? reasonFilter.value : undefined,
+        kitchen_station_id: stationFilter.value !== 'all' ? stationFilter.value : undefined,
+        date_from: dateFrom.value || undefined,
+        date_to: dateTo.value || undefined,
         q: searchQuery.value || undefined,
       },
     })
@@ -156,6 +311,10 @@ const fetchWastes = async () => {
       summary.rejected_count = data.summary.rejected_count || 0
       summary.total_loss_approved_usd = data.summary.total_loss_approved_usd || 0
       summary.total_loss_pending_usd = data.summary.total_loss_pending_usd || 0
+      summary.operational_loss_approved_usd = data.summary.operational_loss_approved_usd || 0
+      summary.operational_approved_count = data.summary.operational_approved_count || 0
+      summary.internal_consumption_approved_usd = data.summary.internal_consumption_approved_usd || 0
+      summary.internal_approved_count = data.summary.internal_approved_count || 0
     }
   } catch (error) {
     console.error('Error al cargar mermas:', error)
@@ -166,19 +325,22 @@ const fetchWastes = async () => {
 }
 
 let filterTimer = null
-watch([statusFilter, searchQuery], () => {
-  page.value = 1
-  clearTimeout(filterTimer)
-  filterTimer = setTimeout(() => {
-    fetchWastes()
-  }, 300)
-})
+watch(
+  [statusFilter, itemTypeFilter, reasonFilter, stationFilter, dateFrom, dateTo, searchQuery],
+  () => {
+    page.value = 1
+    clearTimeout(filterTimer)
+    filterTimer = setTimeout(() => {
+      fetchWastes()
+    }, 300)
+  }
+)
 
 watch(page, () => {
   fetchWastes()
 })
 
-// Consultar producto por su ID directo
+// Consultar producto por su ID directo (toma siempre unit_cost de la tabla products)
 let productIdTimer = null
 const lookupProductById = async idValue => {
   const cleanId = String(idValue || '').trim()
@@ -199,7 +361,7 @@ const lookupProductById = async idValue => {
         name: prod.name,
         stock: Number(prod.stock ?? 0),
         unit_of_measure: prod.unit_of_measure || 'und',
-        unit_cost: Number(prod.unit_cost ?? 0),
+        unit_cost: Number(prod.unit_cost ?? prod.cost_price ?? 0),
       }
       formErrors.product_id = ''
     } else {
@@ -217,6 +379,7 @@ const lookupProductById = async idValue => {
 watch(
   () => wasteForm.product_id,
   newId => {
+    if (wasteForm.item_type !== 'product') return
     clearTimeout(productIdTimer)
     if (selectedProductOption.value && Number(selectedProductOption.value.id) === Number(newId)) {
       return
@@ -241,7 +404,7 @@ const searchProductsByName = async (query = '') => {
       label: `#${item.id} - ${item.name}`,
       stock: Number(item.stock ?? 0),
       unit_of_measure: item.unit_of_measure || 'und',
-      unit_cost: Number(item.unit_cost ?? 0),
+      unit_cost: Number(item.unit_cost ?? item.cost_price ?? 0),
     }))
   } catch (error) {
     console.error('Error buscando productos:', error)
@@ -258,7 +421,11 @@ watch(productSearch, val => {
 })
 
 const onSelectProductOption = item => {
-  if (!item) return
+  if (!item) {
+    resolvedProduct.value = null
+    wasteForm.product_id = ''
+    return
+  }
   wasteForm.product_id = item.id
   resolvedProduct.value = {
     id: item.id,
@@ -269,6 +436,17 @@ const onSelectProductOption = item => {
   }
   productNotFoundError.value = ''
   formErrors.product_id = ''
+}
+
+const onSelectDishOption = dish => {
+  if (!dish) {
+    resolvedDish.value = null
+    wasteForm.dish_id = null
+    return
+  }
+  wasteForm.dish_id = dish.id
+  resolvedDish.value = dish
+  formErrors.dish_id = ''
 }
 
 // Manejo de archivo de foto y previsualización
@@ -288,44 +466,67 @@ const onPhotoSelected = files => {
   }
 }
 
-const resetReportForm = () => {
+const resetItemInputs = () => {
   wasteForm.product_id = ''
+  wasteForm.dish_id = null
   wasteForm.quantity = null
-  wasteForm.reason = 'burned_spoiled'
   wasteForm.notes = ''
-  wasteForm.photo = null
   resolvedProduct.value = null
+  resolvedDish.value = null
   selectedProductOption.value = null
+  selectedDishOption.value = null
   productNotFoundError.value = ''
   formErrors.product_id = ''
+  formErrors.dish_id = ''
   formErrors.quantity = ''
   formErrors.notes = ''
+}
+
+const resetReportForm = () => {
+  reportMode.value = 'single'
+  wasteForm.item_type = 'product'
+  wasteForm.kitchen_station_id = null
+  wasteForm.reason = 'burned_spoiled'
+  wasteForm.photo = null
+  batchItems.value = []
   formErrors.photo = ''
+  resetItemInputs()
   if (photoPreviewUrl.value) {
     URL.revokeObjectURL(photoPreviewUrl.value)
     photoPreviewUrl.value = null
   }
 }
 
-const openReportModal = () => {
+const openReportModal = (mode = 'single') => {
   resetReportForm()
+  reportMode.value = mode
   searchProductsByName('')
+  if (dishesCatalog.value.length === 0) {
+    fetchDishesCatalog()
+  }
   showReportModal.value = true
 }
 
-const validateForm = () => {
+const validateSingleLine = () => {
   let valid = true
   formErrors.product_id = ''
+  formErrors.dish_id = ''
   formErrors.quantity = ''
   formErrors.notes = ''
-  formErrors.photo = ''
 
-  if (!wasteForm.product_id || Number(wasteForm.product_id) <= 0) {
-    formErrors.product_id = 'Debes ingresar el ID del producto.'
-    valid = false
-  } else if (productNotFoundError.value) {
-    formErrors.product_id = productNotFoundError.value
-    valid = false
+  if (wasteForm.item_type === 'product') {
+    if (!wasteForm.product_id || Number(wasteForm.product_id) <= 0) {
+      formErrors.product_id = 'Selecciona un insumo o ingresa su ID.'
+      valid = false
+    } else if (productNotFoundError.value) {
+      formErrors.product_id = productNotFoundError.value
+      valid = false
+    }
+  } else {
+    if (!wasteForm.dish_id) {
+      formErrors.dish_id = 'Selecciona el platillo o sub-receta afectada.'
+      valid = false
+    }
   }
 
   if (!wasteForm.quantity || Number(wasteForm.quantity) <= 0) {
@@ -334,29 +535,87 @@ const validateForm = () => {
   }
 
   if (!wasteForm.notes || !String(wasteForm.notes).trim()) {
-    formErrors.notes = 'Debes escribir una descripción de la pérdida.'
-    valid = false
-  }
-
-  if (!wasteForm.photo) {
-    formErrors.photo = 'Debes anexar una fotografía de evidencia.'
+    formErrors.notes = 'Escribe una breve descripción de lo ocurrido.'
     valid = false
   }
 
   return valid
 }
 
+// Agregar renglón a la Hoja de Merma en Lote
+const addLineToBatch = () => {
+  if (!validateSingleLine()) return
+
+  const reasonObj = wasteReasons.find(r => r.value === wasteForm.reason) || wasteReasons[0]
+  const qty = Number(wasteForm.quantity)
+  const unitCost = activeUnifiedUnitCost.value
+  const totalLoss = parseFloat((qty * unitCost).toFixed(2))
+
+  batchItems.value.push({
+    item_type: wasteForm.item_type,
+    product_id: wasteForm.item_type === 'product' ? Number(wasteForm.product_id) : null,
+    dish_id: wasteForm.item_type === 'dish' ? Number(wasteForm.dish_id) : null,
+    item_name: wasteForm.item_type === 'product'
+      ? (resolvedProduct.value?.name || `Producto #${wasteForm.product_id}`)
+      : (resolvedDish.value?.name || `Platillo #${wasteForm.dish_id}`),
+    unit_of_measure: wasteForm.item_type === 'product'
+      ? (resolvedProduct.value?.unit_of_measure || 'und')
+      : (resolvedDish.value?.unit_of_measure || 'plato'),
+    kitchen_station_id: wasteForm.kitchen_station_id || null,
+    quantity: qty,
+    unit_cost: unitCost,
+    total_loss_usd: totalLoss,
+    reason: wasteForm.reason,
+    reason_label: reasonObj.label,
+    notes: String(wasteForm.notes).trim(),
+  })
+
+  resetItemInputs()
+}
+
+const removeBatchLine = index => {
+  batchItems.value.splice(index, 1)
+}
+
 const submitWasteReport = async () => {
-  if (!validateForm()) return
+  formErrors.photo = ''
+
+  if (reportMode.value === 'single') {
+    if (!validateSingleLine()) return
+  } else if (batchItems.value.length === 0) {
+    toast.warning('Agrega al menos un ítem a la hoja de merma antes de enviar.')
+    return
+  }
+
+  if (isPhotoRequired.value && !wasteForm.photo) {
+    formErrors.photo = 'La fotografía de evidencia es obligatoria para mermas físicas (Quemado, Vencido o Caída).'
+    return
+  }
 
   submitting.value = true
   try {
     const formData = new FormData()
-    formData.append('item_type', 'product')
-    formData.append('product_id', String(wasteForm.product_id))
-    formData.append('quantity', String(wasteForm.quantity))
-    formData.append('reason', wasteForm.reason)
-    formData.append('notes', String(wasteForm.notes).trim())
+
+    if (reportMode.value === 'batch') {
+      formData.append('items', JSON.stringify(batchItems.value))
+      if (wasteForm.kitchen_station_id) {
+        formData.append('kitchen_station_id', String(wasteForm.kitchen_station_id))
+      }
+    } else {
+      formData.append('item_type', wasteForm.item_type)
+      if (wasteForm.item_type === 'product') {
+        formData.append('product_id', String(wasteForm.product_id))
+      } else {
+        formData.append('dish_id', String(wasteForm.dish_id))
+      }
+      if (wasteForm.kitchen_station_id) {
+        formData.append('kitchen_station_id', String(wasteForm.kitchen_station_id))
+      }
+      formData.append('quantity', String(wasteForm.quantity))
+      formData.append('reason', wasteForm.reason)
+      formData.append('notes', String(wasteForm.notes).trim())
+    }
+
     if (wasteForm.photo instanceof File) {
       formData.append('photo', wasteForm.photo)
     }
@@ -365,7 +624,7 @@ const submitWasteReport = async () => {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
 
-    toast.success(data.message || 'Merma reportada y enviada a revisión del administrador.')
+    toast.success(data.message || 'Reporte de merma procesado correctamente.')
     showReportModal.value = false
     resetReportForm()
     await fetchWastes()
@@ -373,6 +632,7 @@ const submitWasteReport = async () => {
     const errors = error.response?.data?.errors
     if (errors) {
       formErrors.product_id = errors.product_id?.[0] || ''
+      formErrors.dish_id = errors.dish_id?.[0] || ''
       formErrors.quantity = errors.quantity?.[0] || ''
       formErrors.notes = errors.notes?.[0] || ''
       formErrors.photo = errors.photo?.[0] || ''
@@ -383,7 +643,7 @@ const submitWasteReport = async () => {
   }
 }
 
-// Visualizar foto en grande
+// Visualizar foto y detalles
 const openPhotoDialog = waste => {
   selectedWasteForPhoto.value = waste
   showPhotoViewer.value = true
@@ -391,9 +651,10 @@ const openPhotoDialog = waste => {
 
 // Aprobar merma (Admin/Supervisor)
 const handleApproveWaste = async waste => {
+  const itemCode = waste.item_type === 'product' ? `#${waste.product_id}` : `Platillo #${waste.dish_id}`
   const confirmResult = await Swal.fire({
     title: '¿Aprobar merma y descontar inventario?',
-    html: `Se descontarán <b>${waste.quantity} ${waste.product_unit || 'und'}</b> del producto <b>#${waste.product_id} - ${waste.item_name}</b> y se registrará como <b>Pérdida</b> en el inventario.`,
+    html: `Se descontarán <b>${waste.quantity} ${waste.product_unit || 'und'}</b> de <b>${itemCode} - ${waste.item_name}</b> valorizados al <b>costo unificado de la tabla productos (${formatCurrency(waste.unified_unit_cost || waste.unit_cost)})</b>.`,
     icon: 'question',
     showCancelButton: true,
     confirmButtonText: 'Sí, aprobar y descontar',
@@ -448,9 +709,11 @@ const confirmRejectWaste = async () => {
 
 onMounted(() => {
   brandingStore.fetchSettings?.()
+  applyDatePreset('month')
   if (isApprover.value) {
-    statusFilter.value = 'pending'
+    statusFilter.value = 'all'
   }
+  fetchKitchenStations()
   fetchWastes()
 })
 
@@ -474,14 +737,16 @@ onUnmounted(() => {
             <v-icon size="26">tabler-trash-x</v-icon>
           </v-avatar>
           <div>
-            <h1 class="text-h6 font-weight-bold mb-0">Mermas y Pérdidas de Restaurante</h1>
+            <h1 class="text-h6 font-weight-bold mb-0">
+              Control de Mermas, Desperdicios y Consumo Interno
+            </h1>
             <div class="text-caption text-medium-emphasis">
-              Reporte de pérdidas por producto con evidencia fotográfica y aprobación administrativa
+              Valorización por <strong>Costo Unificado (Tabla Productos)</strong> • Soporte para Insumos, Sub-recetas y Platillos • Integrado al Estado de Resultados
             </div>
           </div>
         </div>
 
-        <div class="d-flex align-center gap-2">
+        <div class="d-flex flex-wrap align-center gap-2">
           <v-btn
             variant="outlined"
             color="secondary"
@@ -492,9 +757,17 @@ onUnmounted(() => {
             Actualizar
           </v-btn>
           <v-btn
+            variant="outlined"
+            color="primary"
+            prepend-icon="tabler-list-Details"
+            @click="openReportModal('batch')"
+          >
+            Hoja de Merma (Cierre de Turno)
+          </v-btn>
+          <v-btn
             color="primary"
             prepend-icon="tabler-plus"
-            @click="openReportModal"
+            @click="openReportModal('single')"
           >
             Reportar Merma
           </v-btn>
@@ -502,20 +775,20 @@ onUnmounted(() => {
       </v-card-text>
     </v-card>
 
-    <!-- Tarjetas de Resumen Operativo -->
+    <!-- Tarjetas de Resumen Operativo y Financiero (Estándar USALI Gastronómico) -->
     <v-row class="mb-4" dense>
-      <v-col cols="12" sm="4">
+      <v-col cols="12" sm="6" md="3">
         <v-card variant="outlined" class="bg-surface h-100">
           <v-card-text class="d-flex align-center justify-space-between">
             <div>
               <div class="text-caption text-medium-emphasis font-weight-bold text-uppercase">
-                Pendientes por Aprobar
+                Pendientes de Revisión
               </div>
               <div class="text-h5 font-weight-black text-warning mt-1">
                 {{ summary.pending_count }}
               </div>
               <div class="text-caption text-medium-emphasis">
-                Estimado: {{ formatCurrency(summary.total_loss_pending_usd) }}
+                En espera: {{ formatCurrency(summary.total_loss_pending_usd) }}
               </div>
             </div>
             <v-avatar color="warning" variant="tonal" size="42">
@@ -525,53 +798,78 @@ onUnmounted(() => {
         </v-card>
       </v-col>
 
-      <v-col cols="12" sm="4">
+      <v-col cols="12" sm="6" md="3">
         <v-card variant="outlined" class="bg-surface h-100">
           <v-card-text class="d-flex align-center justify-space-between">
             <div>
               <div class="text-caption text-medium-emphasis font-weight-bold text-uppercase">
-                Mermas Aprobadas (En Pérdida)
+                Merma Operativa (Desperdicio)
               </div>
               <div class="text-h5 font-weight-black text-error mt-1">
-                {{ summary.approved_count }}
+                -{{ formatCurrency(summary.operational_loss_approved_usd) }}
               </div>
-              <div class="text-caption text-error font-weight-bold">
-                Total descontado: -{{ formatCurrency(summary.total_loss_approved_usd) }}
+              <div class="text-caption text-medium-emphasis">
+                {{ summary.operational_approved_count }} bajas (Quemado, Vencido, Caída, Limpieza)
               </div>
             </div>
             <v-avatar color="error" variant="tonal" size="42">
-              <v-icon>tabler-trending-down</v-icon>
+              <v-icon>tabler-flame</v-icon>
             </v-avatar>
           </v-card-text>
         </v-card>
       </v-col>
 
-      <v-col cols="12" sm="4">
+      <v-col cols="12" sm="6" md="3">
         <v-card variant="outlined" class="bg-surface h-100">
           <v-card-text class="d-flex align-center justify-space-between">
             <div>
               <div class="text-caption text-medium-emphasis font-weight-bold text-uppercase">
-                Rechazadas
+                Personal y Cortesías
               </div>
-              <div class="text-h5 font-weight-black text-medium-emphasis mt-1">
-                {{ summary.rejected_count }}
+              <div class="text-h5 font-weight-black text-info mt-1">
+                -{{ formatCurrency(summary.internal_consumption_approved_usd) }}
               </div>
               <div class="text-caption text-medium-emphasis">
-                Sin descuento de inventario
+                {{ summary.internal_approved_count }} registros (Consumo interno / Comercial)
               </div>
             </div>
-            <v-avatar color="secondary" variant="tonal" size="42">
-              <v-icon>tabler-circle-x</v-icon>
+            <v-avatar color="info" variant="tonal" size="42">
+              <v-icon>tabler-tools-kitchen-2</v-icon>
+            </v-avatar>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" sm="6" md="3">
+        <v-card variant="outlined" class="bg-surface h-100">
+          <v-card-text class="d-flex align-center justify-space-between">
+            <div>
+              <div class="text-caption text-medium-emphasis font-weight-bold text-uppercase">
+                Total Aprobado ({{ summary.approved_count }})
+              </div>
+              <div class="text-h5 font-weight-black text-primary mt-1">
+                -{{ formatCurrency(summary.total_loss_approved_usd) }}
+              </div>
+              <div class="text-caption text-medium-emphasis">
+                Rechazadas sin descuento: {{ summary.rejected_count }}
+              </div>
+            </div>
+            <v-avatar color="primary" variant="tonal" size="42">
+              <v-icon>tabler-chart-pie</v-icon>
             </v-avatar>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- Barra de Pestañas de Estado y Buscador -->
+    <!-- Panel de Filtros y Tabla -->
     <v-card variant="flat" class="border rounded-lg bg-surface overflow-hidden">
+      <!-- Fila 1: Pestañas de Estado + Atajos de Fecha -->
       <v-card-text class="d-flex flex-wrap align-center justify-space-between gap-3 py-3 border-b">
         <v-tabs v-model="statusFilter" density="compact" color="primary">
+          <v-tab value="all">
+            Todas
+          </v-tab>
           <v-tab value="pending">
             <v-icon start size="18">tabler-clock</v-icon>
             Pendientes
@@ -593,22 +891,107 @@ onUnmounted(() => {
             <v-icon start size="18">tabler-x</v-icon>
             Rechazadas
           </v-tab>
-          <v-tab value="all">
-            Todas
-          </v-tab>
         </v-tabs>
 
-        <div style="min-width: 260px; max-width: 360px; width: 100%;">
-          <v-text-field
-            v-model="searchQuery"
-            placeholder="Buscar por ID de producto, nombre o descripción..."
-            prepend-inner-icon="tabler-search"
-            density="compact"
-            variant="outlined"
-            clearable
-            hide-details
-          />
+        <div class="d-flex flex-wrap align-center gap-1">
+          <v-btn
+            size="small"
+            :variant="datePreset === 'today' ? 'flat' : 'tonal'"
+            :color="datePreset === 'today' ? 'primary' : 'secondary'"
+            @click="applyDatePreset('today')"
+          >
+            Hoy
+          </v-btn>
+          <v-btn
+            size="small"
+            :variant="datePreset === 'week' ? 'flat' : 'tonal'"
+            :color="datePreset === 'week' ? 'primary' : 'secondary'"
+            @click="applyDatePreset('week')"
+          >
+            Esta Semana
+          </v-btn>
+          <v-btn
+            size="small"
+            :variant="datePreset === 'month' ? 'flat' : 'tonal'"
+            :color="datePreset === 'month' ? 'primary' : 'secondary'"
+            @click="applyDatePreset('month')"
+          >
+            Este Mes
+          </v-btn>
+          <v-btn
+            size="small"
+            :variant="datePreset === 'all' ? 'flat' : 'tonal'"
+            :color="datePreset === 'all' ? 'primary' : 'secondary'"
+            @click="applyDatePreset('all')"
+          >
+            Todo
+          </v-btn>
         </div>
+      </v-card-text>
+
+      <!-- Fila 2: Filtros detallados (Fechas, Tipo, Motivo, Estación, Buscador) -->
+      <v-card-text class="py-3 border-b bg-grey-lighten-5">
+        <v-row dense align="center">
+          <v-col cols="6" sm="2">
+            <v-text-field
+              v-model="dateFrom"
+              type="date"
+              label="Desde"
+              density="compact"
+              variant="outlined"
+              hide-details
+              @update:model-value="datePreset = 'custom'"
+            />
+          </v-col>
+          <v-col cols="6" sm="2">
+            <v-text-field
+              v-model="dateTo"
+              type="date"
+              label="Hasta"
+              density="compact"
+              variant="outlined"
+              hide-details
+              @update:model-value="datePreset = 'custom'"
+            />
+          </v-col>
+          <v-col cols="6" sm="2">
+            <v-select
+              v-model="itemTypeFilter"
+              :items="[
+                { title: 'Todos los tipos', value: 'all' },
+                { title: 'Insumo / Producto', value: 'product' },
+                { title: 'Platillo / Sub-receta', value: 'dish' },
+              ]"
+              label="Tipo de Ítem"
+              density="compact"
+              variant="outlined"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="6" sm="2">
+            <v-select
+              v-model="reasonFilter"
+              :items="[{ label: 'Todos los motivos', value: 'all' }, ...wasteReasons]"
+              item-title="label"
+              item-value="value"
+              label="Motivo"
+              density="compact"
+              variant="outlined"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="12" sm="4">
+            <v-text-field
+              v-model="searchQuery"
+              placeholder="Buscar por nombre de insumo, platillo, ID o nota..."
+              prepend-inner-icon="tabler-search"
+              density="compact"
+              variant="outlined"
+              clearable
+              hide-details
+            />
+          </v-col>
+        </v-row>
       </v-card-text>
 
       <!-- Estado de Carga -->
@@ -620,14 +1003,19 @@ onUnmounted(() => {
       <div v-else-if="!loading && wastes.length === 0" class="pa-12 text-center text-medium-emphasis">
         <v-icon icon="tabler-clipboard-check" size="56" class="mb-3 opacity-50" />
         <h3 class="text-subtitle-1 font-weight-bold mb-1">
-          No hay registros de mermas en esta bandeja
+          No hay registros de mermas con los filtros seleccionados
         </h3>
         <p class="text-body-2 mb-4">
-          Puedes registrar una nueva merma indicando el ID del producto, la cantidad perdida, la descripción y su foto de respaldo.
+          Puedes registrar una merma individual o cargar la hoja de merma de cierre de turno valorizada al costo unificado de la tabla productos.
         </p>
-        <v-btn color="primary" prepend-icon="tabler-plus" @click="openReportModal">
-          Reportar Merma
-        </v-btn>
+        <div class="d-flex justify-center gap-2">
+          <v-btn variant="outlined" color="primary" prepend-icon="tabler-list-details" @click="openReportModal('batch')">
+            Hoja de Merma (Múltiple)
+          </v-btn>
+          <v-btn color="primary" prepend-icon="tabler-plus" @click="openReportModal('single')">
+            Reportar Merma
+          </v-btn>
+        </div>
       </div>
 
       <!-- Tabla de Mermas -->
@@ -635,13 +1023,14 @@ onUnmounted(() => {
         <v-table density="comfortable" hover class="text-no-wrap">
           <thead>
             <tr>
-              <th>ID Producto</th>
-              <th>Producto / Insumo</th>
+              <th>Ítem / Código</th>
+              <th>Insumo / Platillo</th>
               <th class="text-center">Cant. Perdida</th>
-              <th class="text-right">Pérdida Est.</th>
-              <th>Descripción / Motivo</th>
-              <th class="text-center">Foto</th>
-              <th>Reportado Por</th>
+              <th class="text-right">Costo Unificado Unit.</th>
+              <th class="text-right">Pérdida Total</th>
+              <th>Clasificación / Descripción</th>
+              <th class="text-center">Evidencia</th>
+              <th>Estación / Usuario</th>
               <th class="text-center">Estado</th>
               <th>Fecha</th>
               <th v-if="isApprover" class="text-end">Acciones Admin</th>
@@ -650,15 +1039,31 @@ onUnmounted(() => {
           <tbody>
             <tr v-for="waste in wastes" :key="waste.id">
               <td>
-                <v-chip size="small" color="primary" variant="tonal" class="font-weight-black">
-                  #{{ waste.product_id || waste.dish_id || waste.id }}
-                </v-chip>
+                <div class="d-flex flex-column gap-1 py-1">
+                  <v-chip
+                    size="small"
+                    :color="waste.item_type === 'dish' ? 'secondary' : 'primary'"
+                    variant="tonal"
+                    class="font-weight-black"
+                  >
+                    {{ waste.item_type === 'dish' ? `PLATO #${waste.dish_id}` : `PROD #${waste.product_id}` }}
+                  </v-chip>
+                  <span class="text-caption text-medium-emphasis">
+                    {{ waste.item_type_label }}
+                  </span>
+                </div>
               </td>
               <td>
                 <div class="d-flex flex-column py-1">
                   <span class="font-weight-bold text-body-2">{{ waste.item_name }}</span>
-                  <span class="text-caption text-medium-emphasis">
+                  <span v-if="waste.item_type === 'product'" class="text-caption text-medium-emphasis">
                     Stock actual: {{ waste.current_stock }} {{ waste.product_unit }}
+                  </span>
+                  <span
+                    v-else-if="waste.ingredients_breakdown && waste.ingredients_breakdown.length > 0"
+                    class="text-caption text-info font-weight-medium"
+                  >
+                    Descuenta {{ waste.ingredients_breakdown.length }} insumo(s) de receta
                   </span>
                 </div>
               </td>
@@ -667,16 +1072,29 @@ onUnmounted(() => {
                   -{{ waste.quantity }} {{ waste.product_unit }}
                 </span>
               </td>
+              <td class="text-right">
+                <div class="d-flex flex-column align-end">
+                  <span class="font-weight-medium">{{ formatCurrency(waste.unified_unit_cost || waste.unit_cost) }}</span>
+                  <span class="text-caption text-medium-emphasis">Costo Unificado</span>
+                </div>
+              </td>
               <td class="text-right font-weight-bold text-error">
                 -{{ formatCurrency(waste.total_loss_usd) }}
               </td>
               <td style="max-width: 280px; white-space: normal;">
                 <div class="py-1">
+                  <div class="d-flex align-center gap-1 mb-1">
+                    <v-chip
+                      size="x-small"
+                      :color="waste.is_operational_waste ? 'error' : 'info'"
+                      variant="tonal"
+                      class="font-weight-bold"
+                    >
+                      {{ waste.reason_label }}
+                    </v-chip>
+                  </div>
                   <div class="text-body-2 font-weight-medium">
                     {{ waste.notes || 'Sin descripción' }}
-                  </div>
-                  <div class="text-caption text-medium-emphasis">
-                    Motivo: {{ waste.reason_label }}
                   </div>
                   <div v-if="waste.rejection_reason" class="text-caption text-error font-weight-bold mt-1">
                     Rechazo: {{ waste.rejection_reason }}
@@ -685,19 +1103,20 @@ onUnmounted(() => {
               </td>
               <td class="text-center">
                 <v-btn
-                  v-if="waste.photo_url"
+                  v-if="waste.photo_url || (waste.ingredients_breakdown && waste.ingredients_breakdown.length > 0)"
                   size="small"
                   variant="tonal"
                   color="info"
-                  prepend-icon="tabler-photo"
+                  :prepend-icon="waste.photo_url ? 'tabler-photo' : 'tabler-list-Search'"
                   @click="openPhotoDialog(waste)"
                 >
-                  Ver Foto
+                  {{ waste.photo_url ? 'Ver Evidencia' : 'Ver Escandallo' }}
                 </v-btn>
-                <span v-else class="text-caption text-disabled">Sin foto</span>
+                <span v-else class="text-caption text-disabled">Opcional / Sin foto</span>
               </td>
               <td>
                 <div class="d-flex flex-column">
+                  <span class="text-caption font-weight-bold text-primary">{{ waste.station_name }}</span>
                   <span class="text-body-2 font-weight-medium">{{ waste.user_name }}</span>
                   <span v-if="waste.approved_by_name" class="text-caption text-medium-emphasis">
                     Rev: {{ waste.approved_by_name }}
@@ -760,20 +1179,20 @@ onUnmounted(() => {
       </div>
     </v-card>
 
-    <!-- DIÁLOGO: REPORTAR NUEVA MERMA -->
+    <!-- DIÁLOGO: REPORTAR MERMA (INDIVIDUAL O HOJA DE MERMA DE TURNO) -->
     <v-dialog
       v-model="showReportModal"
-      max-width="640"
+      max-width="760"
       :fullscreen="$vuetify.display.xs"
       scrollable
       persistent
     >
-      <v-card class="rounded-lg d-flex flex-column" style="max-height: 90vh;">
+      <v-card class="rounded-lg d-flex flex-column" style="max-height: 92vh;">
         <v-card-title class="d-flex align-center justify-space-between bg-primary text-white py-3 px-4 flex-shrink-0">
           <div class="d-flex align-center gap-2">
             <v-icon color="white">tabler-alert-triangle</v-icon>
             <span class="text-subtitle-1 font-weight-bold text-white">
-              Reportar Merma / Pérdida de Producto
+              {{ reportMode === 'batch' ? 'Hoja de Merma de Cierre de Turno (Múltiples Ítems)' : 'Reportar Merma / Pérdida de Cocina' }}
             </span>
           </div>
           <v-btn
@@ -788,110 +1207,305 @@ onUnmounted(() => {
 
         <v-card-text class="pa-4 flex-grow-1 overflow-y-auto">
           <v-form id="wasteReportForm" @submit.prevent="submitWasteReport">
+            <!-- Selector de Modo y Tipo de Ítem -->
+            <div class="d-flex flex-wrap align-center justify-space-between gap-2 mb-4 pb-3 border-b">
+              <v-btn-toggle
+                v-model="reportMode"
+                color="primary"
+                density="compact"
+                mandatory
+                variant="outlined"
+              >
+                <v-btn value="single" prepend-icon="tabler-file-alert">
+                  Registro Individual
+                </v-btn>
+                <v-btn value="batch" prepend-icon="tabler-list-check">
+                  Hoja de Merma ({{ batchItems.length }})
+                </v-btn>
+              </v-btn-toggle>
+
+              <v-btn-toggle
+                v-model="wasteForm.item_type"
+                color="secondary"
+                density="compact"
+                mandatory
+                variant="outlined"
+                @update:model-value="resetItemInputs"
+              >
+                <v-btn value="product" prepend-icon="tabler-package">
+                  Insumo / Producto
+                </v-btn>
+                <v-btn value="dish" prepend-icon="tabler-soup">
+                  Platillo / Sub-receta
+                </v-btn>
+              </v-btn-toggle>
+            </div>
+
             <v-row dense>
-              <!-- Campo 1: ID del Producto -->
+              <!-- MODO INSUMO / PRODUCTO: Buscador primario por nombre + ID sincronizado -->
+              <template v-if="wasteForm.item_type === 'product'">
+                <v-col cols="12" sm="8">
+                  <v-autocomplete
+                    v-model="selectedProductOption"
+                    v-model:search="productSearch"
+                    :items="productOptions"
+                    item-title="label"
+                    return-object
+                    :loading="loadingProductOptions"
+                    label="Buscar Insumo o Producto por Nombre *"
+                    placeholder="Escribe el nombre del insumo..."
+                    prepend-inner-icon="tabler-search"
+                    density="compact"
+                    variant="outlined"
+                    clearable
+                    @update:model-value="onSelectProductOption"
+                  />
+                </v-col>
+
+                <v-col cols="12" sm="4">
+                  <v-text-field
+                    v-model.number="wasteForm.product_id"
+                    type="number"
+                    min="1"
+                    label="ID Producto *"
+                    placeholder="Ej: 105"
+                    prepend-inner-icon="tabler-hash"
+                    density="compact"
+                    variant="outlined"
+                    :loading="loadingProductById"
+                    :error-messages="formErrors.product_id || productNotFoundError"
+                  />
+                </v-col>
+
+                <!-- Tarjeta informativa del producto con su Costo Unificado (Tabla products) -->
+                <v-col v-if="resolvedProduct" cols="12" class="mb-3">
+                  <v-alert
+                    color="info"
+                    variant="tonal"
+                    density="compact"
+                    icon="tabler-package"
+                  >
+                    <div class="d-flex flex-wrap align-center justify-space-between gap-2">
+                      <div>
+                        <strong>#{{ resolvedProduct.id }} — {{ resolvedProduct.name }}</strong>
+                      </div>
+                      <div class="d-flex flex-wrap gap-3 text-caption font-weight-bold">
+                        <span>Stock actual: {{ resolvedProduct.stock }} {{ resolvedProduct.unit_of_measure }}</span>
+                        <v-chip size="x-small" color="primary" variant="flat">
+                          Costo Unificado (Tabla Productos): {{ formatCurrency(resolvedProduct.unit_cost) }} / {{ resolvedProduct.unit_of_measure }}
+                        </v-chip>
+                      </div>
+                    </div>
+                  </v-alert>
+                </v-col>
+              </template>
+
+              <!-- MODO PLATILLO / SUB-RECETA -->
+              <template v-else>
+                <v-col cols="12">
+                  <v-autocomplete
+                    v-model="selectedDishOption"
+                    :items="dishesCatalog"
+                    item-title="label"
+                    return-object
+                    :loading="loadingDishes"
+                    label="Seleccionar Platillo Terminado o Sub-receta *"
+                    placeholder="Escribe el nombre del plato o preparación..."
+                    prepend-inner-icon="tabler-soup"
+                    density="compact"
+                    variant="outlined"
+                    clearable
+                    :error-messages="formErrors.dish_id"
+                    @update:model-value="onSelectDishOption"
+                  />
+                </v-col>
+
+                <!-- Escandallo de ingredientes valorizado al Costo Unificado de la Tabla Productos -->
+                <v-col v-if="resolvedDish" cols="12" class="mb-3">
+                  <v-alert
+                    color="secondary"
+                    variant="tonal"
+                    density="compact"
+                    icon="tabler-tools-kitchen-2"
+                  >
+                    <div class="d-flex flex-wrap align-center justify-space-between gap-2 mb-2">
+                      <div>
+                        <strong>#{{ resolvedDish.id }} — {{ resolvedDish.name }}</strong>
+                        <v-chip size="x-small" class="ms-2" color="secondary" variant="flat">
+                          {{ resolvedDish.type_badge }}
+                        </v-chip>
+                      </div>
+                      <v-chip size="x-small" color="primary" variant="flat" class="font-weight-bold">
+                        Costo Unificado Receta: {{ formatCurrency(resolvedDish.unified_cost) }} / {{ resolvedDish.unit_of_measure }}
+                      </v-chip>
+                    </div>
+
+                    <div v-if="resolvedDish.ingredients && resolvedDish.ingredients.length > 0" class="text-caption">
+                      <div class="font-weight-bold mb-1">
+                        Insumos que se descontarán del inventario (valorizados al costo unificado de la tabla productos):
+                      </div>
+                      <div class="d-flex flex-wrap gap-1">
+                        <v-chip
+                          v-for="ing in resolvedDish.ingredients"
+                          :key="ing.id"
+                          size="x-small"
+                          variant="outlined"
+                        >
+                          {{ ing.name }}: {{ Number((ing.portion * (Number(wasteForm.quantity) || 1)).toFixed(4)) }} {{ ing.unit_of_measure }}
+                          ({{ formatCurrency(ing.unified_unit_cost) }}/{{ ing.unit_of_measure }})
+                        </v-chip>
+                      </div>
+                    </div>
+                  </v-alert>
+                </v-col>
+              </template>
+
+              <!-- Cantidad, Clasificación y Estación de Cocina -->
               <v-col cols="12" sm="4">
-                <v-text-field
-                  v-model.number="wasteForm.product_id"
-                  type="number"
-                  min="1"
-                  label="ID del Producto *"
-                  placeholder="Ej: 105"
-                  prepend-inner-icon="tabler-hash"
-                  density="compact"
-                  variant="outlined"
-                  :loading="loadingProductById"
-                  :error-messages="formErrors.product_id || productNotFoundError"
-                />
-              </v-col>
-
-              <!-- Buscador asistido opcional para autocompletar el ID -->
-              <v-col cols="12" sm="8">
-                <v-autocomplete
-                  v-model="selectedProductOption"
-                  v-model:search="productSearch"
-                  :items="productOptions"
-                  item-title="label"
-                  return-object
-                  :loading="loadingProductOptions"
-                  label="Buscar producto por nombre (autocompleta el ID)"
-                  placeholder="Escribe el nombre del insumo o producto..."
-                  prepend-inner-icon="tabler-search"
-                  density="compact"
-                  variant="outlined"
-                  clearable
-                  @update:model-value="onSelectProductOption"
-                />
-              </v-col>
-
-              <!-- Tarjeta informativa del producto encontrado por ID -->
-              <v-col v-if="resolvedProduct" cols="12" class="mb-3">
-                <v-alert
-                  color="info"
-                  variant="tonal"
-                  density="compact"
-                  icon="tabler-package"
-                >
-                  <div class="d-flex flex-wrap align-center justify-space-between gap-2">
-                    <div>
-                      <strong>#{{ resolvedProduct.id }} — {{ resolvedProduct.name }}</strong>
-                    </div>
-                    <div class="d-flex gap-3 text-caption font-weight-bold">
-                      <span>Stock actual: {{ resolvedProduct.stock }} {{ resolvedProduct.unit_of_measure }}</span>
-                      <span>Costo Unit.: {{ formatCurrency(resolvedProduct.unit_cost) }}</span>
-                    </div>
-                  </div>
-                </v-alert>
-              </v-col>
-
-              <!-- Cantidad Perdida y Motivo -->
-              <v-col cols="12" sm="6">
                 <v-text-field
                   v-model.number="wasteForm.quantity"
                   type="number"
-                  step="0.01"
-                  min="0.01"
+                  step="0.0001"
+                  min="0.0001"
                   label="Cantidad Perdida *"
-                  placeholder="Ej: 2"
-                  :suffix="resolvedProduct?.unit_of_measure || 'und'"
+                  placeholder="Ej: 1.5"
+                  :suffix="wasteForm.item_type === 'product' ? (resolvedProduct?.unit_of_measure || 'und') : (resolvedDish?.unit_of_measure || 'plato')"
                   density="compact"
                   variant="outlined"
                   :error-messages="formErrors.quantity"
                 />
               </v-col>
 
-              <v-col cols="12" sm="6">
+              <v-col cols="12" sm="4">
                 <v-select
                   v-model="wasteForm.reason"
                   :items="wasteReasons"
                   item-title="label"
                   item-value="value"
-                  label="Clasificación de la Merma"
+                  label="Motivo / Clasificación *"
                   density="compact"
                   variant="outlined"
                 />
               </v-col>
 
-              <!-- Descripción detallada -->
+              <v-col cols="12" sm="4">
+                <v-select
+                  v-model="wasteForm.kitchen_station_id"
+                  :items="kitchenStations"
+                  item-title="name"
+                  item-value="id"
+                  label="Estación de Cocina"
+                  placeholder="Cocina General"
+                  density="compact"
+                  variant="outlined"
+                  clearable
+                />
+              </v-col>
+
+              <!-- Nota / Descripción -->
               <v-col cols="12">
                 <v-textarea
                   v-model="wasteForm.notes"
-                  label="Descripción de la Pérdida *"
-                  placeholder="Indica detalladamente qué ocurrió con el producto..."
-                  rows="3"
+                  label="Descripción / Observación *"
+                  placeholder="Indica qué ocurrió (ej. se quemó en plancha, venció en cuarto frío, almuerzo de turno)..."
+                  rows="2"
                   density="compact"
                   variant="outlined"
                   :error-messages="formErrors.notes"
                 />
               </v-col>
 
-              <!-- Anexar Foto de Evidencia -->
+              <!-- Resumen del impacto del renglón actual -->
+              <v-col v-if="estimatedLossUsd > 0" cols="12" class="mb-2">
+                <div class="d-flex flex-wrap justify-space-between align-center pa-2 rounded bg-error-lighten-5">
+                  <div>
+                    <span class="text-caption font-weight-bold d-block">
+                      {{ currentReasonObj.category }}
+                    </span>
+                    <span class="text-caption text-medium-emphasis">
+                      Cálculo: {{ wasteForm.quantity }} × {{ formatCurrency(activeUnifiedUnitCost) }} (Costo Unificado Tabla Productos)
+                    </span>
+                  </div>
+                  <span class="text-subtitle-1 font-weight-black text-error">
+                    -{{ formatCurrency(estimatedLossUsd) }}
+                  </span>
+                </div>
+              </v-col>
+
+              <!-- Botón para agregar a la Hoja de Merma cuando está en modo batch -->
+              <v-col v-if="reportMode === 'batch'" cols="12" class="mb-3">
+                <v-btn
+                  block
+                  color="secondary"
+                  variant="tonal"
+                  prepend-icon="tabler-plus"
+                  @click="addLineToBatch"
+                >
+                  Agregar Renglón a la Hoja de Merma
+                </v-btn>
+              </v-col>
+
+              <!-- Tabla de renglones agregados en modo Hoja de Merma -->
+              <v-col v-if="reportMode === 'batch' && batchItems.length > 0" cols="12" class="mb-3">
+                <div class="border rounded-lg overflow-hidden">
+                  <div class="bg-grey-lighten-4 px-3 py-2 d-flex justify-space-between align-center border-b">
+                    <span class="text-caption font-weight-bold text-uppercase">
+                      Ítems en la Hoja de Merma ({{ batchItems.length }})
+                    </span>
+                    <span class="text-caption font-weight-black text-error">
+                      Total Hoja: -{{ formatCurrency(batchTotalLossUsd) }}
+                    </span>
+                  </div>
+                  <v-table density="compact">
+                    <thead>
+                      <tr>
+                        <th>Ítem</th>
+                        <th class="text-center">Cant.</th>
+                        <th class="text-right">Costo Unif.</th>
+                        <th class="text-right">Subtotal</th>
+                        <th>Motivo</th>
+                        <th class="text-end">Quitar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(line, idx) in batchItems" :key="idx">
+                        <td class="text-caption font-weight-bold">
+                          {{ line.item_name }}
+                        </td>
+                        <td class="text-center text-caption">
+                          {{ line.quantity }} {{ line.unit_of_measure }}
+                        </td>
+                        <td class="text-right text-caption">
+                          {{ formatCurrency(line.unit_cost) }}
+                        </td>
+                        <td class="text-right text-caption font-weight-bold text-error">
+                          -{{ formatCurrency(line.total_loss_usd) }}
+                        </td>
+                        <td class="text-caption">
+                          {{ line.reason_label }}
+                        </td>
+                        <td class="text-end">
+                          <v-btn
+                            icon="tabler-trash"
+                            size="x-small"
+                            color="error"
+                            variant="text"
+                            @click="removeBatchLine(idx)"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+                </div>
+              </v-col>
+
+              <!-- Anexar Foto de Evidencia (Obligatoria en mermas físicas, Opcional en personal/cortesía/limpieza) -->
               <v-col cols="12">
                 <v-file-input
                   accept="image/*"
                   capture="environment"
-                  label="Anexar Fotografía de Evidencia *"
-                  placeholder="Selecciona o toma una foto del producto dañado/mermado"
+                  :label="isPhotoRequired ? 'Fotografía de Evidencia (Obligatoria para este motivo) *' : 'Fotografía de Respaldo (Opcional para este motivo)'"
+                  placeholder="Selecciona o toma una foto del producto/plato"
                   prepend-icon=""
                   prepend-inner-icon="tabler-camera"
                   density="compact"
@@ -925,19 +1539,8 @@ onUnmounted(() => {
                   />
                 </div>
               </v-col>
-
-              <!-- Resumen del impacto -->
-              <v-col v-if="estimatedLossUsd > 0" cols="12" class="mb-2">
-                <div class="d-flex justify-space-between align-center pa-2 rounded bg-error-lighten-5">
-                  <span class="text-caption font-weight-bold">Pérdida estimada a revisión:</span>
-                  <span class="text-subtitle-2 font-weight-black text-error">
-                    -{{ formatCurrency(estimatedLossUsd) }}
-                  </span>
-                </div>
-              </v-col>
             </v-row>
-
-            </v-form>
+          </v-form>
         </v-card-text>
 
         <v-divider />
@@ -959,18 +1562,18 @@ onUnmounted(() => {
             :loading="submitting"
             :disabled="submitting"
           >
-            Enviar Merma a Aprobación
+            {{ reportMode === 'batch' ? `Registrar Hoja de Merma (${batchItems.length})` : (isApprover ? 'Registrar y Aprobar Merma' : 'Enviar Merma a Aprobación') }}
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- DIÁLOGO: VISOR DE FOTOGRAFÍA DE EVIDENCIA -->
+    <!-- DIÁLOGO: VISOR DE EVIDENCIA Y ESCANDALLO DE RECETA -->
     <v-dialog v-model="showPhotoViewer" max-width="680">
       <v-card v-if="selectedWasteForPhoto" class="rounded-lg overflow-hidden">
         <v-card-title class="d-flex align-center justify-space-between bg-primary text-white py-3 px-4">
           <span class="text-subtitle-1 font-weight-bold text-white">
-            Evidencia de Merma — Producto #{{ selectedWasteForPhoto.product_id }} ({{ selectedWasteForPhoto.item_name }})
+            Detalle de Merma — {{ selectedWasteForPhoto.item_name }}
           </span>
           <v-btn
             icon="tabler-x"
@@ -982,35 +1585,68 @@ onUnmounted(() => {
         </v-card-title>
 
         <v-card-text class="pa-4">
-          <div class="border rounded-lg pa-2 mb-3 bg-grey-lighten-4">
+          <div v-if="selectedWasteForPhoto.photo_url" class="border rounded-lg pa-2 mb-3 bg-grey-lighten-4">
             <v-img
               :src="selectedWasteForPhoto.photo_url"
-              max-height="420"
+              max-height="380"
               contain
               class="rounded"
             />
           </div>
 
-          <v-row dense>
+          <v-row dense class="mb-2">
             <v-col cols="12" sm="6">
-              <div class="text-caption text-medium-emphasis">Producto:</div>
+              <div class="text-caption text-medium-emphasis">Ítem Afectado:</div>
               <div class="font-weight-bold">
-                #{{ selectedWasteForPhoto.product_id }} — {{ selectedWasteForPhoto.item_name }}
+                {{ selectedWasteForPhoto.item_name }} ({{ selectedWasteForPhoto.item_type_label }})
               </div>
             </v-col>
             <v-col cols="12" sm="6">
-              <div class="text-caption text-medium-emphasis">Cantidad Perdida:</div>
+              <div class="text-caption text-medium-emphasis">Cantidad y Pérdida (Costo Unificado):</div>
               <div class="font-weight-black text-error">
-                -{{ selectedWasteForPhoto.quantity }} {{ selectedWasteForPhoto.product_unit }} ({{ formatCurrency(selectedWasteForPhoto.total_loss_usd) }})
+                -{{ selectedWasteForPhoto.quantity }} {{ selectedWasteForPhoto.product_unit }}
+                ({{ formatCurrency(selectedWasteForPhoto.total_loss_usd) }})
               </div>
             </v-col>
             <v-col cols="12" class="mt-2">
-              <div class="text-caption text-medium-emphasis">Descripción reportada por {{ selectedWasteForPhoto.user_name }}:</div>
+              <div class="text-caption text-medium-emphasis">
+                Observación reportada por {{ selectedWasteForPhoto.user_name }} ({{ selectedWasteForPhoto.station_name }}):
+              </div>
               <div class="text-body-2 font-weight-medium">
                 {{ selectedWasteForPhoto.notes || 'Sin descripción' }}
               </div>
             </v-col>
           </v-row>
+
+          <!-- Tabla de desglose de ingredientes cuando es un Platillo / Sub-receta -->
+          <div
+            v-if="selectedWasteForPhoto.ingredients_breakdown && selectedWasteForPhoto.ingredients_breakdown.length > 0"
+            class="border rounded-lg overflow-hidden mt-3"
+          >
+            <div class="bg-grey-lighten-4 px-3 py-2 border-b text-caption font-weight-bold">
+              Desglose de Insumos Descontados (Costo Unificado Tabla Productos)
+            </div>
+            <v-table density="compact">
+              <thead>
+                <tr>
+                  <th>Insumo</th>
+                  <th class="text-center">Porción Receta</th>
+                  <th class="text-center">Total Descontado</th>
+                  <th class="text-right">Costo Unificado Unit.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="ing in selectedWasteForPhoto.ingredients_breakdown" :key="ing.product_id">
+                  <td class="text-caption font-weight-bold">#{{ ing.product_id }} - {{ ing.name }}</td>
+                  <td class="text-center text-caption">{{ ing.portion_per_unit }} {{ ing.unit_of_measure }}</td>
+                  <td class="text-center text-caption text-error font-weight-bold">
+                    -{{ ing.total_deducted_qty }} {{ ing.unit_of_measure }}
+                  </td>
+                  <td class="text-right text-caption">{{ formatCurrency(ing.unified_unit_cost) }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </div>
         </v-card-text>
 
         <v-card-actions v-if="isApprover && selectedWasteForPhoto.status === 'pending'" class="justify-end px-4 pb-4 gap-2">

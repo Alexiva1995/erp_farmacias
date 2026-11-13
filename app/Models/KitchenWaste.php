@@ -37,8 +37,8 @@ class KitchenWaste extends Model
     ];
 
     protected $casts = [
-        'quantity' => 'decimal:2',
-        'unit_cost' => 'decimal:2',
+        'quantity' => 'decimal:4',
+        'unit_cost' => 'decimal:4',
         'total_loss_usd' => 'decimal:2',
         'reason' => KitchenWasteReasonEnum::class,
         'status' => KitchenWasteStatusEnum::class,
@@ -46,33 +46,60 @@ class KitchenWaste extends Model
         'occurred_at' => 'datetime',
     ];
 
+    protected static array $schemaEnsured = [];
+
     /**
-     * Garantiza que las columnas de aprobación y foto existan en la base de datos activa.
+     * Garantiza que las columnas de aprobación, foto y precisión decimal existan en la base de datos activa.
      */
     public static function ensureApprovalColumns(): void
     {
-        if (!Schema::hasTable('kitchen_wastes')) {
-            return;
-        }
+        try {
+            $conn = (new static())->getConnection();
+            $connName = $conn->getName();
 
-        if (!Schema::hasColumn('kitchen_wastes', 'status') || !Schema::hasColumn('kitchen_wastes', 'photo_path')) {
-            Schema::table('kitchen_wastes', function (Blueprint $table) {
-                if (!Schema::hasColumn('kitchen_wastes', 'status')) {
-                    $table->string('status', 20)->default('pending')->after('notes')->index();
-                }
-                if (!Schema::hasColumn('kitchen_wastes', 'photo_path')) {
-                    $table->string('photo_path')->nullable()->after('status');
-                }
-                if (!Schema::hasColumn('kitchen_wastes', 'approved_by')) {
-                    $table->unsignedBigInteger('approved_by')->nullable()->after('photo_path');
-                }
-                if (!Schema::hasColumn('kitchen_wastes', 'approved_at')) {
-                    $table->timestamp('approved_at')->nullable()->after('approved_by');
-                }
-                if (!Schema::hasColumn('kitchen_wastes', 'rejection_reason')) {
-                    $table->text('rejection_reason')->nullable()->after('approved_at');
-                }
-            });
+            if (!empty(static::$schemaEnsured[$connName])) {
+                return;
+            }
+
+            // Evitar DDL dentro de una transacción activa en MySQL/MariaDB
+            if ($conn->transactionLevel() > 0) {
+                return;
+            }
+
+            if (!Schema::hasTable('kitchen_wastes')) {
+                return;
+            }
+
+            static::$schemaEnsured[$connName] = true;
+
+            if (!Schema::hasColumn('kitchen_wastes', 'status') || !Schema::hasColumn('kitchen_wastes', 'photo_path')) {
+                Schema::table('kitchen_wastes', function (Blueprint $table) {
+                    if (!Schema::hasColumn('kitchen_wastes', 'status')) {
+                        $table->string('status', 20)->default('pending')->after('notes')->index();
+                    }
+                    if (!Schema::hasColumn('kitchen_wastes', 'photo_path')) {
+                        $table->string('photo_path')->nullable()->after('status');
+                    }
+                    if (!Schema::hasColumn('kitchen_wastes', 'approved_by')) {
+                        $table->unsignedBigInteger('approved_by')->nullable()->after('photo_path');
+                    }
+                    if (!Schema::hasColumn('kitchen_wastes', 'approved_at')) {
+                        $table->timestamp('approved_at')->nullable()->after('approved_by');
+                    }
+                    if (!Schema::hasColumn('kitchen_wastes', 'rejection_reason')) {
+                        $table->text('rejection_reason')->nullable()->after('approved_at');
+                    }
+                });
+            }
+
+            try {
+                $conn->statement('ALTER TABLE kitchen_wastes MODIFY quantity DECIMAL(14, 4) DEFAULT 1.0000');
+                $conn->statement('ALTER TABLE kitchen_wastes MODIFY unit_cost DECIMAL(14, 4) DEFAULT 0.0000');
+            } catch (\Throwable $e) {
+                // Ignorar si el motor no requiere modificación o tiene permisos restringidos
+            }
+        } catch (\Throwable $e) {
+            // Ignorar errores de verificación de esquema
         }
     }
 
