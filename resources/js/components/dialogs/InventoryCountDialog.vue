@@ -114,9 +114,16 @@ const dualSystemQuantity = computed(() => {
   return parseFloat(((Number(packagesCount.value) || 0) + ((Number(openedQuantity.value) || 0) / productPresentation.value)).toFixed(4));
 });
 
+// Modo Variaciones: Desglose por color/talla/atributo si el producto tiene variantes
+const isVariantsMode = computed(() => {
+  if (isDualCountMode.value || isProducedRecipe.value) return false;
+  const variants = props.product?.variants;
+  return Array.isArray(variants) && variants.length > 0;
+});
+
 // Modo Farmacia: Desglose por lotes activos y ubicación
 const isPharmacyLotsMode = computed(() => {
-  if (isDualCountMode.value || isProducedRecipe.value) return false;
+  if (isDualCountMode.value || isProducedRecipe.value || isVariantsMode.value) return false;
   const isRestaurant = Boolean(
     brandingStore.isRestaurant || brandingStore.settings?.enable_dishes
   );
@@ -125,6 +132,48 @@ const isPharmacyLotsMode = computed(() => {
   // Solo activar modo lotes si hay al menos un lote con stock mayor a cero
   return Array.isArray(lots) && lots.some(l => Number(l.quantity || 0) > 0);
 });
+
+const countedVariants = ref([]);
+
+const variantsTotalCounted = computed(() => {
+  if (!isVariantsMode.value) return 0;
+  return countedVariants.value.reduce((sum, item) => {
+    const val = Number(item.counted_quantity);
+    return sum + (isNaN(val) || item.counted_quantity === "" ? 0 : val);
+  }, 0);
+});
+
+const hasAnyVariantCounted = computed(() => {
+  if (!isVariantsMode.value) return false;
+  return countedVariants.value.some(
+    (item) => item.counted_quantity !== "" && !isNaN(Number(item.counted_quantity))
+  );
+});
+
+watch(
+  countedVariants,
+  () => {
+    if (isVariantsMode.value) {
+      if (hasAnyVariantCounted.value) {
+        countedQuantity.value = variantsTotalCounted.value;
+      } else {
+        countedQuantity.value = "";
+      }
+    }
+  },
+  { deep: true }
+);
+
+const handleVariantEnter = (index) => {
+  const nextIndex = index + 1;
+  const nextInput = document.querySelector(`#variant-input-${nextIndex}`);
+  if (nextInput) {
+    nextInput.focus();
+    if (typeof nextInput.select === "function") nextInput.select();
+  } else {
+    handleSave();
+  }
+};
 
 const countedLots = ref([]);
 
@@ -146,7 +195,16 @@ const hasAnyLotCounted = computed(() => {
 watch(
   countedLots,
   () => {
-    if (isPharmacyLotsMode.value) {
+    if (isVariantsMode.value) {
+    const hasVariantsFilled =
+      hasAnyVariantCounted.value &&
+      countedQuantity.value !== "" &&
+      Number(countedQuantity.value) >= 0;
+    if (allowManual) return hasVariantsFilled;
+    return barcodeInput.value.trim() !== "" && hasVariantsFilled && !barcodeError.value;
+  }
+
+  if (isPharmacyLotsMode.value) {
       if (hasAnyLotCounted.value) {
         countedQuantity.value = lotsTotalCounted.value;
       } else {
@@ -178,6 +236,15 @@ const canSave = computed(() => {
     return barcodeInput.value.trim() !== "" && hasValidDual && !barcodeError.value;
   }
 
+  if (isVariantsMode.value) {
+    const hasVariantsFilled =
+      hasAnyVariantCounted.value &&
+      countedQuantity.value !== "" &&
+      Number(countedQuantity.value) >= 0;
+    if (allowManual) return hasVariantsFilled;
+    return barcodeInput.value.trim() !== "" && hasVariantsFilled && !barcodeError.value;
+  }
+
   if (isPharmacyLotsMode.value) {
     const hasLotsFilled =
       hasAnyLotCounted.value &&
@@ -207,6 +274,7 @@ const resetForm = () => {
   packagesCount.value = "";
   openedQuantity.value = "";
   countedLots.value = [];
+  countedVariants.value = [];
   barcodeError.value = "";
   isScannerVisible.value = false;
   allowWithoutBarcode.value = isProducedRecipe.value || (canBypassBarcode.value && !barcodeRequiredGlobal.value);
@@ -221,6 +289,20 @@ watch(
   (newVal) => {
     if (newVal) {
       allowWithoutBarcode.value = isProducedRecipe.value || (canBypassBarcode.value && !barcodeRequiredGlobal.value);
+      if (isVariantsMode.value) {
+        countedVariants.value = (props.product?.variants || []).map((variant) => ({
+          id: variant.id,
+          sku: variant.sku || "",
+          attribute_type: variant.attribute_type || "Variación",
+          attribute_value: variant.attribute_value || "Estándar",
+          color_hex: variant.color_hex || null,
+          system_quantity: Number(variant.stock || 0),
+          counted_quantity: "",
+        }));
+      } else {
+        countedVariants.value = [];
+      }
+
       if (isPharmacyLotsMode.value) {
         // Solo mostrar lotes que tienen unidades en sistema (excluir agotados)
         countedLots.value = (props.product?.lots || []).filter(lot => Number(lot.quantity || 0) > 0).map((lot) => ({
@@ -236,7 +318,21 @@ watch(
       }
       nextTick(() => {
         if (isManualEntryAllowed.value) {
-          if (isPharmacyLotsMode.value) {
+          if (isVariantsMode.value) {
+        countedVariants.value = (props.product?.variants || []).map((variant) => ({
+          id: variant.id,
+          sku: variant.sku || "",
+          attribute_type: variant.attribute_type || "Variación",
+          attribute_value: variant.attribute_value || "Estándar",
+          color_hex: variant.color_hex || null,
+          system_quantity: Number(variant.stock || 0),
+          counted_quantity: "",
+        }));
+      } else {
+        countedVariants.value = [];
+      }
+
+      if (isPharmacyLotsMode.value) {
             const firstLotInput = document.querySelector("#lot-input-0");
             if (firstLotInput) {
               firstLotInput.focus();
@@ -376,6 +472,7 @@ const handleSave = async () => {
           </div>
           ${isDualCountMode.value ? `<p class="text-caption text-muted mb-0">${Number(packagesCount.value) || 0} paquete(s) + ${Number(openedQuantity.value) || 0} ${productUnit.value} abierto(s) (${dualTotalQuantity.value} ${productUnit.value} en total = ${quantity} und)</p>` : ''}
           ${isPharmacyLotsMode.value ? `<div class="mt-2 text-super-xs text-start text-muted border-t pt-1">${countedLots.value.filter(l => l.counted_quantity !== '').map(l => `<div>• Lote ${l.lot_number} (${l.location || 'Sin ubic.'}): <strong>${Number(l.counted_quantity) || 0} und</strong></div>`).join('')}</div>` : ''}
+          ${isVariantsMode.value ? `<div class="mt-2 text-super-xs text-start text-muted border-t pt-1">${countedVariants.value.filter(v => v.counted_quantity !== '').map(v => `<div>• ${v.attribute_value}${v.sku ? ' (' + v.sku + ')' : ''}: <strong>${Number(v.counted_quantity) || 0} und</strong></div>`).join('')}</div>` : ''}
         </div>
       `,
       icon: "question",
@@ -402,6 +499,12 @@ const handleSave = async () => {
           lot_id: l.id,
           lot_number: l.lot_number,
           quantity: Number(l.counted_quantity) || 0,
+        }))
+      : null,
+    variants_breakdown: isVariantsMode.value
+      ? countedVariants.value.map((v) => ({
+          variant_id: v.id,
+          quantity: Number(v.counted_quantity) || 0,
         }))
       : null,
   };
@@ -638,6 +741,76 @@ const handleSave = async () => {
                   <span class="text-xs font-weight-black text-primary uppercase">Total calculado</span>
                   <VChip size="small" color="primary" variant="flat" class="font-weight-black">
                     {{ dualTotalQuantity }} {{ productUnit }} ({{ dualSystemQuantity }} und)
+                  </VChip>
+                </div>
+              </div>
+            </template>
+
+            <!-- Modo Variaciones: Desglose por Color / Atributo -->
+            <template v-else-if="isVariantsMode">
+              <div class="d-flex flex-column gap-2 mt-1">
+                <div class="text-caption text-medium-emphasis mb-1">
+                  Ingrese las unidades físicas encontradas para cada variación:
+                </div>
+
+                <div
+                  v-for="(variantItem, index) in countedVariants"
+                  :key="variantItem.id"
+                  class="bg-grey-50 rounded-xl border pa-3"
+                >
+                  <div class="d-flex align-center justify-space-between mb-2">
+                    <div class="d-flex align-center gap-2">
+                      <span
+                        v-if="variantItem.color_hex"
+                        class="rounded-circle border"
+                        :style="{ backgroundColor: variantItem.color_hex, width: '16px', height: '16px', display: 'inline-block' }"
+                      />
+                      <VIcon v-else icon="tabler-palette" size="16" color="primary" />
+                      <span class="text-xs font-weight-black text-primary uppercase">
+                        {{ variantItem.attribute_value }}
+                      </span>
+                    </div>
+                    <VChip
+                      v-if="variantItem.sku"
+                      size="x-small"
+                      variant="tonal"
+                      color="secondary"
+                      class="font-weight-bold"
+                    >
+                      {{ variantItem.sku }}
+                    </VChip>
+                  </div>
+
+                  <div class="d-flex align-center justify-space-between mb-2 text-super-xs text-disabled">
+                    <span>{{ variantItem.attribute_type }}</span>
+                    <span>Sistema: {{ variantItem.system_quantity }} und</span>
+                  </div>
+
+                  <VTextField
+                    :id="`variant-input-${index}`"
+                    v-model.number="variantItem.counted_quantity"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    variant="outlined"
+                    bg-color="white"
+                    class="conteo-definitivo-input font-weight-black"
+                    density="comfortable"
+                    hide-details
+                    :disabled="barcodeRequiredGlobal && !allowWithoutBarcode && (!barcodeInput.trim() || !!barcodeError)"
+                    @keyup.enter="handleVariantEnter(index)"
+                    @focus="$event.target.select()"
+                  />
+                </div>
+
+                <div
+                  v-if="hasAnyVariantCounted"
+                  class="d-flex align-center justify-space-between rounded-xl pa-3 bg-primary-lighten-5 border mt-1"
+                >
+                  <span class="text-xs font-weight-black text-primary uppercase">Total Físico (Suma de Variaciones)</span>
+                  <VChip size="small" color="primary" variant="flat" class="font-weight-black">
+                    {{ variantsTotalCounted }} {{ productUnit }}
                   </VChip>
                 </div>
               </div>

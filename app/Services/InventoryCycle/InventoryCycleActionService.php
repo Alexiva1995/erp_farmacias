@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\ProductCount;
 use App\Models\ProductDistribution;
 use App\Models\ProductLot;
+use App\Models\ProductVariant;
 use App\Models\SaleCount;
 use App\Models\SaleCountDistribution;
 use App\Models\UserCyclicQuota;
@@ -179,6 +180,27 @@ class InventoryCycleActionService
                                 ProductLot::where('id', $lotItem['lot_id'])
                                     ->where('product_id', $product->id)
                                     ->update(['quantity' => max(0, (float) ($lotItem['quantity'] ?? 0))]);
+                            }
+                        }
+                    }
+                }
+
+                // Registrar desglose por variaciones (colores/tallas) si aplica
+                if (!empty($data['variants_breakdown']) && is_array($data['variants_breakdown'])) {
+                    foreach ($data['variants_breakdown'] as $variantItem) {
+                        if (!empty($variantItem['variant_id'])) {
+                            $variantQty = max(0, (int) ($variantItem['quantity'] ?? 0));
+                            ProductDistribution::create([
+                                'product_count_id'   => $productCount->id,
+                                'product_lot_id'     => null,
+                                'product_variant_id' => $variantItem['variant_id'],
+                                'quantity'           => $variantQty,
+                            ]);
+
+                            if ($status === 'approved') {
+                                ProductVariant::where('id', $variantItem['variant_id'])
+                                    ->where('product_id', $product->id)
+                                    ->update(['stock' => $variantQty]);
                             }
                         }
                     }
@@ -474,6 +496,24 @@ class InventoryCycleActionService
                 }
             }
 
+            // Actualizar stock individual de variaciones si el conteo incluye desglose por variantes
+            if (!empty($data['variants_breakdown']) && is_array($data['variants_breakdown'])) {
+                foreach ($data['variants_breakdown'] as $variantItem) {
+                    if (!empty($variantItem['variant_id'])) {
+                        ProductVariant::where('id', $variantItem['variant_id'])
+                            ->where('product_id', $product->id)
+                            ->update(['stock' => max(0, (int) ($variantItem['quantity'] ?? 0))]);
+                    }
+                }
+            } else {
+                $variantDistributions = $productCount->distributions()->whereNotNull('product_variant_id')->get();
+                foreach ($variantDistributions as $dist) {
+                    ProductVariant::where('id', $dist->product_variant_id)
+                        ->where('product_id', $product->id)
+                        ->update(['stock' => max(0, (int) $dist->quantity)]);
+                }
+            }
+
             // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
             if ($distributionsCreated) {
                 $stockAfter = (float) $product->lots()->sum('quantity');
@@ -664,6 +704,7 @@ class InventoryCycleActionService
                     'discrepancy'      => $finalDiscrepancy,
                     'status'           => $status,
                     'supervisor_id'    => $supervisorId,
+                    'type'             => $data['type'] ?? 'invoice',
                     'invoice_id'       => $data['invoice_id'] ?? null,
                     'points_earned'    => $pointsEarned,
                 ]);
@@ -789,6 +830,24 @@ class InventoryCycleActionService
                         'quantity'         => $newLot->quantity,
                     ]);
                     $distributionsCreated = true;
+                }
+            }
+
+            // Actualizar stock individual de variaciones si el conteo incluye desglose por variantes
+            if (!empty($data['variants_breakdown']) && is_array($data['variants_breakdown'])) {
+                foreach ($data['variants_breakdown'] as $variantItem) {
+                    if (!empty($variantItem['variant_id'])) {
+                        ProductVariant::where('id', $variantItem['variant_id'])
+                            ->where('product_id', $product->id)
+                            ->update(['stock' => max(0, (int) ($variantItem['quantity'] ?? 0))]);
+                    }
+                }
+            } else {
+                $variantDistributions = $productCount->distributions()->whereNotNull('product_variant_id')->get();
+                foreach ($variantDistributions as $dist) {
+                    ProductVariant::where('id', $dist->product_variant_id)
+                        ->where('product_id', $product->id)
+                        ->update(['stock' => max(0, (int) $dist->quantity)]);
                 }
             }
 
@@ -1142,6 +1201,24 @@ class InventoryCycleActionService
                         'quantity'       => $newLot->quantity,
                     ]);
                     $distributionsCreated = true;
+                }
+            }
+
+            // Actualizar stock individual de variaciones si el conteo incluye desglose por variantes
+            if (!empty($data['variants_breakdown']) && is_array($data['variants_breakdown'])) {
+                foreach ($data['variants_breakdown'] as $variantItem) {
+                    if (!empty($variantItem['variant_id'])) {
+                        ProductVariant::where('id', $variantItem['variant_id'])
+                            ->where('product_id', $product->id)
+                            ->update(['stock' => max(0, (int) ($variantItem['quantity'] ?? 0))]);
+                    }
+                }
+            } else {
+                $variantDistributions = $productCount->distributions()->whereNotNull('product_variant_id')->get();
+                foreach ($variantDistributions as $dist) {
+                    ProductVariant::where('id', $dist->product_variant_id)
+                        ->where('product_id', $product->id)
+                        ->update(['stock' => max(0, (int) $dist->quantity)]);
                 }
             }
 

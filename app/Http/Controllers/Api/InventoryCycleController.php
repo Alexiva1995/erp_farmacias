@@ -363,6 +363,7 @@ class InventoryCycleController extends Controller
                 'discrepancy' => $request->input('discrepancy'),
                 'allow_without_barcode' => $allowWithoutBarcode,
                 'lots_breakdown' => $request->input('lots_breakdown'),
+                'variants_breakdown' => $request->input('variants_breakdown'),
             ];
 
             // Solo incluir barcode si no se permite sin código de barras
@@ -377,7 +378,8 @@ class InventoryCycleController extends Controller
                     $productCount = $result['data'];
                     $approveData = [
                         'updated_lots' => $request->input('updated_lots', []),
-                        'new_lots' => $request->input('new_lots', [])
+                        'new_lots' => $request->input('new_lots', []),
+                        'variants_breakdown' => $request->input('variants_breakdown', []),
                     ];
                     
                     $approveResult = $this->inventoryCycleActionService->processAction($productCount, 'approve', $approveData);

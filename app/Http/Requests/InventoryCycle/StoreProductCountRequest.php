@@ -23,6 +23,9 @@ class StoreProductCountRequest extends FormRequest
             'lots_breakdown' => 'nullable|array',
             'lots_breakdown.*.lot_id' => 'required_with:lots_breakdown|integer|exists:product_lots,id',
             'lots_breakdown.*.quantity' => 'required_with:lots_breakdown|numeric|min:0',
+            'variants_breakdown' => 'nullable|array',
+            'variants_breakdown.*.variant_id' => 'required_with:variants_breakdown|integer|exists:product_variants,id',
+            'variants_breakdown.*.quantity' => 'required_with:variants_breakdown|numeric|min:0',
         ];
 
         if (!$allowWithoutBarcode) {

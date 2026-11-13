@@ -10,6 +10,7 @@ class ProductDistribution extends Model
     protected $fillable = [
         'product_count_id',
         'product_lot_id',
+        'product_variant_id',
         'quantity',
     ];
 
@@ -21,5 +22,10 @@ class ProductDistribution extends Model
     public function productLot(): BelongsTo
     {
         return $this->belongsTo(ProductLot::class);
+    }
+
+    public function productVariant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class);
     }
 }

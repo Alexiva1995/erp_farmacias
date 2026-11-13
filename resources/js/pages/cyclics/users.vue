@@ -226,6 +226,7 @@ const handleSaveCount = async (countData) => {
     system_quantity:  systemQuantity,
     discrepancy:      countData.countedQuantity - systemQuantity,
     ...(countData.lots_breakdown ? { lots_breakdown: countData.lots_breakdown } : {}),
+    ...(countData.variants_breakdown ? { variants_breakdown: countData.variants_breakdown } : {}),
     ...(countData.allowWithoutBarcode
       ? { allow_without_barcode: true }
       : { barcode: countData.barcode }),

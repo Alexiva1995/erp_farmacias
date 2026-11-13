@@ -20,7 +20,7 @@ class InventoryCycleQueryService
     {
         return ProductCount::query()->select('product_counts.*')->with([
             'product' => function ($query) {
-                $query->with(['lots', 'laboratory']);
+                $query->with(['lots', 'laboratory', 'variants:id,product_id,sku,attribute_type,attribute_value,color_hex,stock']);
             },
             'user.employee',
             'supervisor.employee',
@@ -35,7 +35,7 @@ class InventoryCycleQueryService
                 $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
             })
             ->selectRaw("products.*, COALESCE((SELECT SUM(CASE WHEN quantity > 0 THEN quantity ELSE 0 END) FROM product_lots WHERE product_lots.product_id = products.id), 0) AS stock_calculado")
-            ->with(['lots', 'laboratory', 'origin']);
+            ->with(['lots', 'laboratory', 'origin', 'variants:id,product_id,sku,attribute_type,attribute_value,color_hex,stock']);
     }
 
     /**
@@ -514,18 +514,23 @@ class InventoryCycleQueryService
 
     public function getProductsWithFrequentDiscrepancies(int $limit = 10): \Illuminate\Database\Eloquent\Collection
     {
+        $cutoffDate = now()->subDays(30);
+
         return Product::query()
             ->where(function ($q) {
                 $q->whereNull('is_deleted')->orWhere('is_deleted', 0);
             })
+            ->whereHas('productCounts', function ($query) use ($cutoffDate) {
+                $query->where('discrepancy', '!=', 0)
+                    ->where('created_at', '>=', $cutoffDate);
+            })
             ->withCount([
-                'productCounts as discrepancy_count' => function ($query) {
+                'productCounts as discrepancy_count' => function ($query) use ($cutoffDate) {
                     $query->where('discrepancy', '!=', 0)
-                        ->where('created_at', '>=', now()->subDays(30));
+                        ->where('created_at', '>=', $cutoffDate);
                 }
             ])
             ->with(['laboratory'])
-            ->having('discrepancy_count', '>', 0)
             ->orderBy('discrepancy_count', 'desc')
             ->limit($limit)
             ->get();
@@ -686,7 +691,7 @@ class InventoryCycleQueryService
     {
         return InvoiceCount::query()->select('invoices_counts.*')->with([
             'product' => function ($query) {
-                $query->with(['lots', 'laboratory']);
+                $query->with(['lots', 'laboratory', 'variants:id,product_id,sku,attribute_type,attribute_value,color_hex,stock']);
             },
             'user.employee',
             'supervisor.employee',
@@ -1067,7 +1072,7 @@ class InventoryCycleQueryService
     {
         return SaleCount::query()->select('sales_counts.*')->with([
             'product' => function ($query) {
-                $query->with(['lots', 'laboratory']);
+                $query->with(['lots', 'laboratory', 'variants:id,product_id,sku,attribute_type,attribute_value,color_hex,stock']);
             },
             'user.employee',
             'supervisor.employee',
