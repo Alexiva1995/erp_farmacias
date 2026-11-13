@@ -407,41 +407,30 @@ onUnmounted(() => {
 
         <!-- Indicadores / KPIs Rápidos de Cocina -->
         <div class="d-flex align-center flex-wrap gap-2">
-          <VChip color="info" variant="tonal" size="large" class="font-weight-black">
-            <VIcon icon="tabler-hourglass-empty" start size="18" />
-            En Cola: <span class="ms-1 text-h6 font-weight-black">{{ inQueueCount }}</span>
+          <VChip color="info" variant="tonal" size="small" class="font-weight-black rounded-pill px-3" title="Platos en cola">
+            <VIcon icon="tabler-hourglass-empty" start size="16" />
+            <span class="text-body-2 font-weight-black">{{ inQueueCount }}</span>
           </VChip>
 
-          <VChip color="warning" variant="tonal" size="large" class="font-weight-black">
-            <VIcon icon="tabler-flame" start size="18" />
-            En Fuego: <span class="ms-1 text-h6 font-weight-black">{{ inPreparingCount }}</span>
+          <VChip color="warning" variant="tonal" size="small" class="font-weight-black rounded-pill px-3" title="Platos en fuego">
+            <VIcon icon="tabler-flame" start size="16" />
+            <span class="text-body-2 font-weight-black">{{ inPreparingCount }}</span>
           </VChip>
 
-          <VChip color="primary" variant="tonal" size="large" class="font-weight-black">
-            <VIcon icon="tabler-receipt" start size="18" />
-            Comandas: <span class="ms-1 text-h6 font-weight-black">{{ displayedTickets.length }}</span>
-          </VChip>
-
-          <VChip
-            v-if="kdsMetrics.completed_today > 0"
-            color="success"
-            variant="tonal"
-            size="default"
-            class="font-weight-bold"
-            :title="`Despachados hoy: ${kdsMetrics.completed_today} platos`"
-          >
-            <VIcon icon="tabler-clock-check" start size="16" />
-            Prom: {{ kdsMetrics.avg_prep_minutes }}m ({{ kdsMetrics.on_time_percentage }}% SLA)
+          <VChip color="primary" variant="tonal" size="small" class="font-weight-black rounded-pill px-3" title="Comandas activas">
+            <VIcon icon="tabler-receipt" start size="16" />
+            <span class="text-body-2 font-weight-black">{{ displayedTickets.length }}</span>
           </VChip>
 
           <VBtn
+            icon
             size="small"
             :variant="showAllDaySummary ? 'flat' : 'tonal'"
             color="info"
-            prepend-icon="tabler-list-numbers"
+            title="Resumen All-Day"
             @click="showAllDaySummary = !showAllDaySummary"
           >
-            All-Day
+            <VIcon icon="tabler-list-numbers" />
           </VBtn>
 
           <VBtn
@@ -488,7 +477,7 @@ onUnmounted(() => {
               En Cocina
             </VBtn>
             <VBtn value="ready" size="small" prepend-icon="tabler-bell-ringing">
-              En Pase / Listos
+              Listos
             </VBtn>
           </VBtnToggle>
 
@@ -739,7 +728,7 @@ onUnmounted(() => {
               @click="handleServeAllTicket(ticket)"
             >
               <VIcon icon="tabler-check" start size="16" />
-              Marcar Todo Servido
+              Completar
             </VBtn>
           </div>
         </VCard>
