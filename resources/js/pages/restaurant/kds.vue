@@ -480,33 +480,6 @@ onUnmounted(() => {
               Listos
             </VBtn>
           </VBtnToggle>
-
-          <template v-if="isMultiStation">
-            <VDivider vertical class="mx-1" />
-            <span class="text-xs font-weight-black uppercase text-medium-emphasis">Estación:</span>
-            <VBtn
-              size="small"
-              :variant="selectedStationId === null ? 'flat' : 'outlined'"
-              :color="selectedStationId === null ? 'primary' : 'secondary'"
-              class="font-weight-bold"
-              @click="selectedStationId = null; fetchTickets(false)"
-            >
-              Todas ({{ totalPendingCount }})
-            </VBtn>
-
-            <VBtn
-              v-for="st in stations"
-              :key="st.id"
-              size="small"
-              :variant="selectedStationId === st.id ? 'flat' : 'outlined'"
-              :color="selectedStationId === st.id ? 'primary' : 'secondary'"
-              class="font-weight-bold"
-              @click="selectedStationId = st.id; fetchTickets(false)"
-            >
-              <VIcon :icon="st.icon || 'tabler-chef-hat'" start size="16" />
-              {{ st.name }}
-            </VBtn>
-          </template>
         </div>
       </div>
 
