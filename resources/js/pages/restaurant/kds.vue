@@ -524,16 +524,12 @@ onUnmounted(() => {
             :class="`bg-${getUrgencyColor(ticket.items?.[0]?.commanded_at, ticket.items?.[0]?.preparation_time_minutes)}`"
           />
 
-          <!-- Encabezado limpio de la Comanda: ID (sin #) -> Mesa -> Cronómetro -->
+          <!-- Encabezado limpio de la Comanda: ID - Mesa -> Cronómetro -->
           <div class="pa-3 bg-surface border-b flex-shrink-0">
             <div class="d-flex align-center justify-space-between gap-2">
-              <div class="d-flex align-center gap-2" style="min-width: 0; flex: 1;">
-                <VChip size="small" color="primary" variant="tonal" class="font-weight-black flex-shrink-0">
-                  {{ ticket.id }}
-                </VChip>
-                <span class="font-weight-black text-subtitle-1 text-high-emphasis text-uppercase text-truncate">
-                  {{ ticket.dining_table_name || 'Salón' }}
-                </span>
+              <div class="font-weight-black text-subtitle-1 text-uppercase text-truncate" style="min-width: 0; flex: 1;">
+                <span class="text-primary">{{ ticket.id }}</span>
+                <span class="text-high-emphasis"> - {{ ticket.dining_table_name || 'Salón' }}</span>
               </div>
 
               <VChip
@@ -546,10 +542,8 @@ onUnmounted(() => {
               </VChip>
             </div>
 
-            <div class="d-flex align-center gap-1 text-caption font-weight-bold text-medium-emphasis text-truncate mt-1">
-              <span>{{ ticket.items?.length }} ítems</span>
-              <span>•</span>
-              <span class="text-truncate">{{ ticket.seller_name }}</span>
+            <div class="text-caption font-weight-bold text-medium-emphasis text-truncate mt-1">
+              {{ ticket.seller_name }}
             </div>
           </div>
 
