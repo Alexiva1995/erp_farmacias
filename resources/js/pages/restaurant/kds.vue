@@ -118,24 +118,19 @@ const fetchTickets = async (silent = false) => {
   }
 };
 
-// Tickets filtrados según la pestaña activa (En Cocina vs En Pase)
+// Tickets filtrados según la pestaña activa (En Cocina vs En Pase) en orden FIFO (primero la más antigua)
 const displayedTickets = computed(() => {
-  if (activeViewTab.value === "ready") {
-    return tickets.value
-      .map((t) => ({
-        ...t,
-        items: (t.items || []).filter((i) => i.kitchen_status === "ready"),
-      }))
-      .filter((t) => t.items.length > 0);
-  }
+  const targetStatuses = activeViewTab.value === "ready"
+    ? ["ready"]
+    : ["queued", "preparing"];
+
   return tickets.value
     .map((t) => ({
       ...t,
-      items: (t.items || []).filter(
-        (i) => i.kitchen_status === "queued" || i.kitchen_status === "preparing"
-      ),
+      items: (t.items || []).filter((i) => targetStatuses.includes(i.kitchen_status)),
     }))
-    .filter((t) => t.items.length > 0);
+    .filter((t) => t.items.length > 0)
+    .sort((a, b) => a.id - b.id);
 });
 
 const openRecipeModal = (item) => {
@@ -355,20 +350,20 @@ onUnmounted(() => {
         </div>
 
         <!-- Indicadores / KPIs Rápidos de Cocina -->
-        <div class="d-flex align-center gap-3">
-          <VChip color="info" variant="tonal" size="default" class="font-weight-bold">
-            <VIcon icon="tabler-hourglass-empty" start size="16" />
-            En Cola: {{ inQueueCount }}
+        <div class="d-flex align-center flex-wrap gap-2">
+          <VChip color="info" variant="tonal" size="large" class="font-weight-black">
+            <VIcon icon="tabler-hourglass-empty" start size="18" />
+            En Cola: <span class="ms-1 text-h6 font-weight-black">{{ inQueueCount }}</span>
           </VChip>
 
-          <VChip color="warning" variant="tonal" size="default" class="font-weight-bold">
-            <VIcon icon="tabler-flame" start size="16" />
-            En Fuego: {{ inPreparingCount }}
+          <VChip color="warning" variant="tonal" size="large" class="font-weight-black">
+            <VIcon icon="tabler-flame" start size="18" />
+            En Fuego: <span class="ms-1 text-h6 font-weight-black">{{ inPreparingCount }}</span>
           </VChip>
 
-          <VChip color="primary" variant="tonal" size="default" class="font-weight-black">
-            <VIcon icon="tabler-receipt" start size="16" />
-            Comandas: {{ displayedTickets.length }}
+          <VChip color="primary" variant="tonal" size="large" class="font-weight-black">
+            <VIcon icon="tabler-receipt" start size="18" />
+            Comandas: <span class="ms-1 text-h6 font-weight-black">{{ displayedTickets.length }}</span>
           </VChip>
 
           <VChip
@@ -524,40 +519,46 @@ onUnmounted(() => {
         <VCard
           variant="flat"
           class="w-100 border rounded-lg overflow-hidden d-flex flex-column ticket-card shadow-sm"
+          style="max-height: calc(100vh - 210px);"
         >
-          <!-- Encabezado de la Comanda con Semáforo de Tiempo -->
+          <!-- Barra superior de urgencia (sin saturar toda la cabecera) -->
           <div
-            class="pa-3 text-white d-flex align-start justify-space-between gap-2"
+            style="height: 6px; width: 100%;"
             :class="`bg-${getUrgencyColor(ticket.items?.[0]?.commanded_at, ticket.items?.[0]?.preparation_time_minutes)}`"
-          >
+          />
+
+          <!-- Encabezado limpio de la Comanda -->
+          <div class="pa-3 bg-surface border-b d-flex align-start justify-space-between gap-2 flex-shrink-0">
             <div style="min-width: 0; flex: 1;">
-              <div class="font-weight-black text-subtitle-1 text-white text-uppercase text-truncate">
+              <div class="font-weight-black text-subtitle-1 text-high-emphasis text-uppercase text-truncate">
                 {{ ticket.dining_table_name || `Orden #${ticket.id}` }}
               </div>
-              <div class="d-flex align-center gap-1 text-super-xs font-weight-bold text-white opacity-90 text-truncate mt-1">
-                <span
-                  class="px-1.5 py-0.5 rounded text-white flex-shrink-0"
-                  style="background: rgba(255, 255, 255, 0.22);"
-                >
+              <div class="d-flex align-center gap-1 text-caption font-weight-bold text-medium-emphasis text-truncate mt-1">
+                <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-black flex-shrink-0">
                   #{{ ticket.id }} • {{ ticket.items?.length }} ítems
-                </span>
+                </VChip>
                 <span class="text-truncate">• {{ ticket.seller_name }}</span>
               </div>
             </div>
 
-            <!-- Cronómetro en Vivo -->
+            <!-- Cronómetro en Vivo con badge de alerta -->
             <div class="text-right flex-shrink-0" style="white-space: nowrap;">
-              <div class="font-weight-black text-h6 font-mono leading-none text-white">
+              <VChip
+                :color="getUrgencyColor(ticket.items?.[0]?.commanded_at, ticket.items?.[0]?.preparation_time_minutes)"
+                variant="flat"
+                size="small"
+                class="font-weight-black font-mono"
+              >
                 {{ getElapsedTime(ticket.items?.[0]?.commanded_at) }}
-              </div>
-              <div class="text-super-xs text-white opacity-85 mt-1">
+              </VChip>
+              <div class="text-super-xs text-medium-emphasis mt-1">
                 Est: {{ ticket.items?.[0]?.preparation_time_minutes || 15 }}m
               </div>
             </div>
           </div>
 
-          <!-- Cuerpo: Lista de Platos por Tiempos -->
-          <VCardText class="pa-2 bg-surface d-flex flex-column gap-2">
+          <!-- Cuerpo: Lista de Platos por Tiempos (con scroll interno si excede la pantalla) -->
+          <VCardText class="pa-2 bg-surface d-flex flex-column gap-2 flex-grow-1 overflow-y-auto">
             <div
               v-for="(courseItems, courseNum) in groupItemsByCourse(ticket.items)"
               :key="courseNum"
@@ -680,19 +681,20 @@ onUnmounted(() => {
                   </div>
 
                   <!-- Preferencias de Cocina y Exclusiones (Sin Cebolla, etc.) -->
-                  <div v-if="item.notes" class="mt-2 pa-2 dish-note-box rounded text-xs font-weight-bold d-flex align-start gap-1">
-                    <VIcon icon="tabler-alert-circle" size="15" class="flex-shrink-0 mt-0.5" color="warning" />
+                  <div v-if="item.notes" class="mt-2 pa-2 dish-note-box rounded text-body-2 font-weight-bold d-flex align-start gap-2">
+                    <VIcon icon="tabler-alert-circle" size="18" class="flex-shrink-0 mt-0.5" color="warning" />
                     <span>{{ item.notes }}</span>
                   </div>
 
                   <!-- Modificadores Seleccionados -->
-                  <div v-if="item.modifiers && item.modifiers.length > 0" class="mt-1 d-flex flex-wrap gap-1">
+                  <div v-if="item.modifiers && item.modifiers.length > 0" class="mt-2 d-flex flex-wrap gap-1">
                     <VChip
                       v-for="mod in item.modifiers"
                       :key="mod.id"
-                      size="x-small"
+                      size="small"
                       color="secondary"
                       variant="outlined"
+                      class="font-weight-bold"
                     >
                       {{ mod.name }}
                     </VChip>
@@ -704,8 +706,8 @@ onUnmounted(() => {
 
           <VDivider />
 
-          <!-- Acción Rápida: Despachar Comanda Completa -->
-          <div v-if="activeViewTab === 'active'" class="pa-2 bg-light">
+          <!-- Acción Rápida: Despachar Comanda Completa (siempre visible al pie) -->
+          <div v-if="activeViewTab === 'active'" class="pa-2 bg-light flex-shrink-0">
             <VBtn
               color="success"
               variant="flat"
