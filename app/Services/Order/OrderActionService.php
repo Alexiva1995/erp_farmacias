@@ -311,13 +311,18 @@ class OrderActionService
                 }
 
                 if ($existingItem) {
-                    $existingItem->update([
+                    $updateData = [
                         'quantity' => $requestedQuantity,
                         'price' => $unitPriceAtOrder,
                         'unit_cost' => $unitCost,
                         'unit_price_usd' => $price_usd,
                         'notes' => $notes,
-                    ]);
+                    ];
+                    if (empty($existingItem->kitchen_status) || $existingItem->kitchen_status === \App\Enums\KitchenStatusEnum::DRAFT->value) {
+                        $updateData['kitchen_status'] = \App\Enums\KitchenStatusEnum::QUEUED->value;
+                        $updateData['commanded_at'] = $existingItem->commanded_at ?? Carbon::now();
+                    }
+                    $existingItem->update($updateData);
                     $existingItem->modifiers()->delete();
                     foreach ($normalizedModifiers as $nm) {
                         $existingItem->modifiers()->create($nm);
