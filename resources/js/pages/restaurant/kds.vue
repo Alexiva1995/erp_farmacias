@@ -576,73 +576,47 @@ onUnmounted(() => {
                   :class="{
                     'dish-item-preparing': item.kitchen_status === 'preparing',
                     'dish-item-queued': item.kitchen_status === 'queued',
+                    'dish-item-ready': item.kitchen_status === 'ready',
                     'opacity-50 pointer-events-none': updatingItemId === item.id,
                   }"
                   @click="handleNextStatus(item)"
                 >
-                  <!-- Fila 1: Cantidad + Nombre completo del plato -->
-                  <div class="d-flex align-baseline gap-2 mb-2">
-                    <span
-                      v-if="item.quantity > 1"
-                      class="px-2 py-0.5 rounded bg-primary text-white font-weight-black text-body-2 flex-shrink-0"
-                    >
-                      {{ item.quantity }}x
-                    </span>
-                    <span v-else class="font-weight-black text-body-1 text-primary flex-shrink-0">
-                      {{ item.quantity }}x
-                    </span>
-                    <span class="font-weight-bold text-body-1 text-high-emphasis text-uppercase" style="line-height: 1.25;">
-                      {{ item.dish_name }}
-                    </span>
+                  <!-- Fila 1: Cantidad (1 X) + Nombre del plato + Ícono de Receta a la derecha -->
+                  <div class="d-flex align-start justify-space-between gap-2">
+                    <div class="d-flex align-baseline gap-2" style="min-width: 0; flex: 1;">
+                      <span
+                        class="font-weight-black text-h6 flex-shrink-0"
+                        :class="item.quantity > 1 ? 'text-primary' : 'text-high-emphasis'"
+                        style="line-height: 1.1;"
+                      >
+                        {{ item.quantity }} <span class="text-body-2 font-weight-bold text-medium-emphasis">X</span>
+                      </span>
+                      <span class="font-weight-bold text-body-1 text-high-emphasis text-uppercase" style="line-height: 1.25;">
+                        {{ item.dish_name }}
+                      </span>
+                    </div>
+
+                    <VBtn
+                      icon="tabler-book-2"
+                      size="x-small"
+                      variant="tonal"
+                      color="info"
+                      class="flex-shrink-0"
+                      title="Ver Receta y Foto"
+                      @click.stop="openRecipeModal(item)"
+                    />
                   </div>
 
-                  <!-- Fila 2: Metadatos (Silla/Estación) + Receta + Estado -->
-                  <div class="d-flex align-center justify-space-between gap-2 flex-wrap">
-                    <div class="d-flex align-center gap-1 flex-wrap">
-                      <VChip
-                        v-if="item.kitchen_station && isMultiStation"
-                        size="x-small"
-                        :color="item.kitchen_station.color || 'secondary'"
-                        variant="tonal"
-                      >
-                        <VIcon :icon="item.kitchen_station.icon || 'tabler-flame'" start size="12" />
-                        {{ item.kitchen_station.name }}
-                      </VChip>
-                      <VChip
-                        v-if="item.seat_number"
-                        size="x-small"
-                        color="primary"
-                        variant="tonal"
-                      >
-                        Silla {{ item.seat_number }}
-                      </VChip>
-                    </div>
-
-                    <div class="d-flex align-center gap-1 ms-auto flex-shrink-0">
-                      <VBtn
-                        icon="tabler-book-2"
-                        size="x-small"
-                        variant="tonal"
-                        color="info"
-                        title="Ver Receta y Foto"
-                        @click.stop="openRecipeModal(item)"
-                      />
-                      <VChip
-                        :color="item.kitchen_status_color"
-                        size="x-small"
-                        label
-                        class="font-weight-black text-uppercase"
-                      >
-                        <VIcon
-                          :icon="item.kitchen_status === 'preparing' ? 'tabler-flame' : 'tabler-clock'"
-                          start
-                          size="12"
-                        />
-                        {{ activeViewTab === 'active'
-                          ? (item.kitchen_status === 'queued' ? 'En Cola' : 'En Fuego')
-                          : item.kitchen_status_label }}
-                      </VChip>
-                    </div>
+                  <!-- Estación KDS (solo si hay múltiples estaciones) -->
+                  <div v-if="item.kitchen_station && isMultiStation" class="mt-1">
+                    <VChip
+                      size="x-small"
+                      :color="item.kitchen_station.color || 'secondary'"
+                      variant="tonal"
+                    >
+                      <VIcon :icon="item.kitchen_station.icon || 'tabler-flame'" start size="12" />
+                      {{ item.kitchen_station.name }}
+                    </VChip>
                   </div>
 
                   <!-- Acciones de Pase (solo en pestaña En Pase / Listos) -->
@@ -669,25 +643,18 @@ onUnmounted(() => {
                     />
                   </div>
 
-                  <!-- Preferencias de Cocina y Exclusiones (Sin Cebolla, etc.) -->
-                  <div v-if="item.notes" class="mt-2 pa-2 dish-note-box rounded text-body-2 font-weight-bold d-flex align-start gap-2">
-                    <VIcon icon="tabler-alert-circle" size="18" class="flex-shrink-0 mt-0.5" color="warning" />
-                    <span>{{ item.notes }}</span>
-                  </div>
-
-                  <!-- Modificadores Seleccionados -->
-                  <div v-if="item.modifiers && item.modifiers.length > 0" class="mt-2 d-flex flex-wrap gap-1">
-                    <VChip
-                      v-for="mod in item.modifiers"
-                      :key="mod.id"
-                      size="small"
-                      color="secondary"
-                      variant="outlined"
-                      class="font-weight-bold"
-                    >
+                  <!-- Detalles estilo lista (Notas / Término y Modificadores) -->
+                  <ul
+                    v-if="item.notes || (item.modifiers && item.modifiers.length > 0)"
+                    class="dish-details-list mt-2 ps-4 mb-0 text-body-2 font-weight-bold text-high-emphasis"
+                  >
+                    <li v-for="mod in (item.modifiers || [])" :key="mod.id">
                       {{ mod.name }}
-                    </VChip>
-                  </div>
+                    </li>
+                    <li v-if="item.notes" class="text-warning-darken-2">
+                      {{ item.notes }}
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -823,14 +790,24 @@ onUnmounted(() => {
 }
 
 .dish-item-queued {
-  background-color: rgba(var(--v-theme-surface), 1);
-  border-inline-start: 4px solid rgb(var(--v-theme-info)) !important;
+  background-color: #ffffff !important;
+  border-inline-start: 4px solid rgba(var(--v-theme-on-surface), 0.2) !important;
 }
 
 .dish-item-preparing {
-  background-color: rgba(var(--v-theme-warning), 0.1) !important;
-  border-color: rgba(var(--v-theme-warning), 0.45) !important;
+  background-color: rgba(var(--v-theme-warning), 0.18) !important;
+  border-color: rgba(var(--v-theme-warning), 0.55) !important;
   border-inline-start: 4px solid rgb(var(--v-theme-warning)) !important;
+}
+
+.dish-item-ready {
+  background-color: rgba(var(--v-theme-success), 0.18) !important;
+  border-color: rgba(var(--v-theme-success), 0.55) !important;
+  border-inline-start: 4px solid rgb(var(--v-theme-success)) !important;
+}
+
+.dish-details-list {
+  list-style-type: disc;
 }
 
 .dish-note-box {
