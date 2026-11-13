@@ -581,17 +581,16 @@ onUnmounted(() => {
                   }"
                   @click="handleNextStatus(item)"
                 >
-                  <!-- Fila 1: Cantidad (1 X) + Nombre del plato + Ícono de Receta a la derecha -->
+                  <!-- Fila 1: Cantidad (1 x) + Nombre del plato + Ícono de Receta a la derecha -->
                   <div class="d-flex align-start justify-space-between gap-2">
                     <div class="d-flex align-baseline gap-2" style="min-width: 0; flex: 1;">
                       <span
-                        class="font-weight-black text-h6 flex-shrink-0"
-                        :class="item.quantity > 1 ? 'text-primary' : 'text-high-emphasis'"
+                        class="font-weight-black text-h6 text-primary flex-shrink-0"
                         style="line-height: 1.1;"
                       >
-                        {{ item.quantity }} <span class="text-body-2 font-weight-bold text-medium-emphasis">X</span>
+                        {{ item.quantity }} <span class="text-body-1 font-weight-bold text-lowercase">x</span>
                       </span>
-                      <span class="font-weight-bold text-body-1 text-high-emphasis text-uppercase" style="line-height: 1.25;">
+                      <span class="font-weight-black text-body-1 text-high-emphasis text-uppercase" style="line-height: 1.2;">
                         {{ item.dish_name }}
                       </span>
                     </div>
@@ -646,7 +645,7 @@ onUnmounted(() => {
                   <!-- Detalles estilo lista (Notas / Término y Modificadores) -->
                   <ul
                     v-if="item.notes || (item.modifiers && item.modifiers.length > 0)"
-                    class="dish-details-list mt-2 ps-4 mb-0 text-body-2 font-weight-bold text-high-emphasis"
+                    class="dish-details-list mt-1 ps-4 mb-0 text-body-2 font-weight-medium text-medium-emphasis"
                   >
                     <li v-for="mod in (item.modifiers || [])" :key="mod.id">
                       {{ mod.name }}
@@ -662,21 +661,20 @@ onUnmounted(() => {
 
           <VDivider />
 
-          <!-- Acción Rápida: Despachar Comanda Completa (siempre visible al pie) -->
+          <!-- Acción Rápida: Completar Comanda (siempre visible al pie) -->
           <div v-if="activeViewTab === 'active'" class="pa-2 bg-light flex-shrink-0">
             <VBtn
               color="success"
               variant="flat"
               block
-              size="default"
-              class="font-weight-black text-uppercase rounded"
+              size="small"
+              class="font-weight-bold text-uppercase rounded"
               :loading="bumpingTicketId === ticket.id"
               :disabled="bumpingTicketId === ticket.id"
               @click="handleBumpTicket(ticket)"
             >
-              <VIcon icon="tabler-check" start size="18" />
-              Despachar Comanda
-              <span v-if="ticketIdx < 9" class="ms-1 opacity-75 text-xs">[{{ ticketIdx + 1 }}]</span>
+              <VIcon icon="tabler-check" start size="16" />
+              Completar
             </VBtn>
           </div>
         </VCard>
