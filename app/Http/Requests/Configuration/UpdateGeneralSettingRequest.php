@@ -125,6 +125,8 @@ class UpdateGeneralSettingRequest extends FormRequest
             'enable_dishes' => 'nullable|boolean',
             'enable_tables' => 'nullable|boolean',
             'enable_kds' => 'nullable|boolean',
+            'kds_multi_station' => 'nullable|boolean',
+            'kds_courses' => 'nullable|array',
             'enable_live_simulator' => 'nullable|boolean',
             'enable_modifiers' => 'nullable|boolean',
             'enable_split_check' => 'nullable|boolean',
