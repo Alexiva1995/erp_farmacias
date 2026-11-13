@@ -76,7 +76,6 @@ const dateTo = ref('')
 const searchQuery = ref('')
 
 // Catálogos auxiliares
-const kitchenStations = ref([])
 const dishesCatalog = ref([])
 const loadingDishes = ref(false)
 
@@ -698,7 +697,6 @@ onMounted(() => {
   if (isApprover.value) {
     statusFilter.value = 'all'
   }
-  fetchKitchenStations()
   fetchWastes()
 })
 
