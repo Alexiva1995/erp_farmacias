@@ -28,6 +28,14 @@ const isMultiStation = computed(() => {
   return brandingStore.settings?.kds_multi_station !== false;
 });
 
+const showCourseHeaders = computed(() => {
+  const courses = brandingStore.settings?.kds_courses;
+  if (Array.isArray(courses)) {
+    return courses.length > 1;
+  }
+  return true;
+});
+
 // Métricas en vivo
 const currentTime = ref(Date.now());
 let timerInterval = null;
@@ -449,7 +457,7 @@ onUnmounted(() => {
               class="course-section"
             >
               <!-- Separador de Tiempo (Entrada / Fuerte / Postre) -->
-              <div class="d-flex align-center gap-2 mb-2">
+              <div v-if="showCourseHeaders" class="d-flex align-center gap-2 mb-2">
                 <VChip
                   size="x-small"
                   color="secondary"
