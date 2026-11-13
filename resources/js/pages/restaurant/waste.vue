@@ -1137,7 +1137,7 @@ onUnmounted(() => {
           />
         </div>
       </div>
-    </v-card>
+    </VCard>
 
     <!-- DIÁLOGO: REPORTAR MERMA (INDIVIDUAL O HOJA DE MERMA DE TURNO) -->
     <v-dialog

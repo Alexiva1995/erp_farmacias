@@ -50,26 +50,26 @@ class KitchenWasteService implements KitchenWasteServiceInterface
     protected function resolveUnifiedUnitCost(string $itemType, ?int $productId, ?int $dishId): float
     {
         if ($itemType === 'product' && $productId) {
-            $product = Product::select(['id', 'unit_cost', 'cost_price'])->findOrFail($productId);
-            return round((float) ($product->unit_cost ?: $product->cost_price ?: 0.0), 4);
+            $product = Product::select(['id', 'unit_cost'])->findOrFail($productId);
+            return round((float) ($product->unit_cost ?: 0.0), 4);
         }
 
         if ($itemType === 'dish' && $dishId) {
             $dish = Dish::with([
-                'ingredients:id,name,unit_cost,cost_price',
-                'outputProduct:id,name,unit_cost,cost_price',
+                'ingredients:id,name,unit_cost',
+                'outputProduct:id,name,unit_cost',
             ])->findOrFail($dishId);
 
             // Si es una sub-receta vinculada a un producto de inventario con costo unificado en products
-            if ($dish->outputProduct && (float) ($dish->outputProduct->unit_cost ?: $dish->outputProduct->cost_price ?: 0) > 0) {
-                return round((float) ($dish->outputProduct->unit_cost ?: $dish->outputProduct->cost_price), 4);
+            if ($dish->outputProduct && (float) ($dish->outputProduct->unit_cost ?: 0) > 0) {
+                return round((float) $dish->outputProduct->unit_cost, 4);
             }
 
             // Calcular sumando el costo unificado de cada ingrediente desde la tabla products
             if ($dish->ingredients && $dish->ingredients->isNotEmpty()) {
                 $recipeCost = 0.0;
                 foreach ($dish->ingredients as $ingredient) {
-                    $unifiedIngCost = (float) ($ingredient->unit_cost ?: $ingredient->cost_price ?: 0.0);
+                    $unifiedIngCost = (float) ($ingredient->unit_cost ?: 0.0);
                     $portion = (float) ($ingredient->pivot->portion ?? 0.0);
                     $recipeCost += ($unifiedIngCost * $portion);
                 }
