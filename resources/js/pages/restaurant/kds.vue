@@ -524,12 +524,15 @@ onUnmounted(() => {
             :class="`bg-${getUrgencyColor(ticket.items?.[0]?.commanded_at, ticket.items?.[0]?.preparation_time_minutes)}`"
           />
 
-          <!-- Encabezado limpio de la Comanda: ID - Mesa -> Cronómetro -->
+          <!-- Encabezado limpio de la Comanda: ID - Mesa (PrimerNombre) -> Cronómetro -->
           <div class="pa-3 bg-surface border-b flex-shrink-0">
             <div class="d-flex align-center justify-space-between gap-2">
               <div class="font-weight-black text-subtitle-1 text-uppercase text-truncate" style="min-width: 0; flex: 1;">
                 <span class="text-primary">{{ ticket.id }}</span>
                 <span class="text-high-emphasis"> - {{ ticket.dining_table_name || 'Salón' }}</span>
+                <span v-if="ticket.seller_name" class="text-medium-emphasis font-weight-bold text-body-2 text-capitalize">
+                  ({{ String(ticket.seller_name).trim().split(/\s+/)[0] }})
+                </span>
               </div>
 
               <VChip
@@ -540,10 +543,6 @@ onUnmounted(() => {
               >
                 {{ getElapsedTime(ticket.items?.[0]?.commanded_at) }}
               </VChip>
-            </div>
-
-            <div class="text-caption font-weight-bold text-medium-emphasis text-truncate mt-1">
-              {{ ticket.seller_name }}
             </div>
           </div>
 
