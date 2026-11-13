@@ -18,6 +18,8 @@ const selectedStationId = ref(null);
 const fullScreen = ref(false);
 const activeViewTab = ref("active"); // 'active' (En Cocina) | 'ready' (En Pase / Listos)
 const soundEnabled = ref(true);
+const showAllDaySummary = ref(false);
+const kdsContainerRef = ref(null);
 const previousTicketIds = ref(new Set());
 
 // Modal de Foto y Receta del Plato
@@ -200,13 +202,32 @@ const handleBumpTicket = async (ticket) => {
   }
 };
 
-// Cálculo de tiempo transcurrido (mm:ss) y estado semáforo
+// Resumen consolidado All-Day por platillo (para producción por lotes)
+const allDaySummary = computed(() => {
+  const map = new Map();
+  displayedTickets.value.forEach((ticket) => {
+    (ticket.items || []).forEach((item) => {
+      const key = item.dish_name || "Plato";
+      const current = map.get(key) || { name: key, qty: 0 };
+      current.qty += Number(item.quantity || 1);
+      map.set(key, current);
+    });
+  });
+  return Array.from(map.values()).sort((a, b) => b.qty - a.qty);
+});
+
+// Cálculo de tiempo transcurrido (mm:ss o Xh Ym si >= 60m) y estado semáforo
 const getElapsedTime = (commandedAt) => {
   if (!commandedAt) return "00:00";
   const start = new Date(commandedAt).getTime();
   const diffSec = Math.max(0, Math.floor((currentTime.value - start) / 1000));
   const min = Math.floor(diffSec / 60);
   const sec = diffSec % 60;
+  if (min >= 60) {
+    const hrs = Math.floor(min / 60);
+    const remMin = min % 60;
+    return `${hrs}h ${String(remMin).padStart(2, "0")}m`;
+  }
   return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 };
 
@@ -232,10 +253,11 @@ const groupItemsByCourse = (items = []) => {
   return groups;
 };
 
-// Pantalla completa táctil
+// Pantalla completa táctil sobre el contenedor KDS (oculta sidebar y topbar)
 const toggleFullScreen = () => {
+  const target = kdsContainerRef.value || document.documentElement;
   if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(() => {});
+    target.requestFullscreen().catch(() => {});
     fullScreen.value = true;
   } else {
     if (document.exitFullscreen) {
@@ -267,7 +289,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="kds-view pb-12">
+  <div ref="kdsContainerRef" class="kds-view bg-background pa-2 pb-12 overflow-y-auto">
     <!-- Header de Cocina / KDS Bar -->
     <VCard variant="flat" class="border rounded-lg mb-4 bg-surface">
       <div class="pa-4 d-flex flex-wrap align-center justify-space-between gap-4">
@@ -305,8 +327,18 @@ onUnmounted(() => {
 
           <VChip color="primary" variant="tonal" size="default" class="font-weight-black">
             <VIcon icon="tabler-receipt" start size="16" />
-            Comandas: {{ tickets.length }}
+            Comandas: {{ displayedTickets.length }}
           </VChip>
+
+          <VBtn
+            size="small"
+            :variant="showAllDaySummary ? 'flat' : 'tonal'"
+            color="info"
+            prepend-icon="tabler-list-numbers"
+            @click="showAllDaySummary = !showAllDaySummary"
+          >
+            All-Day
+          </VBtn>
 
           <VBtn
             icon
@@ -384,6 +416,28 @@ onUnmounted(() => {
           </template>
         </div>
       </div>
+
+      <!-- Barra Consolidada All-Day (Resumen por Plato) -->
+      <VExpandTransition>
+        <div v-if="showAllDaySummary && allDaySummary.length > 0">
+          <VDivider />
+          <div class="pa-3 bg-surface d-flex flex-wrap align-center gap-2">
+            <span class="text-xs font-weight-black text-uppercase text-medium-emphasis me-2">
+              Total Pendiente por Plato:
+            </span>
+            <VChip
+              v-for="row in allDaySummary"
+              :key="row.name"
+              size="small"
+              color="primary"
+              variant="tonal"
+              class="font-weight-bold"
+            >
+              <span class="font-weight-black me-1">{{ row.qty }}x</span> {{ row.name }}
+            </VChip>
+          </div>
+        </div>
+      </VExpandTransition>
     </VCard>
 
     <!-- Estado de Carga Inicial -->
@@ -405,7 +459,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Grid Táctil de Comandas (Tickets) -->
-    <VRow v-else>
+    <VRow v-else align="start">
       <VCol
         v-for="ticket in displayedTickets"
         :key="ticket.id"
@@ -413,7 +467,6 @@ onUnmounted(() => {
         sm="6"
         md="4"
         lg="3"
-        class="d-flex"
       >
         <VCard
           variant="flat"
@@ -421,36 +474,39 @@ onUnmounted(() => {
         >
           <!-- Encabezado de la Comanda con Semáforo de Tiempo -->
           <div
-            class="pa-3 text-white d-flex align-center justify-space-between"
+            class="pa-3 text-white d-flex align-start justify-space-between gap-2"
             :class="`bg-${getUrgencyColor(ticket.items?.[0]?.commanded_at, ticket.items?.[0]?.preparation_time_minutes)}`"
           >
-            <div>
-              <div class="d-flex align-center gap-2">
-                <span class="font-weight-black text-subtitle-1 text-uppercase">
+            <div style="min-width: 0; flex: 1;">
+              <div class="d-flex align-center gap-2 flex-wrap">
+                <span class="font-weight-black text-subtitle-1 text-white text-uppercase text-truncate">
                   {{ ticket.dining_table_name || `Orden #${ticket.id}` }}
                 </span>
-                <VChip size="x-small" color="white" variant="flat" class="text-dark font-weight-black">
+                <span
+                  class="px-2 py-0.5 rounded text-super-xs font-weight-black text-white flex-shrink-0"
+                  style="background: rgba(255, 255, 255, 0.22);"
+                >
                   #{{ ticket.id }} • {{ ticket.items?.length }} ítems
-                </VChip>
+                </span>
               </div>
-              <div class="text-super-xs font-weight-bold opacity-90 truncate-line" style="max-width: 185px;">
+              <div class="text-super-xs font-weight-bold text-white opacity-90 text-truncate mt-1">
                 {{ ticket.seller_name }} • {{ ticket.client_name }}
               </div>
             </div>
 
             <!-- Cronómetro en Vivo -->
-            <div class="text-right">
-              <div class="font-weight-black text-h6 font-mono leading-none">
+            <div class="text-right flex-shrink-0" style="white-space: nowrap;">
+              <div class="font-weight-black text-h6 font-mono leading-none text-white">
                 {{ getElapsedTime(ticket.items?.[0]?.commanded_at) }}
               </div>
-              <div class="text-super-xs opacity-75">
-                Estimado: {{ ticket.items?.[0]?.preparation_time_minutes || 15 }}m
+              <div class="text-super-xs text-white opacity-85 mt-1">
+                Est: {{ ticket.items?.[0]?.preparation_time_minutes || 15 }}m
               </div>
             </div>
           </div>
 
           <!-- Cuerpo: Lista de Platos por Tiempos -->
-          <VCardText class="pa-3 flex-grow-1 bg-surface d-flex flex-column gap-3 overflow-y-auto" style="max-height: 480px;">
+          <VCardText class="pa-2 bg-surface d-flex flex-column gap-2">
             <div
               v-for="(courseItems, courseNum) in groupItemsByCourse(ticket.items)"
               :key="courseNum"
@@ -485,63 +541,67 @@ onUnmounted(() => {
                 >
                   <div class="d-flex align-start justify-space-between gap-2 mb-1">
                     <div class="d-flex align-baseline gap-2">
-                      <span class="font-weight-black text-subtitle-1 text-primary">
+                      <span
+                        v-if="item.quantity > 1"
+                        class="px-2 py-0.5 rounded bg-primary text-white font-weight-black text-subtitle-2 flex-shrink-0"
+                      >
                         {{ item.quantity }}x
                       </span>
-                      <span class="font-weight-bold text-body-2 text-high-emphasis text-uppercase">
+                      <span v-else class="font-weight-black text-subtitle-1 text-primary flex-shrink-0">
+                        {{ item.quantity }}x
+                      </span>
+                      <span class="font-weight-black text-subtitle-1 text-high-emphasis text-uppercase leading-tight">
                         {{ item.dish_name }}
                       </span>
                     </div>
 
-                    <!-- Estado Actual Táctil -->
-                    <VChip
-                      :color="item.kitchen_status_color"
-                      size="x-small"
-                      label
-                      class="font-weight-black text-uppercase flex-shrink-0"
-                    >
-                      <VIcon
-                        :icon="item.kitchen_status === 'preparing' ? 'tabler-flame' : 'tabler-clock'"
-                        start
-                        size="12"
-                      />
-                      {{ item.kitchen_status_label }}
-                    </VChip>
-                  </div>
-
-                  <!-- Estación KDS, Comensal, Botón Foto/Receta e indicación táctil -->
-                  <div class="d-flex align-center justify-space-between gap-2 mt-1">
-                    <div class="d-flex align-center gap-1 flex-wrap">
-                      <VChip
-                        v-if="item.kitchen_station && isMultiStation"
-                        size="x-small"
-                        :color="item.kitchen_station.color || 'secondary'"
-                        variant="tonal"
-                      >
-                        <VIcon :icon="item.kitchen_station.icon || 'tabler-flame'" start size="12" />
-                        {{ item.kitchen_station.name }}
-                      </VChip>
-                      <VChip
-                        v-if="item.seat_number"
-                        size="x-small"
-                        color="primary"
-                        variant="tonal"
-                      >
-                        Silla {{ item.seat_number }}
-                      </VChip>
+                    <!-- Botón compacto Receta/Foto + Chip de Estado/Acción -->
+                    <div class="d-flex align-center gap-1 flex-shrink-0">
                       <VBtn
+                        icon="tabler-book-2"
                         size="x-small"
                         variant="tonal"
                         color="info"
-                        prepend-icon="tabler-book-2"
+                        title="Ver Receta y Foto"
                         @click.stop="openRecipeModal(item)"
+                      />
+                      <VChip
+                        :color="item.kitchen_status_color"
+                        size="small"
+                        label
+                        class="font-weight-black text-uppercase"
                       >
-                        Receta / Foto
-                      </VBtn>
+                        <VIcon
+                          :icon="item.kitchen_status === 'preparing' ? 'tabler-flame' : 'tabler-clock'"
+                          start
+                          size="13"
+                        />
+                        {{ activeViewTab === 'active'
+                          ? (item.kitchen_status === 'queued' ? 'Cola • Iniciar' : 'Fuego • Listo')
+                          : item.kitchen_status_label }}
+                      </VChip>
                     </div>
-                    <span v-if="activeViewTab === 'active'" class="text-super-xs text-medium-emphasis ms-auto">
-                      {{ item.kitchen_status === 'queued' ? 'Tocar: Iniciar' : 'Tocar: Listo' }}
-                    </span>
+                  </div>
+
+                  <!-- Estación KDS y Comensal -->
+                  <div v-if="(item.kitchen_station && isMultiStation) || item.seat_number" class="d-flex align-center gap-1 flex-wrap mt-1">
+                    <VChip
+                      v-if="item.kitchen_station && isMultiStation"
+                      size="x-small"
+                      :color="item.kitchen_station.color || 'secondary'"
+                      variant="tonal"
+                    >
+                      <VIcon :icon="item.kitchen_station.icon || 'tabler-flame'" start size="12" />
+                      {{ item.kitchen_station.name }}
+                    </VChip>
+                    <VChip
+                      v-if="item.seat_number"
+                      size="x-small"
+                      color="primary"
+                      variant="tonal"
+                    >
+                      Silla {{ item.seat_number }}
+                    </VChip>
                   </div>
 
                   <!-- Acciones de Pase (solo en pestaña En Pase / Listos) -->
