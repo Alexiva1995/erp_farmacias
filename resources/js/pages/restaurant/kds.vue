@@ -581,16 +581,17 @@ onUnmounted(() => {
                   }"
                   @click="handleNextStatus(item)"
                 >
-                  <!-- Fila 1: Cantidad (1 x) + Nombre del plato + Ícono de Receta a la derecha -->
+                  <!-- Fila 1: Cantidad (solo si > 1) + Nombre del plato + Ícono de Receta a la derecha -->
                   <div class="d-flex align-start justify-space-between gap-2">
-                    <div class="d-flex align-baseline gap-2" style="min-width: 0; flex: 1;">
+                    <div class="d-flex align-baseline gap-1" style="min-width: 0; flex: 1;">
                       <span
+                        v-if="item.quantity > 1"
                         class="font-weight-black text-h6 text-primary flex-shrink-0"
                         style="line-height: 1.1;"
                       >
-                        {{ item.quantity }} <span class="text-body-1 font-weight-bold text-lowercase">x</span>
+                        {{ item.quantity }}<span class="text-body-1 font-weight-bold text-lowercase">x</span>
                       </span>
-                      <span class="font-weight-black text-body-1 text-high-emphasis text-uppercase" style="line-height: 1.2;">
+                      <span class="font-weight-black text-body-1 text-high-emphasis text-uppercase" style="line-height: 1.15;">
                         {{ item.dish_name }}
                       </span>
                     </div>
@@ -805,7 +806,7 @@ onUnmounted(() => {
 }
 
 .dish-details-list {
-  list-style-type: disc;
+  list-style-type: none;
 }
 
 .dish-note-box {
