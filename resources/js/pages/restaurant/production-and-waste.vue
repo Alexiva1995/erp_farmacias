@@ -8,8 +8,8 @@
             <v-icon size="24">tabler-chef-hat</v-icon>
           </v-avatar>
           <div>
-            <h2 class="text-h6 font-weight-bold mb-0">Producción en Lote & Mermas de Cocina</h2>
-            <div class="text-caption text-medium-emphasis">Gestión de sub-recetas (salsas, masas, preparaciones base) y control de desperdicios</div>
+            <h2 class="text-h6 font-weight-bold mb-0">Producción en Lote & Sub-Recetas</h2>
+            <div class="text-caption text-medium-emphasis">Gestión de sub-recetas (salsas, masas, preparaciones base) y órdenes de producción</div>
           </div>
         </div>
 
@@ -22,19 +22,6 @@
             <v-tab value="production">
               <v-icon start size="18">tabler-packages</v-icon>
               Lotes Producidos
-            </v-tab>
-            <v-tab value="waste">
-              <v-icon start size="18">tabler-trash-x</v-icon>
-              Control de Mermas
-              <v-chip
-                v-if="pendingWastesCount > 0"
-                size="x-small"
-                color="warning"
-                variant="flat"
-                class="ms-2 font-weight-bold"
-              >
-                {{ pendingWastesCount }}
-              </v-chip>
             </v-tab>
           </v-tabs>
         </div>
@@ -202,177 +189,182 @@
 
     <!-- PESTAÑA 2: ÓRDENES DE PRODUCCIÓN / LOTES PRODUCIDOS -->
     <div v-else-if="activeTab === 'production'">
-      <v-row class="mb-4" dense>
-        <v-col cols="12" class="d-flex justify-end gap-2">
-          <v-btn
-            color="primary"
-            prepend-icon="tabler-plus"
-            @click="openProductionModal"
-          >
+      <AppFilterBase
+        v-model:search="prodSearch"
+        search-placeholder="Buscar por código, sub-receta o número de lote..."
+        :show-add="true"
+        add-button-text="Nueva Orden de Producción"
+        :show-advanced="true"
+        :has-advanced-filters="prodFilterDishId !== null || prodFilterStatus !== null"
+        @clear="prodSearch = ''; prodFilterDishId = null; prodFilterStatus = null; fetchProductionOrders()"
+        @add="openProductionModal"
+      >
+        <template #advanced-filters>
+          <VCol cols="12" sm="6" md="4">
+            <VSelect
+              v-model="prodFilterDishId"
+              :items="subRecipeDishes"
+              item-title="name"
+              item-value="id"
+              placeholder="Filtrar por Sub-Receta"
+              clearable
+              density="compact"
+              hide-details
+            />
+          </VCol>
+          <VCol cols="12" sm="6" md="4">
+            <VSelect
+              v-model="prodFilterStatus"
+              :items="prodStatusOptions"
+              placeholder="Filtrar por Estado"
+              clearable
+              density="compact"
+              hide-details
+            />
+          </VCol>
+        </template>
+      </AppFilterBase>
+
+      <VCard variant="flat" class="border rounded-lg bg-surface overflow-hidden">
+        <div v-if="loadingProdOrders && productionOrders.length === 0" class="pa-6">
+          <VSkeletonLoader
+            type="table-row-divider@5"
+            class="bg-transparent"
+          />
+        </div>
+
+        <div v-else-if="!loadingProdOrders && productionOrders.length === 0" class="pa-16 text-center text-disabled">
+          <VIcon icon="tabler-packages" size="64" class="mb-4 opacity-20" />
+          <h3 class="text-h6 font-weight-black opacity-50 uppercase">No hay órdenes de producción registradas</h3>
+          <p>Produce un lote de tus sub-recetas para ingresar inventario elaborado con lote y caducidad</p>
+          <VBtn color="primary" prepend-icon="tabler-plus" class="mt-2" @click="openProductionModal">
             Nueva Orden de Producción
-          </v-btn>
-        </v-col>
-      </v-row>
+          </VBtn>
+        </div>
 
-      <VCard variant="flat" class="border rounded-lg bg-surface overflow-hidden">
-        <v-table density="comfortable" hover class="premium-table text-no-wrap">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Sub-Receta / Preparación</th>
-              <th>Producto Elaborado</th>
-              <th class="text-center">Multiplicador</th>
-              <th class="text-center">Cantidad Real</th>
-              <th class="text-right">Costo Unit. Calculado</th>
-              <th class="text-right">Costo Total</th>
-              <th>Lote Generado</th>
-              <th>Estado</th>
-              <th>Fecha</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="order in productionOrders" :key="order.id">
-              <td class="font-weight-bold text-primary">{{ order.code }}</td>
-              <td class="font-weight-bold text-xs uppercase">{{ order.dish?.name }}</td>
-              <td>
-                <span class="font-weight-medium text-xs">{{ order.output_product?.name || 'Insumo Base' }}</span>
-              </td>
-              <td class="text-center text-xs font-weight-black text-secondary">{{ order.batch_multiplier }}x</td>
-              <td class="text-center font-weight-bold text-success text-xs">{{ order.actual_quantity }}</td>
-              <td class="text-right text-xs font-weight-bold">{{ formatCurrency(order.unit_cost_calculated) }}</td>
-              <td class="text-right font-weight-bold text-primary text-xs">{{ formatCurrency(order.total_production_cost) }}</td>
-              <td>
-                <v-chip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
-                  {{ order.lot_number || 'N/A' }}
-                </v-chip>
-              </td>
-              <td>
-                <v-chip size="small" color="success" class="font-weight-bold uppercase">
-                  {{ order.status_label || order.status }}
-                </v-chip>
-              </td>
-              <td class="text-caption text-medium-emphasis">{{ order.produced_at }}</td>
-            </tr>
-            <tr v-if="!productionOrders.length">
-              <td colspan="10" class="text-center py-8 text-medium-emphasis">
-                No hay órdenes de producción registradas aún.
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
-      </VCard>
-    </div>
-
-    <!-- PESTAÑA 3: CONTROL DE MERMAS Y DESPERDICIOS -->
-    <div v-else>
-      <v-row class="mb-4" dense>
-        <v-col cols="12" class="d-flex justify-end">
-          <v-btn
-            color="error"
-            prepend-icon="tabler-alert-triangle"
-            @click="openWasteModal"
+        <div v-else>
+          <VDataTableServer
+            :items-per-page="prodItemsPerPage"
+            :page="prodPage"
+            :items="productionOrders"
+            :items-length="totalProdOrders"
+            :loading="loadingProdOrders"
+            :sort-by="[{ key: prodSortBy, order: prodOrderBy }]"
+            :must-sort="true"
+            class="premium-table text-no-wrap"
+            @update:options="updateProdTableOptions"
+            :headers="[
+              { title: 'Código', key: 'code', sortable: true },
+              { title: 'Sub-Receta / Insumo', key: 'dish', sortable: false },
+              { title: 'Lote Mult.', key: 'batch_multiplier', sortable: true, align: 'center' },
+              { title: 'Esperado vs. Real', key: 'actual_quantity', sortable: true, align: 'center' },
+              { title: 'Costo Unit.', key: 'unit_cost_calculated', sortable: false, align: 'end' },
+              { title: 'Costo Total', key: 'total_production_cost', sortable: true, align: 'end' },
+              { title: 'Lote / Caducidad', key: 'lot_number', sortable: false, align: 'center' },
+              { title: 'Estado', key: 'status', sortable: true, align: 'center' },
+              { title: 'Fecha', key: 'produced_at', sortable: true },
+              { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
+            ]"
           >
-            Registrar Merma / Baja
-          </v-btn>
-        </v-col>
-      </v-row>
+            <template #item.code="{ item }">
+              <span class="font-weight-black text-primary text-xs">{{ item.code }}</span>
+            </template>
 
-      <VCard variant="flat" class="border rounded-lg bg-surface overflow-hidden">
-        <v-table density="comfortable" hover class="premium-table text-no-wrap">
-          <thead>
-            <tr>
-              <th>ID Producto</th>
-              <th>Ítem Afectado</th>
-              <th class="text-center">Cantidad</th>
-              <th class="text-right">Pérdida Total</th>
-              <th>Descripción / Motivo</th>
-              <th class="text-center">Foto</th>
-              <th>Reportado Por</th>
-              <th class="text-center">Estado</th>
-              <th>Fecha</th>
-              <th class="text-end">Acciones Admin</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="waste in kitchenWastes" :key="waste.id">
-              <td>
-                <v-chip size="x-small" color="primary" variant="tonal" class="font-weight-black">
-                  #{{ waste.product_id || waste.dish_id || waste.id }}
-                </v-chip>
-              </td>
-              <td class="font-weight-bold text-xs uppercase">{{ waste.item_name }}</td>
-              <td class="text-center font-weight-bold text-error text-xs">
-                -{{ waste.quantity }} {{ waste.product_unit || 'und' }}
-              </td>
-              <td class="text-right font-weight-bold text-error text-xs">
-                -{{ formatCurrency(waste.total_loss_usd) }}
-              </td>
-              <td style="max-width: 260px; white-space: normal;">
-                <div class="py-1">
-                  <div class="text-xs font-weight-bold">{{ waste.notes || 'Sin descripción' }}</div>
-                  <div class="text-caption text-medium-emphasis">{{ waste.reason_label || waste.reason }}</div>
-                </div>
-              </td>
-              <td class="text-center">
-                <v-btn
-                  v-if="waste.photo_url"
-                  size="x-small"
-                  variant="tonal"
-                  color="info"
-                  prepend-icon="tabler-photo"
-                  @click="openWastePhotoPreview(waste)"
-                >
-                  Ver Foto
-                </v-btn>
-                <span v-else class="text-caption text-disabled">Sin foto</span>
-              </td>
-              <td class="text-caption">{{ waste.user_name }}</td>
-              <td class="text-center">
-                <v-chip
-                  size="x-small"
-                  :color="waste.status_color || (waste.status === 'approved' ? 'success' : waste.status === 'rejected' ? 'error' : 'warning')"
-                  variant="tonal"
-                  class="font-weight-bold"
-                >
-                  {{ waste.status_label || waste.status }}
-                </v-chip>
-              </td>
-              <td class="text-caption text-medium-emphasis">{{ waste.occurred_at }}</td>
-              <td class="text-end">
-                <div v-if="waste.status === 'pending' && isApprover" class="d-flex justify-end gap-1">
-                  <v-btn
-                    size="x-small"
-                    color="success"
-                    variant="flat"
-                    prepend-icon="tabler-check"
-                    :loading="processingWasteId === waste.id"
-                    @click="approveWasteRecord(waste)"
-                  >
-                    Aprobar
-                  </v-btn>
-                  <v-btn
-                    size="x-small"
-                    color="error"
-                    variant="outlined"
-                    prepend-icon="tabler-x"
-                    :loading="processingWasteId === waste.id"
-                    @click="rejectWasteRecord(waste)"
-                  >
-                    Rechazar
-                  </v-btn>
-                </div>
-                <span v-else class="text-caption text-medium-emphasis">
-                  {{ waste.approved_at || 'Procesada' }}
+            <template #item.dish="{ item }">
+              <div class="d-flex flex-column py-1">
+                <span class="font-weight-bold text-high-emphasis uppercase text-xs">{{ item.dish?.name }}</span>
+                <span class="text-super-xs text-disabled">
+                  Insumo: {{ item.output_product?.name || 'Insumo Base' }}
                 </span>
-              </td>
-            </tr>
-            <tr v-if="!kitchenWastes.length">
-              <td colspan="10" class="text-center py-8 text-medium-emphasis">
-                No hay mermas registradas en el período.
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
+              </div>
+            </template>
+
+            <template #item.batch_multiplier="{ item }">
+              <span class="text-xs font-weight-black text-secondary">{{ item.batch_multiplier }}x</span>
+            </template>
+
+            <template #item.actual_quantity="{ item }">
+              <div class="d-flex flex-column align-center py-1">
+                <div>
+                  <span class="text-caption text-medium-emphasis">{{ item.expected_quantity }} → </span>
+                  <span class="font-weight-black text-success text-xs">
+                    {{ item.actual_quantity }} {{ item.output_product?.unit_of_measure || 'und' }}
+                  </span>
+                </div>
+                <VChip
+                  size="x-small"
+                  :color="(item.yield_efficiency_pct || 100) >= 95 ? 'success' : (item.yield_efficiency_pct || 100) >= 80 ? 'warning' : 'error'"
+                  variant="tonal"
+                  class="font-weight-bold mt-1"
+                >
+                  {{ item.yield_efficiency_pct || 100 }}% rend.
+                </VChip>
+              </div>
+            </template>
+
+            <template #item.unit_cost_calculated="{ item }">
+              <span class="text-xs font-weight-bold">{{ formatCurrency(item.unit_cost_calculated) }}</span>
+            </template>
+
+            <template #item.total_production_cost="{ item }">
+              <span class="font-weight-bold text-primary text-xs">{{ formatCurrency(item.total_production_cost) }}</span>
+            </template>
+
+            <template #item.lot_number="{ item }">
+              <div class="d-flex flex-column align-center py-1">
+                <v-chip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
+                  {{ item.lot_number || 'Sin Lote' }}
+                </v-chip>
+                <span v-if="item.expiration_date" class="text-super-xs text-medium-emphasis mt-1">
+                  Vence: {{ item.expiration_date }}
+                </span>
+              </div>
+            </template>
+
+            <template #item.status="{ item }">
+              <v-chip
+                size="x-small"
+                :color="item.status_color || (item.status === 'cancelled' ? 'error' : 'success')"
+                variant="tonal"
+                class="font-weight-bold uppercase"
+              >
+                {{ item.status_label || item.status }}
+              </v-chip>
+            </template>
+
+            <template #item.produced_at="{ item }">
+              <div class="d-flex flex-column py-1">
+                <span class="text-xs text-high-emphasis">{{ item.produced_at }}</span>
+                <span v-if="item.user?.name" class="text-super-xs text-disabled">Por: {{ item.user.name }}</span>
+              </div>
+            </template>
+
+            <template #item.actions="{ item }">
+              <div class="d-flex gap-1 justify-end">
+                <IconBtn
+                  color="primary"
+                  class="bg-primary-light"
+                  title="Imprimir Etiqueta de Lote y Caducidad"
+                  @click="printPrepLotLabel(item)"
+                >
+                  <VIcon icon="tabler-printer" size="18" />
+                  <VTooltip activator="parent" location="top">Imprimir Etiqueta PEPS</VTooltip>
+                </IconBtn>
+                <IconBtn
+                  v-if="item.status !== 'cancelled' && isApprover"
+                  color="error"
+                  class="bg-error-light"
+                  title="Anular Orden y Revertir Insumos"
+                  :loading="cancellingOrderId === item.id"
+                  @click="handleCancelProductionOrder(item)"
+                >
+                  <VIcon icon="tabler-ban" size="18" />
+                  <VTooltip activator="parent" location="top">Anular y Revertir Stock</VTooltip>
+                </IconBtn>
+              </div>
+            </template>
+          </VDataTableServer>
+        </div>
       </VCard>
     </div>
 
@@ -580,7 +572,7 @@
     <!-- DIÁLOGO: CREAR ORDEN DE PRODUCCIÓN -->
     <v-dialog
       v-model="showProductionModal"
-      max-width="600"
+      max-width="720"
       :fullscreen="$vuetify.display.xs"
       scrollable
     >
@@ -594,6 +586,9 @@
               <h2 class="text-subtitle-1 font-weight-black mb-0 text-uppercase text-white" style="color: #ffffff !important;">
                 Nueva Orden de Producción
               </h2>
+              <span class="text-super-xs opacity-75 uppercase font-weight-bold text-white" style="color: #ffffff !important;">
+                Explosión de insumos a costo promediado de inventario y generación de lote FEFO
+              </span>
             </div>
             <v-spacer />
             <v-btn icon variant="tonal" color="white" size="small" class="rounded-lg" @click="showProductionModal = false">
@@ -616,40 +611,117 @@
               required
             />
             <v-row dense>
-              <v-col cols="6">
+              <v-col cols="12" sm="4">
                 <v-text-field
                   v-model.number="productionForm.batch_multiplier"
                   type="number"
                   step="0.1"
                   min="0.1"
                   label="Multiplicador de Lote"
+                  suffix="x"
                   density="compact"
                   variant="outlined"
                   class="mb-3"
                 />
               </v-col>
-              <v-col cols="6">
+              <v-col cols="12" sm="4">
+                <v-text-field
+                  :model-value="selectedProductionExpectedQty"
+                  label="Rendimiento Esperado"
+                  :suffix="selectedProductionDish?.unit_of_measure || 'und'"
+                  density="compact"
+                  variant="outlined"
+                  readonly
+                  disabled
+                  class="mb-3"
+                />
+              </v-col>
+              <v-col cols="12" sm="4">
                 <v-text-field
                   v-model.number="productionForm.actual_quantity"
                   type="number"
                   step="0.01"
                   min="0.01"
                   label="Rendimiento Real Obtenido"
+                  :suffix="selectedProductionDish?.unit_of_measure || 'und'"
                   density="compact"
                   variant="outlined"
                   class="mb-3"
                 />
               </v-col>
             </v-row>
+
+            <!-- Explosión de Materiales (MRP) de la Orden de Producción -->
+            <div v-if="productionMrpLines.length" class="mb-3">
+              <div class="d-flex align-center justify-space-between mb-2">
+                <span class="text-caption font-weight-black uppercase text-medium-emphasis">
+                  Insumos Requeridos vs. Stock Actual
+                </span>
+                <v-chip
+                  size="x-small"
+                  :color="hasInsufficientProductionStock ? 'warning' : 'success'"
+                  variant="tonal"
+                  class="font-weight-bold"
+                >
+                  {{ hasInsufficientProductionStock ? 'Stock parcial en almacén' : 'Stock completo disponible' }}
+                </v-chip>
+              </div>
+
+              <v-table density="compact" class="border rounded-lg text-no-wrap">
+                <thead>
+                  <tr>
+                    <th>Insumo</th>
+                    <th class="text-center">Requerido</th>
+                    <th class="text-center">Disponible</th>
+                    <th class="text-right">Costo Unit. (Prod)</th>
+                    <th class="text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="line in productionMrpLines" :key="line.id">
+                    <td class="text-xs font-weight-medium">{{ line.name }}</td>
+                    <td class="text-center text-xs font-weight-bold">
+                      {{ line.packsRequired }} {{ line.unit_of_measure }}
+                    </td>
+                    <td class="text-center">
+                      <v-chip
+                        size="x-small"
+                        :color="line.hasStock ? 'success' : 'error'"
+                        variant="tonal"
+                        class="font-weight-bold"
+                      >
+                        {{ line.stock }} {{ line.unit_of_measure }}
+                      </v-chip>
+                    </td>
+                    <td class="text-right text-xs">{{ formatCurrency(line.unit_cost) }}</td>
+                    <td class="text-right text-xs font-weight-bold text-primary">{{ formatCurrency(line.lineCost) }}</td>
+                  </tr>
+                </tbody>
+              </v-table>
+
+              <div class="d-flex flex-wrap justify-space-between align-center mt-2 pa-2 rounded bg-light border text-caption">
+                <div>
+                  <strong>Caducidad estimada:</strong> {{ selectedProductionDish?.shelf_life_days || 7 }} días
+                </div>
+                <div>
+                  <strong>Costo Lote (+5%):</strong>
+                  <span class="text-primary font-weight-black ms-1">{{ formatCurrency(estimatedBatchTotalCost) }}</span>
+                  <span class="mx-2">|</span>
+                  <strong>Costo Unit. Real:</strong>
+                  <span class="text-success font-weight-black ms-1">{{ formatCurrency(estimatedBatchUnitCost) }}</span>
+                </div>
+              </div>
+            </div>
+
             <v-textarea
               v-model="productionForm.notes"
               label="Notas u observaciones de cocción"
               rows="2"
               density="compact"
               variant="outlined"
-              class="mb-3"
+              hide-details
             />
-            </v-form>
+          </v-form>
         </v-card-text>
         <v-divider />
         <v-card-actions class="pa-3 bg-surface flex-shrink-0 d-flex justify-end gap-2">
@@ -666,131 +738,6 @@
             Producir y Descontar Insumos
           </v-btn>
         </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- DIÁLOGO: REGISTRAR MERMA -->
-    <v-dialog
-      v-model="showWasteModal"
-      max-width="540"
-      :fullscreen="$vuetify.display.xs"
-      scrollable
-    >
-      <v-card class="rounded-lg overflow-hidden">
-        <v-card-title class="pa-0">
-          <div class="bg-error pa-4 d-flex align-center shadow-sm text-white">
-            <v-avatar color="white" variant="flat" size="40" class="me-3 elevation-2">
-              <v-icon icon="tabler-trash-x" color="error" size="22" />
-            </v-avatar>
-            <div class="flex-grow-1 text-white">
-              <h2 class="text-subtitle-1 font-weight-black mb-0 text-uppercase text-white" style="color: #ffffff !important;">
-                Registrar Merma / Desperdicio
-              </h2>
-            </div>
-            <v-spacer />
-            <v-btn icon variant="tonal" color="white" size="small" class="rounded-lg" @click="showWasteModal = false">
-              <v-icon>tabler-x</v-icon>
-            </v-btn>
-          </div>
-        </v-card-title>
-        <v-card-text class="pa-4 flex-grow-1 overflow-y-auto">
-          <v-form id="prodWasteForm" @submit.prevent="submitWaste">
-            <v-row dense>
-              <v-col cols="12" sm="6">
-                <v-text-field
-                  v-model.number="wasteForm.product_id"
-                  type="number"
-                  min="1"
-                  label="ID del Producto *"
-                  placeholder="Ej: 105"
-                  density="compact"
-                  variant="outlined"
-                  class="mb-2"
-                  required
-                />
-              </v-col>
-              <v-col cols="12" sm="6">
-                <v-text-field
-                  v-model.number="wasteForm.quantity"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  label="Cantidad Perdida *"
-                  density="compact"
-                  variant="outlined"
-                  class="mb-2"
-                  required
-                />
-              </v-col>
-            </v-row>
-            <v-select
-              v-model="wasteForm.reason"
-              :items="wasteReasons"
-              item-title="label"
-              item-value="value"
-              label="Motivo de la Merma / Pérdida"
-              density="compact"
-              variant="outlined"
-              class="mb-3"
-              required
-            />
-            <v-textarea
-              v-model="wasteForm.notes"
-              label="Descripción de la Pérdida *"
-              rows="2"
-              density="compact"
-              variant="outlined"
-              class="mb-3"
-              required
-            />
-            <v-file-input
-              accept="image/*"
-              capture="environment"
-              label="Fotografía de Evidencia *"
-              prepend-icon=""
-              prepend-inner-icon="tabler-camera"
-              density="compact"
-              variant="outlined"
-              show-size
-              class="mb-3"
-              required
-              @update:model-value="onWastePhotoSelected"
-            />
-            </v-form>
-        </v-card-text>
-        <v-divider />
-        <v-card-actions class="pa-3 bg-surface flex-shrink-0 d-flex justify-end gap-2">
-          <v-btn variant="outlined" color="secondary" @click="showWasteModal = false">
-            Cancelar
-          </v-btn>
-          <v-btn
-            type="submit"
-            form="prodWasteForm"
-            color="error"
-            variant="flat"
-            :loading="submitting"
-          >
-            Registrar Baja de Cocina
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- DIÁLOGO: VISOR DE FOTO DE EVIDENCIA -->
-    <v-dialog v-model="showWastePhotoModal" max-width="640">
-      <v-card v-if="selectedWastePhoto" class="rounded-lg overflow-hidden">
-        <v-card-title class="d-flex align-center justify-space-between bg-primary text-white py-3 px-4">
-          <span class="text-subtitle-1 font-weight-bold text-white">
-            Evidencia Fotográfica — #{{ selectedWastePhoto.product_id }} {{ selectedWastePhoto.item_name }}
-          </span>
-          <v-btn icon="tabler-x" variant="text" color="white" size="small" @click="showWastePhotoModal = false" />
-        </v-card-title>
-        <v-card-text class="pa-4 text-center">
-          <v-img :src="selectedWastePhoto.photo_url" max-height="420" contain class="rounded mb-3" />
-          <div class="text-body-2 font-weight-medium text-start">
-            <strong>Descripción:</strong> {{ selectedWastePhoto.notes }}
-          </div>
-        </v-card-text>
       </v-card>
     </v-dialog>
   </div>
@@ -971,22 +918,38 @@ const handleDeleteSubRecipe = async (dish) => {
 }
 
 // Abrir modal de producción directamente para una sub-receta
-const openProduceFromSubRecipe = (dish) => {
+const openProduceFromSubRecipe = async (dish) => {
+  await loadSubRecipeDishes()
   productionForm.dish_id = dish.id
   productionForm.batch_multiplier = 1.0
-  productionForm.actual_quantity = dish.expected_yield_quantity || 1.0
+  productionForm.actual_quantity = Number(dish.expected_yield_quantity) || 1.0
+  productionForm.notes = ''
   showProductionModal.value = true
 }
 
-// Estado para Lotes y Mermas
+// Estado para Lotes de Producción (Server-Side)
 const productionOrders = ref([])
-const kitchenWastes = ref([])
+const totalProdOrders = ref(0)
+const loadingProdOrders = ref(false)
+const prodPage = ref(1)
+const prodItemsPerPage = ref(10)
+const prodSortBy = ref('id')
+const prodOrderBy = ref('desc')
+const prodSearch = ref('')
+const prodFilterDishId = ref(null)
+const prodFilterStatus = ref(null)
+const cancellingOrderId = ref(null)
+
+const prodStatusOptions = [
+  { title: 'Completada', value: 'completed' },
+  { title: 'Cancelada', value: 'cancelled' },
+]
+
 const subRecipeDishes = ref([])
 const categories = ref([])
 const submitting = ref(false)
 
 const showProductionModal = ref(false)
-const showWasteModal = ref(false)
 const showSubRecipeModal = ref(false)
 const submittingSubRecipe = ref(false)
 const editingSubRecipeId = ref(null)
@@ -1107,6 +1070,7 @@ const openSubRecipeModal = () => {
   subRecipeForm.ingredients = []
   selectedIngredient.value = null
   ingredientPortion.value = 1
+  searchIngredients('')
   showSubRecipeModal.value = true
 }
 
@@ -1137,6 +1101,7 @@ const openEditSubRecipe = (item) => {
   })
   selectedIngredient.value = null
   ingredientPortion.value = 1
+  searchIngredients('')
   showSubRecipeModal.value = true
 }
 
@@ -1174,69 +1139,166 @@ const productionForm = reactive({
   notes: '',
 })
 
-// Formulario de mermas
-const wasteForm = reactive({
-  item_type: 'product',
-  product_id: '',
-  dish_id: null,
-  quantity: 1.0,
-  reason: 'burned_spoiled',
-  notes: '',
-  photo: null,
-})
-
-const showWastePhotoModal = ref(false)
-const selectedWastePhoto = ref(null)
-const processingWasteId = ref(null)
-
-const pendingWastesCount = computed(() =>
-  kitchenWastes.value.filter(w => w.status === 'pending').length
+const selectedProductionDish = computed(() =>
+  subRecipeDishes.value.find(d => d.id === productionForm.dish_id) || null
 )
 
-const onWastePhotoSelected = files => {
-  const file = Array.isArray(files) ? files[0] : files
-  wasteForm.photo = file instanceof File ? file : null
-}
+const selectedProductionExpectedQty = computed(() => {
+  const baseYield = Number(selectedProductionDish.value?.expected_yield_quantity) || 1.0
+  const mult = Number(productionForm.batch_multiplier) || 1.0
+  return parseFloat((baseYield * mult).toFixed(2))
+})
 
-const openWastePhotoPreview = waste => {
-  selectedWastePhoto.value = waste
-  showWastePhotoModal.value = true
-}
+const productionMrpLines = computed(() => {
+  const dish = selectedProductionDish.value
+  if (!dish || !Array.isArray(dish.ingredients)) return []
+  const mult = Number(productionForm.batch_multiplier) || 1.0
 
-const approveWasteRecord = async waste => {
-  processingWasteId.value = waste.id
+  return dish.ingredients.map(ing => {
+    const portionNeeded = (Number(ing.portion) || 0) * mult
+    const yieldPct = Number(ing.yield_percentage) > 0 ? Number(ing.yield_percentage) : 100.0
+    const grossQty = portionNeeded / (yieldPct / 100.0)
+    const presentation = Number(ing.presentation) > 0 ? Number(ing.presentation) : 1.0
+    const packsRequired = parseFloat((grossQty / presentation).toFixed(4))
+    const stock = Number(ing.stock) || 0
+    const unitCost = Number(ing.unit_cost) || 0
+    const lineCost = parseFloat((packsRequired * unitCost).toFixed(4))
+
+    return {
+      id: ing.id,
+      name: cleanIngredientName(ing.name),
+      packsRequired,
+      stock,
+      hasStock: stock >= packsRequired,
+      unit_of_measure: ing.unit_of_measure || 'und',
+      unit_cost: unitCost,
+      lineCost,
+    }
+  })
+})
+
+const hasInsufficientProductionStock = computed(() =>
+  productionMrpLines.value.some(line => !line.hasStock)
+)
+
+const estimatedBatchTotalCost = computed(() => {
+  const raw = productionMrpLines.value.reduce((acc, l) => acc + l.lineCost, 0)
+  if (raw > 0) return parseFloat((raw * 1.05).toFixed(4))
+  const fallback = Number(selectedProductionDish.value?.cost_price) || 0
+  return parseFloat((fallback * (Number(productionForm.batch_multiplier) || 1.0)).toFixed(4))
+})
+
+const estimatedBatchUnitCost = computed(() => {
+  const actual = Number(productionForm.actual_quantity) || selectedProductionExpectedQty.value || 1.0
+  return actual > 0 ? parseFloat((estimatedBatchTotalCost.value / actual).toFixed(4)) : estimatedBatchTotalCost.value
+})
+
+const fetchProductionOrders = async () => {
+  loadingProdOrders.value = true
   try {
-    const res = await axios.post(`/restaurant/waste/records/${waste.id}/approve`)
-    toast.success(res.data?.message || 'Merma aprobada y descontada del inventario.')
-    await loadData()
+    const { data } = await axios.get('/restaurant/production/orders', {
+      params: {
+        q: prodSearch.value,
+        dish_id: prodFilterDishId.value,
+        status: prodFilterStatus.value,
+        page: prodPage.value,
+        per_page: prodItemsPerPage.value,
+        sortBy: prodSortBy.value,
+        orderBy: prodOrderBy.value,
+      },
+    })
+    productionOrders.value = data?.data || []
+    totalProdOrders.value = data?.meta?.total ?? data?.total ?? productionOrders.value.length
   } catch (err) {
-    toast.error(err.response?.data?.message || 'Error al aprobar merma.')
+    console.error('Error cargando órdenes de producción:', err)
+    toast.error('No se pudieron cargar los lotes producidos.')
   } finally {
-    processingWasteId.value = null
+    loadingProdOrders.value = false
   }
 }
 
-const rejectWasteRecord = async waste => {
-  processingWasteId.value = waste.id
-  try {
-    const res = await axios.post(`/restaurant/waste/records/${waste.id}/reject`)
-    toast.success(res.data?.message || 'Merma rechazada.')
-    await loadData()
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Error al rechazar merma.')
-  } finally {
-    processingWasteId.value = null
+const updateProdTableOptions = (options) => {
+  prodPage.value = options.page
+  prodItemsPerPage.value = options.itemsPerPage
+  if (options.sortBy && options.sortBy.length > 0) {
+    prodSortBy.value = options.sortBy[0].key
+    prodOrderBy.value = options.sortBy[0].order
   }
 }
 
-const wasteReasons = [
-  { label: 'Quemado / Malogrado', value: 'burned_spoiled' },
-  { label: 'Vencimiento / Caducado', value: 'expired' },
-  { label: 'Merma de Limpieza / Cocción', value: 'preparation_trim' },
-  { label: 'Comida de Personal', value: 'staff_meal' },
-  { label: 'Cortesía de la Casa', value: 'courtesy' },
-  { label: 'Caída / Accidente', value: 'dropped' },
-]
+let prodDebounceTimer
+watch([prodSearch, prodFilterDishId, prodFilterStatus], () => {
+  prodPage.value = 1
+})
+
+watch(
+  [prodPage, prodItemsPerPage, prodSortBy, prodOrderBy, prodSearch, prodFilterDishId, prodFilterStatus],
+  () => {
+    clearTimeout(prodDebounceTimer)
+    prodDebounceTimer = setTimeout(() => fetchProductionOrders(), 300)
+  }
+)
+
+const handleCancelProductionOrder = async (order) => {
+  const result = await Swal.fire({
+    title: `¿Anular orden ${order.code}?`,
+    text: 'Se retirará el lote elaborado del inventario y se devolverán los insumos consumidos a sus existencias.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, anular y revertir',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+  })
+
+  if (!result.isConfirmed) return
+
+  cancellingOrderId.value = order.id
+  try {
+    const { data } = await axios.delete(`/restaurant/production/orders/${order.id}`)
+    toast.success(data?.message || 'Orden de producción anulada e insumos restaurados.')
+    await fetchProductionOrders()
+    await fetchSubRecipes()
+    await loadSubRecipeDishes()
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'No se pudo anular la orden de producción.')
+  } finally {
+    cancellingOrderId.value = null
+  }
+}
+
+const printPrepLotLabel = (order) => {
+  const win = window.open('', '_blank', 'width=420,height=320')
+  if (!win) {
+    toast.warning('Habilita las ventanas emergentes para imprimir la etiqueta.')
+    return
+  }
+  const html = `
+    <html>
+      <head>
+        <title>Etiqueta ${order.lot_number || order.code}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 12px; margin: 0; color: #111; }
+          .box { border: 2px solid #111; border-radius: 6px; padding: 10px; }
+          .title { font-size: 16px; font-weight: 900; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px solid #111; padding-bottom: 4px; }
+          .row { font-size: 12px; margin: 4px 0; display: flex; justify-content: space-between; }
+          .lot { font-size: 14px; font-weight: bold; margin-top: 6px; text-align: center; background: #eee; padding: 4px; border-radius: 4px; }
+        </style>
+      </head>
+      <body onload="window.print(); window.close();">
+        <div class="box">
+          <div class="title">${order.dish?.name || 'SUB-RECETA'}</div>
+          <div class="row"><span><strong>Cantidad:</strong></span><span>${order.actual_quantity} ${order.output_product?.unit_of_measure || 'und'}</span></div>
+          <div class="row"><span><strong>Elaborado:</strong></span><span>${order.produced_at || ''}</span></div>
+          <div class="row"><span><strong>Vence:</strong></span><span><strong>${order.expiration_date || 'N/A'}</strong></span></div>
+          <div class="row"><span><strong>Responsable:</strong></span><span>${order.user?.name || 'Cocina'}</span></div>
+          <div class="lot">LOTE: ${order.lot_number || order.code}</div>
+        </div>
+      </body>
+    </html>
+  `
+  win.document.write(html)
+  win.document.close()
+}
 
 const loadSubRecipeDishes = async () => {
   try {
@@ -1250,8 +1312,11 @@ const loadSubRecipeDishes = async () => {
       id: d.id,
       name: d.name,
       status: d.status,
+      cost_price: Number(d.cost_price) || 0,
       expected_yield_quantity: Number(d.expected_yield_quantity) || 1.0,
-      unit_of_measure: d.unit_of_measure || 'porciones',
+      shelf_life_days: Number(d.shelf_life_days) || 7,
+      unit_of_measure: d.output_product?.unit_of_measure || d.unit_of_measure || 'porciones',
+      ingredients: d.ingredients || [],
     }))
   } catch (e) {
     console.error('Error cargando sub-recetas para producción:', e)
@@ -1260,18 +1325,12 @@ const loadSubRecipeDishes = async () => {
 
 const loadData = async () => {
   try {
-    const [resProd, resWaste, resCats] = await Promise.allSettled([
-      axios.get('/restaurant/production/orders'),
-      axios.get('/restaurant/waste/records'),
-      axios.get('/categories', { params: { type: 'dishes' } }),
+    await Promise.allSettled([
+      fetchProductionOrders(),
+      loadSubRecipeDishes(),
     ])
-    if (resProd.status === 'fulfilled') productionOrders.value = resProd.value.data?.data || []
-    if (resWaste.status === 'fulfilled') kitchenWastes.value = resWaste.value.data?.data || []
-    if (resCats.status === 'fulfilled') categories.value = resCats.value.data || []
-
-    await loadSubRecipeDishes()
   } catch (err) {
-    console.error('Error cargando producción/mermas:', err)
+    console.error('Error cargando producción:', err)
   }
 }
 
@@ -1316,44 +1375,6 @@ const submitProduction = async () => {
     await fetchSubRecipes()
   } catch (err) {
     toast.error(err.response?.data?.message || 'Error en orden de producción.')
-  } finally {
-    submitting.value = false
-  }
-}
-
-const openWasteModal = () => {
-  wasteForm.product_id = ''
-  wasteForm.quantity = 1.0
-  wasteForm.notes = ''
-  wasteForm.photo = null
-  showWasteModal.value = true
-}
-
-const submitWaste = async () => {
-  if (!wasteForm.product_id || !wasteForm.notes || !wasteForm.photo) {
-    toast.warning('Debes ingresar el ID del producto, la descripción y anexar la foto de evidencia.')
-    return
-  }
-  submitting.value = true
-  try {
-    const formData = new FormData()
-    formData.append('item_type', 'product')
-    formData.append('product_id', String(wasteForm.product_id))
-    formData.append('quantity', String(wasteForm.quantity))
-    formData.append('reason', wasteForm.reason)
-    formData.append('notes', String(wasteForm.notes).trim())
-    if (wasteForm.photo instanceof File) {
-      formData.append('photo', wasteForm.photo)
-    }
-
-    const res = await axios.post('/restaurant/waste/records', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    toast.success(res.data?.message || 'Merma registrada.')
-    showWasteModal.value = false
-    await loadData()
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Error al registrar merma.')
   } finally {
     submitting.value = false
   }

@@ -35,8 +35,10 @@ class DishResource extends JsonResource
                 $ingredientsData[] = [
                     'id' => $product->id,
                     'name' => $product->name,
+                    'stock' => (float) ($product->stock ?? 0),
                     'unit_cost' => $unitCost,
                     'presentation' => $presentation,
+                    'yield_percentage' => (float) ($product->yield_percentage ?: 100.0),
                     'unit_of_measure' => $product->unit_of_measure,
                     'portion' => $portion,
                     'designated_cost' => $freshDesignatedCost,

@@ -32,10 +32,10 @@ class ProductionOrder extends Model
 
     protected $casts = [
         'batch_multiplier' => 'decimal:2',
-        'expected_quantity' => 'decimal:2',
-        'actual_quantity' => 'decimal:2',
-        'total_production_cost' => 'decimal:2',
-        'unit_cost_calculated' => 'decimal:2',
+        'expected_quantity' => 'decimal:4',
+        'actual_quantity' => 'decimal:4',
+        'total_production_cost' => 'decimal:4',
+        'unit_cost_calculated' => 'decimal:4',
         'status' => ProductionOrderStatusEnum::class,
         'produced_at' => 'datetime',
     ];

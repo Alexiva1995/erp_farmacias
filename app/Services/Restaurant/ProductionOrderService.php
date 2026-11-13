@@ -4,11 +4,16 @@ namespace App\Services\Restaurant;
 
 use App\Contracts\ProductionOrderServiceInterface;
 use App\Enums\ProductionOrderStatusEnum;
+use App\Http\Resources\Restaurant\ProductionOrderResource;
 use App\Models\Dish;
+use App\Models\InventoryMovement;
 use App\Models\ProductLot;
 use App\Models\Product;
 use App\Models\ProductionOrder;
+use App\Observers\ProductLotObserver;
+use App\Services\Inventory\StockoutService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -17,18 +22,53 @@ class ProductionOrderService implements ProductionOrderServiceInterface
 {
     public function listOrders(array $filters = []): array
     {
-        $query = ProductionOrder::with(['dish', 'outputProduct', 'user:id,username', 'kitchenStation', 'generatedLot'])
-            ->latest();
+        $query = ProductionOrder::with([
+            'dish:id,name,expected_yield_quantity,shelf_life_days',
+            'outputProduct:id,name,unit_of_measure,stock,unit_cost',
+            'user:id,username',
+            'kitchenStation:id,name',
+            'generatedLot:id,product_id,lot_number,quantity,expiration_date',
+        ]);
+
+        if (!empty($filters['q'])) {
+            $search = trim((string) $filters['q']);
+            $query->where(function ($sub) use ($search) {
+                $sub->where('code', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhereHas('dish', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('generatedLot', fn ($q) => $q->where('lot_number', 'like', "%{$search}%"));
+            });
+        }
 
         if (!empty($filters['dish_id'])) {
-            $query->where('dish_id', $filters['dish_id']);
+            $query->where('dish_id', (int) $filters['dish_id']);
         }
 
         if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $query->where('status', (string) $filters['status']);
         }
 
-        return $query->paginate($filters['per_page'] ?? 15)->toArray();
+        $allowedSorts = ['id', 'code', 'batch_multiplier', 'actual_quantity', 'total_production_cost', 'produced_at', 'status'];
+        $sortBy = in_array($filters['sortBy'] ?? '', $allowedSorts, true) ? $filters['sortBy'] : 'id';
+        $orderBy = strtolower((string) ($filters['orderBy'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($sortBy, $orderBy);
+
+        $perPage = (int) ($filters['per_page'] ?? $filters['itemsPerPage'] ?? 15);
+        $paginator = $query->paginate($perPage > 0 ? $perPage : 15);
+
+        return [
+            'data' => ProductionOrderResource::collection($paginator->items())->resolve(),
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ];
     }
 
     public function createAndExecute(array $data, int $userId): ProductionOrder
@@ -48,14 +88,13 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                     'unit_of_measure' => 'porciones',
                     'is_active' => true,
                     'is_deleted' => false,
-                    'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)),
+                    'barcode' => 'SUB-' . date('ymd') . '-' . strtoupper(Str::random(6)),
                     'active_ingredient' => 'Sub-receta / Insumo Cocina',
                     'iva' => false,
+                    'unit_cost' => (float) $dish->cost_price,
+                    'is_sub_recipe' => true,
+                    'yield_percentage' => 100.00,
                 ];
-
-                $productData['unit_cost'] = (float) $dish->cost_price;
-                $productData['is_sub_recipe'] = true;
-                $productData['yield_percentage'] = 100.00;
 
                 $outputProduct = Product::create($productData);
                 $dish->update(['output_product_id' => $outputProduct->id]);
@@ -63,6 +102,7 @@ class ProductionOrderService implements ProductionOrderServiceInterface
             } else {
                 $outputProduct = Product::findOrFail($outputProductId);
             }
+
             $multiplier = (float) ($data['batch_multiplier'] ?? 1.0);
             if ($multiplier <= 0) {
                 throw new InvalidArgumentException('El multiplicador de lote debe ser mayor a cero.');
@@ -70,83 +110,133 @@ class ProductionOrderService implements ProductionOrderServiceInterface
 
             $expectedQty = (float) ($dish->expected_yield_quantity ?: 1.0) * $multiplier;
             $actualQty = (float) ($data['actual_quantity'] ?? $expectedQty);
+            if ($actualQty <= 0) {
+                $actualQty = $expectedQty;
+            }
 
             $totalProductionCost = 0.0;
 
-            // Descontar cada ingrediente aplicando rendimiento (yield_percentage)
-            foreach ($dish->ingredients as $ingredient) {
-                $portionNeeded = (float) $ingredient->pivot->portion * $multiplier;
-                $yieldPct = (float) ($ingredient->yield_percentage > 0 ? $ingredient->yield_percentage : 100.0);
-                $grossQuantityToDeduct = $portionNeeded / ($yieldPct / 100.0);
+            ProductLotObserver::$skipMovementCreation = true;
+            try {
+                // Descontar cada ingrediente aplicando rendimiento (yield_percentage) y el costo unificado de la tabla products
+                foreach ($dish->ingredients as $ingredient) {
+                    $portionNeeded = (float) $ingredient->pivot->portion * $multiplier;
+                    $yieldPct = (float) ($ingredient->yield_percentage > 0 ? $ingredient->yield_percentage : 100.0);
+                    $grossQuantityToDeduct = $portionNeeded / ($yieldPct / 100.0);
 
-                $presentation = (float) ($ingredient->presentation ?? 1.0);
-                $safePresentation = $presentation > 0 ? $presentation : 1.0;
-                // Convertir la porción bruta en unidades de receta a paquetes de almacén
-                $packsToDeduct = $grossQuantityToDeduct / $safePresentation;
+                    $presentation = (float) ($ingredient->presentation ?? 1.0);
+                    $safePresentation = $presentation > 0 ? $presentation : 1.0;
+                    // Convertir la porción bruta en unidades de receta a unidades/paquetes de inventario
+                    $packsToDeduct = round($grossQuantityToDeduct / $safePresentation, 4);
 
-                // Descuento FEFO sobre los lotes del ingrediente (en paquetes)
-                $remainingToDeduct = $packsToDeduct;
-                $lots = ProductLot::where('product_id', $ingredient->id)
-                    ->where('quantity', '>', 0)
-                    ->orderBy('expiration_date', 'asc')
-                    ->lockForUpdate()
-                    ->get();
+                    // Costo SIEMPRE desde la tabla products (unit_cost promediado del sistema, nunca desde product_lots)
+                    $unifiedIngCost = (float) ($ingredient->unit_cost ?: 0.0);
+                    $totalProductionCost += ($packsToDeduct * $unifiedIngCost);
 
-                foreach ($lots as $lot) {
-                    if ($remainingToDeduct <= 0) break;
-                    $deductFromLot = min((float) $lot->quantity, $remainingToDeduct);
-                    $lot->quantity -= $deductFromLot;
-                    $lot->save();
+                    $stockBefore = round((float) $ingredient->stock, 4);
+                    $affectedLotId = null;
 
-                    $remainingToDeduct -= $deductFromLot;
-                    $lotCost = (float) ($lot->unit_cost ?: ($ingredient->unit_cost ?: 0));
-                    $totalProductionCost += ($deductFromLot * $lotCost);
+                    // Descuento FEFO sobre los lotes del ingrediente
+                    $remainingToDeduct = $packsToDeduct;
+                    $lots = ProductLot::where('product_id', $ingredient->id)
+                        ->where('quantity', '>', 0)
+                        ->orderByRaw('CASE WHEN expiration_date IS NULL THEN 1 ELSE 0 END ASC')
+                        ->orderBy('expiration_date', 'asc')
+                        ->lockForUpdate()
+                        ->get();
+
+                    foreach ($lots as $lot) {
+                        if ($remainingToDeduct <= 0) {
+                            break;
+                        }
+                        $deductFromLot = min((float) $lot->quantity, $remainingToDeduct);
+                        if ($deductFromLot > 0) {
+                            $lot->quantity = round((float) $lot->quantity - $deductFromLot, 4);
+                            $lot->saveQuietly();
+                            $remainingToDeduct = round($remainingToDeduct - $deductFromLot, 4);
+                            if (!$affectedLotId) {
+                                $affectedLotId = $lot->id;
+                            }
+                        }
+                    }
+
+                    // Descontar stock general del producto ingrediente
+                    $stockAfter = max(0.0, round($stockBefore - $packsToDeduct, 4));
+                    $ingredient->updateQuietly(['stock' => $stockAfter]);
+                    StockoutService::syncStockout($ingredient, $stockAfter);
+
+                    // Registrar salida de materia prima en Kardex (InventoryMovement)
+                    if ($packsToDeduct > 0) {
+                        InventoryMovement::create([
+                            'product_id' => $ingredient->id,
+                            'product_lot_id' => $affectedLotId,
+                            'movement_type' => 'adjustment',
+                            'quantity' => -abs($packsToDeduct),
+                            'dish_id' => $dish->id,
+                            'user_id' => $userId,
+                            'stock_before' => $stockBefore,
+                            'stock_after' => $stockAfter,
+                            'movement_date' => Carbon::now(),
+                        ]);
+                    }
                 }
 
-                // Si queda cantidad por descontar (sin lotes suficientes), calcular el costo con el unit_cost de inventario
-                if ($remainingToDeduct > 0) {
-                    $totalProductionCost += ($remainingToDeduct * (float) ($ingredient->unit_cost ?: 0));
+                // Sumar 5% de imprevisto al costo de los ingredientes de la tabla products
+                if ($totalProductionCost > 0) {
+                    $totalProductionCost = round($totalProductionCost * 1.05, 4);
+                } else {
+                    // Fallback al costo de la receta (que ya incluye su 5%)
+                    $totalProductionCost = round((float) $dish->cost_price * $multiplier, 4);
                 }
 
-                // Descontar stock general del producto ingrediente en paquetes
-                $ingredient->stock = max(0, (float) $ingredient->stock - $packsToDeduct);
-                $ingredient->save();
+                $unitCostCalculated = $actualQty > 0
+                    ? round($totalProductionCost / $actualQty, 4)
+                    : round((float) $dish->cost_price / ($dish->expected_yield_quantity ?: 1.0), 4);
+
+                // Generar nuevo Lote para el producto resultante elaborado
+                $shelfLife = (int) ($dish->shelf_life_days ?: 7);
+                $lotCode = 'SUB-' . date('Ymd') . '-' . strtoupper(Str::random(4));
+
+                // Sanear saldo negativo previo en lotes de la sub-receta
+                ProductLot::where('product_id', $outputProduct->id)
+                    ->where('quantity', '<', 0)
+                    ->update(['quantity' => 0]);
+
+                $outputStockBefore = max(0.0, round((float) $outputProduct->stock, 4));
+
+                $newLot = new ProductLot([
+                    'product_id' => $outputProduct->id,
+                    'lot_number' => $lotCode,
+                    'quantity' => $actualQty,
+                    'expiration_date' => Carbon::now()->addDays($shelfLife)->toDateString(),
+                    'unit_cost' => $unitCostCalculated,
+                ]);
+                $newLot->saveQuietly();
+
+                // Aumentar stock del producto elaborado y actualizar su costo en la tabla products
+                $outputStockAfter = round($outputStockBefore + $actualQty, 4);
+                $outputProduct->updateQuietly([
+                    'stock' => $outputStockAfter,
+                    'unit_cost' => $unitCostCalculated,
+                    'is_sub_recipe' => true,
+                ]);
+                StockoutService::syncStockout($outputProduct, $outputStockAfter);
+
+                // Registrar ingreso del lote elaborado en Kardex (InventoryMovement)
+                InventoryMovement::create([
+                    'product_id' => $outputProduct->id,
+                    'product_lot_id' => $newLot->id,
+                    'movement_type' => 'adjustment',
+                    'quantity' => $actualQty,
+                    'dish_id' => $dish->id,
+                    'user_id' => $userId,
+                    'stock_before' => $outputStockBefore,
+                    'stock_after' => $outputStockAfter,
+                    'movement_date' => Carbon::now(),
+                ]);
+            } finally {
+                ProductLotObserver::$skipMovementCreation = false;
             }
-
-            // Sumar 5% de imprevisto al costo de producción
-            $totalProductionCost = round($totalProductionCost * 1.05, 4);
-
-            // Si por alguna razón el costo calculado es 0, usar el costo de la receta
-            if ($totalProductionCost <= 0) {
-                $totalProductionCost = round((float) $dish->cost_price * $multiplier, 4);
-            }
-
-            $unitCostCalculated = $actualQty > 0 ? round($totalProductionCost / $actualQty, 4) : round((float) $dish->cost_price / ($dish->expected_yield_quantity ?: 1.0), 4);
-
-            // Generar nuevo Lote para el producto resultante elaborado
-            $shelfLife = $dish->shelf_life_days ?: 7;
-            $lotCode = 'SUB-' . date('Ymd') . '-' . strtoupper(Str::random(4));
-            
-            $lotData = [
-                'product_id' => $outputProduct->id,
-                'lot_number' => $lotCode,
-                'quantity' => $actualQty,
-                'expiration_date' => Carbon::now()->addDays($shelfLife)->toDateString(),
-            ];
-            $lotData['unit_cost'] = $unitCostCalculated;
-
-            // Sanear saldo negativo previo (por consumos previos a registrar la orden de producción)
-            ProductLot::where('product_id', $outputProduct->id)
-                ->where('quantity', '<', 0)
-                ->update(['quantity' => 0]);
-
-            $newLot = ProductLot::create($lotData);
-
-            // Aumentar stock del producto elaborado sobre la existencia física real
-            $outputProduct->stock = max(0.0, (float) $outputProduct->stock) + $actualQty;
-            $outputProduct->unit_cost = $unitCostCalculated;
-            $outputProduct->is_sub_recipe = true;
-            $outputProduct->save();
 
             // Registrar Orden de Producción
             $prodOrder = ProductionOrder::create([
@@ -166,7 +256,13 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 'produced_at' => Carbon::now(),
             ]);
 
-            return $prodOrder;
+            return $prodOrder->load([
+                'dish:id,name,expected_yield_quantity,shelf_life_days',
+                'outputProduct:id,name,unit_of_measure,stock,unit_cost',
+                'user:id,username',
+                'kitchenStation:id,name',
+                'generatedLot:id,product_id,lot_number,quantity,expiration_date',
+            ]);
         });
     }
 
@@ -177,15 +273,85 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 return true;
             }
 
-            // Si tenía un lote generado, retirar ese stock
-            if ($productionOrder->generatedLot) {
-                $lot = $productionOrder->generatedLot;
+            $productionOrder->load(['dish.ingredients', 'generatedLot', 'outputProduct']);
+            $userId = (int) (Auth::id() ?: $productionOrder->user_id ?: 1);
+            $multiplier = (float) ($productionOrder->batch_multiplier ?: 1.0);
+
+            ProductLotObserver::$skipMovementCreation = true;
+            try {
+                // 1. Retirar el lote generado y descontar el stock del producto elaborado
                 $product = $productionOrder->outputProduct;
-                if ($product) {
-                    $product->stock = max(0, (float) $product->stock - (float) $lot->quantity);
-                    $product->save();
+                $lot = $productionOrder->generatedLot;
+                $qtyToRemove = (float) ($lot?->quantity ?? $productionOrder->actual_quantity ?? 0);
+
+                if ($product && $qtyToRemove > 0) {
+                    $stockBefore = round((float) $product->stock, 4);
+                    $stockAfter = max(0.0, round($stockBefore - $qtyToRemove, 4));
+                    $product->updateQuietly(['stock' => $stockAfter]);
+                    StockoutService::syncStockout($product, $stockAfter);
+
+                    InventoryMovement::create([
+                        'product_id' => $product->id,
+                        'product_lot_id' => $lot?->id,
+                        'movement_type' => 'adjustment',
+                        'quantity' => -abs($qtyToRemove),
+                        'dish_id' => $productionOrder->dish_id,
+                        'user_id' => $userId,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
+                        'movement_date' => Carbon::now(),
+                    ]);
                 }
-                $lot->delete();
+
+                if ($lot) {
+                    $lot->deleteQuietly();
+                }
+
+                // 2. Reintegrar al inventario los ingredientes consumidos en la orden de producción
+                if ($productionOrder->dish && $productionOrder->dish->ingredients) {
+                    foreach ($productionOrder->dish->ingredients as $ingredient) {
+                        $portionNeeded = (float) $ingredient->pivot->portion * $multiplier;
+                        $yieldPct = (float) ($ingredient->yield_percentage > 0 ? $ingredient->yield_percentage : 100.0);
+                        $grossQuantityToRestore = $portionNeeded / ($yieldPct / 100.0);
+
+                        $presentation = (float) ($ingredient->presentation ?? 1.0);
+                        $safePresentation = $presentation > 0 ? $presentation : 1.0;
+                        $packsToRestore = round($grossQuantityToRestore / $safePresentation, 4);
+
+                        if ($packsToRestore <= 0) {
+                            continue;
+                        }
+
+                        $ingStockBefore = round((float) $ingredient->stock, 4);
+                        $targetLot = ProductLot::where('product_id', $ingredient->id)
+                            ->orderBy('expiration_date', 'desc')
+                            ->orderBy('id', 'desc')
+                            ->first();
+
+                        if ($targetLot) {
+                            $targetLot->quantity = round(max(0.0, (float) $targetLot->quantity) + $packsToRestore, 4);
+                            $targetLot->saveQuietly();
+                        }
+
+                        $ingStockAfter = round($ingStockBefore + $packsToRestore, 4);
+                        $ingredient->updateQuietly(['stock' => $ingStockAfter]);
+                        StockoutService::syncStockout($ingredient, $ingStockAfter);
+
+                        InventoryMovement::create([
+                            'product_id' => $ingredient->id,
+                            'product_lot_id' => $targetLot?->id,
+                            'movement_type' => 'adjustment',
+                            'quantity' => $packsToRestore,
+                            'dish_id' => $productionOrder->dish_id,
+                            'user_id' => $userId,
+                            'stock_before' => $ingStockBefore,
+                            'stock_after' => $ingStockAfter,
+                            'movement_date' => Carbon::now(),
+                        ]);
+                    }
+                }
+            } finally {
+                ProductLotObserver::$skipMovementCreation = false;
             }
 
             $productionOrder->update(['status' => ProductionOrderStatusEnum::CANCELLED]);
