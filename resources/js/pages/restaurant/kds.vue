@@ -172,20 +172,79 @@ const handleNextStatus = async (item) => {
   const nextMap = {
     queued: "preparing",
     preparing: "ready",
+    ready: "served",
   };
   const next = nextMap[item.kitchen_status];
   if (!next || updatingItemId.value === item.id) return;
 
+  const labelMap = {
+    preparing: "Preparando",
+    ready: "Listo",
+    served: "Servido",
+  };
+
   updatingItemId.value = item.id;
   try {
     await axios.patch(`/kds/items/${item.id}/status`, { status: next });
-    toast.success(`Plato actualizado a ${next === "preparing" ? "Preparando" : "Listo"}`);
+    toast.success(`Plato actualizado a ${labelMap[next]}`);
     fetchTickets(true);
   } catch (error) {
     console.error("Error al actualizar plato:", error);
     toast.error("No se pudo actualizar el estado.");
   } finally {
     updatingItemId.value = null;
+  }
+};
+
+// Devolver plato a cocina con motivo
+const handleReturnToKitchen = async (item) => {
+  const result = await Swal.fire({
+    title: "Devolver plato a cocina",
+    text: `Indica el motivo para ${item.dish_name}:`,
+    input: "text",
+    inputPlaceholder: "Ej: Frío, término incorrecto, falta ingrediente...",
+    showCancelButton: true,
+    confirmButtonText: "Devolver",
+    cancelButtonText: "Cancelar",
+    inputValidator: (value) => {
+      if (!value || !value.trim()) return "Debes indicar un motivo de devolución.";
+    },
+  });
+
+  if (!result.isConfirmed) return;
+
+  updatingItemId.value = item.id;
+  try {
+    await axios.patch(`/kds/items/${item.id}/status`, {
+      status: "preparing",
+      notes: item.notes ? `${item.notes} | DEVUELTO: ${result.value.trim()}` : `DEVUELTO: ${result.value.trim()}`,
+    });
+    toast.warning(`Plato devuelto a cocina: ${result.value.trim()}`);
+    fetchTickets(true);
+  } catch (error) {
+    console.error("Error al devolver plato:", error);
+    toast.error("No se pudo devolver el plato.");
+  } finally {
+    updatingItemId.value = null;
+  }
+};
+
+// Marcar toda la comanda como servida
+const handleServeAllTicket = async (ticket) => {
+  if (bumpingTicketId.value === ticket.id) return;
+  bumpingTicketId.value = ticket.id;
+  try {
+    const readyItems = (ticket.items || []).filter((i) => i.kitchen_status === "ready");
+    await Promise.all(
+      readyItems.map((i) => axios.patch(`/kds/items/${i.id}/status`, { status: "served" }))
+    );
+    toast.success(`Comanda ${ticket.id} marcada como servida.`);
+    fetchTickets(true);
+  } catch (error) {
+    console.error("Error al marcar comanda como servida:", error);
+    toast.error("No se pudo marcar la comanda como servida.");
+  } finally {
+    bumpingTicketId.value = null;
   }
 };
 
@@ -581,66 +640,69 @@ onUnmounted(() => {
                   }"
                   @click="handleNextStatus(item)"
                 >
-                  <!-- Fila 1: Cantidad (solo si > 1) + Nombre del plato + Ícono de Receta a la derecha -->
-                  <div class="d-flex align-start justify-space-between gap-2">
-                    <div class="d-flex align-baseline gap-1" style="min-width: 0; flex: 1;">
-                      <span
-                        v-if="item.quantity > 1"
-                        class="font-weight-black text-h6 text-primary flex-shrink-0"
-                        style="line-height: 1.1;"
+                  <div class="d-flex align-center justify-space-between gap-2">
+                    <div style="min-width: 0; flex: 1;">
+                      <!-- Nombre del plato + cantidad (solo si > 1) -->
+                      <div class="d-flex align-baseline gap-1">
+                        <span
+                          v-if="item.quantity > 1"
+                          class="font-weight-black text-h6 text-primary flex-shrink-0"
+                          style="line-height: 1.1;"
+                        >
+                          {{ item.quantity }}<span class="text-body-1 font-weight-bold text-lowercase">x</span>
+                        </span>
+                        <span class="font-weight-black text-body-1 text-high-emphasis text-uppercase" style="line-height: 1.15;">
+                          {{ item.dish_name }}
+                        </span>
+                      </div>
+
+                      <!-- Detalles estilo lista con guion (-) pegados al plato -->
+                      <ul
+                        v-if="item.notes || (item.modifiers && item.modifiers.length > 0)"
+                        class="dish-details-list mt-1 ps-1 mb-0 text-body-2 font-weight-medium text-medium-emphasis"
+                        style="line-height: 1.2;"
                       >
-                        {{ item.quantity }}<span class="text-body-1 font-weight-bold text-lowercase">x</span>
-                      </span>
-                      <span class="font-weight-black text-body-1 text-high-emphasis text-uppercase" style="line-height: 1.15;">
-                        {{ item.dish_name }}
-                      </span>
+                        <li v-for="mod in (item.modifiers || [])" :key="mod.id">
+                          - {{ mod.name }}
+                        </li>
+                        <li v-if="item.notes" class="text-warning-darken-2">
+                          - {{ item.notes }}
+                        </li>
+                      </ul>
+
+                      <!-- Estación KDS (solo si hay múltiples estaciones) -->
+                      <div v-if="item.kitchen_station && isMultiStation" class="mt-1">
+                        <VChip
+                          size="x-small"
+                          :color="item.kitchen_station.color || 'secondary'"
+                          variant="tonal"
+                        >
+                          <VIcon :icon="item.kitchen_station.icon || 'tabler-flame'" start size="12" />
+                          {{ item.kitchen_station.name }}
+                        </VChip>
+                      </div>
                     </div>
 
-                    <VBtn
-                      icon="tabler-book-2"
-                      size="x-small"
-                      variant="tonal"
-                      color="info"
-                      class="flex-shrink-0"
-                      title="Ver Receta y Foto"
-                      @click.stop="openRecipeModal(item)"
-                    />
-                  </div>
-
-                  <!-- Estación KDS (solo si hay múltiples estaciones) -->
-                  <div v-if="item.kitchen_station && isMultiStation" class="mt-1">
-                    <VChip
-                      size="x-small"
-                      :color="item.kitchen_station.color || 'secondary'"
-                      variant="tonal"
-                    >
-                      <VIcon :icon="item.kitchen_station.icon || 'tabler-flame'" start size="12" />
-                      {{ item.kitchen_station.name }}
-                    </VChip>
-                  </div>
-
-                  <!-- Acciones de Pase (solo en pestaña En Pase / Listos) -->
-                  <div v-if="activeViewTab === 'ready'" class="d-flex align-center gap-2 mt-2" @click.stop>
-                    <VBtn
-                      size="x-small"
-                      color="success"
-                      variant="flat"
-                      prepend-icon="tabler-check"
-                      class="flex-grow-1"
-                      :loading="updatingItemId === item.id"
-                      @click="updateItemDirectStatus(item, 'served', 'Servido')"
-                    >
-                      Entregado al Mesero
-                    </VBtn>
-                    <VBtn
-                      size="x-small"
-                      color="warning"
-                      variant="tonal"
-                      icon="tabler-arrow-back-up"
-                      title="Revertir a cocina"
-                      :loading="updatingItemId === item.id"
-                      @click="updateItemDirectStatus(item, 'preparing', 'Preparando')"
-                    />
+                    <div class="d-flex align-center gap-1 flex-shrink-0">
+                      <VBtn
+                        v-if="activeViewTab === 'ready'"
+                        icon="tabler-arrow-back-up"
+                        size="x-small"
+                        variant="tonal"
+                        color="warning"
+                        title="Devolver a cocina"
+                        :loading="updatingItemId === item.id"
+                        @click.stop="handleReturnToKitchen(item)"
+                      />
+                      <VBtn
+                        icon="tabler-book-2"
+                        size="x-small"
+                        variant="tonal"
+                        color="info"
+                        title="Ver Receta y Foto"
+                        @click.stop="openRecipeModal(item)"
+                      />
+                    </div>
                   </div>
 
                   <!-- Detalles estilo lista con guion (-) pegados al plato -->
@@ -663,9 +725,10 @@ onUnmounted(() => {
 
           <VDivider />
 
-          <!-- Acción Rápida: Completar Comanda (siempre visible al pie) -->
-          <div v-if="activeViewTab === 'active'" class="pa-2 bg-light flex-shrink-0">
+          <!-- Acción Rápida: Completar / Marcar Todo Servido (siempre visible al pie) -->
+          <div class="pa-2 bg-light flex-shrink-0">
             <VBtn
+              v-if="activeViewTab === 'active'"
               color="success"
               variant="flat"
               block
@@ -677,6 +740,20 @@ onUnmounted(() => {
             >
               <VIcon icon="tabler-check" start size="16" />
               Completar
+            </VBtn>
+            <VBtn
+              v-else
+              color="primary"
+              variant="flat"
+              block
+              size="small"
+              class="font-weight-bold text-uppercase rounded"
+              :loading="bumpingTicketId === ticket.id"
+              :disabled="bumpingTicketId === ticket.id"
+              @click="handleServeAllTicket(ticket)"
+            >
+              <VIcon icon="tabler-check" start size="16" />
+              Marcar Todo Servido
             </VBtn>
           </div>
         </VCard>
