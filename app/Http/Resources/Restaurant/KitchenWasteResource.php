@@ -101,9 +101,9 @@ class KitchenWasteResource extends JsonResource
             'photo_url' => $photoUrl,
             'approved_by' => $this->approved_by,
             'approved_by_name' => $this->approver?->name ?? $this->approver?->username,
-            'approved_at' => $this->approved_at?->format('d/m/Y H:i'),
+            'approved_at' => $this->approved_at?->format('d/m/Y'),
             'rejection_reason' => $this->rejection_reason,
-            'occurred_at' => $this->occurred_at?->format('d/m/Y H:i') ?? $this->created_at?->format('d/m/Y H:i'),
+            'occurred_at' => $this->occurred_at?->format('d/m/Y') ?? $this->created_at?->format('d/m/Y'),
         ];
     }
 }

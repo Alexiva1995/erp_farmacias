@@ -63,6 +63,7 @@ const formatCurrency = price => {
 // Estado del listado y filtros avanzados
 const wastes = ref([])
 const loading = ref(false)
+const showAdvancedFilters = ref(false)
 const page = ref(1)
 const lastPage = ref(1)
 const totalItems = ref(0)
@@ -791,172 +792,175 @@ onUnmounted(() => {
       </v-col>
     </v-row>
 
-    <!-- Card Principal (Mismo estilo que Inventario de Productos) -->
-    <v-card>
-      <v-card-item class="pb-4">
-        <template #prepend>
-          <v-avatar color="primary" variant="tonal" rounded size="40">
-            <v-icon icon="tabler-trash-x" size="22" />
-          </v-avatar>
-        </template>
-        <v-card-title class="text-h5">
-          Control de Mermas y Desperdicios
-        </v-card-title>
-        <template #append>
-          <div class="d-flex flex-wrap align-center gap-2">
-            <v-btn
-              variant="tonal"
-              color="secondary"
-              prepend-icon="tabler-refresh"
-              :loading="loading"
-              @click="fetchWastes"
-            >
-              Actualizar
-            </v-btn>
-            <v-btn
-              color="primary"
-              prepend-icon="tabler-plus"
-              @click="openReportModal"
-            >
-              Reportar Merma
-            </v-btn>
-          </div>
-        </template>
-      </v-card-item>
-
-      <v-divider />
-
-      <!-- Pestañas de Estado y Atajos de Fecha -->
-      <v-card-text class="d-flex flex-wrap align-center justify-space-between gap-3 py-3">
-        <v-tabs v-model="statusFilter" density="compact" color="primary">
-          <v-tab value="all">
-            Todas
-          </v-tab>
-          <v-tab value="pending">
-            <v-icon start size="18" icon="tabler-clock" />
-            Pendientes
-            <v-chip
-              v-if="summary.pending_count > 0"
-              size="x-small"
-              color="warning"
-              variant="flat"
-              class="ms-2 font-weight-bold"
-            >
-              {{ summary.pending_count }}
-            </v-chip>
-          </v-tab>
-          <v-tab value="approved">
-            <v-icon start size="18" icon="tabler-check" />
-            Aprobadas
-          </v-tab>
-          <v-tab value="rejected">
-            <v-icon start size="18" icon="tabler-x" />
-            Rechazadas
-          </v-tab>
-        </v-tabs>
-
-        <div class="d-flex flex-wrap align-center gap-1">
-          <v-btn
-            size="small"
-            :variant="datePreset === 'today' ? 'flat' : 'tonal'"
-            :color="datePreset === 'today' ? 'primary' : 'secondary'"
-            @click="applyDatePreset('today')"
-          >
-            Hoy
-          </v-btn>
-          <v-btn
-            size="small"
-            :variant="datePreset === 'week' ? 'flat' : 'tonal'"
-            :color="datePreset === 'week' ? 'primary' : 'secondary'"
-            @click="applyDatePreset('week')"
-          >
-            Esta Semana
-          </v-btn>
-          <v-btn
-            size="small"
-            :variant="datePreset === 'month' ? 'flat' : 'tonal'"
-            :color="datePreset === 'month' ? 'primary' : 'secondary'"
-            @click="applyDatePreset('month')"
-          >
-            Este Mes
-          </v-btn>
-          <v-btn
-            size="small"
-            :variant="datePreset === 'all' ? 'flat' : 'tonal'"
-            :color="datePreset === 'all' ? 'primary' : 'secondary'"
-            @click="applyDatePreset('all')"
-          >
-            Todo
-          </v-btn>
-        </div>
-      </v-card-text>
-
-      <v-divider />
-
-      <!-- Barra de Filtros Compacta (Estilo Inventario de Productos) -->
+    <!-- Card de Filtros (Estilo Inventario de Productos) -->
+    <v-card class="mb-6">
       <v-card-text class="py-3">
-        <v-row dense align="center">
-          <v-col cols="12" sm="4">
+        <div class="d-flex flex-wrap align-center justify-space-between gap-3">
+          <div style="min-width: 260px; max-width: 420px; width: 100%;">
             <v-text-field
               v-model="searchQuery"
-              placeholder="Buscar por nombre, ID o descripción..."
+              placeholder="ID, Producto o descripción..."
               prepend-inner-icon="tabler-search"
               density="compact"
               variant="outlined"
               clearable
               hide-details
             />
-          </v-col>
-          <v-col cols="6" sm="2">
-            <v-text-field
-              v-model="dateFrom"
-              type="date"
-              label="Desde"
-              density="compact"
-              variant="outlined"
-              hide-details
-              @update:model-value="datePreset = 'custom'"
-            />
-          </v-col>
-          <v-col cols="6" sm="2">
-            <v-text-field
-              v-model="dateTo"
-              type="date"
-              label="Hasta"
-              density="compact"
-              variant="outlined"
-              hide-details
-              @update:model-value="datePreset = 'custom'"
-            />
-          </v-col>
-          <v-col cols="6" sm="2">
-            <v-select
-              v-model="itemTypeFilter"
-              :items="[
-                { title: 'Todos los tipos', value: 'all' },
-                { title: 'Insumo / Producto', value: 'product' },
-                { title: 'Platillo / Sub-receta', value: 'dish' },
-              ]"
-              label="Tipo"
-              density="compact"
-              variant="outlined"
-              hide-details
-            />
-          </v-col>
-          <v-col cols="6" sm="2">
-            <v-select
-              v-model="reasonFilter"
-              :items="[{ title: 'Todos los motivos', value: 'all' }, ...wasteReasons.map(r => ({ title: r.label, value: r.value }))]"
-              label="Motivo"
-              density="compact"
-              variant="outlined"
-              hide-details
-            />
-          </v-col>
-        </v-row>
-      </v-card-text>
+          </div>
 
-      <v-divider />
+          <div class="d-flex align-center gap-2">
+            <v-btn
+              icon
+              variant="tonal"
+              color="secondary"
+              size="38"
+              rounded="circle"
+              :loading="loading"
+              @click="fetchWastes"
+            >
+              <v-icon icon="tabler-refresh" size="20" />
+              <v-tooltip activator="parent" location="top">Actualizar</v-tooltip>
+            </v-btn>
+
+            <v-btn
+              icon
+              :variant="showAdvancedFilters ? 'flat' : 'tonal'"
+              color="primary"
+              size="38"
+              rounded="circle"
+              @click="showAdvancedFilters = !showAdvancedFilters"
+            >
+              <v-icon icon="tabler-filter" size="20" />
+              <v-tooltip activator="parent" location="top">Filtros</v-tooltip>
+            </v-btn>
+
+            <v-btn
+              icon
+              variant="tonal"
+              color="primary"
+              size="38"
+              rounded="circle"
+              @click="openReportModal"
+            >
+              <v-icon icon="tabler-plus" size="20" />
+              <v-tooltip activator="parent" location="top">Reportar Merma</v-tooltip>
+            </v-btn>
+          </div>
+        </div>
+
+        <!-- Filtros Desplegables -->
+        <v-expand-transition>
+          <div v-show="showAdvancedFilters" class="mt-4 pt-3 border-t">
+            <div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-3">
+              <v-tabs v-model="statusFilter" density="compact" color="primary">
+                <v-tab value="all">Todas</v-tab>
+                <v-tab value="pending">
+                  Pendientes
+                  <v-chip
+                    v-if="summary.pending_count > 0"
+                    size="x-small"
+                    color="warning"
+                    variant="flat"
+                    class="ms-2 font-weight-bold"
+                  >
+                    {{ summary.pending_count }}
+                  </v-chip>
+                </v-tab>
+                <v-tab value="approved">Aprobadas</v-tab>
+                <v-tab value="rejected">Rechazadas</v-tab>
+              </v-tabs>
+
+              <div class="d-flex flex-wrap align-center gap-1">
+                <v-btn
+                  size="small"
+                  :variant="datePreset === 'today' ? 'flat' : 'tonal'"
+                  :color="datePreset === 'today' ? 'primary' : 'secondary'"
+                  @click="applyDatePreset('today')"
+                >
+                  Hoy
+                </v-btn>
+                <v-btn
+                  size="small"
+                  :variant="datePreset === 'week' ? 'flat' : 'tonal'"
+                  :color="datePreset === 'week' ? 'primary' : 'secondary'"
+                  @click="applyDatePreset('week')"
+                >
+                  Esta Semana
+                </v-btn>
+                <v-btn
+                  size="small"
+                  :variant="datePreset === 'month' ? 'flat' : 'tonal'"
+                  :color="datePreset === 'month' ? 'primary' : 'secondary'"
+                  @click="applyDatePreset('month')"
+                >
+                  Este Mes
+                </v-btn>
+                <v-btn
+                  size="small"
+                  :variant="datePreset === 'all' ? 'flat' : 'tonal'"
+                  :color="datePreset === 'all' ? 'primary' : 'secondary'"
+                  @click="applyDatePreset('all')"
+                >
+                  Todo
+                </v-btn>
+              </div>
+            </div>
+
+            <v-row dense align="center">
+              <v-col cols="6" sm="3">
+                <v-text-field
+                  v-model="dateFrom"
+                  type="date"
+                  label="Fecha Inicial"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  @update:model-value="datePreset = 'custom'"
+                />
+              </v-col>
+              <v-col cols="6" sm="3">
+                <v-text-field
+                  v-model="dateTo"
+                  type="date"
+                  label="Fecha Final"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  @update:model-value="datePreset = 'custom'"
+                />
+              </v-col>
+              <v-col cols="6" sm="3">
+                <v-select
+                  v-model="itemTypeFilter"
+                  :items="[
+                    { title: 'Todos los tipos', value: 'all' },
+                    { title: 'Insumo / Producto', value: 'product' },
+                    { title: 'Platillo / Sub-receta', value: 'dish' },
+                  ]"
+                  label="Tipo"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="6" sm="3">
+                <v-select
+                  v-model="reasonFilter"
+                  :items="[{ title: 'Todos los motivos', value: 'all' }, ...wasteReasons.map(r => ({ title: r.label, value: r.value }))]"
+                  label="Motivo"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                />
+              </v-col>
+            </v-row>
+          </div>
+        </v-expand-transition>
+      </v-card-text>
+    </v-card>
+
+    <!-- Card Principal de Tabla (Estilo Inventario de Productos) -->
+    <v-card>
 
       <!-- Estado de Carga -->
       <div v-if="loading && wastes.length === 0" class="pa-6">
@@ -984,44 +988,31 @@ onUnmounted(() => {
         <v-table density="compact" hover class="text-no-wrap waste-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>NOMBRE</th>
-              <th class="text-center">CANTIDAD</th>
-              <th class="text-right">PERDIDA</th>
-              <th>TIPO</th>
-              <th>USUARIO</th>
-              <th class="text-end">ACCIONES</th>
+              <th class="text-uppercase text-caption font-weight-bold">ID</th>
+              <th class="text-uppercase text-caption font-weight-bold">FECHA</th>
+              <th class="text-uppercase text-caption font-weight-bold">NOMBRE</th>
+              <th class="text-uppercase text-caption font-weight-bold text-center">CANTIDAD</th>
+              <th class="text-uppercase text-caption font-weight-bold text-right">PERDIDA</th>
+              <th class="text-uppercase text-caption font-weight-bold">TIPO</th>
+              <th class="text-uppercase text-caption font-weight-bold">USUARIO</th>
+              <th class="text-uppercase text-caption font-weight-bold text-end">ACCIONES</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="waste in wastes" :key="waste.id">
-              <td>
-                <div class="d-flex flex-column py-1">
-                  <span class="font-weight-bold text-body-2 text-primary">
-                    {{ waste.item_type === 'dish' ? waste.dish_id : waste.product_id }}
-                  </span>
-                  <span class="text-caption text-medium-emphasis">
-                    {{ waste.occurred_at }}
-                  </span>
-                </div>
+              <td class="text-body-2 font-weight-bold text-primary">
+                {{ waste.item_type === 'dish' ? waste.dish_id : waste.product_id }}
               </td>
-              <td>
-                <div class="d-flex flex-column py-1">
-                  <span class="font-weight-medium text-body-2">{{ waste.item_name }}</span>
-                  <span
-                    v-if="waste.item_type === 'dish' && waste.ingredients_breakdown && waste.ingredients_breakdown.length > 0"
-                    class="text-caption text-info"
-                  >
-                    {{ waste.ingredients_breakdown.length }} insumo(s)
-                  </span>
-                </div>
+              <td class="text-body-2 text-medium-emphasis">
+                {{ waste.occurred_at }}
               </td>
-              <td class="text-center">
-                <span class="font-weight-bold text-error">
-                  -{{ waste.quantity }} {{ waste.product_unit }}
-                </span>
+              <td class="text-body-2 font-weight-bold">
+                {{ waste.item_name }}
               </td>
-              <td class="text-right font-weight-bold text-error">
+              <td class="text-body-2 text-center font-weight-medium text-error">
+                -{{ waste.quantity }} {{ waste.product_unit }}
+              </td>
+              <td class="text-body-2 text-right font-weight-medium text-error">
                 -{{ formatCurrency(waste.total_loss_usd) }}
               </td>
               <td>
@@ -1034,8 +1025,8 @@ onUnmounted(() => {
                   {{ waste.reason_label }}
                 </v-chip>
               </td>
-              <td>
-                <span class="text-body-2">{{ waste.user_name }}</span>
+              <td class="text-body-2">
+                {{ waste.user_name }}
               </td>
               <td class="text-end">
                 <div class="d-flex justify-end align-center gap-1">
