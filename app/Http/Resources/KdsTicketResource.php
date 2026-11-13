@@ -31,7 +31,7 @@ class KdsTicketResource extends JsonResource
             'id' => $this->id,
             'dining_table_name' => $this->diningTable?->name ?? 'Salón',
             'client_name' => $this->client?->name ?? 'Cliente General',
-            'seller_name' => $this->seller?->name ?? $this->seller?->username ?? 'Mesonero / Caja',
+            'seller_name' => $this->seller?->username ?? 'Mesonero / Caja',
             'order_date' => $this->order_date?->format('Y-m-d H:i:s'),
             'status' => $this->status,
             'items' => $this->details->map(function ($detail) use ($courseMap) {
