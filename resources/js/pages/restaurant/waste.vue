@@ -1565,3 +1565,9 @@ onUnmounted(() => {
     </v-dialog>
   </div>
 </template>
+
+<style scoped>
+.waste-table :deep(thead th) {
+  font-weight: 700 !important;
+}
+</style>
