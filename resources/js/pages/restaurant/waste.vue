@@ -92,9 +92,8 @@ const summary = reactive({
   internal_approved_count: 0,
 })
 
-// Estado del modal de reporte de merma (Individual o Hoja de Merma en Lote)
+// Estado del modal de reporte de merma (Hoja de Merma unificada)
 const showReportModal = ref(false)
-const reportMode = ref('single') // 'single' | 'batch'
 const submitting = ref(false)
 const loadingProductById = ref(false)
 const productNotFoundError = ref('')
@@ -112,14 +111,13 @@ const wasteForm = reactive({
   item_type: 'product',
   product_id: '',
   dish_id: null,
-  kitchen_station_id: null,
   quantity: null,
   reason: 'burned_spoiled',
   notes: '',
   photo: null,
 })
 
-// Renglones acumulados para el modo "Hoja de Merma (Múltiples Ítems)"
+// Renglones acumulados en la Hoja de Merma
 const batchItems = ref([])
 
 const formErrors = reactive({
@@ -157,7 +155,7 @@ const currentReasonObj = computed(() =>
 
 // Indica si el formulario actual exige fotografía obligatoria
 const isPhotoRequired = computed(() => {
-  if (reportMode.value === 'batch') {
+  if (batchItems.value.length > 0) {
     return batchItems.value.some(item => {
       const r = wasteReasons.find(wr => wr.value === item.reason)
       return Boolean(r?.requiresPhoto)
@@ -483,9 +481,7 @@ const resetItemInputs = () => {
 }
 
 const resetReportForm = () => {
-  reportMode.value = 'single'
   wasteForm.item_type = 'product'
-  wasteForm.kitchen_station_id = null
   wasteForm.reason = 'burned_spoiled'
   wasteForm.photo = null
   batchItems.value = []
@@ -497,9 +493,8 @@ const resetReportForm = () => {
   }
 }
 
-const openReportModal = (mode = 'single') => {
+const openReportModal = () => {
   resetReportForm()
-  reportMode.value = mode
   searchProductsByName('')
   if (dishesCatalog.value.length === 0) {
     fetchDishesCatalog()
@@ -561,7 +556,6 @@ const addLineToBatch = () => {
     unit_of_measure: wasteForm.item_type === 'product'
       ? (resolvedProduct.value?.unit_of_measure || 'und')
       : (resolvedDish.value?.unit_of_measure || 'plato'),
-    kitchen_station_id: wasteForm.kitchen_station_id || null,
     quantity: qty,
     unit_cost: unitCost,
     total_loss_usd: totalLoss,
@@ -580,11 +574,8 @@ const removeBatchLine = index => {
 const submitWasteReport = async () => {
   formErrors.photo = ''
 
-  if (reportMode.value === 'single') {
+  if (batchItems.value.length === 0) {
     if (!validateSingleLine()) return
-  } else if (batchItems.value.length === 0) {
-    toast.warning('Agrega al menos un ítem a la hoja de merma antes de enviar.')
-    return
   }
 
   if (isPhotoRequired.value && !wasteForm.photo) {
@@ -596,20 +587,14 @@ const submitWasteReport = async () => {
   try {
     const formData = new FormData()
 
-    if (reportMode.value === 'batch') {
+    if (batchItems.value.length > 0) {
       formData.append('items', JSON.stringify(batchItems.value))
-      if (wasteForm.kitchen_station_id) {
-        formData.append('kitchen_station_id', String(wasteForm.kitchen_station_id))
-      }
     } else {
       formData.append('item_type', wasteForm.item_type)
       if (wasteForm.item_type === 'product') {
         formData.append('product_id', String(wasteForm.product_id))
       } else {
         formData.append('dish_id', String(wasteForm.dish_id))
-      }
-      if (wasteForm.kitchen_station_id) {
-        formData.append('kitchen_station_id', String(wasteForm.kitchen_station_id))
       }
       formData.append('quantity', String(wasteForm.quantity))
       formData.append('reason', wasteForm.reason)
@@ -728,152 +713,134 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="pb-12">
-    <!-- Encabezado Principal -->
-    <v-card class="mb-4" elevation="1">
-      <v-card-text class="d-flex flex-wrap align-center justify-space-between gap-3 py-4">
-        <div class="d-flex align-center gap-3">
-          <v-avatar color="error" variant="tonal" rounded size="44">
-            <v-icon size="26">tabler-trash-x</v-icon>
-          </v-avatar>
-          <div>
-            <h1 class="text-h6 font-weight-bold mb-0">
-              Control de Mermas, Desperdicios y Consumo Interno
-            </h1>
-            <div class="text-caption text-medium-emphasis">
-              Valorización por <strong>Costo Unificado (Tabla Productos)</strong> • Soporte para Insumos, Sub-recetas y Platillos • Integrado al Estado de Resultados
-            </div>
-          </div>
-        </div>
-
-        <div class="d-flex flex-wrap align-center gap-2">
-          <v-btn
-            variant="outlined"
-            color="secondary"
-            prepend-icon="tabler-refresh"
-            :loading="loading"
-            @click="fetchWastes"
-          >
-            Actualizar
-          </v-btn>
-          <v-btn
-            variant="outlined"
-            color="primary"
-            prepend-icon="tabler-list-Details"
-            @click="openReportModal('batch')"
-          >
-            Hoja de Merma (Cierre de Turno)
-          </v-btn>
-          <v-btn
-            color="primary"
-            prepend-icon="tabler-plus"
-            @click="openReportModal('single')"
-          >
-            Reportar Merma
-          </v-btn>
-        </div>
-      </v-card-text>
-    </v-card>
-
-    <!-- Tarjetas de Resumen Operativo y Financiero (Estándar USALI Gastronómico) -->
-    <v-row class="mb-4" dense>
-      <v-col cols="12" sm="6" md="3">
-        <v-card variant="outlined" class="bg-surface h-100">
-          <v-card-text class="d-flex align-center justify-space-between">
+  <div>
+    <!-- Tarjetas de Resumen Operativo (Estilo Vuexy del Sistema) -->
+    <VRow class="mb-6">
+      <VCol cols="12" sm="6" md="3">
+        <VCard>
+          <VCardText class="d-flex align-center justify-space-between">
             <div>
-              <div class="text-caption text-medium-emphasis font-weight-bold text-uppercase">
-                Pendientes de Revisión
-              </div>
-              <div class="text-h5 font-weight-black text-warning mt-1">
+              <span class="text-body-2 text-medium-emphasis">Pendientes de Revisión</span>
+              <h4 class="text-h4 font-weight-bold text-warning my-1">
                 {{ summary.pending_count }}
-              </div>
-              <div class="text-caption text-medium-emphasis">
+              </h4>
+              <span class="text-caption text-medium-emphasis">
                 En espera: {{ formatCurrency(summary.total_loss_pending_usd) }}
-              </div>
+              </span>
             </div>
-            <v-avatar color="warning" variant="tonal" size="42">
-              <v-icon>tabler-clock-exclamation</v-icon>
-            </v-avatar>
-          </v-card-text>
-        </v-card>
-      </v-col>
+            <VAvatar color="warning" variant="tonal" rounded size="44">
+              <VIcon icon="tabler-clock-exclamation" size="26" />
+            </VAvatar>
+          </VCardText>
+        </VCard>
+      </VCol>
 
-      <v-col cols="12" sm="6" md="3">
-        <v-card variant="outlined" class="bg-surface h-100">
-          <v-card-text class="d-flex align-center justify-space-between">
+      <VCol cols="12" sm="6" md="3">
+        <VCard>
+          <VCardText class="d-flex align-center justify-space-between">
             <div>
-              <div class="text-caption text-medium-emphasis font-weight-bold text-uppercase">
-                Merma Operativa (Desperdicio)
-              </div>
-              <div class="text-h5 font-weight-black text-error mt-1">
+              <span class="text-body-2 text-medium-emphasis">Merma Operativa</span>
+              <h4 class="text-h4 font-weight-bold text-error my-1">
                 -{{ formatCurrency(summary.operational_loss_approved_usd) }}
-              </div>
-              <div class="text-caption text-medium-emphasis">
-                {{ summary.operational_approved_count }} bajas (Quemado, Vencido, Caída, Limpieza)
-              </div>
+              </h4>
+              <span class="text-caption text-medium-emphasis">
+                {{ summary.operational_approved_count }} bajas (Desperdicio)
+              </span>
             </div>
-            <v-avatar color="error" variant="tonal" size="42">
-              <v-icon>tabler-flame</v-icon>
-            </v-avatar>
-          </v-card-text>
-        </v-card>
-      </v-col>
+            <VAvatar color="error" variant="tonal" rounded size="44">
+              <VIcon icon="tabler-flame" size="26" />
+            </VAvatar>
+          </VCardText>
+        </VCard>
+      </VCol>
 
-      <v-col cols="12" sm="6" md="3">
-        <v-card variant="outlined" class="bg-surface h-100">
-          <v-card-text class="d-flex align-center justify-space-between">
+      <VCol cols="12" sm="6" md="3">
+        <VCard>
+          <VCardText class="d-flex align-center justify-space-between">
             <div>
-              <div class="text-caption text-medium-emphasis font-weight-bold text-uppercase">
-                Personal y Cortesías
-              </div>
-              <div class="text-h5 font-weight-black text-info mt-1">
+              <span class="text-body-2 text-medium-emphasis">Personal y Cortesías</span>
+              <h4 class="text-h4 font-weight-bold text-info my-1">
                 -{{ formatCurrency(summary.internal_consumption_approved_usd) }}
-              </div>
-              <div class="text-caption text-medium-emphasis">
-                {{ summary.internal_approved_count }} registros (Consumo interno / Comercial)
-              </div>
+              </h4>
+              <span class="text-caption text-medium-emphasis">
+                {{ summary.internal_approved_count }} registros internos
+              </span>
             </div>
-            <v-avatar color="info" variant="tonal" size="42">
-              <v-icon>tabler-tools-kitchen-2</v-icon>
-            </v-avatar>
-          </v-card-text>
-        </v-card>
-      </v-col>
+            <VAvatar color="info" variant="tonal" rounded size="44">
+              <VIcon icon="tabler-tools-kitchen-2" size="26" />
+            </VAvatar>
+          </VCardText>
+        </VCard>
+      </VCol>
 
-      <v-col cols="12" sm="6" md="3">
-        <v-card variant="outlined" class="bg-surface h-100">
-          <v-card-text class="d-flex align-center justify-space-between">
+      <VCol cols="12" sm="6" md="3">
+        <VCard>
+          <VCardText class="d-flex align-center justify-space-between">
             <div>
-              <div class="text-caption text-medium-emphasis font-weight-bold text-uppercase">
-                Total Aprobado ({{ summary.approved_count }})
-              </div>
-              <div class="text-h5 font-weight-black text-primary mt-1">
+              <span class="text-body-2 text-medium-emphasis">Total Aprobado ({{ summary.approved_count }})</span>
+              <h4 class="text-h4 font-weight-bold text-primary my-1">
                 -{{ formatCurrency(summary.total_loss_approved_usd) }}
-              </div>
-              <div class="text-caption text-medium-emphasis">
-                Rechazadas sin descuento: {{ summary.rejected_count }}
-              </div>
+              </h4>
+              <span class="text-caption text-medium-emphasis">
+                Rechazadas: {{ summary.rejected_count }}
+              </span>
             </div>
-            <v-avatar color="primary" variant="tonal" size="42">
-              <v-icon>tabler-chart-pie</v-icon>
-            </v-avatar>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+            <VAvatar color="primary" variant="tonal" rounded size="44">
+              <VIcon icon="tabler-chart-pie" size="26" />
+            </VAvatar>
+          </VCardText>
+        </VCard>
+      </VCol>
+    </VRow>
 
-    <!-- Panel de Filtros y Tabla -->
-    <v-card variant="flat" class="border rounded-lg bg-surface overflow-hidden">
-      <!-- Fila 1: Pestañas de Estado + Atajos de Fecha -->
-      <v-card-text class="d-flex flex-wrap align-center justify-space-between gap-3 py-3 border-b">
-        <v-tabs v-model="statusFilter" density="compact" color="primary">
-          <v-tab value="all">
+    <!-- Card Principal (Mismo estilo que Inventario de Productos) -->
+    <VCard>
+      <VCardItem class="pb-4">
+        <template #prepend>
+          <VAvatar color="primary" variant="tonal" rounded size="40">
+            <VIcon icon="tabler-trash-x" size="22" />
+          </VAvatar>
+        </template>
+        <VCardTitle class="text-h5">
+          Control de Mermas y Desperdicios
+        </VCardTitle>
+        <VCardSubtitle>
+          Valorización por Costo Unificado (Tabla Productos) • Insumos, Sub-recetas y Platillos
+        </VCardSubtitle>
+        <template #append>
+          <div class="d-flex flex-wrap align-center gap-2">
+            <VBtn
+              variant="tonal"
+              color="secondary"
+              prepend-icon="tabler-refresh"
+              :loading="loading"
+              @click="fetchWastes"
+            >
+              Actualizar
+            </VBtn>
+            <VBtn
+              color="primary"
+              prepend-icon="tabler-plus"
+              @click="openReportModal"
+            >
+              Reportar Merma
+            </VBtn>
+          </div>
+        </template>
+      </VCardItem>
+
+      <VDivider />
+
+      <!-- Pestañas de Estado y Atajos de Fecha -->
+      <VCardText class="d-flex flex-wrap align-center justify-space-between gap-3 py-3">
+        <VTabs v-model="statusFilter" density="compact" color="primary">
+          <VTab value="all">
             Todas
-          </v-tab>
-          <v-tab value="pending">
-            <v-icon start size="18">tabler-clock</v-icon>
+          </VTab>
+          <VTab value="pending">
+            <VIcon start size="18" icon="tabler-clock" />
             Pendientes
-            <v-chip
+            <VChip
               v-if="summary.pending_count > 0"
               size="x-small"
               color="warning"
@@ -881,81 +848,81 @@ onUnmounted(() => {
               class="ms-2 font-weight-bold"
             >
               {{ summary.pending_count }}
-            </v-chip>
-          </v-tab>
-          <v-tab value="approved">
-            <v-icon start size="18">tabler-check</v-icon>
-            Aprobadas (Pérdidas)
-          </v-tab>
-          <v-tab value="rejected">
-            <v-icon start size="18">tabler-x</v-icon>
+            </VChip>
+          </VTab>
+          <VTab value="approved">
+            <VIcon start size="18" icon="tabler-check" />
+            Aprobadas
+          </VTab>
+          <VTab value="rejected">
+            <VIcon start size="18" icon="tabler-x" />
             Rechazadas
-          </v-tab>
-        </v-tabs>
+          </VTab>
+        </VTabs>
 
         <div class="d-flex flex-wrap align-center gap-1">
-          <v-btn
+          <VBtn
             size="small"
             :variant="datePreset === 'today' ? 'flat' : 'tonal'"
             :color="datePreset === 'today' ? 'primary' : 'secondary'"
             @click="applyDatePreset('today')"
           >
             Hoy
-          </v-btn>
-          <v-btn
+          </VBtn>
+          <VBtn
             size="small"
             :variant="datePreset === 'week' ? 'flat' : 'tonal'"
             :color="datePreset === 'week' ? 'primary' : 'secondary'"
             @click="applyDatePreset('week')"
           >
             Esta Semana
-          </v-btn>
-          <v-btn
+          </VBtn>
+          <VBtn
             size="small"
             :variant="datePreset === 'month' ? 'flat' : 'tonal'"
             :color="datePreset === 'month' ? 'primary' : 'secondary'"
             @click="applyDatePreset('month')"
           >
             Este Mes
-          </v-btn>
-          <v-btn
+          </VBtn>
+          <VBtn
             size="small"
             :variant="datePreset === 'all' ? 'flat' : 'tonal'"
             :color="datePreset === 'all' ? 'primary' : 'secondary'"
             @click="applyDatePreset('all')"
           >
             Todo
-          </v-btn>
+          </VBtn>
         </div>
-      </v-card-text>
+      </VCardText>
 
-      <!-- Fila 2: Filtros detallados (Fechas, Tipo, Motivo, Estación, Buscador) -->
-      <v-card-text class="py-3 border-b bg-grey-lighten-5">
-        <v-row dense align="center">
-          <v-col cols="6" sm="2">
-            <v-text-field
+      <VDivider />
+
+      <!-- Barra de Filtros -->
+      <VCardText class="py-3">
+        <VRow dense align="center">
+          <VCol cols="6" sm="2">
+            <AppTextField
               v-model="dateFrom"
               type="date"
               label="Desde"
               density="compact"
-              variant="outlined"
               hide-details
               @update:model-value="datePreset = 'custom'"
             />
-          </v-col>
-          <v-col cols="6" sm="2">
-            <v-text-field
+          </VCol>
+          <VCol cols="6" sm="2">
+            <AppTextField
               v-model="dateTo"
               type="date"
               label="Hasta"
               density="compact"
-              variant="outlined"
               hide-details
               @update:model-value="datePreset = 'custom'"
             />
-          </v-col>
-          <v-col cols="6" sm="2">
-            <v-select
+          </VCol>
+          <VCol cols="6" sm="2">
+            <AppSelect
               v-model="itemTypeFilter"
               :items="[
                 { title: 'Todos los tipos', value: 'all' },
@@ -964,35 +931,32 @@ onUnmounted(() => {
               ]"
               label="Tipo de Ítem"
               density="compact"
-              variant="outlined"
               hide-details
             />
-          </v-col>
-          <v-col cols="6" sm="2">
-            <v-select
+          </VCol>
+          <VCol cols="6" sm="2">
+            <AppSelect
               v-model="reasonFilter"
-              :items="[{ label: 'Todos los motivos', value: 'all' }, ...wasteReasons]"
-              item-title="label"
-              item-value="value"
+              :items="[{ title: 'Todos los motivos', value: 'all' }, ...wasteReasons.map(r => ({ title: r.label, value: r.value }))]"
               label="Motivo"
               density="compact"
-              variant="outlined"
               hide-details
             />
-          </v-col>
-          <v-col cols="12" sm="4">
-            <v-text-field
+          </VCol>
+          <VCol cols="12" sm="4">
+            <AppTextField
               v-model="searchQuery"
-              placeholder="Buscar por nombre de insumo, platillo, ID o nota..."
+              placeholder="Buscar por nombre, ID o descripción..."
               prepend-inner-icon="tabler-search"
               density="compact"
-              variant="outlined"
               clearable
               hide-details
             />
-          </v-col>
-        </v-row>
-      </v-card-text>
+          </VCol>
+        </VRow>
+      </VCardText>
+
+      <VDivider />
 
       <!-- Estado de Carga -->
       <div v-if="loading && wastes.length === 0" class="pa-6">
@@ -1009,10 +973,7 @@ onUnmounted(() => {
           Puedes registrar una merma individual o cargar la hoja de merma de cierre de turno valorizada al costo unificado de la tabla productos.
         </p>
         <div class="d-flex justify-center gap-2">
-          <v-btn variant="outlined" color="primary" prepend-icon="tabler-list-details" @click="openReportModal('batch')">
-            Hoja de Merma (Múltiple)
-          </v-btn>
-          <v-btn color="primary" prepend-icon="tabler-plus" @click="openReportModal('single')">
+          <v-btn color="primary" prepend-icon="tabler-plus" @click="openReportModal">
             Reportar Merma
           </v-btn>
         </div>
@@ -1030,7 +991,7 @@ onUnmounted(() => {
               <th class="text-right">Pérdida Total</th>
               <th>Clasificación / Descripción</th>
               <th class="text-center">Evidencia</th>
-              <th>Estación / Usuario</th>
+              <th>Reportado Por</th>
               <th class="text-center">Estado</th>
               <th>Fecha</th>
               <th v-if="isApprover" class="text-end">Acciones Admin</th>
@@ -1116,7 +1077,6 @@ onUnmounted(() => {
               </td>
               <td>
                 <div class="d-flex flex-column">
-                  <span class="text-caption font-weight-bold text-primary">{{ waste.station_name }}</span>
                   <span class="text-body-2 font-weight-medium">{{ waste.user_name }}</span>
                   <span v-if="waste.approved_by_name" class="text-caption text-medium-emphasis">
                     Rev: {{ waste.approved_by_name }}
@@ -1192,7 +1152,7 @@ onUnmounted(() => {
           <div class="d-flex align-center gap-2">
             <v-icon color="white">tabler-alert-triangle</v-icon>
             <span class="text-subtitle-1 font-weight-bold text-white">
-              {{ reportMode === 'batch' ? 'Hoja de Merma de Cierre de Turno (Múltiples Ítems)' : 'Reportar Merma / Pérdida de Cocina' }}
+              Registrar Merma / Hoja de Merma
             </span>
           </div>
           <v-btn
@@ -1207,26 +1167,11 @@ onUnmounted(() => {
 
         <v-card-text class="pa-4 flex-grow-1 overflow-y-auto">
           <v-form id="wasteReportForm" @submit.prevent="submitWasteReport">
-            <!-- Selector de Modo y Tipo de Ítem -->
+            <!-- Selector de Tipo de Ítem -->
             <div class="d-flex flex-wrap align-center justify-space-between gap-2 mb-4 pb-3 border-b">
               <v-btn-toggle
-                v-model="reportMode"
-                color="primary"
-                density="compact"
-                mandatory
-                variant="outlined"
-              >
-                <v-btn value="single" prepend-icon="tabler-file-alert">
-                  Registro Individual
-                </v-btn>
-                <v-btn value="batch" prepend-icon="tabler-list-check">
-                  Hoja de Merma ({{ batchItems.length }})
-                </v-btn>
-              </v-btn-toggle>
-
-              <v-btn-toggle
                 v-model="wasteForm.item_type"
-                color="secondary"
+                color="primary"
                 density="compact"
                 mandatory
                 variant="outlined"
@@ -1277,26 +1222,14 @@ onUnmounted(() => {
                   />
                 </v-col>
 
-                <!-- Tarjeta informativa del producto con su Costo Unificado (Tabla products) -->
-                <v-col v-if="resolvedProduct" cols="12" class="mb-3">
-                  <v-alert
-                    color="info"
-                    variant="tonal"
-                    density="compact"
-                    icon="tabler-package"
-                  >
-                    <div class="d-flex flex-wrap align-center justify-space-between gap-2">
-                      <div>
-                        <strong>#{{ resolvedProduct.id }} — {{ resolvedProduct.name }}</strong>
-                      </div>
-                      <div class="d-flex flex-wrap gap-3 text-caption font-weight-bold">
-                        <span>Stock actual: {{ resolvedProduct.stock }} {{ resolvedProduct.unit_of_measure }}</span>
-                        <v-chip size="x-small" color="primary" variant="flat">
-                          Costo Unificado (Tabla Productos): {{ formatCurrency(resolvedProduct.unit_cost) }} / {{ resolvedProduct.unit_of_measure }}
-                        </v-chip>
-                      </div>
-                    </div>
-                  </v-alert>
+                <!-- Información del producto seleccionado -->
+                <v-col v-if="resolvedProduct" cols="12" class="mb-2">
+                  <div class="d-flex flex-wrap align-center justify-space-between gap-2 px-3 py-2 rounded border text-caption">
+                    <span><strong>#{{ resolvedProduct.id }} — {{ resolvedProduct.name }}</strong></span>
+                    <span class="text-medium-emphasis">
+                      Stock: {{ resolvedProduct.stock }} {{ resolvedProduct.unit_of_measure }} • Costo: {{ formatCurrency(resolvedProduct.unit_cost) }} / {{ resolvedProduct.unit_of_measure }}
+                    </span>
+                  </div>
                 </v-col>
               </template>
 
@@ -1360,8 +1293,8 @@ onUnmounted(() => {
                 </v-col>
               </template>
 
-              <!-- Cantidad, Clasificación y Estación de Cocina -->
-              <v-col cols="12" sm="4">
+              <!-- Cantidad y Clasificación -->
+              <v-col cols="12" sm="6">
                 <v-text-field
                   v-model.number="wasteForm.quantity"
                   type="number"
@@ -1376,7 +1309,7 @@ onUnmounted(() => {
                 />
               </v-col>
 
-              <v-col cols="12" sm="4">
+              <v-col cols="12" sm="6">
                 <v-select
                   v-model="wasteForm.reason"
                   :items="wasteReasons"
@@ -1385,20 +1318,6 @@ onUnmounted(() => {
                   label="Motivo / Clasificación *"
                   density="compact"
                   variant="outlined"
-                />
-              </v-col>
-
-              <v-col cols="12" sm="4">
-                <v-select
-                  v-model="wasteForm.kitchen_station_id"
-                  :items="kitchenStations"
-                  item-title="name"
-                  item-value="id"
-                  label="Estación de Cocina"
-                  placeholder="Cocina General"
-                  density="compact"
-                  variant="outlined"
-                  clearable
                 />
               </v-col>
 
@@ -1417,23 +1336,16 @@ onUnmounted(() => {
 
               <!-- Resumen del impacto del renglón actual -->
               <v-col v-if="estimatedLossUsd > 0" cols="12" class="mb-2">
-                <div class="d-flex flex-wrap justify-space-between align-center pa-2 rounded bg-error-lighten-5">
-                  <div>
-                    <span class="text-caption font-weight-bold d-block">
-                      {{ currentReasonObj.category }}
-                    </span>
-                    <span class="text-caption text-medium-emphasis">
-                      Cálculo: {{ wasteForm.quantity }} × {{ formatCurrency(activeUnifiedUnitCost) }} (Costo Unificado Tabla Productos)
-                    </span>
-                  </div>
-                  <span class="text-subtitle-1 font-weight-black text-error">
+                <div class="d-flex justify-space-between align-center px-3 py-2 rounded border">
+                  <span class="text-caption font-weight-medium">Pérdida estimada de este ítem:</span>
+                  <span class="text-subtitle-2 font-weight-bold text-error">
                     -{{ formatCurrency(estimatedLossUsd) }}
                   </span>
                 </div>
               </v-col>
 
-              <!-- Botón para agregar a la Hoja de Merma cuando está en modo batch -->
-              <v-col v-if="reportMode === 'batch'" cols="12" class="mb-3">
+              <!-- Botón para agregar a la Hoja de Merma -->
+              <v-col cols="12" class="mb-3">
                 <v-btn
                   block
                   color="secondary"
@@ -1441,12 +1353,12 @@ onUnmounted(() => {
                   prepend-icon="tabler-plus"
                   @click="addLineToBatch"
                 >
-                  Agregar Renglón a la Hoja de Merma
+                  Agregar a la Hoja de Merma
                 </v-btn>
               </v-col>
 
-              <!-- Tabla de renglones agregados en modo Hoja de Merma -->
-              <v-col v-if="reportMode === 'batch' && batchItems.length > 0" cols="12" class="mb-3">
+              <!-- Tabla de renglones agregados en la Hoja de Merma -->
+              <v-col v-if="batchItems.length > 0" cols="12" class="mb-3">
                 <div class="border rounded-lg overflow-hidden">
                   <div class="bg-grey-lighten-4 px-3 py-2 d-flex justify-space-between align-center border-b">
                     <span class="text-caption font-weight-bold text-uppercase">
@@ -1562,7 +1474,7 @@ onUnmounted(() => {
             :loading="submitting"
             :disabled="submitting"
           >
-            {{ reportMode === 'batch' ? `Registrar Hoja de Merma (${batchItems.length})` : (isApprover ? 'Registrar y Aprobar Merma' : 'Enviar Merma a Aprobación') }}
+            {{ batchItems.length > 0 ? `Registrar Hoja de Merma (${batchItems.length})` : (isApprover ? 'Registrar y Aprobar Merma' : 'Enviar Merma a Aprobación') }}
           </v-btn>
         </v-card-actions>
       </v-card>
