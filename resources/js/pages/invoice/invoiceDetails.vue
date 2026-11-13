@@ -418,23 +418,25 @@ const getPriceVsSystemCostIndicator = (item) => {
 
 /**
  * Copia al portapapeles todos los productos de la factura que tengan un precio
- * facturado superior al costo registrado en el sistema (con tolerancia de 0.01 USD).
+ * facturado superior al precio ofertado en la orden de compra (con tolerancia de 0.01 USD).
  */
 const copyMoreExpensiveProducts = () => {
+  const tolerance = 0.01;
+
   const expensiveProducts = processedInvoiceDetails.value.filter(item => {
-    const systemCost = Number(item.product?.unit_cost);
-    if (systemCost == null || isNaN(systemCost) || systemCost <= 0) return false;
     const invoicePrice = Number(item.unit_cost_usd);
-    if (invoicePrice == null || isNaN(invoicePrice)) return false;
-    
-    const tolerance = 0.01;
-    return invoicePrice > systemCost + tolerance;
+    if (item.unit_cost_usd == null || isNaN(invoicePrice)) return false;
+
+    const autoOrderPrice = Number(item.auto_order_unit_cost_usd);
+    if (item.auto_order_unit_cost_usd == null || isNaN(autoOrderPrice) || autoOrderPrice <= 0) return false;
+
+    return invoicePrice > autoOrderPrice + tolerance;
   });
 
   if (expensiveProducts.length === 0) {
     toast.fire({
       icon: "info",
-      title: "No hay productos con precio mayor al costo registrado en el sistema.",
+      title: "No hay productos con precio mayor al ofertado en la orden de compra.",
     });
     return;
   }
@@ -447,22 +449,22 @@ Tasa de Cambio: ${invoice.value?.exchange_rate || '1'}
 Moneda: ${invoice.value?.currency || 'USD'}
 Total Factura: ${formatCurrency(invoice.value?.total_amount, invoice.value?.currency)}
 
-PRODUCTOS CON PRECIO MAYOR AL COSTO EN SISTEMA:
+PRODUCTOS CON PRECIO MAYOR A LA ORDEN DE COMPRA:
 `;
 
   let totalDiferencia = 0;
 
   expensiveProducts.forEach((item) => {
     const facturado = Number(item.unit_cost_usd) || 0;
-    const costoSistema = Number(item.product?.unit_cost) || 0;
+    const costoOrden = Number(item.auto_order_unit_cost_usd) || 0;
     const qty = Number(item.quantity) || 0;
-    const difUnit = facturado - costoSistema;
+    const difUnit = facturado - costoOrden;
     const difTotalItem = difUnit * qty;
     totalDiferencia += difTotalItem;
 
     text += `- ${item.product?.name || 'Producto'}:
   Facturado: $${facturado.toFixed(2)} USD
-  Costo Sistema: $${costoSistema.toFixed(2)} USD
+  Orden de Compra: $${costoOrden.toFixed(2)} USD
   Cantidad: ${qty}
   Diferencia Unitario: $${difUnit.toFixed(2)} USD
   Diferencia Total: $${difTotalItem.toFixed(2)} USD\n`;
