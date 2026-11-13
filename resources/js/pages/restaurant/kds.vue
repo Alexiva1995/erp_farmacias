@@ -37,10 +37,7 @@ const isMultiStation = computed(() => {
 
 const showCourseHeaders = computed(() => {
   const courses = brandingStore.settings?.kds_courses;
-  if (Array.isArray(courses)) {
-    return courses.length > 1;
-  }
-  return true;
+  return Array.isArray(courses) && courses.length > 1;
 });
 
 // Métricas en vivo
@@ -527,33 +524,32 @@ onUnmounted(() => {
             :class="`bg-${getUrgencyColor(ticket.items?.[0]?.commanded_at, ticket.items?.[0]?.preparation_time_minutes)}`"
           />
 
-          <!-- Encabezado limpio de la Comanda -->
-          <div class="pa-3 bg-surface border-b d-flex align-start justify-space-between gap-2 flex-shrink-0">
-            <div style="min-width: 0; flex: 1;">
-              <div class="font-weight-black text-subtitle-1 text-high-emphasis text-uppercase text-truncate">
-                {{ ticket.dining_table_name || `Orden #${ticket.id}` }}
-              </div>
-              <div class="d-flex align-center gap-1 text-caption font-weight-bold text-medium-emphasis text-truncate mt-1">
-                <VChip size="x-small" color="secondary" variant="tonal" class="font-weight-black flex-shrink-0">
-                  #{{ ticket.id }} • {{ ticket.items?.length }} ítems
+          <!-- Encabezado limpio de la Comanda: ID (sin #) -> Mesa -> Cronómetro -->
+          <div class="pa-3 bg-surface border-b flex-shrink-0">
+            <div class="d-flex align-center justify-space-between gap-2">
+              <div class="d-flex align-center gap-2" style="min-width: 0; flex: 1;">
+                <VChip size="small" color="primary" variant="tonal" class="font-weight-black flex-shrink-0">
+                  {{ ticket.id }}
                 </VChip>
-                <span class="text-truncate">• {{ ticket.seller_name }}</span>
+                <span class="font-weight-black text-subtitle-1 text-high-emphasis text-uppercase text-truncate">
+                  {{ ticket.dining_table_name || 'Salón' }}
+                </span>
               </div>
-            </div>
 
-            <!-- Cronómetro en Vivo con badge de alerta -->
-            <div class="text-right flex-shrink-0" style="white-space: nowrap;">
               <VChip
                 :color="getUrgencyColor(ticket.items?.[0]?.commanded_at, ticket.items?.[0]?.preparation_time_minutes)"
                 variant="flat"
                 size="small"
-                class="font-weight-black font-mono"
+                class="font-weight-black font-mono flex-shrink-0"
               >
                 {{ getElapsedTime(ticket.items?.[0]?.commanded_at) }}
               </VChip>
-              <div class="text-super-xs text-medium-emphasis mt-1">
-                Est: {{ ticket.items?.[0]?.preparation_time_minutes || 15 }}m
-              </div>
+            </div>
+
+            <div class="d-flex align-center gap-1 text-caption font-weight-bold text-medium-emphasis text-truncate mt-1">
+              <span>{{ ticket.items?.length }} ítems</span>
+              <span>•</span>
+              <span class="text-truncate">{{ ticket.seller_name }}</span>
             </div>
           </div>
 
