@@ -531,19 +531,17 @@ onUnmounted(() => {
             :class="`bg-${getUrgencyColor(ticket.items?.[0]?.commanded_at, ticket.items?.[0]?.preparation_time_minutes)}`"
           >
             <div style="min-width: 0; flex: 1;">
-              <div class="d-flex align-center gap-2 flex-wrap">
-                <span class="font-weight-black text-subtitle-1 text-white text-uppercase text-truncate">
-                  {{ ticket.dining_table_name || `Orden #${ticket.id}` }}
-                </span>
+              <div class="font-weight-black text-subtitle-1 text-white text-uppercase text-truncate">
+                {{ ticket.dining_table_name || `Orden #${ticket.id}` }}
+              </div>
+              <div class="d-flex align-center gap-1 text-super-xs font-weight-bold text-white opacity-90 text-truncate mt-1">
                 <span
-                  class="px-2 py-0.5 rounded text-super-xs font-weight-black text-white flex-shrink-0"
+                  class="px-1.5 py-0.5 rounded text-white flex-shrink-0"
                   style="background: rgba(255, 255, 255, 0.22);"
                 >
                   #{{ ticket.id }} • {{ ticket.items?.length }} ítems
                 </span>
-              </div>
-              <div class="text-super-xs font-weight-bold text-white opacity-90 text-truncate mt-1">
-                {{ ticket.seller_name }} • {{ ticket.client_name }}
+                <span class="text-truncate">• {{ ticket.seller_name }}</span>
               </div>
             </div>
 
@@ -592,24 +590,45 @@ onUnmounted(() => {
                   }"
                   @click="handleNextStatus(item)"
                 >
-                  <div class="d-flex align-start justify-space-between gap-2 mb-1">
-                    <div class="d-flex align-baseline gap-2">
-                      <span
-                        v-if="item.quantity > 1"
-                        class="px-2 py-0.5 rounded bg-primary text-white font-weight-black text-subtitle-2 flex-shrink-0"
+                  <!-- Fila 1: Cantidad + Nombre completo del plato -->
+                  <div class="d-flex align-baseline gap-2 mb-2">
+                    <span
+                      v-if="item.quantity > 1"
+                      class="px-2 py-0.5 rounded bg-primary text-white font-weight-black text-body-2 flex-shrink-0"
+                    >
+                      {{ item.quantity }}x
+                    </span>
+                    <span v-else class="font-weight-black text-body-1 text-primary flex-shrink-0">
+                      {{ item.quantity }}x
+                    </span>
+                    <span class="font-weight-bold text-body-1 text-high-emphasis text-uppercase" style="line-height: 1.25;">
+                      {{ item.dish_name }}
+                    </span>
+                  </div>
+
+                  <!-- Fila 2: Metadatos (Silla/Estación) + Receta + Estado -->
+                  <div class="d-flex align-center justify-space-between gap-2 flex-wrap">
+                    <div class="d-flex align-center gap-1 flex-wrap">
+                      <VChip
+                        v-if="item.kitchen_station && isMultiStation"
+                        size="x-small"
+                        :color="item.kitchen_station.color || 'secondary'"
+                        variant="tonal"
                       >
-                        {{ item.quantity }}x
-                      </span>
-                      <span v-else class="font-weight-black text-subtitle-1 text-primary flex-shrink-0">
-                        {{ item.quantity }}x
-                      </span>
-                      <span class="font-weight-black text-subtitle-1 text-high-emphasis text-uppercase leading-tight">
-                        {{ item.dish_name }}
-                      </span>
+                        <VIcon :icon="item.kitchen_station.icon || 'tabler-flame'" start size="12" />
+                        {{ item.kitchen_station.name }}
+                      </VChip>
+                      <VChip
+                        v-if="item.seat_number"
+                        size="x-small"
+                        color="primary"
+                        variant="tonal"
+                      >
+                        Silla {{ item.seat_number }}
+                      </VChip>
                     </div>
 
-                    <!-- Botón compacto Receta/Foto + Chip de Estado/Acción -->
-                    <div class="d-flex align-center gap-1 flex-shrink-0">
+                    <div class="d-flex align-center gap-1 ms-auto flex-shrink-0">
                       <VBtn
                         icon="tabler-book-2"
                         size="x-small"
@@ -620,41 +639,20 @@ onUnmounted(() => {
                       />
                       <VChip
                         :color="item.kitchen_status_color"
-                        size="small"
+                        size="x-small"
                         label
                         class="font-weight-black text-uppercase"
                       >
                         <VIcon
                           :icon="item.kitchen_status === 'preparing' ? 'tabler-flame' : 'tabler-clock'"
                           start
-                          size="13"
+                          size="12"
                         />
                         {{ activeViewTab === 'active'
-                          ? (item.kitchen_status === 'queued' ? 'Cola • Iniciar' : 'Fuego • Listo')
+                          ? (item.kitchen_status === 'queued' ? 'En Cola' : 'En Fuego')
                           : item.kitchen_status_label }}
                       </VChip>
                     </div>
-                  </div>
-
-                  <!-- Estación KDS y Comensal -->
-                  <div v-if="(item.kitchen_station && isMultiStation) || item.seat_number" class="d-flex align-center gap-1 flex-wrap mt-1">
-                    <VChip
-                      v-if="item.kitchen_station && isMultiStation"
-                      size="x-small"
-                      :color="item.kitchen_station.color || 'secondary'"
-                      variant="tonal"
-                    >
-                      <VIcon :icon="item.kitchen_station.icon || 'tabler-flame'" start size="12" />
-                      {{ item.kitchen_station.name }}
-                    </VChip>
-                    <VChip
-                      v-if="item.seat_number"
-                      size="x-small"
-                      color="primary"
-                      variant="tonal"
-                    >
-                      Silla {{ item.seat_number }}
-                    </VChip>
                   </div>
 
                   <!-- Acciones de Pase (solo en pestaña En Pase / Listos) -->
