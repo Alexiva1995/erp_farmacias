@@ -30,4 +30,9 @@ interface KdsServiceInterface
      * Despachar (Bump) todos los ítems activos de una orden en una estación determinada.
      */
     public function bumpTicket(Order $order, ?int $stationId = null): Order;
+
+    /**
+     * Obtener métricas de rendimiento de cocina del día actual.
+     */
+    public function getMetrics(?int $stationId = null): array;
 }

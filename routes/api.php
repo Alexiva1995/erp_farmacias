@@ -348,6 +348,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     // Rutas KDS (Kitchen Display System)
     Route::prefix("kds")->group(function () {
         Route::get("tickets", [\App\Http\Controllers\Api\KdsController::class, "index"]);
+        Route::get("metrics", [\App\Http\Controllers\Api\KdsController::class, "metrics"]);
         Route::post("orders/{order}/send", [\App\Http\Controllers\Api\KdsController::class, "sendToKitchen"]);
         Route::patch("items/{orderDetail}/status", [\App\Http\Controllers\Api\KdsController::class, "updateItemStatus"]);
         Route::post("orders/{order}/bump", [\App\Http\Controllers\Api\KdsController::class, "bumpTicket"]);

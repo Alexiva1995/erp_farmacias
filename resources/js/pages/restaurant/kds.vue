@@ -21,6 +21,11 @@ const soundEnabled = ref(true);
 const showAllDaySummary = ref(false);
 const kdsContainerRef = ref(null);
 const previousTicketIds = ref(new Set());
+const kdsMetrics = ref({
+  completed_today: 0,
+  avg_prep_minutes: 0,
+  on_time_percentage: 100,
+});
 
 // Modal de Foto y Receta del Plato
 const showRecipeDialog = ref(false);
@@ -97,6 +102,15 @@ const fetchTickets = async (silent = false) => {
     }
     previousTicketIds.value = new Set(fetched.map((t) => t.id));
     tickets.value = fetched;
+
+    // Cargar métricas de rendimiento en paralelo sin bloquear
+    const metricsParams = {};
+    if (isMultiStation.value && selectedStationId.value) {
+      metricsParams.station_id = selectedStationId.value;
+    }
+    axios.get("/kds/metrics", { params: metricsParams }).then((res) => {
+      if (res.data?.data) kdsMetrics.value = res.data.data;
+    }).catch(() => {});
   } catch (error) {
     console.error("Error al cargar comandas KDS:", error);
   } finally {
@@ -267,9 +281,35 @@ const toggleFullScreen = () => {
   }
 };
 
+// Atajos de teclado estilo Bump Bar (1-9 despachar, A: All-Day, R: Refrescar, F: Fullscreen, P: Pase)
+const handleKeydown = (e) => {
+  if (showRecipeDialog.value) return;
+  const tag = e.target?.tagName?.toLowerCase();
+  if (tag === "input" || tag === "textarea") return;
+
+  if (e.key >= "1" && e.key <= "9" && activeViewTab.value === "active") {
+    const idx = Number(e.key) - 1;
+    const targetTicket = displayedTickets.value[idx];
+    if (targetTicket) {
+      e.preventDefault();
+      handleBumpTicket(targetTicket);
+    }
+  } else if (e.key.toLowerCase() === "a") {
+    showAllDaySummary.value = !showAllDaySummary.value;
+  } else if (e.key.toLowerCase() === "r") {
+    fetchTickets(false);
+  } else if (e.key.toLowerCase() === "f") {
+    toggleFullScreen();
+  } else if (e.key.toLowerCase() === "p") {
+    activeViewTab.value = activeViewTab.value === "active" ? "ready" : "active";
+    fetchTickets(false);
+  }
+};
+
 onMounted(() => {
   fetchStations();
   fetchTickets();
+  window.addEventListener("keydown", handleKeydown);
 
   // Actualizar cronómetro cada segundo
   timerInterval = setInterval(() => {
@@ -283,6 +323,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  window.removeEventListener("keydown", handleKeydown);
   if (timerInterval) clearInterval(timerInterval);
   if (pollInterval) clearInterval(pollInterval);
 });
@@ -328,6 +369,18 @@ onUnmounted(() => {
           <VChip color="primary" variant="tonal" size="default" class="font-weight-black">
             <VIcon icon="tabler-receipt" start size="16" />
             Comandas: {{ displayedTickets.length }}
+          </VChip>
+
+          <VChip
+            v-if="kdsMetrics.completed_today > 0"
+            color="success"
+            variant="tonal"
+            size="default"
+            class="font-weight-bold"
+            :title="`Despachados hoy: ${kdsMetrics.completed_today} platos`"
+          >
+            <VIcon icon="tabler-clock-check" start size="16" />
+            Prom: {{ kdsMetrics.avg_prep_minutes }}m ({{ kdsMetrics.on_time_percentage }}% SLA)
           </VChip>
 
           <VBtn
@@ -461,7 +514,7 @@ onUnmounted(() => {
     <!-- Grid Táctil de Comandas (Tickets) -->
     <VRow v-else align="start">
       <VCol
-        v-for="ticket in displayedTickets"
+        v-for="(ticket, ticketIdx) in displayedTickets"
         :key="ticket.id"
         cols="12"
         sm="6"
@@ -667,6 +720,7 @@ onUnmounted(() => {
             >
               <VIcon icon="tabler-check" start size="18" />
               Despachar Comanda
+              <span v-if="ticketIdx < 9" class="ms-1 opacity-75 text-xs">[{{ ticketIdx + 1 }}]</span>
             </VBtn>
           </div>
         </VCard>

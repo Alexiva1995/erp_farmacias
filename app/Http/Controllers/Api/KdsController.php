@@ -79,4 +79,16 @@ class KdsController extends Controller
             'order_id' => $order->id,
         ]);
     }
+
+    /**
+     * Métricas de rendimiento de cocina del día.
+     */
+    public function metrics(Request $request): JsonResponse
+    {
+        $stationId = $request->query('station_id') ? (int) $request->query('station_id') : null;
+
+        return response()->json([
+            'data' => $this->kdsService->getMetrics($stationId),
+        ]);
+    }
 }

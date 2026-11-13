@@ -109,6 +109,17 @@
               </v-menu>
             </template>
 
+            <v-chip
+              v-if="viewMode === 'live' && readyDishesCount > 0"
+              color="success"
+              variant="flat"
+              size="small"
+              prepend-icon="tabler-bell-ringing"
+              class="font-weight-bold"
+            >
+              {{ readyDishesCount }} listo(s) en Pase
+            </v-chip>
+
             <v-btn
               icon="tabler-refresh"
               variant="text"
@@ -1648,6 +1659,14 @@ const selectedZoneIndex = ref(null)
 const loadingOverview = ref(false)
 const savingLayout = ref(false)
 const submittingAction = ref(false)
+const previousReadyCount = ref(0)
+
+const readyDishesCount = computed(() => {
+  return tables.value.reduce((acc, t) => {
+    const readyInTable = (t.current_order?.details || []).filter(d => d.kitchen_status === 'ready').length
+    return acc + readyInTable
+  }, 0)
+})
 
 // Modales
 const showZoneModal = ref(false)
@@ -1886,6 +1905,13 @@ const fetchOverview = async (silent = false) => {
     if (!selectedZoneIndex.value && zones.value.length) {
       selectedZoneIndex.value = zones.value[0].id
     }
+
+    // Notificar al camarero cuando cocina marca nuevos platos como Listos
+    const currentReady = readyDishesCount.value
+    if (silent && currentReady > previousReadyCount.value) {
+      toast.info(`¡${currentReady} plato(s) listo(s) en cocina para servir!`)
+    }
+    previousReadyCount.value = currentReady
   } catch (err) {
     if (!silent) toast.error('Error al cargar datos del restaurante.')
   } finally {

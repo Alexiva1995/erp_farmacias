@@ -153,4 +153,54 @@ class KdsService implements KdsServiceInterface
             return $order->fresh(['details.dish.kitchenStation']);
         });
     }
+
+    /**
+     * @inheritDoc
+     */
+    public function getMetrics(?int $stationId = null): array
+    {
+        $today = Carbon::today();
+
+        $query = OrderDetail::query()
+            ->where('product_type', 'dish')
+            ->whereNotNull('commanded_at')
+            ->whereNotNull('prepared_at')
+            ->whereDate('prepared_at', $today)
+            ->with('dish:id,preparation_time_minutes');
+
+        if ($stationId) {
+            $query->whereHas('dish', function ($dishQ) use ($stationId) {
+                $dishQ->where('kitchen_station_id', $stationId);
+            });
+        }
+
+        $completedToday = $query->get();
+        $totalCompleted = $completedToday->count();
+
+        if ($totalCompleted === 0) {
+            return [
+                'completed_today' => 0,
+                'avg_prep_minutes' => 0,
+                'on_time_percentage' => 100,
+            ];
+        }
+
+        $totalMinutes = 0.0;
+        $onTimeCount = 0;
+
+        foreach ($completedToday as $detail) {
+            $minutes = max(0, $detail->commanded_at->diffInSeconds($detail->prepared_at) / 60);
+            $totalMinutes += $minutes;
+            $sla = (int) ($detail->dish?->preparation_time_minutes ?? 15);
+            if ($minutes <= $sla) {
+                $onTimeCount++;
+            }
+        }
+
+        return [
+            'completed_today' => $totalCompleted,
+            'avg_prep_minutes' => round($totalMinutes / $totalCompleted, 1),
+            'on_time_percentage' => round(($onTimeCount / $totalCompleted) * 100),
+        ];
+    }
 }
