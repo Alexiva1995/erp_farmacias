@@ -171,12 +171,9 @@ const slugify = (text) => {
 const headers = [
   { title: 'Empresa / Razón Social', key: 'company_name', sortable: true },
   { title: 'Tipo de Negocio', key: 'vertical', sortable: true },
-  { title: 'Plan', key: 'plan', sortable: true },
-  { title: 'Costo (USD)', key: 'monthly_price', sortable: true },
-  { title: 'Fecha de Cobro', key: 'billing_date', sortable: true },
-  { title: 'Identificador (ID)', key: 'id', sortable: true },
-  { title: 'Dominio / URL de Acceso', key: 'domains', sortable: false },
-  { title: 'Fecha de Creación', key: 'created_at', sortable: true },
+  { title: 'Plan / Costo', key: 'plan', sortable: true },
+  { title: 'Fecha de Vencimiento', key: 'billing_date', sortable: true },
+  { title: 'Fecha de Ingreso', key: 'created_at', sortable: true },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
 ]
 
@@ -256,6 +253,7 @@ const billingForm = reactive({
   plan: 'basic',
   monthly_price: 29,
   billing_date: '',
+  created_at: '',
 })
 
 const openBillingDialog = (item) => {
@@ -265,6 +263,7 @@ const openBillingDialog = (item) => {
   billingForm.plan = raw.plan || 'basic'
   billingForm.monthly_price = raw.monthly_price ?? (billingForm.plan === 'pro' ? 49 : 29)
   billingForm.billing_date = raw.billing_date || ''
+  billingForm.created_at = raw.created_at ? String(raw.created_at).slice(0, 10) : ''
   isBillingDialogOpen.value = true
 }
 
@@ -282,6 +281,7 @@ const submitBillingUpdate = async () => {
       plan: billingForm.plan,
       monthly_price: billingForm.monthly_price,
       billing_date: billingForm.billing_date || null,
+      created_at: billingForm.created_at || null,
     })
     toast.success('Plan y cobro actualizados')
     isBillingDialogOpen.value = false
@@ -645,27 +645,20 @@ onMounted(() => {
       >
         <!-- Columna Empresa -->
         <template #item.company_name="{ item }">
-          <div class="d-flex align-center ga-3 py-2">
-            <VAvatar
-              :color="getVerticalBadge(item.vertical ?? item.raw?.vertical).color"
-              variant="tonal"
-              size="38"
+          <div class="py-2">
+            <a
+              v-if="!(item.is_orphan ?? item.raw?.is_orphan)"
+              :href="getTenantUrl(item)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-weight-bold text-primary text-decoration-none d-inline-flex align-center ga-1"
             >
-              <VIcon :icon="getVerticalBadge(item.vertical ?? item.raw?.vertical).icon" size="20" />
-            </VAvatar>
-            <div>
-              <div class="font-weight-bold text-high-emphasis">
-                {{ item.company_name ?? item.raw?.company_name }}
-              </div>
-              <span class="text-caption text-medium-emphasis">
-                <template v-if="item.is_remote ?? item.raw?.is_remote">
-                  Externo (Otro Servidor)
-                </template>
-                <template v-else>
-                  BD: {{ item.database ?? item.raw?.database ?? ('tovaerp_tenant_' + (item.id ?? item.raw?.id)) }}
-                </template>
-              </span>
-            </div>
+              <span>{{ item.company_name ?? item.raw?.company_name }}</span>
+              <VIcon icon="tabler-external-link" size="14" />
+            </a>
+            <span v-else class="font-weight-bold text-high-emphasis">
+              {{ item.company_name ?? item.raw?.company_name }}
+            </span>
           </div>
         </template>
 
@@ -682,23 +675,21 @@ onMounted(() => {
           </VChip>
         </template>
 
-        <!-- Columna Plan -->
+        <!-- Columna Plan / Costo -->
         <template #item.plan="{ item }">
-          <VChip
-            size="small"
-            variant="tonal"
-            :color="(item.plan ?? item.raw?.plan) === 'pro' ? 'primary' : 'info'"
-            class="font-weight-bold"
-          >
-            {{ (item.plan ?? item.raw?.plan) === 'pro' ? 'PRO' : 'Básico' }}
-          </VChip>
-        </template>
-
-        <!-- Columna Costo -->
-        <template #item.monthly_price="{ item }">
-          <span class="font-weight-bold text-high-emphasis">
-            ${{ Number(item.monthly_price ?? item.raw?.monthly_price ?? 29).toFixed(2) }} USD
-          </span>
+          <div class="d-flex align-center ga-2">
+            <VChip
+              size="small"
+              variant="tonal"
+              :color="(item.plan ?? item.raw?.plan) === 'pro' ? 'primary' : 'info'"
+              class="font-weight-bold"
+            >
+              {{ (item.plan ?? item.raw?.plan) === 'pro' ? 'PRO' : 'Básico' }}
+            </VChip>
+            <span class="font-weight-bold text-high-emphasis">
+              ${{ Number(item.monthly_price ?? item.raw?.monthly_price ?? 29).toFixed(2) }} USD
+            </span>
+          </div>
         </template>
 
         <!-- Columna Fecha de Cobro -->
@@ -781,25 +772,12 @@ onMounted(() => {
             </VBtn>
 
             <VBtn
-              v-else
-              :href="getTenantUrl(item)"
-              target="_blank"
-              variant="tonal"
-              color="primary"
-              size="small"
-              class="rounded-lg font-weight-bold"
-              prepend-icon="tabler-login"
-            >
-              Ingresar
-            </VBtn>
-
-            <VBtn
               v-if="!(item.is_orphan ?? item.raw?.is_orphan)"
               icon="tabler-credit-card"
               variant="text"
               color="primary"
               size="small"
-              title="Editar plan y fecha de cobro"
+              title="Editar plan, vencimiento y fecha de ingreso"
               @click="openBillingDialog(item)"
             />
 
@@ -1502,7 +1480,7 @@ onMounted(() => {
             <VCol cols="12" sm="4">
               <VTextField
                 v-model="externalForm.billing_date"
-                label="Fecha de Cobro"
+                label="Fecha de Vencimiento"
                 type="date"
                 variant="outlined"
                 density="compact"
@@ -1567,7 +1545,16 @@ onMounted(() => {
             <VCol cols="12" sm="6">
               <VTextField
                 v-model="billingForm.billing_date"
-                label="Fecha de Cobro"
+                label="Fecha de Vencimiento"
+                type="date"
+                variant="outlined"
+                density="compact"
+              />
+            </VCol>
+            <VCol cols="12">
+              <VTextField
+                v-model="billingForm.created_at"
+                label="Fecha de Ingreso"
                 type="date"
                 variant="outlined"
                 density="compact"

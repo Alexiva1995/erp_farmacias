@@ -284,6 +284,9 @@ class TenantManagementService
         $tenant->plan = (string) $data['plan'];
         $tenant->monthly_price = (float) $data['monthly_price'];
         $tenant->billing_date = $data['billing_date'] ?? null;
+        if (!empty($data['created_at'])) {
+            $tenant->created_at = \Carbon\Carbon::parse((string) $data['created_at']);
+        }
         $tenant->save();
 
         return $tenant;

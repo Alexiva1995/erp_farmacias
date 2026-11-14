@@ -27,6 +27,7 @@ class UpdateTenantBillingRequest extends FormRequest
             'plan' => ['required', 'string', 'in:basic,pro'],
             'monthly_price' => ['required', 'numeric', 'min:0'],
             'billing_date' => ['nullable', 'date'],
+            'created_at' => ['nullable', 'date'],
         ];
     }
 }
