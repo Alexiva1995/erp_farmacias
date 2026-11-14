@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Central\AddTenantDomainRequest;
 use App\Http\Requests\Central\CreateTenantRequest;
 use App\Http\Requests\Central\LinkTenantRequest;
+use App\Http\Requests\Central\StoreExternalTenantRequest;
+use App\Http\Requests\Central\UpdateTenantBillingRequest;
 use App\Http\Resources\TenantResource;
 use App\Models\Tenant;
 use App\Services\Tenancy\TenantManagementService;
@@ -79,6 +81,48 @@ class TenantManagementController extends Controller
 
             return response()->json([
                 'message' => 'Error al aprovisionar la empresa: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Registrar un Tenant externo (otro servidor/dominio) solo para listado y cobros.
+     */
+    public function storeExternal(StoreExternalTenantRequest $request): JsonResponse
+    {
+        try {
+            $tenant = $this->managementService->createExternalTenant($request->validated());
+
+            return response()->json([
+                'message' => 'Tenant externo registrado exitosamente.',
+                'tenant'  => new TenantResource($tenant),
+            ], 201);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error registrando tenant externo: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Error al registrar el tenant externo: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Actualizar plan, costo mensual y fecha de cobro de un tenant.
+     */
+    public function updateBilling(UpdateTenantBillingRequest $request, string $id): JsonResponse
+    {
+        try {
+            $tenant = $this->managementService->updateTenantBilling($id, $request->validated());
+
+            return response()->json([
+                'message' => 'Plan y datos de cobro actualizados exitosamente.',
+                'tenant'  => new TenantResource($tenant),
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error actualizando cobro del tenant {$id}: " . $e->getMessage());
+
+            return response()->json([
+                'message' => 'Error al actualizar el plan y cobro: ' . $e->getMessage(),
             ], 422);
         }
     }

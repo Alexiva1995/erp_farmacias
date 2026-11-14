@@ -171,11 +171,127 @@ const slugify = (text) => {
 const headers = [
   { title: 'Empresa / Razón Social', key: 'company_name', sortable: true },
   { title: 'Tipo de Negocio', key: 'vertical', sortable: true },
+  { title: 'Plan', key: 'plan', sortable: true },
+  { title: 'Costo (USD)', key: 'monthly_price', sortable: true },
+  { title: 'Fecha de Cobro', key: 'billing_date', sortable: true },
   { title: 'Identificador (ID)', key: 'id', sortable: true },
   { title: 'Dominio / URL de Acceso', key: 'domains', sortable: false },
   { title: 'Fecha de Creación', key: 'created_at', sortable: true },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
 ]
+
+// Opciones de planes y lógica de Tenant Externo / Cobros
+const planOptions = [
+  { title: 'Plan Básico ($29 USD)', value: 'basic', defaultPrice: 29 },
+  { title: 'Plan PRO ($49 USD)', value: 'pro', defaultPrice: 49 },
+]
+
+const isExternalDialogOpen = ref(false)
+const isSubmittingExternal = ref(false)
+const externalForm = reactive({
+  company_name: '',
+  tenant_id: '',
+  domain: '',
+  vertical: 'pharmacy',
+  plan: 'basic',
+  monthly_price: 29,
+  billing_date: '',
+})
+const externalErrors = reactive({
+  company_name: '',
+  tenant_id: '',
+  domain: '',
+  plan: '',
+  monthly_price: '',
+  billing_date: '',
+})
+
+const openExternalDialog = () => {
+  externalForm.company_name = ''
+  externalForm.tenant_id = ''
+  externalForm.domain = ''
+  externalForm.vertical = 'pharmacy'
+  externalForm.plan = 'basic'
+  externalForm.monthly_price = 29
+  externalForm.billing_date = new Date().toISOString().slice(0, 10)
+  Object.keys(externalErrors).forEach(k => { externalErrors[k] = '' })
+  isExternalDialogOpen.value = true
+}
+
+const onExternalPlanChange = (planValue) => {
+  const found = planOptions.find(p => p.value === planValue)
+  if (found) {
+    externalForm.monthly_price = found.defaultPrice
+  }
+}
+
+const submitExternalTenant = async () => {
+  isSubmittingExternal.value = true
+  Object.keys(externalErrors).forEach(k => { externalErrors[k] = '' })
+  try {
+    await axios.post('/central/tenants/external', externalForm)
+    toast.success('Tenant externo registrado correctamente')
+    isExternalDialogOpen.value = false
+    await fetchTenants()
+  } catch (error) {
+    if (error.response?.status === 422 && error.response?.data?.errors) {
+      const errs = error.response.data.errors
+      Object.keys(errs).forEach((k) => {
+        if (k in externalErrors) {
+          externalErrors[k] = Array.isArray(errs[k]) ? errs[k][0] : errs[k]
+        }
+      })
+    }
+    toast.error(error.response?.data?.message || 'Error al registrar tenant externo')
+  } finally {
+    isSubmittingExternal.value = false
+  }
+}
+
+const isBillingDialogOpen = ref(false)
+const isSubmittingBilling = ref(false)
+const billingForm = reactive({
+  id: '',
+  company_name: '',
+  plan: 'basic',
+  monthly_price: 29,
+  billing_date: '',
+})
+
+const openBillingDialog = (item) => {
+  const raw = item?.raw ?? item
+  billingForm.id = raw.id
+  billingForm.company_name = raw.company_name || raw.id
+  billingForm.plan = raw.plan || 'basic'
+  billingForm.monthly_price = raw.monthly_price ?? (billingForm.plan === 'pro' ? 49 : 29)
+  billingForm.billing_date = raw.billing_date || ''
+  isBillingDialogOpen.value = true
+}
+
+const onBillingPlanChange = (planValue) => {
+  const found = planOptions.find(p => p.value === planValue)
+  if (found) {
+    billingForm.monthly_price = found.defaultPrice
+  }
+}
+
+const submitBillingUpdate = async () => {
+  isSubmittingBilling.value = true
+  try {
+    await axios.patch(`/central/tenants/${billingForm.id}/billing`, {
+      plan: billingForm.plan,
+      monthly_price: billingForm.monthly_price,
+      billing_date: billingForm.billing_date || null,
+    })
+    toast.success('Plan y cobro actualizados')
+    isBillingDialogOpen.value = false
+    await fetchTenants()
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Error al actualizar plan y cobro')
+  } finally {
+    isSubmittingBilling.value = false
+  }
+}
 
 // Cargar lista de empresas registradas
 const fetchTenants = async () => {
@@ -451,6 +567,16 @@ onMounted(() => {
 
         <VBtn
           color="primary"
+          variant="outlined"
+          prepend-icon="tabler-world-plus"
+          class="font-weight-bold rounded-lg"
+          @click="openExternalDialog"
+        >
+          Tenant Externo
+        </VBtn>
+
+        <VBtn
+          color="primary"
           variant="flat"
           prepend-icon="tabler-plus"
           class="font-weight-black rounded-lg shadow-primary text-button uppercase"
@@ -532,7 +658,12 @@ onMounted(() => {
                 {{ item.company_name ?? item.raw?.company_name }}
               </div>
               <span class="text-caption text-medium-emphasis">
-                BD: {{ item.database ?? item.raw?.database ?? ('tovaerp_tenant_' + (item.id ?? item.raw?.id)) }}
+                <template v-if="item.is_remote ?? item.raw?.is_remote">
+                  Externo (Otro Servidor)
+                </template>
+                <template v-else>
+                  BD: {{ item.database ?? item.raw?.database ?? ('tovaerp_tenant_' + (item.id ?? item.raw?.id)) }}
+                </template>
               </span>
             </div>
           </div>
@@ -549,6 +680,32 @@ onMounted(() => {
             <VIcon start size="14" :icon="getVerticalBadge(item.vertical ?? item.raw?.vertical).icon" />
             {{ getVerticalBadge(item.vertical ?? item.raw?.vertical).label }}
           </VChip>
+        </template>
+
+        <!-- Columna Plan -->
+        <template #item.plan="{ item }">
+          <VChip
+            size="small"
+            variant="tonal"
+            :color="(item.plan ?? item.raw?.plan) === 'pro' ? 'primary' : 'info'"
+            class="font-weight-bold"
+          >
+            {{ (item.plan ?? item.raw?.plan) === 'pro' ? 'PRO' : 'Básico' }}
+          </VChip>
+        </template>
+
+        <!-- Columna Costo -->
+        <template #item.monthly_price="{ item }">
+          <span class="font-weight-bold text-high-emphasis">
+            ${{ Number(item.monthly_price ?? item.raw?.monthly_price ?? 29).toFixed(2) }} USD
+          </span>
+        </template>
+
+        <!-- Columna Fecha de Cobro -->
+        <template #item.billing_date="{ item }">
+          <span class="text-body-2">
+            {{ item.billing_date ?? item.raw?.billing_date ?? 'Sin definir' }}
+          </span>
         </template>
 
         <!-- Columna Identificador -->
@@ -635,6 +792,16 @@ onMounted(() => {
             >
               Ingresar
             </VBtn>
+
+            <VBtn
+              v-if="!(item.is_orphan ?? item.raw?.is_orphan)"
+              icon="tabler-credit-card"
+              variant="text"
+              color="primary"
+              size="small"
+              title="Editar plan y fecha de cobro"
+              @click="openBillingDialog(item)"
+            />
 
             <VBtn
               v-if="!(item.is_orphan ?? item.raw?.is_orphan)"
@@ -1248,6 +1415,177 @@ onMounted(() => {
           >
             <VIcon icon="tabler-plus" size="16" class="me-1" />
             Agregar Dominio
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Dialog: Registrar Tenant Externo -->
+    <VDialog v-model="isExternalDialogOpen" max-width="600" persistent>
+      <VCard class="rounded-xl">
+        <VCardTitle class="pa-5 d-flex align-center justify-space-between">
+          <div class="d-flex align-center ga-2">
+            <VIcon icon="tabler-world-plus" color="primary" />
+            <span class="text-h6 font-weight-bold">Registrar Tenant Externo</span>
+          </div>
+          <VBtn icon="tabler-x" variant="text" size="small" @click="isExternalDialogOpen = false" />
+        </VCardTitle>
+        <VDivider />
+        <VCardText class="pa-5">
+          <VRow>
+            <VCol cols="12" sm="6">
+              <VTextField
+                v-model="externalForm.company_name"
+                label="Empresa / Razón Social"
+                variant="outlined"
+                density="compact"
+                :error-messages="externalErrors.company_name"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <VTextField
+                v-model="externalForm.tenant_id"
+                label="Identificador (ID único)"
+                placeholder="ej. farmacia_norte"
+                variant="outlined"
+                density="compact"
+                :error-messages="externalErrors.tenant_id"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <VTextField
+                v-model="externalForm.domain"
+                label="Dominio"
+                placeholder="ej. app.otra-farmacia.com"
+                variant="outlined"
+                density="compact"
+                :error-messages="externalErrors.domain"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <VSelect
+                v-model="externalForm.vertical"
+                :items="verticalOptions"
+                item-title="title"
+                item-value="value"
+                label="Tipo de Negocio"
+                variant="outlined"
+                density="compact"
+              />
+            </VCol>
+            <VCol cols="12" sm="4">
+              <VSelect
+                v-model="externalForm.plan"
+                :items="planOptions"
+                item-title="title"
+                item-value="value"
+                label="Plan"
+                variant="outlined"
+                density="compact"
+                :error-messages="externalErrors.plan"
+                @update:model-value="onExternalPlanChange"
+              />
+            </VCol>
+            <VCol cols="12" sm="4">
+              <VTextField
+                v-model.number="externalForm.monthly_price"
+                label="Costo mensual (USD)"
+                type="number"
+                min="0"
+                step="0.01"
+                prefix="$"
+                variant="outlined"
+                density="compact"
+                :error-messages="externalErrors.monthly_price"
+              />
+            </VCol>
+            <VCol cols="12" sm="4">
+              <VTextField
+                v-model="externalForm.billing_date"
+                label="Fecha de Cobro"
+                type="date"
+                variant="outlined"
+                density="compact"
+                :error-messages="externalErrors.billing_date"
+              />
+            </VCol>
+          </VRow>
+        </VCardText>
+        <VDivider />
+        <VCardActions class="pa-4 justify-end ga-2">
+          <VBtn variant="text" @click="isExternalDialogOpen = false">Cancelar</VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            :loading="isSubmittingExternal"
+            :disabled="isSubmittingExternal"
+            @click="submitExternalTenant"
+          >
+            Guardar Tenant Externo
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Dialog: Editar Plan y Fecha de Cobro -->
+    <VDialog v-model="isBillingDialogOpen" max-width="480" persistent>
+      <VCard class="rounded-xl">
+        <VCardTitle class="pa-5 d-flex align-center justify-space-between">
+          <div class="d-flex align-center ga-2">
+            <VIcon icon="tabler-credit-card" color="primary" />
+            <span class="text-h6 font-weight-bold">Plan y Cobro: {{ billingForm.company_name }}</span>
+          </div>
+          <VBtn icon="tabler-x" variant="text" size="small" @click="isBillingDialogOpen = false" />
+        </VCardTitle>
+        <VDivider />
+        <VCardText class="pa-5">
+          <VRow>
+            <VCol cols="12">
+              <VSelect
+                v-model="billingForm.plan"
+                :items="planOptions"
+                item-title="title"
+                item-value="value"
+                label="Plan"
+                variant="outlined"
+                density="compact"
+                @update:model-value="onBillingPlanChange"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <VTextField
+                v-model.number="billingForm.monthly_price"
+                label="Costo mensual (USD)"
+                type="number"
+                min="0"
+                step="0.01"
+                prefix="$"
+                variant="outlined"
+                density="compact"
+              />
+            </VCol>
+            <VCol cols="12" sm="6">
+              <VTextField
+                v-model="billingForm.billing_date"
+                label="Fecha de Cobro"
+                type="date"
+                variant="outlined"
+                density="compact"
+              />
+            </VCol>
+          </VRow>
+        </VCardText>
+        <VDivider />
+        <VCardActions class="pa-4 justify-end ga-2">
+          <VBtn variant="text" @click="isBillingDialogOpen = false">Cancelar</VBtn>
+          <VBtn
+            color="primary"
+            variant="flat"
+            :loading="isSubmittingBilling"
+            :disabled="isSubmittingBilling"
+            @click="submitBillingUpdate"
+          >
+            Actualizar
           </VBtn>
         </VCardActions>
       </VCard>

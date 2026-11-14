@@ -31,8 +31,11 @@ class TenantManagementService
 
             foreach ($tenants as $tenant) {
                 /** @var Tenant $tenant */
-                $dbName = $tenant->database()->getName();
-                $registeredDbNames[] = strtolower($dbName);
+                $isRemote = (bool) ($tenant->is_remote ?? false);
+                $dbName = $isRemote ? null : $tenant->database()->getName();
+                if ($dbName !== null) {
+                    $registeredDbNames[] = strtolower($dbName);
+                }
 
                 $resource = (new TenantResource($tenant))->resolve();
                 $resource['database'] = $dbName;
@@ -93,12 +96,13 @@ class TenantManagementService
     public function deleteTenantAndDatabase(string $id, ?string $databaseName = null): array
     {
         $tenant = Tenant::find($id);
+        $isRemote = (bool) ($tenant?->is_remote ?? false);
 
         // 1. Determinar el nombre exacto de la base de datos
         $dbPrefix = (string) config('tenancy.database.prefix', 'tovaerp_tenant_');
         $dbName = $databaseName;
 
-        if (empty($dbName)) {
+        if (!$isRemote && empty($dbName)) {
             if ($tenant) {
                 $dbName = $tenant->database()->getName();
             } else {
@@ -109,8 +113,8 @@ class TenantManagementService
         // 2. Eliminar dominios asociados en base central
         Domain::where('tenant_id', $id)->delete();
 
-        // 3. Eliminar base de datos física en MySQL
-        if (!empty($dbName)) {
+        // 3. Eliminar base de datos física en MySQL solo si no es remoto
+        if (!$isRemote && !empty($dbName)) {
             try {
                 DB::statement("DROP DATABASE IF EXISTS `{$dbName}`");
             } catch (\Throwable $e) {
@@ -236,5 +240,52 @@ class TenantManagementService
             'success' => true,
             'message' => "Dominio '{$domainName}' eliminado exitosamente.",
         ];
+    }
+
+    /**
+     * Registrar un tenant externo (alojado en otro servidor/dominio sin BD local).
+     *
+     * @param array<string, mixed> $data
+     */
+    public function createExternalTenant(array $data): Tenant
+    {
+        $cleanDomain = preg_replace('#^https?://#i', '', trim((string) $data['domain']));
+        $cleanDomain = rtrim((string) $cleanDomain, '/');
+
+        // Crear el registro sin disparar eventos de creación de BD local
+        $tenant = Tenant::withoutEvents(function () use ($data) {
+            return Tenant::create([
+                'id' => (string) $data['tenant_id'],
+                'company_name' => (string) $data['company_name'],
+                'vertical' => (string) ($data['vertical'] ?? 'pharmacy'),
+                'is_remote' => true,
+                'plan' => (string) $data['plan'],
+                'monthly_price' => (float) $data['monthly_price'],
+                'billing_date' => (string) $data['billing_date'],
+            ]);
+        });
+
+        Domain::where('domain', $cleanDomain)->delete();
+        $tenant->domains()->create(['domain' => $cleanDomain]);
+        $tenant->load('domains');
+
+        return $tenant;
+    }
+
+    /**
+     * Actualizar el plan, costo mensual y fecha de cobro de un tenant.
+     *
+     * @param string $id
+     * @param array<string, mixed> $data
+     */
+    public function updateTenantBilling(string $id, array $data): Tenant
+    {
+        $tenant = Tenant::with('domains')->findOrFail($id);
+        $tenant->plan = (string) $data['plan'];
+        $tenant->monthly_price = (float) $data['monthly_price'];
+        $tenant->billing_date = $data['billing_date'] ?? null;
+        $tenant->save();
+
+        return $tenant;
     }
 }

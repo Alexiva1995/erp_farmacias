@@ -17,10 +17,11 @@ class TenantResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $isRemote = (bool) ($this->is_remote ?? false);
         $vertical = $this->vertical;
 
-        // Si la vertical no está guardada en la tabla central de tenants, resolverla desde la BD del tenant
-        if (empty($vertical)) {
+        // Si la vertical no está guardada en la tabla central de tenants y no es remoto, resolverla desde la BD del tenant
+        if (empty($vertical) && !$isRemote) {
             try {
                 $dbName = $this->database()->getName();
                 $dbExists = false;
@@ -59,12 +60,19 @@ class TenantResource extends JsonResource
             ])->values()->all();
         });
 
+        $plan = $this->plan ?? 'basic';
+        $defaultPrice = $plan === 'pro' ? 49.0 : 29.0;
+
         return [
             'id' => $this->id,
             'company_name' => $this->company_name ?? $this->id,
-            'database' => $this->database()->getName(),
+            'database' => $isRemote ? null : $this->database()->getName(),
+            'is_remote' => $isRemote,
             'vertical' => $vertical ?: 'pharmacy',
             'plan_id' => $this->plan_id,
+            'plan' => $plan,
+            'monthly_price' => isset($this->monthly_price) ? (float) $this->monthly_price : $defaultPrice,
+            'billing_date' => $this->billing_date ?? null,
             'parent_tenant_id' => $this->parent_tenant_id,
             'branch_code' => $this->branch_code,
             'can_create_branches' => (bool) ($this->can_create_branches ?? false),

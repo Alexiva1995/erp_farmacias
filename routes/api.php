@@ -1371,7 +1371,9 @@ Route::get('central/suppliers-audit', [\App\Http\Controllers\Api\Central\Supplie
 Route::prefix('central/tenants')->group(function () {
     Route::get('/', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'index']);
     Route::post('/', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'store']);
+    Route::post('/external', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'storeExternal']);
     Route::post('/link', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'link']);
+    Route::patch('/{id}/billing', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'updateBilling']);
     Route::post('/{id}/domains', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'addDomain']);
     Route::delete('/{id}/domains/{domainId}', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'removeDomain']);
     Route::delete('/{id}', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'destroy']);
