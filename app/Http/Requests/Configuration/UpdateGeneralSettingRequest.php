@@ -107,6 +107,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'enable_lots' => 'nullable|boolean',
             'tpv_mode' => 'nullable|string|in:simple,complete',
             'enable_product_types' => 'nullable|boolean',
+            'show_product_photos' => 'nullable|boolean',
             'enabled_product_types' => 'nullable|array',
             'enable_favorites' => 'nullable|boolean',
             'enable_bulk_toggle_active' => 'nullable|boolean',

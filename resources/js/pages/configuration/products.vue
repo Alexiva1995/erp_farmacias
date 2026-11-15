@@ -240,28 +240,10 @@ onMounted(fetchSettings)
 
     <!-- CONTENIDO PRINCIPAL -->
     <div v-else-if="!hasError">
-      <VCard class="mb-6 rounded-lg border shadow-sm">
-        <VCardText class="d-flex align-center justify-space-between flex-wrap gap-2 py-3">
-          <div>
-            <div class="text-subtitle-1 font-weight-medium">
-              Fotos de Productos en Inventario y TPV
-            </div>
-            <div class="text-body-2 text-medium-emphasis">
-              Muestra la miniatura de la foto del producto en las listas de inventario y punto de venta.
-            </div>
-          </div>
-          <VSwitch
-            v-model="showProductPhotos"
-            color="primary"
-            hide-details
-            :label="showProductPhotos ? 'Habilitado' : 'Deshabilitado'"
-          />
-        </VCardText>
-      </VCard>
-
       <!-- Configuración de Características de Productos -->
       <ProductSettingsCard
         v-model:enable-product-types="enableProductTypes"
+        v-model:show-product-photos="showProductPhotos"
         v-model:enable-favorites="enableFavorites"
         v-model:enable-bulk-toggle-active="enableBulkToggleActive"
         v-model:enable-ecommerce-toggle="enableEcommerceToggle"

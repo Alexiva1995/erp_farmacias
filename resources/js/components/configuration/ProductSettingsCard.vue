@@ -1,6 +1,7 @@
 <script setup>
 const props = defineProps({
   enableProductTypes: { type: Boolean, default: true },
+  showProductPhotos: { type: Boolean, default: false },
   enableFavorites: { type: Boolean, default: true },
   enableBulkToggleActive: { type: Boolean, default: true },
   enableEcommerceToggle: { type: Boolean, default: true },
@@ -28,6 +29,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'update:enableProductTypes',
+  'update:showProductPhotos',
   'update:enableFavorites',
   'update:enableBulkToggleActive',
   'update:enableEcommerceToggle',
@@ -72,6 +74,13 @@ const features = [
     description: 'Clasificación por tipo (Redundantes, Exentos, Novaventa, etc.).',
     tooltip: 'Permite filtrar el catálogo por tipo de producto y clasificaciones especiales.',
     icon: 'tabler-category',
+  },
+  {
+    key: 'showProductPhotos',
+    title: 'Fotos de Productos (Inventario y TPV)',
+    description: 'Muestra la miniatura de la foto del producto en las listas de inventario y punto de venta.',
+    tooltip: 'Habilita la visualización de imágenes de productos en los listados.',
+    icon: 'tabler-photo',
   },
   {
     key: 'enableFavorites',
