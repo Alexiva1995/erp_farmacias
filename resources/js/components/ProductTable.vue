@@ -15,6 +15,7 @@ import Swal from "sweetalert2";
 
 const authStore = useAuthStore();
 const brandingStore = useBrandingStore();
+const showProductPhotos = computed(() => Boolean(brandingStore.settings?.show_product_photos));
 const isRestaurant = computed(() => brandingStore.settings.business_type === "restaurant");
 const isMiniMarket = computed(() => brandingStore.settings.business_type === "minimarket");
 const isSportsRental = computed(() => brandingStore.settings.business_type === "sports_rental");
@@ -534,6 +535,26 @@ const getMergedLots = (lots) => {
 
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-x-2 py-2">
+            <v-avatar
+              v-if="showProductPhotos"
+              size="36"
+              rounded="sm"
+              variant="tonal"
+              color="secondary"
+              class="flex-shrink-0"
+            >
+              <v-img
+                v-if="item.photo_url"
+                :src="item.photo_url"
+                :alt="item.name"
+                cover
+              />
+              <v-icon
+                v-else
+                icon="tabler-photo-off"
+                size="18"
+              />
+            </v-avatar>
             <!-- Corazón interactivo de favorito para administración -->
             <VBtn
               v-slot:default
