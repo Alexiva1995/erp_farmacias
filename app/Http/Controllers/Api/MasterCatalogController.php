@@ -165,5 +165,22 @@ class MasterCatalogController extends Controller
 
         return response()->json($result, $result['created'] ? 201 : 200);
     }
+
+    /**
+     * Sincronizar un lote de imágenes de productos master desde Farmatodo por código de barras.
+     */
+    public function syncFarmatodoImages(\App\Services\Products\FarmatodoImageSyncService $syncService): JsonResponse
+    {
+        set_time_limit(120);
+
+        $stats = $syncService->syncMissingImages(limit: 20, force: false, dryRun: false);
+
+        return response()->json([
+            'message' => $stats['aborted']
+                ? 'Sincronización pausada por límite de peticiones en origen.'
+                : 'Lote de imágenes sincronizado.',
+            'data' => $stats,
+        ]);
+    }
 }
 

@@ -53,6 +53,10 @@ Schedule::command('products:ai-categorize')
     ->dailyAt('02:00')
     ->withoutOverlapping()
     ->runInBackground();
+Schedule::command('products:sync-farmatodo-images --limit=50')
+    ->everyTenMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
 Schedule::command('telegram:send-daily-reservations')->dailyAt('12:00');
 Schedule::command('telegram:send-upcoming-payments')->dailyAt('09:30');
 Schedule::job(new GeneratePayslipJob())->monthlyOn(15, '00:00');

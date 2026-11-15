@@ -867,6 +867,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
     Route::get('/suppliers-master-catalog', [\App\Http\Controllers\Api\SupplierMasterCatalogController::class, 'index']);
     Route::post('/suppliers-master-catalog/activate', [\App\Http\Controllers\Api\SupplierMasterCatalogController::class, 'activate']);
     Route::post('/master-suppliers/sync-from-all-tenants', [\App\Http\Controllers\Api\SupplierMasterCatalogController::class, 'syncFromAllTenants']);
+    Route::post('/master-catalog/sync-farmatodo-images', [\App\Http\Controllers\Api\MasterCatalogController::class, 'syncFarmatodoImages']);
 
     // Rutas de Proveedores
     Route::get('/suppliers/stats', [SupplierController::class, 'stats']);

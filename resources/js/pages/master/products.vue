@@ -1,5 +1,37 @@
 <script setup>
+import { ref } from 'vue'
+import axios from 'axios'
 import InventoryProductsPage from '@/pages/inventory/products/index.vue'
+
+const syncing = ref(false)
+const snackbar = ref({
+  show: false,
+  text: '',
+  color: 'success',
+})
+
+const syncFarmatodoImages = async () => {
+  if (syncing.value) return
+  syncing.value = true
+
+  try {
+    const { data } = await axios.post('/api/master-catalog/sync-farmatodo-images')
+    const stats = data?.data || {}
+    snackbar.value = {
+      show: true,
+      color: stats.aborted ? 'warning' : 'success',
+      text: `${data?.message || 'Completado'} — Procesados: ${stats.processed ?? 0}, Actualizados: ${stats.updated ?? 0}, No encontrados: ${stats.not_found ?? 0}`,
+    }
+  } catch (error) {
+    snackbar.value = {
+      show: true,
+      color: 'error',
+      text: error?.response?.data?.message || 'Error al sincronizar imágenes.',
+    }
+  } finally {
+    syncing.value = false
+  }
+}
 </script>
 
 <template>
@@ -19,16 +51,38 @@ import InventoryProductsPage from '@/pages/inventory/products/index.vue'
             Los productos creados o modificados aquí actualizan el diccionario oficial de todas las farmacias.
           </span>
         </div>
-        <v-chip
-          color="primary"
-          size="small"
-          variant="flat"
-        >
-          MASTER
-        </v-chip>
+        <div class="d-flex align-center gap-2">
+          <v-btn
+            color="primary"
+            variant="outlined"
+            size="small"
+            prepend-icon="tabler-photo-down"
+            :loading="syncing"
+            :disabled="syncing"
+            @click="syncFarmatodoImages"
+          >
+            Sincronizar Imágenes (Lote 20)
+          </v-btn>
+          <v-chip
+            color="primary"
+            size="small"
+            variant="flat"
+          >
+            MASTER
+          </v-chip>
+        </div>
       </div>
     </v-alert>
 
     <InventoryProductsPage :is-master="true" />
+
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="5000"
+      location="bottom end"
+    >
+      {{ snackbar.text }}
+    </v-snackbar>
   </div>
 </template>
