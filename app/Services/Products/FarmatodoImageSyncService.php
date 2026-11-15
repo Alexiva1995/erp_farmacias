@@ -6,6 +6,7 @@ use App\Models\Product;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -47,10 +48,11 @@ class FarmatodoImageSyncService
             'aborted' => false,
         ];
 
+        $masterConn = $this->getMasterConnection();
         $lastId = (int) Cache::get('farmatodo_sync_last_id', 0);
 
-        $buildQuery = function (int $afterId) use ($force) {
-            $q = Product::query()
+        $buildQuery = function (int $afterId) use ($force, $masterConn) {
+            $q = Product::on($masterConn)
                 ->select(['id', 'name', 'barcode', 'photo_url'])
                 ->whereNotNull('barcode')
                 ->where('barcode', '!=', '')
@@ -281,6 +283,22 @@ class FarmatodoImageSyncService
     private function randomUserAgent(): string
     {
         return self::USER_AGENTS[array_rand(self::USER_AGENTS)];
+    }
+
+    /**
+     * Retorna la conexión al catálogo maestro (tovaerp_master) con fallback a la conexión por defecto.
+     */
+    private function getMasterConnection(): string
+    {
+        try {
+            if (Schema::connection('master_catalog')->hasTable('products')) {
+                return 'master_catalog';
+            }
+        } catch (Throwable) {
+            // Fallback a conexión por defecto
+        }
+
+        return config('database.default');
     }
 
     /**
