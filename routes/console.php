@@ -58,6 +58,7 @@ Schedule::command('products:sync-farmatodo-images --limit=50')
     ->withoutOverlapping()
     ->runInBackground();
 Schedule::command('telegram:send-daily-reservations')->dailyAt('12:00');
+Schedule::command('saas:send-overdue-billing-emails')->dailyAt('09:00')->withoutOverlapping();
 Schedule::command('telegram:send-upcoming-payments')->dailyAt('09:30');
 Schedule::job(new GeneratePayslipJob())->monthlyOn(15, '00:00');
 Schedule::job(new GeneratePayslipJob())->lastDayOfMonth('00:00');

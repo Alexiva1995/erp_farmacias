@@ -172,6 +172,7 @@ Route::get("/public/general-settings", [GeneralSettingController::class, "index"
 Route::get("/public/general-settings/presets", [GeneralSettingController::class, "presets"]);
 Route::post("/public/licenses/verify", [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, "verifyLicense"]);
 Route::get("/public/saas/plans", [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, "plans"]);
+Route::get("/public/saas/tenants/{tenantId}/report-cash-payment", [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, "reportCashPayment"])->name("saas.report-cash-payment");
 
 // Rutas de administración de órdenes de e-commerce (dentro del bloque auth:sanctum)
 Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {

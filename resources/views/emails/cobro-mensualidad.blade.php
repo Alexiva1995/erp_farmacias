@@ -283,6 +283,48 @@
                 </table>
             </div>
 
+            <!-- Banco de Venezuela (Bs.) -->
+            <div class="payment-method">
+                <div class="payment-method-header">🇻🇪 Banco de Venezuela (Bolívares)</div>
+                <table class="data-table">
+                    <tr>
+                        <td class="data-label">N° de Cuenta:</td>
+                        <td class="data-val">{{ $data['bs_cuenta'] ?? '01020828990000161732' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="data-label">Titular:</td>
+                        <td class="data-val">{{ $data['bs_titular'] ?? 'Alexis Varela' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="data-label">Cédula:</td>
+                        <td class="data-val">{{ $data['bs_cedula'] ?? 'V-24.150.980' }}</td>
+                    </tr>
+                    @if(!empty($data['bs_rate']) && (float) $data['bs_rate'] > 0)
+                    <tr>
+                        <td class="data-label">Tasa Aplicada ({{ $data['bs_rate_source'] ?? 'EUR/Binance' }}):</td>
+                        <td class="data-val">{{ number_format((float) $data['bs_rate'], 2, ',', '.') }} Bs/USD</td>
+                    </tr>
+                    <tr>
+                        <td class="data-label">Monto en Bs.:</td>
+                        <td class="data-val">Bs. {{ number_format((float) ($data['bs_amount'] ?? 0), 2, ',', '.') }}</td>
+                    </tr>
+                    @endif
+                </table>
+            </div>
+
+            <!-- Pago en Efectivo -->
+            @if(!empty($data['cash_report_url']))
+            <div class="payment-method" style="text-align: center;">
+                <div class="payment-method-header" style="text-align: left;">💵 Pago en Efectivo</div>
+                <p style="font-size: 13px; color: #4b5563; margin-bottom: 14px; text-align: left;">
+                    Si deseas realizar tu pago en efectivo, infórmanos haciendo clic en el siguiente botón para coordinar la entrega:
+                </p>
+                <a href="{{ $data['cash_report_url'] }}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #7A0099 0%, #E20074 100%); color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 24px; border-radius: 8px;">
+                    Informar Pago en Efectivo
+                </a>
+            </div>
+            @endif
+
             <!-- Binance -->
             <div class="payment-method">
                 <div class="payment-method-header">🟡 Binance Pay (USDT / Crypto)</div>

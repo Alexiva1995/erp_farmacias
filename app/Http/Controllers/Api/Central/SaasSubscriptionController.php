@@ -272,8 +272,79 @@ class SaasSubscriptionController extends Controller
         }
 
         $rate = (float) ($validated['rate'] ?? 3400);
+        $data = $this->buildBillingData($tenant, $subscription, $rate);
+
+        try {
+            $this->configureDynamicMailer();
+            \Illuminate\Support\Facades\Mail::to($recipient)->send(new \App\Mail\CobroMensualidadMail($data));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error enviando correo de cobro al tenant {$tenantId} ({$recipient}): " . $e->getMessage());
+
+            return response()->json([
+                'message' => 'No se pudo enviar el correo de cobro: ' . $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'message' => "Correo de cobro enviado exitosamente a {$recipient}.",
+        ]);
+    }
+
+    /**
+     * Webhook público (firmado) para que el tenant informe que pagará su mensualidad en efectivo.
+     */
+    public function reportCashPayment(Request $request, string $tenantId)
+    {
+        if (!$request->hasValidSignature()) {
+            return response('Enlace inválido o expirado.', 403);
+        }
+
+        $tenant = \App\Models\Tenant::with('domains')->findOrFail($tenantId);
+        $subscription = $this->subscriptionService->syncTenantSubscription($tenant);
+        $domain = $tenant->domains->first()?->domain ?? "{$tenant->id}.tovaerp.com";
+        $usdAmount = (float) ($tenant->monthly_price > 0
+            ? $tenant->monthly_price
+            : ($subscription->price_agreed_usd ?: ($subscription->plan?->price_usd ?: 29.0)));
+        $planName = $subscription->plan?->name ?? strtoupper((string) ($subscription->plan_code ?: 'basic'));
+
+        try {
+            $this->configureDynamicMailer();
+            $adminEmail = trim((string) (\App\Models\GeneralSetting::first()?->gmail_sync_email ?? ''));
+            $notifyTo = $adminEmail !== '' ? $adminEmail : 'Alexisjose95@gmail.com';
+
+            $body = "El cliente del sitio {$domain} (Tenant: {$tenant->id}) ha informado que realizará el pago de su mensualidad en EFECTIVO.\n\n"
+                . "Plan: {$planName}\n"
+                . "Monto: " . number_format($usdAmount, 2, '.', ',') . " USD\n"
+                . "Correo de contacto: " . ($subscription->contact_email ?: 'No registrado') . "\n"
+                . "Fecha de solicitud: " . now()->format('d/m/Y H:i');
+
+            \Illuminate\Support\Facades\Mail::raw($body, function ($message) use ($notifyTo, $domain) {
+                $message->to($notifyTo)
+                    ->subject("💵 Solicitud de Pago en Efectivo — {$domain}");
+            });
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error notificando pago en efectivo para {$tenantId}: " . $e->getMessage());
+            return response('No se pudo procesar la notificación en este momento. Intenta más tarde.', 500);
+        }
+
+        return response(
+            '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Pago en Efectivo Informado</title></head>'
+            . '<body style="font-family:sans-serif;background:#f0f2f5;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">'
+            . '<div style="background:#fff;padding:32px;border-radius:14px;max-width:460px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.08);">'
+            . '<h2 style="color:#7A0099;margin-top:0;">¡Solicitud Recibida!</h2>'
+            . '<p style="color:#4b5563;line-height:1.5;">Hemos notificado a administración tu solicitud de pago en <strong>efectivo</strong> para <strong>' . e($domain) . '</strong>.</p>'
+            . '</div></body></html>',
+            200,
+            ['Content-Type' => 'text/html; charset=UTF-8']
+        );
+    }
+
+    /**
+     * Construye los datos del correo de cobro, incluyendo la tasa más alta entre EUR y BINANCE para Bs.
+     */
+    public function buildBillingData(\App\Models\Tenant $tenant, \App\Models\SaasSubscription $subscription, float $rate = 3400): array
+    {
         $planPriceUsd = (float) ($subscription->plan?->price_usd ?? 0);
-        // Priorizar el precio mensual configurado en el tenant (ej. 29) sobre el precio del plan (ej. 49)
         $usdAmount = (float) ($tenant->monthly_price > 0
             ? $tenant->monthly_price
             : ($subscription->price_agreed_usd ?: ($planPriceUsd ?: 29.0)));
@@ -288,7 +359,13 @@ class SaasSubscriptionController extends Controller
         $periodStart = (clone $dueDate)->subMonth()->format('d/m/Y');
         $periodEnd = $dueDate->format('d/m/Y');
 
-        $data = [
+        // Obtener la tasa más alta entre EUR y BINANCE
+        $eurRate = (float) (\App\Models\ExchangeRate::where('currency_code', 'EUR')->orderByDesc('id')->value('rate') ?? 0);
+        $binanceRate = (float) (\App\Models\ExchangeRate::where('currency_code', 'BINANCE')->orderByDesc('id')->value('rate') ?? 0);
+        $bsRate = max($eurRate, $binanceRate);
+        $bsRateSource = $binanceRate >= $eurRate && $binanceRate > 0 ? 'Binance' : 'EUR';
+
+        return [
             'site_url' => "https://{$domain}/",
             'site_name' => $domain,
             'plan_name' => $planName,
@@ -299,51 +376,54 @@ class SaasSubscriptionController extends Controller
             'usd_amount' => $usdAmount,
             'rate' => $rate,
             'cop_amount' => $usdAmount * $rate,
+            'bs_rate' => $bsRate,
+            'bs_rate_source' => $bsRateSource,
+            'bs_amount' => $usdAmount * $bsRate,
+            'bs_banco' => 'Banco de Venezuela',
+            'bs_cuenta' => '01020828990000161732',
+            'bs_titular' => 'Alexis Varela',
+            'bs_cedula' => 'V-24.150.980',
             'banco_cuenta' => '91201530453',
             'banco_titular' => 'Estefanny Torrado',
             'banco_cc' => '1148456331',
             'binance_email' => 'Alexisjose95@gmail.com',
+            'cash_report_url' => \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                'saas.report-cash-payment',
+                now()->addDays(30),
+                ['tenantId' => $tenant->id]
+            ),
         ];
+    }
 
-        try {
-            // Si hay credenciales Gmail configuradas en GeneralSetting, usarlas dinámicamente sobre el .env
-            $settings = \App\Models\GeneralSetting::first();
-            $syncEmail = trim((string) ($settings?->gmail_sync_email ?? ''));
-            $rawSyncPass = (string) ($settings?->gmail_sync_password ?? '');
+    /**
+     * Configura dinámicamente el mailer SMTP usando las credenciales Gmail de GeneralSetting si existen.
+     */
+    public function configureDynamicMailer(): void
+    {
+        $settings = \App\Models\GeneralSetting::first();
+        $syncEmail = trim((string) ($settings?->gmail_sync_email ?? ''));
+        $rawSyncPass = (string) ($settings?->gmail_sync_password ?? '');
 
-            if ($syncEmail !== '' && $rawSyncPass !== '') {
-                try {
-                    $syncPass = \App\Helpers\FtpCrypt::decrypt($rawSyncPass);
-                } catch (\Throwable) {
-                    $syncPass = $rawSyncPass;
-                }
-
-                config([
-                    'mail.default' => 'smtp',
-                    'mail.mailers.smtp.host' => 'smtp.gmail.com',
-                    'mail.mailers.smtp.port' => 465,
-                    'mail.mailers.smtp.encryption' => 'ssl',
-                    'mail.mailers.smtp.username' => $syncEmail,
-                    'mail.mailers.smtp.password' => $syncPass,
-                    'mail.mailers.smtp.verify_peer' => false,
-                    'mail.from.address' => $syncEmail,
-                    'mail.from.name' => $settings?->app_name ?: config('mail.from.name', 'TOVA ERP'),
-                ]);
-
-                \Illuminate\Support\Facades\Mail::purge('smtp');
+        if ($syncEmail !== '' && $rawSyncPass !== '') {
+            try {
+                $syncPass = \App\Helpers\FtpCrypt::decrypt($rawSyncPass);
+            } catch (\Throwable) {
+                $syncPass = $rawSyncPass;
             }
 
-            \Illuminate\Support\Facades\Mail::to($recipient)->send(new \App\Mail\CobroMensualidadMail($data));
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Error enviando correo de cobro al tenant {$tenantId} ({$recipient}): " . $e->getMessage());
+            config([
+                'mail.default' => 'smtp',
+                'mail.mailers.smtp.host' => 'smtp.gmail.com',
+                'mail.mailers.smtp.port' => 465,
+                'mail.mailers.smtp.encryption' => 'ssl',
+                'mail.mailers.smtp.username' => $syncEmail,
+                'mail.mailers.smtp.password' => $syncPass,
+                'mail.mailers.smtp.verify_peer' => false,
+                'mail.from.address' => $syncEmail,
+                'mail.from.name' => $settings?->app_name ?: config('mail.from.name', 'TOVA ERP'),
+            ]);
 
-            return response()->json([
-                'message' => 'No se pudo enviar el correo de cobro: ' . $e->getMessage(),
-            ], 500);
+            \Illuminate\Support\Facades\Mail::purge('smtp');
         }
-
-        return response()->json([
-            'message' => "Correo de cobro enviado exitosamente a {$recipient}.",
-        ]);
     }
 }
