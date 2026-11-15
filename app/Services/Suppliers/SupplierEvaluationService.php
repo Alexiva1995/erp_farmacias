@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Suppliers;
 
 use App\Models\AutoOrder;
+use App\Models\AutoOrderDetail;
 use App\Models\Invoice;
+use App\Models\InvoiceDetail;
 use App\Models\InvoiceReturn;
+use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Models\SupplierScore;
 use Carbon\Carbon;
@@ -37,61 +40,55 @@ class SupplierEvaluationService
         $fillRateData = $this->calculateFillRate($supplier, $since);
         $onTimeData = $this->calculateOnTime($supplier, $since);
         $qualityData = $this->calculateQuality($supplier, $since);
-        $adminAccuracyData = $this->calculateAdminAccuracy($supplier, $since);
+        $priceVariationData = $this->calculatePriceVariation($supplier, $since);
         $commercialData = $this->calculateCommercialConditions($supplier);
 
-        $hasOrders = $fillRateData['score'] !== null;
-        $hasInvoices = $qualityData['score'] !== null;
+        $fillScore = $fillRateData['score'] ?? 0.0;
+        $onTimeScore = $onTimeData['score'] ?? 0.0;
+        $qualityScore = $qualityData['score'] ?? 0.0;
+        $priceScore = $priceVariationData['score'] ?? 0.0;
+        $commercialScore = $commercialData['score'] ?? 0.0;
 
         $breakdown = [
             'fill_rate' => [
-                'score' => $fillRateData['score'],
+                'score' => $fillScore,
                 'max'   => 30,
-                'label' => $hasOrders ? 'Completez (Fill Rate)' : 'Completez (N/A - Sin OC)',
+                'label' => 'Completez (Fill Rate)',
             ],
             'on_time' => [
-                'score' => $onTimeData['score'],
+                'score' => $onTimeScore,
                 'max'   => 20,
-                'label' => $hasOrders ? 'A Tiempo (On-Time)' : 'A Tiempo (N/A - Sin OC)',
+                'label' => 'A Tiempo (On-Time)',
             ],
             'quality' => [
-                'score' => $qualityData['score'] ?? 0.0,
+                'score' => $qualityScore,
                 'max'   => 25,
                 'label' => 'Calidad y Devoluciones',
             ],
-            'admin_accuracy' => [
-                'score' => $adminAccuracyData['score'] ?? 0.0,
-                'max'   => 15,
-                'label' => 'Precisión Administrativa',
+            'price_variation' => [
+                'score'                => $priceScore,
+                'max'                  => 15,
+                'label'                => 'Variación de Precio (OC vs Factura)',
+                'evaluated_items'      => $priceVariationData['evaluated_items'] ?? 0,
+                'exact_count'          => $priceVariationData['exact_count'] ?? 0,
+                'cheaper_count'        => $priceVariationData['cheaper_count'] ?? 0,
+                'more_expensive_count' => $priceVariationData['more_expensive_count'] ?? 0,
+                'avg_variation_pct'    => $priceVariationData['avg_variation_pct'] ?? 0.0,
             ],
             'commercial_conditions' => [
-                'score' => $commercialData['score'],
+                'score' => $commercialScore,
                 'max'   => 10,
                 'label' => 'Condiciones Comerciales',
             ],
-            'is_rescaled' => !$hasOrders && $hasInvoices,
             'evaluated_at' => now()->toDateString(),
         ];
 
-        // Cálculo de Score Total
-        if ($hasOrders) {
-            // Evaluación completa de 5 criterios (Base 100)
-            $totalScore = ($fillRateData['score'] ?? 0.0)
-                + ($onTimeData['score'] ?? 0.0)
-                + ($qualityData['score'] ?? 0.0)
-                + ($adminAccuracyData['score'] ?? 0.0)
-                + ($commercialData['score'] ?? 0.0);
-        } elseif ($hasInvoices) {
-            // Reescalado Proporcional sobre criterios evaluables (Base 50 -> 100)
-            $evaluableEarned = ($qualityData['score'] ?? 0.0)
-                + ($adminAccuracyData['score'] ?? 0.0)
-                + ($commercialData['score'] ?? 0.0);
-
-            $totalScore = ($evaluableEarned / 50.0) * 100.0;
-        } else {
-            // Proveedor nuevo o sin actividad reciente en los 90 días
-            $totalScore = ($commercialData['score'] / 10.0) * 50.0; // Ponderación inicial por condiciones
-        }
+        // Evaluación unificada de los 5 criterios sobre base 100
+        $totalScore = $fillScore
+            + $onTimeScore
+            + $qualityScore
+            + $priceScore
+            + $commercialScore;
 
         $totalScore = round(min(100.0, max(0.0, $totalScore)), 1);
 
@@ -222,34 +219,180 @@ class SupplierEvaluationService
     }
 
     /**
-     * 4. Precisión Administrativa (Máx. 15 pts)
-     * Porcentaje de facturas sin discrepancias de precio, reclamos o notas de débito referenciales.
+     * 4. Variación de Precio (Máx. 15 pts)
+     * Compara el costo unitario USD facturado contra el solicitado en AutoOrden (con respaldo en catálogo).
+     * Mismo costo o menor (tolerancia +0.5%): puntaje completo. Sobrecosto: penalización proporcional.
      */
-    private function calculateAdminAccuracy(Supplier $supplier, Carbon $since): array
+    private function calculatePriceVariation(Supplier $supplier, Carbon $since): array
     {
         $invoices = $supplier->invoices()
+            ->select(['id', 'auto_order_id', 'currency', 'exchange_rate'])
             ->where('created_at', '>=', $since)
             ->where('status', '!=', 'deleted')
             ->get();
 
         if ($invoices->isEmpty()) {
-            return ['score' => null];
+            return [
+                'score' => null,
+                'evaluated_items' => 0,
+                'exact_count' => 0,
+                'cheaper_count' => 0,
+                'more_expensive_count' => 0,
+                'avg_variation_pct' => 0.0,
+            ];
         }
 
-        $totalInvoices = $invoices->count();
-        $cleanInvoices = $invoices->filter(function ($inv) {
-            $hasDiscrepancy = ((float) ($inv->nd_referential_amount ?? 0)) > 0;
-            $hasClaim = ((float) ($inv->claim_amount ?? 0)) > 0;
-            return !$hasDiscrepancy && !$hasClaim;
-        })->count();
+        $invoiceMap = $invoices->keyBy('id');
+        $lines = InvoiceDetail::whereIn('invoice_id', $invoiceMap->keys())
+            ->select([
+                'id',
+                'invoice_id',
+                'product_id',
+                'auto_order_id',
+                'auto_order_details_id',
+                'unit_cost',
+                'supplier_discount_percentage',
+            ])
+            ->get();
 
-        $ratio = min(1.0, max(0.0, $cleanInvoices / $totalInvoices));
-        return ['score' => round($ratio * 15.0, 1)];
+        if ($lines->isEmpty()) {
+            return [
+                'score' => null,
+                'evaluated_items' => 0,
+                'exact_count' => 0,
+                'cheaper_count' => 0,
+                'more_expensive_count' => 0,
+                'avg_variation_pct' => 0.0,
+            ];
+        }
+
+        // Pre-cargar referencias sin N+1
+        $detailIds = $lines->pluck('auto_order_details_id')->filter()->unique()->values()->all();
+        $orderIds = $lines->pluck('auto_order_id')
+            ->merge($invoices->pluck('auto_order_id'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+        $productIds = $lines->pluck('product_id')->filter()->unique()->values()->all();
+
+        $orderDetailsById = !empty($detailIds)
+            ? AutoOrderDetail::whereIn('id', $detailIds)
+                ->get(['id', 'order_id', 'product_id', 'unit_cost'])
+                ->keyBy('id')
+            : collect();
+
+        $orderDetailsByOrderProduct = collect();
+        if (!empty($orderIds)) {
+            $orderDetailsByOrderProduct = AutoOrderDetail::whereIn('order_id', $orderIds)
+                ->get(['id', 'order_id', 'product_id', 'unit_cost'])
+                ->keyBy(fn ($d) => $d->order_id . ':' . $d->product_id);
+        }
+
+        $catalogCostByProduct = !empty($productIds)
+            ? ProductSupplier::where('supplier_id', $supplier->id)
+                ->whereIn('product_id', $productIds)
+                ->pluck('unit_cost_usd', 'product_id')
+            : collect();
+
+        $evaluatedItems = 0;
+        $exactCount = 0;
+        $cheaperCount = 0;
+        $moreExpensiveCount = 0;
+        $totalPoints = 0.0;
+        $sumVariationPct = 0.0;
+
+        foreach ($lines as $line) {
+            $invoice = $invoiceMap->get($line->invoice_id);
+            if (!$invoice) {
+                continue;
+            }
+
+            $rawUnitCost = (float) ($line->unit_cost ?? 0);
+            if ($rawUnitCost <= 0) {
+                continue;
+            }
+
+            // Resolver costo unitario USD de referencia en AutoOrden (prioridad directa, luego orden+producto, luego catálogo)
+            $effOrderId = $line->auto_order_id ?: $invoice->auto_order_id;
+            $refCostUsd = 0.0;
+
+            if (!empty($line->auto_order_details_id) && ($aoDetail = $orderDetailsById->get($line->auto_order_details_id))) {
+                $refCostUsd = (float) ($aoDetail->unit_cost ?? 0);
+            }
+            if ($refCostUsd <= 0 && !empty($effOrderId) && !empty($line->product_id)) {
+                $aoDetail = $orderDetailsByOrderProduct->get($effOrderId . ':' . $line->product_id);
+                if ($aoDetail) {
+                    $refCostUsd = (float) ($aoDetail->unit_cost ?? 0);
+                }
+            }
+            if ($refCostUsd <= 0 && !empty($line->product_id)) {
+                $refCostUsd = (float) ($catalogCostByProduct->get($line->product_id) ?? 0);
+            }
+
+            if ($refCostUsd <= 0) {
+                continue;
+            }
+
+            // Normalizar costo facturado a USD aplicando tasa de cambio y descuento comercial si existe
+            $currencyUpper = strtoupper(trim((string) ($invoice->currency ?? 'USD')));
+            $exchangeRate = (float) ($invoice->exchange_rate ?? 0);
+            $isUsd = in_array($currencyUpper, ['USD', '$', 'DOLAR', 'DOLARES', ''], true);
+
+            $invoicedCostUsd = (!$isUsd && $exchangeRate > 0)
+                ? ($rawUnitCost / $exchangeRate)
+                : $rawUnitCost;
+
+            $discountPct = (float) ($line->supplier_discount_percentage ?? 0);
+            if ($discountPct > 0) {
+                $invoicedCostUsd *= (1.0 - min(100.0, $discountPct) / 100.0);
+            }
+
+            $variationPct = (($invoicedCostUsd - $refCostUsd) / $refCostUsd) * 100.0;
+            $sumVariationPct += $variationPct;
+            $evaluatedItems++;
+
+            if ($variationPct <= -0.5) {
+                // Facturado más económico que la orden de compra
+                $cheaperCount++;
+                $totalPoints += 1.0;
+            } elseif ($variationPct <= 0.5) {
+                // Precio respetado dentro de tolerancia de redondeo
+                $exactCount++;
+                $totalPoints += 1.0;
+            } else {
+                // Sobreprecio respecto a lo solicitado (20% o más lleva a 0 esta línea)
+                $moreExpensiveCount++;
+                $totalPoints += max(0.0, 1.0 - ($variationPct / 20.0));
+            }
+        }
+
+        if ($evaluatedItems === 0) {
+            return [
+                'score' => null,
+                'evaluated_items' => 0,
+                'exact_count' => 0,
+                'cheaper_count' => 0,
+                'more_expensive_count' => 0,
+                'avg_variation_pct' => 0.0,
+            ];
+        }
+
+        $ratio = min(1.0, max(0.0, $totalPoints / $evaluatedItems));
+
+        return [
+            'score'                => round($ratio * 15.0, 1),
+            'evaluated_items'      => $evaluatedItems,
+            'exact_count'          => $exactCount,
+            'cheaper_count'        => $cheaperCount,
+            'more_expensive_count' => $moreExpensiveCount,
+            'avg_variation_pct'    => round($sumVariationPct / $evaluatedItems, 2),
+        ];
     }
 
     /**
      * 5. Condiciones Comerciales y Competitividad (Máx. 10 pts)
-     * Días de crédito, facilidades de pago y convenios comerciales.
+     * Días de crédito, facilidades de pago y convenios comerciales (sin penalización por IGTF).
      */
     private function calculateCommercialConditions(Supplier $supplier): array
     {
@@ -260,17 +403,17 @@ class SupplierEvaluationService
         $creditScore = min(5.0, ($creditDays / 30.0) * 5.0);
         $score += $creditScore;
 
-        // Convenios, pronto pago, descuentos comerciales o no cobro IGTF (hasta 5 pts)
-        $hasDiscounts = $supplier->discounts()->exists();
+        // Convenios: pronto pago, descuentos generales o escalas por laboratorio (hasta 5 pts)
         $hasPaymentRules = $supplier->paymentRules()->exists();
-        $noIgtf = !$supplier->charges_igtf;
+        $hasDiscounts = $supplier->discounts()->exists()
+            || $supplier->laboratoryLinks()->whereHas('discountRules')->exists();
 
         $commercialBonus = 0.0;
-        if ($hasDiscounts || $hasPaymentRules) {
-            $commercialBonus += 3.0;
+        if ($hasPaymentRules) {
+            $commercialBonus += 2.5;
         }
-        if ($noIgtf) {
-            $commercialBonus += 2.0;
+        if ($hasDiscounts) {
+            $commercialBonus += 2.5;
         }
 
         $score += min(5.0, $commercialBonus);

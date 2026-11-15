@@ -393,6 +393,18 @@ class MasterCatalogService
      */
     
     /**
+     * Normaliza un RIF para comparación alfanumérica sin separadores.
+     */
+    public function cleanRifKey(?string $rif): string
+    {
+        if (empty($rif)) {
+            return '';
+        }
+
+        return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim($rif)));
+    }
+
+    /**
      * Buscar un proveedor en el catálogo maestro por RIF.
      */
     public function findSupplierByRif(string $rif): ?array
@@ -407,11 +419,13 @@ class MasterCatalogService
             return null;
         }
 
-        $cleanRif = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $rif));
+        $cleanRif = $this->cleanRifKey($rif);
         $supplier = DB::connection($conn)->table('suppliers')
             ->where(function ($q) use ($rif, $cleanRif) {
-                $q->where('rif', $rif)
-                  ->orWhereRaw("UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) = ?", [$cleanRif]);
+                $q->where('rif', $rif);
+                if ($cleanRif !== '') {
+                    $q->orWhereRaw("UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) = ?", [$cleanRif]);
+                }
             })
             ->first();
 
@@ -419,54 +433,296 @@ class MasterCatalogService
             return null;
         }
 
-        return (array) $supplier;
-    }
-    public function registerMasterSupplier(array $data): array
-    {
-        $name = trim($data['name'] ?? '');
-        $rif = !empty($data['rif']) ? trim($data['rif']) : null;
-        $conn = $this->getMasterConnection();
-
-        $query = DB::connection($conn)->table('suppliers');
-        if ($rif) {
-            $query->where('rif', $rif);
-        } else {
-            $query->where('name', $name);
+        $result = (array) $supplier;
+        if (isset($result['business_types']) && is_string($result['business_types'])) {
+            $result['business_types'] = json_decode($result['business_types'], true) ?: [];
         }
 
+        return $result;
+    }
+
+    /**
+     * Registrar, buscar o enriquecer un proveedor en el Catálogo Maestro.
+     */
+    public function registerMasterSupplier(array $data): array
+    {
+        $name = trim((string) ($data['name'] ?? ''));
+        $rif = !empty($data['rif']) ? strtoupper(trim((string) $data['rif'])) : null;
+        $cleanRif = $this->cleanRifKey($rif);
+        $conn = $this->getMasterConnection();
+
+        if (!Schema::connection($conn)->hasTable('suppliers')) {
+            return ['created' => false, 'supplier' => null];
+        }
+
+        $query = DB::connection($conn)->table('suppliers');
+        if ($cleanRif !== '') {
+            $query->where(function ($q) use ($rif, $cleanRif) {
+                $q->where('rif', $rif)
+                    ->orWhereRaw("UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) = ?", [$cleanRif]);
+            });
+        } elseif ($name !== '') {
+            $query->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($name)]);
+        } else {
+            return ['created' => false, 'supplier' => null];
+        }
+
+        $supCols = array_flip(Schema::connection($conn)->getColumnListing('suppliers'));
         $existing = $query->first();
+
         if ($existing) {
+            // Enriquecer únicamente campos vacíos en el Master sin sobrescribir datos oficiales existentes
+            $enrichData = [];
+            $enrichableStringFields = [
+                'logo_url',
+                'social_reason',
+                'address',
+                'sales_phone',
+                'collections_phone',
+                'payment_email',
+                'type',
+            ];
+
+            foreach ($enrichableStringFields as $field) {
+                if (isset($supCols[$field]) && empty($existing->$field) && !empty($data[$field])) {
+                    $enrichData[$field] = is_string($data[$field]) ? trim($data[$field]) : $data[$field];
+                }
+            }
+
+            if (isset($supCols['business_types']) && !empty($data['business_types']) && is_array($data['business_types'])) {
+                $existingTypes = is_string($existing->business_types ?? null)
+                    ? (json_decode($existing->business_types, true) ?: [])
+                    : (is_array($existing->business_types ?? null) ? $existing->business_types : []);
+                $mergedTypes = array_values(array_unique(array_merge($existingTypes, $data['business_types'])));
+                if (count($mergedTypes) > count($existingTypes)) {
+                    $enrichData['business_types'] = json_encode($mergedTypes);
+                }
+            }
+
+            if (!empty($enrichData)) {
+                if (isset($supCols['updated_at'])) {
+                    $enrichData['updated_at'] = now();
+                }
+                DB::connection($conn)->table('suppliers')
+                    ->where('id', $existing->id)
+                    ->update($enrichData);
+                $existing = DB::connection($conn)->table('suppliers')->where('id', $existing->id)->first();
+            }
+
             return [
                 'created' => false,
-                'supplier' => [
-                    'id'            => $existing->id,
-                    'name'          => $existing->name,
-                    'rif'           => $existing->rif,
-                    'social_reason' => $existing->social_reason,
-                ],
+                'supplier' => $this->formatMasterSupplierRow($existing),
             ];
         }
 
-        $supCols = Schema::connection($conn)->getColumnListing('suppliers');
+        $typeVal = $data['type'] ?? 'drogueria';
+        if ($typeVal instanceof \App\Enums\SupplierType) {
+            $typeVal = $typeVal->value;
+        }
+
+        $businessTypes = $data['business_types'] ?? [];
+        if (is_array($businessTypes)) {
+            $businessTypesJson = json_encode(array_values(array_unique($businessTypes)));
+        } else {
+            $businessTypesJson = is_string($businessTypes) ? $businessTypes : json_encode([]);
+        }
+
         $insertData = [
-            'name'          => $name,
-            'social_reason' => $data['social_reason'] ?? $name,
-            'rif'           => $rif,
-            'created_at'    => now(),
-            'updated_at'    => now(),
+            'name'              => $name,
+            'logo_url'          => !empty($data['logo_url']) ? trim((string) $data['logo_url']) : null,
+            'social_reason'     => !empty($data['social_reason']) ? trim((string) $data['social_reason']) : $name,
+            'rif'               => $rif,
+            'address'           => !empty($data['address']) ? trim((string) $data['address']) : null,
+            'sales_phone'       => !empty($data['sales_phone']) ? trim((string) $data['sales_phone']) : null,
+            'collections_phone' => !empty($data['collections_phone']) ? trim((string) $data['collections_phone']) : null,
+            'payment_email'     => !empty($data['payment_email']) ? trim((string) $data['payment_email']) : null,
+            'type'              => $typeVal,
+            'business_types'    => $businessTypesJson,
+            'is_indexed'        => (bool) ($data['is_indexed'] ?? false),
+            'is_fiscal'         => isset($data['is_fiscal']) ? (bool) $data['is_fiscal'] : true,
+            'is_active'         => 1,
+            'dispatch_days'     => json_encode([]),
+            'order_days'        => json_encode([]),
+            'created_at'        => now(),
+            'updated_at'        => now(),
         ];
-        $insertData = array_intersect_key($insertData, array_flip($supCols));
+        $insertData = array_intersect_key($insertData, $supCols);
 
         $id = DB::connection($conn)->table('suppliers')->insertGetId($insertData);
+        $createdRow = DB::connection($conn)->table('suppliers')->where('id', $id)->first();
 
         return [
             'created' => true,
-            'supplier' => [
-                'id'            => $id,
-                'name'          => $name,
-                'rif'           => $rif,
-                'social_reason' => $insertData['social_reason'] ?? $name,
-            ],
+            'supplier' => $this->formatMasterSupplierRow($createdRow),
+        ];
+    }
+
+    /**
+     * Promueve la estructura técnica de conexión de un proveedor hacia tovaerp_master
+     * sin copiar credenciales locales y sin sobrescribir plantillas oficiales ya existentes.
+     *
+     * @param int $masterSupplierId
+     * @param array<string, mixed> $connectionData
+     * @param string|null $supplierName
+     */
+    public function promoteConnectionStructureToMaster(
+        int $masterSupplierId,
+        array $connectionData,
+        ?string $supplierName = null
+    ): void {
+        if ($masterSupplierId <= 0) {
+            return;
+        }
+
+        $conn = $this->getMasterConnection();
+        if (!Schema::connection($conn)->hasTable('suppliers') || !Schema::connection($conn)->hasTable('supplier_connections')) {
+            return;
+        }
+
+        $masterSup = DB::connection($conn)->table('suppliers')->where('id', $masterSupplierId)->first();
+        if (!$masterSup) {
+            return;
+        }
+
+        $type = $connectionData['type'] ?? 'file';
+        if (str_contains((string) $type, 'bot')) {
+            return;
+        }
+        $masterConnCols = array_flip(Schema::connection($conn)->getColumnListing('supplier_connections'));
+
+        // Sanitizar estructura principal removiendo tokens de sesión privados
+        $sanitizedStructure = $this->sanitizeStructurePayload($connectionData['structure'] ?? null);
+        $sanitizedSecondary = $this->sanitizeStructurePayload($connectionData['secondary_structure'] ?? null);
+        $sanitizedTertiary = $this->sanitizeStructurePayload($connectionData['tertiary_structure'] ?? null);
+        $sanitizedInvoice = $this->sanitizeStructurePayload($connectionData['invoice_structure'] ?? null);
+
+        if (
+            empty($sanitizedStructure)
+            && empty($sanitizedSecondary)
+            && empty($sanitizedTertiary)
+            && empty($sanitizedInvoice)
+        ) {
+            return;
+        }
+
+        $existingMasterConn = DB::connection($conn)->table('supplier_connections')
+            ->where('supplier_id', $masterSupplierId)
+            ->where('type', $type)
+            ->first();
+
+        $publicHost = in_array($type, ['file', 'email'], true)
+            ? (($supplierName ?: $masterSup->name) . ' (Excel)')
+            : ($connectionData['host'] ?? null);
+
+        if ($existingMasterConn) {
+            // Solo completar estructuras vacías en el Master para proteger plantillas oficiales
+            $updatePayload = [];
+            if (empty($existingMasterConn->structure) && !empty($sanitizedStructure) && isset($masterConnCols['structure'])) {
+                $updatePayload['structure'] = json_encode($sanitizedStructure);
+            }
+            if (empty($existingMasterConn->secondary_structure) && !empty($sanitizedSecondary) && isset($masterConnCols['secondary_structure'])) {
+                $updatePayload['secondary_structure'] = json_encode($sanitizedSecondary);
+            }
+            if (empty($existingMasterConn->tertiary_structure) && !empty($sanitizedTertiary) && isset($masterConnCols['tertiary_structure'])) {
+                $updatePayload['tertiary_structure'] = json_encode($sanitizedTertiary);
+            }
+            if (empty($existingMasterConn->invoice_structure) && !empty($sanitizedInvoice) && isset($masterConnCols['invoice_structure'])) {
+                $updatePayload['invoice_structure'] = json_encode($sanitizedInvoice);
+            }
+            if (empty($existingMasterConn->credit_days_cod_col) && !empty($connectionData['credit_days_cod_col']) && isset($masterConnCols['credit_days_cod_col'])) {
+                $updatePayload['credit_days_cod_col'] = $connectionData['credit_days_cod_col'];
+            }
+            if (empty($existingMasterConn->credit_days_col) && !empty($connectionData['credit_days_col']) && isset($masterConnCols['credit_days_col'])) {
+                $updatePayload['credit_days_col'] = $connectionData['credit_days_col'];
+            }
+
+            if (!empty($updatePayload)) {
+                if (isset($masterConnCols['updated_at'])) {
+                    $updatePayload['updated_at'] = now();
+                }
+                DB::connection($conn)->table('supplier_connections')
+                    ->where('id', $existingMasterConn->id)
+                    ->update($updatePayload);
+            }
+
+            return;
+        }
+
+        $insertConn = [
+            'supplier_id' => $masterSupplierId,
+            'type' => $type,
+            'host' => $publicHost,
+            'port' => $connectionData['port'] ?? null,
+            'username' => null,
+            'password' => null,
+            'path' => null,
+            'invoice_path' => null,
+            'pasv' => (bool) ($connectionData['pasv'] ?? false),
+            'has_header' => (bool) ($connectionData['has_header'] ?? false),
+            'structure' => !empty($sanitizedStructure) ? json_encode($sanitizedStructure) : null,
+            'secondary_structure' => !empty($sanitizedSecondary) ? json_encode($sanitizedSecondary) : null,
+            'tertiary_structure' => !empty($sanitizedTertiary) ? json_encode($sanitizedTertiary) : null,
+            'invoice_structure' => !empty($sanitizedInvoice) ? json_encode($sanitizedInvoice) : null,
+            'credit_days_cod_col' => $connectionData['credit_days_cod_col'] ?? null,
+            'credit_days_col' => $connectionData['credit_days_col'] ?? null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        $insertConn = array_intersect_key($insertConn, $masterConnCols);
+        DB::connection($conn)->table('supplier_connections')->insert($insertConn);
+    }
+
+    /**
+     * Limpia credenciales o tokens de sesión de un payload de estructura de conexión.
+     *
+     * @return array<mixed>|null
+     */
+    protected function sanitizeStructurePayload(mixed $raw): ?array
+    {
+        if (empty($raw)) {
+            return null;
+        }
+
+        $data = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+        if (!is_array($data) || empty($data)) {
+            return null;
+        }
+
+        unset($data['session_token'], $data['last_token_source'], $data['last_token_sync_at']);
+
+        return empty($data) ? null : $data;
+    }
+
+    /**
+     * Formatea una fila de proveedor maestro a un arreglo homogéneo.
+     *
+     * @return array<string, mixed>
+     */
+    protected function formatMasterSupplierRow(object $row): array
+    {
+        $businessTypes = [];
+        if (!empty($row->business_types)) {
+            $businessTypes = is_string($row->business_types)
+                ? (json_decode($row->business_types, true) ?: [])
+                : (is_array($row->business_types) ? $row->business_types : []);
+        }
+
+        return [
+            'id'                => (int) $row->id,
+            'name'              => $row->name,
+            'logo_url'          => $row->logo_url ?? null,
+            'rif'               => $row->rif,
+            'social_reason'     => $row->social_reason,
+            'address'           => $row->address ?? null,
+            'sales_phone'       => $row->sales_phone ?? null,
+            'collections_phone' => $row->collections_phone ?? null,
+            'payment_email'     => $row->payment_email ?? null,
+            'credit_days'       => isset($row->credit_days) ? (int) $row->credit_days : 0,
+            'is_indexed'        => (bool) ($row->is_indexed ?? false),
+            'is_fiscal'         => isset($row->is_fiscal) ? (bool) $row->is_fiscal : true,
+            'type'              => $row->type ?? 'drogueria',
+            'business_types'    => $businessTypes,
         ];
     }
 

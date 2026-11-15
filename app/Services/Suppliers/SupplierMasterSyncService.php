@@ -54,22 +54,47 @@ class SupplierMasterSyncService
             ];
         }
 
-        $query = DB::connection($masterConn)->table('suppliers')
-            ->select(['id', 'name', 'social_reason', 'rif', 'type', 'credit_days', 'is_active', 'created_at']);
+        $masterColumns = Schema::connection($masterConn)->getColumnListing('suppliers');
+        $desiredColumns = [
+            'id',
+            'name',
+            'logo_url',
+            'social_reason',
+            'rif',
+            'address',
+            'sales_phone',
+            'collections_phone',
+            'payment_email',
+            'type',
+            'business_types',
+            'credit_days',
+            'is_indexed',
+            'is_fiscal',
+            'is_active',
+            'created_at',
+        ];
+        $selectColumns = array_values(array_intersect($desiredColumns, $masterColumns));
 
-        // Filtro de búsqueda
+        $query = DB::connection($masterConn)->table('suppliers')
+            ->select($selectColumns);
+
+        // Filtro de búsqueda (incluye RIF limpio sin guiones/espacios)
         $search = trim((string) ($filters['search'] ?? ''));
         if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
+            $cleanSearchRif = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $search));
+            $query->where(function ($q) use ($search, $cleanSearchRif) {
                 $q->where('name', 'LIKE', "%{$search}%")
                     ->orWhere('rif', 'LIKE', "%{$search}%")
                     ->orWhere('social_reason', 'LIKE', "%{$search}%");
+                if ($cleanSearchRif !== '') {
+                    $q->orWhereRaw("UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) LIKE ?", ["%{$cleanSearchRif}%"]);
+                }
             });
         }
 
-        // Filtro por tipo de proveedor (por defecto droguería o null)
+        // Filtro por tipo de proveedor ('all' retorna todos los tipos)
         $supplierType = $filters['type'] ?? 'drogueria';
-        if (!empty($supplierType)) {
+        if (!empty($supplierType) && $supplierType !== 'all') {
             $query->where(function ($q) use ($supplierType) {
                 $q->where('type', $supplierType)->orWhereNull('type');
             });
@@ -93,26 +118,39 @@ class SupplierMasterSyncService
         if (Schema::connection($masterConn)->hasTable('supplier_connections')) {
             $masterConnections = DB::connection($masterConn)->table('supplier_connections')
                 ->whereIn('supplier_id', $masterSupplierIds)
+                ->where('type', 'NOT LIKE', '%bot%')
+                ->select(['id', 'supplier_id', 'type', 'structure', 'secondary_structure', 'tertiary_structure'])
                 ->get()
                 ->groupBy('supplier_id');
         }
 
-        // Obtener proveedores locales del tenant actual
+        // Obtener proveedores locales del tenant actual sin disparar appends ni N+1
         $localSuppliersByRif = [];
         $localSuppliersById = [];
         $localConnectionsBySupId = collect();
 
         if (Schema::hasTable('suppliers')) {
-            $localSuppliers = Supplier::all();
+            $localQuery = DB::table('suppliers')->select(['id', 'rif', 'is_active', 'credit_days']);
+            if (Schema::hasColumn('suppliers', 'deleted_at')) {
+                $localQuery->whereNull('deleted_at');
+            }
+            $localSuppliers = $localQuery->get();
+
             foreach ($localSuppliers as $sup) {
-                $localSuppliersById[$sup->id] = $sup;
+                $localSuppliersById[(int) $sup->id] = $sup;
                 if (!empty($sup->rif)) {
-                    $localSuppliersByRif[strtoupper(trim($sup->rif))] = $sup;
+                    $cleanLocalRif = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) $sup->rif)));
+                    if ($cleanLocalRif !== '') {
+                        $localSuppliersByRif[$cleanLocalRif] = $sup;
+                    }
                 }
             }
 
             if (Schema::hasTable('supplier_connections')) {
-                $localConnectionsBySupId = SupplierConnection::all()->groupBy('supplier_id');
+                $localConnectionsBySupId = DB::table('supplier_connections')
+                    ->select(['supplier_id', 'type', 'username', 'credit_days_email'])
+                    ->get()
+                    ->groupBy('supplier_id');
             }
         }
 
@@ -123,18 +161,32 @@ class SupplierMasterSyncService
             $localSuppliersByRif,
             $localConnectionsBySupId
         ) {
-            $cleanRif = !empty($masterSup->rif) ? strtoupper(trim($masterSup->rif)) : null;
+            $cleanRif = !empty($masterSup->rif)
+                ? strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) $masterSup->rif)))
+                : null;
 
-            // Identificar coincidencia local
-            $localSup = $localSuppliersById[$masterSup->id]
+            // Identificar coincidencia local por ID oficial o por RIF normalizado
+            $localSup = $localSuppliersById[(int) $masterSup->id]
                 ?? ($cleanRif && isset($localSuppliersByRif[$cleanRif]) ? $localSuppliersByRif[$cleanRif] : null);
 
             $isInstalled = $localSup !== null;
-            $isActive = $localSup ? (bool) $localSup->is_active : false;
-            $tenantSupplierId = $localSup?->id;
+            $isActive = $localSup ? (bool) ($localSup->is_active ?? true) : false;
+            $tenantSupplierId = $localSup?->id ? (int) $localSup->id : null;
 
-            // Extraer conexiones del master
-            $supConnections = $masterConnections->get($masterSup->id, collect());
+            // Extraer conexiones del master (excluyendo bots de scraping)
+            $supConnections = $masterConnections->get($masterSup->id, collect())
+                ->filter(fn ($c) => !str_contains((string) ($c->type ?? ''), 'bot'));
+            $allowedConnectionTypes = $supConnections
+                ->pluck('type')
+                ->map(fn ($t) => strtolower(trim((string) $t)))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+            if (empty($allowedConnectionTypes)) {
+                $allowedConnectionTypes = ['file'];
+            }
+
             $primaryConn = $supConnections->firstWhere('type', 'file')
                 ?? $supConnections->firstWhere('type', 'email')
                 ?? $supConnections->first();
@@ -163,13 +215,29 @@ class SupplierMasterSyncService
 
             $configuredEmail = $localFileConn?->username ?: ($localFileConn?->credit_days_email ?: null);
 
+            $businessTypes = [];
+            if (!empty($masterSup->business_types)) {
+                $businessTypes = is_string($masterSup->business_types)
+                    ? (json_decode($masterSup->business_types, true) ?: [])
+                    : (is_array($masterSup->business_types) ? $masterSup->business_types : []);
+            }
+
             return [
                 'master_id' => (int) $masterSup->id,
                 'name' => $masterSup->name,
-                'social_reason' => $masterSup->social_reason,
+                'logo_url' => $masterSup->logo_url ?? null,
+                'social_reason' => $masterSup->social_reason ?? $masterSup->name,
                 'rif' => $masterSup->rif,
+                'address' => $masterSup->address ?? null,
+                'sales_phone' => $masterSup->sales_phone ?? null,
+                'collections_phone' => $masterSup->collections_phone ?? null,
+                'payment_email' => $masterSup->payment_email ?? null,
                 'type' => $masterSup->type ?? 'drogueria',
+                'business_types' => $businessTypes,
+                'is_indexed' => (bool) ($masterSup->is_indexed ?? false),
+                'is_fiscal' => isset($masterSup->is_fiscal) ? (bool) $masterSup->is_fiscal : true,
                 'integration_type' => $integrationType,
+                'allowed_connection_types' => $allowedConnectionTypes,
                 'has_excel_structure' => $hasExcelStructure,
                 'excel_columns_summary' => $columnsSummary,
                 'is_installed' => $isInstalled,
@@ -230,10 +298,10 @@ class SupplierMasterSyncService
             throw new \InvalidArgumentException("No se encontró el proveedor #{$masterSupplierId} en el Catálogo Maestro.");
         }
 
-        // Buscar si ya existe localmente en el tenant por ID o por RIF
-        $localSup = Supplier::where('id', $masterSupplierId)->first();
+        // Buscar si ya existe localmente en el tenant (incluyendo eliminados para restaurarlos)
+        $localSup = Supplier::withTrashed()->where('id', $masterSupplierId)->first();
         if (!$localSup && !empty($masterSup->rif)) {
-            $localSup = Supplier::where('rif', trim($masterSup->rif))->first();
+            $localSup = Supplier::withTrashed()->where('rif', trim($masterSup->rif))->first();
         }
 
         $cleanEmail = !empty($senderEmail) ? trim($senderEmail) : null;
@@ -242,9 +310,14 @@ class SupplierMasterSyncService
 
         try {
             if ($localSup) {
-                // Actualizar identidad y activación
+                if (method_exists($localSup, 'trashed') && $localSup->trashed()) {
+                    $localSup->restore();
+                }
+
+                // Actualizar identidad, logotipo oficial del Master y activación
                 $updateData = [
                     'name' => $masterSup->name,
+                    'logo_url' => $masterSup->logo_url ?? $localSup->logo_url,
                     'social_reason' => $masterSup->social_reason,
                     'rif' => $masterSup->rif,
                     'is_active' => $isActive,
@@ -260,6 +333,7 @@ class SupplierMasterSyncService
                 $payload = [
                     'id' => $masterSup->id,
                     'name' => $masterSup->name,
+                    'logo_url' => $masterSup->logo_url ?? null,
                     'social_reason' => $masterSup->social_reason,
                     'rif' => $masterSup->rif,
                     'type' => $masterSup->type ?? 'drogueria',
@@ -267,82 +341,21 @@ class SupplierMasterSyncService
                     'is_active' => $isActive,
                 ];
 
-                // Si ya existe otro registro con ese ID exacto, dejar que auto-incremente
-                if (Supplier::where('id', $masterSup->id)->exists()) {
+                // Si ya existe otro registro con ese ID exacto (incluso eliminado), dejar que auto-incremente
+                if (Supplier::withTrashed()->where('id', $masterSup->id)->exists()) {
                     unset($payload['id']);
                 }
 
                 $localSup = Supplier::create($payload);
             }
 
-            // Obtener conexiones maestras del proveedor
-            $masterConnections = collect();
-            if (Schema::connection($masterConn)->hasTable('supplier_connections')) {
-                $masterConnections = DB::connection($masterConn)->table('supplier_connections')
-                    ->where('supplier_id', $masterSupplierId)
-                    ->get();
-            }
-
-            // Si el master no tiene conexiones registradas para este proveedor, crear una base tipo Excel
-            if ($masterConnections->isEmpty()) {
-                $masterConnections = collect([(object) [
-                    'type' => 'file',
-                    'host' => $masterSup->name . ' (Excel)',
-                    'has_header' => false,
-                    'pasv' => false,
-                    'structure' => null,
-                    'secondary_structure' => null,
-                    'tertiary_structure' => null,
-                ]]);
-            }
-
-            foreach ($masterConnections as $mConn) {
-                $type = $mConn->type ?? 'file';
-
-                $existingLocalConn = $localSup->connections()->where('type', $type)->first();
-
-                $rawStructure = $mConn->structure ?? null;
-                $struct = is_string($rawStructure) ? json_decode($rawStructure, true) : (array) $rawStructure;
-
-                $rawSec = $mConn->secondary_structure ?? null;
-                $secStruct = is_string($rawSec) ? json_decode($rawSec, true) : (array) $rawSec;
-
-                $rawTert = $mConn->tertiary_structure ?? null;
-                $tertStruct = is_string($rawTert) ? json_decode($rawTert, true) : (array) $rawTert;
-
-                if ($existingLocalConn) {
-                    $connUpdate = [
-                        'structure' => $struct ?: $existingLocalConn->structure,
-                        'secondary_structure' => $secStruct ?: $existingLocalConn->secondary_structure,
-                        'tertiary_structure' => $tertStruct ?: $existingLocalConn->tertiary_structure,
-                        'has_header' => (bool) ($mConn->has_header ?? $existingLocalConn->has_header),
-                    ];
-
-                    if (in_array($type, ['file', 'email']) && !empty($cleanEmail)) {
-                        $connUpdate['username'] = $cleanEmail;
-                        $connUpdate['host'] = $masterSup->name . ' (Excel)';
-                    }
-
-                    $existingLocalConn->update($connUpdate);
-                } else {
-                    $newConnData = [
-                        'supplier_id' => $localSup->id,
-                        'type' => $type,
-                        'host' => in_array($type, ['file', 'email']) ? ($masterSup->name . ' (Excel)') : ($mConn->host ?? null),
-                        'port' => $mConn->port ?? null,
-                        'username' => in_array($type, ['file', 'email']) ? $cleanEmail : null,
-                        'password' => null,
-                        'path' => null,
-                        'pasv' => (bool) ($mConn->pasv ?? true),
-                        'has_header' => (bool) ($mConn->has_header ?? false),
-                        'structure' => $struct ?: null,
-                        'secondary_structure' => $secStruct ?: null,
-                        'tertiary_structure' => $tertStruct ?: null,
-                    ];
-
-                    $localSup->connections()->create($newConnData);
-                }
-            }
+            $this->syncMasterConnectionsToLocalSupplier(
+                localSup: $localSup,
+                masterSupplierId: $masterSupplierId,
+                senderEmail: $cleanEmail,
+                masterConn: $masterConn,
+                createFallbackFileConnection: true
+            );
 
             DB::commit();
 
@@ -357,6 +370,191 @@ class SupplierMasterSyncService
                 'exception' => $e,
             ]);
             throw $e;
+        }
+    }
+
+    /**
+     * Clona las plantillas de conexión (Excel, FTP, API, Bot) desde el Catálogo Maestro
+     * hacia un proveedor local del tenant sin sobreescribir credenciales privadas existentes.
+     */
+    public function syncMasterConnectionsToLocalSupplier(
+        Supplier $localSup,
+        int $masterSupplierId,
+        ?string $senderEmail = null,
+        ?string $masterConn = null,
+        bool $createFallbackFileConnection = false
+    ): int {
+        if (!Schema::hasTable('supplier_connections')) {
+            return 0;
+        }
+
+        $masterConn = $masterConn ?: $this->getMasterConnectionName();
+        $cleanEmail = !empty($senderEmail) ? trim($senderEmail) : null;
+
+        $masterConnections = collect();
+        if (Schema::connection($masterConn)->hasTable('supplier_connections')) {
+            $masterConnections = DB::connection($masterConn)->table('supplier_connections')
+                ->where('supplier_id', $masterSupplierId)
+                ->where('type', 'NOT LIKE', '%bot%')
+                ->get();
+        }
+
+        // Si el master no tiene conexiones registradas, opcionalmente crear base tipo Excel
+        if ($masterConnections->isEmpty()) {
+            if (!$createFallbackFileConnection && empty($cleanEmail)) {
+                return 0;
+            }
+
+            $masterConnections = collect([(object) [
+                'type' => 'file',
+                'host' => $localSup->name . ' (Excel)',
+                'has_header' => false,
+                'pasv' => false,
+                'structure' => null,
+                'secondary_structure' => null,
+                'tertiary_structure' => null,
+                'invoice_structure' => null,
+            ]]);
+        }
+
+        $syncedCount = 0;
+
+        foreach ($masterConnections as $mConn) {
+            $type = $mConn->type ?? 'file';
+            $existingLocalConn = $localSup->connections()->where('type', $type)->first();
+
+            $rawStructure = $mConn->structure ?? null;
+            $struct = is_string($rawStructure) ? json_decode($rawStructure, true) : (array) $rawStructure;
+
+            $rawSec = $mConn->secondary_structure ?? null;
+            $secStruct = is_string($rawSec) ? json_decode($rawSec, true) : (array) $rawSec;
+
+            $rawTert = $mConn->tertiary_structure ?? null;
+            $tertStruct = is_string($rawTert) ? json_decode($rawTert, true) : (array) $rawTert;
+
+            $rawInv = $mConn->invoice_structure ?? null;
+            $invStruct = is_string($rawInv) ? json_decode($rawInv, true) : (array) $rawInv;
+
+            if ($existingLocalConn) {
+                $connUpdate = [
+                    'structure' => $struct ?: $existingLocalConn->structure,
+                    'secondary_structure' => $secStruct ?: $existingLocalConn->secondary_structure,
+                    'tertiary_structure' => $tertStruct ?: $existingLocalConn->tertiary_structure,
+                    'invoice_structure' => $invStruct ?: $existingLocalConn->invoice_structure,
+                    'has_header' => (bool) ($mConn->has_header ?? $existingLocalConn->has_header),
+                ];
+
+                if (isset($mConn->credit_days_cod_col) && empty($existingLocalConn->credit_days_cod_col)) {
+                    $connUpdate['credit_days_cod_col'] = $mConn->credit_days_cod_col;
+                }
+                if (isset($mConn->credit_days_col) && empty($existingLocalConn->credit_days_col)) {
+                    $connUpdate['credit_days_col'] = $mConn->credit_days_col;
+                }
+
+                if (in_array($type, ['file', 'email'], true) && !empty($cleanEmail)) {
+                    $connUpdate['username'] = $cleanEmail;
+                    $connUpdate['host'] = $localSup->name . ' (Excel)';
+                }
+
+                $existingLocalConn->update($connUpdate);
+                $syncedCount++;
+            } else {
+                $newConnData = [
+                    'supplier_id' => $localSup->id,
+                    'type' => $type,
+                    'host' => in_array($type, ['file', 'email'], true) ? ($localSup->name . ' (Excel)') : ($mConn->host ?? null),
+                    'port' => $mConn->port ?? null,
+                    'username' => in_array($type, ['file', 'email'], true) ? $cleanEmail : null,
+                    'password' => null,
+                    'path' => null,
+                    'pasv' => (bool) ($mConn->pasv ?? true),
+                    'has_header' => (bool) ($mConn->has_header ?? false),
+                    'structure' => $struct ?: null,
+                    'secondary_structure' => $secStruct ?: null,
+                    'tertiary_structure' => $tertStruct ?: null,
+                    'invoice_structure' => $invStruct ?: null,
+                    'credit_days_cod_col' => $mConn->credit_days_cod_col ?? null,
+                    'credit_days_col' => $mConn->credit_days_col ?? null,
+                ];
+
+                $localSup->connections()->create($newConnData);
+                $syncedCount++;
+            }
+        }
+
+        return $syncedCount;
+    }
+
+    /**
+     * Promueve la estructura técnica configurada por un tenant hacia tovaerp_master
+     * para alimentar el centro de datos colaborativo sin exponer credenciales locales.
+     */
+    public function promoteLocalConnectionToMaster(Supplier $supplier, SupplierConnection $connection): void
+    {
+        $isTenant = function_exists('tenancy') && tenancy()->initialized;
+        if (!$isTenant) {
+            return;
+        }
+
+        $typeValue = $supplier->type instanceof \App\Enums\SupplierType
+            ? $supplier->type->value
+            : (string) ($supplier->type ?? 'drogueria');
+
+        if ($typeValue === 'externo') {
+            return;
+        }
+
+        try {
+            $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
+            $masterSupplierId = null;
+
+            if (!empty($supplier->rif)) {
+                $masterSup = $masterClient->findMasterSupplierByRif($supplier->rif);
+                if (!empty($masterSup['id'])) {
+                    $masterSupplierId = (int) $masterSup['id'];
+                }
+            }
+
+            if (!$masterSupplierId) {
+                $registered = $masterClient->registerSupplierInMaster([
+                    'name' => $supplier->name,
+                    'social_reason' => $supplier->social_reason,
+                    'rif' => $supplier->rif,
+                    'address' => $supplier->address,
+                    'sales_phone' => $supplier->sales_phone,
+                    'collections_phone' => $supplier->collections_phone,
+                    'payment_email' => $supplier->payment_email,
+                    'type' => $typeValue,
+                    'business_types' => $supplier->business_types,
+                    'is_indexed' => $supplier->is_indexed,
+                    'is_fiscal' => $supplier->is_fiscal,
+                ]);
+                $masterSupplierId = !empty($registered['id']) ? (int) $registered['id'] : null;
+            }
+
+            if (!$masterSupplierId) {
+                return;
+            }
+
+            $masterClient->promoteConnectionStructureToMaster(
+                masterSupplierId: $masterSupplierId,
+                connectionData: [
+                    'type' => $connection->type,
+                    'host' => $connection->host,
+                    'port' => $connection->port,
+                    'pasv' => $connection->pasv,
+                    'has_header' => $connection->has_header,
+                    'structure' => $connection->structure,
+                    'secondary_structure' => $connection->secondary_structure,
+                    'tertiary_structure' => $connection->tertiary_structure,
+                    'invoice_structure' => $connection->invoice_structure,
+                    'credit_days_cod_col' => $connection->credit_days_cod_col,
+                    'credit_days_col' => $connection->credit_days_col,
+                ],
+                supplierName: $supplier->name
+            );
+        } catch (\Throwable $e) {
+            Log::warning("No se pudo promover estructura de conexión al Master para proveedor {$supplier->name}: " . $e->getMessage());
         }
     }
 }

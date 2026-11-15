@@ -21,6 +21,12 @@ class StoreSupplierRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        if (!empty($this->rif) && is_string($this->rif)) {
+            $this->merge([
+                'rif' => strtoupper(trim($this->rif)),
+            ]);
+        }
+
         // Si no se proporcionó razón social pero sí el nombre, usar el nombre para evitar bloqueos
         if (empty($this->social_reason) && !empty($this->name)) {
             $this->merge([
@@ -65,6 +71,8 @@ class StoreSupplierRequest extends FormRequest
                 'business_types' => ['sometimes', 'nullable', 'array'],
                 'business_types.*' => ['string', 'max:50'],
                 'name' => ['required', 'string', 'max:255'],
+                'logo_url' => ['sometimes', 'nullable', 'string', 'max:500'],
+                'logo' => ['sometimes', 'nullable', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
                 'sales_phone' => ['nullable', 'string', 'max:50'],
                 'social_reason' => ['nullable', 'string', 'max:255'],
                 'rif' => ['nullable', 'string', 'max:20'],
@@ -80,6 +88,8 @@ class StoreSupplierRequest extends FormRequest
                 'custom_due_days' => ['nullable', 'integer', 'min:1'],
                 'payment_due_reference' => ['nullable', 'in:issue_date,receipt_date'],
                 'invoice_date_reference' => ['nullable', 'in:receipt_date,expiration_date,issue_date'],
+                'master_supplier_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+                'sender_email' => ['sometimes', 'nullable', 'email', 'max:255'],
             ];
         }
 
@@ -88,6 +98,8 @@ class StoreSupplierRequest extends FormRequest
             'business_types' => ['sometimes', 'nullable', 'array'],
             'business_types.*' => ['string', 'max:50'],
             'name' => ['required', 'string', 'max:255'],
+            'logo_url' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'logo' => ['sometimes', 'nullable', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
             'social_reason' => ['nullable', 'string', 'max:255'],
             'rif' => ['required', 'string', 'max:20', Rule::unique('suppliers', 'rif')->whereNull('deleted_at')],
             'address' => ['nullable', 'string'],
@@ -111,6 +123,8 @@ class StoreSupplierRequest extends FormRequest
             'custom_due_days' => ['nullable', 'required_if:payment_due_type,custom', 'integer', 'min:1'],
             'payment_due_reference' => ['nullable', 'required_if:payment_due_type,early_payment', 'in:issue_date,receipt_date'],
             'invoice_date_reference' => ['nullable', 'required_if:payment_due_type,invoice_date', 'in:receipt_date,expiration_date,issue_date'],
+            'master_supplier_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'sender_email' => ['sometimes', 'nullable', 'email', 'max:255'],
         ];
     }
 
@@ -167,7 +181,8 @@ class StoreSupplierRequest extends FormRequest
             'payment_due_reference.required' => 'La referencia de vencimiento es obligatoria.',
 
             'invoice_date_reference.in' => 'La referencia de fecha de factura seleccionada no es válida.',
-            'invoice_date_reference.required_if' => 'La referencia de fecha de factura es obligatoria'
+            'invoice_date_reference.required_if' => 'La referencia de fecha de factura es obligatoria',
+            'sender_email.email' => 'El correo remitente para listas de precios debe tener un formato válido.',
         ];
     }
 }

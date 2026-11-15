@@ -8,6 +8,7 @@ import SupplierConnectionHistoryDialog from "@/components/dialogs/SupplierConnec
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   supplier: { type: Object, default: () => ({}) },
+  isMaster: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue", "saved"]);
@@ -15,115 +16,52 @@ const emit = defineEmits(["update:modelValue", "saved"]);
 // ─── Estado ───────────────────────────────────────────────────────────────────
 const loading = ref(false);
 const saving = ref(false);
+const deletingProtocol = ref(false);
 const isHistoryOpen = ref(false);
 const showPassword = ref(false);
 const showFtpOrdersPassword = ref(false);
 
 const connectionsMap = ref({});
+const masterTemplatesMap = ref({});
+const allowedTypesFromMaster = ref(["file"]);
+const isMasterContext = computed(() => props.isMaster);
 
-const isDromega = computed(() => {
-  const name = props.supplier?.name?.toUpperCase() || "";
-  const id = Number(props.supplier?.id);
-  return id === 1005 || name.includes("DROMEGA") || name.includes("DROGUERIA MEGA");
-});
-
-const isDronena = computed(() => {
-  const name = props.supplier?.name?.toUpperCase() || "";
-  const id = Number(props.supplier?.id);
-  return id === 1014 || name.includes("DRONENA") || name.includes("DROGUERIA NENA") || name.includes("NENA");
-});
-
-const isMafarta = computed(() => {
-  const name = props.supplier?.name?.toUpperCase() || "";
-  const id = Number(props.supplier?.id);
-  return id === 1011 || id === 23 || name.includes("MAFARTA") || name.includes("COBECA");
-});
-
-const isContinental = computed(() => {
-  const name = props.supplier?.name?.toUpperCase() || "";
-  const id = Number(props.supplier?.id);
-  return id === 1032 || name.includes("CONTINENTAL") || name.includes("CONTINETAL");
-});
-
-const isCristmedicals = computed(() => {
-  const name = props.supplier?.name?.toUpperCase() || "";
-  const id = Number(props.supplier?.id);
-  return [3, 21, 1002].includes(id) || name.includes("CRISTMEDICAL") || name.includes("CRISTALMEDICAL");
-});
-
-const isDrosymca = computed(() => {
-  const name = props.supplier?.name?.toUpperCase() || "";
-  const id = Number(props.supplier?.id);
-  return id === 1006 || name.includes("DROSYMCA");
-});
-
-const isCobecaApiOnly = computed(() => isMafarta.value);
-
-const dromegaClientCode = ref("");
-const dronenaClientCode = ref("");
-
-const updateDromegaInvoicePath = (val) => {
-  const cleanCode = (val || "").toString().trim();
-  form.value.invoice_path = cleanCode ? `Facturas/${cleanCode}` : "Facturas/";
+const PROTOCOL_META = {
+  api: { title: "HTTP / API", value: "api", icon: "tabler-api" },
+  http: { title: "HTTP / API", value: "http", icon: "tabler-api" },
+  ftp: { title: "FTP", value: "ftp", icon: "tabler-server" },
+  sftp: { title: "SFTP", value: "sftp", icon: "tabler-shield-lock" },
+  file: { title: "Correo Gmail (Excel)", value: "file", icon: "tabler-mail" },
+  email: { title: "Correo Gmail (Excel)", value: "email", icon: "tabler-mail" },
 };
 
-const updateDronenaClientCode = (val) => {
-  const cleanCode = (val || "").toString().trim();
-  form.value.path = cleanCode ? `Clientes/${cleanCode}/Inventario.txt` : "Clientes/";
-  form.value.invoice_path = cleanCode ? `Clientes/${cleanCode}/Factura` : "Clientes/";
+const getDefaultFormForType = (type) => {
+  const tpl = masterTemplatesMap.value[type] || {};
+  const defaultPort = type === "sftp" ? 22 : (type === "ftp" ? 21 : "");
+
+  return {
+    type,
+    host: tpl.host ?? "",
+    port: tpl.port ?? defaultPort,
+    username: "",
+    password: "",
+    path: tpl.path ?? "",
+    invoice_path: tpl.invoice_path ?? "",
+    pasv: tpl.pasv ?? true,
+    has_header: tpl.has_header ?? false,
+    ftp_orders_enabled: false,
+    ftp_orders_host: "",
+    ftp_orders_port: 21,
+    ftp_orders_username: "",
+    ftp_orders_password: "",
+    ftp_orders_path: "",
+    credit_days_email: "",
+    credit_days_cod_col: tpl.credit_days_cod_col ?? "",
+    credit_days_col: tpl.credit_days_col ?? "",
+  };
 };
 
-const getDefaultFormForType = (type) => ({
-  type: type,
-  host: type === "dronena_bot" 
-    ? "https://www.dronena.com/NuevaExperiencia/" 
-    : (isDromega.value && type === "ftp" 
-        ? "ftp.dromega.com.ve" 
-        : (isDronena.value && type === "ftp" 
-            ? "ftp.dronena.com" 
-            : (isContinental.value && type === "ftp"
-                ? "186.167.68.54"
-                : (isCristmedicals.value && (type === "api" || type === "http")
-                    ? "https://apienterprise.cristmedicals.com"
-                    : (isMafarta.value && (type === "api" || type === "http") 
-                        ? "https://comparadores.drogueriascobeca.com/api/Login" 
-                        : ""))))),
-  port: type === "sftp" ? 22 : (isContinental.value && type === "ftp" ? 58021 : (type === "ftp" ? 21 : "")),
-  username: "",
-  password: "",
-  path: isDromega.value && type === "ftp" 
-    ? "Existencia/inventariomerida.txt" 
-    : (isDronena.value && type === "ftp" 
-        ? "Clientes/" 
-        : (isContinental.value && type === "ftp"
-            ? "inventario.txt"
-            : (isCristmedicals.value && (type === "api" || type === "http")
-                ? "https://apienterprise.cristmedicals.com/api/v1/articulos"
-                : ""))),
-  invoice_path: isDromega.value && type === "ftp" 
-    ? "Facturas/7586" 
-    : (isDronena.value && type === "ftp" 
-        ? "Clientes/" 
-        : (isContinental.value && type === "ftp"
-            ? "/Facturas"
-            : (isCristmedicals.value && (type === "api" || type === "http")
-                ? "https://apienterprise.cristmedicals.com/api/v1/facturas"
-                : ""))),
-  pasv: true,
-  has_header: false,
-  ftp_orders_enabled: false,
-  ftp_orders_host: "",
-  ftp_orders_port: 21,
-  ftp_orders_username: "",
-  ftp_orders_password: "",
-  ftp_orders_path: "",
-  credit_days_email: "",
-  credit_days_cod_col: "",
-  credit_days_col: "",
-});
-
-const form = ref(getDefaultFormForType("ftp"));
-
+const form = ref(getDefaultFormForType("file"));
 const hasExistingPassword = ref(false);
 const hasExistingFtpOrdersPassword = ref(false);
 const lastConnection = ref(null);
@@ -132,129 +70,60 @@ const errors = ref({});
 const isFtp = computed(() => ["ftp", "sftp"].includes(form.value.type));
 const isHttp = computed(() => ["http", "api"].includes(form.value.type));
 const isEmail = computed(() => ["file", "email"].includes(form.value.type));
-const isDronenaBot = computed(() => form.value.type === "dronena_bot" || (props.supplier?.name && props.supplier.name.toUpperCase().includes("NENA")));
 
+// En Master el administrador decide qué canales habilitar; en Tenant solo aparecen los autorizados por Master
 const typeOptions = computed(() => {
-  if (isDromega.value || isContinental.value) {
-    return [
-      { title: "FTP", value: "ftp", icon: "tabler-server" },
-    ];
-  }
+  const rawList = isMasterContext.value
+    ? ["api", "ftp", "sftp", "file"]
+    : (allowedTypesFromMaster.value?.length ? allowedTypesFromMaster.value : ["file"]);
 
-  if (isDronena.value) {
-    return [
-      { title: "Bot Dronena", value: "dronena_bot", icon: "tabler-robot" },
-      { title: "FTP", value: "ftp", icon: "tabler-server" },
-    ];
+  const seen = new Set();
+  const options = [];
+  for (const rawType of rawList) {
+    const t = String(rawType || "").toLowerCase().trim();
+    if (!t || t.includes("bot") || seen.has(t)) continue;
+    seen.add(t);
+    options.push(PROTOCOL_META[t] || { title: t.toUpperCase(), value: t, icon: "tabler-plug" });
   }
-
-  if (isMafarta.value || isCristmedicals.value) {
-    return [
-      { title: "HTTP / API", value: "api", icon: "tabler-api" },
-    ];
-  }
-
-  // Cualquier proveedor que no tenga integración FTP o API dedicada muestra solo Correo Gmail
-  return [
-    { title: "Correo Gmail", value: "file", icon: "tabler-mail" },
-  ];
+  return options;
 });
+
+const hasAvailableProtocols = computed(() => typeOptions.value.length > 0);
+
+const activeMasterTemplate = computed(() => masterTemplatesMap.value[form.value.type] || null);
 
 const loadFormForType = (type) => {
   const existing = connectionsMap.value[type];
+  const tpl = masterTemplatesMap.value[type] || {};
+  const defaultPort = type === "sftp" ? 22 : (type === "ftp" ? 21 : "");
+
   if (existing) {
     form.value = {
       type: existing.type || type,
-      host: existing.host ?? "",
-      port: existing.port ?? (type === "sftp" ? 22 : (type === "ftp" ? 21 : "")),
+      host: existing.host || tpl.host || "",
+      port: existing.port ?? tpl.port ?? defaultPort,
       username: existing.username ?? "",
       password: "",
-      path: existing.path ?? "",
-      invoice_path: existing.invoice_path ?? "",
-      pasv: existing.pasv ?? true,
-      has_header: existing.has_header ?? false,
-      ftp_orders_enabled: existing.ftp_orders_enabled ?? (connectionsMap.value["ftp"] ? true : false),
-      ftp_orders_host: existing.ftp_orders_host ?? connectionsMap.value["ftp"]?.host ?? "",
-      ftp_orders_port: existing.ftp_orders_port ?? connectionsMap.value["ftp"]?.port ?? 21,
-      ftp_orders_username: existing.ftp_orders_username ?? connectionsMap.value["ftp"]?.username ?? "",
+      path: existing.path || tpl.path || "",
+      invoice_path: existing.invoice_path || tpl.invoice_path || "",
+      pasv: existing.pasv ?? tpl.pasv ?? true,
+      has_header: existing.has_header ?? tpl.has_header ?? false,
+      ftp_orders_enabled: existing.ftp_orders_enabled ?? Boolean(connectionsMap.value.ftp && type !== "ftp" && type !== "sftp"),
+      ftp_orders_host: existing.ftp_orders_host ?? connectionsMap.value.ftp?.host ?? "",
+      ftp_orders_port: existing.ftp_orders_port ?? connectionsMap.value.ftp?.port ?? 21,
+      ftp_orders_username: existing.ftp_orders_username ?? connectionsMap.value.ftp?.username ?? "",
       ftp_orders_password: "",
-      ftp_orders_path: existing.ftp_orders_path ?? connectionsMap.value["ftp"]?.path ?? "",
+      ftp_orders_path: existing.ftp_orders_path ?? connectionsMap.value.ftp?.path ?? "",
       credit_days_email: existing.credit_days_email ?? "",
-      credit_days_cod_col: existing.credit_days_cod_col ?? "",
-      credit_days_col: existing.credit_days_col ?? "",
+      credit_days_cod_col: existing.credit_days_cod_col || tpl.credit_days_cod_col || "",
+      credit_days_col: existing.credit_days_col || tpl.credit_days_col || "",
     };
     hasExistingPassword.value = existing.has_password ?? false;
     lastConnection.value = existing.last_connection ?? null;
-
-    if (isDromega.value && type === "ftp") {
-      if (!form.value.host) form.value.host = "ftp.dromega.com.ve";
-      if (!form.value.port) form.value.port = 21;
-      if (!form.value.path) form.value.path = "Existencia/inventariomerida.txt";
-      if (!form.value.invoice_path) form.value.invoice_path = "Facturas/7586";
-
-      const parts = form.value.invoice_path.split("/");
-      dromegaClientCode.value = parts.length > 1 ? parts.slice(1).join("/") : (form.value.invoice_path || "");
-    }
-
-    if (isDronena.value && type === "ftp") {
-      if (!form.value.host) form.value.host = "ftp.dronena.com";
-      if (!form.value.port) form.value.port = 21;
-
-      // Extraer código de cliente de invoice_path (ej: Clientes/XXXX/Factura) o path (ej: Clientes/XXXX/Inventario.txt) o username
-      let extractedCode = "";
-      if (form.value.invoice_path && form.value.invoice_path.includes("Clientes/")) {
-        const parts = form.value.invoice_path.split("/");
-        extractedCode = parts[1] || "";
-      } else if (form.value.path && form.value.path.includes("Clientes/")) {
-        const parts = form.value.path.split("/");
-        extractedCode = parts[1] || "";
-      } else if (form.value.username) {
-        extractedCode = form.value.username;
-      }
-
-      dronenaClientCode.value = extractedCode;
-      updateDronenaClientCode(extractedCode);
-    }
-
-    if (isContinental.value && type === "ftp") {
-      if (!form.value.host) form.value.host = "186.167.68.54";
-      if (!form.value.port) form.value.port = 58021;
-      if (!form.value.path) form.value.path = "inventario.txt";
-      if (!form.value.invoice_path) form.value.invoice_path = "/Facturas";
-    }
-
-    if (isCristmedicals.value && (type === "api" || type === "http")) {
-      if (!form.value.host) form.value.host = "https://apienterprise.cristmedicals.com";
-      if (!form.value.path) form.value.path = "https://apienterprise.cristmedicals.com/api/v1/articulos";
-      if (!form.value.invoice_path) form.value.invoice_path = "https://apienterprise.cristmedicals.com/api/v1/facturas";
-    }
   } else {
     form.value = getDefaultFormForType(type);
     hasExistingPassword.value = false;
     lastConnection.value = null;
-
-    if (isDromega.value && type === "ftp") {
-      const parts = form.value.invoice_path.split("/");
-      dromegaClientCode.value = parts.length > 1 ? parts.slice(1).join("/") : (form.value.invoice_path || "");
-    }
-
-    if (isDronena.value && type === "ftp") {
-      dronenaClientCode.value = "";
-      updateDronenaClientCode("");
-    }
-
-    if (isContinental.value && type === "ftp") {
-      form.value.host = "186.167.68.54";
-      form.value.port = 58021;
-      form.value.path = "inventario.txt";
-      form.value.invoice_path = "/Facturas";
-    }
-
-    if (isCristmedicals.value && (type === "api" || type === "http")) {
-      form.value.host = "https://apienterprise.cristmedicals.com";
-      form.value.path = "https://apienterprise.cristmedicals.com/api/v1/articulos";
-      form.value.invoice_path = "https://apienterprise.cristmedicals.com/api/v1/facturas";
-    }
   }
 };
 
@@ -264,33 +133,52 @@ const switchType = (newType) => {
   loadFormForType(newType);
 };
 
-// ─── Métodos ──────────────────────────────────────────────────────────────────
+// ─── Métodos API ──────────────────────────────────────────────────────────────
+const getRequestConfig = () => {
+  return isMasterContext.value
+    ? { headers: { "X-Master-Catalog-Context": "1" } }
+    : {};
+};
+
 const fetchConfig = async () => {
   if (!props.supplier?.id) return;
   loading.value = true;
   errors.value = {};
+
   try {
-    const { data } = await axios.get(`/suppliers/${props.supplier.id}/connection-config`);
-    if (data && data.connections) {
-      connectionsMap.value = data.connections;
-    } else if (data && data.type) {
-      connectionsMap.value = { [data.type]: data };
+    const { data } = await axios.get(
+      `/suppliers/${props.supplier.id}/connection-config`,
+      getRequestConfig(),
+    );
+
+    const rawConnections = data?.connections || {};
+    const filteredConnections = {};
+    for (const [k, v] of Object.entries(rawConnections)) {
+      if (!String(k).toLowerCase().includes("bot")) {
+        filteredConnections[k] = v;
+      }
+    }
+    connectionsMap.value = filteredConnections;
+    masterTemplatesMap.value = data?.master_templates || {};
+
+    if (Array.isArray(data?.allowed_types)) {
+      allowedTypesFromMaster.value = data.allowed_types.filter(
+        (t) => !String(t).toLowerCase().includes("bot"),
+      );
     } else {
-      connectionsMap.value = {};
+      allowedTypesFromMaster.value = ["file"];
     }
 
-    const availableTypes = Object.keys(connectionsMap.value);
-    const initialType = (isDromega.value || isContinental.value)
-      ? "ftp"
-      : isDronena.value
-        ? (availableTypes.find((t) => t === "dronena_bot") || availableTypes.find((t) => t === "ftp") || "dronena_bot")
-        : (isMafarta.value || isCristmedicals.value)
-          ? (availableTypes.find((t) => t === "api" || t === "http") || "api")
-          : "file";
+    const availableConfigured = Object.keys(connectionsMap.value);
+    const firstAllowed = typeOptions.value[0]?.value || "file";
+    const initialType =
+      typeOptions.value.find((opt) => availableConfigured.includes(opt.value))?.value
+      || firstAllowed;
 
     loadFormForType(initialType);
     hasExistingFtpOrdersPassword.value = data?.ftp_orders_has_pass ?? false;
-  } catch {
+  } catch (error) {
+    console.error("Error cargando configuración de conexiones:", error);
     toast.error("No se pudo cargar la configuración de conexiones.");
   } finally {
     loading.value = false;
@@ -300,8 +188,8 @@ const fetchConfig = async () => {
 const saveConfig = async () => {
   errors.value = {};
 
-  if (!form.value.username && form.value.type !== "file") {
-    errors.value = { username: ["El usuario o token de cliente es obligatorio."] };
+  if (!isMasterContext.value && !form.value.username && form.value.type !== "file") {
+    errors.value = { username: ["El usuario o código de cliente es obligatorio."] };
     toast.error("Por favor ingresa tu usuario o código de cliente.");
     return;
   }
@@ -309,61 +197,40 @@ const saveConfig = async () => {
   saving.value = true;
   try {
     const payload = { ...form.value };
-    if (isDromega.value && payload.type === "ftp") {
-      payload.host = "ftp.dromega.com.ve";
-      payload.port = 21;
-      payload.path = "Existencia/inventariomerida.txt";
-      const cleanCode = (dromegaClientCode.value || "").toString().trim();
-      payload.invoice_path = cleanCode ? `Facturas/${cleanCode}` : "Facturas/";
-    }
-
-    if (isDronena.value && payload.type === "ftp") {
-      payload.host = "ftp.dronena.com";
-      payload.port = 21;
-      const cleanCode = (dronenaClientCode.value || payload.username || "").toString().trim();
-      payload.path = cleanCode ? `Clientes/${cleanCode}/Inventario.txt` : "Clientes/";
-      payload.invoice_path = cleanCode ? `Clientes/${cleanCode}/Factura` : "Clientes/";
-    }
-
-    if (isContinental.value && payload.type === "ftp") {
-      payload.host = "186.167.68.54";
-      payload.port = 58021;
-      payload.path = "inventario.txt";
-      payload.invoice_path = "/Facturas";
-    }
-
-    if (isMafarta.value && (payload.type === "api" || payload.type === "http")) {
-      payload.host = "https://comparadores.drogueriascobeca.com/api/Login";
-      payload.port = null;
-      payload.path = null;
-      payload.invoice_path = null;
-    }
-
-    if (isCristmedicals.value && (payload.type === "api" || payload.type === "http")) {
-      payload.host = "https://apienterprise.cristmedicals.com";
-      payload.port = null;
-      payload.path = "https://apienterprise.cristmedicals.com/api/v1/articulos";
-      payload.invoice_path = "https://apienterprise.cristmedicals.com/api/v1/facturas";
-    }
 
     if (payload.type === "file") {
-      payload.host = payload.username;
+      payload.host = isMasterContext.value
+        ? `${props.supplier?.name || "Proveedor"} (Excel)`
+        : (payload.username || payload.host);
       payload.port = null;
       payload.path = null;
       payload.invoice_path = null;
       delete payload.password;
-    } else if (payload.type === "dronena_bot" && !payload.host) {
-      payload.host = "https://www.dronena.com/NuevaExperiencia/";
     }
 
-    if (!payload.password && hasExistingPassword.value) {
+    if (isMasterContext.value) {
+      delete payload.username;
       delete payload.password;
-    }
-    if (!payload.ftp_orders_password && hasExistingFtpOrdersPassword.value) {
+      delete payload.ftp_orders_enabled;
+      delete payload.ftp_orders_host;
+      delete payload.ftp_orders_port;
+      delete payload.ftp_orders_username;
       delete payload.ftp_orders_password;
+      delete payload.ftp_orders_path;
+    } else {
+      if (!payload.password && hasExistingPassword.value) {
+        delete payload.password;
+      }
+      if (!payload.ftp_orders_password && hasExistingFtpOrdersPassword.value) {
+        delete payload.ftp_orders_password;
+      }
     }
 
-    const { data } = await axios.post(`/suppliers/${props.supplier.id}/connection-config`, payload);
+    const { data } = await axios.post(
+      `/suppliers/${props.supplier.id}/connection-config`,
+      payload,
+      getRequestConfig(),
+    );
 
     if (data?.connection) {
       connectionsMap.value[data.connection.type] = {
@@ -374,22 +241,20 @@ const saveConfig = async () => {
       hasExistingPassword.value = data.connection.has_password ?? hasExistingPassword.value;
     }
 
-    toast.success(`Configuración de ${form.value.type.toUpperCase()} guardada correctamente.`);
+    toast.success(data?.message || `Configuración de ${form.value.type.toUpperCase()} guardada correctamente.`);
     emit("saved");
     close();
   } catch (err) {
     if (err.response?.status === 422) {
       errors.value = err.response.data.errors ?? {};
-      toast.error("Revisa los campos marcados en rojo.");
+      toast.error(err.response?.data?.message || "Revisa los campos marcados.");
     } else {
-      toast.error("Error al guardar la configuración.");
+      toast.error(err.response?.data?.message || "Error al guardar la configuración.");
     }
   } finally {
     saving.value = false;
   }
 };
-
-const deletingProtocol = ref(false);
 
 const deleteProtocolConfig = async () => {
   if (!props.supplier?.id || !form.value.type) return;
@@ -397,26 +262,29 @@ const deleteProtocolConfig = async () => {
   const typeName = form.value.type.toUpperCase();
   const result = await Swal.fire({
     title: `¿Eliminar conexión ${typeName}?`,
-    text: `Esta acción removerá la configuración de conexión de tipo ${typeName} para este proveedor.`,
+    text: `Esta acción removerá la configuración de tipo ${typeName} para este proveedor.`,
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Sí, eliminar",
     cancelButtonText: "Cancelar",
-    confirmButtonColor: "#d33",
+    reverseButtons: true,
   });
 
   if (!result.isConfirmed) return;
 
   deletingProtocol.value = true;
   try {
-    await axios.delete(`/suppliers/${props.supplier.id}/connection-config/${form.value.type}`);
+    await axios.delete(
+      `/suppliers/${props.supplier.id}/connection-config/${form.value.type}`,
+      getRequestConfig(),
+    );
     toast.success(`Conexión ${typeName} eliminada correctamente.`);
     delete connectionsMap.value[form.value.type];
     loadFormForType(form.value.type);
     emit("saved");
   } catch (err) {
     console.error("Error al eliminar conexión:", err);
-    toast.error("No se pudo eliminar la conexión.");
+    toast.error(err.response?.data?.message || "No se pudo eliminar la conexión.");
   } finally {
     deletingProtocol.value = false;
   }
@@ -439,20 +307,22 @@ watch(
   <VDialog
     :model-value="props.modelValue"
     max-width="850px"
+    :fullscreen="$vuetify.display.mobile"
     persistent
     scrollable
     @update:model-value="close"
   >
     <VCard class="detail-dialog-card rounded-xl overflow-hidden border-0 shadow-xl bg-surface">
-      <!-- Header -->
+      <!-- Encabezado -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1 text-primary">
-            <VIcon icon="tabler-plug" color="primary" size="22" />
+            <VImg v-if="props.supplier?.logo_url" :src="props.supplier.logo_url" :alt="props.supplier?.name" cover />
+            <VIcon v-else icon="tabler-plug" color="primary" size="22" />
           </VAvatar>
           <div class="d-flex flex-column leading-none text-white">
             <h2 class="text-h6 font-weight-black leading-tight mb-0 uppercase text-white">
-              Configuración de Conexión
+              {{ isMasterContext ? 'Canales Habilitados (Master)' : 'Configuración de Conexión' }}
             </h2>
             <span class="text-super-xs opacity-90 font-weight-bold uppercase letter-spacing-1">
               {{ props.supplier?.name ?? 'Proveedor' }}
@@ -463,35 +333,41 @@ watch(
         </div>
       </VCardTitle>
 
-      <!-- Selector Compacto de Protocolos (Segmented Tabs) -->
-      <div class="px-4 py-2 bg-white border-b flex-shrink-0">
-        <div class="d-flex align-center justify-space-between mb-1">
+      <!-- Selector Compacto de Protocolos -->
+      <div class="px-4 py-2 bg-surface border-b flex-shrink-0">
+        <div class="d-flex align-center justify-space-between mb-1 flex-wrap gap-2">
           <span class="text-xxs font-weight-black text-disabled text-uppercase letter-spacing-1">
-            Protocolos Disponibles (Independientes):
+            {{ isMasterContext ? 'Habilitar Canales para Farmacias:' : 'Canales Autorizados por Master:' }}
           </span>
           <div class="d-flex align-center gap-2">
-            <span v-if="lastConnection" class="text-xxs text-success font-weight-bold d-flex align-center gap-1">
-              <VIcon icon="tabler-circle-check" size="14" color="success" />
-              Última sinc: {{ lastConnection }}
-            </span>
-            <span v-else class="text-xxs text-medium-emphasis">
-              Sin sincronizaciones previas
-            </span>
-            <VBtn
-              variant="text"
-              color="primary"
-              density="compact"
-              size="small"
-              prepend-icon="tabler-history"
-              class="font-weight-bold text-xxs px-1 text-none"
-              @click="isHistoryOpen = true"
-            >
-              Historial
-            </VBtn>
+            <template v-if="!isMasterContext">
+              <span v-if="lastConnection" class="text-xxs text-success font-weight-bold d-flex align-center gap-1">
+                <VIcon icon="tabler-circle-check" size="14" color="success" />
+                Última sinc: {{ lastConnection }}
+              </span>
+              <span v-else class="text-xxs text-medium-emphasis">
+                Sin sincronizaciones previas
+              </span>
+              <VBtn
+                variant="text"
+                color="primary"
+                density="compact"
+                size="small"
+                prepend-icon="tabler-history"
+                class="font-weight-bold text-xxs px-1 text-none"
+                @click="isHistoryOpen = true"
+              >
+                Historial
+              </VBtn>
+            </template>
+            <VChip v-else size="x-small" color="secondary" variant="tonal" class="font-weight-bold">
+              Modo Centro de Datos
+            </VChip>
           </div>
         </div>
 
         <VTabs
+          v-if="hasAvailableProtocols"
           :model-value="form.type"
           color="primary"
           density="compact"
@@ -520,26 +396,63 @@ watch(
         </VTabs>
       </div>
 
-      <!-- Contenido de Formulario Compacto -->
-      <VCardText class="pa-4 bg-light flex-grow-1 overflow-y-auto">
-        <!-- Loading -->
+      <!-- Contenido de Formulario -->
+      <VCardText class="pa-4 bg-background flex-grow-1 overflow-y-auto">
         <div v-if="loading" class="d-flex justify-center align-center py-10">
           <VProgressCircular indeterminate color="primary" />
         </div>
 
+        <div v-else-if="!hasAvailableProtocols" class="text-center py-10">
+          <VIcon icon="tabler-plug-off" size="40" color="disabled" class="mb-2" />
+          <p class="text-body-2 font-weight-bold text-high-emphasis mb-1">
+            Este proveedor no posee canales de sincronización habilitados
+          </p>
+          <p class="text-caption text-medium-emphasis">
+            Solo los proveedores comerciales con canales autorizados desde el Catálogo Maestro admiten sincronización automática.
+          </p>
+        </div>
+
         <VForm v-else @submit.prevent="saveConfig">
+          <VAlert
+            v-if="isMasterContext"
+            color="info"
+            variant="tonal"
+            density="compact"
+            icon="tabler-shield-check"
+            class="mb-3 rounded-lg text-xs"
+          >
+            Al guardar este protocolo en el Master, quedará habilitado automáticamente como canal oficial para todas las farmacias conectadas. No guarde credenciales privadas de clientes aquí.
+          </VAlert>
+
+          <VAlert
+            v-else-if="activeMasterTemplate && activeMasterTemplate.has_structure"
+            color="success"
+            variant="tonal"
+            density="compact"
+            icon="tabler-database-check"
+            class="mb-3 rounded-lg text-xs"
+          >
+            Plantilla de servidor y estructura de archivo preconfigurada por el Master. Solo complete sus credenciales o carpeta asignada.
+          </VAlert>
+
           <!-- 1. Correo Gmail (Excel) -->
           <template v-if="isEmail">
-            <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
+            <VCard variant="outlined" class="pa-4 bg-surface rounded-lg border-card mb-3">
               <div class="d-flex align-center gap-2 mb-2">
                 <VIcon icon="tabler-mail" color="primary" size="20" />
-                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Extracción Automática desde Gmail</span>
+                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
+                  {{ isMasterContext ? 'Canal Correo / Archivo Excel Homologado' : 'Extracción Automática desde Gmail' }}
+                </span>
               </div>
               <p class="text-xs text-medium-emphasis mb-3">
-                El sistema revisará automáticamente la bandeja de entrada y procesará los archivos Excel adjuntos recibidos desde este remitente.
+                {{
+                  isMasterContext
+                    ? 'Habilita la recepción e importación automática de listas de precios e inventarios en Excel para este proveedor.'
+                    : 'El sistema revisará automáticamente la bandeja de entrada y procesará los archivos Excel adjuntos recibidos desde este remitente.'
+                }}
               </p>
 
-              <VRow dense>
+              <VRow v-if="!isMasterContext" dense>
                 <VCol cols="12">
                   <AppTextField
                     v-model="form.username"
@@ -553,46 +466,9 @@ watch(
             </VCard>
           </template>
 
-          <!-- 2. Bot Dronena -->
-          <template v-else-if="form.type === 'dronena_bot'">
-            <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
-              <div class="d-flex align-center gap-2 mb-2">
-                <VIcon icon="tabler-robot" color="primary" size="20" />
-                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Credenciales Bot Dronena</span>
-              </div>
-              <p class="text-xs text-medium-emphasis mb-3">
-                Extracción web directa desde <code>https://www.dronena.com/NuevaExperiencia/</code>.
-              </p>
-
-              <VRow dense>
-                <VCol cols="12" md="6">
-                  <AppTextField
-                    v-model="form.username"
-                    label="Usuario Dronena *"
-                    placeholder="ej: usuario_dronena"
-                    prepend-inner-icon="tabler-user"
-                    :error-messages="errors.username"
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <AppTextField
-                    v-model="form.password"
-                    :type="showPassword ? 'text' : 'password'"
-                    :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña Dronena *'"
-                    :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
-                    prepend-inner-icon="tabler-lock"
-                    :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                    :error-messages="errors.password"
-                    @click:append-inner="showPassword = !showPassword"
-                  />
-                </VCol>
-              </VRow>
-            </VCard>
-          </template>
-
-          <!-- 3. FTP / SFTP / HTTP API -->
+          <!-- 2. FTP / SFTP / HTTP API -->
           <template v-else>
-            <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
+            <VCard variant="outlined" class="pa-4 bg-surface rounded-lg border-card mb-3">
               <div class="d-flex align-center justify-space-between mb-3">
                 <div class="d-flex align-center gap-2">
                   <VIcon :icon="isFtp ? 'tabler-server' : 'tabler-api'" color="primary" size="20" />
@@ -603,81 +479,34 @@ watch(
               </div>
 
               <VRow dense>
-                <!-- Configuración simplificada para Dromega (FTP) -->
-                <template v-if="isDromega && form.type === 'ftp'">
-                  <VCol cols="12" md="4">
-                    <AppTextField
-                      v-model="form.username"
-                      label="Usuario / Token Cliente *"
-                      placeholder="clientemerida@dromega.com.ve"
-                      prepend-inner-icon="tabler-user"
-                      :error-messages="errors.username"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="4">
-                    <AppTextField
-                      v-model="form.password"
-                      :type="showPassword ? 'text' : 'password'"
-                      :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña / Clave *'"
-                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
-                      prepend-inner-icon="tabler-lock"
-                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                      :error-messages="errors.password"
-                      @click:append-inner="showPassword = !showPassword"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="4">
-                    <AppTextField
-                      v-model="dromegaClientCode"
-                      label="Código de Cliente *"
-                      placeholder="ej: 7586"
-                      prepend-inner-icon="tabler-barcode"
-                      @update:model-value="updateDromegaInvoicePath"
-                    />
-                  </VCol>
-                </template>
+                <!-- Servidor y Puerto -->
+                <VCol cols="12" :md="isFtp ? 8 : 12">
+                  <AppTextField
+                    v-model="form.host"
+                    :label="isFtp ? 'Host / Servidor IP *' : 'URL Endpoint Login / Base *'"
+                    :placeholder="isFtp ? 'Ej: ftp.proveedor.com' : 'Ej: https://api.proveedor.com/login'"
+                    prepend-inner-icon="tabler-server"
+                    :error-messages="errors.host"
+                  />
+                </VCol>
+                <VCol v-if="isFtp" cols="12" md="4">
+                  <AppTextField
+                    v-model.number="form.port"
+                    type="number"
+                    label="Puerto *"
+                    :placeholder="form.type === 'sftp' ? '22' : '21'"
+                    prepend-inner-icon="tabler-hash"
+                    :error-messages="errors.port"
+                  />
+                </VCol>
 
-                <!-- Configuración simplificada para Dronena (FTP) -->
-                <template v-else-if="isDronena && form.type === 'ftp'">
-                  <VCol cols="12" md="4">
-                    <AppTextField
-                      v-model="form.username"
-                      label="Usuario FTP *"
-                      placeholder="ej: D719-0"
-                      prepend-inner-icon="tabler-user"
-                      :error-messages="errors.username"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="4">
-                    <AppTextField
-                      v-model="form.password"
-                      :type="showPassword ? 'text' : 'password'"
-                      :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña FTP *'"
-                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
-                      prepend-inner-icon="tabler-lock"
-                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                      :error-messages="errors.password"
-                      @click:append-inner="showPassword = !showPassword"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="4">
-                    <AppTextField
-                      v-model="dronenaClientCode"
-                      label="Código de Cliente *"
-                      placeholder="ej: D719-0"
-                      prepend-inner-icon="tabler-barcode"
-                      @update:model-value="updateDronenaClientCode"
-                    />
-                  </VCol>
-                </template>
-
-                <!-- Configuración simplificada para Continental (FTP) -->
-                <template v-else-if="isContinental && form.type === 'ftp'">
+                <!-- Credenciales privadas (solo Tenant) -->
+                <template v-if="!isMasterContext">
                   <VCol cols="12" md="6">
                     <AppTextField
                       v-model="form.username"
                       label="Usuario / Código Cliente *"
-                      placeholder="ej: c3041"
+                      placeholder="Ingresa tu usuario o código asignado"
                       prepend-inner-icon="tabler-user"
                       :error-messages="errors.username"
                     />
@@ -686,8 +515,8 @@ watch(
                     <AppTextField
                       v-model="form.password"
                       :type="showPassword ? 'text' : 'password'"
-                      :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña de acceso *'"
-                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
+                      :label="hasExistingPassword ? 'Contraseña / Token (dejar vacío para mantener)' : 'Contraseña / Token *'"
+                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña o token de acceso'"
                       prepend-inner-icon="tabler-lock"
                       :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
                       :error-messages="errors.password"
@@ -696,126 +525,29 @@ watch(
                   </VCol>
                 </template>
 
-                <!-- Configuración simplificada para Cristmedicals (API) -->
-                <template v-else-if="isCristmedicals && (form.type === 'api' || form.type === 'http')">
-                  <VCol cols="12" md="6">
-                    <AppTextField
-                      v-model="form.username"
-                      label="Código de Cliente (co_cli) *"
-                      placeholder="ej: FAR00818"
-                      prepend-inner-icon="tabler-user"
-                      :error-messages="errors.username"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="6">
-                    <AppTextField
-                      v-model="form.password"
-                      :type="showPassword ? 'text' : 'password'"
-                      :label="hasExistingPassword ? 'Token API (dejar vacío para mantener)' : 'Token API *'"
-                      :placeholder="hasExistingPassword ? '••••••••' : 'Ingresa el Token de acceso'"
-                      prepend-inner-icon="tabler-key"
-                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                      :error-messages="errors.password"
-                      @click:append-inner="showPassword = !showPassword"
-                    />
-                  </VCol>
-                </template>
-
-                <!-- Configuración simplificada para Mafarta / Cobeca (API) -->
-                <template v-else-if="isMafarta && (form.type === 'api' || form.type === 'http')">
-                  <VCol cols="12" md="6">
-                    <AppTextField
-                      v-model="form.username"
-                      label="Usuario Mafarta / Cobeca *"
-                      placeholder="ej: usuario_cobeca"
-                      prepend-inner-icon="tabler-user"
-                      :error-messages="errors.username"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="6">
-                    <AppTextField
-                      v-model="form.password"
-                      :type="showPassword ? 'text' : 'password'"
-                      :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña Mafarta / Cobeca *'"
-                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
-                      prepend-inner-icon="tabler-lock"
-                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                      :error-messages="errors.password"
-                      @click:append-inner="showPassword = !showPassword"
-                    />
-                  </VCol>
-                </template>
-
-                <!-- Configuración estándar para otros proveedores / tipos -->
-                <template v-else>
-                  <!-- Servidor y Puerto -->
-                  <VCol cols="12" :md="isFtp ? 8 : 12">
-                    <AppTextField
-                      v-model="form.host"
-                      :label="isFtp ? 'Host / Servidor IP *' : 'URL Endpoint Login / Base *'"
-                      :placeholder="isFtp ? 'ftp.proveedor.com' : 'https://api.proveedor.com/login'"
-                      prepend-inner-icon="tabler-server"
-                      :error-messages="errors.host"
-                    />
-                  </VCol>
-                  <VCol v-if="isFtp" cols="12" md="4">
-                    <AppTextField
-                      v-model.number="form.port"
-                      type="number"
-                      label="Puerto *"
-                      :placeholder="form.type === 'sftp' ? '22' : '21'"
-                      prepend-inner-icon="tabler-hash"
-                      :error-messages="errors.port"
-                    />
-                  </VCol>
-
-                  <!-- Credenciales -->
-                  <VCol cols="12" md="6">
-                    <AppTextField
-                      v-model="form.username"
-                      label="Usuario / Token Cliente *"
-                      placeholder="Ingresa tu usuario o código de cliente"
-                      prepend-inner-icon="tabler-user"
-                      :error-messages="errors.username"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="6">
-                    <AppTextField
-                      v-model="form.password"
-                      :type="showPassword ? 'text' : 'password'"
-                      :label="hasExistingPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña / Clave *'"
-                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña de acceso'"
-                      prepend-inner-icon="tabler-lock"
-                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                      :error-messages="errors.password"
-                      @click:append-inner="showPassword = !showPassword"
-                    />
-                  </VCol>
-
-                  <!-- Rutas de Archivos -->
-                  <VCol cols="12" md="6">
-                    <AppTextField
-                      v-model="form.path"
-                      :label="isFtp ? 'Ruta Archivo Productos' : 'Endpoint Productos'"
-                      :placeholder="isFtp ? '/inventario/productos.txt' : '/api/v1/productos'"
-                      prepend-inner-icon="tabler-folder"
-                      :error-messages="errors.path"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="6">
-                    <AppTextField
-                      v-model="form.invoice_path"
-                      :label="isFtp ? 'Ruta Directorio Facturas' : 'Endpoint Facturas'"
-                      :placeholder="isFtp ? '/facturas/' : '/api/v1/facturas'"
-                      prepend-inner-icon="tabler-file-invoice"
-                      :error-messages="errors.invoice_path"
-                    />
-                  </VCol>
-                </template>
+                <!-- Rutas de Archivos / Endpoints -->
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="form.path"
+                    :label="isFtp ? 'Ruta Archivo Productos / Inventario' : 'Endpoint Productos'"
+                    :placeholder="isFtp ? 'Ej: Existencia/inventario.txt' : 'Ej: /api/v1/articulos'"
+                    prepend-inner-icon="tabler-folder"
+                    :error-messages="errors.path"
+                  />
+                </VCol>
+                <VCol cols="12" md="6">
+                  <AppTextField
+                    v-model="form.invoice_path"
+                    :label="isFtp ? 'Ruta Directorio Facturas' : 'Endpoint Facturas'"
+                    :placeholder="isFtp ? 'Ej: Facturas/7586' : 'Ej: /api/v1/facturas'"
+                    prepend-inner-icon="tabler-file-invoice"
+                    :error-messages="errors.invoice_path"
+                  />
+                </VCol>
               </VRow>
 
-              <!-- Opciones FTP en una sola fila compacta -->
-              <div v-if="isFtp && (!isDromega || form.type !== 'ftp') && (!isDronena || form.type !== 'ftp') && (!isContinental || form.type !== 'ftp')" class="d-flex align-center flex-wrap justify-space-between gap-3 pt-2 mt-2 border-t">
+              <!-- Opciones FTP -->
+              <div v-if="isFtp" class="d-flex align-center flex-wrap justify-space-between gap-3 pt-2 mt-2 border-t">
                 <div class="d-flex align-center gap-2">
                   <VSwitch v-model="form.pasv" color="primary" hide-details density="compact" />
                   <span class="text-xs font-weight-bold text-high-emphasis">Modo Pasivo (PASV)</span>
@@ -828,9 +560,9 @@ watch(
             </VCard>
           </template>
 
-          <!-- Enlace de Días de Crédito vía Correo (Gmail) para conexiones FTP / SFTP / API / Bot -->
-          <div v-if="isFtp || (!isEmail && !isDromega && !isDronena && !isMafarta && !isCristmedicals)" class="mt-2">
-            <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
+          <!-- Enlace de Días de Crédito vía Correo (Opcional para canales no-email en Tenant) -->
+          <div v-if="!isMasterContext && !isEmail" class="mt-2">
+            <VCard variant="outlined" class="pa-4 bg-surface rounded-lg border-card mb-3">
               <div class="d-flex align-center gap-2 mb-1">
                 <VIcon icon="tabler-clock-dollar" color="primary" size="18" />
                 <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
@@ -838,7 +570,7 @@ watch(
                 </span>
               </div>
               <p class="text-xs text-medium-emphasis mb-3">
-                Si el archivo {{ form.type.toUpperCase() }} no incluye los días de crédito por producto, configura el correo y las columnas del último listado Excel adjunto para enlazarlos automáticamente mediante el <strong>Código de Barra</strong>.
+                Si el canal {{ form.type.toUpperCase() }} no incluye los días de crédito por producto, configura el correo y columnas del Excel adjunto para enlazarlos por <strong>Código de Barra</strong>.
               </p>
 
               <VRow dense>
@@ -873,19 +605,19 @@ watch(
             </VCard>
           </div>
 
-          <!-- Transmisión de Pedidos FTP / EDI Secundaria (si aplica) -->
-          <div v-if="(isHttp || isMafarta || form.type === 'dronena_bot') && !isMafarta && !isCristmedicals" class="mt-2">
-            <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card">
+          <!-- Transmisión complementaria de pedidos FTP si aplica cuando la principal es API -->
+          <div v-if="!isMasterContext && isHttp" class="mt-2">
+            <VCard variant="outlined" class="pa-4 bg-surface rounded-lg border-card">
               <div class="d-flex align-center justify-space-between mb-2">
                 <div class="d-flex align-center gap-2">
-                  <VIcon icon="tabler-truck-delivery" color="primary" size="18" />
-                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
-                    Transmisión de Pedidos FTP / EDI
+                  <VIcon icon="tabler-upload" color="secondary" size="18" />
+                  <span class="text-xs font-weight-black text-secondary uppercase letter-spacing-1">
+                    Envío de Pedidos por FTP (Opcional)
                   </span>
                 </div>
                 <VSwitch
                   v-model="form.ftp_orders_enabled"
-                  color="primary"
+                  color="secondary"
                   hide-details
                   density="compact"
                   :label="form.ftp_orders_enabled ? 'Habilitado' : 'Deshabilitado'"
@@ -897,9 +629,8 @@ watch(
                   <VCol cols="12" md="8">
                     <AppTextField
                       v-model="form.ftp_orders_host"
-                      label="Host FTP Pedidos"
-                      placeholder="ftp.drogueriascobeca.com"
-                      prepend-inner-icon="tabler-server"
+                      label="Servidor FTP Pedidos *"
+                      placeholder="ftp.proveedor.com"
                       :error-messages="errors.ftp_orders_host"
                     />
                   </VCol>
@@ -907,18 +638,15 @@ watch(
                     <AppTextField
                       v-model.number="form.ftp_orders_port"
                       type="number"
-                      label="Puerto"
+                      label="Puerto *"
                       placeholder="21"
-                      prepend-inner-icon="tabler-hash"
                       :error-messages="errors.ftp_orders_port"
                     />
                   </VCol>
                   <VCol cols="12" md="6">
                     <AppTextField
                       v-model="form.ftp_orders_username"
-                      label="Usuario / Código Cliente"
-                      placeholder="ej: 31373"
-                      prepend-inner-icon="tabler-user"
+                      label="Usuario FTP *"
                       :error-messages="errors.ftp_orders_username"
                     />
                   </VCol>
@@ -926,9 +654,7 @@ watch(
                     <AppTextField
                       v-model="form.ftp_orders_password"
                       :type="showFtpOrdersPassword ? 'text' : 'password'"
-                      :label="hasExistingFtpOrdersPassword ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña FTP'"
-                      :placeholder="hasExistingFtpOrdersPassword ? '••••••••' : 'Contraseña FTP'"
-                      prepend-inner-icon="tabler-lock"
+                      :label="hasExistingFtpOrdersPassword ? 'Contraseña FTP (dejar vacío para mantener)' : 'Contraseña FTP'"
                       :append-inner-icon="showFtpOrdersPassword ? 'tabler-eye-off' : 'tabler-eye'"
                       :error-messages="errors.ftp_orders_password"
                       @click:append-inner="showFtpOrdersPassword = !showFtpOrdersPassword"
@@ -937,9 +663,8 @@ watch(
                   <VCol cols="12">
                     <AppTextField
                       v-model="form.ftp_orders_path"
-                      label="Ruta Remota de Pedidos"
-                      placeholder="ej: /pedidos (opcional)"
-                      prepend-inner-icon="tabler-folder"
+                      label="Ruta Carpeta de Pedidos"
+                      placeholder="/pedidos"
                       :error-messages="errors.ftp_orders_path"
                     />
                   </VCol>
@@ -950,13 +675,11 @@ watch(
         </VForm>
       </VCardText>
 
-      <VDivider />
-
-      <!-- Footer con acciones limpias y ordenadas -->
-      <VCardActions class="px-5 py-3 bg-white border-t d-flex align-center justify-space-between">
+      <!-- Acciones -->
+      <VCardActions class="pa-3 bg-surface border-t d-flex justify-space-between align-center flex-wrap gap-2">
         <div>
           <VBtn
-            v-if="connectionsMap[form.type]"
+            v-if="hasAvailableProtocols && connectionsMap[form.type]"
             color="error"
             variant="text"
             height="38"
@@ -965,7 +688,7 @@ watch(
             :loading="deletingProtocol"
             @click="deleteProtocolConfig"
           >
-            Eliminar protocolo {{ form.type.toUpperCase() }}
+            {{ isMasterContext ? `Deshabilitar ${form.type.toUpperCase()}` : `Eliminar protocolo ${form.type.toUpperCase()}` }}
           </VBtn>
         </div>
 
@@ -980,6 +703,7 @@ watch(
             Cancelar
           </VBtn>
           <VBtn
+            v-if="hasAvailableProtocols"
             color="primary"
             variant="flat"
             height="38"
@@ -996,6 +720,7 @@ watch(
 
     <!-- Diálogo de Historial de Conexiones -->
     <SupplierConnectionHistoryDialog
+      v-if="!isMasterContext"
       v-model="isHistoryOpen"
       :supplier="props.supplier"
     />
@@ -1004,7 +729,7 @@ watch(
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient) !important;
+  background: linear-gradient(135deg, rgb(var(--v-theme-secondary)), rgb(var(--v-theme-primary))) !important;
 }
 
 .detail-dialog-card {

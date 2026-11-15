@@ -133,16 +133,16 @@ const closeDialog = () => {
     <VCard class="rounded-xl border-0 shadow-lg d-flex flex-column history-dialog-card" style="height: 85vh; max-height: 740px; min-height: 540px; overflow: hidden;">
       <!-- Cabecera con espaciado amplio y elegante -->
       <VCardTitle class="pa-0 flex-shrink-0">
-        <div class="px-6 py-5 bg-primary d-flex align-center justify-space-between text-white" style="background: linear-gradient(135deg, #7A0099, #E20074) !important;">
+        <div class="px-6 py-5 bg-primary d-flex align-center justify-space-between text-white history-header-gradient">
           <div class="d-flex align-center">
             <VAvatar color="white" variant="flat" size="42" class="me-3 elevation-1 flex-shrink-0">
               <VIcon color="primary" size="24">tabler-history</VIcon>
             </VAvatar>
             <div class="d-flex flex-column">
-              <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-1" style="color: white !important;">
+              <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-1">
                 Historial de Conexiones — {{ supplier?.name || "Proveedor" }} (ID #{{ supplier?.id }})
               </h2>
-              <span class="text-caption text-white opacity-90 font-weight-medium" style="color: white !important; font-size: 11px;">
+              <span class="text-caption text-white opacity-90 font-weight-medium">
                 Auditoría de facturas y sincronizaciones automáticas
               </span>
             </div>
@@ -321,9 +321,38 @@ const closeDialog = () => {
                     </tr>
                   </thead>
                   <tbody>
+                    <tr v-if="selectedStatus?.status === 'failed' || selectedStatus?.message">
+                      <td colspan="5" class="pa-2 border-b">
+                        <VAlert
+                          :color="selectedStatus.status === 'failed' ? 'error' : selectedStatus.status === 'completed' ? 'info' : 'warning'"
+                          variant="tonal"
+                          density="compact"
+                          :icon="selectedStatus.status === 'failed' ? 'tabler-alert-triangle' : 'tabler-info-circle'"
+                          class="text-xs rounded-lg"
+                        >
+                          <div class="font-weight-bold">
+                            {{ selectedStatus.status === 'failed' ? 'Error de ejecución' : 'Bitácora de sincronización' }}
+                          </div>
+                          <div>{{ selectedStatus.message || 'Sin mensaje detallado registrado.' }}</div>
+                        </VAlert>
+                      </td>
+                    </tr>
                     <tr v-if="!currentInvoices.length">
-                      <td colspan="5" class="text-center py-8 text-caption text-disabled">
-                        No hay facturas registradas en este lote de sincronización.
+                      <td colspan="5" class="text-center py-8 px-4">
+                        <template v-if="Number(selectedStatus?.count_product || 0) > 0">
+                          <VIcon icon="tabler-package-import" size="36" color="info" class="mb-2" />
+                          <div class="text-body-2 font-weight-bold text-high-emphasis">
+                            Sincronización de Catálogo Completa
+                          </div>
+                          <div class="text-caption text-medium-emphasis mt-1">
+                            Se actualizaron <strong>{{ selectedStatus.count_product }} productos</strong> en este lote sin facturas adjuntas.
+                          </div>
+                        </template>
+                        <template v-else>
+                          <span class="text-caption text-disabled">
+                            No hay facturas registradas en este lote de sincronización.
+                          </span>
+                        </template>
                       </td>
                     </tr>
                     <tr
@@ -424,8 +453,12 @@ const closeDialog = () => {
 </template>
 
 <style scoped>
+.history-header-gradient {
+  background: linear-gradient(135deg, rgb(var(--v-theme-secondary)), rgb(var(--v-theme-primary))) !important;
+}
+
 .sync-item {
-  background-color: #ffffff;
+  background-color: rgb(var(--v-theme-surface));
   border-color: rgba(var(--v-theme-on-surface), 0.08);
 }
 
@@ -447,18 +480,18 @@ const closeDialog = () => {
 }
 
 .dot-success {
-  background-color: #28c76f;
-  box-shadow: 0 0 4px rgba(40, 199, 111, 0.6);
+  background-color: rgb(var(--v-theme-success));
+  box-shadow: 0 0 4px rgba(var(--v-theme-success), 0.6);
 }
 
 .dot-warning {
-  background-color: #ff9f43;
-  box-shadow: 0 0 4px rgba(255, 159, 67, 0.6);
+  background-color: rgb(var(--v-theme-warning));
+  box-shadow: 0 0 4px rgba(var(--v-theme-warning), 0.6);
 }
 
 .dot-error {
-  background-color: #ea5455;
-  box-shadow: 0 0 4px rgba(234, 84, 85, 0.6);
+  background-color: rgb(var(--v-theme-error));
+  box-shadow: 0 0 4px rgba(var(--v-theme-error), 0.6);
 }
 
 .invoices-audit-table {
@@ -469,7 +502,7 @@ const closeDialog = () => {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #f8f9fa;
+  background: rgb(var(--v-theme-background));
   color: rgba(var(--v-theme-on-surface), 0.7);
   font-size: 0.65rem;
   font-weight: 800;

@@ -14,9 +14,21 @@ class SupplierResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $isMaster = $request->header('X-Master-Catalog-Context') === '1' || $request->boolean('is_master');
+
+        $syncConnections = $this->relationLoaded('connections')
+            ? $this->connections->filter(fn ($c) => !str_contains((string) ($c->type ?? ''), 'bot'))
+            : collect();
+
+        $primaryConn = $syncConnections->first(fn ($c) => in_array($c->type, ['api', 'http']))
+            ?? $syncConnections->first(fn ($c) => in_array($c->type, ['ftp', 'sftp']))
+            ?? $syncConnections->first(fn ($c) => in_array($c->type, ['email', 'file']))
+            ?? $syncConnections->first();
+
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'logo_url' => $this->logo_url ?? $this->master_logo_url ?? null,
             'sales_phone' => $this->sales_phone,
             'collections_phone' => $this->collections_phone,
             'payment_email' => $this->payment_email,
@@ -38,20 +50,34 @@ class SupplierResource extends JsonResource
             'custom_due_days' => $this->custom_due_days,
             'payment_due_reference' => $this->payment_due_reference,
             'invoice_date_reference' => $this->invoice_date_reference,
-            'debt' => (request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master')) ? 0 : $this->debt,
-            'primary_connection_type' => $this->relationLoaded('connections') ? ($this->connections->first(fn($c) => in_array($c->type, ['api', 'http']))?->type ?? $this->connections->first(fn($c) => in_array($c->type, ['ftp', 'sftp']))?->type ?? $this->connections->first(fn($c) => in_array($c->type, ['email', 'file']))?->type ?? $this->connections->first()?->type ?? 'file') : null,
-            'has_structure' => $this->relationLoaded('connections') ? $this->connections->contains(fn($c) => !empty($c->structure)) : false,
-            'structure_summary' => $this->relationLoaded('connections') ? ($this->connections->first(fn($c) => !empty($c->structure))?->structure ?? null) : null,
+            'debt' => $isMaster ? 0 : $this->debt,
+            'primary_connection_type' => $this->relationLoaded('connections') ? ($primaryConn?->type ?? 'file') : null,
+            'allowed_connection_types' => $this->master_allowed_connection_types ?? (
+                $syncConnections->isNotEmpty()
+                    ? $syncConnections->pluck('type')->filter()->unique()->values()->all()
+                    : null
+            ),
+            'has_structure' => $syncConnections->contains(fn ($c) => !empty($c->structure)),
+            'structure_summary' => $syncConnections->first(fn ($c) => !empty($c->structure))?->structure ?? null,
             'latest_score_value' => $this->latest_score_value,
+            'products_count' => (int) ($this->product_suppliers_count ?? 0),
+            'latest_sync_status' => $this->relationLoaded('latestConnectionStatus') && $this->latestConnectionStatus ? [
+                'status' => $this->latestConnectionStatus->status,
+                'method' => $this->latestConnectionStatus->method,
+                'message' => $this->latestConnectionStatus->message,
+                'count_product' => (int) ($this->latestConnectionStatus->count_product ?? 0),
+                'count_invoice' => (int) ($this->latestConnectionStatus->count_invoice ?? 0),
+                'created_at' => $this->latestConnectionStatus->created_at,
+            ] : null,
             'is_indexed' => (bool) $this->is_indexed,
-            'is_active' => (request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master')) ? true : (bool) ($this->is_active ?? true),
+            'is_active' => $isMaster ? true : (bool) ($this->is_active ?? true),
             'type' => $this->type instanceof \App\Enums\SupplierType ? $this->type->value : ($this->type ?? 'drogueria'),
             'business_types' => is_string($this->business_types) ? (json_decode($this->business_types, true) ?: []) : ($this->business_types ?? []),
             'score_breakdown' => $this->score_breakdown,
-            'last_sync_at' => $this->connection?->last_connection ?? ($this->relationLoaded('connections') ? $this->connections->max('last_connection') : null),
+            'last_sync_at' => $syncConnections->max('last_connection'),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            
+
             // Relaciones
             'latest_score' => $this->whenLoaded('latestScore'),
             'payment_rules' => $this->whenLoaded('paymentRules'),

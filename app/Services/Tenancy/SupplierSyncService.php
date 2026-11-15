@@ -100,8 +100,8 @@ class SupplierSyncService
             try {
                 // 1. Sincronizar Proveedores
                 // Para no pisar configuraciones comerciales del tenant (credit_days, etc.),
-                // solo actualizamos datos de identidad fiscal si ya existe.
-                $fiscalUpdateColumns = ['name', 'social_reason', 'rif', 'updated_at'];
+                // solo actualizamos datos de identidad fiscal y logotipo si ya existe.
+                $fiscalUpdateColumns = ['name', 'logo_url', 'social_reason', 'rif', 'updated_at'];
                 $availableFiscalUpdates = array_values(array_intersect($fiscalUpdateColumns, $tenantColumns));
 
                 $filteredSuppliers = array_map(function ($sup) use ($tenantColsSet) {

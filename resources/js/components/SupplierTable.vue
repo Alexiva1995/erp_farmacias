@@ -37,14 +37,34 @@ const emit = defineEmits([
   "delete-supplier",
   "commercial-panel",
   "supplier-pending-invoices",
+  "view-products",
   "check-supplier-api",
   "config-connection",
   "view-connection-history",
-  "sync-dronena-bot",
-  "sync-drosymca-bot",
   "merge-supplier",
-  "toggle-supplier-status",
 ]);
+
+const getInitials = (name) => {
+  if (!name) return "PR";
+  const parts = String(name).trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+  return String(name).substring(0, 2).toUpperCase();
+};
+
+const getScoreVariationLabel = (breakdown) => {
+  const pv = breakdown?.price_variation;
+  if (!pv || pv.details?.no_baseline) return "Sin base OC/Catálogo";
+  const avg = pv.details?.avg_variation_pct;
+  if (avg === undefined || avg === null) return `${pv.score ?? 0} / 15 pts`;
+  const sign = Number(avg) > 0 ? "+" : "";
+  return `${pv.score ?? 0} / 15 pts (${sign}${avg}%)`;
+};
+
+const isCommercialSupplier = (item) => {
+  return item?.type !== "externo" && item?.type !== "gasto";
+};
 
 const formatDate = (dateString) => {
   if (!dateString) return null;
@@ -123,7 +143,7 @@ const headers = computed(() => {
         </template>
         <!-- Loader para Carga en Desktop -->
         <template #loading>
-          <div class="pa-8 text-center bg-white">
+          <div class="pa-8 text-center bg-surface">
             <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
             <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando proveedores...</div>
           </div>
@@ -146,13 +166,13 @@ const headers = computed(() => {
               FTP / SFTP
             </VChip>
             <VChip
-              v-else-if="item.primary_connection_type === 'api' || item.primary_connection_type === 'http' || (item.primary_connection_type && item.primary_connection_type.includes('bot'))"
+              v-else-if="item.primary_connection_type === 'api' || item.primary_connection_type === 'http'"
               color="primary"
               size="small"
               variant="tonal"
               prepend-icon="tabler-api"
             >
-              API / Bot
+              API
             </VChip>
             <VChip
               v-else
@@ -261,20 +281,42 @@ const headers = computed(() => {
         </template>
 
         <template #item.name="{ item }">
-          <div class="d-flex align-center gap-2" :class="{ 'opacity-60': item.is_active === false }">
-            <span class="text-sm font-weight-bold text-high-emphasis">
-              {{ item.name }}
-            </span>
-            <VChip
-              v-if="item.is_active === false"
-              size="x-small"
-              color="secondary"
-              variant="flat"
-              label
-              class="text-xxs font-weight-bold px-1.5"
-            >
-              Inactivo
-            </VChip>
+          <div class="d-flex align-center gap-3 py-1">
+            <VAvatar size="36" color="primary" variant="tonal" rounded="lg" class="flex-shrink-0">
+              <VImg v-if="item.logo_url" :src="item.logo_url" cover />
+              <span v-else class="text-xs font-weight-bold">{{ getInitials(item.name) }}</span>
+            </VAvatar>
+            <div class="d-flex flex-column">
+              <div class="d-flex align-center gap-2">
+                <span class="text-sm font-weight-bold text-high-emphasis">
+                  {{ item.name }}
+                </span>
+                <VChip
+                  v-if="item.type === 'externo'"
+                  size="x-small"
+                  color="secondary"
+                  variant="tonal"
+                  label
+                  class="text-xxs font-weight-bold px-1.5"
+                >
+                  Gastos
+                </VChip>
+              </div>
+              <div class="d-flex align-center gap-2 text-xxs text-medium-emphasis">
+                <span v-if="item.rif">RIF: {{ item.rif }}</span>
+                <VChip
+                  v-if="!props.isMaster && isCommercialSupplier(item) && item.products_count !== undefined"
+                  size="x-small"
+                  color="info"
+                  variant="tonal"
+                  class="cursor-pointer px-1.5 text-xxs font-weight-bold"
+                  prepend-icon="tabler-packages"
+                  @click="emit('view-products', item)"
+                >
+                  {{ item.products_count }} prod.
+                </VChip>
+              </div>
+            </div>
           </div>
         </template>
 
@@ -291,7 +333,11 @@ const headers = computed(() => {
         </template>
 
         <template #item.debt="{ item }">
-          <div class="d-flex flex-column align-end">
+          <div
+            class="d-flex flex-column align-end"
+            :class="{ 'cursor-pointer': (item.debt ?? 0) > 0 && canManageSuppliers && !props.isMaster }"
+            @click="(item.debt ?? 0) > 0 && canManageSuppliers && !props.isMaster ? emit('supplier-pending-invoices', item) : null"
+          >
             <VChip
               :color="(item.debt ?? 0) > 0 ? 'error' : 'success'"
               size="small"
@@ -300,13 +346,15 @@ const headers = computed(() => {
             >
               ${{ (item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
             </VChip>
-            <span v-if="item.debt > 0" class="text-xxs text-error mt-1">Deuda Pendiente</span>
+            <span v-if="(item.debt ?? 0) > 0 && canManageSuppliers && !props.isMaster" class="text-xxs text-error mt-1 font-weight-medium">
+              Ver facturas pendientes →
+            </span>
           </div>
         </template>
 
         <template #item.latest_score_value="{ item }">
           <div v-if="item.latest_score_value !== null && item.latest_score_value !== undefined" class="d-flex align-center gap-2">
-            <VTooltip location="top" max-width="320" content-class="score-breakdown-tooltip pa-0 shadow-lg">
+            <VTooltip location="top" max-width="340" content-class="score-breakdown-tooltip pa-0 shadow-lg">
               <template #activator="{ props: tooltipProps }">
                 <div v-bind="tooltipProps" class="d-flex align-center gap-2 cursor-pointer">
                   <VRating
@@ -336,42 +384,38 @@ const headers = computed(() => {
 
                 <div v-if="item.score_breakdown" class="d-flex flex-column gap-1 text-xs">
                   <div class="d-flex justify-space-between align-center py-0.5">
-                    <span class="text-disabled">📦 Completez (Fill Rate):</span>
+                    <span class="text-disabled">Completez (Fill Rate):</span>
                     <span class="font-weight-bold" :class="item.score_breakdown.fill_rate?.score !== null ? 'text-success' : 'text-disabled'">
-                      {{ item.score_breakdown.fill_rate?.score !== null ? `${item.score_breakdown.fill_rate.score} / 30 pts` : 'N/A (Sin OC)' }}
+                      {{ item.score_breakdown.fill_rate?.score !== null ? `${item.score_breakdown.fill_rate.score} / 30 pts` : 'Sin OC' }}
                     </span>
                   </div>
 
                   <div class="d-flex justify-space-between align-center py-0.5">
-                    <span class="text-disabled">⏱️ A Tiempo (On-Time):</span>
+                    <span class="text-disabled">A Tiempo (On-Time):</span>
                     <span class="font-weight-bold" :class="item.score_breakdown.on_time?.score !== null ? 'text-success' : 'text-disabled'">
-                      {{ item.score_breakdown.on_time?.score !== null ? `${item.score_breakdown.on_time.score} / 20 pts` : 'N/A (Sin OC)' }}
+                      {{ item.score_breakdown.on_time?.score !== null ? `${item.score_breakdown.on_time.score} / 20 pts` : 'Sin OC' }}
                     </span>
                   </div>
 
                   <div class="d-flex justify-space-between align-center py-0.5">
-                    <span class="text-disabled">⭐ Calidad y Devoluciones:</span>
+                    <span class="text-disabled">Calidad y Devoluciones:</span>
                     <span class="font-weight-bold text-success">
                       {{ item.score_breakdown.quality?.score ?? 0 }} / 25 pts
                     </span>
                   </div>
 
                   <div class="d-flex justify-space-between align-center py-0.5">
-                    <span class="text-disabled">📑 Precisión Administrativa:</span>
+                    <span class="text-disabled">Variación de Precio:</span>
                     <span class="font-weight-bold text-success">
-                      {{ item.score_breakdown.admin_accuracy?.score ?? 0 }} / 15 pts
+                      {{ getScoreVariationLabel(item.score_breakdown) }}
                     </span>
                   </div>
 
                   <div class="d-flex justify-space-between align-center py-0.5">
-                    <span class="text-disabled">🤝 Condiciones Comerciales:</span>
+                    <span class="text-disabled">Condiciones Comerciales:</span>
                     <span class="font-weight-bold text-success">
                       {{ item.score_breakdown.commercial_conditions?.score ?? 0 }} / 10 pts
                     </span>
-                  </div>
-
-                  <div v-if="item.score_breakdown.is_rescaled" class="mt-2 pt-1 border-t text-xxs text-info font-weight-medium">
-                    * Proveedor sin órdenes de compra: puntaje reescalado al 100% sobre facturas.
                   </div>
                 </div>
                 <div v-else class="text-xs text-disabled py-1">
@@ -385,12 +429,16 @@ const headers = computed(() => {
 
         <template #item.actions="{ item }">
           <div class="d-flex align-center justify-center">
-             <VTooltip v-if="!isRestaurant" text="Estado de Conexión" location="top">
-              <template #activator="{ props }">
+            <VTooltip
+              v-if="!isRestaurant && isCommercialSupplier(item)"
+              :text="checkingApiId === item.id ? 'Sincronizando...' : (item.latest_sync_status?.message || 'Estado de Conexión')"
+              location="top"
+            >
+              <template #activator="{ props: dotProps }">
                 <VIcon
-                  v-bind="props"
+                  v-bind="dotProps"
                   size="10"
-                  :color="checkingApiId === item.id ? 'warning' : 'success'"
+                  :color="checkingApiId === item.id ? 'warning' : (item.latest_sync_status?.status === 'failed' ? 'error' : (item.latest_sync_status?.status === 'partial' ? 'warning' : 'success'))"
                   icon="tabler-circle-filled"
                   :class="checkingApiId === item.id ? 'spin-icon' : 'pulse-icon'"
                   class="me-2"
@@ -399,9 +447,9 @@ const headers = computed(() => {
             </VTooltip>
 
             <VMenu location="bottom end">
-              <template #activator="{ props }">
+              <template #activator="{ props: menuProps }">
                 <VBtn
-                  v-bind="props"
+                  v-bind="menuProps"
                   icon="tabler-dots-vertical"
                   variant="tonal"
                   color="secondary"
@@ -410,65 +458,81 @@ const headers = computed(() => {
                 />
               </template>
 
-              <VList density="compact" min-width="200">
+              <VList density="compact" min-width="210">
                 <VListItem @click="emit('edit-supplier', item)" prepend-icon="tabler-edit">
                   <VListItemTitle>Editar Datos</VListItemTitle>
                 </VListItem>
 
-                <VListItem v-if="canManageSuppliers && !isRestaurant" @click="emit('config-connection', item)" prepend-icon="tabler-plug-connected" base-color="warning">
+                <VListItem
+                  v-if="!props.isMaster && isCommercialSupplier(item)"
+                  @click="emit('view-products', item)"
+                  prepend-icon="tabler-packages"
+                  base-color="info"
+                >
+                  <VListItemTitle>Ver Catálogo de Productos</VListItemTitle>
+                </VListItem>
+
+                <VListItem
+                  v-if="canManageSuppliers && !isRestaurant && isCommercialSupplier(item)"
+                  @click="emit('config-connection', item)"
+                  prepend-icon="tabler-plug-connected"
+                  base-color="warning"
+                >
                   <VListItemTitle>Configurar Conexión</VListItemTitle>
                 </VListItem>
 
-                <VListItem v-if="!isRestaurant" @click="emit('view-connection-history', item)" prepend-icon="tabler-history" base-color="info">
+                <VListItem
+                  v-if="!isRestaurant && isCommercialSupplier(item)"
+                  @click="emit('view-connection-history', item)"
+                  prepend-icon="tabler-history"
+                  base-color="info"
+                >
                   <VListItemTitle>Historial de Conexiones</VListItemTitle>
                 </VListItem>
 
                 <VListItem
-                  v-if="(item.name && (item.name.toUpperCase().includes('NENA') || item.name.toUpperCase().includes('DRONENA')))"
-                  @click="emit('sync-dronena-bot', item)"
-                  prepend-icon="tabler-robot"
-                  base-color="info"
+                  v-if="!isRestaurant && isCommercialSupplier(item)"
+                  :disabled="checkingApiId === item.id"
+                  @click="emit('check-supplier-api', item)"
+                  prepend-icon="tabler-api"
                 >
-                  <VListItemTitle>Sincronizar Facturas (Bot Dronena)</VListItemTitle>
-                </VListItem>
-
-                <VListItem
-                  v-if="(item.name && (item.name.toUpperCase().includes('DROSYM') || item.name.toUpperCase().includes('DROSI')))"
-                  @click="emit('sync-drosymca-bot', item)"
-                  prepend-icon="tabler-robot"
-                  base-color="primary"
-                >
-                  <VListItemTitle>Sincronizar Facturas (Bot Drosymca)</VListItemTitle>
-                </VListItem>
-
-                <VListItem v-if="!isRestaurant" :disabled="checkingApiId === item.id" @click="emit('check-supplier-api', item)" prepend-icon="tabler-api">
                   <VListItemTitle>Sincronizar</VListItemTitle>
                 </VListItem>
 
-                <VListItem v-if="canManageSuppliers && !isRestaurant && !props.isMaster" @click="emit('commercial-panel', item)" prepend-icon="tabler-settings-dollar" base-color="primary">
+                <VListItem
+                  v-if="canManageSuppliers && !isRestaurant && !props.isMaster && isCommercialSupplier(item)"
+                  @click="emit('commercial-panel', item)"
+                  prepend-icon="tabler-settings-dollar"
+                  base-color="primary"
+                >
                   <VListItemTitle>Configuración Comercial</VListItemTitle>
-                </VListItem>
-
-                <VListItem v-if="canManageSuppliers && !props.isMaster" @click="emit('supplier-pending-invoices', item)" prepend-icon="tabler-credit-card-pay">
-                   <VListItemTitle>Facturas Pendientes</VListItemTitle>
-                </VListItem>
-
-                <VListItem v-if="canManageSuppliers" @click="emit('merge-supplier', item)" prepend-icon="tabler-arrows-join-2" base-color="warning">
-                  <VListItemTitle>Fusionar Proveedor</VListItemTitle>
                 </VListItem>
 
                 <VListItem
                   v-if="canManageSuppliers && !props.isMaster"
-                  :base-color="item.is_active === false ? 'success' : 'warning'"
-                  @click="emit('toggle-supplier-status', item)"
-                  :prepend-icon="item.is_active === false ? 'tabler-toggle-right' : 'tabler-power'"
+                  @click="emit('supplier-pending-invoices', item)"
+                  prepend-icon="tabler-credit-card-pay"
                 >
-                  <VListItemTitle>{{ item.is_active === false ? 'Activar Proveedor' : 'Desactivar Proveedor' }}</VListItemTitle>
+                  <VListItemTitle>Facturas Pendientes</VListItemTitle>
+                </VListItem>
+
+                <VListItem
+                  v-if="canManageSuppliers && props.isMaster"
+                  @click="emit('merge-supplier', item)"
+                  prepend-icon="tabler-arrows-join-2"
+                  base-color="warning"
+                >
+                  <VListItemTitle>Fusionar Proveedor</VListItemTitle>
                 </VListItem>
 
                 <VDivider v-if="canManageSuppliers" />
 
-                <VListItem v-if="canManageSuppliers" base-color="error" @click="emit('delete-supplier', item.id)" prepend-icon="tabler-trash">
+                <VListItem
+                  v-if="canManageSuppliers"
+                  base-color="error"
+                  @click="emit('delete-supplier', item.id)"
+                  prepend-icon="tabler-trash"
+                >
                   <VListItemTitle>Eliminar</VListItemTitle>
                 </VListItem>
               </VList>
@@ -480,7 +544,7 @@ const headers = computed(() => {
 
     <!-- Vista de Tarjetas para Móvil -->
     <div v-else class="mobile-supplier-cards d-flex flex-column gap-4">
-      <div v-if="loading" class="pa-8 text-center rounded-lg border shadow-sm bg-white">
+      <div v-if="loading" class="pa-8 text-center rounded-lg border shadow-sm bg-surface">
         <VProgressCircular indeterminate color="primary" size="36" class="mb-2" />
         <div class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Cargando proveedores...</div>
       </div>
@@ -493,26 +557,34 @@ const headers = computed(() => {
         >
           <VCardText class="pa-4">
             <div class="d-flex justify-space-between align-start mb-3">
-              <div>
-                <div class="d-flex align-center gap-2">
-                  <div class="text-sm font-weight-bold line-clamp-1" :class="{ 'opacity-60': item.is_active === false }">{{ item.name ?? 'Sin nombre' }}</div>
-                  <VChip
-                    v-if="item.is_active === false"
-                    size="x-small"
-                    color="secondary"
-                    variant="flat"
-                    label
-                    class="text-xxs font-weight-bold px-1.5"
-                  >
-                    Inactivo
-                  </VChip>
+              <div class="d-flex align-center gap-3">
+                <VAvatar size="38" color="primary" variant="tonal" rounded="lg" class="flex-shrink-0">
+                  <VImg v-if="item.logo_url" :src="item.logo_url" cover />
+                  <span v-else class="text-xs font-weight-bold">{{ getInitials(item.name) }}</span>
+                </VAvatar>
+                <div>
+                  <div class="d-flex align-center gap-2">
+                    <div class="text-sm font-weight-bold line-clamp-1">{{ item.name ?? 'Sin nombre' }}</div>
+                    <VChip
+                      v-if="item.type === 'externo'"
+                      size="x-small"
+                      color="secondary"
+                      variant="tonal"
+                      label
+                      class="text-xxs font-weight-bold px-1.5"
+                    >
+                      Gastos
+                    </VChip>
+                  </div>
+                  <div class="text-xs text-disabled">
+                    ID: {{ item.id }} <span v-if="item.rif">• RIF: {{ item.rif }}</span>
+                  </div>
                 </div>
-                <div class="text-xs text-disabled">ID: {{ item.id }} <span v-if="item.rif">• RIF: {{ item.rif }}</span></div>
               </div>
-              <div v-if="!isRestaurant" class="d-flex align-center gap-1">
+              <div v-if="!isRestaurant && isCommercialSupplier(item)" class="d-flex align-center gap-1">
                 <VIcon
                   size="10"
-                  :color="checkingApiId === item.id ? 'warning' : 'success'"
+                  :color="checkingApiId === item.id ? 'warning' : (item.latest_sync_status?.status === 'failed' ? 'error' : (item.latest_sync_status?.status === 'partial' ? 'warning' : 'success'))"
                   icon="tabler-circle-filled"
                   :class="checkingApiId === item.id ? 'spin-icon' : ''"
                 />
@@ -521,8 +593,12 @@ const headers = computed(() => {
 
             <VDivider class="mb-3 border-dashed" />
 
-            <div class="d-flex justify-space-between align-center mb-4">
-              <div class="d-flex flex-column">
+            <div class="d-flex justify-space-between align-center mb-3">
+              <div
+                class="d-flex flex-column"
+                :class="{ 'cursor-pointer': (item.debt ?? 0) > 0 && canManageSuppliers && !props.isMaster }"
+                @click="(item.debt ?? 0) > 0 && canManageSuppliers && !props.isMaster ? emit('supplier-pending-invoices', item) : null"
+              >
                 <span class="text-caption text-disabled mb-1">Deuda Actual</span>
                 <span :class="(item.debt ?? 0) > 0 ? 'text-error' : 'text-success'" class="text-h6 font-weight-bold">
                   ${{ (item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
@@ -535,13 +611,26 @@ const headers = computed(() => {
               </div>
             </div>
 
+            <div v-if="!props.isMaster && isCommercialSupplier(item) && item.products_count !== undefined" class="mb-3">
+              <VChip
+                size="small"
+                color="info"
+                variant="tonal"
+                prepend-icon="tabler-packages"
+                class="cursor-pointer font-weight-bold"
+                @click="emit('view-products', item)"
+              >
+                Ver Catálogo ({{ item.products_count }} productos)
+              </VChip>
+            </div>
+
             <div class="d-flex justify-space-between align-center mt-2 pa-2 bg-light-surface rounded-lg border">
               <div class="d-flex align-center gap-1 cursor-pointer">
                 <VTooltip location="top" max-width="320">
                   <template #activator="{ props: tooltipProps }">
                     <div v-bind="tooltipProps" class="d-flex align-center gap-1">
                       <VIcon icon="tabler-star-filled" color="warning" size="14" />
-                      <span class="text-caption font-weight-bold">{{ item.latest_score_value ? Number(item.latest_score_value).toFixed(1) : '—' }}</span>
+                      <span class="text-caption font-weight-bold">{{ item.latest_score_value !== null && item.latest_score_value !== undefined ? Number(item.latest_score_value).toFixed(1) : '—' }}</span>
                     </div>
                   </template>
                   <div class="pa-1">
@@ -551,37 +640,34 @@ const headers = computed(() => {
                     </div>
                     <div v-if="item.score_breakdown" class="text-caption">
                       <div class="d-flex justify-space-between align-center py-0.5">
-                        <span class="text-disabled">📦 Completez (Fill Rate):</span>
+                        <span class="text-disabled">Completez (Fill Rate):</span>
                         <span class="font-weight-bold" :class="item.score_breakdown.fill_rate?.score !== null ? 'text-success' : 'text-disabled'">
-                          {{ item.score_breakdown.fill_rate?.score !== null ? `${item.score_breakdown.fill_rate.score} / 30 pts` : 'N/A' }}
+                          {{ item.score_breakdown.fill_rate?.score !== null ? `${item.score_breakdown.fill_rate.score} / 30 pts` : 'Sin OC' }}
                         </span>
                       </div>
                       <div class="d-flex justify-space-between align-center py-0.5">
-                        <span class="text-disabled">⏱️ A Tiempo (On-Time):</span>
+                        <span class="text-disabled">A Tiempo (On-Time):</span>
                         <span class="font-weight-bold" :class="item.score_breakdown.on_time?.score !== null ? 'text-success' : 'text-disabled'">
-                          {{ item.score_breakdown.on_time?.score !== null ? `${item.score_breakdown.on_time.score} / 20 pts` : 'N/A' }}
+                          {{ item.score_breakdown.on_time?.score !== null ? `${item.score_breakdown.on_time.score} / 20 pts` : 'Sin OC' }}
                         </span>
                       </div>
                       <div class="d-flex justify-space-between align-center py-0.5">
-                        <span class="text-disabled">🛡️ Calidad y Devoluciones:</span>
+                        <span class="text-disabled">Calidad y Devoluciones:</span>
                         <span class="font-weight-bold text-success">
                           {{ item.score_breakdown.quality?.score ?? 0 }} / 25 pts
                         </span>
                       </div>
                       <div class="d-flex justify-space-between align-center py-0.5">
-                        <span class="text-disabled">📑 Precisión Administrativa:</span>
+                        <span class="text-disabled">Variación de Precio:</span>
                         <span class="font-weight-bold text-success">
-                          {{ item.score_breakdown.admin_accuracy?.score ?? 0 }} / 15 pts
+                          {{ getScoreVariationLabel(item.score_breakdown) }}
                         </span>
                       </div>
                       <div class="d-flex justify-space-between align-center py-0.5">
-                        <span class="text-disabled">🤝 Condiciones Comerciales:</span>
+                        <span class="text-disabled">Condiciones Comerciales:</span>
                         <span class="font-weight-bold text-success">
                           {{ item.score_breakdown.commercial_conditions?.score ?? 0 }} / 10 pts
                         </span>
-                      </div>
-                      <div v-if="item.score_breakdown.is_rescaled" class="mt-2 pt-1 border-t text-xxs text-info font-weight-medium">
-                        * Proveedor sin órdenes de compra: puntaje reescalado al 100% sobre facturas.
                       </div>
                     </div>
                     <div v-else class="text-xs text-disabled py-1">
@@ -600,7 +686,15 @@ const headers = computed(() => {
                   @click="emit('edit-supplier', item)"
                 />
                 <VBtn
-                  v-if="canManageSuppliers"
+                  v-if="!props.isMaster && isCommercialSupplier(item)"
+                  icon="tabler-packages"
+                  variant="tonal"
+                  color="info"
+                  size="32"
+                  @click="emit('view-products', item)"
+                />
+                <VBtn
+                  v-if="canManageSuppliers && props.isMaster"
                   icon="tabler-arrows-join-2"
                   variant="tonal"
                   color="warning"
@@ -608,7 +702,7 @@ const headers = computed(() => {
                   @click="emit('merge-supplier', item)"
                 />
                 <VBtn
-                  v-if="canManageSuppliers && !isRestaurant"
+                  v-if="canManageSuppliers && !isRestaurant && isCommercialSupplier(item)"
                   icon="tabler-plug-connected"
                   variant="tonal"
                   color="warning"
@@ -616,7 +710,7 @@ const headers = computed(() => {
                   @click="emit('config-connection', item)"
                 />
                 <VBtn
-                  v-if="!isRestaurant"
+                  v-if="!isRestaurant && isCommercialSupplier(item)"
                   icon="tabler-history"
                   variant="tonal"
                   color="info"
@@ -624,7 +718,7 @@ const headers = computed(() => {
                   @click="emit('view-connection-history', item)"
                 />
                 <VBtn
-                  v-if="!isRestaurant"
+                  v-if="!isRestaurant && isCommercialSupplier(item)"
                   icon="tabler-api"
                   variant="tonal"
                   :color="checkingApiId === item.id ? 'warning' : 'success'"
@@ -633,7 +727,7 @@ const headers = computed(() => {
                   @click="emit('check-supplier-api', item)"
                 />
                 <VBtn
-                  v-if="canManageSuppliers && !isRestaurant"
+                  v-if="canManageSuppliers && !isRestaurant && !props.isMaster && isCommercialSupplier(item)"
                   icon="tabler-settings-dollar"
                   variant="tonal"
                   color="primary"
@@ -641,20 +735,12 @@ const headers = computed(() => {
                   @click="emit('commercial-panel', item)"
                 />
                 <VBtn
-                  v-if="canManageSuppliers"
+                  v-if="canManageSuppliers && !props.isMaster"
                   icon="tabler-credit-card-pay"
                   variant="tonal"
                   color="secondary"
                   size="32"
                   @click="emit('supplier-pending-invoices', item)"
-                />
-                <VBtn
-                  v-if="canManageSuppliers"
-                  :icon="item.is_active === false ? 'tabler-toggle-right' : 'tabler-power'"
-                  variant="tonal"
-                  :color="item.is_active === false ? 'success' : 'warning'"
-                  size="32"
-                  @click="emit('toggle-supplier-status', item)"
                 />
                 <VBtn
                   v-if="canManageSuppliers"
@@ -724,7 +810,7 @@ const headers = computed(() => {
 .premium-data-table :deep(th) {
   block-size: 52px !important;
   border-block-end: 1px solid rgba(var(--v-border-color), 0.05) !important;
-  background-color: white !important;
+  background-color: rgb(var(--v-theme-surface)) !important;
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;

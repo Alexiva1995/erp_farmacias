@@ -24,7 +24,7 @@ class StoreDiscountsRequest extends FormRequest
     public function rules()
     {
         return [
-            'discounts' => 'required|array',
+            'discounts' => 'present|array',
             'discounts.*.id' => 'nullable|integer',
             'discounts.*.name' => 'required',
             'discounts.*.discount_percentage' => 'required|numeric|min:0|max:100'

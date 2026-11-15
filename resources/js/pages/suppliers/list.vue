@@ -5,6 +5,7 @@ import SupplierConnectionHistoryDialog from "@/components/dialogs/SupplierConnec
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
 import SupplierMergeDialog from "@/components/dialogs/SupplierMergeDialog.vue";
 import MasterSupplierDirectoryDialog from "@/components/dialogs/MasterSupplierDirectoryDialog.vue";
+import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProductsDialog.vue";
 import SupplierFilters from "@/components/SupplierFilters.vue";
 import SupplierStatsCards from "@/components/SupplierStatsCards.vue";
 import SupplierTable from "@/components/SupplierTable.vue";
@@ -15,6 +16,7 @@ import Swal from "sweetalert2";
 import { onMounted, onUnmounted, ref, watch, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+
 const authStore = useAuthStore();
 
 const props = defineProps({
@@ -26,10 +28,13 @@ const props = defineProps({
 
 const route = useRoute();
 const isMasterMode = computed(() => props.isMaster || (route.path && route.path.startsWith("/master")));
+const masterRequestConfig = computed(() => (isMasterMode.value ? { headers: { "X-Master-Catalog-Context": "1" } } : {}));
+
 const isSyncingAll = ref(false);
 const suppliers = ref([]);
 const totalSupplier = ref(0);
 const loading = ref(false);
+const commercialLoading = ref(false);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
@@ -38,7 +43,7 @@ const orderBy = ref();
 const searchQuery = ref("");
 const debtFilter = ref(null);
 const minScore = ref(null);
-const typeFilter = ref(isMasterMode.value ? "drogueria" : "drogueria");
+const typeFilter = ref("drogueria");
 const businessTypeFilter = ref("all");
 if (isMasterMode.value) {
   sortBy.value = "id";
@@ -52,13 +57,15 @@ const stats = ref({
 });
 const isLoadingStats = ref(false);
 
-// Estado para el diálogo de configuración de conexión FTP/API
+// Estado para diálogos técnicos y catálogo
 const isConnectionDialogVisible = ref(false);
 const connectionSupplier = ref({});
 const isConnectionHistoryDialogVisible = ref(false);
 const connectionHistorySupplier = ref({});
+const isProductsDialogVisible = ref(false);
+const productsDialogSupplier = ref({});
 
-// Estado para el diálogo de fusión de proveedores duplicados
+// Estado para fusión y directorio maestro
 const isMergeDialogVisible = ref(false);
 const isMasterDirectoryDialogVisible = ref(false);
 const mergeSupplierTarget = ref({});
@@ -82,8 +89,7 @@ const router = useRouter();
 const fetchStats = async () => {
   isLoadingStats.value = true;
   try {
-    const config = isMasterMode.value ? { headers: { "X-Master-Catalog-Context": "1" } } : {};
-    const response = await axios.get("/suppliers/stats", config);
+    const response = await axios.get("/suppliers/stats", masterRequestConfig.value);
     stats.value = response.data;
   } catch (error) {
     console.error("Error al cargar estadísticas:", error);
@@ -126,7 +132,7 @@ const fetchSuppliers = async () => {
   try {
     const config = {
       params,
-      headers: isMasterMode.value ? { "X-Master-Catalog-Context": "1" } : {},
+      ...masterRequestConfig.value,
     };
     const response = await axios.get("/suppliers", config);
     suppliers.value = response.data.data;
@@ -147,8 +153,6 @@ const fetchDiscountRules = async () => {
     discountRules.value = data.discount_rules;
   } catch (error) {
     toast.error("Error al cargar las reglas de descuento");
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -160,8 +164,6 @@ const fetchPaymentRules = async () => {
     paymentRules.value = data.payment_rules;
   } catch (error) {
     toast.error("Error al cargar las reglas de pronto pago");
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -173,8 +175,6 @@ const fetchSupplierDiscount = async () => {
     supplierDiscount.value = data.supplier_discount;
   } catch (error) {
     toast.error("Error al cargar los descuentos");
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -205,6 +205,47 @@ const handleAddSupplier = (type = null) => {
   isEditDialogVisible.value = true;
 };
 
+const buildSupplierRequestData = (supplierFormData, isNewSupplier) => {
+  if (!(supplierFormData.logo instanceof File)) {
+    const payload = { ...supplierFormData };
+    if (!isNewSupplier) {
+      payload._method = "PUT";
+    }
+    return payload;
+  }
+
+  const fd = new FormData();
+  Object.entries(supplierFormData).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+
+    if (key === "logo") {
+      fd.append("logo", value);
+    } else if (typeof value === "boolean") {
+      fd.append(key, value ? "1" : "0");
+    } else if (Array.isArray(value)) {
+      value.forEach((item, idx) => {
+        fd.append(`${key}[${idx}]`, typeof item === "object" ? JSON.stringify(item) : String(item));
+      });
+    } else if (typeof value === "object") {
+      Object.entries(value).forEach(([subKey, subVal]) => {
+        if (Array.isArray(subVal)) {
+          subVal.forEach((sv, idx) => fd.append(`${key}[${subKey}][${idx}]`, String(sv)));
+        } else if (subVal !== undefined && subVal !== null) {
+          fd.append(`${key}[${subKey}]`, String(subVal));
+        }
+      });
+    } else {
+      fd.append(key, String(value));
+    }
+  });
+
+  if (!isNewSupplier) {
+    fd.append("_method", "PUT");
+  }
+
+  return fd;
+};
+
 const handleSaveSupplier = async (supplierFormData) => {
   const isNewSupplier = !currentSupplier.value.id;
   const url = isNewSupplier
@@ -218,23 +259,18 @@ const handleSaveSupplier = async (supplierFormData) => {
   }
 
   try {
-    const payload = { ...supplierFormData };
-
-    if (!isNewSupplier) {
-      payload._method = "PUT";
-    }
-
-    await axios.post(url, payload);
+    const requestData = buildSupplierRequestData(supplierFormData, isNewSupplier);
+    await axios.post(url, requestData, masterRequestConfig.value);
 
     toast.success(
       `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`,
     );
     isEditDialogVisible.value = false;
-    await fetchSuppliers();
+    await Promise.all([fetchSuppliers(), fetchStats()]);
   } catch (error) {
     if (error.response && error.response.status === 422) {
-      supplierFormErrors.value = error.response.data.errors;
-      toast.error("Por favor, corrige los errores en el formulario.");
+      supplierFormErrors.value = error.response.data.errors || {};
+      toast.error(error.response?.data?.message || "Por favor, corrige los errores en el formulario.");
     } else {
       console.error("Error al guardar/crear el proveedor:", error);
       toast.error("Hubo un error al guardar el proveedor.");
@@ -248,10 +284,41 @@ const handleEditSupplier = (supplier) => {
   isEditDialogVisible.value = true;
 };
 
+const handleEditExistingFromMaster = async (existingInfo) => {
+  if (!existingInfo?.id) return;
+
+  const localMatch = suppliers.value.find((s) => Number(s.id) === Number(existingInfo.id));
+  if (localMatch) {
+    handleEditSupplier(localMatch);
+    return;
+  }
+
+  try {
+    const response = await axios.get("/suppliers", {
+      params: {
+        q: existingInfo.rif || existingInfo.name || "",
+        itemsPerPage: 25,
+      },
+      ...masterRequestConfig.value,
+    });
+    const list = response.data?.data || [];
+    const fetchedMatch = list.find((s) => Number(s.id) === Number(existingInfo.id));
+    if (fetchedMatch) {
+      handleEditSupplier(fetchedMatch);
+      return;
+    }
+  } catch (error) {
+    console.warn("No se pudo cargar el proveedor existente:", error);
+  }
+
+  isEditDialogVisible.value = false;
+  searchQuery.value = existingInfo.rif || existingInfo.name || "";
+};
+
 const handleDeleteSupplier = async (id) => {
   const result = await Swal.fire({
     title: "¿Estás seguro?",
-    text: "¡No podrás revertir la eliminación de este proveedor!",
+    text: "Si eliminas este proveedor y deseas recuperarlo luego, podrás volver a vincularlo desde el buscador del catálogo.",
     icon: "warning",
     showCancelButton: true,
     cancelButtonText: "Cancelar",
@@ -261,12 +328,16 @@ const handleDeleteSupplier = async (id) => {
 
   if (result.isConfirmed) {
     try {
-      await axios.delete(`/suppliers/${id}`);
+      await axios.delete(`/suppliers/${id}`, masterRequestConfig.value);
       toast.success("Proveedor eliminado con éxito.");
-      fetchSuppliers();
+      await Promise.all([fetchSuppliers(), fetchStats()]);
     } catch (error) {
       console.error(`Error al borrar el proveedor ${id}:`, error);
-      toast.error("No se pudo eliminar el proveedor.");
+      const serverMsg =
+        error.response?.data?.errors?.supplier?.[0] ||
+        error.response?.data?.message ||
+        "No se pudo eliminar el proveedor.";
+      toast.error(serverMsg);
     }
   }
 };
@@ -280,7 +351,7 @@ const handleCheckSupplierApi = async (supplier) => {
     toast.info(
       `Procesando los datos de ${supplier.name}, le notificaremos al finalizar`,
     );
-    await axios.get(`/suppliers/${supplier.id}/connection`);
+    await axios.get(`/suppliers/${supplier.id}/connection`, masterRequestConfig.value);
     supplierConnectionStore.startConnection();
   } catch (error) {
     const errorDetail = error?.response?.data?.message || error?.message || "";
@@ -290,59 +361,7 @@ const handleCheckSupplierApi = async (supplier) => {
   }
 };
 
-const handleSyncDronenaBot = async (supplier) => {
-  const result = await Swal.fire({
-    title: "¿Sincronizar Facturas con Dronena?",
-    text: `Se extraerán las facturas, fechas de vencimiento, fechas de pago e indexación desde Dronena para ${supplier.name}.`,
-    icon: "info",
-    showCancelButton: true,
-    confirmButtonText: "Sincronizar Ahora",
-    cancelButtonText: "Cancelar",
-  });
-
-  if (!result.isConfirmed) return;
-
-  checkingApiSupplierId.value = supplier.id;
-  try {
-    const response = await axios.post("/invoices/sync-dronena", {
-      supplier_id: supplier.id,
-    });
-    toast.success(response.data.message || "Sincronización de facturas completada.");
-  } catch (error) {
-    console.error("Error al sincronizar con Dronena:", error);
-    toast.error(error.response?.data?.message || "Ocurrió un error durante la sincronización.");
-  } finally {
-    checkingApiSupplierId.value = null;
-  }
-};
-
-const handleSyncDrosymcaBot = async (supplier) => {
-  const result = await Swal.fire({
-    title: "¿Sincronizar Facturas con Drosymca?",
-    text: `Se extraerán las facturas pendientes, fechas de vencimiento, saldos e indexación desde Drosymca para ${supplier.name}.`,
-    icon: "info",
-    showCancelButton: true,
-    confirmButtonText: "Sincronizar Ahora",
-    cancelButtonText: "Cancelar",
-  });
-
-  if (!result.isConfirmed) return;
-
-  checkingApiSupplierId.value = supplier.id;
-  try {
-    const response = await axios.post("/invoices/sync-drosymca", {
-      supplier_id: supplier.id,
-    });
-    toast.success(response.data.message || "Sincronización de facturas completada.");
-  } catch (error) {
-    console.error("Error al sincronizar con Drosymca:", error);
-    toast.error(error.response?.data?.message || "Ocurrió un error durante la sincronización.");
-  } finally {
-    checkingApiSupplierId.value = null;
-  }
-};
-
-// Abre el diálogo de configuración de conexión FTP/API
+// Abre el diálogo de configuración de conexión FTP/API/Excel
 const handleConfigConnection = (supplier) => {
   connectionSupplier.value = { ...supplier };
   isConnectionDialogVisible.value = true;
@@ -354,11 +373,17 @@ const handleViewConnectionHistory = (supplier) => {
   isConnectionHistoryDialogVisible.value = true;
 };
 
+// Abre el diálogo del catálogo de productos del proveedor
+const handleViewProducts = (supplier) => {
+  productsDialogSupplier.value = { ...supplier };
+  isProductsDialogVisible.value = true;
+};
+
 const handleCommercialPanel = async (supplier) => {
   currentSupplier.value = { ...supplier };
   supplierFormErrors.value = {};
   isCommercialPanelVisible.value = true;
-  loading.value = true;
+  commercialLoading.value = true;
 
   try {
     await Promise.all([
@@ -370,46 +395,96 @@ const handleCommercialPanel = async (supplier) => {
     console.error("Error al cargar datos comerciales:", error);
     toast.error("Error al cargar la configuración comercial.");
   } finally {
-    loading.value = false;
+    commercialLoading.value = false;
   }
 };
 
 const handleSavePaymentRule = async (paymentRuleFormData) => {
   const url = `/suppliers/${currentSupplier.value.id}/payment-rules`;
+  commercialLoading.value = true;
   try {
-    const payload = { rules: paymentRuleFormData };
-    await axios.post(url, payload);
-    toast.success(`Reglas de pronto pago guardadas`);
-    await fetchPaymentRules();
+    await axios.post(url, { rules: paymentRuleFormData });
+    toast.success("Reglas de pronto pago guardadas");
+    await Promise.all([fetchPaymentRules(), fetchSuppliers(), fetchStats()]);
   } catch (error) {
     console.error("Error al guardar reglas de pago:", error);
-    toast.error("Error al guardar reglas de pago.");
+    toast.error(error.response?.data?.message || "Error al guardar reglas de pago.");
+  } finally {
+    commercialLoading.value = false;
   }
 };
 
 const handleSaveDiscountRules = async (formData) => {
   const url = `/supplier-laboratories/${currentSupplier.value.id}/discount-rules`;
+  commercialLoading.value = true;
   try {
-    const payload = { rules: formData };
-    await axios.post(url, payload);
+    await axios.post(url, { rules: formData });
     toast.success("Escalas de descuento guardadas");
-    await fetchDiscountRules();
+    await Promise.all([fetchDiscountRules(), fetchSuppliers(), fetchStats()]);
   } catch (error) {
     console.error("Error al guardar escalas:", error);
-    toast.error("Error al guardar escalas.");
+    toast.error(error.response?.data?.message || "Error al guardar escalas.");
+  } finally {
+    commercialLoading.value = false;
   }
 };
 
 const handleSaveSupplierDiscount = async (supplierDiscountFormData) => {
   const url = `/suppliers/${currentSupplier.value.id}/discounts`;
+  commercialLoading.value = true;
   try {
-    const payload = { discounts: supplierDiscountFormData };
-    await axios.post(url, payload);
-    toast.success(`Descuentos guardados con éxito`);
-    await fetchSupplierDiscount();
+    await axios.post(url, { discounts: supplierDiscountFormData });
+    toast.success("Descuentos guardados con éxito");
+    await Promise.all([fetchSupplierDiscount(), fetchSuppliers(), fetchStats()]);
   } catch (error) {
     console.error("Error al guardar descuentos:", error);
-    toast.error("Error al guardar descuentos.");
+    toast.error(error.response?.data?.message || "Error al guardar descuentos.");
+  } finally {
+    commercialLoading.value = false;
+  }
+};
+
+const handleSaveAllCommercial = async ({ paymentRules: pr, discountRules: dr, discounts: d }) => {
+  commercialLoading.value = true;
+  supplierFormErrors.value = {};
+  const tasks = [];
+
+  if (pr !== undefined) {
+    tasks.push(axios.post(`/suppliers/${currentSupplier.value.id}/payment-rules`, { rules: pr }));
+  }
+  if (dr !== undefined && Array.isArray(dr) && dr.length > 0) {
+    tasks.push(axios.post(`/supplier-laboratories/${currentSupplier.value.id}/discount-rules`, { rules: dr }));
+  }
+  if (d !== undefined) {
+    tasks.push(axios.post(`/suppliers/${currentSupplier.value.id}/discounts`, { discounts: d }));
+  }
+
+  if (tasks.length === 0) {
+    commercialLoading.value = false;
+    toast.info("No hay cambios pendientes para guardar.");
+    return;
+  }
+
+  try {
+    await Promise.all(tasks);
+    toast.success("Configuración comercial guardada con éxito");
+    await Promise.all([
+      fetchPaymentRules(),
+      fetchSupplierDiscount(),
+      fetchDiscountRules(),
+      fetchSuppliers(),
+      fetchStats(),
+    ]);
+  } catch (error) {
+    if (error.response && error.response.status === 422) {
+      supplierFormErrors.value = error.response.data.errors || {};
+      toast.error(error.response?.data?.message || "Verifica los campos marcados en la configuración comercial.");
+    } else {
+      console.error("Error al guardar configuración comercial:", error);
+      toast.error("Error al guardar la configuración comercial.");
+    }
+  } finally {
+    commercialLoading.value = false;
   }
 };
 
@@ -425,36 +500,9 @@ const clearFormErrors = () => {
 };
 
 const handleMergeSupplier = (supplier) => {
+  if (!isMasterMode.value) return;
   mergeSupplierTarget.value = { ...supplier };
   isMergeDialogVisible.value = true;
-};
-
-const handleToggleSupplierStatus = async (supplier) => {
-  const isDeactivating = supplier.is_active !== false;
-  const actionText = isDeactivating ? "desactivar" : "activar";
-
-  const result = await Swal.fire({
-    title: `¿Desea ${actionText} a ${supplier.name}?`,
-    text: isDeactivating
-      ? "El proveedor pasará al final de la lista y se omitirá en sincronizaciones automáticas."
-      : "El proveedor volverá a estar activo para compras y sincronizaciones.",
-    icon: "warning",
-    showCancelButton: true,
-    cancelButtonText: "Cancelar",
-    confirmButtonText: isDeactivating ? "Sí, desactivar" : "Sí, activar",
-    reverseButtons: true,
-  });
-
-  if (!result.isConfirmed) return;
-
-  try {
-    const response = await axios.patch(`/suppliers/${supplier.id}/toggle-status`);
-    toast.success(response.data.message || `Proveedor ${isDeactivating ? 'desactivado' : 'activado'} correctamente.`);
-    await fetchSuppliers();
-  } catch (error) {
-    console.error(`Error al ${actionText} el proveedor ${supplier.id}:`, error);
-    toast.error(error.response?.data?.message || "No se pudo cambiar el estado del proveedor.");
-  }
 };
 
 const handleSyncFromAllTenants = async () => {
@@ -568,20 +616,20 @@ defineExpose({ fetchSuppliers, fetchStats });
         @merge-supplier="handleMergeSupplier"
         @commercial-panel="handleCommercialPanel"
         @supplier-pending-invoices="handleSupplierPendingInvoices"
+        @view-products="handleViewProducts"
         @check-supplier-api="handleCheckSupplierApi"
         @config-connection="handleConfigConnection"
         @view-connection-history="handleViewConnectionHistory"
-        @sync-dronena-bot="handleSyncDronenaBot"
-        @sync-drosymca-bot="handleSyncDrosymcaBot"
-        @toggle-supplier-status="handleToggleSupplierStatus"
       />
 
       <SupplierEditDialog
         v-model="isEditDialogVisible"
         :supplier="currentSupplier"
         :errors="supplierFormErrors"
+        :is-master="isMasterMode"
         @save="handleSaveSupplier"
         @clear-errors="clearFormErrors"
+        @edit-existing="handleEditExistingFromMaster"
       />
 
       <SupplierCommercialPanel
@@ -591,19 +639,21 @@ defineExpose({ fetchSuppliers, fetchStats });
         :payment-rules="paymentRules"
         :supplier-discount="supplierDiscount"
         :discount-rules="discountRules"
-        :loading="loading"
+        :loading="commercialLoading"
         :errors="supplierFormErrors"
         @save-payment-rules="handleSavePaymentRule"
         @save-discounts="handleSaveSupplierDiscount"
         @save-discount-rules="handleSaveDiscountRules"
+        @save-all="handleSaveAllCommercial"
         @clear-errors="clearFormErrors"
       />
 
-      <!-- Diálogo de Configuración de Conexión FTP/API -->
+      <!-- Diálogo de Configuración de Conexión FTP/API/Excel -->
       <SupplierConnectionDialog
         v-model="isConnectionDialogVisible"
         :supplier="connectionSupplier"
-        @saved="fetchSuppliers"
+        :is-master="isMasterMode"
+        @saved="() => { fetchSuppliers(); fetchStats(); }"
       />
 
       <!-- Diálogo de Historial de Conexiones y Auditoría de Facturas -->
@@ -612,14 +662,21 @@ defineExpose({ fetchSuppliers, fetchStats });
         :supplier="connectionHistorySupplier"
       />
 
-      <!-- Diálogo de Fusión de Proveedores Duplicados -->
+      <!-- Diálogo del Catálogo de Productos del Proveedor -->
+      <ShowSupplierProductsDialog
+        v-model="isProductsDialogVisible"
+        :selected-supplier="productsDialogSupplier"
+      />
+
       <!-- Diálogo Directorio de Droguerías del Catálogo Maestro -->
       <MasterSupplierDirectoryDialog
         v-model="isMasterDirectoryDialogVisible"
         @supplier-activated="handleSupplierActivatedFromMaster"
       />
 
+      <!-- Diálogo de Fusión de Proveedores Duplicados (Exclusivo Master) -->
       <SupplierMergeDialog
+        v-if="isMasterMode"
         v-model="isMergeDialogVisible"
         :supplier="mergeSupplierTarget"
         @merged="handleSupplierMerged"

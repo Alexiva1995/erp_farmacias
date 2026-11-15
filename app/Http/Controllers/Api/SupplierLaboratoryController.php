@@ -54,6 +54,15 @@ class SupplierLaboratoryController extends Controller
             $createdRules[] = $this->supplierLaboratoryActionService->createDiscountRule($lab, $ruleData);
         }
 
+        $supplier = Supplier::find($supplierLaboratoryId);
+        if ($supplier && \Illuminate\Support\Facades\Schema::hasTable('supplier_scores')) {
+            try {
+                app(\App\Services\Suppliers\SupplierEvaluationService::class)->evaluate($supplier);
+            } catch (\Throwable) {
+                // No bloquear guardado de reglas si falla evaluación
+            }
+        }
+
         return response()->json([
             'message' => 'Reglas registradas correctamente',
             'rules' => $createdRules,

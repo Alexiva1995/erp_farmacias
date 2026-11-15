@@ -25,7 +25,9 @@ const primarySupplierChoice = ref("current"); // 'current' or 'duplicate'
 const fetchAvailableSuppliers = async () => {
   loadingSuppliers.value = true;
   try {
-    const response = await axios.get("/suppliers/available-suppliers");
+    const response = await axios.get("/suppliers/available-suppliers", {
+      headers: { "X-Master-Catalog-Context": "1" },
+    });
     const list = response.data.data || response.data || [];
     availableSuppliers.value = list.filter((s) => s.id !== props.supplier.id);
   } catch (error) {
@@ -90,7 +92,6 @@ const handleMerge = async () => {
     showCancelButton: true,
     confirmButtonText: "Sí, Fusionar",
     cancelButtonText: "Cancelar",
-    confirmButtonColor: "#7A0099",
     reverseButtons: true,
   });
 
@@ -98,10 +99,16 @@ const handleMerge = async () => {
 
   loading.value = true;
   try {
-    const response = await axios.post("/suppliers/merge", {
-      target_supplier_id: targetSupplier.value.id,
-      source_supplier_id: sourceSupplier.value.id,
-    });
+    const response = await axios.post(
+      "/suppliers/merge",
+      {
+        target_supplier_id: targetSupplier.value.id,
+        source_supplier_id: sourceSupplier.value.id,
+      },
+      {
+        headers: { "X-Master-Catalog-Context": "1" },
+      },
+    );
 
     toast.success(response.data.message || "Proveedores fusionados exitosamente.");
     emit("merged", response.data.supplier);
@@ -117,14 +124,15 @@ const handleMerge = async () => {
 </script>
 
 <template>
-  <VDialog v-model="isVisible" max-width="750" persistent>
+  <VDialog v-model="isVisible" max-width="750" :fullscreen="$vuetify.display.mobile" persistent>
     <VCard class="rounded-xl border-0 shadow-lg d-flex flex-column overflow-hidden">
       <!-- Encabezado con Gradiente del Sistema -->
       <VCardTitle class="pa-0 flex-shrink-0">
         <div class="px-6 py-4 bg-primary d-flex align-center justify-space-between text-white header-gradient">
           <div class="d-flex align-center">
             <VAvatar color="white" variant="flat" size="40" class="me-3 elevation-1 flex-shrink-0">
-              <VIcon color="primary" size="22">tabler-arrows-join-2</VIcon>
+              <VImg v-if="supplier?.logo_url" :src="supplier.logo_url" cover />
+              <VIcon v-else color="primary" size="22">tabler-arrows-join-2</VIcon>
             </VAvatar>
             <div class="d-flex flex-column">
               <h2 class="text-subtitle-1 font-weight-black text-white leading-tight mb-0" style="color: white !important;">
@@ -313,7 +321,7 @@ const handleMerge = async () => {
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient, linear-gradient(135deg, #7A0099, #E20074)) !important;
+  background: var(--brand-gradient, linear-gradient(135deg, rgb(var(--v-theme-secondary)), rgb(var(--v-theme-primary)))) !important;
 }
 
 .bg-primary-subtle {

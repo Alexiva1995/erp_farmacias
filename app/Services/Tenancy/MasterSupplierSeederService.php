@@ -54,6 +54,15 @@ class MasterSupplierSeederService
             }
         }
 
+        // Asegurar columna logo_url en suppliers de tovaerp_master
+        if (Schema::connection($masterConn)->hasTable('suppliers') && !Schema::connection($masterConn)->hasColumn('suppliers', 'logo_url')) {
+            try {
+                DB::connection($masterConn)->statement("ALTER TABLE `suppliers` ADD COLUMN `logo_url` VARCHAR(500) NULL AFTER `name`;");
+            } catch (\Throwable) {
+                // Silenciar si ya existe
+            }
+        }
+
         return $masterConn;
     }
 
@@ -147,14 +156,15 @@ class MasterSupplierSeederService
                 $stats['suppliers_synced']++;
             }
 
-            // 2. Sincronizar Estructuras Técnicas (supplier_connections)
+            // 2. Sincronizar Estructuras Técnicas (supplier_connections) excluyendo bots de scraper
             $sourceConnections = DB::table('supplier_connections')
+                ->where('type', 'NOT LIKE', '%bot%')
                 ->where(function ($q) {
                     $q->whereNotNull('structure')
                         ->orWhereNotNull('secondary_structure')
                         ->orWhereNotNull('tertiary_structure')
                         ->orWhereNotNull('invoice_structure')
-                        ->orWhereIn('type', ['file', 'ftp', 'sftp', 'api', 'http', 'dronena_bot', 'drosymca_bot']);
+                        ->orWhereIn('type', ['file', 'ftp', 'sftp', 'api', 'http']);
                 })
                 ->get();
 

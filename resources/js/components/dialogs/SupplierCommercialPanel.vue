@@ -1,8 +1,6 @@
 <script setup>
-import { ref, watch } from "vue"
-import { useTheme } from 'vuetify'
+import { computed, reactive, ref, watch } from "vue"
 import { useBrandingStore } from '@/stores/useBrandingStore'
-import { computed } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -16,18 +14,24 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
-  "update:modelValue", 
-  "save-payment-rules", 
-  "save-discounts", 
+  "update:modelValue",
+  "save-payment-rules",
+  "save-discounts",
   "save-discount-rules",
+  "save-all",
   "clear-errors"
 ])
 
-const theme = useTheme()
 const brandingStore = useBrandingStore()
 const isRestaurant = computed(() => brandingStore.isRestaurant)
 const activeTab = ref(0)
 const internalErrors = ref({})
+const dirtySections = reactive({
+  payment: false,
+  scales: false,
+  discounts: false,
+})
+let isHydrating = false
 
 // --- ESTADOS LOCALES PARA EDICIÓN ---
 const editablePaymentRules = ref([])
@@ -62,15 +66,36 @@ watch(() => props.errors, (newErrors) => {
   internalErrors.value = { ...newErrors }
 }, { deep: true })
 
+watch(editablePaymentRules, () => {
+  if (!isHydrating && props.modelValue) dirtySections.payment = true
+}, { deep: true })
+
+watch(editableScaleRules, () => {
+  if (!isHydrating && props.modelValue) dirtySections.scales = true
+}, { deep: true })
+
+watch(editableDiscounts, () => {
+  if (!isHydrating && props.modelValue) dirtySections.discounts = true
+}, { deep: true })
+
 const syncLocalData = () => {
+  isHydrating = true
   // Pronto Pago
   editablePaymentRules.value = props.paymentRules.map(rule => ({ ...rule, _markedForDeletion: false }))
-  
+
   // Descuentos Planos
   editableDiscounts.value = props.supplierDiscount.map(d => ({ ...d, _markedNew: false }))
 
   // Reglas de Escala
   editableScaleRules.value = props.discountRules.map(r => ({ ...r, _markedNew: false }))
+
+  dirtySections.payment = false
+  dirtySections.scales = false
+  dirtySections.discounts = false
+
+  setTimeout(() => {
+    isHydrating = false
+  }, 0)
 }
 
 // --- LÓGICA DE PRONTO PAGO ---
@@ -109,47 +134,54 @@ const removeDiscount = (index) => {
 }
 
 // --- GUARDADO UNIFICADO POR SECCIÓN ---
-const saveFinances = () => {
-  // Filtrar reglas vacías sin días ni porcentaje
+const buildFinancesPayload = () => {
   const validRules = editablePaymentRules.value.filter(r => (Number(r.days) > 0 || Number(r.discount_percentage) > 0))
-  const data = validRules.map(r => ({
+  return validRules.map(r => ({
     id: r.id > 0 ? r.id : undefined,
     days: Number(r.days) || 0,
     discount_percentage: Number(r.discount_percentage) || 0
   }))
-  emit('save-payment-rules', data)
 }
 
-const saveBrands = () => {
-  const scalesData = editableScaleRules.value.map(s => ({
-    id: s.id > 0 ? s.id : undefined,
-    laboratory: s.laboratory,
-    scale_type: s.scale_type,
-    min: Number(s.min) || 1,
-    max: Number(s.max) || 1,
-    discount_percentage: Number(s.discount_percentage) || 0
-  }))
-  emit('save-discount-rules', scalesData)
+const buildBrandsPayload = () => {
+  return editableScaleRules.value
+    .filter(s => s.laboratory && (s.laboratory.id || typeof s.laboratory === 'number'))
+    .map(s => ({
+      id: s.id > 0 ? s.id : undefined,
+      laboratory: s.laboratory,
+      scale_type: s.scale_type,
+      min: Number(s.min) || 1,
+      max: Number(s.max) || 1,
+      discount_percentage: Number(s.discount_percentage) || 0
+    }))
 }
 
-const saveDiscounts = () => {
+const buildDiscountsPayload = () => {
   const validDiscounts = editableDiscounts.value.filter(d => (d.name && d.name.trim() !== '') || Number(d.discount_percentage) > 0)
-  const data = validDiscounts.map(d => ({
+  return validDiscounts.map(d => ({
     id: d.id > 0 ? d.id : undefined,
     name: d.name,
     discount_percentage: Number(d.discount_percentage) || 0
   }))
-  emit('save-discounts', data)
 }
 
-const saveCurrentTab = () => {
-  if (activeTab.value === 0) {
-    saveFinances()
-  } else if (activeTab.value === 1) {
-    saveBrands()
-  } else if (activeTab.value === 2) {
-    saveDiscounts()
+const saveAllChanges = () => {
+  const payload = {}
+
+  if (dirtySections.payment || activeTab.value === 0) {
+    payload.paymentRules = buildFinancesPayload()
   }
+  if (dirtySections.scales || activeTab.value === 1) {
+    const scales = buildBrandsPayload()
+    if (scales.length > 0) {
+      payload.discountRules = scales
+    }
+  }
+  if (dirtySections.discounts || activeTab.value === 2) {
+    payload.discounts = buildDiscountsPayload()
+  }
+
+  emit('save-all', payload)
 }
 
 const close = () => {
@@ -171,7 +203,8 @@ const close = () => {
       <VCardTitle class="pa-0 flex-shrink-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1">
-            <VIcon icon="tabler-settings-dollar" color="primary" size="20" />
+            <VImg v-if="supplier?.logo_url" :src="supplier.logo_url" cover />
+            <VIcon v-else icon="tabler-settings-dollar" color="primary" size="20" />
           </VAvatar>
           <div class="d-flex flex-column leading-none text-white">
             <h2 class="text-subtitle-1 font-weight-black leading-tight mb-0 uppercase text-white">
@@ -187,23 +220,27 @@ const close = () => {
       </VCardTitle>
 
       <!-- Pestañas Institucionales -->
-      <VTabs v-model="activeTab" color="primary" grow bg-color="white" class="border-b">
+      <VTabs v-model="activeTab" color="primary" grow bg-color="surface" class="border-b">
         <VTab :value="0" class="font-weight-black text-xs uppercase letter-spacing-1">
           <VIcon start>tabler-receipt-2</VIcon>
           Finanzas (Pronto Pago)
+          <VBadge v-if="dirtySections.payment" dot color="warning" inline class="ms-1" />
         </VTab>
         <VTab :value="1" class="font-weight-black text-xs uppercase letter-spacing-1">
           <VIcon start>tabler-building-factory-2</VIcon>
           {{ isRestaurant ? 'Marcas / Líneas y Escalas' : 'Marcas y Escalas' }}
+          <VBadge v-if="dirtySections.scales" dot color="warning" inline class="ms-1" />
         </VTab>
         <VTab :value="2" class="font-weight-black text-xs uppercase letter-spacing-1">
           <VIcon start>tabler-percentage</VIcon>
           Otros Descuentos
+          <VBadge v-if="dirtySections.discounts" dot color="warning" inline class="ms-1" />
         </VTab>
       </VTabs>
 
       <!-- Contenido del Diálogo -->
       <VCardText class="pa-0 dialog-content-scroll">
+        <VProgressLinear v-if="loading" indeterminate color="primary" height="3" />
         <VWindow v-model="activeTab" class="pa-4 pa-sm-5 bg-light">
 
           <!-- TAB 1: FINANZAS (PRONTO PAGO) -->
@@ -556,7 +593,8 @@ const close = () => {
               height="44"
               class="font-weight-black rounded-lg shadow-primary text-button"
               :loading="loading"
-              @click="saveCurrentTab"
+              :disabled="loading"
+              @click="saveAllChanges"
             >
               <VIcon start icon="tabler-device-floppy" size="18" />
               GUARDAR CAMBIOS
@@ -570,7 +608,7 @@ const close = () => {
 
 <style scoped>
 .header-gradient {
-  background: var(--brand-gradient, linear-gradient(135deg, #7A0099, #E20074)) !important;
+  background: var(--brand-gradient, linear-gradient(135deg, rgb(var(--v-theme-secondary)), rgb(var(--v-theme-primary)))) !important;
 }
 
 .detail-dialog-card {
@@ -607,14 +645,14 @@ const close = () => {
 }
 
 .premium-table :deep(th) {
-  background-color: #f8f9fa !important;
+  background-color: rgba(var(--v-theme-on-surface), 0.04) !important;
   block-size: 40px !important;
-  color: #64748b !important;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;
   font-size: 0.65rem !important;
   font-weight: 800 !important;
   letter-spacing: 0.07em !important;
   text-transform: uppercase;
-  border-block-end: 1px solid #e2e8f0 !important;
+  border-block-end: 1px solid rgba(var(--v-border-color), 0.12) !important;
 }
 
 .premium-table :deep(td) {

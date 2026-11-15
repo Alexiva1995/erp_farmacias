@@ -61,6 +61,7 @@ class SupplierController extends Controller
 
         if ($perPage < 1) {
             $suppliers = $query->get();
+            $this->supplierQueryService->attachMasterMetadata($suppliers);
             return response()->json([
                 "data" => SupplierResource::collection($suppliers)->resolve(),
                 "total" => $suppliers->count(),
@@ -68,6 +69,7 @@ class SupplierController extends Controller
         }
 
         $paginatedResult = $query->paginate($perPage);
+        $this->supplierQueryService->attachMasterMetadata($paginatedResult->getCollection());
         return response()->json([
             "data" => SupplierResource::collection($paginatedResult->getCollection())->resolve(),
             "total" => $paginatedResult->total(),
@@ -246,6 +248,14 @@ class SupplierController extends Controller
             $createdRules[] = $this->supplierActionService->createPaymentRule($supplier, $ruleData);
         }
 
+        if (\Illuminate\Support\Facades\Schema::hasTable('supplier_scores')) {
+            try {
+                app(\App\Services\Suppliers\SupplierEvaluationService::class)->evaluate($supplier);
+            } catch (\Throwable) {
+                // Ignorar error de evaluación secundario
+            }
+        }
+
         return response()->json([
             'message' => 'Reglas registradas correctamente.',
             'rules' => $createdRules,
@@ -339,23 +349,19 @@ class SupplierController extends Controller
     {
         $validated = $request->validated();
 
-        $createdDiscounts = [];
+        $syncedDiscounts = $this->supplierActionService->syncDiscounts($supplier, $validated["discounts"]);
 
-        foreach ($validated["discounts"] as $rule) {
-            $discountData = [
-                "name" => $rule["name"],
-                "discount_percentage" => $rule["discount_percentage"],
-            ];
-            $isCreated = !isset($rule["id"]);
-
-            if ($isCreated){
-                $createdDiscounts[] = $this->supplierActionService->createDiscount($supplier, $discountData);
+        if (\Illuminate\Support\Facades\Schema::hasTable('supplier_scores')) {
+            try {
+                app(\App\Services\Suppliers\SupplierEvaluationService::class)->evaluate($supplier);
+            } catch (\Throwable) {
+                // Ignorar error de evaluación secundario
             }
         }
 
         return response()->json([
             "message" => "Descuentos registrados correctamente.",
-            "discounts" => $createdDiscounts,
+            "discounts" => $syncedDiscounts,
         ]);
     }
 
@@ -476,6 +482,10 @@ class SupplierController extends Controller
             $fileConnection->update(['structure' => $validated]);
         }
 
+        // Promover estructura hacia el Master si aún no existía allí (efecto red colaborativo)
+        app(\App\Services\Suppliers\SupplierMasterSyncService::class)
+            ->promoteLocalConnectionToMaster($supplier, $fileConnection->fresh());
+
         // Si el proveedor tiene múltiples formatos configurados (secundario o terciario),
         // conservar los productos existentes al importar para no borrar los del otro formato.
         $hasMultipleFormats = !empty($fileConnection->secondary_structure) || !empty($fileConnection->tertiary_structure);
@@ -520,7 +530,8 @@ class SupplierController extends Controller
 
         $fileConnection->update([$structureColumn => $validated]);
 
-        // Si se actualiza en el catálogo Master (contexto central), propagar a todos los tenants
+        // Si se actualiza en el catálogo Master (contexto central), propagar a todos los tenants;
+        // si se actualiza en un tenant, promover la estructura al Master si aún no tenía plantilla.
         $isTenant = function_exists('tenancy') && tenancy()->initialized;
         if (!$isTenant) {
             \App\Jobs\PropagateSupplierStructureJob::dispatch(
@@ -528,6 +539,9 @@ class SupplierController extends Controller
                 'file',
                 [$structureColumn => $validated]
             );
+        } else {
+            app(\App\Services\Suppliers\SupplierMasterSyncService::class)
+                ->promoteLocalConnectionToMaster($supplier, $fileConnection->fresh());
         }
 
         return response()->json([
@@ -604,15 +618,24 @@ class SupplierController extends Controller
     }
 
     /**
-     * Obtiene la configuración de conexión FTP/API de un proveedor (sin exponer la contraseña).
+     * Obtiene la configuración de conexión FTP/API/Excel de un proveedor (sin exponer la contraseña)
+     * junto con los canales habilitados y plantillas desde tovaerp_master.
      */
     public function getConnectionConfig(Supplier $supplier)
     {
-        $connections = $supplier->connections()->get();
+        $governance = $this->supplierQueryService->getMasterConnectionGovernance($supplier);
+
+        // Excluir bots de scraping: se administran en su propia sección dedicada
+        $connections = $supplier->connections()
+            ->where('type', 'NOT LIKE', '%bot%')
+            ->get();
 
         if ($connections->isEmpty()) {
             return response()->json([
-                'connections' => [],
+                'is_master'        => $governance['is_master'],
+                'allowed_types'    => $governance['allowed_types'],
+                'master_templates' => $governance['master_templates'],
+                'connections'      => [],
             ]);
         }
 
@@ -638,19 +661,21 @@ class SupplierController extends Controller
             ];
         }
 
-        // Conexión principal priorizada: 1. API/HTTP, 2. FTP/SFTP, 3. Email/File, 4. Bot
-        $connection = $connections->first(fn($c) => in_array($c->type, ['api', 'http']))
-            ?? $connections->first(fn($c) => in_array($c->type, ['ftp', 'sftp']))
-            ?? $connections->first(fn($c) => in_array($c->type, ['email', 'file']))
-            ?? $connections->first(fn($c) => str_contains($c->type ?? '', 'bot'))
+        // Conexión principal priorizada: 1. API/HTTP, 2. FTP/SFTP, 3. Email/File
+        $connection = $connections->first(fn ($c) => in_array($c->type, ['api', 'http']))
+            ?? $connections->first(fn ($c) => in_array($c->type, ['ftp', 'sftp']))
+            ?? $connections->first(fn ($c) => in_array($c->type, ['email', 'file']))
             ?? $connections->first();
 
-        // Buscar si existe una conexión FTP para pedidos (ej. Mafarta API + FTP o Dronena Bot + FTP)
+        // Buscar si existe una conexión FTP para pedidos
         $ftpOrdersConn = $connections
             ->whereIn('type', ['ftp', 'sftp'])
             ->first();
 
         return response()->json([
+            'is_master'           => $governance['is_master'],
+            'allowed_types'       => $governance['allowed_types'],
+            'master_templates'    => $governance['master_templates'],
             'id'                  => $connection->id,
             'type'                => $connection->type,
             'host'                => $connection->host,
@@ -686,21 +711,51 @@ class SupplierController extends Controller
     {
         try {
             $validated = $request->validated();
+            $requestedType = strtolower(trim((string) ($validated['type'] ?? '')));
+
+            // Separación estricta: los bots de scraper se administran en su propia sección
+            if (str_contains($requestedType, 'bot')) {
+                return response()->json([
+                    'message' => 'Los bots de scraper se configuran exclusivamente desde su sección dedicada.',
+                ], 422);
+            }
+
+            $governance = $this->supplierQueryService->getMasterConnectionGovernance($supplier);
+            if (!$governance['is_master']) {
+                $allowed = $governance['allowed_types'] ?? ['file'];
+                // Considerar equivalencia semántica api/http y file/email
+                $matchesAllowed = in_array($requestedType, $allowed, true)
+                    || ($requestedType === 'api' && in_array('http', $allowed, true))
+                    || ($requestedType === 'file' && in_array('email', $allowed, true));
+
+                if (!$matchesAllowed) {
+                    return response()->json([
+                        'message' => 'El tipo de conexión seleccionado no está habilitado por el Catálogo Maestro para este proveedor.',
+                    ], 422);
+                }
+            }
+
+            $masterTemplate = $governance['master_templates'][$requestedType] ?? null;
 
             // Buscar si ya existe una conexión del mismo tipo para este proveedor
-            $existingConn = $supplier->connections()->where('type', $validated['type'])->first();
+            $existingConn = $supplier->connections()->where('type', $requestedType)->first();
 
-            // Construir el payload que se persiste
+            // En modo Master nunca persistir credenciales privadas de terceros en plantillas
+            $resolvedUsername = $governance['is_master']
+                ? null
+                : (!empty($validated['username']) ? $validated['username'] : $existingConn?->username);
+
+            // Construir el payload que se persiste usando respaldo de plantilla Master
             $data = [
                 'supplier_id'  => $supplier->id,
-                'type'         => $validated['type'],
-                'host'         => $validated['host'] ?? $existingConn?->host,
-                'port'         => !empty($validated['port']) ? (int) $validated['port'] : $existingConn?->port,
-                'username'     => !empty($validated['username']) ? $validated['username'] : $existingConn?->username,
-                'path'         => $validated['path'] ?? $existingConn?->path,
-                'pasv'         => isset($validated['pasv']) ? (bool) $validated['pasv'] : (bool) ($existingConn?->pasv ?? true),
-                'has_header'   => isset($validated['has_header']) ? (bool) $validated['has_header'] : (bool) ($existingConn?->has_header ?? false),
-                'invoice_path' => $validated['invoice_path'] ?? $existingConn?->invoice_path,
+                'type'         => $requestedType,
+                'host'         => $validated['host'] ?? $existingConn?->host ?? ($masterTemplate['host'] ?? null),
+                'port'         => !empty($validated['port']) ? (int) $validated['port'] : ($existingConn?->port ?? ($masterTemplate['port'] ?? null)),
+                'username'     => $resolvedUsername,
+                'path'         => $validated['path'] ?? $existingConn?->path ?? ($masterTemplate['path'] ?? null),
+                'pasv'         => isset($validated['pasv']) ? (bool) $validated['pasv'] : (bool) ($existingConn?->pasv ?? ($masterTemplate['pasv'] ?? true)),
+                'has_header'   => isset($validated['has_header']) ? (bool) $validated['has_header'] : (bool) ($existingConn?->has_header ?? ($masterTemplate['has_header'] ?? false)),
+                'invoice_path' => $validated['invoice_path'] ?? $existingConn?->invoice_path ?? ($masterTemplate['invoice_path'] ?? null),
             ];
 
             if (\Illuminate\Support\Facades\Schema::hasColumn('supplier_connections', 'credit_days_email')) {
@@ -715,8 +770,8 @@ class SupplierController extends Controller
                     : $existingConn?->credit_days_col;
             }
 
-            // Solo actualizar la contraseña si el usuario envió una nueva
-            if (!empty($validated['password'])) {
+            // Solo actualizar la contraseña si el usuario envió una nueva (en tenant)
+            if (!$governance['is_master'] && !empty($validated['password'])) {
                 $data['password'] = \App\Helpers\FtpCrypt::encrypt($validated['password']);
             }
 
@@ -936,12 +991,12 @@ class SupplierController extends Controller
             }
 
             $connection = $supplier->connections()->updateOrCreate(
-                ['supplier_id' => $supplier->id, 'type' => $validated['type']],
+                ['supplier_id' => $supplier->id, 'type' => $requestedType],
                 $data
             );
 
-            // Gestionar conexión FTP secundaria para órdenes SOLO si la conexión principal NO es FTP/SFTP (ej. Mafarta API + Pedidos FTP o Dronena Bot + Pedidos FTP)
-            if ($validated['type'] !== 'ftp' && $validated['type'] !== 'sftp' && $request->has('ftp_orders_enabled')) {
+            // Gestionar conexión FTP secundaria para órdenes SOLO si la conexión principal NO es FTP/SFTP y el canal FTP está habilitado
+            if (!$governance['is_master'] && $requestedType !== 'ftp' && $requestedType !== 'sftp' && $request->has('ftp_orders_enabled')) {
                 if ($request->boolean('ftp_orders_enabled') && !empty($validated['ftp_orders_host'])) {
                     $ftpData = [
                         'supplier_id' => $supplier->id,
@@ -966,10 +1021,10 @@ class SupplierController extends Controller
                 }
             }
 
-            // Si se configuró correo y columna de días de crédito, conectar al correo y enlazar el último listado
+            // Si se configuró correo y columna de días de crédito en tenant, conectar al correo y enlazar el último listado
             $creditDaysSynced = 0;
             $creditSyncWarning = null;
-            if (!empty($connection->credit_days_email) && !empty($connection->credit_days_col)) {
+            if (!$governance['is_master'] && !empty($connection->credit_days_email) && !empty($connection->credit_days_col)) {
                 try {
                     $emailCatalogService = app(\App\Services\Suppliers\SupplierEmailCatalogService::class);
                     $creditDaysSynced = $emailCatalogService->syncCreditDaysFromEmailForSupplier($supplier, $connection);
@@ -978,6 +1033,14 @@ class SupplierController extends Controller
                         'supplier_id' => $supplier->id,
                     ]);
                     $creditSyncWarning = $syncEx->getMessage();
+                }
+            }
+
+            if (!$governance['is_master']) {
+                try {
+                    app(\App\Services\Suppliers\SupplierMasterSyncService::class)->promoteLocalConnectionToMaster($supplier, $connection);
+                } catch (\Throwable) {
+                    // No interrumpir al usuario si falla la promoción al Master
                 }
             }
 

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import axios from "@axios";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
@@ -12,9 +12,10 @@ const props = defineProps({
   modelValue: { type: Boolean, required: true },
   supplier: { type: Object, default: () => ({}) },
   errors: { type: Object, default: () => ({}) },
+  isMaster: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["update:modelValue", "save", "clearErrors"]);
+const emit = defineEmits(["update:modelValue", "save", "clearErrors", "edit-existing"]);
 
 const isRestaurant = computed(() => brandingStore.isRestaurant);
 
@@ -37,7 +38,10 @@ const isFieldVisible = (fieldKey) => {
 const activeTab = ref(0);
 const baseForm = {
   id: null,
+  master_supplier_id: null,
+  sender_email: "",
   name: "",
+  logo_url: null,
   social_reason: "",
   rif: "",
   address: "",
@@ -63,6 +67,35 @@ const baseForm = {
 };
 const formData = ref({ ...baseForm });
 const formErrors = ref({});
+const logoFile = ref(null);
+const localLogoPreviewUrl = ref(null);
+
+const effectiveLogoUrl = computed(() => {
+  return localLogoPreviewUrl.value || formData.value.logo_url || null;
+});
+
+const handleLogoFileChange = (files) => {
+  if (localLogoPreviewUrl.value) {
+    URL.revokeObjectURL(localLogoPreviewUrl.value);
+    localLogoPreviewUrl.value = null;
+  }
+  const selected = Array.isArray(files) ? files[0] : files;
+  if (selected instanceof File) {
+    logoFile.value = selected;
+    localLogoPreviewUrl.value = URL.createObjectURL(selected);
+  } else {
+    logoFile.value = null;
+  }
+};
+
+const clearSelectedLogo = () => {
+  logoFile.value = null;
+  if (localLogoPreviewUrl.value) {
+    URL.revokeObjectURL(localLogoPreviewUrl.value);
+    localLogoPreviewUrl.value = null;
+  }
+  formData.value.logo_url = null;
+};
 
 const opciones = [
   { label: "Bs", value: "Bs" },
@@ -99,10 +132,164 @@ const isNewSupplier = computed(() => !props.supplier?.id);
 const isLookingUpMaster = ref(false);
 const masterFoundNotice = ref(null);
 
+// --- Buscador predictivo en Catálogo Maestro (Search-First) ---
+const selectedMasterSupplier = ref(null);
+const masterSearchQuery = ref("");
+const masterSearchResults = ref([]);
+const isSearchingMaster = ref(false);
+const linkedMasterSupplier = ref(null);
+const alreadyLocalMasterSupplier = ref(null);
+
+const showMasterSearch = computed(() => {
+  return isNewSupplier.value && !props.isMaster && (isRestaurant.value || !isExpenseSupplier.value);
+});
+
+const isMasterIdentityLocked = computed(() => Boolean(linkedMasterSupplier.value));
+
+const showSenderEmailInput = computed(() => {
+  if (!linkedMasterSupplier.value) return false;
+  const intType = linkedMasterSupplier.value.integration_type;
+  return Boolean(linkedMasterSupplier.value.has_excel_structure) || intType === "file" || intType === "email" || !intType;
+});
+
+const masterOptionSubtitle = (item) => {
+  const rifLabel = item.rif ? `RIF: ${item.rif}` : "Sin RIF";
+  if (item.is_installed) {
+    return `${rifLabel} • Ya está en tu catálogo`;
+  }
+  if (item.has_excel_structure) {
+    return `${rifLabel} • Plantilla Excel preconfigurada`;
+  }
+  return `${rifLabel} • Disponible en Red Master`;
+};
+
+let masterSearchDebounce = null;
+const fetchMasterOptions = async (search = "") => {
+  if (!showMasterSearch.value) return;
+  isSearchingMaster.value = true;
+  try {
+    const response = await axios.get("/suppliers-master-catalog", {
+      params: {
+        search: (search || "").trim(),
+        status: "all",
+        type: isRestaurant.value ? "all" : (formData.value.type || "drogueria"),
+        page: 1,
+        per_page: 15,
+      },
+    });
+    masterSearchResults.value = response.data?.data || [];
+  } catch (error) {
+    console.warn("No se pudo consultar el Catálogo Maestro:", error);
+  } finally {
+    isSearchingMaster.value = false;
+  }
+};
+
+const handleMasterSearchInput = (val) => {
+  const query = (val || "").trim();
+  if (selectedMasterSupplier.value && query === (selectedMasterSupplier.value.name || "").trim()) {
+    return;
+  }
+  clearTimeout(masterSearchDebounce);
+  masterSearchDebounce = setTimeout(() => {
+    fetchMasterOptions(query);
+  }, 300);
+};
+
+const applyMasterSupplierToForm = (ms) => {
+  formData.value.id = ms.master_id || ms.id;
+  formData.value.master_supplier_id = ms.master_id || ms.id;
+  formData.value.name = ms.name || formData.value.name;
+  formData.value.logo_url = ms.logo_url || formData.value.logo_url;
+  formData.value.social_reason = ms.social_reason || ms.name || formData.value.social_reason;
+  formData.value.rif = ms.rif || formData.value.rif;
+  if (ms.address) formData.value.address = ms.address;
+  if (ms.sales_phone) formData.value.sales_phone = ms.sales_phone;
+  if (ms.collections_phone) formData.value.collections_phone = ms.collections_phone;
+  if (ms.payment_email) formData.value.payment_email = ms.payment_email;
+  if (ms.credit_days !== undefined && ms.credit_days !== null) formData.value.credit_days = ms.credit_days;
+  if (ms.is_indexed !== undefined) formData.value.is_indexed = Boolean(ms.is_indexed);
+  if (ms.is_fiscal !== undefined) formData.value.is_fiscal = Boolean(ms.is_fiscal);
+  if (ms.type) formData.value.type = ms.type;
+  if (Array.isArray(ms.business_types) && ms.business_types.length > 0) {
+    formData.value.business_types = [...ms.business_types];
+  }
+};
+
+const unlinkMasterSupplier = (clearFields = false) => {
+  selectedMasterSupplier.value = null;
+  linkedMasterSupplier.value = null;
+  alreadyLocalMasterSupplier.value = null;
+  masterFoundNotice.value = null;
+  formData.value.master_supplier_id = null;
+  formData.value.sender_email = "";
+  if (clearFields) {
+    formData.value.id = null;
+    formData.value.name = "";
+    formData.value.social_reason = "";
+    formData.value.rif = "";
+    formData.value.address = "";
+    formData.value.sales_phone = "";
+    formData.value.collections_phone = "";
+    formData.value.payment_email = "";
+  }
+};
+
+const handleSelectMasterSupplier = (item) => {
+  if (!item) {
+    unlinkMasterSupplier(false);
+    return;
+  }
+
+  if (item.is_installed) {
+    alreadyLocalMasterSupplier.value = item;
+    linkedMasterSupplier.value = null;
+    masterFoundNotice.value = null;
+    formData.value.master_supplier_id = null;
+    return;
+  }
+
+  alreadyLocalMasterSupplier.value = null;
+  linkedMasterSupplier.value = item;
+  applyMasterSupplierToForm(item);
+
+  const templateNote = item.has_excel_structure
+    ? " Se copiará automáticamente su plantilla de Excel al guardar."
+    : "";
+  masterFoundNotice.value = `Proveedor oficial #${item.master_id} (${item.name}) vinculado desde la Red Master.${templateNote}`;
+};
+
+const useSearchTextAsNewSupplier = () => {
+  const raw = (masterSearchQuery.value || "").trim();
+  unlinkMasterSupplier(false);
+  masterSearchQuery.value = "";
+  if (!raw) return;
+
+  if (/^[VEJPGC]-?\d+/i.test(raw)) {
+    formData.value.rif = raw.toUpperCase();
+    handleRifInput();
+  } else {
+    formData.value.name = raw;
+    if (!formData.value.social_reason) {
+      formData.value.social_reason = raw;
+    }
+  }
+};
+
+const handleOpenExistingFromMaster = () => {
+  if (!alreadyLocalMasterSupplier.value?.tenant_supplier_id) return;
+  emit("edit-existing", {
+    id: alreadyLocalMasterSupplier.value.tenant_supplier_id,
+    name: alreadyLocalMasterSupplier.value.name,
+    rif: alreadyLocalMasterSupplier.value.rif,
+  });
+};
+
 let lookupTimer = null;
 const handleRifInput = () => {
-  if (!isNewSupplier.value) return;
+  if (!isNewSupplier.value || linkedMasterSupplier.value) return;
   masterFoundNotice.value = null;
+  alreadyLocalMasterSupplier.value = null;
   clearTimeout(lookupTimer);
 
   const rawRif = (formData.value.rif || "").trim();
@@ -115,16 +302,11 @@ const handleRifInput = () => {
       const data = res.data?.data || res.data || {};
       if (data.found_in_master && data.supplier) {
         const ms = data.supplier;
-        formData.value.id = ms.id;
-        formData.value.name = ms.name || formData.value.name;
-        formData.value.social_reason = ms.social_reason || formData.value.name;
-        if (ms.address) formData.value.address = ms.address;
-        if (ms.sales_phone) formData.value.sales_phone = ms.sales_phone;
-        if (ms.collections_phone) formData.value.collections_phone = ms.collections_phone;
-        if (ms.payment_email) formData.value.payment_email = ms.payment_email;
-        if (ms.credit_days) formData.value.credit_days = ms.credit_days;
-        if (ms.is_indexed !== undefined) formData.value.is_indexed = Boolean(ms.is_indexed);
-        if (ms.type) formData.value.type = ms.type;
+        linkedMasterSupplier.value = {
+          ...ms,
+          master_id: ms.master_id || ms.id,
+        };
+        applyMasterSupplierToForm(ms);
         masterFoundNotice.value = `¡Proveedor oficial detectado en Catálogo Maestro (#${ms.id}: ${ms.name})! Datos e ID oficial autocompletados.`;
         toast.success(`Proveedor oficial ${ms.name} (#${ms.id}) cargado desde el Catálogo Maestro.`);
       } else if (data.exists_locally) {
@@ -152,9 +334,15 @@ const submitForm = () => {
   formErrors.value = {};
   emit("clearErrors");
 
+  if (alreadyLocalMasterSupplier.value) {
+    toast.warning("Este proveedor ya está registrado en tu catálogo. Edítalo desde la lista o selecciona otro.");
+    return;
+  }
+
   const original = props.supplier || {};
   const current = formData.value;
   const payload = {};
+  const transientKeys = ["master_supplier_id", "sender_email"];
 
   // Asegurar razón social por defecto si se colocó nombre comercial
   if (!current.social_reason && current.name) {
@@ -164,6 +352,7 @@ const submitForm = () => {
 
   if (isRestaurant.value) {
     Object.entries(current).forEach(([key, value]) => {
+      if (transientKeys.includes(key)) return;
       const originalValue = original[key];
       const hasChanged =
         typeof value === "object" && value !== null
@@ -177,6 +366,7 @@ const submitForm = () => {
     payload.type = "externo";
   } else {
     Object.entries(current).forEach(([key, value]) => {
+      if (transientKeys.includes(key)) return;
       const originalValue = original[key];
       const hasChanged =
         typeof value === "object" && value !== null
@@ -216,14 +406,28 @@ const submitForm = () => {
     if (!cleanData.id) {
       delete cleanData.id;
     }
-    if (isRestaurant.value) {
+    if (!cleanData.master_supplier_id) {
+      delete cleanData.master_supplier_id;
+    }
+    if (!cleanData.sender_email || !cleanData.sender_email.trim()) {
+      delete cleanData.sender_email;
+    } else {
+      cleanData.sender_email = cleanData.sender_email.trim();
+    }
+    if (isRestaurant.value && !cleanData.master_supplier_id) {
       cleanData.type = "externo";
+    }
+    if (props.isMaster && logoFile.value) {
+      cleanData.logo = logoFile.value;
     }
     emit("save", cleanData);
   } else {
     // Si la razón social tiene valor y no está en el payload, incluirla para consistencia
     if (current.social_reason && payload.social_reason === undefined) {
       payload.social_reason = current.social_reason;
+    }
+    if (props.isMaster && logoFile.value) {
+      payload.logo = logoFile.value;
     }
     emit("save", payload);
   }
@@ -239,6 +443,17 @@ watch(
 );
 
 const initForm = () => {
+  selectedMasterSupplier.value = null;
+  masterSearchQuery.value = "";
+  linkedMasterSupplier.value = null;
+  alreadyLocalMasterSupplier.value = null;
+  masterFoundNotice.value = null;
+  logoFile.value = null;
+  if (localLogoPreviewUrl.value) {
+    URL.revokeObjectURL(localLogoPreviewUrl.value);
+    localLogoPreviewUrl.value = null;
+  }
+
   const newSupplier = props.supplier;
   if (newSupplier && Object.keys(newSupplier).length > 0) {
     const parsed = JSON.parse(JSON.stringify(newSupplier));
@@ -265,6 +480,10 @@ const initForm = () => {
   }
   formErrors.value = {};
   activeTab.value = 0;
+
+  if (showMasterSearch.value) {
+    fetchMasterOptions("");
+  }
 };
 
 watch(
@@ -275,6 +494,15 @@ watch(
     }
   },
   { deep: true, immediate: true },
+);
+
+watch(
+  () => formData.value.type,
+  () => {
+    if (showMasterSearch.value && props.modelValue) {
+      fetchMasterOptions(masterSearchQuery.value);
+    }
+  },
 );
 
 watch(
@@ -290,12 +518,19 @@ watch(
   },
   { immediate: true },
 );
+
+onUnmounted(() => {
+  if (lookupTimer) clearTimeout(lookupTimer);
+  if (masterSearchDebounce) clearTimeout(masterSearchDebounce);
+  if (localLogoPreviewUrl.value) URL.revokeObjectURL(localLogoPreviewUrl.value);
+});
 </script>
 
 <template>
   <VDialog
     :model-value="props.modelValue"
     max-width="920px"
+    :fullscreen="$vuetify.display.mobile"
     persistent
     scrollable
     @update:model-value="closeDialog"
@@ -311,7 +546,13 @@ watch(
               size="40"
               class="me-3 elevation-2"
             >
+              <VImg
+                v-if="effectiveLogoUrl"
+                :src="effectiveLogoUrl"
+                cover
+              />
               <VIcon
+                v-else
                 icon="tabler-truck-delivery"
                 color="primary"
                 size="24"
@@ -360,6 +601,154 @@ watch(
 
       <!-- Contenido del Formulario en 2 Columnas -->
       <VCardText class="pa-4 pa-sm-6 bg-light flex-grow-1 overflow-y-auto">
+        <!-- Buscador Predictivo en Red Master (Search-First) -->
+        <VCard
+          v-if="showMasterSearch"
+          variant="outlined"
+          class="pa-4 mb-4 rounded-lg bg-surface border-card"
+        >
+          <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+            <div class="d-flex align-center gap-2">
+              <VIcon icon="tabler-database-search" color="primary" size="20" />
+              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
+                Buscar en Red Master de Proveedores
+              </span>
+            </div>
+            <VBtn
+              v-if="linkedMasterSupplier"
+              variant="text"
+              color="secondary"
+              size="x-small"
+              prepend-icon="tabler-link-off"
+              @click="unlinkMasterSupplier(true)"
+            >
+              Desvincular y llenar manual
+            </VBtn>
+          </div>
+
+          <p class="text-caption text-medium-emphasis mb-3">
+            Busca primero por nombre o RIF si este proveedor ya existe en el centro de datos para importar su ficha y plantillas de Excel automáticamente. Si no aparece, créalo debajo.
+          </p>
+
+          <VAutocomplete
+            v-model="selectedMasterSupplier"
+            v-model:search="masterSearchQuery"
+            :items="masterSearchResults"
+            :loading="isSearchingMaster"
+            item-title="name"
+            item-value="master_id"
+            return-object
+            no-filter
+            clearable
+            density="comfortable"
+            variant="outlined"
+            hide-details="auto"
+            prepend-inner-icon="tabler-search"
+            placeholder="Escribe el nombre comercial o RIF (ej. Dronena, Cobeca, J-12345678-9)..."
+            @update:search="handleMasterSearchInput"
+            @update:model-value="handleSelectMasterSupplier"
+          >
+            <template #item="{ props: itemProps, item }">
+              <VListItem
+                v-bind="itemProps"
+                :subtitle="masterOptionSubtitle(item.raw)"
+              >
+                <template #prepend>
+                  <VAvatar size="32" color="primary" variant="tonal" rounded="lg" class="me-2">
+                    <VImg v-if="item.raw.logo_url" :src="item.raw.logo_url" cover />
+                    <VIcon v-else icon="tabler-building-store" size="18" />
+                  </VAvatar>
+                </template>
+                <template #append>
+                  <VChip
+                    v-if="item.raw.is_installed"
+                    color="warning"
+                    size="x-small"
+                    variant="tonal"
+                  >
+                    Ya en tu catálogo
+                  </VChip>
+                  <VChip
+                    v-else-if="item.raw.has_excel_structure"
+                    color="success"
+                    size="x-small"
+                    variant="tonal"
+                    prepend-icon="tabler-file-spreadsheet"
+                  >
+                    Excel listo
+                  </VChip>
+                  <VChip
+                    v-else
+                    color="info"
+                    size="x-small"
+                    variant="tonal"
+                  >
+                    Disponible
+                  </VChip>
+                </template>
+              </VListItem>
+            </template>
+
+            <template #no-data>
+              <div class="pa-3 d-flex align-center justify-space-between flex-wrap gap-2">
+                <span class="text-caption text-medium-emphasis">
+                  {{ isSearchingMaster ? 'Buscando en Red Master...' : 'No se encontraron coincidencias en la Red Master.' }}
+                </span>
+                <VBtn
+                  v-if="masterSearchQuery && masterSearchQuery.trim().length > 1 && !isSearchingMaster"
+                  variant="tonal"
+                  color="primary"
+                  size="small"
+                  prepend-icon="tabler-plus"
+                  @click="useSearchTextAsNewSupplier"
+                >
+                  Crear "{{ masterSearchQuery.trim() }}" como nuevo
+                </VBtn>
+              </div>
+            </template>
+          </VAutocomplete>
+
+          <!-- Aviso si el proveedor ya pertenece al tenant actual -->
+          <VAlert
+            v-if="alreadyLocalMasterSupplier"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mt-3 rounded-lg"
+          >
+            <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+              <span class="text-caption font-weight-medium">
+                <strong>{{ alreadyLocalMasterSupplier.name }}</strong> ya está registrado en tu catálogo (#{{ alreadyLocalMasterSupplier.tenant_supplier_id }}).
+              </span>
+              <VBtn
+                color="warning"
+                variant="flat"
+                size="x-small"
+                prepend-icon="tabler-edit"
+                @click="handleOpenExistingFromMaster"
+              >
+                Editar existente
+              </VBtn>
+            </div>
+          </VAlert>
+
+          <!-- Configuración rápida local cuando se vincula desde el Master -->
+          <VRow v-if="linkedMasterSupplier && showSenderEmailInput" dense class="mt-3">
+            <VCol cols="12">
+              <AppTextField
+                v-model="formData.sender_email"
+                label="Correo remitente de listas de precios (Opcional)"
+                type="email"
+                placeholder="ejemplo: listas@drogueria.com"
+                prepend-inner-icon="tabler-mail"
+                :error-messages="formErrors.sender_email"
+                hint="Si recibes el catálogo Excel por correo, indícalo aquí para dejar la importación automática lista al crear."
+                persistent-hint
+              />
+            </VCol>
+          </VRow>
+        </VCard>
+
         <VForm @submit.prevent="submitForm">
           <VWindow v-model="activeTab">
             <!-- PESTAÑA 1: Identificación Fiscal & Contacto/Condiciones (2 Columnas) -->
@@ -388,12 +777,12 @@ watch(
                         />
                       </VCol>
 
-                      <VCol cols="12" v-if="authStore.isAdmin">
+                      <VCol cols="12" v-if="authStore.isAdmin && props.isMaster">
                         <div class="d-flex align-center justify-space-between pa-3 rounded-lg border bg-light-surface">
                           <div class="d-flex flex-column">
                             <span class="text-caption font-weight-bold">Estado del Proveedor</span>
                             <span class="text-xxs text-disabled">
-                              {{ formData.is_active ? 'Proveedor activo para compras y sincronizaciones' : 'Desactivado (al final de la lista, sin conexiones)' }}
+                              {{ formData.is_active ? 'Proveedor activo en Catálogo Maestro' : 'Inactivo en Catálogo Maestro' }}
                             </span>
                           </div>
                           <VSwitch
@@ -402,6 +791,33 @@ watch(
                             hide-details
                             density="compact"
                           />
+                        </div>
+                      </VCol>
+
+                      <VCol cols="12" v-if="props.isMaster">
+                        <div class="d-flex align-center gap-3 pa-3 rounded-lg border bg-light-surface">
+                          <VAvatar size="48" color="primary" variant="tonal" rounded="lg" class="flex-shrink-0">
+                            <VImg v-if="effectiveLogoUrl" :src="effectiveLogoUrl" cover />
+                            <VIcon v-else icon="tabler-photo" size="24" />
+                          </VAvatar>
+                          <div class="flex-grow-1">
+                            <VFileInput
+                              :model-value="logoFile ? [logoFile] : []"
+                              label="Logo / Imagen Oficial (Solo Master)"
+                              accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml"
+                              prepend-icon=""
+                              prepend-inner-icon="tabler-upload"
+                              density="compact"
+                              variant="outlined"
+                              clearable
+                              hide-details="auto"
+                              :error-messages="formErrors.logo"
+                              hint="Se mostrará automáticamente en el listado de las farmacias"
+                              persistent-hint
+                              @update:model-value="handleLogoFileChange"
+                              @click:clear="clearSelectedLogo"
+                            />
+                          </div>
                         </div>
                       </VCol>
 
@@ -470,7 +886,7 @@ watch(
                           prepend-inner-icon="tabler-id-badge-2"
                           :loading="isLookingUpMaster"
                           :error-messages="formErrors.rif"
-                          :readonly="isReadOnly"
+                          :readonly="isReadOnly || isMasterIdentityLocked"
                           @update:model-value="handleRifInput"
                         />
                         <VAlert
@@ -788,6 +1204,7 @@ watch(
               size="large"
               block
               height="44"
+              :disabled="Boolean(alreadyLocalMasterSupplier)"
               class="font-weight-bold rounded-lg shadow-primary text-button"
               @click="submitForm"
             >

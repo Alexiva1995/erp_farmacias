@@ -24,7 +24,7 @@ class UpdatePaymentRuleSupplierRequest extends FormRequest
     public function rules()
     {
         return [
-            'rules' => 'required|array',
+            'rules' => 'present|array',
             'rules.*.days' => 'required|integer|min:0',
             'rules.*.id' => 'nullable|integer',
             'rules.*.discount_percentage' => 'required|numeric|min:0|max:100'

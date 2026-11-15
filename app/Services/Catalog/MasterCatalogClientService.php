@@ -77,6 +77,21 @@ class MasterCatalogClientService
     }
 
     /**
+     * Promueve la estructura técnica de conexión hacia el Catálogo Maestro (sin credenciales).
+     */
+    public function promoteConnectionStructureToMaster(
+        int $masterSupplierId,
+        array $connectionData,
+        ?string $supplierName = null
+    ): void {
+        $this->localMasterService->promoteConnectionStructureToMaster(
+            $masterSupplierId,
+            $connectionData,
+            $supplierName
+        );
+    }
+
+    /**
      * Registrar origen en el Catálogo Maestro para obtener ID oficial unificado.
      */
     public function registerOriginInMaster(array $data): ?array

@@ -29,6 +29,7 @@ class Supplier extends Model
     protected $fillable = [
         'id',
         'name',
+        'logo_url',
         'social_reason',
         'rif',
         'provider_tenant_id',
@@ -85,11 +86,9 @@ class Supplier extends Model
 
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
-     * Esto es muy útil para manejar JSON, booleanos, fechas, etc.
      *
      * @var array<string, string>
      */
-
     protected $appends = ['debt', 'latest_score_value', 'score_breakdown'];
 
     public function getLatestScoreValueAttribute()
@@ -172,6 +171,16 @@ class Supplier extends Model
         return $this->hasOne(SupplierScore::class)->latestOfMany('evaluated_on');
     }
 
+    public function connectionStatuses(): HasMany
+    {
+        return $this->hasMany(SupplierConnectionStatus::class);
+    }
+
+    public function latestConnectionStatus()
+    {
+        return $this->hasOne(SupplierConnectionStatus::class)->latestOfMany();
+    }
+
     public function getDebtAttribute(): float
     {
         if (array_key_exists('invoices_sum_total_usd', $this->attributes)) {
@@ -203,23 +212,24 @@ class Supplier extends Model
     }
 
     /**
-     * Obtiene la conexión prioritaria según el orden:
+     * Obtiene la conexión prioritaria de sincronización según el orden:
      * 1. API / HTTP
      * 2. FTP / SFTP
      * 3. Email / File
-     * 4. Bot (dronena_bot, drosymca_bot, etc.)
+     * Los bots de scraping están separados en su propia sección.
      */
     public function getPriorityConnection(): ?SupplierConnection
     {
-        $conns = $this->connections;
+        $conns = $this->connections->filter(
+            fn ($c) => !str_contains((string) ($c->type ?? ''), 'bot')
+        );
         if ($conns->isEmpty()) {
             return null;
         }
 
-        return $conns->first(fn($c) => in_array($c->type, ['api', 'http']))
-            ?? $conns->first(fn($c) => in_array($c->type, ['ftp', 'sftp']))
-            ?? $conns->first(fn($c) => in_array($c->type, ['email', 'file']))
-            ?? $conns->first(fn($c) => str_contains($c->type ?? '', 'bot'))
+        return $conns->first(fn ($c) => in_array($c->type, ['api', 'http']))
+            ?? $conns->first(fn ($c) => in_array($c->type, ['ftp', 'sftp']))
+            ?? $conns->first(fn ($c) => in_array($c->type, ['email', 'file']))
             ?? $conns->first();
     }
 
@@ -241,4 +251,3 @@ class Supplier extends Model
         return $this->hasOne(SupplierPaymentMethod::class);
     }
 }
-

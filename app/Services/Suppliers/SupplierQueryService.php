@@ -42,7 +42,8 @@ class SupplierQueryService
         $isMaster = request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master');
         if ($isMaster) {
             return $this->supplierRepository->getQuery()
-                ->with('connections')
+                ->with(['connections'])
+                ->withCount('productSuppliers')
                 ->where(function ($q) {
                     $q->where('type', '!=', 'externo')
                       ->orWhereNull('type');
@@ -57,6 +58,8 @@ class SupplierQueryService
         $currentYearStart = \Carbon\Carbon::now()->startOfYear();
 
         return $this->supplierRepository->getQuery()
+            ->with(['connections', 'latestScore', 'latestConnectionStatus'])
+            ->withCount('productSuppliers')
             ->withSum(['invoices as invoices_sum_total_usd' => function ($q) use ($currentYearStart) {
                 $q->where(function ($sq) {
                     $sq->whereNull('status_payment')
@@ -124,6 +127,17 @@ class SupplierQueryService
             }
         }
 
+        if ($filters["minScore"] !== null && $filters["minScore"] !== "" && is_numeric($filters["minScore"])) {
+            $minScoreVal = (float) $filters["minScore"];
+            $query->whereRaw("COALESCE((
+                SELECT ss.score
+                FROM supplier_scores ss
+                WHERE ss.supplier_id = suppliers.id
+                ORDER BY ss.evaluated_on DESC, ss.id DESC
+                LIMIT 1
+            ), 0) >= ?", [$minScoreVal]);
+        }
+
         return $query;
     }
 
@@ -159,6 +173,7 @@ class SupplierQueryService
                     SELECT sc.last_connection 
                     FROM supplier_connections sc 
                     WHERE sc.supplier_id = suppliers.id 
+                    AND sc.type NOT LIKE '%bot%'
                     ORDER BY sc.last_connection DESC 
                     LIMIT 1
                 )");
@@ -197,7 +212,9 @@ class SupplierQueryService
         $filters = [
             "q" => $request->q,
             "type" => $request->type,
+            "business_type" => $request->business_type,
             "debtStatus" => $request->debtStatus,
+            "minScore" => $request->minScore,
         ];
 
         $this->applyFilters($query, $filters);
@@ -856,6 +873,7 @@ class SupplierQueryService
         $searchTerm = $filters["search"] ?? $filters["selectedSupplier"] ?? null;
 
         $priorityConnections = DB::table("supplier_connections")
+            ->where("type", "NOT LIKE", "%bot%")
             ->select(
                 "supplier_connections.*",
                 DB::raw("ROW_NUMBER() OVER (
@@ -864,8 +882,7 @@ class SupplierQueryService
                         WHEN type IN ('api', 'http') THEN 1
                         WHEN type IN ('ftp', 'sftp') THEN 2
                         WHEN type IN ('email', 'file') THEN 3
-                        WHEN type LIKE '%bot%' OR type LIKE '%_bot' THEN 4
-                        ELSE 5 
+                        ELSE 4 
                     END ASC,
                     id DESC
                 ) as rn")
@@ -1510,9 +1527,11 @@ class SupplierQueryService
             });
             $totalSuppliers = $masterSuppliersQuery->count();
             $masterSupplierIds = $masterSuppliersQuery->pluck('id');
-            $connections = SupplierConnection::whereIn('supplier_id', $masterSupplierIds)->get();
+            $connections = SupplierConnection::whereIn('supplier_id', $masterSupplierIds)
+                ->where('type', 'NOT LIKE', '%bot%')
+                ->get();
             $withExcel = $connections->filter(fn($c) => in_array($c->type, ['file', 'email']) && !empty($c->structure))->pluck('supplier_id')->unique()->count();
-            $withApiOrFtp = $connections->filter(fn($c) => in_array($c->type, ['ftp', 'sftp', 'api', 'http', 'dronena_bot', 'drosymca_bot']))->pluck('supplier_id')->unique()->count();
+            $withApiOrFtp = $connections->filter(fn($c) => in_array($c->type, ['ftp', 'sftp', 'api', 'http']))->pluck('supplier_id')->unique()->count();
             $withoutStructure = max(0, $totalSuppliers - $connections->filter(fn($c) => !empty($c->structure) || in_array($c->type, ['ftp', 'api', 'http']))->pluck('supplier_id')->unique()->count());
 
             $allMasterSuppliers = $masterSuppliersQuery->get(['id', 'business_types']);
@@ -1669,6 +1688,7 @@ class SupplierQueryService
                 'supplier'        => [
                     'id'            => $local->id,
                     'name'          => $local->name,
+                    'logo_url'      => $local->logo_url,
                     'rif'           => $local->rif,
                     'social_reason' => $local->social_reason,
                     'address'       => $local->address,
@@ -1692,7 +1712,9 @@ class SupplierQueryService
                     'found_in_master' => true,
                     'supplier'        => [
                         'id'            => (int) $masterSup['id'],
+                        'master_id'     => (int) $masterSup['id'],
                         'name'          => $masterSup['name'] ?? null,
+                        'logo_url'      => $masterSup['logo_url'] ?? null,
                         'rif'           => $masterSup['rif'] ?? $rif,
                         'social_reason' => $masterSup['social_reason'] ?? $masterSup['name'] ?? null,
                         'address'       => $masterSup['address'] ?? null,
@@ -1701,7 +1723,9 @@ class SupplierQueryService
                         'payment_email' => $masterSup['payment_email'] ?? null,
                         'credit_days'   => isset($masterSup['credit_days']) ? (int) $masterSup['credit_days'] : 0,
                         'is_indexed'    => (bool) ($masterSup['is_indexed'] ?? false),
+                        'is_fiscal'     => isset($masterSup['is_fiscal']) ? (bool) $masterSup['is_fiscal'] : true,
                         'type'          => $masterSup['type'] ?? 'drogueria',
+                        'business_types' => $masterSup['business_types'] ?? [],
                     ],
                 ];
             }
@@ -1714,6 +1738,225 @@ class SupplierQueryService
             'found_in_master' => false,
             'supplier'        => null,
         ];
+    }
+
+    /**
+     * Adjunta en lote logotipo oficial y tipos de conexión habilitados desde tovaerp_master
+     * evitando consultas N+1 durante el listado paginado de proveedores.
+     *
+     * @param iterable<int, Supplier> $suppliers
+     */
+    public function attachMasterMetadata(iterable $suppliers): void
+    {
+        $isMaster = request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master');
+        $items = collect($suppliers)->values();
+        if ($isMaster || $items->isEmpty()) {
+            return;
+        }
+
+        try {
+            $masterConn = 'master_catalog';
+            if (!\Illuminate\Support\Facades\Schema::connection($masterConn)->hasTable('suppliers')) {
+                return;
+            }
+
+            $ids = $items->pluck('id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+            $cleanRifs = $items->map(function ($sup) {
+                return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($sup->rif ?? ''))));
+            })->filter()->unique()->values()->all();
+
+            $hasLogoCol = \Illuminate\Support\Facades\Schema::connection($masterConn)->hasColumn('suppliers', 'logo_url');
+            $selectCols = $hasLogoCol ? ['id', 'rif', 'logo_url'] : ['id', 'rif'];
+
+            $masterSups = DB::connection($masterConn)->table('suppliers')
+                ->select($selectCols)
+                ->where(function ($q) use ($ids, $cleanRifs) {
+                    if (!empty($ids)) {
+                        $q->whereIn('id', $ids);
+                    }
+                    if (!empty($cleanRifs)) {
+                        $placeholders = implode(',', array_fill(0, count($cleanRifs), '?'));
+                        $q->orWhereRaw(
+                            "UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) IN ({$placeholders})",
+                            $cleanRifs
+                        );
+                    }
+                })
+                ->get();
+
+            $byId = $masterSups->keyBy('id');
+            $byCleanRif = [];
+            foreach ($masterSups as $m) {
+                $k = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($m->rif ?? ''))));
+                if ($k !== '') {
+                    $byCleanRif[$k] = $m;
+                }
+            }
+
+            $masterIds = $masterSups->pluck('id')->filter()->unique()->values()->all();
+            $connsByMasterId = collect();
+            if (!empty($masterIds) && \Illuminate\Support\Facades\Schema::connection($masterConn)->hasTable('supplier_connections')) {
+                $connsByMasterId = DB::connection($masterConn)->table('supplier_connections')
+                    ->whereIn('supplier_id', $masterIds)
+                    ->where('type', 'NOT LIKE', '%bot%')
+                    ->select(['supplier_id', 'type'])
+                    ->get()
+                    ->groupBy('supplier_id');
+            }
+
+            foreach ($items as $sup) {
+                $k = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($sup->rif ?? ''))));
+                $m = ($k !== '' && isset($byCleanRif[$k])) ? $byCleanRif[$k] : $byId->get($sup->id);
+                if (!$m) {
+                    continue;
+                }
+
+                if ($hasLogoCol && !empty($m->logo_url)) {
+                    $sup->setAttribute('master_logo_url', $m->logo_url);
+                }
+
+                $allowed = $connsByMasterId->get($m->id, collect())
+                    ->pluck('type')
+                    ->map(fn ($t) => strtolower(trim((string) $t)))
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                if (!empty($allowed)) {
+                    $sup->setAttribute('master_allowed_connection_types', $allowed);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::debug('No se pudo adjuntar metadata del Master en listado de proveedores: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Obtiene los canales de conexión permitidos y plantillas técnicas oficiales desde tovaerp_master
+     * para un proveedor dado (nunca expone credenciales privadas de terceros).
+     *
+     * @return array{is_master: bool, master_supplier_id: int|null, allowed_types: array<int, string>, master_templates: array<string, array<string, mixed>>}
+     */
+    public function getMasterConnectionGovernance(Supplier $supplier): array
+    {
+        $isMaster = request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master');
+        $defaultAllTypes = ['api', 'ftp', 'sftp', 'file'];
+
+        $typeVal = $supplier->type instanceof \App\Enums\SupplierType
+            ? $supplier->type->value
+            : (string) ($supplier->type ?? 'drogueria');
+
+        if ($typeVal === 'externo') {
+            return [
+                'is_master' => $isMaster,
+                'master_supplier_id' => null,
+                'allowed_types' => [],
+                'master_templates' => [],
+            ];
+        }
+
+        if ($isMaster) {
+            return [
+                'is_master' => true,
+                'master_supplier_id' => (int) $supplier->id,
+                'allowed_types' => $defaultAllTypes,
+                'master_templates' => [],
+            ];
+        }
+
+        try {
+            $masterConn = 'master_catalog';
+            if (
+                !\Illuminate\Support\Facades\Schema::connection($masterConn)->hasTable('suppliers')
+                || !\Illuminate\Support\Facades\Schema::connection($masterConn)->hasTable('supplier_connections')
+            ) {
+                return [
+                    'is_master' => false,
+                    'master_supplier_id' => null,
+                    'allowed_types' => ['file'],
+                    'master_templates' => [],
+                ];
+            }
+
+            $cleanRif = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($supplier->rif ?? ''))));
+            $masterSup = DB::connection($masterConn)->table('suppliers')
+                ->where(function ($q) use ($supplier, $cleanRif) {
+                    $q->where('id', $supplier->id);
+                    if ($cleanRif !== '') {
+                        $q->orWhereRaw("UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) = ?", [$cleanRif]);
+                    }
+                })
+                ->first(['id', 'name']);
+
+            if (!$masterSup) {
+                return [
+                    'is_master' => false,
+                    'master_supplier_id' => null,
+                    'allowed_types' => ['file'],
+                    'master_templates' => [],
+                ];
+            }
+
+            $masterConns = DB::connection($masterConn)->table('supplier_connections')
+                ->where('supplier_id', $masterSup->id)
+                ->where('type', 'NOT LIKE', '%bot%')
+                ->get();
+
+            if ($masterConns->isEmpty()) {
+                return [
+                    'is_master' => false,
+                    'master_supplier_id' => (int) $masterSup->id,
+                    'allowed_types' => ['file'],
+                    'master_templates' => [],
+                ];
+            }
+
+            $allowedTypes = [];
+            $templates = [];
+
+            foreach ($masterConns as $conn) {
+                $t = strtolower(trim((string) ($conn->type ?? 'file')));
+                if ($t === '' || str_contains($t, 'bot')) {
+                    continue;
+                }
+                if (!in_array($t, $allowedTypes, true)) {
+                    $allowedTypes[] = $t;
+                }
+
+                $templates[$t] = [
+                    'type'                => $t,
+                    'host'                => $conn->host,
+                    'port'                => $conn->port,
+                    'path'                => $conn->path,
+                    'invoice_path'        => $conn->invoice_path,
+                    'pasv'                => (bool) ($conn->pasv ?? true),
+                    'has_header'          => (bool) ($conn->has_header ?? false),
+                    'has_structure'       => !empty($conn->structure),
+                    'credit_days_cod_col' => $conn->credit_days_cod_col ?? null,
+                    'credit_days_col'     => $conn->credit_days_col ?? null,
+                ];
+            }
+
+            if (empty($allowedTypes)) {
+                $allowedTypes = ['file'];
+            }
+
+            return [
+                'is_master' => false,
+                'master_supplier_id' => (int) $masterSup->id,
+                'allowed_types' => $allowedTypes,
+                'master_templates' => $templates,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning("Error consultando gobernanza de conexiones en Master para proveedor #{$supplier->id}: " . $e->getMessage());
+            return [
+                'is_master' => false,
+                'master_supplier_id' => null,
+                'allowed_types' => ['file'],
+                'master_templates' => [],
+            ];
+        }
     }
 }
 

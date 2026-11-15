@@ -10,7 +10,11 @@ use App\Models\ProductSupplier;
 use App\Models\Supplier;
 use App\Models\SupplierDiscount;
 use App\Models\SupplierLaboratory;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class SupplierActionService
 {
@@ -19,33 +23,58 @@ class SupplierActionService
     ) {}
 
     /**
-     * Crea un nuevo proveedor.
+     * Crea un nuevo proveedor y sincroniza su ficha/plantillas con tovaerp_master.
      *
-     * @param array $validatedData 
-     * @return Supplier 
+     * @param array<string, mixed> $validatedData
+     * @return Supplier
      */
-        public function createSupplier(array $validatedData): Supplier
+    public function createSupplier(array $validatedData): Supplier
     {
+        $masterSupplierId = !empty($validatedData['master_supplier_id'])
+            ? (int) $validatedData['master_supplier_id']
+            : null;
+        $senderEmail = !empty($validatedData['sender_email'])
+            ? trim((string) $validatedData['sender_email'])
+            : null;
+
+        $logoFile = $validatedData['logo'] ?? null;
+        unset($validatedData['master_supplier_id'], $validatedData['sender_email'], $validatedData['logo']);
+
+        $isMasterContext = request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master');
+        if ($isMasterContext && $logoFile instanceof UploadedFile) {
+            $validatedData['logo_url'] = $this->storeSupplierLogo($logoFile);
+        } elseif (!$isMasterContext) {
+            // En contexto tenant el logotipo siempre proviene del Master
+            unset($validatedData['logo_url']);
+        }
+
         $type = $validatedData['type'] ?? 'drogueria';
         $typeValue = $type instanceof \App\Enums\SupplierType ? $type->value : (string) $type;
+        $resolvedMasterId = $masterSupplierId;
 
-        // Solo droguerías / mercancía farmacéutica se registran en el Catálogo Maestro central (tovaerp_master)
-        // para unificar y obtener el ID oficial sin propagarse a los demás tenants.
+        // Solo droguerías / mercancía farmacéutica se registran y sincronizan con el Catálogo Maestro central (tovaerp_master).
         // Proveedores de gastos ('externo') son locales del tenant.
-        if ($typeValue !== 'externo') {
+        if ($typeValue !== 'externo' && !$isMasterContext) {
             try {
                 $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
                 $masterSupplier = $masterClient->registerSupplierInMaster($validatedData);
+
                 if (!empty($masterSupplier['id'])) {
-                    $masterId = (int) $masterSupplier['id'];
-                    if (!Supplier::where('id', $masterId)->exists()) {
-                        $validatedData['id'] = $masterId;
-                    }
+                    $resolvedMasterId = (int) $masterSupplier['id'];
+                }
+
+                // Jalar logotipo oficial del Master hacia el tenant
+                if (!empty($masterSupplier['logo_url'])) {
+                    $validatedData['logo_url'] = $masterSupplier['logo_url'];
+                }
+
+                if ($resolvedMasterId && !Supplier::withTrashed()->where('id', $resolvedMasterId)->exists()) {
+                    $validatedData['id'] = $resolvedMasterId;
                 }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('No se pudo sincronizar proveedor con Master Catalog: ' . $e->getMessage());
             }
-        } else {
+        } elseif ($typeValue === 'externo') {
             unset($validatedData['id']);
         }
 
@@ -56,21 +85,127 @@ class SupplierActionService
         if (!isset($validatedData['order_days']) || $validatedData['order_days'] === null) {
             $validatedData['order_days'] = [];
         }
+        $validatedData['is_active'] = true;
 
-        return $this->supplierRepository->create($validatedData);
+        // Si el proveedor existía eliminado lógicamente en el tenant, restaurarlo en lugar de duplicar
+        $trashedSupplier = $this->findTrashedLocalSupplier($resolvedMasterId, $validatedData['rif'] ?? null);
+        if ($trashedSupplier) {
+            $trashedSupplier->restore();
+            $restoreData = $validatedData;
+            unset($restoreData['id']);
+            $supplier = $this->supplierRepository->update($trashedSupplier, $restoreData);
+        } else {
+            $supplier = $this->supplierRepository->create($validatedData);
+        }
+
+        // Clonar automáticamente plantillas técnicas (Excel, FTP, API) desde tovaerp_master si existen
+        if (!$isMasterContext && $typeValue !== 'externo' && $resolvedMasterId) {
+            try {
+                app(SupplierMasterSyncService::class)->syncMasterConnectionsToLocalSupplier(
+                    localSup: $supplier,
+                    masterSupplierId: $resolvedMasterId,
+                    senderEmail: $senderEmail,
+                    createFallbackFileConnection: !empty($senderEmail)
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("No se pudieron clonar las conexiones del Master para el proveedor #{$supplier->id}: " . $e->getMessage());
+            }
+        }
+
+        if (!$isMasterContext && Schema::hasTable('supplier_scores')) {
+            try {
+                app(SupplierEvaluationService::class)->evaluate($supplier);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("No se pudo calcular evaluación inicial para proveedor #{$supplier->id}: " . $e->getMessage());
+            }
+        }
+
+        return $supplier->fresh('connections') ?? $supplier;
     }
+
     public function updateSupplier(Supplier $supplier, array $validatedData): Supplier
     {
-        return $this->supplierRepository->update($supplier, $validatedData);
+        $logoFile = $validatedData['logo'] ?? null;
+        unset($validatedData['logo']);
+
+        $isMasterContext = request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master');
+        if ($isMasterContext) {
+            if ($logoFile instanceof UploadedFile) {
+                $validatedData['logo_url'] = $this->storeSupplierLogo($logoFile, $supplier->logo_url);
+            }
+        } else {
+            // En tenant no se sobrescribe manualmente el logo del Master
+            unset($validatedData['logo_url']);
+        }
+
+        $updated = $this->supplierRepository->update($supplier, $validatedData);
+
+        $isTenant = function_exists('tenancy') && tenancy()->initialized;
+        $typeValue = $updated->type instanceof \App\Enums\SupplierType
+            ? $updated->type->value
+            : (string) ($updated->type ?? 'drogueria');
+
+        if ($isTenant && !$isMasterContext && $typeValue !== 'externo') {
+            try {
+                $masterSupplier = app(\App\Services\Catalog\MasterCatalogClientService::class)->registerSupplierInMaster([
+                    'name' => $updated->name,
+                    'social_reason' => $updated->social_reason,
+                    'rif' => $updated->rif,
+                    'address' => $updated->address,
+                    'sales_phone' => $updated->sales_phone,
+                    'collections_phone' => $updated->collections_phone,
+                    'payment_email' => $updated->payment_email,
+                    'type' => $typeValue,
+                    'business_types' => $updated->business_types,
+                    'is_indexed' => $updated->is_indexed,
+                    'is_fiscal' => $updated->is_fiscal,
+                ]);
+
+                // Sincronizar logotipo oficial desde Master si está disponible
+                if (!empty($masterSupplier['logo_url']) && $updated->logo_url !== $masterSupplier['logo_url']) {
+                    $updated->updateQuietly(['logo_url' => $masterSupplier['logo_url']]);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('No se pudo enriquecer proveedor en Master Catalog: ' . $e->getMessage());
+            }
+        }
+
+        if (!$isMasterContext && Schema::hasTable('supplier_scores')) {
+            try {
+                app(SupplierEvaluationService::class)->evaluate($updated);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("No se pudo recalcular puntaje de proveedor #{$updated->id}: " . $e->getMessage());
+            }
+        }
+
+        return $updated;
     }
 
     /**
-     * Elimina un proveedor.
+     * Elimina un proveedor validando que no posea deuda o facturas pendientes en el tenant.
      *
      * @param Supplier $supplier
      */
     public function deleteSupplier(Supplier $supplier): void
     {
+        $isMasterContext = request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master');
+
+        if (!$isMasterContext && Schema::hasTable('invoices')) {
+            $hasPendingInvoices = $supplier->invoices()
+                ->where('status', '!=', 'deleted')
+                ->where(function ($q) {
+                    $q->whereNull('status_payment')
+                        ->orWhere('status_payment', '!=', 1);
+                })
+                ->exists();
+
+            if ($hasPendingInvoices) {
+                throw ValidationException::withMessages([
+                    'supplier' => ['No se puede eliminar este proveedor porque mantiene facturas pendientes por pagar.'],
+                ]);
+            }
+        }
+
         $this->supplierRepository->delete($supplier);
     }
 
@@ -128,6 +263,47 @@ class SupplierActionService
     public function createDiscount(Supplier $supplier, array $data): SupplierDiscount
     {
         return $supplier->discounts()->create($data);
+    }
+
+    /**
+     * Sincroniza la colección completa de descuentos fijos del proveedor (crear, actualizar, eliminar).
+     *
+     * @param Supplier $supplier
+     * @param array<int, array<string, mixed>> $discounts
+     * @return array<int, SupplierDiscount>
+     */
+    public function syncDiscounts(Supplier $supplier, array $discounts): array
+    {
+        $sentIds = array_values(array_filter(
+            array_map(fn ($rule) => isset($rule['id']) && is_numeric($rule['id']) ? (int) $rule['id'] : null, $discounts)
+        ));
+
+        if (!empty($sentIds)) {
+            $supplier->discounts()->whereNotIn('id', $sentIds)->delete();
+        } else {
+            $supplier->discounts()->delete();
+        }
+
+        $synced = [];
+        foreach ($discounts as $rule) {
+            $payload = [
+                'name' => trim((string) $rule['name']),
+                'discount_percentage' => (float) $rule['discount_percentage'],
+            ];
+
+            if (!empty($rule['id']) && (int) $rule['id'] > 0) {
+                $existing = $supplier->discounts()->where('id', (int) $rule['id'])->first();
+                if ($existing) {
+                    $existing->update($payload);
+                    $synced[] = $existing->fresh();
+                    continue;
+                }
+            }
+
+            $synced[] = $this->createDiscount($supplier, $payload);
+        }
+
+        return $synced;
     }
 
     public function applyGlobalDiscount(Supplier $supplier, float $percentage)
@@ -211,7 +387,7 @@ class SupplierActionService
      */
     public function mergeSuppliers(int $targetSupplierId, int $sourceSupplierId): Supplier
     {
-        return DB::transaction(function () use ($targetSupplierId, $sourceSupplierId) {
+        $merged = DB::transaction(function () use ($targetSupplierId, $sourceSupplierId) {
             $target = Supplier::findOrFail($targetSupplierId);
             $source = Supplier::findOrFail($sourceSupplierId);
 
@@ -383,5 +559,76 @@ class SupplierActionService
 
             return $target->fresh();
         });
+
+        $this->recalculateMergedScore($merged);
+
+        return $merged;
+    }
+
+    /**
+     * Versión extendida con recálculo automático tras fusionar proveedores.
+     */
+    private function recalculateMergedScore(Supplier $target): void
+    {
+        $isMasterContext = request()->header('X-Master-Catalog-Context') === '1' || request()->boolean('is_master');
+        if (!$isMasterContext && Schema::hasTable('supplier_scores')) {
+            try {
+                app(SupplierEvaluationService::class)->evaluate($target);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("No se pudo recalcular puntaje tras fusión #{$target->id}: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Almacena el logotipo del proveedor en public/images/suppliers/ para disponibilidad global multi-tenant.
+     */
+    private function storeSupplierLogo(UploadedFile $file, ?string $previousLogoUrl = null): string
+    {
+        $directory = public_path('images/suppliers');
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        // Eliminar logo local anterior si corresponde
+        if (!empty($previousLogoUrl) && str_starts_with($previousLogoUrl, '/images/suppliers/')) {
+            $oldFile = public_path(ltrim($previousLogoUrl, '/'));
+            if (is_file($oldFile)) {
+                @unlink($oldFile);
+            }
+        }
+
+        $extension = $file->getClientOriginalExtension() ?: 'png';
+        $filename = 'supplier_' . time() . '_' . Str::random(8) . '.' . strtolower($extension);
+        $file->move($directory, $filename);
+
+        return '/images/suppliers/' . $filename;
+    }
+
+    /**
+     * Busca un proveedor eliminado lógicamente por ID oficial del Master o RIF limpio.
+     */
+    private function findTrashedLocalSupplier(?int $masterSupplierId, ?string $rif): ?Supplier
+    {
+        if ($masterSupplierId) {
+            $byId = Supplier::onlyTrashed()->where('id', $masterSupplierId)->first();
+            if ($byId) {
+                return $byId;
+            }
+        }
+
+        if (!empty($rif)) {
+            $cleanRif = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim($rif)));
+            if ($cleanRif !== '') {
+                return Supplier::onlyTrashed()
+                    ->where(function ($q) use ($rif, $cleanRif) {
+                        $q->where('rif', trim($rif))
+                            ->orWhereRaw("UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) = ?", [$cleanRif]);
+                    })
+                    ->first();
+            }
+        }
+
+        return null;
     }
 }

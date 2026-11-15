@@ -160,6 +160,7 @@ const closeDialog = () => {
   <VDialog
     :model-value="props.modelValue"
     max-width="960"
+    :fullscreen="$vuetify.display.mobile"
     persistent
     @update:model-value="emit('update:modelValue', $event)"
   >
@@ -258,23 +259,43 @@ const closeDialog = () => {
               <tr v-for="item in suppliers" :key="item.master_id">
                 <!-- Nombre y RIF -->
                 <td>
-                  <div class="d-flex flex-column py-1">
-                    <span class="font-weight-bold text-body-2">{{ item.name }}</span>
-                    <span class="text-caption text-medium-emphasis">
-                      RIF: {{ item.rif || 'Sin RIF' }}
-                      <span v-if="item.configured_email" class="ms-2 text-primary font-weight-medium">
-                        • Correo: {{ item.configured_email }}
+                  <div class="d-flex align-center gap-3 py-1">
+                    <VAvatar size="34" color="primary" variant="tonal" rounded="lg" class="flex-shrink-0">
+                      <VImg v-if="item.logo_url" :src="item.logo_url" cover />
+                      <span v-else class="text-xs font-weight-bold">
+                        {{ (item.name || "P").substring(0, 2).toUpperCase() }}
                       </span>
-                    </span>
+                    </VAvatar>
+                    <div class="d-flex flex-column">
+                      <span class="font-weight-bold text-body-2">{{ item.name }}</span>
+                      <span class="text-caption text-medium-emphasis">
+                        RIF: {{ item.rif || 'Sin RIF' }}
+                        <span v-if="item.configured_email" class="ms-2 text-primary font-weight-medium">
+                          • Correo: {{ item.configured_email }}
+                        </span>
+                      </span>
+                    </div>
                   </div>
                 </td>
 
                 <!-- Tipo de Integración y Plantilla -->
                 <td>
                   <div class="d-flex flex-column gap-1">
-                    <div class="d-flex align-center gap-1">
+                    <div class="d-flex align-center flex-wrap gap-1">
+                      <template v-if="item.allowed_connection_types && item.allowed_connection_types.length > 0">
+                        <VChip
+                          v-for="ctype in item.allowed_connection_types"
+                          :key="ctype"
+                          :color="ctype === 'ftp' || ctype === 'sftp' ? 'info' : (ctype === 'api' || ctype === 'http' ? 'primary' : 'success')"
+                          size="x-small"
+                          variant="tonal"
+                          :prepend-icon="ctype === 'ftp' || ctype === 'sftp' ? 'tabler-server' : (ctype === 'api' || ctype === 'http' ? 'tabler-api' : 'tabler-file-spreadsheet')"
+                        >
+                          {{ ctype === 'file' ? 'Excel / Correo' : ctype.toUpperCase() }}
+                        </VChip>
+                      </template>
                       <VChip
-                        v-if="item.has_excel_structure || item.integration_type === 'file'"
+                        v-else-if="item.has_excel_structure || item.integration_type === 'file'"
                         color="success"
                         size="x-small"
                         variant="tonal"
@@ -283,13 +304,13 @@ const closeDialog = () => {
                         Excel por Correo
                       </VChip>
                       <VChip
-                        v-else-if="item.integration_type === 'ftp'"
+                        v-else-if="item.integration_type === 'ftp' || item.integration_type === 'sftp'"
                         color="info"
                         size="x-small"
                         variant="tonal"
                         prepend-icon="tabler-server"
                       >
-                        FTP
+                        {{ item.integration_type.toUpperCase() }}
                       </VChip>
                       <VChip
                         v-else
@@ -298,7 +319,7 @@ const closeDialog = () => {
                         variant="tonal"
                         prepend-icon="tabler-api"
                       >
-                        {{ item.integration_type.toUpperCase() }}
+                        {{ (item.integration_type || 'API').toUpperCase() }}
                       </VChip>
 
                       <VTooltip
@@ -390,13 +411,17 @@ const closeDialog = () => {
     <VDialog
       v-model="isActivateModalOpen"
       max-width="520"
+      :fullscreen="$vuetify.display.mobile"
       persistent
     >
       <VCard class="rounded-lg" v-if="selectedSupplier">
         <VCardItem class="pb-2 border-b">
           <div class="d-flex align-center justify-space-between w-100">
             <div class="d-flex align-center gap-2">
-              <VIcon icon="tabler-mail-check" color="primary" size="24" />
+              <VAvatar size="32" color="primary" variant="tonal" rounded="lg">
+                <VImg v-if="selectedSupplier.logo_url" :src="selectedSupplier.logo_url" cover />
+                <VIcon v-else icon="tabler-mail-check" color="primary" size="20" />
+              </VAvatar>
               <VCardTitle class="text-subtitle-1 font-weight-bold">
                 Activar Droguería: {{ selectedSupplier.name }}
               </VCardTitle>
