@@ -954,9 +954,15 @@ class SupplierQueryService
         }
 
         $existingProducts = DB::table('product_suppliers')
-            ->where('supplier_id', $supplier->id)
-            ->whereNotNull('cod_supplier')
-            ->select(['id', 'cod_supplier', 'credit_days'])
+            ->leftJoin('products', 'product_suppliers.product_id', '=', 'products.id')
+            ->where('product_suppliers.supplier_id', $supplier->id)
+            ->select([
+                'product_suppliers.id',
+                'product_suppliers.cod_supplier',
+                'product_suppliers.barcode_match',
+                'product_suppliers.credit_days',
+                'products.barcode as product_barcode',
+            ])
             ->get();
 
         if ($existingProducts->isEmpty()) {
@@ -967,14 +973,25 @@ class SupplierQueryService
         $updatedCount = 0;
 
         foreach ($existingProducts as $prod) {
-            $rawCod = strtoupper(trim((string) $prod->cod_supplier));
-            if ($rawCod === '') {
-                continue;
-            }
+            // Priorizar enlace por código de barra (barcode_match / products.barcode) y respaldar con cod_supplier
+            $candidates = [
+                strtoupper(trim((string) ($prod->barcode_match ?? ''))),
+                strtoupper(trim((string) ($prod->product_barcode ?? ''))),
+                strtoupper(trim((string) ($prod->cod_supplier ?? ''))),
+            ];
 
-            $noZeroCod = ltrim($rawCod, '0');
-            $matchedDays = $creditDaysMap[$rawCod]
-                ?? ($noZeroCod !== '' ? ($creditDaysMap[$noZeroCod] ?? null) : null);
+            $matchedDays = null;
+            foreach ($candidates as $rawCode) {
+                if ($rawCode === '') {
+                    continue;
+                }
+                $noZeroCod = ltrim($rawCode, '0');
+                $matchedDays = $creditDaysMap[$rawCode]
+                    ?? ($noZeroCod !== '' ? ($creditDaysMap[$noZeroCod] ?? null) : null);
+                if ($matchedDays !== null) {
+                    break;
+                }
+            }
 
             if ($matchedDays === null) {
                 continue;

@@ -966,9 +966,32 @@ class SupplierController extends Controller
                 }
             }
 
+            // Si se configuró correo y columna de días de crédito, conectar al correo y enlazar el último listado
+            $creditDaysSynced = 0;
+            $creditSyncWarning = null;
+            if (!empty($connection->credit_days_email) && !empty($connection->credit_days_col)) {
+                try {
+                    $emailCatalogService = app(\App\Services\Suppliers\SupplierEmailCatalogService::class);
+                    $creditDaysSynced = $emailCatalogService->syncCreditDaysFromEmailForSupplier($supplier, $connection);
+                } catch (\Throwable $syncEx) {
+                    \Illuminate\Support\Facades\Log::warning('Error sincronizando días de crédito al guardar conexión: ' . $syncEx->getMessage(), [
+                        'supplier_id' => $supplier->id,
+                    ]);
+                    $creditSyncWarning = $syncEx->getMessage();
+                }
+            }
+
+            $responseMessage = 'Configuración guardada correctamente.';
+            if ($creditDaysSynced > 0) {
+                $responseMessage .= " Se enlazaron días de crédito para {$creditDaysSynced} productos desde el correo.";
+            } elseif ($creditSyncWarning !== null) {
+                $responseMessage .= " (Advertencia al leer correo: {$creditSyncWarning})";
+            }
+
             return response()->json([
-                'message'    => 'Configuración guardada correctamente.',
-                'connection' => [
+                'message'            => $responseMessage,
+                'credit_days_synced' => $creditDaysSynced,
+                'connection'         => [
                     'id'                  => $connection->id,
                     'type'                => $connection->type,
                     'host'                => $connection->host,

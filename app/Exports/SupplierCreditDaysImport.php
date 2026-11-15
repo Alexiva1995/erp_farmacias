@@ -51,11 +51,11 @@ class SupplierCreditDaysImport implements ToCollection, WithCalculatedFormulas, 
         foreach ($rows as $row) {
             $rowArr = $row instanceof Collection ? $row->toArray() : (array) $row;
 
-            // Si no se definió explícitamente la columna del código de proveedor, intentar autodetectarla en encabezados
+            // Si no se definió explícitamente la columna del código de barra/proveedor, intentar autodetectarla en encabezados
             if ($this->resolvedCodIdx === null) {
                 foreach ($rowArr as $idx => $cellVal) {
                     $upper = strtoupper(trim((string) ($cellVal ?? '')));
-                    if (in_array($upper, ['CODIGO', 'CÓDIGO', 'COD', 'COD_ARTICULO', 'COD. ARTICULO', 'CODIGO PROVEEDOR', 'ITEM', 'REF', 'REFERENCIA'], true)) {
+                    if (in_array($upper, ['BARCODE', 'CODIGO DE BARRA', 'CÓDIGO DE BARRA', 'COD_BARRA', 'COD BARRA', 'EAN', 'GTIN', 'CODIGO', 'CÓDIGO', 'COD', 'COD_ARTICULO', 'COD. ARTICULO', 'CODIGO PROVEEDOR', 'ITEM', 'REF', 'REFERENCIA'], true)) {
                         $this->resolvedCodIdx = (int) $idx;
                         break;
                     }
