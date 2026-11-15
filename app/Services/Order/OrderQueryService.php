@@ -306,6 +306,7 @@ class OrderQueryService
                 ->select([
                     'dishes.id',
                     'dishes.name',
+                    DB::raw('NULL as photo_url'),
                     'dishes.designated_price as sale_price',
                     DB::raw("ROUND(dishes.designated_price * {$tasaBs}, 2) as price_bs"),
                     DB::raw("{$priceCopExpr} as price_cop"),
@@ -405,7 +406,8 @@ class OrderQueryService
                     } else {
                         $words = explode(' ', $searchTerm);
                         foreach ($words as $word) {
-                            $subQuery->where('dishes.name', 'like', "%{$word}%");
+                            $subQuery->where('dishes.name',
+                    DB::raw('NULL as photo_url'), 'like', "%{$word}%");
                         }
                     }
                 });
