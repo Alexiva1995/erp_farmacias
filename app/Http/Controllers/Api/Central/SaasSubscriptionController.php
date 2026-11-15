@@ -297,7 +297,15 @@ class SaasSubscriptionController extends Controller
             'binance_email' => 'Alexisjose95@gmail.com',
         ];
 
-        \Illuminate\Support\Facades\Mail::to($recipient)->send(new \App\Mail\CobroMensualidadMail($data));
+        try {
+            \Illuminate\Support\Facades\Mail::to($recipient)->send(new \App\Mail\CobroMensualidadMail($data));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error enviando correo de cobro al tenant {$tenantId} ({$recipient}): " . $e->getMessage());
+
+            return response()->json([
+                'message' => 'No se pudo enviar el correo de cobro: ' . $e->getMessage(),
+            ], 500);
+        }
 
         return response()->json([
             'message' => "Correo de cobro enviado exitosamente a {$recipient}.",
