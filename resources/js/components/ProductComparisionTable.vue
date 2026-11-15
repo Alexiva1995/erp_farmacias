@@ -1,8 +1,27 @@
 <script setup>
 import ActivateSupplierDialog from "@/components/dialogs/ActivateSupplierDialog.vue";
 import { toast } from "@/plugins/sweetalert";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed, reactive, ref } from "vue";
 import { useDisplay } from "vuetify";
+
+const brandingStore = useBrandingStore();
+const showProductPhotos = computed(() => Boolean(brandingStore.settings?.show_product_photos));
+
+const previewPhoto = ref({
+  show: false,
+  url: "",
+  name: "",
+});
+
+const openPhotoPreview = (item) => {
+  if (!item?.photo_url) return;
+  previewPhoto.value = {
+    show: true,
+    url: item.photo_url,
+    name: item.name || "Producto",
+  };
+};
 
 const props = defineProps({
   checkingApiId: { type: Number, default: null },
@@ -197,10 +216,33 @@ const headers = [
 
           <template #item.name="{ item }">
             <div
-              class="d-flex flex-column py-2"
+              class="d-flex align-center gap-x-3 py-2"
               :class="{ 'opacity-60': item.is_active === false }"
             >
-              <div class="d-flex align-center gap-2">
+              <v-avatar
+                v-if="showProductPhotos"
+                size="52"
+                rounded="sm"
+                color="white"
+                class="flex-shrink-0 border bg-white"
+                :class="{ 'cursor-pointer': Boolean(item.photo_url) }"
+                @click.stop="openPhotoPreview(item)"
+              >
+                <v-img
+                  v-if="item.photo_url"
+                  :src="item.photo_url"
+                  :alt="item.name"
+                  contain
+                />
+                <v-icon
+                  v-else
+                  icon="tabler-photo-off"
+                  size="22"
+                  color="grey"
+                />
+              </v-avatar>
+              <div class="d-flex flex-column">
+                <div class="d-flex align-center gap-2">
                 <span
                   class="text-sm font-weight-black text-uppercase"
                   :class="item.is_active === false ? 'text-disabled text-decoration-line-through' : 'text-high-emphasis'"
@@ -564,6 +606,31 @@ const headers = [
       v-model:is-dialog-visible="isActivateSupplierDialogOpen"
       @activated="emit('refresh')"
     />
+
+    <v-dialog
+      v-model="previewPhoto.show"
+      max-width="500"
+    >
+      <v-card>
+        <v-card-title class="d-flex align-center justify-space-between text-subtitle-1">
+          <span class="text-truncate">{{ previewPhoto.name }}</span>
+          <v-btn
+            icon="tabler-x"
+            variant="text"
+            size="small"
+            @click="previewPhoto.show = false"
+          />
+        </v-card-title>
+        <v-card-text class="bg-white pa-4 d-flex justify-center">
+          <v-img
+            :src="previewPhoto.url"
+            :alt="previewPhoto.name"
+            max-height="380"
+            contain
+          />
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 

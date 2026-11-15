@@ -6,6 +6,22 @@ import { computed, ref, watch, onMounted } from "vue";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 
 const brandingStore = useBrandingStore();
+const showProductPhotos = computed(() => Boolean(brandingStore.settings?.show_product_photos));
+
+const previewPhoto = ref({
+  show: false,
+  url: '',
+  name: '',
+});
+
+const openPhotoPreview = (item) => {
+  if (!item?.photo_url) return;
+  previewPhoto.value = {
+    show: true,
+    url: item.photo_url,
+    name: item.name || 'Producto',
+  };
+};
 const isSportsRental = computed(() => false);
 
 const props = defineProps({
@@ -345,8 +361,31 @@ const getRowClass = (item) => {
       </template>
 
       <template #item.name="{ item }">
-        <div class="d-flex flex-column py-2 w-100">
-          <div class="d-flex align-center flex-wrap gap-1">
+        <div class="d-flex align-center gap-x-2 py-2 w-100">
+          <v-avatar
+            v-if="showProductPhotos"
+            size="36"
+            rounded="sm"
+            color="white"
+            class="flex-shrink-0 border bg-white"
+            :class="{ 'cursor-pointer': Boolean(item.photo_url) }"
+            @click.stop="openPhotoPreview(item)"
+          >
+            <v-img
+              v-if="item.photo_url"
+              :src="item.photo_url"
+              :alt="item.name"
+              contain
+            />
+            <v-icon
+              v-else
+              icon="tabler-photo-off"
+              size="18"
+              color="grey"
+            />
+          </v-avatar>
+          <div class="d-flex flex-column w-100">
+            <div class="d-flex align-center flex-wrap gap-1">
             <span
               class="text-subtitle-2 font-weight-black text-high-emphasis leading-tight text-uppercase"
               :class="{ 'text-primary': item.psychotropic == 1 }"
@@ -405,6 +444,7 @@ const getRowClass = (item) => {
                 </span>
               </template>
             </template>
+          </div>
           </div>
         </div>
       </template>
@@ -708,6 +748,31 @@ const getRowClass = (item) => {
         </div>
       </div>
     </VCardText>
+
+    <v-dialog
+      v-model="previewPhoto.show"
+      max-width="500"
+    >
+      <v-card>
+        <v-card-title class="d-flex align-center justify-space-between text-subtitle-1">
+          <span class="text-truncate">{{ previewPhoto.name }}</span>
+          <v-btn
+            icon="tabler-x"
+            variant="text"
+            size="small"
+            @click="previewPhoto.show = false"
+          />
+        </v-card-title>
+        <v-card-text class="bg-white pa-4 d-flex justify-center">
+          <v-img
+            :src="previewPhoto.url"
+            :alt="previewPhoto.name"
+            max-height="380"
+            contain
+          />
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </VCard>
 </template>
 

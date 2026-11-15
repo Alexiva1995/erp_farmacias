@@ -1203,7 +1203,58 @@ class SupplierQueryService
             ->orderBy($sortColumn, $sortOrder)
             ->paginate($perPage);
 
+        $this->attachProductPhotos($results);
+
         return $results;
+    }
+
+    /**
+     * Adjunta photo_url a cada producto paginado buscando primero en el sistema local y luego en master_catalog.
+     */
+    private function attachProductPhotos($paginator): void
+    {
+        $collection = $paginator->getCollection();
+        $barcodes = $collection->pluck('barcode')->filter(fn ($b) => is_string($b) && trim($b) !== '')->map(fn ($b) => trim($b))->unique()->values()->all();
+
+        if (empty($barcodes)) {
+            return;
+        }
+
+        $localPhotos = Product::query()
+            ->select(['barcode', 'photo_url'])
+            ->whereIn('barcode', $barcodes)
+            ->whereNotNull('photo_url')
+            ->where('photo_url', '!=', '')
+            ->get()
+            ->keyBy(fn ($p) => trim((string) $p->barcode));
+
+        $missingBarcodes = array_values(array_diff($barcodes, $localPhotos->keys()->all()));
+        $masterPhotos = collect();
+
+        if (!empty($missingBarcodes)) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::connection('master_catalog')->hasTable('products')) {
+                    $masterPhotos = Product::on('master_catalog')
+                        ->select(['barcode', 'photo_url'])
+                        ->whereIn('barcode', $missingBarcodes)
+                        ->whereNotNull('photo_url')
+                        ->where('photo_url', '!=', '')
+                        ->get()
+                        ->keyBy(fn ($p) => trim((string) $p->barcode));
+                }
+            } catch (\Throwable) {
+                // Ignorar si no existe conexión master_catalog
+            }
+        }
+
+        $collection->transform(function ($item) use ($localPhotos, $masterPhotos) {
+            $bc = trim((string) ($item->barcode ?? ''));
+            $item->photo_url = $localPhotos->get($bc)?->photo_url
+                ?? $masterPhotos->get($bc)?->photo_url
+                ?? null;
+
+            return $item;
+        });
     }
 
     public function getAvailableLaboratories()
