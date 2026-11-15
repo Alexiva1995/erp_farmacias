@@ -1168,8 +1168,7 @@ const getCurrencySymbol = () => {
 const isNearExpiration = (item) => {
   if (!item.expiration_date) return false;
   
-  const isFruit = !!item.product?.laboratory?.name?.toLowerCase().includes("fruta");
-  if (isRestaurant.value && isFruit) {
+  if (isRestaurant.value) {
     return false;
   }
 
@@ -1185,8 +1184,7 @@ const isNearExpiration = (item) => {
 const checkAndMarkAsReturn = (item, forceCheck = false) => {
   if (!item.expiration_date) return false;
 
-  const isFruit = !!item.product?.laboratory?.name?.toLowerCase().includes("fruta");
-  if (isRestaurant.value && isFruit) {
+  if (isRestaurant.value) {
     return false;
   }
 
