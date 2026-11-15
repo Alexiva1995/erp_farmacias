@@ -261,6 +261,7 @@ const headers = [
                 </VChip>
               </div>
               <span class="text-xs text-disabled">{{ item.type }}</span>
+              </div>
             </div>
           </template>
 
