@@ -226,6 +226,7 @@ class OrderQueryService
             ->select([
                 'products.id',
                 'products.name',
+                'products.photo_url',
                 'products.sale_price',
                 DB::raw("ROUND(products.sale_price * {$tasaBs}, 2) as price_bs"),
                 DB::raw("ROUND(products.sale_price * {$tasaCop}, 2) as price_cop"),
@@ -261,6 +262,7 @@ class OrderQueryService
             ->select([
                 'product_packs.id',
                 'product_packs.name',
+                DB::raw('NULL as photo_url'),
                 'product_packs.total_price as sale_price',
                 DB::raw("ROUND(product_packs.total_price * {$tasaBs}, 2) as price_bs"),
                 DB::raw("ROUND(product_packs.total_price * {$tasaCop}, 2) as price_cop"),
@@ -366,7 +368,8 @@ class OrderQueryService
                         $words = explode(' ', $searchTerm);
                         foreach ($words as $word) {
                             $subQuery->where(function ($wordQuery) use ($word) {
-                                $wordQuery->where('products.name', 'like', "%{$word}%")
+                                $wordQuery->where('products.name',
+                'products.photo_url', 'like', "%{$word}%")
                                     ->orWhere('products.active_ingredient', 'like', "%{$word}%")
                                     ->orWhere('laboratories.name', 'like', "%{$word}%");
                             });
@@ -385,7 +388,8 @@ class OrderQueryService
                     } else {
                         $words = explode(' ', $searchTerm);
                         foreach ($words as $word) {
-                            $subQuery->where('product_packs.name', 'like', "%{$word}%");
+                            $subQuery->where('product_packs.name',
+                DB::raw('NULL as photo_url'), 'like', "%{$word}%");
                         }
                     }
                 });
@@ -474,6 +478,7 @@ class OrderQueryService
          ->select([
              'products.id',
              'products.name',
+                'products.photo_url',
              'products.sale_price',
              DB::raw("ROUND(products.sale_price * {$tasaBs}, 2) as price_bs"),
              DB::raw("ROUND(products.sale_price * {$tasaCop}, 2) as price_cop"),
@@ -492,6 +497,7 @@ class OrderQueryService
          ->select([
              'product_packs.id',
              'product_packs.name',
+                DB::raw('NULL as photo_url'),
              'product_packs.total_price as sale_price',
              DB::raw("ROUND(product_packs.total_price * {$tasaBs}, 2) as price_bs"),
              DB::raw("ROUND(product_packs.total_price * {$tasaCop}, 2) as price_cop"),
@@ -590,7 +596,8 @@ class OrderQueryService
                     $words = explode(' ', $searchTerm);
                     foreach ($words as $word) {
                         $subQuery->where(function ($wordQuery) use ($word) {
-                            $wordQuery->where('products.name', 'like', "%{$word}%")
+                            $wordQuery->where('products.name',
+                'products.photo_url', 'like', "%{$word}%")
                                 ->orWhere('products.active_ingredient', 'like', "%{$word}%")
                                 // Como usamos UNION, laboratory_name ya debe venir calculado en el select
                                 ->orWhere('laboratories.name', 'like', "%{$word}%");
@@ -669,7 +676,8 @@ class OrderQueryService
     /*   private function applySortingProduct(Builder $query, ?string $sortBy, string $orderBy): Builder
        {
            if (empty($sortBy)) {
-               return $query->orderBy('products.name', 'asc');
+               return $query->orderBy('products.name',
+                'products.photo_url', 'asc');
            }
 
            switch ($sortBy) {
@@ -1001,12 +1009,14 @@ class OrderQueryService
             ->select([
                 'products.id',
                 'products.name',
+                'products.photo_url',
                 'products.barcode',
                 'products.sale_price',
                 'laboratories.name as laboratory',
                 DB::raw('SUM(order_details.quantity) as total_quantity')
             ])
-            ->groupBy('products.id', 'products.name', 'products.barcode', 'products.sale_price', 'laboratory')
+            ->groupBy('products.id', 'products.name',
+                'products.photo_url', 'products.barcode', 'products.sale_price', 'laboratory')
             ->orderBy('total_quantity', 'desc')
             ->limit($limit)
             ->get();

@@ -1,7 +1,26 @@
 <script setup>
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { roundIaAnalysis } from "@/utils/iaAnalysisRounding";
 import { computed, reactive, ref, watch } from "vue";
 import { useDisplay } from "vuetify";
+
+const brandingStore = useBrandingStore();
+const showProductPhotos = computed(() => Boolean(brandingStore.settings?.show_product_photos));
+
+const previewPhoto = ref({
+  show: false,
+  url: "",
+  name: "",
+});
+
+const openPhotoPreview = (item) => {
+  if (!item?.photo_url) return;
+  previewPhoto.value = {
+    show: true,
+    url: item.photo_url,
+    name: item.name || "Producto",
+  };
+};
 
 const props = defineProps({
   products: { type: Array, required: true },
@@ -449,11 +468,34 @@ const headers = computed(() => [
         >
           <template #item.name="{ item }">
             <div
-              class="d-flex flex-column py-2"
+              class="d-flex align-center gap-x-3 py-2"
               :class="{ 'opacity-60': item.is_active === false }"
               style="min-inline-size: 175px; white-space: normal !important;"
             >
-              <div class="d-flex align-center flex-wrap gap-1 mb-1">
+              <v-avatar
+                v-if="showProductPhotos"
+                size="52"
+                rounded="sm"
+                color="white"
+                class="flex-shrink-0 border bg-white"
+                :class="{ 'cursor-pointer': Boolean(item.photo_url) }"
+                @click.stop="openPhotoPreview(item)"
+              >
+                <v-img
+                  v-if="item.photo_url"
+                  :src="item.photo_url"
+                  :alt="item.name"
+                  contain
+                />
+                <v-icon
+                  v-else
+                  icon="tabler-photo-off"
+                  size="22"
+                  color="grey"
+                />
+              </v-avatar>
+              <div class="d-flex flex-column">
+                <div class="d-flex align-center flex-wrap gap-1 mb-1">
                 <span
                   class="text-xs font-weight-black text-uppercase leading-tight"
                   :class="item.is_active === false ? 'text-disabled text-decoration-line-through' : 'text-high-emphasis'"
@@ -486,6 +528,7 @@ const headers = computed(() => [
                   <VIcon icon="tabler-building-warehouse" size="10" class="text-disabled" />
                   <span class="text-disabled uppercase">{{ item.supplier_name }}</span>
                 </div>
+              </div>
               </div>
             </div>
           </template>
@@ -774,6 +817,32 @@ const headers = computed(() => [
         </div>
       </div>
     </VCard>
+
+    <!-- Diálogo de previsualización de foto -->
+    <v-dialog
+      v-model="previewPhoto.show"
+      max-width="460"
+    >
+      <v-card class="rounded-xl overflow-hidden">
+        <v-card-title class="d-flex align-center justify-space-between text-subtitle-1 font-weight-bold px-4 py-3 border-b">
+          <span class="text-truncate">{{ previewPhoto.name }}</span>
+          <v-btn
+            icon="tabler-x"
+            variant="text"
+            size="small"
+            @click="previewPhoto.show = false"
+          />
+        </v-card-title>
+        <v-card-text class="pa-4 d-flex justify-center align-center bg-white">
+          <v-img
+            :src="previewPhoto.url"
+            :alt="previewPhoto.name"
+            max-height="360"
+            contain
+          />
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
