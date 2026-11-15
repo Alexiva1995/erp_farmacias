@@ -122,7 +122,14 @@ class TenantManagementService
             }
         }
 
-        // 4. Eliminar registro del tenant en base central
+        // 4. Eliminar registro del tenant y su suscripción en base central
+        try {
+            if (Schema::hasTable('saas_subscriptions')) {
+                \App\Models\SaasSubscription::where('tenant_id', $id)->delete();
+            }
+        } catch (\Throwable) {
+        }
+
         if ($tenant) {
             $tenant->delete();
         } else {
@@ -269,6 +276,14 @@ class TenantManagementService
         $tenant->domains()->create(['domain' => $cleanDomain]);
         $tenant->load('domains');
 
+        try {
+            $data['is_remote'] = true;
+            $data['domain'] = $cleanDomain;
+            app(\App\Contracts\Tenancy\SaasSubscriptionServiceInterface::class)->syncTenantSubscription($tenant, $data);
+        } catch (\Throwable $e) {
+            Log::warning("Error sincronizando suscripción de tenant externo {$tenant->id}: " . $e->getMessage());
+        }
+
         return $tenant;
     }
 
@@ -282,12 +297,31 @@ class TenantManagementService
     {
         $tenant = Tenant::with('domains')->findOrFail($id);
         $tenant->plan = (string) $data['plan'];
+        $tenant->plan_id = (string) $data['plan'];
         $tenant->monthly_price = (float) $data['monthly_price'];
         $tenant->billing_date = $data['billing_date'] ?? null;
+        if (isset($data['max_branches'])) {
+            $tenant->max_branches = (int) $data['max_branches'];
+        }
+        if (isset($data['can_create_branches'])) {
+            $tenant->can_create_branches = (bool) $data['can_create_branches'];
+        }
+        if (isset($data['status'])) {
+            $statusEnum = \App\Enums\SaasSubscriptionStatusEnum::tryFrom((string) $data['status']);
+            if ($statusEnum) {
+                $tenant->is_branch_active = $statusEnum->canOperate();
+            }
+        }
         if (!empty($data['created_at'])) {
             $tenant->created_at = \Carbon\Carbon::parse((string) $data['created_at']);
         }
         $tenant->save();
+
+        try {
+            app(\App\Contracts\Tenancy\SaasSubscriptionServiceInterface::class)->syncTenantSubscription($tenant, $data);
+        } catch (\Throwable $e) {
+            Log::warning("Error sincronizando suscripción SaaS al actualizar cobro de {$id}: " . $e->getMessage());
+        }
 
         return $tenant;
     }

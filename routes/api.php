@@ -170,6 +170,8 @@ Route::post("/public/ecommerce/products/{id}/toggle-favorite", [EcommerceControl
 Route::post("/public/clients/cne-verify", [\App\Http\Controllers\Api\ClientController::class, "verifyCne"]);
 Route::get("/public/general-settings", [GeneralSettingController::class, "index"]);
 Route::get("/public/general-settings/presets", [GeneralSettingController::class, "presets"]);
+Route::post("/public/licenses/verify", [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, "verifyLicense"]);
+Route::get("/public/saas/plans", [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, "plans"]);
 
 // Rutas de administración de órdenes de e-commerce (dentro del bloque auth:sanctum)
 Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
@@ -1374,9 +1376,32 @@ Route::prefix('central/tenants')->group(function () {
     Route::post('/external', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'storeExternal']);
     Route::post('/link', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'link']);
     Route::patch('/{id}/billing', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'updateBilling']);
+    Route::patch('/{tenantId}/status', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'toggleStatus']);
+    Route::post('/{tenantId}/regenerate-key', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'regenerateKey']);
+    Route::post('/{tenantId}/send-billing-email', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'sendBillingEmail']);
     Route::post('/{id}/domains', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'addDomain']);
     Route::delete('/{id}/domains/{domainId}', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'removeDomain']);
     Route::delete('/{id}', [\App\Http\Controllers\Api\Central\TenantManagementController::class, 'destroy']);
+});
+
+// Rutas del Administrador de Suscripciones SaaS & Licencias
+Route::prefix('central/saas')->group(function () {
+    Route::get('/metrics', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'metrics']);
+    Route::get('/plans', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'plans']);
+    Route::post('/plans', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'storePlan']);
+    Route::put('/plans/{id}', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'updatePlan']);
+    Route::delete('/plans/{id}', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'destroyPlan']);
+    Route::get('/payments', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'payments']);
+    Route::post('/payments', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'storePayment']);
+    Route::post('/payments/{paymentId}/approve', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'approvePayment']);
+    Route::post('/payments/{paymentId}/reject', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'rejectPayment']);
+    Route::post('/process-expirations', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'processExpirations']);
+});
+
+// Portal de Suscripción del Cliente (Tenant)
+Route::prefix('my-subscription')->middleware(['auth:sanctum'])->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'mySubscription']);
+    Route::post('/report-payment', [\App\Http\Controllers\Api\Central\SaasSubscriptionController::class, 'reportMyPayment']);
 });
 
 // Rutas de Gestión de Sucursales (Multi-Sede)

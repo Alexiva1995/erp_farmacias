@@ -139,6 +139,14 @@ class AppServiceProvider extends ServiceProvider
             \App\Contracts\Tenancy\BranchManagementServiceInterface::class,
             \App\Services\Tenancy\BranchManagementService::class
         );
+        $this->app->bind(
+            \App\Contracts\Repositories\SaasSubscriptionRepositoryInterface::class,
+            \App\Repositories\Eloquent\SaasSubscriptionRepository::class
+        );
+        $this->app->bind(
+            \App\Contracts\Tenancy\SaasSubscriptionServiceInterface::class,
+            \App\Services\Tenancy\SaasSubscriptionService::class
+        );
         $this->app->bind(PurchaseOrder::class, PurchaseOrderServices::class);
         $this->app->bind(
             \App\Contracts\Suppliers\PurchaseOrderByLaboratoryServiceInterface::class,

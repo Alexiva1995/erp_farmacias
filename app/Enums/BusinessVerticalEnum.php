@@ -11,6 +11,7 @@ enum BusinessVerticalEnum: string
     case FAST_FOOD = 'fast_food';
     case MINIMARKET = 'minimarket';
     case DROGUERIA = 'drogueria';
+    case SAAS_ADMIN = 'saas_admin';
 
     /**
      * Obtener el nombre legible de la vertical.
@@ -23,6 +24,7 @@ enum BusinessVerticalEnum: string
             self::FAST_FOOD => 'Comida Rápida, Cafetería o Dark Kitchen',
             self::MINIMARKET => 'Bodegón, Minimarket & Retail',
             self::DROGUERIA => 'Droguería & Distribución Mayorista B2B',
+            self::SAAS_ADMIN => 'Administrador de Suscripciones SaaS & Licencias',
         };
     }
 
@@ -37,6 +39,7 @@ enum BusinessVerticalEnum: string
             self::FAST_FOOD => 'Venta rápida por mostrador/delivery, comanda directa a cocina, combos, modificadores y cobro express.',
             self::MINIMARKET => 'Venta minorista de alta rotación, lectores de código de barras, bultos y promociones por volumen.',
             self::DROGUERIA => 'Ventas mayoristas a farmacias, días de crédito x producto, cupos/topes, cartera de asesores/telemarketing, WMS picking y marketplace B2B.',
+            self::SAAS_ADMIN => 'Consola comercial de software: venta de licencias, catálogo de planes, control de vencimientos/cortes, cobros recurrentes y métricas MRR/ARR.',
         };
     }
 

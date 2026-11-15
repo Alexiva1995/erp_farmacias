@@ -382,6 +382,53 @@ class VerticalPresetService implements VerticalPresetServiceInterface
                     'farmacia',
                 ],
             ],
+
+            BusinessVerticalEnum::SAAS_ADMIN => [
+                'business_type' => 'saas_admin',
+                'tpv_mode' => 'simple',
+                'tpv_style' => 'pharmacy',
+                'quotation_style' => 'pharmacy',
+                'enable_dishes' => false,
+                'enable_tables' => false,
+                'enable_kds' => false,
+                'enable_modifiers' => false,
+                'enable_split_check' => false,
+                'enable_tips' => false,
+                'default_service_fee_pct' => 0.00,
+                'enable_sub_recipes' => false,
+                'enable_reservations' => false,
+                'enable_lots' => false,
+                'enable_expirations' => false,
+                'enable_groups' => false,
+                'enable_brand_groups' => false,
+                'enable_donations' => false,
+                'enable_locations' => false,
+                'enable_stock_control' => false,
+                'enable_optimization' => false,
+                'traceability_mode' => 'units',
+                'enable_flash_checkout' => true,
+                'product_form_fields' => [
+                    'presentation',
+                    'unit_of_measure',
+                ],
+                'enabled_product_types' => [
+                    'iva',
+                    'exento',
+                ],
+                'enabled_offer_types' => [
+                    'general',
+                    'individual',
+                    'company',
+                ],
+                'enabled_crm_views' => [
+                    'clients',
+                    'companies',
+                ],
+                'enabled_telegram_views' => [
+                    'generales',
+                    'configuration',
+                ],
+            ],
         };
     }
 

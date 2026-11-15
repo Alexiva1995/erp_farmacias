@@ -80,7 +80,7 @@ class UpdateGeneralSettingRequest extends FormRequest
             'tertiary_color' => ['nullable', 'string', 'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'],
             'footer_text' => 'nullable|string|max:500',
             'blind_cash_closure' => 'nullable|boolean',
-            'business_type' => 'nullable|string|in:pharmacy,restaurant,sports_rental,minimarket',
+            'business_type' => 'nullable|string|in:pharmacy,restaurant,sports_rental,minimarket,drogueria,saas_admin',
             'default_currency' => 'nullable|string|in:COP,USD,BS',
             'ecommerce_menu' => 'nullable',
             'ecommerce_default_category_id' => 'nullable|integer',

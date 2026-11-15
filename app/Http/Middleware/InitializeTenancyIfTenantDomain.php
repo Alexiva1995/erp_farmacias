@@ -66,15 +66,6 @@ class InitializeTenancyIfTenantDomain
                     ?? \App\Models\Tenant::find($host);
             }
 
-            // 3. Si no existe registro pero es un subdominio de tenant, auto-conciliarlo
-            if (!$tenant && $subdomain !== 'www' && !empty($subdomain)) {
-                $tenant = \App\Models\Tenant::firstOrCreate(
-                    ['id' => $subdomain],
-                    ['company_name' => ucwords(str_replace(['-', '_'], ' ', $subdomain))]
-                );
-                Domain::firstOrCreate(['domain' => $host], ['tenant_id' => $tenant->id]);
-            }
-
             if ($tenant) {
                 tenancy()->initialize($tenant);
 
@@ -82,6 +73,11 @@ class InitializeTenancyIfTenantDomain
                 $currentStateful = config('sanctum.stateful', []);
                 if (!in_array($host, $currentStateful, true)) {
                     config(['sanctum.stateful' => array_merge($currentStateful, [$host, "{$host}:*"])]);
+                }
+            } else {
+                // Rechazar subdominios desconocidos para evitar aprovisionamiento accidental por bots o escáneres
+                if (!filter_var($host, FILTER_VALIDATE_IP)) {
+                    abort(404, 'Empresa o subdominio no encontrado.');
                 }
             }
         } catch (\Throwable $e) {

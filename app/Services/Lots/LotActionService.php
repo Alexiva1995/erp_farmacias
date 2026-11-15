@@ -302,6 +302,7 @@ class LotActionService
         try {
             $product = Product::find($productId);
             if (!$product) {
+                DB::rollBack();
                 return ['errors' => ['product' => 'Producto no encontrado.']];
             }
 

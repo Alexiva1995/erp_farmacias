@@ -3,7 +3,7 @@ import navItems from "@/navigation/vertical";
 import { useAuthStore } from "@/stores/auth";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { themeConfig } from "@themeConfig";
-import { computed } from "vue";
+import { ref, computed } from "vue";
 import logoSvg from '@images/logo.svg?raw';
 
 // Components
@@ -11,6 +11,7 @@ import Footer from "@/layouts/components/Footer.vue";
 import NavbarThemeSwitcher from "@/layouts/components/NavbarThemeSwitcher.vue";
 import UserProfile from "@/layouts/components/UserProfile.vue";
 import BranchSwitcher from "@/components/branches/BranchSwitcher.vue";
+import UserUpgradePlanDialog from "@/components/dialogs/UserUpgradePlanDialog.vue";
 import NavBarI18n from "@core/components/I18n.vue";
 
 // @layouts plugin
@@ -22,6 +23,7 @@ const brandingStore = useBrandingStore();
 const configStore = useLayoutConfigStore();
 
 const isSupervisor = computed(() => authStore.user?.role_id === 2);
+const isSubscriptionDialogOpen = ref(false);
 
 // Procesar el menú dinámicamente según el rol del usuario
 // Usar computed con dependencia específica para evitar re-evaluaciones innecesarias
@@ -32,13 +34,41 @@ const processedNavItems = computed(() => {
   const currentVertical = (brandingStore.settings.vertical || brandingStore.settings.business_type || localStorage.getItem('vertical') || localStorage.getItem('business_type') || 'pharmacy').toLowerCase();
   const isRestaurantVertical = currentVertical === 'restaurant' || currentVertical === 'fast_food';
   const isDrogueriaVertical = currentVertical === 'drogueria';
+  const isSaasAdminVertical = currentVertical === 'saas_admin';
   const currentHost = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
   const isMasterAllowedDomain = currentHost.includes('farmaciabs.com') || currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost.endsWith('.test');
+
+  if (isSaasAdminVertical && !(brandingStore.settings.is_tenant ?? false)) {
+    const saasDirectItem = {
+      title: 'Suscripciones & Licencias',
+      to: 'configuration-tenants',
+      icon: { icon: 'tabler-cloud-lock' },
+    };
+    if (!items.some(i => i.to === 'configuration-tenants')) {
+      items.splice(1, 0, saasDirectItem);
+    }
+  }
 
   // Filtrado de alto nivel basado en módulos dinámicos configurados y vertical del tenant
   items = items.filter(item => {
     const title = (item.title || '').toLowerCase();
     const to = (item.to || '').toLowerCase();
+
+    if (isSaasAdminVertical) {
+      if (
+        title.includes('ciclico') ||
+        title.includes('cíclico') ||
+        title === 'bots' ||
+        title === 'lotería' ||
+        title === 'loteria' ||
+        title === 'reservas' ||
+        title === 'restaurante' ||
+        title === 'droguería b2b' ||
+        title === 'drogueria b2b'
+      ) {
+        return false;
+      }
+    }
 
     if (title === 'master' || to.startsWith('master-')) {
       return isMasterAllowedDomain;
@@ -600,6 +630,18 @@ const processedNavItems = computed(() => {
 
           <VSpacer />
 
+          <VBtn
+            v-if="brandingStore.settings.is_tenant"
+            variant="tonal"
+            :color="brandingStore.settings.subscription?.status === 'suspended' ? 'error' : (brandingStore.settings.subscription?.status === 'past_due' ? 'warning' : 'primary')"
+            size="small"
+            prepend-icon="tabler-certificate"
+            class="me-2 font-weight-bold"
+            @click="isSubscriptionDialogOpen = true"
+          >
+            Mi Licencia
+          </VBtn>
+
           <BranchSwitcher />
 
           <NavBarI18n
@@ -612,6 +654,40 @@ const processedNavItems = computed(() => {
           <UserProfile />
         </div>
       </template>
+
+      <!-- Banner de aviso de vencimiento o suspensión de licencia SaaS -->
+      <VAlert
+        v-if="brandingStore.settings.is_tenant && (brandingStore.settings.subscription?.status === 'past_due' || brandingStore.settings.subscription?.status === 'suspended')"
+        :type="brandingStore.settings.subscription?.status === 'suspended' ? 'error' : 'warning'"
+        variant="tonal"
+        class="mb-4"
+        density="comfortable"
+      >
+        <div class="d-flex align-center justify-space-between flex-wrap ga-2">
+          <div>
+            <strong>
+              {{ brandingStore.settings.subscription?.status === 'suspended' ? 'Licencia Suspendida por Vencimiento:' : 'Aviso de Próximo Corte de Licencia:' }}
+            </strong>
+            <span class="ms-1">
+              {{ brandingStore.settings.subscription?.status === 'suspended'
+                ? 'Las operaciones de escritura están restringidas hasta confirmar la renovación de tu suscripción.'
+                : `Tu suscripción venció el ${brandingStore.settings.subscription?.current_period_ends_at || ''} y se encuentra en días de gracia.`
+              }}
+            </span>
+          </div>
+          <VBtn
+            size="small"
+            :color="brandingStore.settings.subscription?.status === 'suspended' ? 'error' : 'warning'"
+            variant="flat"
+            prepend-icon="tabler-cash-banknote"
+            @click="isSubscriptionDialogOpen = true"
+          >
+            Reportar Pago / Renovar
+          </VBtn>
+        </div>
+      </VAlert>
+
+      <UserUpgradePlanDialog v-model:is-dialog-visible="isSubscriptionDialogOpen" />
 
       <!-- 👉 Pages -->
       <slot />

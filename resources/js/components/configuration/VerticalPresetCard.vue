@@ -38,6 +38,8 @@ const getVerticalIcon = (key) => {
       return 'tabler-burger'
     case 'minimarket':
       return 'tabler-building-store'
+    case 'saas_admin':
+      return 'tabler-cloud-lock'
     default:
       return 'tabler-building'
   }
@@ -55,6 +57,8 @@ const getVerticalColor = (key) => {
       return 'warning'
     case 'minimarket':
       return 'secondary'
+    case 'saas_admin':
+      return 'primary'
     default:
       return 'primary'
   }
@@ -93,6 +97,11 @@ const fetchPresets = async () => {
         key: 'minimarket',
         label: 'Bodegón, Minimarket & Retail',
         description: 'Venta minorista de alta rotación, lectores de código de barras, bultos y promociones.',
+      },
+      {
+        key: 'saas_admin',
+        label: 'Administrador de Suscripciones SaaS & Licencias',
+        description: 'Consola comercial de software: venta de licencias, catálogo de planes, control de vencimientos/cortes, cobros recurrentes y métricas MRR/ARR.',
       },
     ]
   } finally {

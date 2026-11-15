@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->group('api', [
             \App\Http\Middleware\InitializeTenancyIfTenantDomain::class,
+            \App\Http\Middleware\EnsureTenantSubscriptionIsActive::class,
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,

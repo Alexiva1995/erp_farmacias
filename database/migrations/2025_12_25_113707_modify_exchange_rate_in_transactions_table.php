@@ -11,11 +11,21 @@ return new class extends Migration
     {
         Schema::disableForeignKeyConstraints();
 
-        // 1. Eliminar foreign key solo si existe (fuera del Schema::table)
-        try {
-            DB::statement('ALTER TABLE transactions DROP FOREIGN KEY transactions_exchange_rate_id_foreign');
-        } catch (\Exception $e) {
-            // La foreign key no existe, continuamos
+        // 1. Eliminar foreign key solo si existe (soporte para MySQL y SQLite en pruebas)
+        if (DB::getDriverName() === 'sqlite') {
+            try {
+                Schema::table('transactions', function (Blueprint $table) {
+                    $table->dropForeign(['exchange_rate_id']);
+                });
+            } catch (\Exception $e) {
+                // La foreign key no existe, continuamos
+            }
+        } else {
+            try {
+                DB::statement('ALTER TABLE transactions DROP FOREIGN KEY transactions_exchange_rate_id_foreign');
+            } catch (\Exception $e) {
+                // La foreign key no existe, continuamos
+            }
         }
 
         // 2. Renombrar columna (ahora sin foreign key)

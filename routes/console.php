@@ -212,3 +212,9 @@ Schedule::call(function () {
     ->dailyAt('00:05')
     ->name('generate-fiscal-books-current-period')
     ->withoutOverlapping();
+
+// Procesar vencimientos, periodos de gracia y suspensiones de licencias SaaS
+Schedule::command('saas:process-subscriptions')
+    ->dailyAt('00:15')
+    ->withoutOverlapping();
+

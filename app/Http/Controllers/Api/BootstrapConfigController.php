@@ -26,6 +26,8 @@ class BootstrapConfigController extends Controller
 
         $currentBranch = null;
         $canCreateBranches = false;
+        $subscriptionData = null;
+
         if ($isTenant && tenancy()->tenant) {
             $t = tenancy()->tenant;
             $currentBranch = [
@@ -36,6 +38,27 @@ class BootstrapConfigController extends Controller
                 'is_matriz' => empty($t->parent_tenant_id),
             ];
             $canCreateBranches = (bool) ($t->can_create_branches ?? false);
+
+            try {
+                $centralConn = (string) config('tenancy.database.central_connection', config('database.default'));
+                if (\Illuminate\Support\Facades\Schema::connection($centralConn)->hasTable('saas_subscriptions')) {
+                    $sub = \App\Models\SaasSubscription::where('tenant_id', (string) $t->id)->first();
+                    if ($sub) {
+                        $statusEnum = \App\Enums\SaasSubscriptionStatusEnum::tryFrom((string) $sub->status) ?? \App\Enums\SaasSubscriptionStatusEnum::ACTIVE;
+                        $subscriptionData = [
+                            'license_key' => $sub->license_key,
+                            'plan_code' => $sub->plan_code,
+                            'status' => $statusEnum->value,
+                            'status_label' => $statusEnum->label(),
+                            'can_operate' => $statusEnum->canOperate(),
+                            'current_period_ends_at' => $sub->current_period_ends_at?->format('Y-m-d'),
+                            'grace_period_ends_at' => $sub->grace_period_ends_at?->format('Y-m-d'),
+                        ];
+                    }
+                }
+            } catch (\Throwable) {
+                $subscriptionData = null;
+            }
         }
 
         return response()->json([
@@ -48,6 +71,7 @@ class BootstrapConfigController extends Controller
                 'is_master' => !$isTenant,
                 'current_branch' => $currentBranch,
                 'can_create_branches' => $canCreateBranches,
+                'subscription' => $subscriptionData,
             ]
         ]);
     }

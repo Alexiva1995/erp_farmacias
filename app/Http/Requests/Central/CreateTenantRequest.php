@@ -53,6 +53,17 @@ class CreateTenantRequest extends FormRequest
                 'string',
                 Rule::in($allowedVerticals),
             ],
+            'plan' => ['nullable', 'string', 'max:50'],
+            'billing_cycle' => ['nullable', 'string', 'in:monthly,quarterly,annual,lifetime'],
+            'status' => ['nullable', 'string', 'in:trial,active,past_due,suspended,cancelled'],
+            'monthly_price' => ['nullable', 'numeric', 'min:0'],
+            'billing_date' => ['nullable', 'date'],
+            'contact_phone' => ['nullable', 'string', 'max:50'],
+            'seller_name' => ['nullable', 'string', 'max:100'],
+            'max_users' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'max_branches' => ['nullable', 'integer', 'min:1', 'max:500'],
+            'can_create_branches' => ['nullable', 'boolean'],
+            'notes' => ['nullable', 'string', 'max:500'],
         ];
     }
 

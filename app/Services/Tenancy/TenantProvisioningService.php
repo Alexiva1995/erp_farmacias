@@ -39,12 +39,21 @@ class TenantProvisioningService
         }
 
         // 1. Crear el registro del Tenant (gatilla la creación y migración automática de la BD)
+        $planCode = !empty($data['plan']) ? (string) $data['plan'] : (!empty($data['plan_id']) ? (string) $data['plan_id'] : 'basic');
+        $monthlyPrice = isset($data['monthly_price']) ? (float) $data['monthly_price'] : ($planCode === 'pro' ? 49.0 : ($planCode === 'enterprise' ? 499.0 : 29.0));
+        $billingDate = !empty($data['billing_date']) ? (string) $data['billing_date'] : now()->addMonth()->format('Y-m-d');
+
         /** @var Tenant $tenant */
         $tenant = Tenant::create([
             'id' => $data['tenant_id'],
             'company_name' => $data['company_name'] ?? $data['tenant_id'],
             'vertical' => $data['vertical'] ?? \App\Enums\BusinessVerticalEnum::PHARMACY->value,
-            'plan_id' => $data['plan_id'] ?? null,
+            'plan_id' => $planCode,
+            'plan' => $planCode,
+            'monthly_price' => $monthlyPrice,
+            'billing_date' => $billingDate,
+            'can_create_branches' => (bool) ($data['can_create_branches'] ?? ($planCode !== 'basic')),
+            'max_branches' => (int) ($data['max_branches'] ?? ($planCode === 'pro' ? 5 : ($planCode === 'enterprise' ? 50 : 1))),
         ]);
 
         // 2. Asociar el dominio / subdominio
@@ -195,6 +204,13 @@ class TenantProvisioningService
             $this->supplierSyncService->syncTenant($tenant);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning("Error sincronizando proveedores en nuevo tenant {$data['tenant_id']}: " . $e->getMessage());
+        }
+
+        // 5. Registrar suscripción SaaS y emitir llave de licencia automáticamente
+        try {
+            app(\App\Contracts\Tenancy\SaasSubscriptionServiceInterface::class)->syncTenantSubscription($tenant, $data);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Error registrando suscripción SaaS para tenant {$data['tenant_id']}: " . $e->getMessage());
         }
 
         return $tenant;

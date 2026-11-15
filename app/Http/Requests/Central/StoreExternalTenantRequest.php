@@ -28,9 +28,18 @@ class StoreExternalTenantRequest extends FormRequest
             'tenant_id' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:tenants,id'],
             'domain' => ['required', 'string', 'max:150'],
             'vertical' => ['nullable', 'string', 'max:50'],
-            'plan' => ['required', 'string', 'in:basic,pro'],
+            'plan' => ['required', 'string', 'max:50'],
+            'billing_cycle' => ['nullable', 'string', 'in:monthly,quarterly,annual,lifetime'],
+            'status' => ['nullable', 'string', 'in:trial,active,past_due,suspended,cancelled'],
             'monthly_price' => ['required', 'numeric', 'min:0'],
             'billing_date' => ['required', 'date'],
+            'contact_name' => ['nullable', 'string', 'max:150'],
+            'contact_email' => ['nullable', 'email', 'max:150'],
+            'contact_phone' => ['nullable', 'string', 'max:50'],
+            'seller_name' => ['nullable', 'string', 'max:100'],
+            'max_users' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'max_branches' => ['nullable', 'integer', 'min:1', 'max:500'],
+            'notes' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

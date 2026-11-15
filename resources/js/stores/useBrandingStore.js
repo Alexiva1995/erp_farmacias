@@ -69,6 +69,7 @@ export const useBrandingStore = defineStore('branding', () => {
     enabled_telegram_views: ['configuration', 'generales', 'farmacia', 'restaurante', 'cosmeticos', 'alquileres'],
     is_tenant: false,
     is_master: true,
+    subscription: null,
   })
 
   const isLoading = ref(false)
@@ -86,7 +87,21 @@ export const useBrandingStore = defineStore('branding', () => {
     return v === 'drogueria'
   })
 
+  const isSaasAdmin = computed(() => {
+    const v = (settings.value.vertical || settings.value.business_type || '').toLowerCase()
+    return v === 'saas_admin'
+  })
+
   const labels = computed(() => {
+    if (isSaasAdmin.value) {
+      return {
+        businessName: 'Datos de la Empresa SaaS',
+        catalog: 'Catálogo de Planes y Licencias',
+        products: 'Planes y Servicios de Software',
+        suppliers: 'Proveedores de Infraestructura / Cloud',
+        laboratories: 'Líneas de Producto',
+      }
+    }
     const isRest = isRestaurant.value
     return {
       businessName: isRest ? 'Datos del Restaurante' : 'Datos de la Farmacia',
@@ -128,6 +143,7 @@ export const useBrandingStore = defineStore('branding', () => {
             settings.value.enabled_modules = bootstrapResponse.data.data.enabled_modules
             settings.value.is_tenant = Boolean(bootstrapResponse.data.data.is_tenant)
             settings.value.is_master = Boolean(bootstrapResponse.data.data.is_master)
+            settings.value.subscription = bootstrapResponse.data.data.subscription || null
             localStorage.setItem('business_type', bootstrapResponse.data.data.business_type)
             localStorage.setItem('vertical', settings.value.vertical)
           }
@@ -249,6 +265,7 @@ export const useBrandingStore = defineStore('branding', () => {
     isLoaded,
     isRestaurant,
     isDrogueria,
+    isSaasAdmin,
     labels,
     fetchSettings,
     fetchExchangeRates,
