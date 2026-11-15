@@ -193,9 +193,9 @@
     <div class="wrapper">
         <!-- Cabecera de Marca TOVA -->
         <div class="header">
-            @if(file_exists(public_path('logo/logo-tova-software-farmacias.png')))
+            @if(file_exists(public_path('logo.png')))
                 <div>
-                    <img src="{{ $message->embed(public_path('logo/logo-tova-software-farmacias.png')) }}" alt="TOVA" style="max-width: 170px; height: auto; background: #ffffff; padding: 8px 18px; border-radius: 12px; display: inline-block;">
+                    <img src="{{ $message->embed(public_path('logo.png')) }}" alt="TOVA" style="max-width: 170px; height: auto; background: #ffffff; padding: 8px 18px; border-radius: 12px; display: inline-block;">
                 </div>
             @else
                 <div class="header-brand">TOVA</div>
@@ -229,8 +229,18 @@
                         <td class="invoice-label">Vigencia / Período:</td>
                         <td class="invoice-value">{{ $data['period'] ?? 'Mensualidad Vigente' }}</td>
                     </tr>
+                    @if(!empty($data['discount_usd']) && (float) $data['discount_usd'] > 0)
                     <tr>
-                        <td class="invoice-label">Monto Base USD:</td>
+                        <td class="invoice-label">Precio Regular Plan:</td>
+                        <td class="invoice-value" style="color: #9ca3af; text-decoration: line-through;">{{ number_format((float) ($data['plan_price_usd'] ?? 0), 2, '.', ',') }} USD</td>
+                    </tr>
+                    <tr>
+                        <td class="invoice-label">Descuento / Ahorro:</td>
+                        <td class="invoice-value" style="color: #16a34a;">-{{ number_format((float) $data['discount_usd'], 2, '.', ',') }} USD (${{ number_format((float) ($data['discount_cop'] ?? 0), 0, ',', '.') }} COP)</td>
+                    </tr>
+                    @endif
+                    <tr>
+                        <td class="invoice-label">Monto a Pagar USD:</td>
                         <td class="invoice-value">{{ number_format((float) ($data['usd_amount'] ?? 29), 2, '.', ',') }} USD</td>
                     </tr>
                     <tr>

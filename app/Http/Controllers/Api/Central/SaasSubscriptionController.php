@@ -272,7 +272,12 @@ class SaasSubscriptionController extends Controller
         }
 
         $rate = (float) ($validated['rate'] ?? 3400);
-        $usdAmount = (float) ($subscription->price_agreed_usd ?: $tenant->monthly_price ?: 29.0);
+        $planPriceUsd = (float) ($subscription->plan?->price_usd ?? 0);
+        // Priorizar el precio mensual configurado en el tenant (ej. 29) sobre el precio del plan (ej. 49)
+        $usdAmount = (float) ($tenant->monthly_price > 0
+            ? $tenant->monthly_price
+            : ($subscription->price_agreed_usd ?: ($planPriceUsd ?: 29.0)));
+        $discountUsd = $planPriceUsd > $usdAmount ? round($planPriceUsd - $usdAmount, 2) : 0.0;
         $planName = $subscription->plan?->name ?? strtoupper((string) ($subscription->plan_code ?: 'basic'));
         $domain = $tenant->domains->first()?->domain ?? "{$tenant->id}.tovaerp.com";
 
@@ -287,6 +292,9 @@ class SaasSubscriptionController extends Controller
             'site_url' => "https://{$domain}/",
             'site_name' => $domain,
             'plan_name' => $planName,
+            'plan_price_usd' => $planPriceUsd,
+            'discount_usd' => $discountUsd,
+            'discount_cop' => $discountUsd * $rate,
             'period' => "{$periodStart} al {$periodEnd}",
             'usd_amount' => $usdAmount,
             'rate' => $rate,
