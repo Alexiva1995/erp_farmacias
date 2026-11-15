@@ -298,6 +298,33 @@ class SaasSubscriptionController extends Controller
         ];
 
         try {
+            // Si hay credenciales Gmail configuradas en GeneralSetting, usarlas dinámicamente sobre el .env
+            $settings = \App\Models\GeneralSetting::first();
+            $syncEmail = trim((string) ($settings?->gmail_sync_email ?? ''));
+            $rawSyncPass = (string) ($settings?->gmail_sync_password ?? '');
+
+            if ($syncEmail !== '' && $rawSyncPass !== '') {
+                try {
+                    $syncPass = \App\Helpers\FtpCrypt::decrypt($rawSyncPass);
+                } catch (\Throwable) {
+                    $syncPass = $rawSyncPass;
+                }
+
+                config([
+                    'mail.default' => 'smtp',
+                    'mail.mailers.smtp.host' => 'smtp.gmail.com',
+                    'mail.mailers.smtp.port' => 465,
+                    'mail.mailers.smtp.encryption' => 'ssl',
+                    'mail.mailers.smtp.username' => $syncEmail,
+                    'mail.mailers.smtp.password' => $syncPass,
+                    'mail.mailers.smtp.verify_peer' => false,
+                    'mail.from.address' => $syncEmail,
+                    'mail.from.name' => $settings?->app_name ?: config('mail.from.name', 'TOVA ERP'),
+                ]);
+
+                \Illuminate\Support\Facades\Mail::purge('smtp');
+            }
+
             \Illuminate\Support\Facades\Mail::to($recipient)->send(new \App\Mail\CobroMensualidadMail($data));
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("Error enviando correo de cobro al tenant {$tenantId} ({$recipient}): " . $e->getMessage());
