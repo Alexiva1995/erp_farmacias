@@ -26,6 +26,7 @@ const errorMessage = ref('')
 
 // Campos de configuración
 const enableProductTypes      = ref(true)
+const showProductPhotos       = ref(false)
 const enabledProductTypes     = ref([])
 const enableFavorites         = ref(true)
 const enableBulkToggleActive  = ref(true)
@@ -58,6 +59,7 @@ const fetchSettings = async () => {
 
   const fields = [
     'enable_product_types',
+    'show_product_photos',
     'enabled_product_types',
     'enable_favorites',
     'enable_bulk_toggle_active',
@@ -90,6 +92,7 @@ const fetchSettings = async () => {
     const settings = response.data.data
     if (settings) {
       enableProductTypes.value     = settings.enable_product_types     ?? true
+      showProductPhotos.value      = settings.show_product_photos      ?? false
       enabledProductTypes.value    = settings.enabled_product_types    ?? []
       enableFavorites.value        = settings.enable_favorites         ?? true
       enableBulkToggleActive.value = settings.enable_bulk_toggle_active ?? true
@@ -135,6 +138,7 @@ const updateSettings = () => {
     try {
       await axios.post('/general-settings', {
         enable_product_types:      enableProductTypes.value,
+        show_product_photos:       showProductPhotos.value,
         enabled_product_types:     enabledProductTypes.value,
         enable_favorites:          enableFavorites.value,
         enable_bulk_toggle_active: enableBulkToggleActive.value,
@@ -236,6 +240,25 @@ onMounted(fetchSettings)
 
     <!-- CONTENIDO PRINCIPAL -->
     <div v-else-if="!hasError">
+      <VCard class="mb-6 rounded-lg border shadow-sm">
+        <VCardText class="d-flex align-center justify-space-between flex-wrap gap-2 py-3">
+          <div>
+            <div class="text-subtitle-1 font-weight-medium">
+              Fotos de Productos en Inventario y TPV
+            </div>
+            <div class="text-body-2 text-medium-emphasis">
+              Muestra la miniatura de la foto del producto en las listas de inventario y punto de venta.
+            </div>
+          </div>
+          <VSwitch
+            v-model="showProductPhotos"
+            color="primary"
+            hide-details
+            :label="showProductPhotos ? 'Habilitado' : 'Deshabilitado'"
+          />
+        </VCardText>
+      </VCard>
+
       <!-- Configuración de Características de Productos -->
       <ProductSettingsCard
         v-model:enable-product-types="enableProductTypes"

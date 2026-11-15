@@ -3,6 +3,7 @@
 namespace App\Services\Products;
 
 use App\Models\Product;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -46,18 +47,34 @@ class FarmatodoImageSyncService
             'aborted' => false,
         ];
 
-        $query = Product::query()
-            ->select(['id', 'name', 'barcode', 'photo_url'])
-            ->whereNotNull('barcode')
-            ->where('barcode', '!=', '');
+        $lastId = (int) Cache::get('farmatodo_sync_last_id', 0);
 
-        if (!$force) {
-            $query->where(function ($q) {
-                $q->whereNull('photo_url')->orWhere('photo_url', '');
-            });
+        $buildQuery = function (int $afterId) use ($force) {
+            $q = Product::query()
+                ->select(['id', 'name', 'barcode', 'photo_url'])
+                ->whereNotNull('barcode')
+                ->where('barcode', '!=', '')
+                ->where('id', '>', $afterId);
+
+            if (!$force) {
+                $q->where(function ($sub) {
+                    $sub->whereNull('photo_url')->orWhere('photo_url', '');
+                });
+            }
+
+            return $q->orderBy('id');
+        };
+
+        $products = $buildQuery($lastId)->limit($limit)->get();
+
+        // Si llegamos al final de la tabla y había un cursor previo, reiniciar desde el principio
+        if ($products->isEmpty() && $lastId > 0) {
+            $lastId = 0;
+            Cache::forever('farmatodo_sync_last_id', 0);
+            $products = $buildQuery(0)->limit($limit)->get();
         }
 
-        $products = $query->orderBy('id')->limit($limit)->get();
+        $lastProcessedId = $lastId;
 
         foreach ($products as $index => $product) {
             if ($this->consecutiveBlocks >= self::MAX_CONSECUTIVE_BLOCKS) {
@@ -67,6 +84,7 @@ class FarmatodoImageSyncService
             }
 
             $stats['processed']++;
+            $lastProcessedId = (int) $product->id;
             $barcode = trim((string) $product->barcode);
 
             if ($barcode === '' || strlen($barcode) < 6) {
@@ -101,6 +119,12 @@ class FarmatodoImageSyncService
 
             // Pausa aleatoria (jitter) entre peticiones para evitar detección/baneo
             $this->humanDelay($index + 1);
+        }
+
+        // Guardar cursor para avanzar al siguiente lote sin repetir los no encontrados
+        if (!$dryRun) {
+            $nextCursor = ($products->count() < $limit && !$stats['aborted']) ? 0 : $lastProcessedId;
+            Cache::forever('farmatodo_sync_last_id', $nextCursor);
         }
 
         return $stats;
