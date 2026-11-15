@@ -832,7 +832,7 @@ watch(
           <div v-if="isFtp || (!isEmail && !isDromega && !isDronena && !isMafarta && !isCristmedicals)" class="mt-2">
             <VCard variant="outlined" class="pa-4 bg-white rounded-lg border-card mb-3">
               <div class="d-flex align-center gap-2 mb-1">
-                <VIcon icon="tabler-calendar-Dollar" color="primary" size="18" />
+                <VIcon icon="tabler-clock-dollar" color="primary" size="18" />
                 <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
                   Enlace de Días de Crédito vía Correo (Opcional)
                 </span>
@@ -845,7 +845,7 @@ watch(
                 <VCol cols="12" md="6">
                   <AppTextField
                     v-model="form.credit_days_email"
-                    label="Correo del Proveedor (Gmail)"
+                    label="Correo del Proveedor"
                     placeholder="catalogo@proveedor.com"
                     prepend-inner-icon="tabler-mail"
                     :error-messages="errors.credit_days_email"
