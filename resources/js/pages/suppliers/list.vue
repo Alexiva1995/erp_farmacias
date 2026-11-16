@@ -198,6 +198,22 @@ const handleSort = (sortOptions) => {
   orderBy.value = sortOptions.order;
 };
 
+const handleStatsCardClick = (action) => {
+  if (action === "debt") {
+    debtFilter.value = debtFilter.value === "with_debt" ? null : "with_debt";
+  } else if (action === "sync") {
+    sortBy.value = "last_sync_at";
+    orderBy.value = "asc";
+  } else if (action === "score") {
+    sortBy.value = "latest_score_value";
+    orderBy.value = "asc";
+  } else if (action === "catalog") {
+    debtFilter.value = null;
+    minScore.value = null;
+    typeFilter.value = "drogueria";
+  }
+};
+
 const handleAddSupplier = (type = null) => {
   const defaultType = type || typeFilter.value || "drogueria";
   currentSupplier.value = { type: defaultType };
@@ -601,6 +617,7 @@ defineExpose({ fetchSuppliers, fetchStats });
         :stats="stats"
         :loading="isLoadingStats"
         class="mt-0"
+        @card-click="handleStatsCardClick"
       />
 
       <SupplierTable

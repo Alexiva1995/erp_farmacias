@@ -1574,31 +1574,86 @@ class SupplierQueryService
             ];
         }
 
-        // 1. Deuda Total (Facturas que salen exactamente en la vista Por Pagar)
+        // 1. Deuda Total y Vencida (Facturas que salen exactamente en la vista Por Pagar)
         $pendingPaymentsService = app(\App\Services\PendingPayments\PendingPaymentsService::class);
         $pendingInvoices = $pendingPaymentsService->getPendingInvoices();
         $totalDebt = (float) $pendingInvoices->sum('total_usd');
+        $debtSuppliersCount = $pendingInvoices->pluck('supplier_id')->filter()->unique()->count();
+        $todayStr = now()->toDateString();
+        $overdueDebt = (float) $pendingInvoices->filter(function ($inv) use ($todayStr) {
+            return !empty($inv->expiration_date) && (string) $inv->expiration_date < $todayStr;
+        })->sum('total_usd');
 
-        // 2. Total de Proveedores Activos (No eliminados)
+        // 2. Proveedores Activos y Catálogos al Día (24h)
         $activeSuppliersCount = Supplier::count();
+        $commercialSuppliersCount = Supplier::where(function ($q) {
+            $q->where('type', '!=', 'externo')->orWhereNull('type');
+        })->count();
 
-        // 3. Éxito de Conexiones (Últimas 24 horas)
         $last24Hours = now()->subDay();
         $totalConnections = SupplierConnectionStatus::where('created_at', '>=', $last24Hours)->count();
         $successfulConnections = SupplierConnectionStatus::where('created_at', '>=', $last24Hours)
             ->where('status', 'completed')
             ->count();
 
-        $connectionSuccessRate = $totalConnections > 0 
-            ? round(($successfulConnections / $totalConnections) * 100, 1) 
+        $connectionSuccessRate = $totalConnections > 0
+            ? round(($successfulConnections / $totalConnections) * 100, 1)
             : 100;
 
+        $syncedTodayCount = SupplierConnection::where('type', 'NOT LIKE', '%bot%')
+            ->where('last_connection', '>=', $last24Hours)
+            ->distinct('supplier_id')
+            ->count('supplier_id');
+
+        $failedConnections24h = SupplierConnectionStatus::where('created_at', '>=', $last24Hours)
+            ->where('status', 'failed')
+            ->distinct('supplier_id')
+            ->count('supplier_id');
+
+        // 3. Calificación Promedio SRM (90 días)
+        $scoreStats = DB::table('suppliers')
+            ->join('supplier_scores', 'supplier_scores.supplier_id', '=', 'suppliers.id')
+            ->whereNull('suppliers.deleted_at')
+            ->where(function ($q) {
+                $q->where('suppliers.type', '!=', 'externo')->orWhereNull('suppliers.type');
+            })
+            ->whereRaw('supplier_scores.id = (SELECT MAX(ss2.id) FROM supplier_scores ss2 WHERE ss2.supplier_id = suppliers.id)')
+            ->selectRaw('AVG(supplier_scores.score) as avg_score, SUM(CASE WHEN supplier_scores.score < 60 THEN 1 ELSE 0 END) as low_score_count, COUNT(*) as scored_count')
+            ->first();
+
+        $avgScore = ($scoreStats && (int) $scoreStats->scored_count > 0)
+            ? round((float) $scoreStats->avg_score, 1)
+            : null;
+        $lowScoreCount = (int) ($scoreStats->low_score_count ?? 0);
+
+        // 4. SKUs Únicos Ofertados en Catálogos (sin duplicar por código de barras)
+        $uniqueSkusCount = 0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('product_suppliers')) {
+            $uniqueSkusCount = (int) DB::table('product_suppliers as ps')
+                ->join('suppliers as s', 'ps.supplier_id', '=', 's.id')
+                ->leftJoin('products as p', 'ps.product_id', '=', 'p.id')
+                ->whereNull('s.deleted_at')
+                ->where(function ($q) {
+                    $q->where('s.type', '!=', 'externo')->orWhereNull('s.type');
+                })
+                ->selectRaw("COUNT(DISTINCT COALESCE(NULLIF(TRIM(ps.barcode_match), ''), NULLIF(TRIM(p.barcode), ''), CONCAT('ps_', ps.id))) as unique_skus")
+                ->value('unique_skus');
+        }
+
         return [
-            'total_debt' => (float)$totalDebt,
+            'total_debt' => $totalDebt,
+            'overdue_debt' => $overdueDebt,
+            'debt_suppliers_count' => $debtSuppliersCount,
             'active_suppliers_count' => $activeSuppliersCount,
+            'commercial_suppliers_count' => $commercialSuppliersCount,
+            'synced_today_count' => $syncedTodayCount,
+            'failed_connections_24h' => $failedConnections24h,
             'connection_success_rate' => $connectionSuccessRate,
             'successful_connections' => $successfulConnections,
-            'total_connections_24h' => $totalConnections
+            'total_connections_24h' => $totalConnections,
+            'avg_score' => $avgScore,
+            'low_score_count' => $lowScoreCount,
+            'unique_skus_count' => $uniqueSkusCount,
         ];
     }
 

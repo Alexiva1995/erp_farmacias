@@ -18,11 +18,17 @@ const props = defineProps({
   },
 });
 
+const emit = defineEmits(["card-click"]);
+
 const formatCurrency = (value) => {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
   }).format(value);
+};
+
+const formatNumber = (value) => {
+  return new Intl.NumberFormat("es-VE").format(value ?? 0);
 };
 
 const isMasterMode = computed(() => !!props.stats?.is_master);
@@ -54,42 +60,76 @@ const statistics = computed(() => {
     ];
   }
 
+  const debtCount = props.stats?.debt_suppliers_count ?? 0;
+  const overdueDebt = props.stats?.overdue_debt ?? 0;
+  const debtDesc = debtCount > 0
+    ? (overdueDebt > 0 ? `${debtCount} prov. • ${formatCurrency(overdueDebt)} vencido` : `${debtCount} proveedores con saldo`)
+    : "Sin deuda pendiente";
+
+  const syncedToday = props.stats?.synced_today_count ?? 0;
+  const totalCommercial = props.stats?.commercial_suppliers_count ?? props.stats?.active_suppliers_count ?? 0;
+  const failed24h = props.stats?.failed_connections_24h ?? 0;
+  const syncDesc = failed24h > 0
+    ? `${syncedToday} al día • ${failed24h} con fallo`
+    : `${syncedToday} sincronizados hoy`;
+
+  const avgScore = props.stats?.avg_score;
+  const lowScore = props.stats?.low_score_count ?? 0;
+  const scoreDesc = lowScore > 0
+    ? `Evaluación 90d • ${lowScore} en riesgo (<60)`
+    : "Evaluación últimos 90 días";
+
   return [
     {
-      title: "Deuda Total",
+      action: "debt",
+      title: "Deuda por Pagar",
       value: formatCurrency(props.stats?.total_debt ?? 0),
       icon: "tabler-currency-dollar",
       color: "error",
-      description: "Pendiente por pagar",
+      description: debtDesc,
     },
     {
-      title: "Proveedores",
-      value: props.stats?.active_suppliers_count ?? 0,
-      icon: "tabler-users",
-      color: "primary",
-      description: "Registrados activos",
+      action: "sync",
+      title: "Catálogos al Día (24h)",
+      value: `${syncedToday} / ${totalCommercial}`,
+      icon: "tabler-refresh",
+      color: failed24h > 0 ? "warning" : "success",
+      description: syncDesc,
     },
     {
-      title: "Éxito Conexión",
-      value: `${props.stats?.connection_success_rate ?? 0}%`,
-      icon: "tabler-api",
-      color: "success",
-      description: "Últimas 24 horas",
+      action: "score",
+      title: "Calificación Promedio",
+      value: avgScore !== null && avgScore !== undefined ? `${avgScore} / 100` : "N/A",
+      icon: "tabler-star",
+      color: "warning",
+      description: scoreDesc,
+    },
+    {
+      action: "catalog",
+      title: "Oferta en Catálogos",
+      value: `${formatNumber(props.stats?.unique_skus_count ?? 0)} SKUs`,
+      icon: "tabler-packages",
+      color: "info",
+      description: "Productos únicos (sin duplicados)",
     },
   ];
 });
 </script>
 
 <template>
-  <VRow>
+  <VRow dense>
     <VCol
-      v-for="(item, index) in statistics"
+      v-for="item in statistics"
       :key="item.title"
-      :cols="index === 0 ? 12 : 6"
+      cols="12"
       sm="6"
-      md="4"
+      :md="isMasterMode ? 4 : 3"
     >
-      <VCard class="stats-card border-0 overflow-hidden mb-6">
+      <VCard
+        class="stats-card border-0 overflow-hidden mb-3"
+        :class="{ 'cursor-pointer': !isMasterMode && item.action }"
+        @click="!isMasterMode && item.action ? emit('card-click', item.action) : null"
+      >
         <!-- Decoración de fondo -->
         <div
           class="card-bg-decoration"
@@ -98,29 +138,29 @@ const statistics = computed(() => {
           }"
         ></div>
 
-        <VCardText class="pa-4 pa-sm-5 relative-content">
-          <div class="d-flex align-center justify-space-between mb-4">
+        <VCardText class="pa-3 pa-sm-4 relative-content">
+          <div class="d-flex align-center justify-space-between mb-2">
             <VAvatar
               :color="item.color"
               variant="tonal"
-              :size="$vuetify.display.xs ? 40 : 48"
+              :size="$vuetify.display.xs ? 38 : 42"
               rounded="lg"
               class="elevation-1"
             >
-              <VIcon :icon="item.icon" :size="$vuetify.display.xs ? 22 : 26" />
+              <VIcon :icon="item.icon" :size="$vuetify.display.xs ? 20 : 22" />
             </VAvatar>
 
             <div class="text-right">
               <span
                 class="text-overline font-weight-bold text-disabled"
-                style="letter-spacing: 1px !important; font-size: 0.65rem !important;"
+                style="letter-spacing: 0.8px !important; font-size: 0.65rem !important;"
                 >{{ item.title }}</span
               >
-              <h4 class="text-h5 text-md-h4 font-weight-black mt-1">
+              <h4 class="text-h6 text-md-h5 font-weight-black mt-0">
                 <template v-if="loading">
                   <VProgressCircular
                     indeterminate
-                    size="24"
+                    size="20"
                     width="3"
                     color="primary"
                   />
@@ -132,17 +172,17 @@ const statistics = computed(() => {
             </div>
           </div>
 
-          <VDivider class="mb-3 opacity-20" />
+          <VDivider class="mb-2 opacity-20" />
 
           <div class="d-flex align-center justify-space-between">
-            <span class="text-caption font-weight-medium text-medium-emphasis">
+            <span class="text-caption font-weight-medium text-medium-emphasis text-truncate">
               {{ item.description }}
             </span>
             <VIcon
               icon="tabler-trending-up"
-              size="16"
+              size="15"
               :color="item.color"
-              class="opacity-50"
+              class="opacity-50 flex-shrink-0 ms-1"
             />
           </div>
         </VCardText>
