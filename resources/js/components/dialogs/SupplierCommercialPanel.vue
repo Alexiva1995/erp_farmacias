@@ -78,10 +78,17 @@ const scaleTypes = [
 // --- WATCHERS PARA SINCRONIZAR PROPS ---
 watch(() => props.modelValue, (val) => {
   if (val) {
-    syncLocalData()
+    syncSettingsData()
+    syncRulesData()
     activeTab.value = 0
   }
 })
+
+watch(() => props.supplier, () => {
+  if (props.modelValue) {
+    syncSettingsData()
+  }
+}, { deep: true })
 
 watch([
   () => props.paymentRules,
@@ -89,7 +96,7 @@ watch([
   () => props.discountRules
 ], () => {
   if (props.modelValue) {
-    syncLocalData()
+    syncRulesData()
   }
 }, { deep: true })
 
@@ -98,33 +105,23 @@ watch(() => props.errors, (newErrors) => {
 }, { deep: true })
 
 watch(editablePaymentRules, () => {
-  if (!isHydrating && props.modelValue) dirtySections.payment = true
+  if (!isHydrating && !props.loading && props.modelValue) dirtySections.payment = true
 }, { deep: true })
 
 watch(editableScaleRules, () => {
-  if (!isHydrating && props.modelValue) dirtySections.scales = true
+  if (!isHydrating && !props.loading && props.modelValue) dirtySections.scales = true
 }, { deep: true })
 
 watch(editableDiscounts, () => {
-  if (!isHydrating && props.modelValue) dirtySections.discounts = true
+  if (!isHydrating && !props.loading && props.modelValue) dirtySections.discounts = true
 }, { deep: true })
 
 watch(editableSettings, () => {
-  if (!isHydrating && props.modelValue) dirtySections.settings = true
+  if (!isHydrating && !props.loading && props.modelValue) dirtySections.settings = true
 }, { deep: true })
 
-const syncLocalData = () => {
+const syncSettingsData = () => {
   isHydrating = true
-  // Pronto Pago
-  editablePaymentRules.value = props.paymentRules.map(rule => ({ ...rule, _markedForDeletion: false }))
-
-  // Descuentos Planos
-  editableDiscounts.value = props.supplierDiscount.map(d => ({ ...d, _markedNew: false }))
-
-  // Reglas de Escala
-  editableScaleRules.value = props.discountRules.map(r => ({ ...r, _markedNew: false }))
-
-  // Condiciones financieras y logísticas del proveedor
   const s = props.supplier || {}
   const dispatchDays = Array.isArray(s.dispatch_days) ? [...s.dispatch_days] : []
   const normalizedOrderDays = {}
@@ -144,14 +141,30 @@ const syncLocalData = () => {
   editableSettings.dispatch_days = dispatchDays
   editableSettings.order_days = normalizedOrderDays
 
+  dirtySections.settings = false
+  setTimeout(() => {
+    isHydrating = false
+  }, 50)
+}
+
+const syncRulesData = () => {
+  isHydrating = true
+  // Pronto Pago
+  editablePaymentRules.value = props.paymentRules.map(rule => ({ ...rule, _markedForDeletion: false }))
+
+  // Descuentos Planos
+  editableDiscounts.value = props.supplierDiscount.map(d => ({ ...d, _markedNew: false }))
+
+  // Reglas de Escala
+  editableScaleRules.value = props.discountRules.map(r => ({ ...r, _markedNew: false }))
+
   dirtySections.payment = false
   dirtySections.scales = false
   dirtySections.discounts = false
-  dirtySections.settings = false
 
   setTimeout(() => {
     isHydrating = false
-  }, 0)
+  }, 50)
 }
 
 // --- LÓGICA DE PRONTO PAGO ---
@@ -191,7 +204,7 @@ const removeDiscount = (index) => {
 
 // --- GUARDADO UNIFICADO POR SECCIÓN ---
 const buildFinancesPayload = () => {
-  const validRules = editablePaymentRules.value.filter(r => (Number(r.days) > 0 || Number(r.discount_percentage) > 0))
+  const validRules = editablePaymentRules.value.filter(r => ((r.days !== null && r.days !== '') || Number(r.discount_percentage) > 0))
   return validRules.map(r => ({
     id: r.id > 0 ? r.id : undefined,
     days: Number(r.days) || 0,
@@ -346,22 +359,24 @@ const close = () => {
             </div>
 
             <VCard variant="flat" class="bg-white rounded-xl border shadow-sm pa-4 mb-5">
-              <VRow dense>
+              <VRow dense class="gy-2">
                 <VCol cols="12" sm="6" md="3">
-                  <AppSelect
+                  <VSelect
                     v-model="editableSettings.payment_due_type"
                     :items="[
-                      { title: 'Fecha de factura', value: 'invoice_date' },
-                      { title: 'Pronto pago', value: 'early_payment' },
-                      { title: 'Personalizado', value: 'custom' },
+                      { title: 'Aprovechar Pronto Pago', value: 'early_payment' },
+                      { title: 'Fecha de la Factura', value: 'invoice_date' },
+                      { title: 'Plazo Fijo (Días)', value: 'custom' },
                     ]"
-                    label="Condición de Vencimiento"
+                    label="Meta de Pago (Vencimiento)"
+                    variant="outlined"
                     density="compact"
+                    hide-details="auto"
                   />
                 </VCol>
 
                 <VCol cols="12" sm="6" md="3">
-                  <AppSelect
+                  <VSelect
                     v-if="editableSettings.payment_due_type === 'invoice_date'"
                     v-model="editableSettings.invoice_date_reference"
                     :items="[
@@ -370,46 +385,54 @@ const close = () => {
                       { title: 'Fecha Vencimiento', value: 'expiration_date' },
                     ]"
                     label="Referencia de Fecha"
+                    variant="outlined"
                     density="compact"
+                    hide-details="auto"
                   />
-                  <AppTextField
+                  <VTextField
                     v-else-if="editableSettings.payment_due_type === 'custom'"
                     v-model.number="editableSettings.custom_due_days"
                     label="Días de Plazo"
                     type="number"
+                    variant="outlined"
                     density="compact"
+                    hide-details="auto"
                   />
-                  <AppSelect
+                  <VSelect
                     v-else
                     v-model="editableSettings.payment_due_reference"
                     :items="[
+                      { title: 'Fecha Recibo (Llegada)', value: 'receipt_date' },
                       { title: 'Fecha Emisión', value: 'issue_date' },
-                      { title: 'Fecha Recibo', value: 'receipt_date' },
                     ]"
-                    label="Calcular desde"
+                    label="Contar pronto pago desde"
+                    variant="outlined"
                     density="compact"
+                    hide-details="auto"
                   />
                 </VCol>
 
                 <VCol cols="12" sm="6" md="3">
-                  <AppTextField
+                  <VTextField
                     v-model.number="editableSettings.credit_days"
                     label="Días Crédito Habitual"
                     type="number"
-                    placeholder="Ej: 15"
+                    variant="outlined"
                     density="compact"
+                    hide-details="auto"
                   />
                 </VCol>
 
                 <VCol cols="12" sm="6" md="3">
-                  <AppTextField
+                  <VTextField
                     v-model.number="editableSettings.min_order_amount"
                     label="Pedido Mínimo ($)"
                     type="number"
                     step="0.01"
                     min="0"
-                    placeholder="0.00"
+                    variant="outlined"
                     density="compact"
+                    hide-details="auto"
                   />
                 </VCol>
 
@@ -421,12 +444,14 @@ const close = () => {
                       density="compact"
                       hide-details
                       inline
+                      @update:model-value="(val) => { if (val === 'Divisas') editableSettings.is_indexed = false }"
                     >
                       <VRadio label="Bs" value="Bs" color="primary" class="me-2 text-xs" />
-                      <VRadio label="Divisas" value="Divisas" color="primary" class="text-xs" />
+                      <VRadio label="Divisas ($)" value="Divisas" color="primary" class="text-xs" />
                     </VRadioGroup>
                   </div>
                   <VCheckbox
+                    v-if="editableSettings.payment_method !== 'Divisas'"
                     v-model="editableSettings.is_indexed"
                     label="Indexar (USD)"
                     color="primary"
@@ -453,37 +478,53 @@ const close = () => {
                 class="rounded-lg font-weight-black"
                 @click="addPaymentRule"
               >
-                + Nueva Regla
+                Nueva Regla
               </VBtn>
             </div>
 
-            <VCard variant="flat" class="bg-white rounded-xl border shadow-sm mb-4 overflow-hidden">
+            <VCard variant="flat" class="bg-white rounded-xl border shadow-sm overflow-hidden">
               <VTable class="premium-table">
                 <thead>
                   <tr>
-                    <th style="inline-size: 45%;">DÍAS DE ANTICIPACIÓN</th>
-                    <th style="inline-size: 40%;">% DESCUENTO</th>
+                    <th style="inline-size: 48%;">PLAZO DE PAGO (DÍAS — 0 = DÍA DE LLEGADA)</th>
+                    <th style="inline-size: 37%;">% DESCUENTO</th>
                     <th class="text-center" style="inline-size: 15%;">ACCIONES</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(rule, index) in editablePaymentRules" :key="index" class="hover-row">
                     <td>
-                      <AppTextField
-                        v-model="rule.days"
-                        type="number"
-                        density="compact"
-                        placeholder="Ej: 7"
-                        hide-details
-                        class="centered-input-field"
-                        @focus="$event.target?.select()"
-                      />
+                      <div class="d-flex align-center gap-2">
+                        <VTextField
+                          v-model.number="rule.days"
+                          type="number"
+                          min="0"
+                          density="compact"
+                          variant="outlined"
+                          placeholder="0 = Día de llegada"
+                          hide-details
+                          class="centered-input-field"
+                          @focus="$event.target?.select()"
+                        />
+                        <VChip
+                          v-if="rule.days !== null && rule.days !== '' && Number(rule.days) === 0"
+                          size="x-small"
+                          color="success"
+                          variant="tonal"
+                          class="font-weight-bold flex-shrink-0"
+                        >
+                          Día de llegada
+                        </VChip>
+                      </div>
                     </td>
                     <td>
-                      <AppTextField
-                        v-model="rule.discount_percentage"
+                      <VTextField
+                        v-model.number="rule.discount_percentage"
                         type="number"
+                        min="0"
+                        max="100"
                         density="compact"
+                        variant="outlined"
                         suffix="%"
                         placeholder="0.00"
                         hide-details
@@ -511,25 +552,6 @@ const close = () => {
                 </tbody>
               </VTable>
             </VCard>
-
-            <!-- Callout Estandarizado -->
-            <VAlert
-              color="primary"
-              variant="tonal"
-              border="start"
-              class="rounded-xl border shadow-none"
-              density="comfortable"
-            >
-              <template #prepend>
-                <VIcon icon="tabler-info-circle" size="22" color="primary" />
-              </template>
-              <div class="text-xs font-weight-black uppercase letter-spacing-1 mb-0.5 text-primary">
-                Información de Pronto Pago
-              </div>
-              <div class="text-caption text-medium-emphasis">
-                Define los porcentajes de descuento otorgados por el proveedor según los días de anticipación en el pago. Se calcula sobre el monto neto de la factura.
-              </div>
-            </VAlert>
           </VWindowItem>
 
           <!-- TAB 2: MARCAS Y ESCALAS -->

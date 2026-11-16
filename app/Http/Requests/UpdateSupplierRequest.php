@@ -49,7 +49,7 @@ class UpdateSupplierRequest extends FormRequest
                 'business_types.*' => ['string', 'max:50'],
                 'name' => 'sometimes|string|max:255',
                 'logo_url' => ['sometimes', 'nullable', 'string', 'max:500'],
-                'logo' => ['sometimes', 'nullable', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
+                'logo' => ['sometimes', 'nullable', 'file', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
                 'sales_phone' => 'sometimes|nullable|string|max:50',
                 'social_reason' => 'sometimes|nullable|string|max:255',
                 'rif' => 'sometimes|nullable|string|max:20',
@@ -60,6 +60,15 @@ class UpdateSupplierRequest extends FormRequest
                 'custom_due_days' => 'nullable|integer|min:1',
                 'payment_due_reference' => 'sometimes|nullable|in:receipt_date,issue_date',
                 'invoice_date_reference' => 'nullable|in:receipt_date,expiration_date,issue_date',
+                'credit_days' => 'sometimes|nullable|numeric',
+                'min_order_amount' => 'sometimes|nullable|numeric|min:0',
+                'payment_method' => 'sometimes|nullable|in:Bs,Divisas',
+                'is_indexed' => 'sometimes|boolean',
+                'dispatch_days' => 'sometimes|nullable|array',
+                'dispatch_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday',
+                'order_days' => 'sometimes|nullable|array',
+                'order_days.*' => 'nullable|array',
+                'order_days.*.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday',
             ];
         }
 
@@ -69,7 +78,7 @@ class UpdateSupplierRequest extends FormRequest
             'business_types.*' => ['string', 'max:50'],
             'name' => 'sometimes|string|max:255',
             'logo_url' => ['sometimes', 'nullable', 'string', 'max:500'],
-            'logo' => ['sometimes', 'nullable', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
+            'logo' => ['sometimes', 'nullable', 'file', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
             'social_reason' => ['sometimes', 'nullable', 'string', 'max:255'],
             'rif' => ['sometimes', 'nullable', 'string', 'max:20', Rule::unique('suppliers', 'rif')->ignore($this->route('supplier'))->whereNull('deleted_at')],
             'address' => ['sometimes', 'nullable', 'string'],

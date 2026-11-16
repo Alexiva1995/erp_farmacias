@@ -486,6 +486,12 @@ const handleSaveAllCommercial = async ({ paymentRules: pr, discountRules: dr, di
 
   try {
     await Promise.all(tasks);
+    if (supplierSettings !== undefined) {
+      currentSupplier.value = {
+        ...currentSupplier.value,
+        ...supplierSettings,
+      };
+    }
     toast.success("Configuración comercial guardada con éxito");
     await Promise.all([
       fetchPaymentRules(),
@@ -494,6 +500,10 @@ const handleSaveAllCommercial = async ({ paymentRules: pr, discountRules: dr, di
       fetchSuppliers(),
       fetchStats(),
     ]);
+    const refreshed = suppliers.value.find((s) => Number(s.id) === Number(currentSupplier.value.id));
+    if (refreshed) {
+      currentSupplier.value = { ...refreshed };
+    }
   } catch (error) {
     if (error.response && error.response.status === 422) {
       supplierFormErrors.value = error.response.data.errors || {};
