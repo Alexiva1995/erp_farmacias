@@ -369,8 +369,7 @@ class OrderQueryService
                         $words = explode(' ', $searchTerm);
                         foreach ($words as $word) {
                             $subQuery->where(function ($wordQuery) use ($word) {
-                                $wordQuery->where('products.name',
-                'products.photo_url', 'like', "%{$word}%")
+                                $wordQuery->where('products.name', 'like', "%{$word}%")
                                     ->orWhere('products.active_ingredient', 'like', "%{$word}%")
                                     ->orWhere('laboratories.name', 'like', "%{$word}%");
                             });
@@ -389,8 +388,7 @@ class OrderQueryService
                     } else {
                         $words = explode(' ', $searchTerm);
                         foreach ($words as $word) {
-                            $subQuery->where('product_packs.name',
-                DB::raw('NULL as photo_url'), 'like', "%{$word}%");
+                            $subQuery->where('product_packs.name', 'like', "%{$word}%");
                         }
                     }
                 });
@@ -406,8 +404,7 @@ class OrderQueryService
                     } else {
                         $words = explode(' ', $searchTerm);
                         foreach ($words as $word) {
-                            $subQuery->where('dishes.name',
-                    DB::raw('NULL as photo_url'), 'like', "%{$word}%");
+                            $subQuery->where('dishes.name', 'like', "%{$word}%");
                         }
                     }
                 });
@@ -598,8 +595,7 @@ class OrderQueryService
                     $words = explode(' ', $searchTerm);
                     foreach ($words as $word) {
                         $subQuery->where(function ($wordQuery) use ($word) {
-                            $wordQuery->where('products.name',
-                'products.photo_url', 'like', "%{$word}%")
+                            $wordQuery->where('products.name', 'like', "%{$word}%")
                                 ->orWhere('products.active_ingredient', 'like', "%{$word}%")
                                 // Como usamos UNION, laboratory_name ya debe venir calculado en el select
                                 ->orWhere('laboratories.name', 'like', "%{$word}%");
@@ -678,8 +674,7 @@ class OrderQueryService
     /*   private function applySortingProduct(Builder $query, ?string $sortBy, string $orderBy): Builder
        {
            if (empty($sortBy)) {
-               return $query->orderBy('products.name',
-                'products.photo_url', 'asc');
+               return $query->orderBy('products.name', 'asc');
            }
 
            switch ($sortBy) {
