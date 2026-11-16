@@ -136,6 +136,14 @@ class SupplierActionService
         } else {
             // En tenant no se sobrescribe manualmente el logo del Master
             unset($validatedData['logo_url']);
+
+            // Si el RIF o la razón social ya fueron establecidos, no se pueden modificar desde el tenant
+            if (!empty($supplier->rif)) {
+                unset($validatedData['rif']);
+            }
+            if (!empty($supplier->social_reason)) {
+                unset($validatedData['social_reason']);
+            }
         }
 
         $updated = $this->supplierRepository->update($supplier, $validatedData);

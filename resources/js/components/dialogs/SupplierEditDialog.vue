@@ -144,7 +144,21 @@ const showMasterSearch = computed(() => {
   return isNewSupplier.value && !props.isMaster && (isRestaurant.value || !isExpenseSupplier.value);
 });
 
-const isMasterIdentityLocked = computed(() => Boolean(linkedMasterSupplier.value));
+const isRifLocked = computed(() => {
+  if (props.isMaster) return false;
+  if (isNewSupplier.value) {
+    return Boolean(linkedMasterSupplier.value?.rif && String(linkedMasterSupplier.value.rif).trim() !== "");
+  }
+  return isReadOnly.value || Boolean(props.supplier?.rif && String(props.supplier.rif).trim() !== "");
+});
+
+const isSocialReasonLocked = computed(() => {
+  if (props.isMaster) return false;
+  if (isNewSupplier.value) {
+    return Boolean(linkedMasterSupplier.value?.social_reason && String(linkedMasterSupplier.value.social_reason).trim() !== "");
+  }
+  return isReadOnly.value || Boolean(props.supplier?.social_reason && String(props.supplier.social_reason).trim() !== "");
+});
 
 const showSenderEmailInput = computed(() => {
   if (!linkedMasterSupplier.value) return false;
@@ -870,7 +884,9 @@ onUnmounted(() => {
                   prepend-inner-icon="tabler-id-badge-2"
                   :loading="isLookingUpMaster"
                   :error-messages="formErrors.rif"
-                  :readonly="isReadOnly || isMasterIdentityLocked"
+                  :readonly="isRifLocked"
+                  :hint="isRifLocked && !isReadOnly ? 'Definido en el registro oficial (no editable)' : undefined"
+                  persistent-hint
                   @update:model-value="handleRifInput"
                 />
               </VCol>
@@ -894,7 +910,9 @@ onUnmounted(() => {
                   :placeholder="isRestaurant ? 'Ej: Distribuidora Avícola C.A.' : 'Ej: Droguería Nena C.A.'"
                   prepend-inner-icon="tabler-certificate"
                   :error-messages="formErrors.social_reason"
-                  :readonly="isReadOnly"
+                  :readonly="isSocialReasonLocked"
+                  :hint="isSocialReasonLocked && !isReadOnly ? 'Definido en el registro oficial (no editable)' : undefined"
+                  persistent-hint
                 />
               </VCol>
 
