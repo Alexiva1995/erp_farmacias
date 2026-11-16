@@ -657,8 +657,6 @@ onUnmounted(() => {
               </VBtn>
             </div>
           </div>
-            </VBtn>
-          </div>
 
           <p class="text-caption text-medium-emphasis mb-3">
             Busca primero por nombre o RIF si este proveedor ya existe en el centro de datos para importar su ficha y plantillas de Excel automáticamente. Si no aparece, créalo debajo.
