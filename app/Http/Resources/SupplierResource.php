@@ -44,6 +44,13 @@ class SupplierResource extends JsonResource
             'min_order_amount' => (float) ($this->min_order_amount ?? 0),
             'order_days' => $this->order_days,
             'payment_method' => $this->payment_method,
+            'is_indexed' => (bool) ($this->is_indexed ?? false),
+            'max_early_payment_discount' => $this->relationLoaded('paymentRules')
+                ? (float) ($this->paymentRules->max('discount_percentage') ?? 0)
+                : 0.0,
+            'pending_orders_count' => (int) ($this->pending_orders_count ?? 0),
+            'unpaid_invoices_count' => (int) ($this->unpaid_invoices_count ?? 0),
+            'overdue_invoices_count' => (int) ($this->overdue_invoices_count ?? 0),
             'cash_payment' => $this->cash_payment,
             'charges_igtf' => $this->charges_igtf,
             'payment_due_type' => $this->payment_due_type,

@@ -66,6 +66,31 @@ const isCommercialSupplier = (item) => {
   return item?.type !== "externo" && item?.type !== "gasto";
 };
 
+const dayShortMap = {
+  monday: "Lun",
+  tuesday: "Mar",
+  wednesday: "Mié",
+  thursday: "Jue",
+  friday: "Vie",
+  saturday: "Sáb",
+};
+
+const todayDayKey = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][new Date().getDay()];
+
+const isSyncStale = (dateString) => {
+  if (!dateString) return false;
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return false;
+  return (Date.now() - d.getTime()) > 48 * 60 * 60 * 1000;
+};
+
+const formatChannelLabel = (type) => {
+  const t = String(type || "file").toLowerCase();
+  if (t === "ftp" || t === "sftp") return "FTP";
+  if (t === "api" || t === "http") return "API";
+  return "Excel";
+};
+
 const formatDate = (dateString) => {
   if (!dateString) return null;
   try {
@@ -110,12 +135,13 @@ const headers = computed(() => {
   }
 
   return [
-    { title: "ID", key: "id", sortable: true },
-    { title: "Nombre", key: "name", sortable: true },
-    { title: isRestaurant.value ? "ÚLTIMA COMPRA / SINCR." : "ÚLTIMA SIC", key: "last_sync_at", sortable: true },
-    { title: "Deuda", key: "debt", sortable: true },
+    { title: "Proveedor / Catálogo", key: "name", sortable: true },
+    { title: "Crédito y Condiciones", key: "credit_days", sortable: true },
+    { title: "Despacho y OC", key: "dispatch_days", sortable: false },
+    { title: "Sincronización", key: "last_sync_at", sortable: true },
+    { title: "Deuda Pendiente", key: "debt", sortable: true, align: "end" },
     { title: "Calificación", key: "latest_score_value", sortable: true },
-    { title: "Acciones", key: "actions", sortable: false },
+    { title: "Acciones", key: "actions", sortable: false, align: "center" },
   ];
 });
 </script>
@@ -303,7 +329,8 @@ const headers = computed(() => {
                 </VChip>
               </div>
               <div class="d-flex align-center gap-2 text-xxs text-medium-emphasis">
-                <span v-if="item.rif">RIF: {{ item.rif }}</span>
+                <span class="font-weight-bold text-primary">#{{ item.id }}</span>
+                <span v-if="item.rif">• RIF: {{ item.rif }}</span>
                 <VChip
                   v-if="!props.isMaster && isCommercialSupplier(item) && item.products_count !== undefined"
                   size="x-small"
@@ -320,14 +347,100 @@ const headers = computed(() => {
           </div>
         </template>
 
+        <template #item.credit_days="{ item }">
+          <div
+            v-if="isCommercialSupplier(item)"
+            class="d-flex flex-column gap-1"
+            :class="{ 'cursor-pointer': canManageSuppliers && !isRestaurant }"
+            @click="canManageSuppliers && !isRestaurant ? emit('commercial-panel', item) : null"
+          >
+            <div class="d-flex align-center gap-1">
+              <VChip
+                size="x-small"
+                :color="(item.credit_days ?? 0) > 0 ? 'primary' : 'secondary'"
+                variant="tonal"
+                class="font-weight-bold"
+              >
+                {{ (item.credit_days ?? 0) > 0 ? `${item.credit_days} días` : 'Contado' }}
+              </VChip>
+              <VChip
+                size="x-small"
+                :color="item.is_indexed ? 'warning' : 'default'"
+                variant="tonal"
+                class="text-xxs font-weight-bold"
+              >
+                {{ item.is_indexed ? 'Indexado' : (item.payment_method || 'Bs') }}
+              </VChip>
+            </div>
+            <div class="text-xxs text-medium-emphasis">
+              <span v-if="(item.max_early_payment_discount ?? 0) > 0" class="text-success font-weight-medium">
+                Pronto pago: {{ item.max_early_payment_discount }}%
+              </span>
+              <span v-if="(item.max_early_payment_discount ?? 0) > 0 && (item.min_order_amount ?? 0) > 0"> • </span>
+              <span v-if="(item.min_order_amount ?? 0) > 0">
+                Mín: ${{ Number(item.min_order_amount).toFixed(0) }}
+              </span>
+              <span v-if="!(item.max_early_payment_discount > 0) && !(item.min_order_amount > 0)">
+                Sin acuerdos extra
+              </span>
+            </div>
+          </div>
+          <span v-else class="text-caption text-disabled">—</span>
+        </template>
+
+        <template #item.dispatch_days="{ item }">
+          <div v-if="isCommercialSupplier(item)" class="d-flex flex-column gap-1">
+            <div v-if="item.dispatch_days && item.dispatch_days.length > 0" class="d-flex align-center flex-wrap gap-1">
+              <span class="text-xs font-weight-medium text-high-emphasis">
+                {{ item.dispatch_days.map(d => dayShortMap[d] || d).join(' · ') }}
+              </span>
+              <VChip
+                v-if="item.dispatch_days.includes(todayDayKey)"
+                size="x-small"
+                color="success"
+                variant="flat"
+                class="text-xxs font-weight-bold px-1.5"
+              >
+                Hoy
+              </VChip>
+            </div>
+            <span v-else class="text-xxs text-disabled">Sin días asignados</span>
+
+            <span v-if="(item.pending_orders_count ?? 0) > 0" class="text-xxs text-primary font-weight-bold">
+              {{ item.pending_orders_count }} {{ item.pending_orders_count === 1 ? 'OC pendiente' : 'OC pendientes' }}
+            </span>
+          </div>
+          <span v-else class="text-caption text-disabled">—</span>
+        </template>
+
         <template #item.last_sync_at="{ item }">
-          <div v-if="item.last_sync_at" class="d-flex flex-column">
-            <span class="text-xs font-weight-medium text-high-emphasis">
-              {{ formatDate(item.last_sync_at) }}
-            </span>
-            <span class="text-xxs text-disabled">
-              {{ formatTime(item.last_sync_at) }}
-            </span>
+          <div v-if="isCommercialSupplier(item)" class="d-flex flex-column gap-0.5">
+            <div class="d-flex align-center gap-1.5">
+              <VTooltip
+                :text="checkingApiId === item.id ? 'Sincronizando...' : (item.latest_sync_status?.message || 'Estado de Conexión')"
+                location="top"
+              >
+                <template #activator="{ props: dotProps }">
+                  <VIcon
+                    v-bind="dotProps"
+                    size="9"
+                    :color="checkingApiId === item.id ? 'warning' : (item.latest_sync_status?.status === 'failed' ? 'error' : (item.latest_sync_status?.status === 'partial' || isSyncStale(item.last_sync_at) ? 'warning' : 'success'))"
+                    icon="tabler-circle-filled"
+                    :class="checkingApiId === item.id ? 'spin-icon' : ''"
+                  />
+                </template>
+              </VTooltip>
+              <VChip size="x-small" color="secondary" variant="tonal" class="text-xxs font-weight-bold px-1.5">
+                {{ formatChannelLabel(item.primary_connection_type) }}
+              </VChip>
+              <span class="text-xs font-weight-medium text-high-emphasis">
+                {{ formatDate(item.last_sync_at) || 'Sin sincr.' }}
+              </span>
+            </div>
+            <div class="d-flex align-center gap-1 text-xxs">
+              <span v-if="item.last_sync_at" class="text-disabled">{{ formatTime(item.last_sync_at) }}</span>
+              <span v-if="isSyncStale(item.last_sync_at)" class="text-warning font-weight-bold">• +48h</span>
+            </div>
           </div>
           <span v-else class="text-caption text-disabled">—</span>
         </template>
@@ -344,10 +457,10 @@ const headers = computed(() => {
               variant="flat"
               class="font-weight-bold rounded-lg"
             >
-              ${{ (item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+              {{ (item.debt ?? 0) > 0 ? `$${(item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Al día ($0,00)' }}
             </VChip>
-            <span v-if="(item.debt ?? 0) > 0 && canManageSuppliers && !props.isMaster" class="text-xxs text-error mt-1 font-weight-medium">
-              Ver facturas pendientes →
+            <span v-if="(item.unpaid_invoices_count ?? 0) > 0" class="text-xxs text-error mt-1 font-weight-medium">
+              {{ item.unpaid_invoices_count }} {{ item.unpaid_invoices_count === 1 ? 'fact.' : 'fact.' }}<span v-if="(item.overdue_invoices_count ?? 0) > 0"> ({{ item.overdue_invoices_count }} venc.)</span>
             </span>
           </div>
         </template>
@@ -428,20 +541,19 @@ const headers = computed(() => {
         </template>
 
         <template #item.actions="{ item }">
-          <div class="d-flex align-center justify-center">
-            <VTooltip
-              v-if="!isRestaurant && isCommercialSupplier(item)"
-              :text="checkingApiId === item.id ? 'Sincronizando...' : (item.latest_sync_status?.message || 'Estado de Conexión')"
-              location="top"
-            >
-              <template #activator="{ props: dotProps }">
-                <VIcon
-                  v-bind="dotProps"
-                  size="10"
-                  :color="checkingApiId === item.id ? 'warning' : (item.latest_sync_status?.status === 'failed' ? 'error' : (item.latest_sync_status?.status === 'partial' ? 'warning' : 'success'))"
-                  icon="tabler-circle-filled"
-                  :class="checkingApiId === item.id ? 'spin-icon' : 'pulse-icon'"
-                  class="me-2"
+          <div class="d-flex align-center justify-center gap-1">
+            <VTooltip v-if="!isRestaurant && isCommercialSupplier(item)" text="Sincronizar catálogo" location="top">
+              <template #activator="{ props: syncBtnProps }">
+                <VBtn
+                  v-bind="syncBtnProps"
+                  icon="tabler-refresh"
+                  variant="tonal"
+                  :color="checkingApiId === item.id ? 'warning' : 'primary'"
+                  size="30"
+                  class="rounded-circle"
+                  :loading="checkingApiId === item.id"
+                  :disabled="checkingApiId === item.id"
+                  @click="emit('check-supplier-api', item)"
                 />
               </template>
             </VTooltip>
