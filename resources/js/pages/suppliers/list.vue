@@ -630,6 +630,7 @@ defineExpose({ fetchSuppliers, fetchStats });
         @save="handleSaveSupplier"
         @clear-errors="clearFormErrors"
         @edit-existing="handleEditExistingFromMaster"
+        @open-master-directory="() => { isEditDialogVisible = false; isMasterDirectoryDialogVisible = true; }"
       />
 
       <SupplierCommercialPanel

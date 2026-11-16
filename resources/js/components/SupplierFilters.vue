@@ -82,11 +82,6 @@ const typeOptions = computed(() => [
   { title: "Gastos y Servicios", value: "externo" },
 ]);
 
-const showExpenseSupplierBtn = computed(() => {
-  const enabledTypes = brandingStore.settings?.enabled_supplier_types || ['inventory', 'expenses'];
-  return Array.isArray(enabledTypes) && enabledTypes.includes('expenses');
-});
-
 const hasAdvancedFilters = computed(
   () => !!(props.debtFilter || props.minScore || props.type),
 );
@@ -100,17 +95,17 @@ const hasAdvancedFilters = computed(
     :show-sort="true"
     :sort-options="sortOptions"
     :show-add="true"
-    :add-button-text="props.isMaster ? 'Añadir Droguería Master' : (isRestaurant ? 'Añadir Proveedor' : 'Añadir Droguería')"
+    :add-button-text="props.isMaster ? 'Añadir Droguería Master' : 'Añadir Proveedor'"
     search-placeholder="Buscar por ID, Nombre o RIF..."
     @update:search="emit('update:searchQuery', $event)"
     @clear="emit('clear')"
     @sort="(sortFilter) => emit('sort', sortFilter)"
-    @add="emit('add-supplier', 'drogueria')"
+    @add="emit('add-supplier', props.type || 'drogueria')"
     class="py-1"
   >
-    <template #actions-extra>
-            <!-- Filtro por Tipo de Negocio (exclusivo Modo Master) -->
-      <div v-if="props.isMaster" style="min-width: 200px;">
+    <template #actions-extra v-if="props.isMaster">
+      <!-- Filtro por Tipo de Negocio (exclusivo Modo Master) -->
+      <div style="min-width: 200px;">
         <VSelect
           :model-value="props.businessType || 'all'"
           :items="businessTypeOptions"
@@ -125,7 +120,6 @@ const hasAdvancedFilters = computed(
 
       <!-- Botón para sincronizar tenants al master (visible en modo Master) -->
       <VBtn
-        v-if="props.isMaster"
         icon
         color="primary"
         variant="elevated"
@@ -137,34 +131,6 @@ const hasAdvancedFilters = computed(
       >
         <VIcon icon="tabler-refresh" />
         <VTooltip activator="parent" location="top">Sincronizar Todos los Tenants al Master</VTooltip>
-      </VBtn>
-
-      <!-- Botón para explorar y activar droguerías desde el Catálogo Maestro (modo normal) -->
-      <VBtn
-        v-else
-        icon
-        color="primary"
-        variant="tonal"
-        size="38"
-        class="rounded-circle shadow-sm"
-        @click="emit('open-master-catalog')"
-      >
-        <VIcon icon="tabler-database-import" />
-        <VTooltip activator="parent" location="top">Directorio Master de Droguerías (Plantillas Excel)</VTooltip>
-      </VBtn>
-
-      <!-- Botón para añadir proveedor de gastos/servicios -->
-      <VBtn
-        v-if="showExpenseSupplierBtn && !props.isMaster"
-        icon
-        color="info"
-        variant="tonal"
-        size="38"
-        class="rounded-circle shadow-sm"
-        @click="emit('add-supplier', 'externo')"
-      >
-        <VIcon icon="tabler-receipt-tax" />
-        <VTooltip activator="parent" location="top">Añadir Proveedor de Gastos / Servicios</VTooltip>
       </VBtn>
     </template>
 

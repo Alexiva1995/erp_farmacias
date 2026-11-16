@@ -15,7 +15,7 @@ const props = defineProps({
   isMaster: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["update:modelValue", "save", "clearErrors", "edit-existing"]);
+const emit = defineEmits(["update:modelValue", "save", "clearErrors", "edit-existing", "open-master-directory"]);
 
 const isRestaurant = computed(() => brandingStore.isRestaurant);
 
@@ -601,6 +601,27 @@ onUnmounted(() => {
 
       <!-- Contenido del Formulario en 2 Columnas -->
       <VCardText class="pa-4 pa-sm-6 bg-light flex-grow-1 overflow-y-auto">
+        <!-- Selector visual de Tipo de Proveedor (solo al crear en modo normal) -->
+        <div v-if="isNewSupplier && !isRestaurant && !props.isMaster" class="mb-4">
+          <VBtnToggle
+            v-model="formData.type"
+            mandatory
+            color="primary"
+            variant="outlined"
+            divided
+            class="w-100 d-flex rounded-lg"
+          >
+            <VBtn value="drogueria" class="flex-grow-1 text-none font-weight-bold" height="44">
+              <VIcon start icon="tabler-truck-delivery" size="18" />
+              Droguería / Mercancía
+            </VBtn>
+            <VBtn value="externo" class="flex-grow-1 text-none font-weight-bold" height="44">
+              <VIcon start icon="tabler-receipt-tax" size="18" />
+              Gastos y Servicios
+            </VBtn>
+          </VBtnToggle>
+        </div>
+
         <!-- Buscador Predictivo en Red Master (Search-First) -->
         <VCard
           v-if="showMasterSearch"
@@ -614,15 +635,28 @@ onUnmounted(() => {
                 Buscar en Red Master de Proveedores
               </span>
             </div>
-            <VBtn
-              v-if="linkedMasterSupplier"
-              variant="text"
-              color="secondary"
-              size="x-small"
-              prepend-icon="tabler-link-off"
-              @click="unlinkMasterSupplier(true)"
-            >
-              Desvincular y llenar manual
+            <div class="d-flex align-center gap-2">
+              <VBtn
+                v-if="linkedMasterSupplier"
+                variant="text"
+                color="secondary"
+                size="x-small"
+                prepend-icon="tabler-link-off"
+                @click="unlinkMasterSupplier(true)"
+              >
+                Desvincular y llenar manual
+              </VBtn>
+              <VBtn
+                variant="text"
+                color="primary"
+                size="x-small"
+                prepend-icon="tabler-list-search"
+                @click="emit('open-master-directory')"
+              >
+                Ver directorio completo
+              </VBtn>
+            </div>
+          </div>
             </VBtn>
           </div>
 
