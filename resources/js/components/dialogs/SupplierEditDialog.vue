@@ -24,6 +24,9 @@ const isExpenseSupplier = computed(() => formData.value.type === "externo" || fo
 
 // Determina visibilidad de campo según tipo de proveedor
 const isFieldVisible = (fieldKey) => {
+  if (props.isMaster && (fieldKey === "sales_phone" || fieldKey === "collections_phone")) {
+    return false;
+  }
   if (fieldKey === "name" || fieldKey === "rif" || fieldKey === "social_reason") {
     return true;
   }
@@ -837,7 +840,7 @@ onUnmounted(() => {
                 />
               </VCol>
 
-              <VCol cols="12" sm="6" v-if="!isRestaurant && formData.type !== 'externo'">
+              <VCol cols="12" sm="6" v-if="!props.isMaster && !isRestaurant && formData.type !== 'externo'">
                 <VTextField
                   v-model="formData.payment_email"
                   label="Correo para Notificación de Pagos"
