@@ -2,7 +2,7 @@
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
 import { useDisplay } from "vuetify";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -40,15 +40,35 @@ watch([page, itemsPerPage], () => {
   }
 });
 
-const productsHeaders = [
-  { title: "ID", key: "id", sortable: false },
-  { title: "Nombre", key: "name", sortable: false },
-  { title: "Laboratorio", key: "laboratory", sortable: false },
-  { title: "Días Crédito", key: "credit_days", sortable: false, align: "center" },
-  { title: "Vencimiento", key: "expiration", sortable: false, align: "center" },
-  { title: "Costo 1 ($)", key: "unit_cost_usd", sortable: false, align: "end" },
-  { title: "Costo 2 ($)", key: "unit_cost_usd_with_discount", sortable: false, align: "end" },
-];
+const hasLaboratory = computed(() =>
+  products.value.some((p) => p.laboratory && String(p.laboratory).trim() !== ""),
+);
+const hasCreditDays = computed(() =>
+  products.value.some((p) => p.credit_days !== null && p.credit_days !== undefined && Number(p.credit_days) > 0),
+);
+const hasDistinctCost2 = computed(() =>
+  products.value.some(
+    (p) => Number(p.unit_cost_usd_with_discount ?? p.unit_cost_usd) !== Number(p.unit_cost_usd),
+  ),
+);
+
+const productsHeaders = computed(() => {
+  const cols = [{ title: "Nombre", key: "name", sortable: false }];
+  if (hasLaboratory.value) {
+    cols.push({ title: "Laboratorio", key: "laboratory", sortable: false });
+  }
+  if (hasCreditDays.value) {
+    cols.push({ title: "Días Crédito", key: "credit_days", sortable: false, align: "center" });
+  }
+  cols.push({ title: "Vencimiento", key: "expiration", sortable: false, align: "center" });
+  if (hasDistinctCost2.value) {
+    cols.push({ title: "Costo 1 ($)", key: "unit_cost_usd", sortable: false, align: "end" });
+    cols.push({ title: "Costo 2 ($)", key: "unit_cost_usd_with_discount", sortable: false, align: "end" });
+  } else {
+    cols.push({ title: "Costo ($)", key: "unit_cost_usd", sortable: false, align: "end" });
+  }
+  return cols;
+});
 
 const formatBs = (amount) => {
   return (
@@ -126,7 +146,7 @@ const updateTableOptions = (options) => {
               Productos del Proveedor
             </h2>
             <span class="text-super-xs opacity-75 font-weight-bold uppercase letter-spacing-1">
-              Catálogo de Inventario • Importación
+              {{ selectedSupplier.name || 'Catálogo de Inventario • Importación' }}
             </span>
           </div>
           <VSpacer />
@@ -135,41 +155,6 @@ const updateTableOptions = (options) => {
       </VCardTitle>
 
       <VCardText class="pa-4 pa-sm-6 bg-light">
-
-        <!-- Info del proveedor -->
-        <div class="d-flex align-center gap-2 mb-3">
-          <div class="header-indicator primary shadow-sm" />
-          <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Información del Proveedor</span>
-        </div>
-
-        <VCard variant="flat" class="pa-4 bg-white rounded-xl border shadow-sm mb-4">
-          <VRow>
-            <VCol cols="12" sm="6">
-              <div class="d-flex align-center gap-2">
-                <VIcon icon="tabler-building-store" size="16" color="primary" />
-                <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Proveedor</span>
-              </div>
-              <div class="text-subtitle-2 font-weight-black text-high-emphasis mt-1">{{ selectedSupplier.name }}</div>
-            </VCol>
-            <VCol cols="12" sm="6">
-              <div class="d-flex align-center gap-2">
-                <VIcon icon="tabler-calendar-time" size="16" color="primary" />
-                <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">Última Actualización</span>
-              </div>
-              <div class="mt-1">
-                <VChip
-                  :color="formatDate(selectedSupplier.last_connection) === 'N/A' ? 'warning' : 'success'"
-                  size="small"
-                  class="font-weight-black rounded-lg"
-                  variant="tonal"
-                >
-                  {{ formatDate(selectedSupplier.last_connection) }}
-                </VChip>
-              </div>
-            </VCol>
-          </VRow>
-        </VCard>
-
         <!-- Sección tabla de productos -->
         <div class="d-flex align-center gap-2 mb-3">
           <div class="header-indicator secondary shadow-sm" />

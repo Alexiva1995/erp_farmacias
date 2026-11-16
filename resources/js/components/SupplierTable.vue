@@ -313,10 +313,11 @@ const headers = computed(() => {
               <span v-else class="text-xs font-weight-bold">{{ getInitials(item.name) }}</span>
             </VAvatar>
             <div class="d-flex flex-column">
-              <div class="d-flex align-center gap-2">
+              <div class="d-flex align-center gap-1.5 flex-wrap">
                 <span class="text-sm font-weight-bold text-high-emphasis">
                   {{ item.name }}
                 </span>
+                <span class="text-xs font-weight-bold text-primary">- #{{ item.id }}</span>
                 <VChip
                   v-if="item.type === 'externo'"
                   size="x-small"
@@ -328,9 +329,8 @@ const headers = computed(() => {
                   Gastos
                 </VChip>
               </div>
-              <div class="d-flex align-center gap-1 text-xxs text-medium-emphasis">
-                <span class="font-weight-medium">#{{ item.id }}</span>
-                <span v-if="item.rif">• RIF: {{ item.rif }}</span>
+              <div v-if="item.rif" class="text-xxs text-medium-emphasis">
+                RIF: {{ item.rif }}
               </div>
             </div>
           </div>
