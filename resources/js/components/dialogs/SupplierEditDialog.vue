@@ -622,35 +622,12 @@ onUnmounted(() => {
 
             <!-- Buscador Predictivo en Red Master (Search-First) -->
             <div v-if="showMasterSearch" class="mb-4">
-          <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
-            <div class="d-flex align-center gap-2">
-              <VIcon icon="tabler-database-search" color="primary" size="20" />
-              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
-                Buscar en Red Master de Proveedores
-              </span>
-            </div>
-            <div class="d-flex align-center gap-2">
-              <VBtn
-                v-if="linkedMasterSupplier"
-                variant="text"
-                color="secondary"
-                size="x-small"
-                prepend-icon="tabler-link-off"
-                @click="unlinkMasterSupplier(true)"
-              >
-                Desvincular y llenar manual
-              </VBtn>
-              <VBtn
-                variant="text"
-                color="primary"
-                size="x-small"
-                prepend-icon="tabler-list-search"
-                @click="emit('open-master-directory')"
-              >
-                Ver directorio completo
-              </VBtn>
-            </div>
-          </div>
+              <div class="d-flex align-center gap-2 mb-2">
+                <VIcon icon="tabler-database-search" color="primary" size="18" />
+                <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
+                  Buscar en Red Master
+                </span>
+              </div>
 
           <VAutocomplete
             v-model="selectedMasterSupplier"
@@ -753,20 +730,6 @@ onUnmounted(() => {
               </VBtn>
             </div>
           </VAlert>
-
-              <!-- Correo remitente si aplica -->
-              <VTextField
-                v-if="linkedMasterSupplier && showSenderEmailInput"
-                v-model="formData.sender_email"
-                label="Correo remitente de listas de precios (Opcional)"
-                type="email"
-                prepend-inner-icon="tabler-mail"
-                density="compact"
-                variant="outlined"
-                hide-details="auto"
-                class="mt-3"
-                :error-messages="formErrors.sender_email"
-              />
 
               <VDivider class="mt-4" />
             </div>
