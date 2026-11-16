@@ -112,7 +112,7 @@ const statistics = computed(() => {
       value: `${formatNumber(props.stats?.unique_skus_count ?? 0)} Productos`,
       icon: "tabler-packages",
       color: "info",
-      description: `En ${totalCommercial} droguerías (sin repetidos)`,
+      description: `En ${totalCommercial} droguerías`,
     },
   ];
 });
