@@ -135,10 +135,10 @@ const headers = computed(() => {
   }
 
   return [
-    { title: "Proveedor / Catálogo", key: "name", sortable: true },
+    { title: "Proveedor", key: "name", sortable: true },
     { title: "Crédito y Condiciones", key: "credit_days", sortable: true },
     { title: "Despacho y OC", key: "dispatch_days", sortable: false },
-    { title: "Sincronización", key: "last_sync_at", sortable: true },
+    { title: "Sincronización / Catálogo", key: "last_sync_at", sortable: true },
     { title: "Deuda Pendiente", key: "debt", sortable: true, align: "end" },
     { title: "Calificación", key: "latest_score_value", sortable: true },
     { title: "Acciones", key: "actions", sortable: false, align: "center" },
@@ -308,7 +308,7 @@ const headers = computed(() => {
 
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-3 py-1">
-            <VAvatar size="36" color="primary" variant="tonal" rounded="lg" class="flex-shrink-0">
+            <VAvatar size="36" color="secondary" variant="tonal" rounded="lg" class="flex-shrink-0">
               <VImg v-if="item.logo_url" :src="item.logo_url" cover />
               <span v-else class="text-xs font-weight-bold">{{ getInitials(item.name) }}</span>
             </VAvatar>
@@ -321,27 +321,16 @@ const headers = computed(() => {
                   v-if="item.type === 'externo'"
                   size="x-small"
                   color="secondary"
-                  variant="tonal"
+                  variant="outlined"
                   label
                   class="text-xxs font-weight-bold px-1.5"
                 >
                   Gastos
                 </VChip>
               </div>
-              <div class="d-flex align-center gap-2 text-xxs text-medium-emphasis">
-                <span class="font-weight-bold text-primary">#{{ item.id }}</span>
+              <div class="d-flex align-center gap-1 text-xxs text-medium-emphasis">
+                <span class="font-weight-medium">#{{ item.id }}</span>
                 <span v-if="item.rif">• RIF: {{ item.rif }}</span>
-                <VChip
-                  v-if="!props.isMaster && isCommercialSupplier(item) && item.products_count !== undefined"
-                  size="x-small"
-                  color="info"
-                  variant="tonal"
-                  class="cursor-pointer px-1.5 text-xxs font-weight-bold"
-                  prepend-icon="tabler-packages"
-                  @click="emit('view-products', item)"
-                >
-                  {{ item.products_count }} prod.
-                </VChip>
               </div>
             </div>
           </div>
@@ -350,24 +339,20 @@ const headers = computed(() => {
         <template #item.credit_days="{ item }">
           <div
             v-if="isCommercialSupplier(item)"
-            class="d-flex flex-column gap-1"
+            class="d-flex flex-column gap-0.5"
             :class="{ 'cursor-pointer': canManageSuppliers && !isRestaurant }"
             @click="canManageSuppliers && !isRestaurant ? emit('commercial-panel', item) : null"
           >
-            <div class="d-flex align-center gap-1">
-              <VChip
-                size="x-small"
-                :color="(item.credit_days ?? 0) > 0 ? 'primary' : 'secondary'"
-                variant="tonal"
-                class="font-weight-bold"
-              >
+            <div class="d-flex align-center gap-1.5 text-xs">
+              <span class="font-weight-bold text-high-emphasis">
                 {{ (item.credit_days ?? 0) > 0 ? `${item.credit_days} días` : 'Contado' }}
-              </VChip>
+              </span>
+              <span class="text-disabled">•</span>
               <VChip
                 size="x-small"
-                :color="item.is_indexed ? 'warning' : 'default'"
-                variant="tonal"
-                class="text-xxs font-weight-bold"
+                color="secondary"
+                variant="outlined"
+                class="text-xxs font-weight-medium px-1.5"
               >
                 {{ item.is_indexed ? 'Indexado' : (item.payment_method || 'Bs') }}
               </VChip>
@@ -380,7 +365,7 @@ const headers = computed(() => {
               <span v-if="(item.min_order_amount ?? 0) > 0">
                 Mín: ${{ Number(item.min_order_amount).toFixed(0) }}
               </span>
-              <span v-if="!(item.max_early_payment_discount > 0) && !(item.min_order_amount > 0)">
+              <span v-if="!(item.max_early_payment_discount > 0) && !(item.min_order_amount > 0)" class="text-disabled">
                 Sin acuerdos extra
               </span>
             </div>
@@ -389,7 +374,7 @@ const headers = computed(() => {
         </template>
 
         <template #item.dispatch_days="{ item }">
-          <div v-if="isCommercialSupplier(item)" class="d-flex flex-column gap-1">
+          <div v-if="isCommercialSupplier(item)" class="d-flex flex-column gap-0.5">
             <div v-if="item.dispatch_days && item.dispatch_days.length > 0" class="d-flex align-center flex-wrap gap-1">
               <span class="text-xs font-weight-medium text-high-emphasis">
                 {{ item.dispatch_days.map(d => dayShortMap[d] || d).join(' · ') }}
@@ -398,7 +383,7 @@ const headers = computed(() => {
                 v-if="item.dispatch_days.includes(todayDayKey)"
                 size="x-small"
                 color="success"
-                variant="flat"
+                variant="tonal"
                 class="text-xxs font-weight-bold px-1.5"
               >
                 Hoy
@@ -406,7 +391,7 @@ const headers = computed(() => {
             </div>
             <span v-else class="text-xxs text-disabled">Sin días asignados</span>
 
-            <span v-if="(item.pending_orders_count ?? 0) > 0" class="text-xxs text-primary font-weight-bold">
+            <span v-if="(item.pending_orders_count ?? 0) > 0" class="text-xxs text-medium-emphasis font-weight-medium">
               {{ item.pending_orders_count }} {{ item.pending_orders_count === 1 ? 'OC pendiente' : 'OC pendientes' }}
             </span>
           </div>
@@ -430,16 +415,23 @@ const headers = computed(() => {
                   />
                 </template>
               </VTooltip>
-              <VChip size="x-small" color="secondary" variant="tonal" class="text-xxs font-weight-bold px-1.5">
+              <VChip size="x-small" color="secondary" variant="outlined" class="text-xxs font-weight-bold px-1.5">
                 {{ formatChannelLabel(item.primary_connection_type) }}
               </VChip>
               <span class="text-xs font-weight-medium text-high-emphasis">
                 {{ formatDate(item.last_sync_at) || 'Sin sincr.' }}
               </span>
             </div>
-            <div class="d-flex align-center gap-1 text-xxs">
+            <div class="d-flex align-center gap-1.5 text-xxs">
               <span v-if="item.last_sync_at" class="text-disabled">{{ formatTime(item.last_sync_at) }}</span>
               <span v-if="isSyncStale(item.last_sync_at)" class="text-warning font-weight-bold">• +48h</span>
+              <span
+                v-if="!props.isMaster && item.products_count !== undefined"
+                class="text-primary font-weight-bold cursor-pointer d-inline-flex align-center gap-0.5"
+                @click="emit('view-products', item)"
+              >
+                • <VIcon icon="tabler-packages" size="12" /> {{ item.products_count }} prod.
+              </span>
             </div>
           </div>
           <span v-else class="text-caption text-disabled">—</span>
@@ -454,13 +446,13 @@ const headers = computed(() => {
             <VChip
               :color="(item.debt ?? 0) > 0 ? 'error' : 'success'"
               size="small"
-              variant="flat"
+              variant="tonal"
               class="font-weight-bold rounded-lg"
             >
               {{ (item.debt ?? 0) > 0 ? `$${(item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Al día ($0,00)' }}
             </VChip>
-            <span v-if="(item.unpaid_invoices_count ?? 0) > 0" class="text-xxs text-error mt-1 font-weight-medium">
-              {{ item.unpaid_invoices_count }} {{ item.unpaid_invoices_count === 1 ? 'fact.' : 'fact.' }}<span v-if="(item.overdue_invoices_count ?? 0) > 0"> ({{ item.overdue_invoices_count }} venc.)</span>
+            <span v-if="(item.unpaid_invoices_count ?? 0) > 0" class="text-xxs text-medium-emphasis mt-0.5 font-weight-medium">
+              {{ item.unpaid_invoices_count }} fact.<span v-if="(item.overdue_invoices_count ?? 0) > 0" class="text-error font-weight-bold"> ({{ item.overdue_invoices_count }} venc.)</span>
             </span>
           </div>
         </template>
