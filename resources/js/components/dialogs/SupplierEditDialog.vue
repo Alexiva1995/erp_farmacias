@@ -529,7 +529,7 @@ onUnmounted(() => {
 <template>
   <VDialog
     :model-value="props.modelValue"
-    max-width="920px"
+    max-width="720px"
     :fullscreen="$vuetify.display.mobile"
     persistent
     scrollable
@@ -580,47 +580,47 @@ onUnmounted(() => {
         </div>
       </VCardTitle>
 
-      <!-- Navegación por Pestañas Sólida -->
-      <VTabs
-        v-if="!isRestaurant"
-        v-model="activeTab"
-        color="primary"
-        grow
-        height="46"
-        class="bg-white border-b px-2 flex-shrink-0"
-      >
-        <VTab :value="0" class="text-xs font-weight-bold text-none letter-spacing-05">
-          <VIcon icon="tabler-file-description" size="18" class="me-2" />
-          Información Fiscal y Comercial
-        </VTab>
-        <VTab v-if="isFieldVisible('logistics_dispatch')" :value="1" class="text-xs font-weight-bold text-none letter-spacing-05">
-          <VIcon icon="tabler-truck" size="18" class="me-2" />
-          Logística y Despacho
-        </VTab>
-      </VTabs>
-
-      <!-- Contenido del Formulario en 2 Columnas -->
+      <!-- Contenido del Formulario en 1 Vista Compacta -->
       <VCardText class="pa-4 pa-sm-6 bg-light flex-grow-1 overflow-y-auto">
-        <!-- Selector visual de Tipo de Proveedor (solo al crear en modo normal) -->
-        <div v-if="isNewSupplier && !isRestaurant && !props.isMaster" class="mb-4">
-          <VBtnToggle
-            v-model="formData.type"
-            mandatory
-            color="primary"
-            variant="outlined"
-            divided
-            class="w-100 d-flex rounded-lg"
-          >
-            <VBtn value="drogueria" class="flex-grow-1 text-none font-weight-bold" height="44">
-              <VIcon start icon="tabler-truck-delivery" size="18" />
-              Droguería / Mercancía
-            </VBtn>
-            <VBtn value="externo" class="flex-grow-1 text-none font-weight-bold" height="44">
-              <VIcon start icon="tabler-receipt-tax" size="18" />
-              Gastos y Servicios
-            </VBtn>
-          </VBtnToggle>
-        </div>
+        <!-- Fila Superior: Selector de Tipo + Facturación Fiscal -->
+        <VRow dense class="align-center mb-4">
+          <VCol v-if="isNewSupplier && !isRestaurant && !props.isMaster" cols="12" sm="8">
+            <VBtnToggle
+              v-model="formData.type"
+              mandatory
+              color="primary"
+              variant="outlined"
+              divided
+              class="w-100 d-flex rounded-lg bg-surface"
+            >
+              <VBtn value="drogueria" class="flex-grow-1 text-none font-weight-bold" height="44">
+                <VIcon start icon="tabler-truck-delivery" size="18" />
+                Droguería / Mercancía
+              </VBtn>
+              <VBtn value="externo" class="flex-grow-1 text-none font-weight-bold" height="44">
+                <VIcon start icon="tabler-receipt-tax" size="18" />
+                Gastos y Servicios
+              </VBtn>
+            </VBtnToggle>
+          </VCol>
+
+          <VCol cols="12" :sm="(isNewSupplier && !isRestaurant && !props.isMaster) ? 4 : 12">
+            <div class="d-flex align-center justify-space-between px-3 py-2 rounded-lg border bg-surface" style="min-height: 44px;">
+              <div class="d-flex flex-column">
+                <span class="text-caption font-weight-bold leading-tight">Facturación Fiscal</span>
+                <span class="text-xxs text-disabled leading-tight">
+                  {{ formData.is_fiscal ? 'N° control y desglose formal' : 'Simplificada / informal' }}
+                </span>
+              </div>
+              <VSwitch
+                v-model="formData.is_fiscal"
+                color="primary"
+                hide-details
+                density="compact"
+              />
+            </div>
+          </VCol>
+        </VRow>
 
         <!-- Buscador Predictivo en Red Master (Search-First) -->
         <VCard
@@ -781,435 +781,171 @@ onUnmounted(() => {
           </VRow>
         </VCard>
 
+        <!-- Formulario Único en Grid de 2 Columnas -->
         <VForm @submit.prevent="submitForm">
-          <VWindow v-model="activeTab">
-            <!-- PESTAÑA 1: Identificación Fiscal & Contacto/Condiciones (2 Columnas) -->
-            <VWindowItem :value="0">
-              <VRow dense class="gy-3">
-                <!-- Columna Izquierda: Identificación Fiscal -->
-                <VCol cols="12" md="6">
-                  <VCard variant="outlined" class="pa-4 h-100 rounded-lg bg-surface border-card">
-                    <div class="d-flex align-center gap-2 mb-3">
-                      <VIcon icon="tabler-building-bank" color="primary" size="20" />
-                      <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Identificación Fiscal</span>
-                    </div>
+          <VCard variant="outlined" class="pa-4 rounded-lg bg-surface border-card">
+            <div class="d-flex align-center gap-2 mb-3">
+              <VIcon icon="tabler-building-bank" color="primary" size="20" />
+              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Identificación y Contacto</span>
+            </div>
 
-                    <VRow dense>
-                      <VCol cols="12" v-if="!isRestaurant">
-                        <AppSelect
-                          v-model="formData.type"
-                          :items="[
-                            { title: isRestaurant ? 'Insumos y Mercancía (Inventario)' : 'Droguerías / Mercancía (Inventario)', value: 'drogueria' },
-                            { title: 'Gastos y Servicios Operativos', value: 'externo' },
-                          ]"
-                          label="Tipo de Proveedor *"
-                          prepend-inner-icon="tabler-category"
-                          :error-messages="formErrors.type"
-                          :readonly="isReadOnly"
-                        />
-                      </VCol>
-
-                      <VCol cols="12" v-if="authStore.isAdmin && props.isMaster">
-                        <div class="d-flex align-center justify-space-between pa-3 rounded-lg border bg-light-surface">
-                          <div class="d-flex flex-column">
-                            <span class="text-caption font-weight-bold">Estado del Proveedor</span>
-                            <span class="text-xxs text-disabled">
-                              {{ formData.is_active ? 'Proveedor activo en Catálogo Maestro' : 'Inactivo en Catálogo Maestro' }}
-                            </span>
-                          </div>
-                          <VSwitch
-                            v-model="formData.is_active"
-                            color="success"
-                            hide-details
-                            density="compact"
-                          />
-                        </div>
-                      </VCol>
-
-                      <VCol cols="12" v-if="props.isMaster">
-                        <div class="d-flex align-center gap-3 pa-3 rounded-lg border bg-light-surface">
-                          <VAvatar size="48" color="primary" variant="tonal" rounded="lg" class="flex-shrink-0">
-                            <VImg v-if="effectiveLogoUrl" :src="effectiveLogoUrl" cover />
-                            <VIcon v-else icon="tabler-photo" size="24" />
-                          </VAvatar>
-                          <div class="flex-grow-1">
-                            <VFileInput
-                              :model-value="logoFile ? [logoFile] : []"
-                              label="Logo / Imagen Oficial (Solo Master)"
-                              accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml"
-                              prepend-icon=""
-                              prepend-inner-icon="tabler-upload"
-                              density="compact"
-                              variant="outlined"
-                              clearable
-                              hide-details="auto"
-                              :error-messages="formErrors.logo"
-                              hint="Se mostrará automáticamente en el listado de las farmacias"
-                              persistent-hint
-                              @update:model-value="handleLogoFileChange"
-                              @click:clear="clearSelectedLogo"
-                            />
-                          </div>
-                        </div>
-                      </VCol>
-
-                      <VCol cols="12">
-                        <div class="d-flex align-center justify-space-between pa-3 rounded-lg border bg-light-surface">
-                          <div class="d-flex flex-column">
-                            <span class="text-caption font-weight-bold">Facturación Fiscal Formal</span>
-                            <span class="text-xxs text-disabled">
-                              {{ formData.is_fiscal ? 'Proveedor fiscal (requiere N° de control y desglose formal)' : 'Proveedor informal (facturación simplificada con autoincremento y fechas automáticas)' }}
-                            </span>
-                          </div>
-                          <VSwitch
-                            v-model="formData.is_fiscal"
-                            color="primary"
-                            hide-details
-                            density="compact"
-                          />
-                        </div>
-                      </VCol>
-
-                                            <!-- Tipos de Negocio donde está disponible este proveedor -->
-                      <VCol cols="12">
-                        <AppSelect
-                          v-model="formData.business_types"
-                          :items="availableBusinessTypes"
-                          label="Disponible para Tipos de Negocio"
-                          placeholder="Selecciona las verticales permitidas"
-                          prepend-inner-icon="tabler-building-community"
-                          multiple
-                          chips
-                          closable-chips
-                          :error-messages="formErrors.business_types"
-                          :readonly="isReadOnly"
-                          hint="Define en qué verticales (Farmacia, Restaurante, Bodegón, etc.) se puede usar este proveedor"
-                          persistent-hint
-                        />
-                      </VCol>
-
-                      <VCol cols="12" v-if="isFieldVisible('name')">
-                        <AppTextField
-                          v-model="formData.name"
-                          label="Nombre Comercial *"
-                          :placeholder="isRestaurant ? 'Ej: Distribuidora Avícola / Lácteos' : 'Ej: Droguería Nena'"
-                          prepend-inner-icon="tabler-building-store"
-                          :error-messages="formErrors.name"
-                          :readonly="isReadOnly"
-                        />
-                      </VCol>
-
-                      <VCol cols="12" v-if="isFieldVisible('social_reason')">
-                        <AppTextField
-                          v-model="formData.social_reason"
-                          label="Razón Social"
-                          :placeholder="isRestaurant ? 'Ej: Distribuidora Avícola C.A.' : 'Ej: Droguería Nena C.A.'"
-                          prepend-inner-icon="tabler-certificate"
-                          :error-messages="formErrors.social_reason"
-                          :readonly="isReadOnly"
-                        />
-                      </VCol>
-
-                      <VCol cols="12" v-if="isFieldVisible('rif')">
-                        <AppTextField
-                          v-model="formData.rif"
-                          :label="'RIF' + (isRestaurant ? '' : ' *')"
-                          placeholder="J-12345678-9"
-                          prepend-inner-icon="tabler-id-badge-2"
-                          :loading="isLookingUpMaster"
-                          :error-messages="formErrors.rif"
-                          :readonly="isReadOnly || isMasterIdentityLocked"
-                          @update:model-value="handleRifInput"
-                        />
-                        <VAlert
-                          v-if="masterFoundNotice"
-                          type="info"
-                          variant="tonal"
-                          density="compact"
-                          class="mt-2 rounded-lg text-xs font-weight-medium"
-                        >
-                          <VIcon start icon="tabler-sparkles" size="16" />
-                          {{ masterFoundNotice }}
-                        </VAlert>
-                      </VCol>
-
-                      <VCol cols="12" v-if="isFieldVisible('address')">
-                        <AppTextField
-                          v-model="formData.address"
-                          :label="'Dirección Fiscal' + ((isRestaurant || formData.type !== 'externo') ? '' : ' *')"
-                          placeholder="Ubicación o dirección completa"
-                          prepend-inner-icon="tabler-map-pin"
-                          :error-messages="formErrors.address"
-                          :readonly="isReadOnly"
-                        />
-                      </VCol>
-                    </VRow>
-                  </VCard>
-                </VCol>
-
-                <!-- Columna Derecha: Contacto y Condiciones de Pago -->
-                <VCol cols="12" md="6">
-                  <VCard variant="outlined" class="pa-4 h-100 rounded-lg bg-surface border-card d-flex flex-column justify-space-between">
-                    <div>
-                      <div class="d-flex align-center gap-2 mb-3">
-                        <VIcon icon="tabler-cash-banknote" color="primary" size="20" />
-                        <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Contacto y Condiciones</span>
-                      </div>
-
-                      <VRow dense>
-                        <VCol cols="12" sm="6" v-if="isFieldVisible('sales_phone')">
-                          <AppTextField
-                            v-model="formData.sales_phone"
-                            label="Teléfono Ventas"
-                            type="tel"
-                            placeholder="04121234567"
-                            prepend-inner-icon="tabler-phone"
-                            :error-messages="formErrors.sales_phone"
-                            :readonly="isReadOnly"
-                          />
-                        </VCol>
-
-                        <VCol cols="12" sm="6" v-if="isFieldVisible('collections_phone')">
-                          <AppTextField
-                            v-model="formData.collections_phone"
-                            label="Teléfono Cobranza"
-                            type="tel"
-                            placeholder="04147654321"
-                            prepend-inner-icon="tabler-phone-incoming"
-                            :error-messages="formErrors.collections_phone"
-                            :readonly="isReadOnly"
-                          />
-                        </VCol>
-
-                        <VCol cols="12" v-if="!isRestaurant && formData.type !== 'externo'">
-                          <AppTextField
-                            v-model="formData.payment_email"
-                            label="Correo para Notificación de Pagos"
-                            type="email"
-                            :placeholder="isRestaurant ? 'pagos@proveedor.com' : 'pagos@drogueria.com'"
-                            prepend-inner-icon="tabler-mail-dollar"
-                            :error-messages="formErrors.payment_email"
-                            hint="Se enviará automáticamente el soporte de pago a este correo"
-                            persistent-hint
-                            :readonly="isReadOnly"
-                          />
-                        </VCol>
-
-                        <VCol cols="12" sm="6" v-if="isFieldVisible('payment_due_type')">
-                          <AppSelect
-                            v-model="formData.payment_due_type"
-                            :items="[
-                              { title: 'Fecha de factura', value: 'invoice_date' },
-                              { title: 'Pronto pago', value: 'early_payment' },
-                              { title: 'Personalizado', value: 'custom' },
-                            ]"
-                            label="Condición de Vencimiento"
-                            prepend-inner-icon="tabler-calendar-stats"
-                            :error-messages="formErrors.payment_due_type"
-                            :readonly="isReadOnly"
-                          />
-                        </VCol>
-
-                        <VCol cols="12" sm="6" v-if="isFieldVisible('invoice_date_reference') || isFieldVisible('custom_due_days') || isFieldVisible('payment_due_reference')">
-                          <AppSelect
-                            v-if="formData.payment_due_type === 'invoice_date' && isFieldVisible('invoice_date_reference')"
-                            v-model="formData.invoice_date_reference"
-                            :items="[
-                              { title: 'Fecha Emisión', value: 'issue_date' },
-                              { title: 'Fecha Recibo', value: 'receipt_date' },
-                              { title: 'Fecha Vencimiento', value: 'expiration_date' },
-                            ]"
-                            label="Referencia de Fecha"
-                            prepend-inner-icon="tabler-timeline"
-                            :error-messages="formErrors.invoice_date_reference"
-                            :readonly="isReadOnly"
-                          />
-                          <AppTextField
-                            v-else-if="formData.payment_due_type === 'custom' && isFieldVisible('custom_due_days')"
-                            v-model.number="formData.custom_due_days"
-                            label="Días de Plazo"
-                            type="number"
-                            prepend-inner-icon="tabler-numbers"
-                            :error-messages="formErrors.custom_due_days"
-                            :readonly="isReadOnly"
-                          />
-                          <AppSelect
-                            v-else-if="formData.payment_due_type === 'early_payment' && isFieldVisible('payment_due_reference')"
-                            v-model="formData.payment_due_reference"
-                            :items="[
-                              { title: 'Fecha Emisión', value: 'issue_date' },
-                              { title: 'Fecha Recibo', value: 'receipt_date' },
-                            ]"
-                            label="Calcular desde"
-                            prepend-inner-icon="tabler-clock-play"
-                            :error-messages="formErrors.payment_due_reference"
-                            :readonly="isReadOnly"
-                          />
-                        </VCol>
-
-                        <VCol cols="12" sm="6" v-if="isFieldVisible('credit_days')">
-                          <AppTextField
-                            v-model.number="formData.credit_days"
-                            label="Días de Crédito Habitual"
-                            type="number"
-                            placeholder="Ej: 15"
-                            prepend-inner-icon="tabler-calendar-time"
-                            :error-messages="formErrors.credit_days"
-                            :readonly="isReadOnly"
-                          />
-                        </VCol>
-
-                        <VCol cols="12" :sm="isFieldVisible('credit_days') ? 6 : 12">
-                          <AppTextField
-                            v-model.number="formData.min_order_amount"
-                            label="Pedido Mínimo"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="0.00"
-                            prepend-inner-icon="tabler-shopping-cart-dollar"
-                            :error-messages="formErrors.min_order_amount"
-                            :readonly="isReadOnly"
-                          />
-                        </VCol>
-                      </VRow>
-                    </div>
-
-                    <!-- Bloque de Moneda & Parámetros Financieros -->
-                    <div v-if="isFieldVisible('payment_method') || isFieldVisible('is_indexed')" class="d-flex align-center flex-wrap justify-space-between gap-2 py-2 px-3 border rounded-lg bg-light-surface mt-3">
-                      <div v-if="isFieldVisible('payment_method')" class="d-flex align-center gap-2">
-                        <span class="text-xs font-weight-bold text-high-emphasis">Moneda:</span>
-                        <VRadioGroup
-                          v-model="formData.payment_method"
-                          density="compact"
-                          hide-details
-                          inline
-                        >
-                          <VRadio
-                            v-for="op in opciones"
-                            :key="op.value"
-                            :label="op.label"
-                            :value="op.value"
-                            color="primary"
-                            class="me-2 text-xs"
-                          />
-                        </VRadioGroup>
-                      </div>
-
-                      <div class="d-flex align-center gap-3">
-                        <VCheckbox
-                          v-if="isFieldVisible('is_indexed')"
-                          v-model="formData.is_indexed"
-                          label="Indexar (USD)"
-                          color="primary"
-                          hide-details
-                          density="compact"
-                          class="font-weight-bold text-xs"
-                        />
-                        <VCheckbox
-                          v-if="isFieldVisible('charges_igtf')"
-                          v-model="formData.charges_igtf"
-                          label="Cobra IGTF"
-                          color="primary"
-                          hide-details
-                          density="compact"
-                          class="font-weight-bold text-xs"
-                        />
-                      </div>
-                    </div>
-                  </VCard>
-                </VCol>
-              </VRow>
-            </VWindowItem>
-
-            <!-- PESTAÑA 2: Logística y Despacho -->
-            <VWindowItem v-if="isFieldVisible('logistics_dispatch')" :value="1">
-              <div class="d-flex flex-column gap-4">
-                <!-- 1. Días de Despacho -->
-                <VCard variant="outlined" class="pa-4 rounded-lg bg-surface border-card">
-                  <div class="d-flex align-center gap-2 mb-1">
-                    <VIcon icon="tabler-truck-delivery" color="primary" size="20" />
-                    <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">{{ isRestaurant ? 'Días de Despacho (Entrega en Restaurante)' : 'Días de Despacho (Entrega en Farmacia)' }}</span>
+            <VRow dense>
+              <!-- Campos exclusivos de Master -->
+              <VCol cols="12" sm="6" v-if="authStore.isAdmin && props.isMaster">
+                <div class="d-flex align-center justify-space-between pa-3 rounded-lg border bg-light-surface h-100">
+                  <div class="d-flex flex-column">
+                    <span class="text-caption font-weight-bold">Estado del Proveedor</span>
+                    <span class="text-xxs text-disabled">
+                      {{ formData.is_active ? 'Activo en Catálogo Maestro' : 'Inactivo en Catálogo Maestro' }}
+                    </span>
                   </div>
-                  <p class="text-xs text-medium-emphasis mb-3">
-                    Selecciona los días de la semana en que el proveedor realiza entregas de mercancía en la sucursal.
-                  </p>
+                  <VSwitch
+                    v-model="formData.is_active"
+                    color="success"
+                    hide-details
+                    density="compact"
+                  />
+                </div>
+              </VCol>
 
-                  <div class="d-flex flex-wrap gap-2">
-                    <VChip
-                      v-for="dia in dias"
-                      :key="dia.value"
-                      :color="formData.dispatch_days?.includes(dia.value) ? 'primary' : 'default'"
-                      :variant="formData.dispatch_days?.includes(dia.value) ? 'flat' : 'outlined'"
-                      class="cursor-pointer font-weight-bold px-4 py-2 text-sm transition-all"
-                      rounded="lg"
-                      @click="
-                        formData.dispatch_days.includes(dia.value)
-                          ? formData.dispatch_days.splice(formData.dispatch_days.indexOf(dia.value), 1)
-                          : formData.dispatch_days.push(dia.value)
-                      "
-                    >
-                      <VIcon v-if="formData.dispatch_days?.includes(dia.value)" icon="tabler-check" size="16" class="me-1" />
-                      {{ dia.label.toUpperCase() }}
-                    </VChip>
+              <VCol cols="12" sm="6" v-if="props.isMaster">
+                <div class="d-flex align-center gap-3 pa-2 rounded-lg border bg-light-surface h-100">
+                  <VAvatar size="42" color="primary" variant="tonal" rounded="lg" class="flex-shrink-0">
+                    <VImg v-if="effectiveLogoUrl" :src="effectiveLogoUrl" cover />
+                    <VIcon v-else icon="tabler-photo" size="22" />
+                  </VAvatar>
+                  <div class="flex-grow-1">
+                    <VFileInput
+                      :model-value="logoFile ? [logoFile] : []"
+                      label="Logo Oficial (Master)"
+                      accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml"
+                      prepend-icon=""
+                      prepend-inner-icon="tabler-upload"
+                      density="compact"
+                      variant="outlined"
+                      clearable
+                      hide-details="auto"
+                      :error-messages="formErrors.logo"
+                      @update:model-value="handleLogoFileChange"
+                      @click:clear="clearSelectedLogo"
+                    />
                   </div>
-                </VCard>
+                </div>
+              </VCol>
 
-                <!-- 2. Programación de Pedidos -->
-                <VCard v-if="formData.dispatch_days?.length" variant="outlined" class="pa-4 rounded-lg bg-surface border-card">
-                  <div class="d-flex align-center gap-2 mb-1">
-                    <VIcon icon="tabler-calendar-event" color="primary" size="20" />
-                    <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Días Límite para Transmitir la Orden de Compra</span>
-                  </div>
-                  <p class="text-xs text-medium-emphasis mb-3">
-                    Para cada día de entrega seleccionado, indica qué días se debe generar y enviar la orden de compra.
-                  </p>
+              <VCol cols="12" v-if="props.isMaster">
+                <AppSelect
+                  v-model="formData.business_types"
+                  :items="availableBusinessTypes"
+                  label="Disponible para Tipos de Negocio"
+                  placeholder="Selecciona las verticales permitidas"
+                  prepend-inner-icon="tabler-building-community"
+                  multiple
+                  chips
+                  closable-chips
+                  :error-messages="formErrors.business_types"
+                  :readonly="isReadOnly"
+                  hint="Define en qué verticales (Farmacia, Restaurante, Bodegón, etc.) estará disponible"
+                  persistent-hint
+                />
+              </VCol>
 
-                  <VRow dense class="gy-3">
-                    <VCol v-for="diaD in formData.dispatch_days" :key="diaD" cols="12" md="6">
-                      <VCard variant="outlined" class="pa-3 rounded-lg border-subtle">
-                        <div class="d-flex align-center justify-space-between mb-2">
-                          <div class="d-flex align-center gap-2">
-                            <VIcon icon="tabler-truck" size="18" color="primary" />
-                            <span class="text-xs font-weight-black text-high-emphasis text-uppercase">
-                              Entrega del {{ diasFull[diaD] }}
-                            </span>
-                          </div>
-                          <span class="text-xxs text-medium-emphasis">Hacer pedido el:</span>
-                        </div>
+              <!-- Campos Generales en 2 Columnas -->
+              <VCol cols="12" sm="6" v-if="isFieldVisible('name')">
+                <AppTextField
+                  v-model="formData.name"
+                  label="Nombre Comercial *"
+                  :placeholder="isRestaurant ? 'Ej: Distribuidora Avícola / Lácteos' : 'Ej: Droguería Nena'"
+                  prepend-inner-icon="tabler-building-store"
+                  :error-messages="formErrors.name"
+                  :readonly="isReadOnly"
+                />
+              </VCol>
 
-                        <div class="d-flex flex-wrap gap-1 mt-2">
-                          <VChip
-                            v-for="dia in dias"
-                            :key="dia.value"
-                            :color="formData.order_days[diaD]?.includes(dia.value) ? 'primary' : 'default'"
-                            :variant="formData.order_days[diaD]?.includes(dia.value) ? 'flat' : 'outlined'"
-                            class="cursor-pointer font-weight-medium"
-                            size="small"
-                            rounded="md"
-                            @click="
-                              formData.order_days[diaD]?.includes(dia.value)
-                                ? formData.order_days[diaD].splice(formData.order_days[diaD].indexOf(dia.value), 1)
-                                : (formData.order_days[diaD] = [...(formData.order_days[diaD] || []), dia.value])
-                            "
-                          >
-                            <VIcon v-if="formData.order_days[diaD]?.includes(dia.value)" icon="tabler-check" size="12" class="me-1" />
-                            {{ dia.label }}
-                          </VChip>
-                        </div>
-                      </VCard>
-                    </VCol>
-                  </VRow>
-                </VCard>
+              <VCol cols="12" sm="6" v-if="isFieldVisible('rif')">
+                <AppTextField
+                  v-model="formData.rif"
+                  label="RIF"
+                  placeholder="J-12345678-9"
+                  prepend-inner-icon="tabler-id-badge-2"
+                  :loading="isLookingUpMaster"
+                  :error-messages="formErrors.rif"
+                  :readonly="isReadOnly || isMasterIdentityLocked"
+                  @update:model-value="handleRifInput"
+                />
+              </VCol>
 
-                <VCard v-else variant="outlined" class="pa-6 rounded-lg bg-surface border-card text-center opacity-75">
-                  <VIcon icon="tabler-calendar-off" size="40" color="disabled" class="mb-2" />
-                  <div class="text-sm font-weight-bold text-medium-emphasis">Sin días de despacho asignados</div>
-                  <div class="text-xs text-disabled mt-1">Selecciona arriba los días de entrega del proveedor para programar las órdenes de compra.</div>
-                </VCard>
-              </div>
-            </VWindowItem>
-          </VWindow>
+              <VCol cols="12" v-if="masterFoundNotice">
+                <VAlert
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="rounded-lg text-xs font-weight-medium"
+                >
+                  <VIcon start icon="tabler-sparkles" size="16" />
+                  {{ masterFoundNotice }}
+                </VAlert>
+              </VCol>
+
+              <VCol cols="12" sm="6" v-if="isFieldVisible('social_reason')">
+                <AppTextField
+                  v-model="formData.social_reason"
+                  label="Razón Social"
+                  :placeholder="isRestaurant ? 'Ej: Distribuidora Avícola C.A.' : 'Ej: Droguería Nena C.A.'"
+                  prepend-inner-icon="tabler-certificate"
+                  :error-messages="formErrors.social_reason"
+                  :readonly="isReadOnly"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" v-if="!isRestaurant && formData.type !== 'externo'">
+                <AppTextField
+                  v-model="formData.payment_email"
+                  label="Correo para Notificación de Pagos"
+                  type="email"
+                  placeholder="pagos@drogueria.com"
+                  prepend-inner-icon="tabler-mail-dollar"
+                  :error-messages="formErrors.payment_email"
+                  :readonly="isReadOnly"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" v-if="isFieldVisible('sales_phone')">
+                <AppTextField
+                  v-model="formData.sales_phone"
+                  label="Teléfono Ventas"
+                  type="tel"
+                  placeholder="04121234567"
+                  prepend-inner-icon="tabler-phone"
+                  :error-messages="formErrors.sales_phone"
+                  :readonly="isReadOnly"
+                />
+              </VCol>
+
+              <VCol cols="12" sm="6" v-if="isFieldVisible('collections_phone')">
+                <AppTextField
+                  v-model="formData.collections_phone"
+                  label="Teléfono Cobranza"
+                  type="tel"
+                  placeholder="04147654321"
+                  prepend-inner-icon="tabler-phone-incoming"
+                  :error-messages="formErrors.collections_phone"
+                  :readonly="isReadOnly"
+                />
+              </VCol>
+
+              <VCol cols="12" v-if="isFieldVisible('address')">
+                <AppTextField
+                  v-model="formData.address"
+                  label="Dirección Fiscal"
+                  placeholder="Ubicación o dirección completa"
+                  prepend-inner-icon="tabler-map-pin"
+                  :error-messages="formErrors.address"
+                  :readonly="isReadOnly"
+                />
+              </VCol>
+            </VRow>
+          </VCard>
         </VForm>
       </VCardText>
 

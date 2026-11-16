@@ -101,7 +101,7 @@ class StoreSupplierRequest extends FormRequest
             'logo_url' => ['sometimes', 'nullable', 'string', 'max:500'],
             'logo' => ['sometimes', 'nullable', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
             'social_reason' => ['nullable', 'string', 'max:255'],
-            'rif' => ['required', 'string', 'max:20', Rule::unique('suppliers', 'rif')->whereNull('deleted_at')],
+            'rif' => ['nullable', 'string', 'max:20', Rule::unique('suppliers', 'rif')->whereNull('deleted_at')],
             'address' => ['nullable', 'string'],
             'sales_phone' => ['nullable', 'string', 'max:50'],
             'collections_phone' => ['nullable', 'string', 'max:50'],

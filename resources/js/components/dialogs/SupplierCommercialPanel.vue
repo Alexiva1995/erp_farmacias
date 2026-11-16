@@ -30,6 +30,7 @@ const dirtySections = reactive({
   payment: false,
   scales: false,
   discounts: false,
+  settings: false,
 })
 let isHydrating = false
 
@@ -37,7 +38,37 @@ let isHydrating = false
 const editablePaymentRules = ref([])
 const editableDiscounts = ref([])
 const editableScaleRules = ref([])
+const editableSettings = reactive({
+  payment_due_type: 'invoice_date',
+  invoice_date_reference: 'issue_date',
+  custom_due_days: null,
+  payment_due_reference: 'issue_date',
+  credit_days: null,
+  min_order_amount: null,
+  payment_method: 'Bs',
+  is_indexed: false,
+  dispatch_days: [],
+  order_days: {},
+})
 const tempIdCounter = ref(-1)
+
+const dias = [
+  { label: 'Lun', value: 'monday' },
+  { label: 'Mar', value: 'tuesday' },
+  { label: 'Mié', value: 'wednesday' },
+  { label: 'Jue', value: 'thursday' },
+  { label: 'Vie', value: 'friday' },
+  { label: 'Sáb', value: 'saturday' },
+]
+
+const diasFull = {
+  monday: 'Lunes',
+  tuesday: 'Martes',
+  wednesday: 'Miércoles',
+  thursday: 'Jueves',
+  friday: 'Viernes',
+  saturday: 'Sábado',
+}
 
 const scaleTypes = [
   { id: 'units', name: 'Por unidades' },
@@ -78,6 +109,10 @@ watch(editableDiscounts, () => {
   if (!isHydrating && props.modelValue) dirtySections.discounts = true
 }, { deep: true })
 
+watch(editableSettings, () => {
+  if (!isHydrating && props.modelValue) dirtySections.settings = true
+}, { deep: true })
+
 const syncLocalData = () => {
   isHydrating = true
   // Pronto Pago
@@ -89,9 +124,30 @@ const syncLocalData = () => {
   // Reglas de Escala
   editableScaleRules.value = props.discountRules.map(r => ({ ...r, _markedNew: false }))
 
+  // Condiciones financieras y logísticas del proveedor
+  const s = props.supplier || {}
+  const dispatchDays = Array.isArray(s.dispatch_days) ? [...s.dispatch_days] : []
+  const normalizedOrderDays = {}
+  dispatchDays.forEach((day) => {
+    const old = s.order_days
+    normalizedOrderDays[day] = old && !Array.isArray(old) && Array.isArray(old[day]) ? [...old[day]] : []
+  })
+
+  editableSettings.payment_due_type = s.payment_due_type || 'invoice_date'
+  editableSettings.invoice_date_reference = s.invoice_date_reference || 'issue_date'
+  editableSettings.custom_due_days = s.custom_due_days ?? null
+  editableSettings.payment_due_reference = s.payment_due_reference || 'issue_date'
+  editableSettings.credit_days = s.credit_days ?? null
+  editableSettings.min_order_amount = s.min_order_amount ?? null
+  editableSettings.payment_method = s.payment_method || 'Bs'
+  editableSettings.is_indexed = Boolean(s.is_indexed)
+  editableSettings.dispatch_days = dispatchDays
+  editableSettings.order_days = normalizedOrderDays
+
   dirtySections.payment = false
   dirtySections.scales = false
   dirtySections.discounts = false
+  dirtySections.settings = false
 
   setTimeout(() => {
     isHydrating = false
@@ -165,6 +221,34 @@ const buildDiscountsPayload = () => {
   }))
 }
 
+const buildSettingsPayload = () => {
+  const payload = {
+    payment_due_type: editableSettings.payment_due_type,
+    credit_days: editableSettings.credit_days !== '' && editableSettings.credit_days !== null ? Number(editableSettings.credit_days) : null,
+    min_order_amount: editableSettings.min_order_amount !== '' && editableSettings.min_order_amount !== null ? Number(editableSettings.min_order_amount) : null,
+    payment_method: editableSettings.payment_method,
+    is_indexed: Boolean(editableSettings.is_indexed),
+    dispatch_days: [...editableSettings.dispatch_days],
+    order_days: { ...editableSettings.order_days },
+  }
+
+  if (editableSettings.payment_due_type === 'invoice_date') {
+    payload.invoice_date_reference = editableSettings.invoice_date_reference
+    payload.custom_due_days = null
+    payload.payment_due_reference = null
+  } else if (editableSettings.payment_due_type === 'early_payment') {
+    payload.payment_due_reference = editableSettings.payment_due_reference
+    payload.custom_due_days = null
+    payload.invoice_date_reference = null
+  } else if (editableSettings.payment_due_type === 'custom') {
+    payload.custom_due_days = editableSettings.custom_due_days ? Number(editableSettings.custom_due_days) : null
+    payload.payment_due_reference = null
+    payload.invoice_date_reference = null
+  }
+
+  return payload
+}
+
 const saveAllChanges = () => {
   const payload = {}
 
@@ -179,6 +263,9 @@ const saveAllChanges = () => {
   }
   if (dirtySections.discounts || activeTab.value === 2) {
     payload.discounts = buildDiscountsPayload()
+  }
+  if (dirtySections.settings || activeTab.value === 0 || activeTab.value === 3) {
+    payload.supplierSettings = buildSettingsPayload()
   }
 
   emit('save-all', payload)
@@ -223,8 +310,8 @@ const close = () => {
       <VTabs v-model="activeTab" color="primary" grow bg-color="surface" class="border-b">
         <VTab :value="0" class="font-weight-black text-xs uppercase letter-spacing-1">
           <VIcon start>tabler-receipt-2</VIcon>
-          Finanzas (Pronto Pago)
-          <VBadge v-if="dirtySections.payment" dot color="warning" inline class="ms-1" />
+          Crédito y Pronto Pago
+          <VBadge v-if="dirtySections.payment || dirtySections.settings" dot color="warning" inline class="ms-1" />
         </VTab>
         <VTab :value="1" class="font-weight-black text-xs uppercase letter-spacing-1">
           <VIcon start>tabler-building-factory-2</VIcon>
@@ -236,6 +323,11 @@ const close = () => {
           Otros Descuentos
           <VBadge v-if="dirtySections.discounts" dot color="warning" inline class="ms-1" />
         </VTab>
+        <VTab :value="3" class="font-weight-black text-xs uppercase letter-spacing-1">
+          <VIcon start>tabler-truck-delivery</VIcon>
+          Logística y Despacho
+          <VBadge v-if="dirtySections.settings" dot color="warning" inline class="ms-1" />
+        </VTab>
       </VTabs>
 
       <!-- Contenido del Diálogo -->
@@ -243,8 +335,109 @@ const close = () => {
         <VProgressLinear v-if="loading" indeterminate color="primary" height="3" />
         <VWindow v-model="activeTab" class="pa-4 pa-sm-5 bg-light">
 
-          <!-- TAB 1: FINANZAS (PRONTO PAGO) -->
+          <!-- TAB 1: CRÉDITO, CONDICIONES FINANCIERAS Y PRONTO PAGO -->
           <VWindowItem :value="0">
+            <!-- Condiciones Financieras del Proveedor -->
+            <div class="d-flex align-center gap-2 mb-3">
+              <div class="header-indicator primary shadow-sm" />
+              <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">
+                Condiciones Financieras y Crédito
+              </span>
+            </div>
+
+            <VCard variant="flat" class="bg-white rounded-xl border shadow-sm pa-4 mb-5">
+              <VRow dense>
+                <VCol cols="12" sm="6" md="3">
+                  <AppSelect
+                    v-model="editableSettings.payment_due_type"
+                    :items="[
+                      { title: 'Fecha de factura', value: 'invoice_date' },
+                      { title: 'Pronto pago', value: 'early_payment' },
+                      { title: 'Personalizado', value: 'custom' },
+                    ]"
+                    label="Condición de Vencimiento"
+                    density="compact"
+                  />
+                </VCol>
+
+                <VCol cols="12" sm="6" md="3">
+                  <AppSelect
+                    v-if="editableSettings.payment_due_type === 'invoice_date'"
+                    v-model="editableSettings.invoice_date_reference"
+                    :items="[
+                      { title: 'Fecha Emisión', value: 'issue_date' },
+                      { title: 'Fecha Recibo', value: 'receipt_date' },
+                      { title: 'Fecha Vencimiento', value: 'expiration_date' },
+                    ]"
+                    label="Referencia de Fecha"
+                    density="compact"
+                  />
+                  <AppTextField
+                    v-else-if="editableSettings.payment_due_type === 'custom'"
+                    v-model.number="editableSettings.custom_due_days"
+                    label="Días de Plazo"
+                    type="number"
+                    density="compact"
+                  />
+                  <AppSelect
+                    v-else
+                    v-model="editableSettings.payment_due_reference"
+                    :items="[
+                      { title: 'Fecha Emisión', value: 'issue_date' },
+                      { title: 'Fecha Recibo', value: 'receipt_date' },
+                    ]"
+                    label="Calcular desde"
+                    density="compact"
+                  />
+                </VCol>
+
+                <VCol cols="12" sm="6" md="3">
+                  <AppTextField
+                    v-model.number="editableSettings.credit_days"
+                    label="Días Crédito Habitual"
+                    type="number"
+                    placeholder="Ej: 15"
+                    density="compact"
+                  />
+                </VCol>
+
+                <VCol cols="12" sm="6" md="3">
+                  <AppTextField
+                    v-model.number="editableSettings.min_order_amount"
+                    label="Pedido Mínimo ($)"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    density="compact"
+                  />
+                </VCol>
+
+                <VCol cols="12" class="d-flex align-center flex-wrap gap-4 pt-2">
+                  <div class="d-flex align-center gap-2">
+                    <span class="text-xs font-weight-bold text-high-emphasis">Moneda:</span>
+                    <VRadioGroup
+                      v-model="editableSettings.payment_method"
+                      density="compact"
+                      hide-details
+                      inline
+                    >
+                      <VRadio label="Bs" value="Bs" color="primary" class="me-2 text-xs" />
+                      <VRadio label="Divisas" value="Divisas" color="primary" class="text-xs" />
+                    </VRadioGroup>
+                  </div>
+                  <VCheckbox
+                    v-model="editableSettings.is_indexed"
+                    label="Indexar (USD)"
+                    color="primary"
+                    hide-details
+                    density="compact"
+                    class="font-weight-bold text-xs"
+                  />
+                </VCol>
+              </VRow>
+            </VCard>
+
             <div class="d-flex align-center justify-space-between mb-3">
               <div class="d-flex align-center gap-2">
                 <div class="header-indicator primary shadow-sm" />
@@ -563,6 +756,98 @@ const close = () => {
                 Estos descuentos son fijos y se aplican a todo el catálogo del proveedor sin condiciones de volumen ni laboratorio.
               </div>
             </VAlert>
+          </VWindowItem>
+
+          <!-- TAB 4: LOGÍSTICA Y DESPACHO -->
+          <VWindowItem :value="3">
+            <div class="d-flex flex-column gap-4">
+              <!-- Días de Despacho -->
+              <VCard variant="flat" class="bg-white rounded-xl border shadow-sm pa-4">
+                <div class="d-flex align-center gap-2 mb-1">
+                  <VIcon icon="tabler-truck-delivery" color="primary" size="20" />
+                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
+                    {{ isRestaurant ? 'Días de Despacho (Entrega en Restaurante)' : 'Días de Despacho (Entrega en Farmacia)' }}
+                  </span>
+                </div>
+                <p class="text-xs text-medium-emphasis mb-3">
+                  Selecciona los días de la semana en que el proveedor realiza entregas de mercancía en la sucursal.
+                </p>
+
+                <div class="d-flex flex-wrap gap-2">
+                  <VChip
+                    v-for="dia in dias"
+                    :key="dia.value"
+                    :color="editableSettings.dispatch_days?.includes(dia.value) ? 'primary' : 'default'"
+                    :variant="editableSettings.dispatch_days?.includes(dia.value) ? 'flat' : 'outlined'"
+                    class="cursor-pointer font-weight-bold px-4 py-2 text-sm"
+                    rounded="lg"
+                    @click="
+                      editableSettings.dispatch_days.includes(dia.value)
+                        ? editableSettings.dispatch_days.splice(editableSettings.dispatch_days.indexOf(dia.value), 1)
+                        : (editableSettings.dispatch_days.push(dia.value), editableSettings.order_days[dia.value] = editableSettings.order_days[dia.value] || [])
+                    "
+                  >
+                    <VIcon v-if="editableSettings.dispatch_days?.includes(dia.value)" icon="tabler-check" size="16" class="me-1" />
+                    {{ dia.label.toUpperCase() }}
+                  </VChip>
+                </div>
+              </VCard>
+
+              <!-- Programación de Pedidos -->
+              <VCard v-if="editableSettings.dispatch_days?.length" variant="flat" class="bg-white rounded-xl border shadow-sm pa-4">
+                <div class="d-flex align-center gap-2 mb-1">
+                  <VIcon icon="tabler-calendar-event" color="primary" size="20" />
+                  <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
+                    Días Límite para Transmitir la Orden de Compra
+                  </span>
+                </div>
+                <p class="text-xs text-medium-emphasis mb-3">
+                  Para cada día de entrega seleccionado, indica qué días se debe generar y enviar la orden de compra.
+                </p>
+
+                <VRow dense class="gy-3">
+                  <VCol v-for="diaD in editableSettings.dispatch_days" :key="diaD" cols="12" md="6">
+                    <VCard variant="outlined" class="pa-3 rounded-lg">
+                      <div class="d-flex align-center justify-space-between mb-2">
+                        <div class="d-flex align-center gap-2">
+                          <VIcon icon="tabler-truck" size="18" color="primary" />
+                          <span class="text-xs font-weight-black text-high-emphasis text-uppercase">
+                            Entrega del {{ diasFull[diaD] }}
+                          </span>
+                        </div>
+                        <span class="text-xxs text-medium-emphasis">Hacer pedido el:</span>
+                      </div>
+
+                      <div class="d-flex flex-wrap gap-1 mt-2">
+                        <VChip
+                          v-for="dia in dias"
+                          :key="dia.value"
+                          :color="editableSettings.order_days[diaD]?.includes(dia.value) ? 'primary' : 'default'"
+                          :variant="editableSettings.order_days[diaD]?.includes(dia.value) ? 'flat' : 'outlined'"
+                          class="cursor-pointer font-weight-medium"
+                          size="small"
+                          rounded="md"
+                          @click="
+                            editableSettings.order_days[diaD]?.includes(dia.value)
+                              ? editableSettings.order_days[diaD].splice(editableSettings.order_days[diaD].indexOf(dia.value), 1)
+                              : (editableSettings.order_days[diaD] = [...(editableSettings.order_days[diaD] || []), dia.value])
+                          "
+                        >
+                          <VIcon v-if="editableSettings.order_days[diaD]?.includes(dia.value)" icon="tabler-check" size="12" class="me-1" />
+                          {{ dia.label }}
+                        </VChip>
+                      </div>
+                    </VCard>
+                  </VCol>
+                </VRow>
+              </VCard>
+
+              <VCard v-else variant="flat" class="bg-white rounded-xl border shadow-sm pa-6 text-center opacity-75">
+                <VIcon icon="tabler-calendar-off" size="40" color="disabled" class="mb-2" />
+                <div class="text-sm font-weight-bold text-medium-emphasis">Sin días de despacho asignados</div>
+                <div class="text-xs text-disabled mt-1">Selecciona arriba los días de entrega del proveedor para programar las órdenes de compra.</div>
+              </VCard>
+            </div>
           </VWindowItem>
 
         </VWindow>

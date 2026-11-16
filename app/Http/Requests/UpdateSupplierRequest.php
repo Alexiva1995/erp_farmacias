@@ -71,7 +71,7 @@ class UpdateSupplierRequest extends FormRequest
             'logo_url' => ['sometimes', 'nullable', 'string', 'max:500'],
             'logo' => ['sometimes', 'nullable', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
             'social_reason' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'rif' => ['sometimes', 'string', 'max:20', Rule::unique('suppliers', 'rif')->ignore($this->route('supplier'))->whereNull('deleted_at')],
+            'rif' => ['sometimes', 'nullable', 'string', 'max:20', Rule::unique('suppliers', 'rif')->ignore($this->route('supplier'))->whereNull('deleted_at')],
             'address' => ['sometimes', 'nullable', 'string'],
             'sales_phone' => 'sometimes|nullable|string|max:50',
             'collections_phone' => 'sometimes|nullable|string|max:50',

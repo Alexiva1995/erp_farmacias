@@ -444,7 +444,7 @@ const handleSaveSupplierDiscount = async (supplierDiscountFormData) => {
   }
 };
 
-const handleSaveAllCommercial = async ({ paymentRules: pr, discountRules: dr, discounts: d }) => {
+const handleSaveAllCommercial = async ({ paymentRules: pr, discountRules: dr, discounts: d, supplierSettings }) => {
   commercialLoading.value = true;
   supplierFormErrors.value = {};
   const tasks = [];
@@ -457,6 +457,9 @@ const handleSaveAllCommercial = async ({ paymentRules: pr, discountRules: dr, di
   }
   if (d !== undefined) {
     tasks.push(axios.post(`/suppliers/${currentSupplier.value.id}/discounts`, { discounts: d }));
+  }
+  if (supplierSettings !== undefined) {
+    tasks.push(axios.post(`/suppliers/${currentSupplier.value.id}`, { ...supplierSettings, _method: "PUT" }));
   }
 
   if (tasks.length === 0) {
