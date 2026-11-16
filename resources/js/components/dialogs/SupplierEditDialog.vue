@@ -594,54 +594,34 @@ onUnmounted(() => {
         </div>
       </VCardTitle>
 
-      <!-- Contenido del Formulario en 1 Vista Compacta -->
-      <VCardText class="pa-4 pa-sm-6 bg-light flex-grow-1 overflow-y-auto">
-        <!-- Fila Superior: Selector de Tipo + Facturación Fiscal -->
-        <VRow dense class="align-center mb-4">
-          <VCol v-if="isNewSupplier && !isRestaurant && !props.isMaster" cols="12" sm="8">
-            <VBtnToggle
-              v-model="formData.type"
-              mandatory
-              color="primary"
-              variant="outlined"
-              divided
-              class="w-100 d-flex rounded-lg bg-surface"
-            >
-              <VBtn value="drogueria" class="flex-grow-1 text-none font-weight-bold" height="44">
-                <VIcon start icon="tabler-truck-delivery" size="18" />
-                Droguería / Mercancía
-              </VBtn>
-              <VBtn value="externo" class="flex-grow-1 text-none font-weight-bold" height="44">
-                <VIcon start icon="tabler-receipt-tax" size="18" />
-                Gastos y Servicios
-              </VBtn>
-            </VBtnToggle>
-          </VCol>
-
-          <VCol cols="12" :sm="(isNewSupplier && !isRestaurant && !props.isMaster) ? 4 : 12">
-            <div class="d-flex align-center justify-space-between px-3 py-2 rounded-lg border bg-surface" style="min-height: 44px;">
-              <div class="d-flex flex-column">
-                <span class="text-caption font-weight-bold leading-tight">Facturación Fiscal</span>
-                <span class="text-xxs text-disabled leading-tight">
-                  {{ formData.is_fiscal ? 'N° control y desglose formal' : 'Simplificada / informal' }}
-                </span>
-              </div>
-              <VSwitch
-                v-model="formData.is_fiscal"
+      <!-- Contenido del Formulario en 1 Vista Compacta y 1 Sola Card -->
+      <VCardText class="pa-4 pa-sm-5 bg-light flex-grow-1 overflow-y-auto">
+        <VForm @submit.prevent="submitForm">
+          <VCard variant="outlined" class="pa-4 rounded-lg bg-surface border-card">
+            <!-- Selector Compacto de Tipo de Proveedor (solo al crear en modo normal) -->
+            <div v-if="isNewSupplier && !isRestaurant && !props.isMaster" class="d-flex justify-center mb-4">
+              <VBtnToggle
+                v-model="formData.type"
+                mandatory
                 color="primary"
-                hide-details
+                variant="outlined"
                 density="compact"
-              />
+                divided
+                class="rounded-lg"
+              >
+                <VBtn value="drogueria" size="small" class="text-none font-weight-bold px-4">
+                  <VIcon start icon="tabler-truck-delivery" size="16" />
+                  Droguería / Mercancía
+                </VBtn>
+                <VBtn value="externo" size="small" class="text-none font-weight-bold px-4">
+                  <VIcon start icon="tabler-receipt-tax" size="16" />
+                  Gastos y Servicios
+                </VBtn>
+              </VBtnToggle>
             </div>
-          </VCol>
-        </VRow>
 
-        <!-- Buscador Predictivo en Red Master (Search-First) -->
-        <VCard
-          v-if="showMasterSearch"
-          variant="outlined"
-          class="pa-4 mb-4 rounded-lg bg-surface border-card"
-        >
+            <!-- Buscador Predictivo en Red Master (Search-First) -->
+            <div v-if="showMasterSearch" class="mb-4">
           <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
             <div class="d-flex align-center gap-2">
               <VIcon icon="tabler-database-search" color="primary" size="20" />
@@ -672,10 +652,6 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <p class="text-caption text-medium-emphasis mb-3">
-            Busca primero por nombre o RIF si este proveedor ya existe en el centro de datos para importar su ficha y plantillas de Excel automáticamente. Si no aparece, créalo debajo.
-          </p>
-
           <VAutocomplete
             v-model="selectedMasterSupplier"
             v-model:search="masterSearchQuery"
@@ -686,11 +662,11 @@ onUnmounted(() => {
             return-object
             no-filter
             clearable
-            density="comfortable"
+            density="compact"
             variant="outlined"
             hide-details="auto"
             prepend-inner-icon="tabler-search"
-            placeholder="Escribe el nombre comercial o RIF (ej. Dronena, Cobeca, J-12345678-9)..."
+            label="Buscar proveedor por nombre o RIF"
             @update:search="handleMasterSearchInput"
             @update:model-value="handleSelectMasterSupplier"
           >
@@ -778,41 +754,31 @@ onUnmounted(() => {
             </div>
           </VAlert>
 
-          <!-- Configuración rápida local cuando se vincula desde el Master -->
-          <VRow v-if="linkedMasterSupplier && showSenderEmailInput" dense class="mt-3">
-            <VCol cols="12">
-              <AppTextField
+              <!-- Correo remitente si aplica -->
+              <VTextField
+                v-if="linkedMasterSupplier && showSenderEmailInput"
                 v-model="formData.sender_email"
                 label="Correo remitente de listas de precios (Opcional)"
                 type="email"
-                placeholder="ejemplo: listas@drogueria.com"
                 prepend-inner-icon="tabler-mail"
+                density="compact"
+                variant="outlined"
+                hide-details="auto"
+                class="mt-3"
                 :error-messages="formErrors.sender_email"
-                hint="Si recibes el catálogo Excel por correo, indícalo aquí para dejar la importación automática lista al crear."
-                persistent-hint
               />
-            </VCol>
-          </VRow>
-        </VCard>
 
-        <!-- Formulario Único en Grid de 2 Columnas -->
-        <VForm @submit.prevent="submitForm">
-          <VCard variant="outlined" class="pa-4 rounded-lg bg-surface border-card">
-            <div class="d-flex align-center gap-2 mb-3">
-              <VIcon icon="tabler-building-bank" color="primary" size="20" />
-              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Identificación y Contacto</span>
+              <VDivider class="mt-4" />
             </div>
 
-            <VRow dense>
+            <!-- Campos en 2 Columnas con Labels Flotantes -->
+            <VRow dense class="gy-2">
               <!-- Campos exclusivos de Master -->
               <VCol cols="12" sm="6" v-if="authStore.isAdmin && props.isMaster">
-                <div class="d-flex align-center justify-space-between pa-3 rounded-lg border bg-light-surface h-100">
-                  <div class="d-flex flex-column">
-                    <span class="text-caption font-weight-bold">Estado del Proveedor</span>
-                    <span class="text-xxs text-disabled">
-                      {{ formData.is_active ? 'Activo en Catálogo Maestro' : 'Inactivo en Catálogo Maestro' }}
-                    </span>
-                  </div>
+                <div class="d-flex align-center justify-space-between pa-2 px-3 rounded-lg border bg-light-surface h-100">
+                  <span class="text-caption font-weight-bold">
+                    {{ formData.is_active ? 'Activo en Master' : 'Inactivo en Master' }}
+                  </span>
                   <VSwitch
                     v-model="formData.is_active"
                     color="success"
@@ -824,9 +790,9 @@ onUnmounted(() => {
 
               <VCol cols="12" sm="6" v-if="props.isMaster">
                 <div class="d-flex align-center gap-3 pa-2 rounded-lg border bg-light-surface h-100">
-                  <VAvatar size="42" color="primary" variant="tonal" rounded="lg" class="flex-shrink-0">
+                  <VAvatar size="38" color="primary" variant="tonal" rounded="lg" class="flex-shrink-0">
                     <VImg v-if="effectiveLogoUrl" :src="effectiveLogoUrl" cover />
-                    <VIcon v-else icon="tabler-photo" size="22" />
+                    <VIcon v-else icon="tabler-photo" size="20" />
                   </VAvatar>
                   <div class="flex-grow-1">
                     <VFileInput
@@ -848,119 +814,137 @@ onUnmounted(() => {
               </VCol>
 
               <VCol cols="12" v-if="props.isMaster">
-                <AppSelect
+                <VSelect
                   v-model="formData.business_types"
                   :items="availableBusinessTypes"
                   label="Disponible para Tipos de Negocio"
-                  placeholder="Selecciona las verticales permitidas"
                   prepend-inner-icon="tabler-building-community"
+                  density="compact"
+                  variant="outlined"
                   multiple
                   chips
                   closable-chips
+                  hide-details="auto"
                   :error-messages="formErrors.business_types"
                   :readonly="isReadOnly"
-                  hint="Define en qué verticales (Farmacia, Restaurante, Bodegón, etc.) estará disponible"
-                  persistent-hint
                 />
               </VCol>
 
               <!-- Campos Generales en 2 Columnas -->
               <VCol cols="12" sm="6" v-if="isFieldVisible('name')">
-                <AppTextField
+                <VTextField
                   v-model="formData.name"
                   label="Nombre Comercial *"
-                  :placeholder="isRestaurant ? 'Ej: Distribuidora Avícola / Lácteos' : 'Ej: Droguería Nena'"
                   prepend-inner-icon="tabler-building-store"
+                  density="compact"
+                  variant="outlined"
+                  hide-details="auto"
                   :error-messages="formErrors.name"
                   :readonly="isReadOnly"
                 />
               </VCol>
 
               <VCol cols="12" sm="6" v-if="isFieldVisible('rif')">
-                <AppTextField
+                <VTextField
                   v-model="formData.rif"
                   label="RIF"
-                  placeholder="J-12345678-9"
                   prepend-inner-icon="tabler-id-badge-2"
+                  density="compact"
+                  variant="outlined"
+                  hide-details="auto"
                   :loading="isLookingUpMaster"
                   :error-messages="formErrors.rif"
                   :readonly="isRifLocked"
-                  :hint="isRifLocked && !isReadOnly ? 'Definido en el registro oficial (no editable)' : undefined"
-                  persistent-hint
+                  :hint="isRifLocked && !isReadOnly ? 'No editable (definido oficialmente)' : undefined"
                   @update:model-value="handleRifInput"
                 />
               </VCol>
 
-              <VCol cols="12" v-if="masterFoundNotice">
-                <VAlert
-                  type="info"
-                  variant="tonal"
-                  density="compact"
-                  class="rounded-lg text-xs font-weight-medium"
-                >
-                  <VIcon start icon="tabler-sparkles" size="16" />
-                  {{ masterFoundNotice }}
-                </VAlert>
-              </VCol>
-
               <VCol cols="12" sm="6" v-if="isFieldVisible('social_reason')">
-                <AppTextField
+                <VTextField
                   v-model="formData.social_reason"
                   label="Razón Social"
-                  :placeholder="isRestaurant ? 'Ej: Distribuidora Avícola C.A.' : 'Ej: Droguería Nena C.A.'"
                   prepend-inner-icon="tabler-certificate"
+                  density="compact"
+                  variant="outlined"
+                  hide-details="auto"
                   :error-messages="formErrors.social_reason"
                   :readonly="isSocialReasonLocked"
-                  :hint="isSocialReasonLocked && !isReadOnly ? 'Definido en el registro oficial (no editable)' : undefined"
-                  persistent-hint
+                  :hint="isSocialReasonLocked && !isReadOnly ? 'No editable (definido oficialmente)' : undefined"
                 />
               </VCol>
 
               <VCol cols="12" sm="6" v-if="!isRestaurant && formData.type !== 'externo'">
-                <AppTextField
+                <VTextField
                   v-model="formData.payment_email"
                   label="Correo para Notificación de Pagos"
                   type="email"
-                  placeholder="pagos@drogueria.com"
                   prepend-inner-icon="tabler-mail-dollar"
+                  density="compact"
+                  variant="outlined"
+                  hide-details="auto"
                   :error-messages="formErrors.payment_email"
                   :readonly="isReadOnly"
                 />
               </VCol>
 
               <VCol cols="12" sm="6" v-if="isFieldVisible('sales_phone')">
-                <AppTextField
+                <VTextField
                   v-model="formData.sales_phone"
                   label="Teléfono Ventas"
                   type="tel"
-                  placeholder="04121234567"
                   prepend-inner-icon="tabler-phone"
+                  density="compact"
+                  variant="outlined"
+                  hide-details="auto"
                   :error-messages="formErrors.sales_phone"
                   :readonly="isReadOnly"
                 />
               </VCol>
 
               <VCol cols="12" sm="6" v-if="isFieldVisible('collections_phone')">
-                <AppTextField
+                <VTextField
                   v-model="formData.collections_phone"
                   label="Teléfono Cobranza"
                   type="tel"
-                  placeholder="04147654321"
                   prepend-inner-icon="tabler-phone-incoming"
+                  density="compact"
+                  variant="outlined"
+                  hide-details="auto"
                   :error-messages="formErrors.collections_phone"
                   :readonly="isReadOnly"
                 />
               </VCol>
 
               <VCol cols="12" v-if="isFieldVisible('address')">
-                <AppTextField
+                <VTextField
                   v-model="formData.address"
                   label="Dirección Fiscal"
-                  placeholder="Ubicación o dirección completa"
                   prepend-inner-icon="tabler-map-pin"
+                  density="compact"
+                  variant="outlined"
+                  hide-details="auto"
                   :error-messages="formErrors.address"
                   :readonly="isReadOnly"
                 />
+              </VCol>
+
+              <!-- Switch de Facturación Fiscal al final -->
+              <VCol cols="12" class="mt-2">
+                <div class="d-flex align-center justify-space-between px-3 py-2 rounded-lg border bg-light-surface">
+                  <div class="d-flex flex-column">
+                    <span class="text-caption font-weight-bold leading-tight">Facturación Fiscal Formal</span>
+                    <span class="text-xxs text-disabled leading-tight">
+                      {{ formData.is_fiscal ? 'Requiere N° de control y desglose formal' : 'Facturación simplificada / informal' }}
+                    </span>
+                  </div>
+                  <VSwitch
+                    v-model="formData.is_fiscal"
+                    color="primary"
+                    hide-details
+                    density="compact"
+                  />
+                </div>
               </VCol>
             </VRow>
           </VCard>
