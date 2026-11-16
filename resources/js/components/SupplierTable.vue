@@ -317,7 +317,7 @@ const headers = computed(() => {
                 <span class="text-sm font-weight-bold text-high-emphasis">
                   {{ item.name }}
                 </span>
-                <span class="text-xs font-weight-bold text-primary">- #{{ item.id }}</span>
+                <span class="text-sm font-weight-bold text-primary">- {{ item.id }}</span>
                 <VChip
                   v-if="item.type === 'externo'"
                   size="x-small"
@@ -329,8 +329,8 @@ const headers = computed(() => {
                   Gastos
                 </VChip>
               </div>
-              <div v-if="item.rif" class="text-xxs text-medium-emphasis">
-                RIF: {{ item.rif }}
+              <div v-if="item.rif" class="text-xxs font-weight-bold text-medium-emphasis">
+                {{ item.rif }}
               </div>
             </div>
           </div>
