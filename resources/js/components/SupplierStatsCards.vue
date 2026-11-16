@@ -63,26 +63,28 @@ const statistics = computed(() => {
   const debtCount = props.stats?.debt_suppliers_count ?? 0;
   const overdueDebt = props.stats?.overdue_debt ?? 0;
   const debtDesc = debtCount > 0
-    ? (overdueDebt > 0 ? `${debtCount} prov. • ${formatCurrency(overdueDebt)} vencido` : `${debtCount} proveedores con saldo`)
+    ? `Vencido: ${formatCurrency(overdueDebt)} • ${debtCount} prov.`
     : "Sin deuda pendiente";
 
   const syncedToday = props.stats?.synced_today_count ?? 0;
   const totalCommercial = props.stats?.commercial_suppliers_count ?? props.stats?.active_suppliers_count ?? 0;
+  const pendingSync = Math.max(0, totalCommercial - syncedToday);
   const failed24h = props.stats?.failed_connections_24h ?? 0;
-  const syncDesc = failed24h > 0
-    ? `${syncedToday} al día • ${failed24h} con fallo`
-    : `${syncedToday} sincronizados hoy`;
+  const syncDesc = pendingSync <= 0
+    ? "Todas las droguerías actualizadas"
+    : `${pendingSync} sin actualizar hoy${failed24h > 0 ? ` (${failed24h} con error)` : ""}`;
 
   const avgScore = props.stats?.avg_score;
   const lowScore = props.stats?.low_score_count ?? 0;
+  const optimalScore = props.stats?.optimal_score_count ?? 0;
   const scoreDesc = lowScore > 0
-    ? `Evaluación 90d • ${lowScore} en riesgo (<60)`
-    : "Evaluación últimos 90 días";
+    ? `${lowScore} con nota baja • ${optimalScore} óptimos`
+    : (optimalScore > 0 ? `${optimalScore} proveedores en nivel óptimo` : "Sin evaluaciones registradas");
 
   return [
     {
       action: "debt",
-      title: "Deuda por Pagar",
+      title: "Deuda Total",
       value: formatCurrency(props.stats?.total_debt ?? 0),
       icon: "tabler-currency-dollar",
       color: "error",
@@ -90,27 +92,27 @@ const statistics = computed(() => {
     },
     {
       action: "sync",
-      title: "Catálogos al Día (24h)",
-      value: `${syncedToday} / ${totalCommercial}`,
+      title: "Sincronización Hoy",
+      value: `${syncedToday} de ${totalCommercial}`,
       icon: "tabler-refresh",
       color: failed24h > 0 ? "warning" : "success",
       description: syncDesc,
     },
     {
       action: "score",
-      title: "Calificación Promedio",
-      value: avgScore !== null && avgScore !== undefined ? `${avgScore} / 100` : "N/A",
+      title: "Desempeño Proveedores",
+      value: avgScore !== null && avgScore !== undefined ? `${avgScore} pts` : "N/A",
       icon: "tabler-star",
       color: "warning",
       description: scoreDesc,
     },
     {
       action: "catalog",
-      title: "Oferta en Catálogos",
-      value: `${formatNumber(props.stats?.unique_skus_count ?? 0)} SKUs`,
+      title: "Catálogo Disponible",
+      value: `${formatNumber(props.stats?.unique_skus_count ?? 0)} Productos`,
       icon: "tabler-packages",
       color: "info",
-      description: "Productos únicos (sin duplicados)",
+      description: `En ${totalCommercial} droguerías (sin repetidos)`,
     },
   ];
 });

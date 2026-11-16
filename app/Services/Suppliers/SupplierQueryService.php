@@ -1579,9 +1579,10 @@ class SupplierQueryService
         $pendingInvoices = $pendingPaymentsService->getPendingInvoices();
         $totalDebt = (float) $pendingInvoices->sum('total_usd');
         $debtSuppliersCount = $pendingInvoices->pluck('supplier_id')->filter()->unique()->count();
-        $todayStr = now()->toDateString();
-        $overdueDebt = (float) $pendingInvoices->filter(function ($inv) use ($todayStr) {
-            return !empty($inv->expiration_date) && (string) $inv->expiration_date < $todayStr;
+        $today = \Carbon\Carbon::today();
+        $overdueDebt = (float) $pendingInvoices->filter(function ($inv) use ($today) {
+            $due = $inv->payment_date ?? $inv->exp_date;
+            return !empty($due) && \Carbon\Carbon::parse($due)->lt($today);
         })->sum('total_usd');
 
         // 2. Proveedores Activos y Catálogos al Día (24h)
@@ -1618,13 +1619,14 @@ class SupplierQueryService
                 $q->where('suppliers.type', '!=', 'externo')->orWhereNull('suppliers.type');
             })
             ->whereRaw('supplier_scores.id = (SELECT MAX(ss2.id) FROM supplier_scores ss2 WHERE ss2.supplier_id = suppliers.id)')
-            ->selectRaw('AVG(supplier_scores.score) as avg_score, SUM(CASE WHEN supplier_scores.score < 60 THEN 1 ELSE 0 END) as low_score_count, COUNT(*) as scored_count')
+            ->selectRaw('AVG(supplier_scores.score) as avg_score, SUM(CASE WHEN supplier_scores.score < 60 THEN 1 ELSE 0 END) as low_score_count, SUM(CASE WHEN supplier_scores.score >= 60 THEN 1 ELSE 0 END) as optimal_score_count, COUNT(*) as scored_count')
             ->first();
 
         $avgScore = ($scoreStats && (int) $scoreStats->scored_count > 0)
             ? round((float) $scoreStats->avg_score, 1)
             : null;
         $lowScoreCount = (int) ($scoreStats->low_score_count ?? 0);
+        $optimalScoreCount = (int) ($scoreStats->optimal_score_count ?? 0);
 
         // 4. SKUs Únicos Ofertados en Catálogos (sin duplicar por código de barras)
         $uniqueSkusCount = 0;
@@ -1653,6 +1655,7 @@ class SupplierQueryService
             'total_connections_24h' => $totalConnections,
             'avg_score' => $avgScore,
             'low_score_count' => $lowScoreCount,
+            'optimal_score_count' => $optimalScoreCount,
             'unique_skus_count' => $uniqueSkusCount,
         ];
     }
