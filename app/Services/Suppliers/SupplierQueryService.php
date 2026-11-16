@@ -1816,39 +1816,52 @@ class SupplierQueryService
 
         // Adjuntar conteos operativos por lote (OC pendientes y facturas impagas/vencidas) sin N+1
         if (!empty($ids)) {
-            $orderCounts = [];
-            if (\Illuminate\Support\Facades\Schema::hasTable('auto_orders')) {
-                $orderCounts = DB::table('auto_orders')
-                    ->whereIn('supplier_id', $ids)
-                    ->whereNotIn('status', ['completed', 'cancelled', 'rejected'])
-                    ->groupBy('supplier_id')
-                    ->selectRaw('supplier_id, COUNT(*) as total')
-                    ->pluck('total', 'supplier_id')
-                    ->all();
-            }
+            try {
+                $orderCounts = [];
+                if (\Illuminate\Support\Facades\Schema::hasTable('auto_orders')) {
+                    $orderCounts = DB::table('auto_orders')
+                        ->whereIn('supplier_id', $ids)
+                        ->whereNotIn('status', ['completed', 'cancelled', 'rejected'])
+                        ->groupBy('supplier_id')
+                        ->selectRaw('supplier_id, COUNT(*) as total')
+                        ->pluck('total', 'supplier_id')
+                        ->all();
+                }
 
-            $invoiceCounts = [];
-            if (\Illuminate\Support\Facades\Schema::hasTable('invoices')) {
-                $today = \Carbon\Carbon::today()->toDateString();
-                $currentYearStart = \Carbon\Carbon::now()->startOfYear()->toDateString();
-                $invoiceCounts = DB::table('invoices')
-                    ->whereIn('supplier_id', $ids)
-                    ->whereNull('deleted_at')
-                    ->where(function ($q) {
-                        $q->whereNull('status_payment')->orWhere('status_payment', '!=', 1);
-                    })
-                    ->whereDate('payment_date', '>=', $currentYearStart)
-                    ->groupBy('supplier_id')
-                    ->selectRaw("supplier_id, COUNT(*) as unpaid_count, SUM(CASE WHEN COALESCE(payment_date, exp_date) < ? THEN 1 ELSE 0 END) as overdue_count", [$today])
-                    ->get()
-                    ->keyBy('supplier_id');
-            }
+                $invoiceCounts = [];
+                if (\Illuminate\Support\Facades\Schema::hasTable('invoices')) {
+                    $today = \Carbon\Carbon::today()->toDateString();
+                    $currentYearStart = \Carbon\Carbon::now()->startOfYear()->toDateString();
+                    $hasDeletedAt = \Illuminate\Support\Facades\Schema::hasColumn('invoices', 'deleted_at');
+                    $hasExpDate = \Illuminate\Support\Facades\Schema::hasColumn('invoices', 'exp_date');
+                    $dueExpr = $hasExpDate ? 'COALESCE(payment_date, exp_date)' : 'payment_date';
 
-            foreach ($items as $sup) {
-                $sup->pending_orders_count = (int) ($orderCounts[$sup->id] ?? 0);
-                $invRow = $invoiceCounts[$sup->id] ?? null;
-                $sup->unpaid_invoices_count = (int) ($invRow->unpaid_count ?? 0);
-                $sup->overdue_invoices_count = (int) ($invRow->overdue_count ?? 0);
+                    $invoiceQuery = DB::table('invoices')
+                        ->whereIn('supplier_id', $ids)
+                        ->where(function ($q) {
+                            $q->whereNull('status_payment')->orWhere('status_payment', '!=', 1);
+                        })
+                        ->whereDate('payment_date', '>=', $currentYearStart);
+
+                    if ($hasDeletedAt) {
+                        $invoiceQuery->whereNull('deleted_at');
+                    }
+
+                    $invoiceCounts = $invoiceQuery
+                        ->groupBy('supplier_id')
+                        ->selectRaw("supplier_id, COUNT(*) as unpaid_count, SUM(CASE WHEN {$dueExpr} < ? THEN 1 ELSE 0 END) as overdue_count", [$today])
+                        ->get()
+                        ->keyBy('supplier_id');
+                }
+
+                foreach ($items as $sup) {
+                    $sup->pending_orders_count = (int) ($orderCounts[$sup->id] ?? 0);
+                    $invRow = $invoiceCounts[$sup->id] ?? null;
+                    $sup->unpaid_invoices_count = (int) ($invRow->unpaid_count ?? 0);
+                    $sup->overdue_invoices_count = (int) ($invRow->overdue_count ?? 0);
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Error adjuntando conteos operativos en proveedores: " . $e->getMessage());
             }
         }
 
