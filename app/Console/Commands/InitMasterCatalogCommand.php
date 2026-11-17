@@ -33,10 +33,22 @@ class InitMasterCatalogCommand extends Command
     private const TEMP_OFFSET = 100000000;
 
     /**
+     * Reporte estructurado de la ejecución actual para consumo vía CLI o UI.
+     *
+     * @var array<string, mixed>
+     */
+    protected array $report = [];
+
+    /**
      * Execute the console command.
      */
     public function handle(): int
     {
+        $this->report = [
+            'sources' => [],
+            'master_totals' => [],
+            'tenants' => [],
+        ];
         $masterConn = 'master_catalog';
         $centralConn = config('tenancy.database.central_connection', 'mysql');
 
@@ -187,23 +199,28 @@ class InitMasterCatalogCommand extends Command
         foreach ($externalSources as $dbLabel => $extConn) {
             $this->line("\n→ Extrayendo catálogos de <fg=cyan>{$dbLabel}</>...");
             $sourceBaseUrl = str_contains((string) $dbLabel, 'farmaciabs') ? 'https://farmaciabs.com' : $defaultBaseUrl;
-            $this->ingestConnectionIntoMaster($extConn, $masterConn, $sourceBaseUrl);
+            $ingStats = $this->ingestConnectionIntoMaster($extConn, $masterConn, $sourceBaseUrl);
+            $this->report['sources'][] = array_merge(['name' => $dbLabel], $ingStats);
         }
 
         $centralDbName = DB::connection($centralConn)->getDatabaseName();
         if (!isset($externalSources[$centralDbName])) {
             $this->line("\n→ Extrayendo catálogos de Base Central (<fg=cyan>{$centralDbName}</>)...");
-            $this->ingestConnectionIntoMaster($centralConn, $masterConn, $defaultBaseUrl);
+            $ingStats = $this->ingestConnectionIntoMaster($centralConn, $masterConn, $defaultBaseUrl);
+            $this->report['sources'][] = array_merge(['name' => "Central ({$centralDbName})"], $ingStats);
         }
 
         foreach ($tenants as $tenant) {
             $this->line("\n→ Extrayendo catálogos del Tenant <fg=yellow>{$tenant->id}</>...");
             try {
-                $tenant->run(function () use ($masterConn, $defaultBaseUrl) {
-                    $this->ingestConnectionIntoMaster(DB::getDefaultConnection(), $masterConn, $defaultBaseUrl);
+                $ingStats = ['inserted_products' => 0, 'enriched_products' => 0];
+                $tenant->run(function () use ($masterConn, $defaultBaseUrl, &$ingStats) {
+                    $ingStats = $this->ingestConnectionIntoMaster(DB::getDefaultConnection(), $masterConn, $defaultBaseUrl);
                 });
+                $this->report['sources'][] = array_merge(['name' => "Tenant {$tenant->id}"], $ingStats);
             } catch (\Throwable $e) {
                 $this->warn("  ! Error leyendo tenant {$tenant->id}: " . $e->getMessage());
+                $this->report['sources'][] = ['name' => "Tenant {$tenant->id}", 'inserted_products' => 0, 'enriched_products' => 0, 'error' => $e->getMessage()];
             }
         }
 
@@ -214,6 +231,7 @@ class InitMasterCatalogCommand extends Command
         foreach ($tables as $t) {
             if (Schema::connection($masterConn)->hasTable($t)) {
                 $cnt = DB::connection($masterConn)->table($t)->count();
+                $this->report['master_totals'][$t] = $cnt;
                 $this->line("  • {$t}: <fg=green>{$cnt}</>");
             }
         }
@@ -225,22 +243,29 @@ class InitMasterCatalogCommand extends Command
 
         $this->line("\n→ Homologando IDs y llaves foráneas en Base Central (<fg=cyan>{$centralDbName}</>)...");
         try {
-            $this->homologateDatabaseAgainstMaster($centralConn, $masterConn);
+            $stats = $this->homologateDatabaseAgainstMaster($centralConn, $masterConn);
+            $this->report['tenants'][] = array_merge(['name' => "Central ({$centralDbName})", 'status' => 'ok', 'error' => null], $stats);
         } catch (\Throwable $e) {
             $this->warn("  ! Error homologando central: " . $e->getMessage());
+            $this->report['tenants'][] = ['name' => "Central ({$centralDbName})", 'status' => 'error', 'error' => $e->getMessage(), 'remapped' => 0, 'displaced' => 0, 'merged_duplicates' => 0];
         }
 
         foreach ($tenants as $tenant) {
             $this->line("\n→ Homologando IDs y llaves foráneas en Tenant <fg=yellow>{$tenant->id}</>...");
             try {
-                $tenant->run(function () use ($masterConn) {
-                    $this->homologateDatabaseAgainstMaster(DB::getDefaultConnection(), $masterConn);
+                $stats = ['remapped' => 0, 'displaced' => 0, 'merged_duplicates' => 0];
+                $tenant->run(function () use ($masterConn, &$stats) {
+                    $stats = $this->homologateDatabaseAgainstMaster(DB::getDefaultConnection(), $masterConn);
                 });
+                $this->report['tenants'][] = array_merge(['name' => $tenant->id, 'status' => 'ok', 'error' => null], $stats);
             } catch (\Throwable $e) {
                 $this->warn("  ! Error homologando tenant {$tenant->id}: " . $e->getMessage());
                 Log::error("Error homologando tenant {$tenant->id}: " . $e->getMessage());
+                $this->report['tenants'][] = ['name' => $tenant->id, 'status' => 'error', 'error' => $e->getMessage(), 'remapped' => 0, 'displaced' => 0, 'merged_duplicates' => 0];
             }
         }
+
+        \Illuminate\Support\Facades\Cache::put('master_catalog_last_homologation_report', $this->report, now()->addMinutes(10));
 
         $this->info("\n========================================================================");
         $this->info(" ✓ PROCESO COMPLETADO: CATÁLOGO MAESTRO Y TENANTS 100% HOMOLOGADOS");
@@ -253,8 +278,10 @@ class InitMasterCatalogCommand extends Command
      * Lee una base de datos (central o tenant) e incorpora en tovaerp_master cualquier
      * grupo, laboratorio, categoría, origen, proveedor, conexión o producto que falte.
      */
-    protected function ingestConnectionIntoMaster(string $srcConn, string $masterConn, ?string $sourceBaseUrl = null): void
+    protected function ingestConnectionIntoMaster(string $srcConn, string $masterConn, ?string $sourceBaseUrl = null): array
     {
+        $insertedProds = 0;
+        $enrichedProds = 0;
         // 1. Catálogos simples por nombre normalizado
         $simpleTables = ['groups_laboratories', 'categories', 'origins', 'groups_products'];
         foreach ($simpleTables as $table) {
@@ -679,15 +706,21 @@ class InitMasterCatalogCommand extends Command
                 $this->line("  + products: {$insertedProds} nuevos productos y {$enrichedProds} enriquecidos en el Master.");
             }
         }
+
+        return [
+            'inserted_products' => $insertedProds,
+            'enriched_products' => $enrichedProds,
+        ];
     }
 
     /**
      * Homologa todos los IDs de una base de datos (central o tenant) contra tovaerp_master,
      * remapeando todas las llaves foráneas en las tablas hijas y sincronizando los catálogos maestros.
      */
-    protected function homologateDatabaseAgainstMaster(string $targetConn, string $masterConn): void
+    protected function homologateDatabaseAgainstMaster(string $targetConn, string $masterConn): array
     {
         DB::connection($targetConn)->statement('SET FOREIGN_KEY_CHECKS = 0');
+        $productStats = ['remapped' => 0, 'displaced' => 0, 'merged_duplicates' => 0];
 
         try {
             // 1. Mapear groups_laboratories
@@ -768,10 +801,10 @@ class InitMasterCatalogCommand extends Command
             $prodMap = $this->buildProductIdMap($targetConn, $masterConn);
             if (!empty($prodMap)) {
                 $homologationService = app(\App\Services\Catalog\ProductIdHomologationService::class);
-                $stats = $homologationService->applyBulkProductMapping($targetConn, $prodMap);
+                $productStats = $homologationService->applyBulkProductMapping($targetConn, $prodMap);
                 $this->line(
-                    "  ✓ Productos remapeados en cascada: {$stats['remapped']} "
-                    . "(reubicados: {$stats['displaced']}, duplicados fusionados: {$stats['merged_duplicates']})"
+                    "  ✓ Productos remapeados en cascada: {$productStats['remapped']} "
+                    . "(reubicados: {$productStats['displaced']}, duplicados fusionados: {$productStats['merged_duplicates']})"
                 );
             }
 
@@ -781,6 +814,8 @@ class InitMasterCatalogCommand extends Command
         } finally {
             DB::connection($targetConn)->statement('SET FOREIGN_KEY_CHECKS = 1');
         }
+
+        return $productStats;
     }
 
     /**

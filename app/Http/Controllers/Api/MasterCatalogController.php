@@ -182,5 +182,35 @@ class MasterCatalogController extends Controller
             'data' => $stats,
         ]);
     }
+
+    /**
+     * Consolidar catálogos desde central y tenants hacia tovaerp_master y homologar IDs/imágenes en cascada.
+     */
+    public function consolidateHomologate(): JsonResponse
+    {
+        set_time_limit(0);
+
+        try {
+            $exitCode = \Illuminate\Support\Facades\Artisan::call('master-catalog:init');
+            $output = \Illuminate\Support\Facades\Artisan::output();
+            $report = \Illuminate\Support\Facades\Cache::pull('master_catalog_last_homologation_report', []);
+
+            return response()->json([
+                'success' => $exitCode === 0,
+                'message' => $exitCode === 0
+                    ? 'Consolidación y homologación global completada.'
+                    : 'El proceso finalizó con advertencias.',
+                'data' => [
+                    'report' => $report,
+                    'log'    => trim((string) $output),
+                ],
+            ], $exitCode === 0 ? 200 : 500);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error ejecutando homologación global: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
 
