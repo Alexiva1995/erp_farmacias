@@ -51,8 +51,12 @@ class SupplierResource extends JsonResource
                 ? (float) ($this->paymentRules->max('discount_percentage') ?? 0)
                 : 0.0,
             'pending_orders_count' => (int) ($this->pending_orders_count ?? 0),
+            'sent_orders_count' => (int) ($this->sent_orders_count ?? 0),
+            'sent_order_date' => $this->sent_order_date ?? null,
+            'is_order_overdue' => (bool) ($this->is_order_overdue ?? false),
             'unpaid_invoices_count' => (int) ($this->unpaid_invoices_count ?? 0),
             'overdue_invoices_count' => (int) ($this->overdue_invoices_count ?? 0),
+            'overdue_debt' => $isMaster ? 0 : (float) ($this->overdue_debt ?? 0),
             'cash_payment' => $this->cash_payment,
             'charges_igtf' => $this->charges_igtf,
             'payment_due_type' => $this->payment_due_type,

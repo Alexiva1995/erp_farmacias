@@ -136,12 +136,12 @@ const headers = computed(() => {
 
   return [
     { title: "Proveedor", key: "name", sortable: true },
-    { title: "Crédito y Condiciones", key: "credit_days", sortable: true },
-    { title: "Despacho y OC", key: "dispatch_days", sortable: false },
-    { title: "Sincronización / Catálogo", key: "last_sync_at", sortable: true },
-    { title: "Deuda Pendiente", key: "debt", sortable: true, align: "end" },
-    { title: "Calificación", key: "latest_score_value", sortable: true },
-    { title: "Acciones", key: "actions", sortable: false, align: "center" },
+    { title: "Condiciones", key: "credit_days", sortable: true },
+    { title: "Pedidos", key: "dispatch_days", sortable: false },
+    { title: "Catálogo", key: "last_sync_at", sortable: true },
+    { title: "Deuda", key: "debt", sortable: true, align: "end" },
+    { title: "Score", key: "latest_score_value", sortable: true },
+    { title: "Acciones", key: "actions", sortable: false, align: "end" },
   ];
 });
 </script>
@@ -319,7 +319,7 @@ const headers = computed(() => {
               <span v-else class="text-xs font-weight-bold">{{ getInitials(item.name) }}</span>
             </VAvatar>
             <div class="d-flex flex-column">
-              <div class="d-flex align-center gap-1.5 flex-wrap">
+              <div class="d-flex align-center ga-2 flex-wrap">
                 <span class="text-sm font-weight-bold text-primary">{{ item.id }}</span>
                 <span class="text-sm font-weight-bold text-high-emphasis">
                   {{ item.name }}
@@ -345,29 +345,17 @@ const headers = computed(() => {
         <template #item.credit_days="{ item }">
           <div
             v-if="isCommercialSupplier(item)"
-            class="d-flex flex-column gap-0.5"
+            class="d-flex flex-column ga-1"
             :class="{ 'cursor-pointer': canManageSuppliers && !isRestaurant }"
             @click="canManageSuppliers && !isRestaurant ? emit('commercial-panel', item) : null"
           >
-            <div class="d-flex align-center gap-1.5 text-xs">
-              <span class="font-weight-bold text-high-emphasis">
-                {{ (item.credit_days ?? 0) > 0 ? `${item.credit_days} días` : 'Contado' }}
-              </span>
-              <span class="text-disabled">•</span>
-              <VChip
-                size="x-small"
-                color="secondary"
-                variant="outlined"
-                class="text-xxs font-weight-medium px-1.5"
-              >
-                {{ item.is_indexed ? 'Indexado' : (item.payment_method || 'Bs') }}
-              </VChip>
-            </div>
-            <div class="text-xxs text-medium-emphasis">
+            <span class="text-xs font-weight-bold text-high-emphasis">
+              {{ (item.credit_days ?? 0) > 0 ? `${item.credit_days} días` : 'Contado' }}
+            </span>
+            <div class="d-flex align-center ga-2 text-xs text-medium-emphasis">
               <span v-if="(item.max_early_payment_discount ?? 0) > 0" class="text-success font-weight-medium">
                 Pronto pago: {{ item.max_early_payment_discount }}%
               </span>
-              <span v-if="(item.max_early_payment_discount ?? 0) > 0 && (item.min_order_amount ?? 0) > 0"> • </span>
               <span v-if="(item.min_order_amount ?? 0) > 0">
                 Mín: ${{ Number(item.min_order_amount).toFixed(0) }}
               </span>
@@ -380,65 +368,65 @@ const headers = computed(() => {
         </template>
 
         <template #item.dispatch_days="{ item }">
-          <div v-if="isCommercialSupplier(item)" class="d-flex flex-column gap-0.5">
-            <div v-if="item.dispatch_days && item.dispatch_days.length > 0" class="d-flex align-center flex-wrap gap-1">
-              <span class="text-xs font-weight-medium text-high-emphasis">
-                {{ item.dispatch_days.map(d => dayShortMap[d] || d).join(' · ') }}
-              </span>
+          <div v-if="isCommercialSupplier(item)" class="d-flex flex-column ga-1">
+            <div class="d-flex align-center flex-wrap ga-2">
               <VChip
-                v-if="item.dispatch_days.includes(todayDayKey)"
+                v-if="Array.isArray(item.order_days) && item.order_days.includes(todayDayKey)"
                 size="x-small"
-                color="success"
+                color="primary"
                 variant="tonal"
                 class="text-xxs font-weight-bold px-1.5"
               >
-                Hoy
+                Pedir hoy
               </VChip>
+              <span v-if="item.dispatch_days && item.dispatch_days.length > 0" class="text-xs font-weight-medium text-high-emphasis">
+                {{ item.dispatch_days.map(d => dayShortMap[d] || d).join(' ') }}
+              </span>
+              <span v-else-if="!(Array.isArray(item.order_days) && item.order_days.includes(todayDayKey))" class="text-xs text-disabled">
+                Sin días asignados
+              </span>
             </div>
-            <span v-else class="text-xxs text-disabled">Sin días asignados</span>
 
-            <span v-if="(item.pending_orders_count ?? 0) > 0" class="text-xxs text-medium-emphasis font-weight-medium">
-              {{ item.pending_orders_count }} {{ item.pending_orders_count === 1 ? 'OC pendiente' : 'OC pendientes' }}
+            <span
+              v-if="(item.sent_orders_count ?? 0) > 0"
+              class="text-xs font-weight-bold"
+              :class="item.is_order_overdue ? 'text-error' : 'text-success'"
+            >
+              {{ item.sent_orders_count }}<template v-if="item.sent_order_date"> - {{ item.sent_order_date }}</template>
             </span>
           </div>
           <span v-else class="text-caption text-disabled">—</span>
         </template>
 
         <template #item.last_sync_at="{ item }">
-          <div v-if="isCommercialSupplier(item)" class="d-flex flex-column gap-0.5">
-            <div class="d-flex align-center gap-1.5">
-              <VTooltip
-                :text="checkingApiId === item.id ? 'Sincronizando...' : (item.latest_sync_status?.message || 'Estado de Conexión')"
-                location="top"
-              >
-                <template #activator="{ props: dotProps }">
-                  <VIcon
-                    v-bind="dotProps"
-                    size="9"
-                    :color="checkingApiId === item.id ? 'warning' : (item.latest_sync_status?.status === 'failed' ? 'error' : (item.latest_sync_status?.status === 'partial' || isSyncStale(item.last_sync_at) ? 'warning' : 'success'))"
-                    icon="tabler-circle-filled"
-                    :class="checkingApiId === item.id ? 'spin-icon' : ''"
-                  />
-                </template>
-              </VTooltip>
-              <VChip size="x-small" color="secondary" variant="outlined" class="text-xxs font-weight-bold px-1.5">
-                {{ formatChannelLabel(item.primary_connection_type) }}
-              </VChip>
-              <span class="text-xs font-weight-medium text-high-emphasis">
-                {{ formatDate(item.last_sync_at) || 'Sin sincr.' }}
-              </span>
-            </div>
-            <div class="d-flex align-center gap-1.5 text-xxs">
-              <span v-if="item.last_sync_at" class="text-disabled">{{ formatTime(item.last_sync_at) }}</span>
-              <span v-if="isSyncStale(item.last_sync_at)" class="text-warning font-weight-bold">• +48h</span>
-              <span
-                v-if="!props.isMaster && item.products_count !== undefined"
-                class="text-primary font-weight-bold cursor-pointer d-inline-flex align-center gap-0.5"
-                @click="emit('view-products', item)"
-              >
-                • <VIcon icon="tabler-packages" size="12" /> {{ item.products_count }} prod.
-              </span>
-            </div>
+          <div v-if="isCommercialSupplier(item)" class="d-flex align-center ga-2 text-xs">
+            <VTooltip
+              :text="checkingApiId === item.id ? 'Sincronizando...' : (item.latest_sync_status?.message || 'Estado de Conexión')"
+              location="top"
+            >
+              <template #activator="{ props: dotProps }">
+                <VIcon
+                  v-bind="dotProps"
+                  size="9"
+                  :color="checkingApiId === item.id ? 'warning' : (item.latest_sync_status?.status === 'failed' ? 'error' : (item.latest_sync_status?.status === 'partial' || isSyncStale(item.last_sync_at) ? 'warning' : 'success'))"
+                  icon="tabler-circle-filled"
+                  :class="checkingApiId === item.id ? 'spin-icon' : ''"
+                />
+              </template>
+            </VTooltip>
+            <span class="font-weight-medium text-high-emphasis">
+              {{ formatDate(item.last_sync_at) || 'Sin sincr.' }}
+            </span>
+            <span v-if="item.last_sync_at" class="text-medium-emphasis">
+              {{ formatTime(item.last_sync_at) }}
+            </span>
+            <span
+              v-if="!props.isMaster && item.products_count !== undefined"
+              class="text-primary font-weight-bold cursor-pointer"
+              @click="emit('view-products', item)"
+            >
+              {{ item.products_count }} prod.
+            </span>
           </div>
           <span v-else class="text-caption text-disabled">—</span>
         </template>
@@ -455,9 +443,17 @@ const headers = computed(() => {
               variant="tonal"
               class="font-weight-bold rounded-lg"
             >
-              {{ (item.debt ?? 0) > 0 ? `$${(item.debt ?? 0).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Al día ($0,00)' }}
+              <template v-if="(item.debt ?? 0) > 0">
+                ${{ Number(item.debt).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                <span v-if="(item.overdue_debt ?? 0) > 0" class="text-error ms-1">
+                  (${{ Number(item.overdue_debt).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }})
+                </span>
+              </template>
+              <template v-else>
+                Al día ($0,00)
+              </template>
             </VChip>
-            <span v-if="(item.unpaid_invoices_count ?? 0) > 0" class="text-xxs text-medium-emphasis mt-0.5 font-weight-medium">
+            <span v-if="(item.unpaid_invoices_count ?? 0) > 0" class="text-xs text-medium-emphasis mt-0.5 font-weight-medium">
               {{ item.unpaid_invoices_count }} fact.<span v-if="(item.overdue_invoices_count ?? 0) > 0" class="text-error font-weight-bold"> ({{ item.overdue_invoices_count }} venc.)</span>
             </span>
           </div>
