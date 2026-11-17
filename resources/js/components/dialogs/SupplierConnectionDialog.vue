@@ -23,6 +23,14 @@ const showFtpOrdersPassword = ref(false);
 
 const connectionsMap = ref({});
 const masterTemplatesMap = ref({});
+const masterEnabledTypes = ref([]);
+const hasInheritedTechnicalConfig = computed(() =>
+  !isMasterContext.value
+  && Boolean(
+    masterTemplatesMap.value[form.value.type]?.host
+    || connectionsMap.value[form.value.type]?.host,
+  ),
+);
 const allowedTypesFromMaster = ref(["file"]);
 const isMasterContext = computed(() => props.isMaster);
 
@@ -160,6 +168,7 @@ const fetchConfig = async () => {
     }
     connectionsMap.value = filteredConnections;
     masterTemplatesMap.value = data?.master_templates || {};
+    masterEnabledTypes.value = Object.keys(filteredConnections);
 
     if (Array.isArray(data?.allowed_types)) {
       allowedTypesFromMaster.value = data.allowed_types.filter(
@@ -185,8 +194,44 @@ const fetchConfig = async () => {
   }
 };
 
+const saveMasterChannels = async () => {
+  const previousTypes = Object.keys(connectionsMap.value);
+  const selectedTypes = [...masterEnabledTypes.value];
+
+  const toEnable = selectedTypes.filter((t) => !previousTypes.includes(t));
+  const toDisable = previousTypes.filter((t) => !selectedTypes.includes(t));
+
+  for (const type of toEnable) {
+    const payload = {
+      type,
+      host: type === "file" ? `${props.supplier?.name || "Proveedor"} (Excel)` : null,
+    };
+    await axios.post(`/suppliers/${props.supplier.id}/connection-config`, payload, getRequestConfig());
+  }
+
+  for (const type of toDisable) {
+    await axios.delete(`/suppliers/${props.supplier.id}/connection-config/${type}`, getRequestConfig());
+  }
+
+  toast.success("Canales habilitados actualizados en el Catálogo Maestro.");
+  emit("saved");
+  close();
+};
+
 const saveConfig = async () => {
   errors.value = {};
+
+  if (isMasterContext.value) {
+    saving.value = true;
+    try {
+      await saveMasterChannels();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Error al actualizar los canales en Master.");
+    } finally {
+      saving.value = false;
+    }
+    return;
+  }
 
   if (!isMasterContext.value && !form.value.username && form.value.type !== "file") {
     errors.value = { username: ["El usuario o código de cliente es obligatorio."] };
@@ -367,7 +412,7 @@ watch(
         </div>
 
         <VTabs
-          v-if="hasAvailableProtocols"
+          v-if="!isMasterContext && hasAvailableProtocols"
           :model-value="form.type"
           color="primary"
           density="compact"
@@ -411,6 +456,30 @@ watch(
             Solo los proveedores comerciales con canales autorizados desde el Catálogo Maestro admiten sincronización automática.
           </p>
         </div>
+
+        <VCard v-else-if="isMasterContext" variant="outlined" class="pa-4 bg-surface rounded-lg border-card">
+          <div class="d-flex align-center gap-2 mb-3">
+            <VIcon icon="tabler-plug-connected" color="primary" size="20" />
+            <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
+              Canales Permitidos para Farmacias
+            </span>
+          </div>
+          <p class="text-xs text-medium-emphasis mb-3">
+            Marca los protocolos que este proveedor soporta. Las farmacias solo verán y configurarán sus credenciales en los canales habilitados aquí.
+          </p>
+          <VRow dense>
+            <VCol v-for="opt in typeOptions" :key="opt.value" cols="12" sm="6">
+              <VCheckbox
+                v-model="masterEnabledTypes"
+                :value="opt.value"
+                :label="opt.title"
+                color="primary"
+                density="compact"
+                hide-details
+              />
+            </VCol>
+          </VRow>
+        </VCard>
 
         <VForm v-else @submit.prevent="saveConfig">
           <VAlert
@@ -479,26 +548,28 @@ watch(
               </div>
 
               <VRow dense>
-                <!-- Servidor y Puerto -->
-                <VCol cols="12" :md="isFtp ? 8 : 12">
-                  <AppTextField
-                    v-model="form.host"
-                    :label="isFtp ? 'Host / Servidor IP *' : 'URL Endpoint Login / Base *'"
-                    :placeholder="isFtp ? 'Ej: ftp.proveedor.com' : 'Ej: https://api.proveedor.com/login'"
-                    prepend-inner-icon="tabler-server"
-                    :error-messages="errors.host"
-                  />
-                </VCol>
-                <VCol v-if="isFtp" cols="12" md="4">
-                  <AppTextField
-                    v-model.number="form.port"
-                    type="number"
-                    label="Puerto *"
-                    :placeholder="form.type === 'sftp' ? '22' : '21'"
-                    prepend-inner-icon="tabler-hash"
-                    :error-messages="errors.port"
-                  />
-                </VCol>
+                <!-- Servidor y Puerto (oculto para tenant si ya viene preconfigurado) -->
+                <template v-if="!hasInheritedTechnicalConfig">
+                  <VCol cols="12" :md="isFtp ? 8 : 12">
+                    <AppTextField
+                      v-model="form.host"
+                      :label="isFtp ? 'Host / Servidor IP *' : 'URL Endpoint Login / Base *'"
+                      :placeholder="isFtp ? 'Ej: ftp.proveedor.com' : 'Ej: https://api.proveedor.com/login'"
+                      prepend-inner-icon="tabler-server"
+                      :error-messages="errors.host"
+                    />
+                  </VCol>
+                  <VCol v-if="isFtp" cols="12" md="4">
+                    <AppTextField
+                      v-model.number="form.port"
+                      type="number"
+                      label="Puerto *"
+                      :placeholder="form.type === 'sftp' ? '22' : '21'"
+                      prepend-inner-icon="tabler-hash"
+                      :error-messages="errors.port"
+                    />
+                  </VCol>
+                </template>
 
                 <!-- Credenciales privadas (solo Tenant) -->
                 <template v-if="!isMasterContext">
@@ -525,29 +596,31 @@ watch(
                   </VCol>
                 </template>
 
-                <!-- Rutas de Archivos / Endpoints -->
-                <VCol cols="12" md="6">
-                  <AppTextField
-                    v-model="form.path"
-                    :label="isFtp ? 'Ruta Archivo Productos / Inventario' : 'Endpoint Productos'"
-                    :placeholder="isFtp ? 'Ej: Existencia/inventario.txt' : 'Ej: /api/v1/articulos'"
-                    prepend-inner-icon="tabler-folder"
-                    :error-messages="errors.path"
-                  />
-                </VCol>
-                <VCol cols="12" md="6">
-                  <AppTextField
-                    v-model="form.invoice_path"
-                    :label="isFtp ? 'Ruta Directorio Facturas' : 'Endpoint Facturas'"
-                    :placeholder="isFtp ? 'Ej: Facturas/7586' : 'Ej: /api/v1/facturas'"
-                    prepend-inner-icon="tabler-file-invoice"
-                    :error-messages="errors.invoice_path"
-                  />
-                </VCol>
+                <!-- Rutas de Archivos / Endpoints (oculto para tenant si ya viene preconfigurado) -->
+                <template v-if="!hasInheritedTechnicalConfig">
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.path"
+                      :label="isFtp ? 'Ruta Archivo Productos / Inventario' : 'Endpoint Productos'"
+                      :placeholder="isFtp ? 'Ej: Existencia/inventario.txt' : 'Ej: /api/v1/articulos'"
+                      prepend-inner-icon="tabler-folder"
+                      :error-messages="errors.path"
+                    />
+                  </VCol>
+                  <VCol cols="12" md="6">
+                    <AppTextField
+                      v-model="form.invoice_path"
+                      :label="isFtp ? 'Ruta Directorio Facturas' : 'Endpoint Facturas'"
+                      :placeholder="isFtp ? 'Ej: Facturas/7586' : 'Ej: /api/v1/facturas'"
+                      prepend-inner-icon="tabler-file-invoice"
+                      :error-messages="errors.invoice_path"
+                    />
+                  </VCol>
+                </template>
               </VRow>
 
               <!-- Opciones FTP -->
-              <div v-if="isFtp" class="d-flex align-center flex-wrap justify-space-between gap-3 pt-2 mt-2 border-t">
+              <div v-if="isFtp && !hasInheritedTechnicalConfig" class="d-flex align-center flex-wrap justify-space-between gap-3 pt-2 mt-2 border-t">
                 <div class="d-flex align-center gap-2">
                   <VSwitch v-model="form.pasv" color="primary" hide-details density="compact" />
                   <span class="text-xs font-weight-bold text-high-emphasis">Modo Pasivo (PASV)</span>
