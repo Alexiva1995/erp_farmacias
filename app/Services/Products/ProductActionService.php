@@ -53,7 +53,8 @@ class ProductActionService
             $validatedData['unit_cost'] = 0;
         }
         
-        $isRestaurant = \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
+        $isRestaurant = \Illuminate\Support\Facades\Schema::hasTable('general_settings')
+            && \App\Models\GeneralSetting::first()?->business_type === 'restaurant';
         if ($isRestaurant) {
             if (!isset($validatedData['origin_id'])) {
                 $validatedData['origin_id'] = null;
@@ -810,199 +811,189 @@ class ProductActionService
      */
     public function mergeProducts(int $productId1, int $productId2, int $keepProductId): array
     {
-        // Verificar que el keepProductId sea uno de los dos productos
         if ($keepProductId !== $productId1 && $keepProductId !== $productId2) {
             throw new \Exception('El ID del producto a mantener debe ser uno de los dos productos proporcionados.');
         }
 
-        // Determinar qué producto se mantiene y cuál se elimina
         $productToKeepId = $keepProductId;
         $productToDeleteId = ($keepProductId === $productId1) ? $productId2 : $productId1;
 
-        // Verificar que ambos productos existen (incluyendo productos con soft delete o is_deleted)
         $productToKeep = Product::withoutGlobalScopes()->withTrashed()->find($productToKeepId);
         $productToDelete = Product::withoutGlobalScopes()->withTrashed()->find($productToDeleteId);
 
         if (!$productToKeep || !$productToDelete) {
-            return false;
+            throw new \Exception('Uno o ambos productos no existen.');
         }
 
-        DB::beginTransaction();
+        $currentConn = DB::getDefaultConnection();
+        $isMasterContext = $currentConn === 'master_catalog';
+
         try {
-            // Actualizar todas las tablas que referencian product_id
-            // Cambiar todas las referencias del producto que se elimina al producto que se mantiene
-            // 1. product_lots
-            DB::table('product_lots')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
+            $this->mergeProductInConnection($currentConn, $productToDeleteId, $productToKeepId);
 
-            // 2. product_suppliers
-            DB::table('product_suppliers')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 3. expirations
-            DB::table('expirations')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 4. individual_offers
-            DB::table('individual_offers')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 5. returns (return_entries)
-            DB::table('returns')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 6. quotation_products
-            DB::table('quotation_products')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 7. product_profitability
-            DB::table('product_profitability')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 8. product_counts
-            DB::table('product_counts')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 9. order_details
-            DB::table('order_details')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 10. inventory_movements
-            DB::table('inventory_movements')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 11. invoice_details
-            DB::table('invoice_details')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 12. psychotropic_controls
-            DB::table('psychotropic_controls')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 13. invoices_counts
-            DB::table('invoices_counts')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 14. sale_counts
-            DB::table('sales_counts')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 15. employee_product (tabla pivot)
-            DB::table('employee_product')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 16. auto_order_details
-            DB::table('auto_order_details')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 17. product_failures
-            DB::table('product_failures')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 18. product_distributions - No necesita actualización directa ya que no tiene product_id,
-            // se actualiza automáticamente a través de product_counts que ya fue actualizado
-
-            // 19. price_adjustment_logs
-            DB::table('price_adjustment_logs')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 20. fiscal_history_details
-            DB::table('fiscal_history_details')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 21. invoice_returns
-            DB::table('invoice_returns')
-                ->where('product_id', $productToDeleteId)
-                ->update(['product_id' => $productToKeepId]);
-
-            // 22. product_packs (actualizar pack_config JSON)
-            $packs = DB::table('product_packs')
-                ->whereNotNull('pack_config')
-                ->get();
-
-            foreach ($packs as $pack) {
-                $packConfig = json_decode($pack->pack_config, true);
-                if (is_array($packConfig) && isset($packConfig[$productToDeleteId])) {
-                    // Si el producto que se elimina existe, moverlo al producto que se mantiene
-                    if (isset($packConfig[$productToKeepId])) {
-                        // Si ya existe el producto que se mantiene, combinar las cantidades/configuraciones
-                        if (is_array($packConfig[$productToDeleteId]) && is_array($packConfig[$productToKeepId])) {
-                            // Combinar configuraciones
-                            $packConfig[$productToKeepId]['quantity'] = ($packConfig[$productToKeepId]['quantity'] ?? 0) + ($packConfig[$productToDeleteId]['quantity'] ?? 0);
-                        } elseif (is_numeric($packConfig[$productToDeleteId]) && is_numeric($packConfig[$productToKeepId])) {
-                            // Sumar cantidades simples
-                            $packConfig[$productToKeepId] = $packConfig[$productToKeepId] + $packConfig[$productToDeleteId];
-                        }
-                    } else {
-                        // Mover la configuración al producto que se mantiene
-                        $packConfig[$productToKeepId] = $packConfig[$productToDeleteId];
-                    }
-                    unset($packConfig[$productToDeleteId]);
-                    DB::table('product_packs')
-                        ->where('id', $pack->id)
-                        ->update(['pack_config' => json_encode($packConfig)]);
-                }
+            // Si la fusión se realizó en el Catálogo Maestro, propagar la fusión y unificación de ID a central y todos los tenants
+            if ($isMasterContext) {
+                $this->propagateMergeToTenants($productToDeleteId, $productToKeepId);
             }
-
-            // 23. prescription_offers (actualizar products JSON)
-            $prescriptionOffers = DB::table('prescription_offers')
-                ->whereNotNull('products')
-                ->get();
-
-            foreach ($prescriptionOffers as $offer) {
-                $products = json_decode($offer->products, true);
-                if (is_array($products) && isset($products[$productToDeleteId])) {
-                    // Si el producto que se elimina existe, moverlo al producto que se mantiene
-                    if (isset($products[$productToKeepId])) {
-                        // Si ya existe el producto que se mantiene, combinar las configuraciones
-                        if (is_array($products[$productToDeleteId]) && is_array($products[$productToKeepId])) {
-                            $products[$productToKeepId]['quantity'] = ($products[$productToKeepId]['quantity'] ?? 0) + ($products[$productToDeleteId]['quantity'] ?? 0);
-                        }
-                    } else {
-                        // Mover la configuración al producto que se mantiene
-                        $products[$productToKeepId] = $products[$productToDeleteId];
-                    }
-                    unset($products[$productToDeleteId]);
-                    DB::table('prescription_offers')
-                        ->where('id', $offer->id)
-                        ->update(['products' => json_encode($products)]);
-                }
-            }
-
-            // Eliminar lógicamente el producto que se fusiona
-            $productToDelete->update(['is_deleted' => true]);
-
-            DB::commit();
 
             return [
                 'success' => true,
                 'message' => "Productos fusionados exitosamente. El producto ID {$productToDeleteId} ha sido fusionado con el producto ID {$productToKeepId}.",
                 'merged_product_id' => $productToKeepId,
-                'deleted_product_id' => $productToDeleteId
+                'deleted_product_id' => $productToDeleteId,
             ];
-        } catch (\Exception $e) {
-            DB::rollBack();
+        } catch (\Throwable $e) {
             Log::error('Error al fusionar productos: ' . $e->getMessage());
             throw new \Exception('Error al fusionar productos: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Ejecuta la fusión de $productToDeleteId hacia $productToKeepId verificando existencia física de cada tabla en $conn.
+     */
+    private function mergeProductInConnection(string $conn, int $productToDeleteId, int $productToKeepId): void
+    {
+        if (!\Illuminate\Support\Facades\Schema::connection($conn)->hasTable('products')) {
+            return;
+        }
+
+        $toKeep = DB::connection($conn)->table('products')->where('id', $productToKeepId)->first();
+        $toDelete = DB::connection($conn)->table('products')->where('id', $productToDeleteId)->first();
+
+        if (!$toDelete) {
+            return;
+        }
+
+        $homologation = app(\App\Services\Catalog\ProductIdHomologationService::class);
+
+        // Si en este tenant solo existe el producto que se va a fusionar y no el ganador, reubicar su ID directamente al ganador
+        if (!$toKeep) {
+            $homologation->relocateProductId($conn, $productToDeleteId, $productToKeepId);
+            return;
+        }
+
+        DB::connection($conn)->statement('SET FOREIGN_KEY_CHECKS = 0');
+
+        try {
+            // 1. Enriquecer el producto ganador con atributos que tenga vacíos y que existan en el producto a eliminar
+            $enrichUpdates = [];
+            foreach (['barcode', 'photo_url', 'laboratory_id', 'category_id', 'origin_id', 'active_ingredient', 'presentation', 'unit_of_measure', 'description'] as $field) {
+                if (property_exists($toKeep, $field) && empty($toKeep->$field) && !empty($toDelete->$field)) {
+                    $enrichUpdates[$field] = $toDelete->$field;
+                }
+            }
+
+            // Liberar barcode del producto que se elimina antes de asignarlo al ganador
+            if (property_exists($toDelete, 'barcode') && !empty($toDelete->barcode)) {
+                DB::connection($conn)->table('products')
+                    ->where('id', $productToDeleteId)
+                    ->update(['barcode' => null]);
+            }
+
+            if (!empty($enrichUpdates)) {
+                $enrichUpdates['updated_at'] = now();
+                DB::connection($conn)->table('products')
+                    ->where('id', $productToKeepId)
+                    ->update($enrichUpdates);
+            }
+
+            // 2. Actualizar en cascada todas las tablas que existan físicamente en esta base de datos
+            $relations = $homologation->discoverProductForeignRelations($conn);
+            foreach ($relations as $rel) {
+                $table = $rel['table'];
+                $col = $rel['column'];
+
+                DB::connection($conn)->update(
+                    "UPDATE IGNORE `{$table}` SET `{$col}` = ? WHERE `{$col}` = ?",
+                    [$productToKeepId, $productToDeleteId]
+                );
+
+                // Limpiar remanentes que colisionaron por restricción UNIQUE (ej. product_profitability, product_suppliers)
+                DB::connection($conn)->table($table)->where($col, $productToDeleteId)->delete();
+            }
+
+            // 3. Actualizar JSON en product_packs si la tabla existe en esta conexión
+            if (\Illuminate\Support\Facades\Schema::connection($conn)->hasTable('product_packs')) {
+                $packs = DB::connection($conn)->table('product_packs')->whereNotNull('pack_config')->get();
+                foreach ($packs as $pack) {
+                    $packConfig = json_decode((string) $pack->pack_config, true);
+                    if (is_array($packConfig) && isset($packConfig[$productToDeleteId])) {
+                        if (isset($packConfig[$productToKeepId])) {
+                            if (is_array($packConfig[$productToDeleteId]) && is_array($packConfig[$productToKeepId])) {
+                                $packConfig[$productToKeepId]['quantity'] = ($packConfig[$productToKeepId]['quantity'] ?? 0) + ($packConfig[$productToDeleteId]['quantity'] ?? 0);
+                            } elseif (is_numeric($packConfig[$productToDeleteId]) && is_numeric($packConfig[$productToKeepId])) {
+                                $packConfig[$productToKeepId] += $packConfig[$productToDeleteId];
+                            }
+                        } else {
+                            $packConfig[$productToKeepId] = $packConfig[$productToDeleteId];
+                        }
+                        unset($packConfig[$productToDeleteId]);
+                        DB::connection($conn)->table('product_packs')
+                            ->where('id', $pack->id)
+                            ->update(['pack_config' => json_encode($packConfig)]);
+                    }
+                }
+            }
+
+            // 4. Actualizar JSON en prescription_offers si la tabla existe en esta conexión
+            if (\Illuminate\Support\Facades\Schema::connection($conn)->hasTable('prescription_offers')) {
+                $offers = DB::connection($conn)->table('prescription_offers')->whereNotNull('products')->get();
+                foreach ($offers as $offer) {
+                    $products = json_decode((string) $offer->products, true);
+                    if (is_array($products) && isset($products[$productToDeleteId])) {
+                        if (isset($products[$productToKeepId])) {
+                            if (is_array($products[$productToDeleteId]) && is_array($products[$productToKeepId])) {
+                                $products[$productToKeepId]['quantity'] = ($products[$productToKeepId]['quantity'] ?? 0) + ($products[$productToDeleteId]['quantity'] ?? 0);
+                            }
+                        } else {
+                            $products[$productToKeepId] = $products[$productToDeleteId];
+                        }
+                        unset($products[$productToDeleteId]);
+                        DB::connection($conn)->table('prescription_offers')
+                            ->where('id', $offer->id)
+                            ->update(['products' => json_encode($products)]);
+                    }
+                }
+            }
+
+            // 5. Marcar el producto fusionado como eliminado (o eliminarlo si no tiene columna is_deleted)
+            if (\Illuminate\Support\Facades\Schema::connection($conn)->hasColumn('products', 'is_deleted')) {
+                DB::connection($conn)->table('products')
+                    ->where('id', $productToDeleteId)
+                    ->update(['is_deleted' => true, 'updated_at' => now()]);
+            } else {
+                DB::connection($conn)->table('products')->where('id', $productToDeleteId)->delete();
+            }
+        } finally {
+            DB::connection($conn)->statement('SET FOREIGN_KEY_CHECKS = 1');
+        }
+    }
+
+    /**
+     * Propaga la fusión de dos productos realizada en el Master hacia la base central y todos los tenants.
+     */
+    private function propagateMergeToTenants(int $productToDeleteId, int $productToKeepId): void
+    {
+        $centralConn = config('tenancy.database.central_connection', 'mysql');
+        $previousDefault = DB::getDefaultConnection();
+
+        try {
+            $this->mergeProductInConnection($centralConn, $productToDeleteId, $productToKeepId);
+
+            if (\Illuminate\Support\Facades\Schema::connection($centralConn)->hasTable('tenants')) {
+                $tenants = \App\Models\Tenant::all();
+                foreach ($tenants as $tenant) {
+                    try {
+                        $tenant->run(function () use ($productToDeleteId, $productToKeepId) {
+                            $this->mergeProductInConnection(DB::getDefaultConnection(), $productToDeleteId, $productToKeepId);
+                        });
+                    } catch (\Throwable $e) {
+                        Log::warning("Error propagando fusión a tenant {$tenant->id}: " . $e->getMessage());
+                    }
+                }
+            }
+        } finally {
+            DB::setDefaultConnection($previousDefault);
         }
     }
 
@@ -1041,6 +1032,10 @@ class ProductActionService
     {
         if ($unitCost <= 0) {
             return 0.0;
+        }
+
+        if (!\Illuminate\Support\Facades\Schema::hasTable('general_settings') || !\Illuminate\Support\Facades\Schema::hasTable('profitability_settings')) {
+            return round($unitCost * 1.30, 2);
         }
 
         $generalSettings = DB::table('general_settings')->first();
