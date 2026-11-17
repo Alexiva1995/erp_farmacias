@@ -308,8 +308,14 @@ const headers = computed(() => {
 
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-3 py-1">
-            <VAvatar size="36" color="secondary" variant="tonal" rounded="lg" class="flex-shrink-0">
-              <VImg v-if="item.logo_url" :src="item.logo_url" cover />
+            <VAvatar
+              size="48"
+              :color="item.logo_url ? 'white' : 'secondary'"
+              :variant="item.logo_url ? 'flat' : 'tonal'"
+              rounded="lg"
+              :class="['flex-shrink-0', item.logo_url ? 'border bg-white pa-1' : '']"
+            >
+              <VImg v-if="item.logo_url" :src="item.logo_url" :cover="false" />
               <span v-else class="text-xs font-weight-bold">{{ getInitials(item.name) }}</span>
             </VAvatar>
             <div class="d-flex flex-column">

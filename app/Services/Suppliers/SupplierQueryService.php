@@ -953,13 +953,27 @@ class SupplierQueryService
 
         $search = trim($filters["search"] ?? $filters["q"] ?? "");
         if ($search !== "") {
-            $query->where(function ($q) use ($search) {
-                $q->where("product_suppliers.name", "like", "%{$search}%")
-                    ->orWhere("products.name", "like", "%{$search}%")
-                    ->orWhere("product_suppliers.barcode_match", "like", "%{$search}%")
-                    ->orWhere("product_suppliers.cod_supplier", "like", "%{$search}%")
-                    ->orWhere("product_suppliers.laboratory", "like", "%{$search}%");
-            });
+            if (is_numeric($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where("product_suppliers.barcode_match", "like", "%{$search}%")
+                        ->orWhere("product_suppliers.cod_supplier", "like", "%{$search}%")
+                        ->orWhere("product_suppliers.id", "=", $search)
+                        ->orWhere("product_suppliers.product_id", "=", $search)
+                        ->orWhere("product_suppliers.name", "like", "%{$search}%");
+                });
+            } else {
+                $words = array_filter(explode(" ", $search));
+                foreach ($words as $word) {
+                    $query->where(function ($wordQuery) use ($word) {
+                        $wordQuery->where("product_suppliers.name", "like", "%{$word}%")
+                            ->orWhere("products.name", "like", "%{$word}%")
+                            ->orWhere("product_suppliers.active_ingredient", "like", "%{$word}%")
+                            ->orWhere("product_suppliers.laboratory", "like", "%{$word}%")
+                            ->orWhere("product_suppliers.barcode_match", "like", "%{$word}%")
+                            ->orWhere("product_suppliers.cod_supplier", "like", "%{$word}%");
+                    });
+                }
+            }
         }
 
         $paginated = $query
