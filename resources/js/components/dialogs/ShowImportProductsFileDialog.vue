@@ -99,6 +99,7 @@ const submitForm = async () => {
   form.append("laboratory", current.laboratory || "");
   form.append("expiration", current.expiration || "");
   form.append("credit_days", current.credit_days || "");
+  form.append("fixed_credit_days", current.fixed_credit_days ?? "");
   form.append("file_keyword", current.file_keyword || "");
   form.append("format_type", activeFormat.value);
   form.append("save_as_secondary", activeFormat.value === "secondary" ? "1" : "0");
@@ -521,7 +522,7 @@ watch(
               />
             </VCol>
             <VCol cols="6">
-              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Días de Crédito</span>
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Días de Crédito (Columna)</span>
               <VTextField
                 v-model="formats[activeFormat].credit_days"
                 type="text"
@@ -532,6 +533,21 @@ watch(
                 prepend-inner-icon="tabler-clock-dollar"
                 class="rounded-lg font-weight-black"
                 :error-messages="errors.credit_days"
+              />
+            </VCol>
+            <VCol cols="6">
+              <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Días de Crédito Fijos</span>
+              <VTextField
+                v-model="formats[activeFormat].fixed_credit_days"
+                type="number"
+                min="0"
+                placeholder="Ej: 18 (si aplica a todo el archivo)"
+                variant="outlined"
+                density="comfortable"
+                hide-details="auto"
+                prepend-inner-icon="tabler-calendar-time"
+                class="rounded-lg font-weight-black"
+                :error-messages="errors.fixed_credit_days"
               />
             </VCol>
           </VRow>

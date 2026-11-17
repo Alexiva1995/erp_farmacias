@@ -37,6 +37,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
         private readonly ?string $expirationCol,
         private readonly ?string $laboratoryCol = null,
         private readonly ?string $creditDaysCol = null,
+        private readonly ?int $defaultCreditDays = null,
     ) {
         $this->cleanedRows = collect();
     }
@@ -181,6 +182,9 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                 if (!empty($this->creditDaysCol)) {
                     $rawCredit = $row[$this->colIndex($this->creditDaysCol)] ?? null;
                     $creditDays = $this->parseCreditDays($rawCredit);
+                }
+                if ($creditDays === null && $this->defaultCreditDays !== null) {
+                    $creditDays = $this->defaultCreditDays;
                 }
 
                 $data = [

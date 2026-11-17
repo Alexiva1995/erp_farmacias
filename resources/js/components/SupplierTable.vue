@@ -352,14 +352,23 @@ const headers = computed(() => {
             <span class="text-xs font-weight-bold text-high-emphasis">
               {{ (item.credit_days ?? 0) > 0 ? `${item.credit_days} días` : 'Contado' }}
             </span>
-            <div class="d-flex align-center ga-2 text-xs text-medium-emphasis">
+            <div class="d-flex align-center flex-wrap ga-2 text-xs text-medium-emphasis">
               <span v-if="(item.max_early_payment_discount ?? 0) > 0" class="text-success font-weight-medium">
                 Pronto pago: {{ item.max_early_payment_discount }}%
+              </span>
+              <span
+                v-if="item.comparator_discount_mode === 'apply_discount' && (item.comparator_discount_percentage ?? 0) > 0"
+                class="text-info font-weight-medium"
+              >
+                Lineal: {{ item.comparator_discount_percentage }}%
               </span>
               <span v-if="(item.min_order_amount ?? 0) > 0">
                 Mín: ${{ Number(item.min_order_amount).toFixed(0) }}
               </span>
-              <span v-if="!(item.max_early_payment_discount > 0) && !(item.min_order_amount > 0)" class="text-disabled">
+              <span
+                v-if="!(item.max_early_payment_discount > 0) && !(item.comparator_discount_mode === 'apply_discount' && (item.comparator_discount_percentage ?? 0) > 0) && !(item.min_order_amount > 0)"
+                class="text-disabled"
+              >
                 Sin acuerdos extra
               </span>
             </div>
