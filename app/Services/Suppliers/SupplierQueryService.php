@@ -1278,12 +1278,29 @@ class SupplierQueryService
         if (!empty($missingBarcodes)) {
             try {
                 if (\Illuminate\Support\Facades\Schema::connection('master_catalog')->hasTable('products')) {
-                    $masterPhotos = Product::on('master_catalog')
+                    $masterBaseUrl = rtrim((string) config('app.url'), '/');
+
+                    $masterPhotos = \Illuminate\Support\Facades\DB::connection('master_catalog')
+                        ->table('products')
                         ->select(['barcode', 'photo_url'])
                         ->whereIn('barcode', $missingBarcodes)
                         ->whereNotNull('photo_url')
                         ->where('photo_url', '!=', '')
                         ->get()
+                        ->map(function ($p) use ($masterBaseUrl) {
+                            $url = trim((string) $p->photo_url);
+                            // Evitar tenant_asset() para fotos del catálogo master: resolver contra storage central
+                            if (!str_starts_with($url, 'http://') && !str_starts_with($url, 'https://')) {
+                                $cleanPath = ltrim($url, '/');
+                                if (str_starts_with($cleanPath, 'storage/')) {
+                                    $cleanPath = substr($cleanPath, 8);
+                                }
+                                $url = $masterBaseUrl . '/storage/' . $cleanPath;
+                            }
+                            $p->photo_url = $url;
+
+                            return $p;
+                        })
                         ->keyBy(fn ($p) => trim((string) $p->barcode));
                 }
             } catch (\Throwable) {
