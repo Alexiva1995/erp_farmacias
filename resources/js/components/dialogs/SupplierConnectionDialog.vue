@@ -563,28 +563,6 @@ watch(
         </VCard>
 
         <VForm v-else @submit.prevent="saveConfig">
-          <VAlert
-            v-if="isMasterContext"
-            color="info"
-            variant="tonal"
-            density="compact"
-            icon="tabler-shield-check"
-            class="mb-3 rounded-lg text-xs"
-          >
-            Al guardar este protocolo en el Master, quedará habilitado automáticamente como canal oficial para todas las farmacias conectadas. No guarde credenciales privadas de clientes aquí.
-          </VAlert>
-
-          <VAlert
-            v-else-if="activeMasterTemplate && activeMasterTemplate.has_structure"
-            color="success"
-            variant="tonal"
-            density="compact"
-            icon="tabler-database-check"
-            class="mb-3 rounded-lg text-xs"
-          >
-            Plantilla de servidor y estructura de archivo preconfigurada por el Master. Solo complete sus credenciales o carpeta asignada.
-          </VAlert>
-
           <!-- 1. Correo Gmail (Excel) -->
           <template v-if="isEmail">
             <VCard variant="outlined" class="pa-4 bg-surface rounded-lg border-card mb-3">
@@ -804,73 +782,6 @@ watch(
             </VCard>
           </div>
 
-          <!-- Transmisión complementaria de pedidos FTP si aplica cuando la principal es API -->
-          <div v-if="!isMasterContext && isHttp" class="mt-2">
-            <VCard variant="outlined" class="pa-4 bg-surface rounded-lg border-card">
-              <div class="d-flex align-center justify-space-between mb-2">
-                <div class="d-flex align-center gap-2">
-                  <VIcon icon="tabler-upload" color="secondary" size="18" />
-                  <span class="text-xs font-weight-black text-secondary uppercase letter-spacing-1">
-                    Envío de Pedidos por FTP (Opcional)
-                  </span>
-                </div>
-                <VSwitch
-                  v-model="form.ftp_orders_enabled"
-                  color="secondary"
-                  hide-details
-                  density="compact"
-                  :label="form.ftp_orders_enabled ? 'Habilitado' : 'Deshabilitado'"
-                />
-              </div>
-
-              <div v-if="form.ftp_orders_enabled" class="pt-2">
-                <VRow dense>
-                  <VCol cols="12" md="8">
-                    <AppTextField
-                      v-model="form.ftp_orders_host"
-                      label="Servidor FTP Pedidos *"
-                      placeholder="ftp.proveedor.com"
-                      :error-messages="errors.ftp_orders_host"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="4">
-                    <AppTextField
-                      v-model.number="form.ftp_orders_port"
-                      type="number"
-                      label="Puerto *"
-                      placeholder="21"
-                      :error-messages="errors.ftp_orders_port"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="6">
-                    <AppTextField
-                      v-model="form.ftp_orders_username"
-                      label="Usuario FTP *"
-                      :error-messages="errors.ftp_orders_username"
-                    />
-                  </VCol>
-                  <VCol cols="12" md="6">
-                    <AppTextField
-                      v-model="form.ftp_orders_password"
-                      :type="showFtpOrdersPassword ? 'text' : 'password'"
-                      :label="hasExistingFtpOrdersPassword ? 'Contraseña FTP (dejar vacío para mantener)' : 'Contraseña FTP'"
-                      :append-inner-icon="showFtpOrdersPassword ? 'tabler-eye-off' : 'tabler-eye'"
-                      :error-messages="errors.ftp_orders_password"
-                      @click:append-inner="showFtpOrdersPassword = !showFtpOrdersPassword"
-                    />
-                  </VCol>
-                  <VCol cols="12">
-                    <AppTextField
-                      v-model="form.ftp_orders_path"
-                      label="Ruta Carpeta de Pedidos"
-                      placeholder="/pedidos"
-                      :error-messages="errors.ftp_orders_path"
-                    />
-                  </VCol>
-                </VRow>
-              </div>
-            </VCard>
-          </div>
         </VForm>
       </VCardText>
 
