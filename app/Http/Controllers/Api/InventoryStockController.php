@@ -20,6 +20,8 @@ class InventoryStockController extends Controller
         $filtros = $this->stockService->extractFilters($request);
         $respuestaConsulta = $this->stockService->getFilteredStock($filtros);
 
+        \App\Services\Products\ProductQueryService::attachMasterPhotos($respuestaConsulta->items());
+
         $respuestaConsulta->through(fn($item) => (new StockProductResource($item))->resolve());
 
         return ApiResponse::success($respuestaConsulta, 'ok', 200);
@@ -29,6 +31,8 @@ class InventoryStockController extends Controller
     {
         $filtros = $this->stockService->extractFilters($request);
         $respuestaConsulta = $this->stockService->getFilteredStockWithoutPaginate($filtros);
+
+        \App\Services\Products\ProductQueryService::attachMasterPhotos($respuestaConsulta);
 
         return ApiResponse::success(StockProductResource::collection($respuestaConsulta), 'ok', 200);
     }

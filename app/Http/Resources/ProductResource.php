@@ -42,7 +42,7 @@ class ProductResource extends JsonResource
             'stock_calculado' => $this->stock_calculado ?? 0,
             'ultima_fecha_vencimiento' => $this->ultima_fecha_vencimiento,
             'lot_locations' => $this->lot_locations,
-            'photo_url' => $this->photo_url,
+            'photo_url' => $this->photo_url ?? $this->master_photo_url ?? null,
             'active_branches' => $this->active_branches ?? [],
             'category' => $this->whenLoaded('category', function () {
                 return $this->category ? [

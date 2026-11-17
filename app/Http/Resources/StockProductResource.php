@@ -37,7 +37,7 @@ class StockProductResource extends JsonResource
             'is_novaventa' => (int) ($this->is_novaventa ?? 0),
             'presentation' => $this->presentation,
             'unit_of_measure' => $this->unit_of_measure,
-            'photo_url' => $this->photo_url,
+            'photo_url' => $this->photo_url ?? $this->master_photo_url ?? null,
             'laboratory_id' => $this->laboratory_id,
             'laboratory' => $this->whenLoaded('laboratory', function () {
                 return [

@@ -565,4 +565,67 @@ class ProductQueryService
 
         return $query;
     }
+
+    /**
+     * Adjunta en lote la URL de imagen desde master_catalog por barcode para productos locales sin foto.
+     *
+     * @param iterable<int, mixed> $products
+     */
+    public static function attachMasterPhotos(iterable $products): void
+    {
+        $items = collect($products)->filter();
+        if ($items->isEmpty()) {
+            return;
+        }
+
+        $barcodes = $items
+            ->filter(fn ($p) => empty($p->photo_url) && is_string($p->barcode ?? null) && trim((string) $p->barcode) !== '')
+            ->map(fn ($p) => trim((string) $p->barcode))
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($barcodes)) {
+            return;
+        }
+
+        try {
+            if (!\Illuminate\Support\Facades\Schema::connection('master_catalog')->hasTable('products')) {
+                return;
+            }
+
+            $masterBaseUrl = rtrim((string) config('app.url'), '/');
+
+            $masterPhotos = \Illuminate\Support\Facades\DB::connection('master_catalog')
+                ->table('products')
+                ->select(['barcode', 'photo_url'])
+                ->whereIn('barcode', $barcodes)
+                ->whereNotNull('photo_url')
+                ->where('photo_url', '!=', '')
+                ->get()
+                ->map(function ($p) use ($masterBaseUrl) {
+                    $url = trim((string) $p->photo_url);
+                    if (!str_starts_with($url, 'http://') && !str_starts_with($url, 'https://')) {
+                        $cleanPath = ltrim($url, '/');
+                        if (str_starts_with($cleanPath, 'storage/')) {
+                            $cleanPath = substr($cleanPath, 8);
+                        }
+                        $url = $masterBaseUrl . '/storage/' . $cleanPath;
+                    }
+                    $p->photo_url = $url;
+
+                    return $p;
+                })
+                ->keyBy(fn ($p) => trim((string) $p->barcode));
+
+            foreach ($items as $item) {
+                if (empty($item->photo_url) && !empty($item->barcode)) {
+                    $bc = trim((string) $item->barcode);
+                    $item->master_photo_url = $masterPhotos->get($bc)?->photo_url ?? null;
+                }
+            }
+        } catch (\Throwable) {
+            // Ignorar si no existe conexión master_catalog
+        }
+    }
 }

@@ -54,6 +54,8 @@ class ProductController extends Controller
                 $product->stock_calculado = $product->lots->sum('quantity');
                 if ($isMasterContext) {
                     $this->masterCatalogBranchService->attachActiveBranches([$product]);
+                } else {
+                    \App\Services\Products\ProductQueryService::attachMasterPhotos([$product]);
                 }
                 return response()->json(['data' => [new \App\Http\Resources\ProductResource($product)], 'total' => 1]);
             }
@@ -67,12 +69,16 @@ class ProductController extends Controller
             $items = $query->get();
             if ($isMasterContext) {
                 $this->masterCatalogBranchService->attachActiveBranches($items);
+            } else {
+                \App\Services\Products\ProductQueryService::attachMasterPhotos($items);
             }
             return response()->json(['data' => \App\Http\Resources\ProductResource::collection($items), 'total' => $items->count()]);
         }
         $paginatedResult = $query->paginate($perPage);
         if ($isMasterContext) {
             $this->masterCatalogBranchService->attachActiveBranches($paginatedResult->items());
+        } else {
+            \App\Services\Products\ProductQueryService::attachMasterPhotos($paginatedResult->items());
         }
         return response()->json([
             'data' => \App\Http\Resources\ProductResource::collection($paginatedResult->items()),
