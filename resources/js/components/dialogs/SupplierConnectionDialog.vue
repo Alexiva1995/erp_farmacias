@@ -676,13 +676,12 @@ watch(
       </VCardText>
 
       <!-- Acciones -->
-      <VCardActions class="pa-3 bg-surface border-t d-flex justify-space-between align-center flex-wrap gap-2">
-        <div>
+      <VCardActions class="pa-3 bg-surface border-t flex-column gap-2">
+        <div v-if="hasAvailableProtocols && connectionsMap[form.type]" class="w-100 d-flex justify-start">
           <VBtn
-            v-if="hasAvailableProtocols && connectionsMap[form.type]"
             color="error"
             variant="text"
-            height="38"
+            height="32"
             prepend-icon="tabler-trash"
             class="font-weight-bold rounded-lg text-xs px-2 text-none"
             :loading="deletingProtocol"
@@ -692,29 +691,38 @@ watch(
           </VBtn>
         </div>
 
-        <div class="d-flex align-center gap-2">
-          <VBtn
-            color="secondary"
-            variant="outlined"
-            height="38"
-            class="font-weight-bold rounded-lg text-xs px-4"
-            @click="close"
-          >
-            Cancelar
-          </VBtn>
-          <VBtn
-            v-if="hasAvailableProtocols"
-            color="primary"
-            variant="flat"
-            height="38"
-            class="font-weight-bold rounded-lg shadow-primary text-xs px-5"
-            :loading="saving"
-            @click="saveConfig"
-          >
-            <VIcon start icon="tabler-device-floppy" size="16" />
-            Guardar {{ form.type.toUpperCase() }}
-          </VBtn>
-        </div>
+        <VRow dense class="w-100 ma-0">
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              size="large"
+              block
+              height="44"
+              class="font-weight-bold rounded-lg text-button"
+              @click="close"
+            >
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" class="pa-1">
+            <VBtn
+              v-if="hasAvailableProtocols"
+              color="primary"
+              variant="flat"
+              size="large"
+              block
+              height="44"
+              class="font-weight-black rounded-lg shadow-primary text-button"
+              :loading="saving"
+              :disabled="saving"
+              @click="saveConfig"
+            >
+              <VIcon start icon="tabler-device-floppy" size="18" />
+              Guardar
+            </VBtn>
+          </VCol>
+        </VRow>
       </VCardActions>
     </VCard>
 

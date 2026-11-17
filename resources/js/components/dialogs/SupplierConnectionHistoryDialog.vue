@@ -99,22 +99,39 @@ const getStatusBadge = (status) => {
 };
 
 const getMethodBadge = (method) => {
-  switch (String(method || '').toLowerCase()) {
-    case 'ftp':
-    case 'api':
-      return { label: 'FTP / API', color: 'primary', icon: 'tabler-api' };
-    case 'bot_scraper':
-    case 'dronena_bot':
-    case 'drosymca_bot':
-      return { label: 'Bot Scraper', color: 'info', icon: 'tabler-robot' };
-    case 'cli':
-      return { label: 'Terminal CLI', color: 'secondary', icon: 'tabler-terminal-2' };
-    case 'email':
-      return { label: 'Correo', color: 'warning', icon: 'tabler-mail' };
-    case 'cron_job':
-      return { label: 'Cron Job', color: 'purple', icon: 'tabler-clock' };
+  let normalized = String(method || "").toLowerCase();
+
+  // Si la ejecución fue vía consola o cron, mostrar el protocolo real configurado en el proveedor
+  if (normalized === "cli" || normalized === "cron_job") {
+    const supplierTypes = Array.isArray(props.supplier?.connection_types)
+      ? props.supplier.connection_types
+      : [];
+    const fallbackType = supplierTypes[0] || props.supplier?.connection_type || "";
+    if (fallbackType) {
+      normalized = String(fallbackType).toLowerCase();
+    }
+  }
+
+  switch (normalized) {
+    case "ftp":
+      return { label: "FTP", color: "primary", icon: "tabler-server-2" };
+    case "sftp":
+      return { label: "SFTP", color: "primary", icon: "tabler-lock-access" };
+    case "api":
+    case "http":
+      return { label: "API", color: "primary", icon: "tabler-api" };
+    case "bot_scraper":
+    case "dronena_bot":
+    case "drosymca_bot":
+      return { label: "Bot Scraper", color: "info", icon: "tabler-robot" };
+    case "email":
+    case "file":
+      return { label: "Correo", color: "warning", icon: "tabler-mail" };
+    case "cli":
+    case "cron_job":
+      return { label: "Automática", color: "secondary", icon: "tabler-refresh" };
     default:
-      return { label: method ? String(method).toUpperCase() : 'API', color: 'primary', icon: 'tabler-plug' };
+      return { label: normalized ? normalized.toUpperCase() : "API", color: "primary", icon: "tabler-plug" };
   }
 };
 

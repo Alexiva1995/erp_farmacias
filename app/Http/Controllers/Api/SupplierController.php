@@ -672,9 +672,19 @@ class SupplierController extends Controller
             ->whereIn('type', ['ftp', 'sftp'])
             ->first();
 
+        $allowedTypes = $governance['allowed_types'] ?? [];
+        if (!$governance['is_master']) {
+            // Preservar los protocolos que el proveedor ya tiene configurados localmente (ej. FTP)
+            foreach (array_keys($connectionsMap) as $localType) {
+                if (!in_array($localType, $allowedTypes, true)) {
+                    $allowedTypes[] = $localType;
+                }
+            }
+        }
+
         return response()->json([
             'is_master'           => $governance['is_master'],
-            'allowed_types'       => $governance['allowed_types'],
+            'allowed_types'       => $allowedTypes,
             'master_templates'    => $governance['master_templates'],
             'id'                  => $connection->id,
             'type'                => $connection->type,
