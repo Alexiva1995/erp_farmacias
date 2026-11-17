@@ -750,21 +750,7 @@ watch(
       </VCardText>
 
       <!-- Acciones -->
-      <VCardActions class="pa-3 bg-surface border-t flex-column gap-2">
-        <div v-if="hasAvailableProtocols && connectionsMap[form.type]" class="w-100 d-flex justify-start">
-          <VBtn
-            color="error"
-            variant="text"
-            height="32"
-            prepend-icon="tabler-trash"
-            class="font-weight-bold rounded-lg text-xs px-2 text-none"
-            :loading="deletingProtocol"
-            @click="deleteProtocolConfig"
-          >
-            {{ isMasterContext ? `Deshabilitar ${form.type.toUpperCase()}` : `Eliminar protocolo ${form.type.toUpperCase()}` }}
-          </VBtn>
-        </div>
-
+      <VCardActions class="pa-3 bg-surface border-t">
         <VRow dense class="w-100 ma-0">
           <VCol cols="6" class="pa-1">
             <VBtn
