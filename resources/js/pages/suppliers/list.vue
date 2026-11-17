@@ -276,7 +276,14 @@ const handleSaveSupplier = async (supplierFormData) => {
 
   try {
     const requestData = buildSupplierRequestData(supplierFormData, isNewSupplier);
-    await axios.post(url, requestData, masterRequestConfig.value);
+    const config = { ...masterRequestConfig.value };
+    if (requestData instanceof FormData) {
+      config.headers = {
+        ...(config.headers || {}),
+        "Content-Type": "multipart/form-data",
+      };
+    }
+    await axios.post(url, requestData, config);
 
     toast.success(
       `Proveedor ${isNewSupplier ? "creado" : "actualizado"} con éxito`,

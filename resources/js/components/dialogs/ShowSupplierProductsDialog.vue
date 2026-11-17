@@ -13,9 +13,11 @@ const emit = defineEmits(["update:modelValue"]);
 
 const page = ref(1);
 const itemsPerPage = ref(10);
+const searchQuery = ref("");
 const products = ref([]);
 const totalProducts = ref(0);
 const loading = ref(false);
+let searchDebounceTimeout = null;
 
 const { mobile } = useDisplay();
 
@@ -23,15 +25,37 @@ const closeDialog = () => {
   emit("update:modelValue", false);
 };
 
+const onSearchInput = () => {
+  clearTimeout(searchDebounceTimeout);
+  searchDebounceTimeout = setTimeout(() => {
+    page.value = 1;
+    if (props.selectedSupplier?.id) {
+      fetchSupplierProducts(props.selectedSupplier.id);
+    }
+  }, 350);
+};
+
 watch(
   () => props.selectedSupplier,
   (selectedSupplier) => {
     if (selectedSupplier?.id) {
       page.value = 1;
+      searchQuery.value = "";
       fetchSupplierProducts(selectedSupplier.id);
     }
   },
   { deep: true, immediate: true },
+);
+
+watch(
+  () => props.modelValue,
+  (isOpen) => {
+    if (isOpen && props.selectedSupplier?.id) {
+      page.value = 1;
+      searchQuery.value = "";
+      fetchSupplierProducts(props.selectedSupplier.id);
+    }
+  },
 );
 
 watch([page, itemsPerPage], () => {
@@ -94,6 +118,7 @@ const fetchSupplierProducts = async (id) => {
       params: {
         page: page.value,
         perPage: itemsPerPage.value,
+        search: searchQuery.value.trim() || undefined,
       },
     });
     products.value = data.data;
@@ -156,13 +181,29 @@ const updateTableOptions = (options) => {
 
       <VCardText class="pa-4 pa-sm-6 bg-light">
         <!-- Sección tabla de productos -->
-        <div class="d-flex align-center gap-2 mb-3">
+        <div class="d-flex align-center gap-2 mb-3 flex-wrap">
           <div class="header-indicator secondary shadow-sm" />
           <span class="text-subtitle-2 font-weight-black text-high-emphasis uppercase letter-spacing-1">Catálogo de Productos</span>
           <VSpacer />
           <VChip size="small" color="primary" variant="tonal" class="font-weight-black rounded-lg">
             {{ totalProducts }} productos
           </VChip>
+        </div>
+
+        <!-- Buscador de productos del catálogo -->
+        <div class="mb-3">
+          <VTextField
+            v-model="searchQuery"
+            placeholder="Buscar por nombre, código de barras o laboratorio..."
+            prepend-inner-icon="tabler-search"
+            density="compact"
+            variant="outlined"
+            clearable
+            hide-details
+            class="bg-white rounded-lg"
+            @update:model-value="onSearchInput"
+            @click:clear="() => { searchQuery = ''; onSearchInput(); }"
+          />
         </div>
 
         <VCard variant="flat" class="bg-white rounded-xl border shadow-sm">

@@ -946,10 +946,23 @@ class SupplierQueryService
             $selectColumns[] = "product_suppliers.credit_days";
         }
 
-        $paginated = DB::table("product_suppliers")
+        $query = DB::table("product_suppliers")
             ->select($selectColumns)
             ->leftJoin("products", "products.id", "=", "product_suppliers.product_id")
-            ->where("product_suppliers.supplier_id", "=", $supplier->id)
+            ->where("product_suppliers.supplier_id", "=", $supplier->id);
+
+        $search = trim($filters["search"] ?? $filters["q"] ?? "");
+        if ($search !== "") {
+            $query->where(function ($q) use ($search) {
+                $q->where("product_suppliers.name", "like", "%{$search}%")
+                    ->orWhere("products.name", "like", "%{$search}%")
+                    ->orWhere("product_suppliers.barcode_match", "like", "%{$search}%")
+                    ->orWhere("product_suppliers.cod_supplier", "like", "%{$search}%")
+                    ->orWhere("product_suppliers.laboratory", "like", "%{$search}%");
+            });
+        }
+
+        $paginated = $query
             ->orderBy("product_suppliers.name", "asc")
             ->paginate($perPage);
 

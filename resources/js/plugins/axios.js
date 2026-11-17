@@ -47,6 +47,11 @@ axiosInstance.interceptors.request.use(
         config.headers['X-Branch-Context'] = activeBranchId;
       }
     }
+
+    // 5. Permitir que el navegador gestione multipart/form-data con boundary si el cuerpo es FormData
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
     
     // Asegurar que las cookies de sesión se envíen
     config.withCredentials = true;
