@@ -135,28 +135,44 @@ class ProductActionService
             unset($validatedData['master_id']);
         }
 
-        if (!empty($masterId)) {
-            $candidateId = (int) $masterId;
-            // Verificar si el ID no colisiona con un registro existente en la base de datos local
-            if (!Product::withoutGlobalScope('not_deleted')->withTrashed()->where('id', $candidateId)->exists()) {
-                $validatedData['id'] = $candidateId;
-            } else {
-                Log::info("ID #{$candidateId} de Catálogo Maestro ya existe localmente. Se creará con auto_increment local.");
+        $isMasterConnection = DB::getDefaultConnection() === 'master_catalog';
+
+        if (!$isMasterConnection) {
+            $candidateId = !empty($masterId) ? (int) $masterId : 0;
+
+            if ($candidateId <= 0) {
+                try {
+                    if (\Illuminate\Support\Facades\Schema::connection('master_catalog')->hasTable('products')) {
+                        $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
+                        $masterProduct = $masterClient->registerProductInMaster($this->buildMasterProductPayload($validatedData));
+                        $candidateId = (int) ($masterProduct['id'] ?? 0);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('No se pudo sincronizar ID con Master Catalog: ' . $e->getMessage());
+                }
             }
-        } elseif (config('catalog.role') === 'slave') {
-            try {
-                $masterClient = app(\App\Services\Catalog\MasterCatalogClientService::class);
-                $masterProduct = $masterClient->registerProductInMaster($validatedData);
-                if (!empty($masterProduct['id'])) {
-                    $candidateId = (int) $masterProduct['id'];
-                    if (!Product::withoutGlobalScope('not_deleted')->withTrashed()->where('id', $candidateId)->exists()) {
-                        $validatedData['id'] = $candidateId;
-                    } else {
-                        Log::info("ID #{$candidateId} asignado por Master ya existe localmente. Se creará con auto_increment local.");
+
+            if ($candidateId > 0) {
+                $occupant = Product::withoutGlobalScope('not_deleted')->withTrashed()->where('id', $candidateId)->first();
+                if (!$occupant) {
+                    $validatedData['id'] = $candidateId;
+                } else {
+                    $newBarcode = trim((string) ($validatedData['barcode'] ?? ''));
+                    $occBarcode = trim((string) ($occupant->barcode ?? ''));
+                    // Si el ID del Master está ocupado por otro producto distinto, reubicar al ocupante conservando su trazabilidad
+                    if ($newBarcode === '' || $occBarcode !== $newBarcode) {
+                        try {
+                            $homologation = app(\App\Services\Catalog\ProductIdHomologationService::class);
+                            $conn = DB::getDefaultConnection();
+                            $safeId = $homologation->findNextSafeFreeId($conn);
+                            if ($homologation->relocateProductId($conn, $candidateId, $safeId)) {
+                                $validatedData['id'] = $candidateId;
+                            }
+                        } catch (\Throwable $e) {
+                            Log::warning("No se pudo reubicar ocupante #{$candidateId}: " . $e->getMessage());
+                        }
                     }
                 }
-            } catch (\Throwable $e) {
-                Log::warning('No se pudo sincronizar ID con Master Catalog: ' . $e->getMessage());
             }
         }
 
@@ -516,7 +532,132 @@ class ProductActionService
             }
         }
 
+        $product = $this->syncUpdatedProductWithMaster($product, $newPath !== null);
+
         $product->load(['category', 'laboratory', 'origin', 'lots', 'group', 'productSuppliers', 'variants']);
+
+        return $product;
+    }
+
+    /**
+     * Construye el payload homologado (con nombres de catálogos y URL de foto completa) para registrar en Master.
+     */
+    private function buildMasterProductPayload(array $data): array
+    {
+        $payload = $data;
+
+        if (!empty($data['laboratory_id']) && empty($data['laboratory_name'])) {
+            $payload['laboratory_name'] = DB::table('laboratories')->where('id', $data['laboratory_id'])->value('name');
+        }
+        if (!empty($data['category_id']) && empty($data['category_name'])) {
+            $payload['category_name'] = DB::table('categories')->where('id', $data['category_id'])->value('name');
+        }
+        if (!empty($data['origin_id']) && empty($data['origin_name'])) {
+            $payload['origin_name'] = DB::table('origins')->where('id', $data['origin_id'])->value('name');
+        }
+        if (!empty($data['photo_url']) && is_string($data['photo_url'])) {
+            $payload['photo_url'] = $this->resolvePublicPhotoUrl($data['photo_url']);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Convierte una ruta de storage local en URL pública completa para que cualquier tenant pueda cargarla.
+     */
+    private function resolvePublicPhotoUrl(?string $rawPhotoUrl): ?string
+    {
+        $url = trim((string) ($rawPhotoUrl ?? ''));
+        if ($url === '') {
+            return null;
+        }
+        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+            return $url;
+        }
+
+        $cleanPath = ltrim($url, '/');
+        if (str_starts_with($cleanPath, 'storage/')) {
+            $cleanPath = substr($cleanPath, 8);
+        }
+
+        if (DB::getDefaultConnection() !== 'master_catalog' && function_exists('tenancy') && tenancy()->initialized && function_exists('tenant_asset')) {
+            return tenant_asset($cleanPath);
+        }
+
+        $base = rtrim((string) config('app.url'), '/');
+        return $base !== '' ? ($base . '/storage/' . $cleanPath) : Storage::url($cleanPath);
+    }
+
+    /**
+     * Sincroniza cambios bidireccionalmente entre el Tenant y tovaerp_master tras actualizar un producto.
+     */
+    private function syncUpdatedProductWithMaster(Product $product, bool $photoWasUpdated): Product
+    {
+        $isMasterContext = DB::getDefaultConnection() === 'master_catalog';
+
+        try {
+            if (!\Illuminate\Support\Facades\Schema::connection('master_catalog')->hasTable('products')) {
+                return $product;
+            }
+
+            $publicPhoto = $this->resolvePublicPhotoUrl($product->getRawOriginal('photo_url'));
+
+            if ($isMasterContext) {
+                if ($photoWasUpdated && $publicPhoto && $product->getRawOriginal('photo_url') !== $publicPhoto) {
+                    DB::connection('master_catalog')->table('products')
+                        ->where('id', $product->id)
+                        ->update(['photo_url' => $publicPhoto]);
+                }
+
+                app(\App\Services\Catalog\MasterCatalogService::class)->propagateProductToTenants($product->id, [
+                    'name'              => $product->name,
+                    'barcode'           => $product->barcode,
+                    'active_ingredient' => $product->active_ingredient,
+                    'laboratory_id'     => $product->laboratory_id,
+                    'category_id'       => $product->category_id,
+                    'origin_id'         => $product->origin_id,
+                    'presentation'      => $product->presentation,
+                    'unit_of_measure'   => $product->unit_of_measure,
+                    'photo_url'         => $publicPhoto,
+                ]);
+
+                return $product;
+            }
+
+            // En Tenant: enriquecer Master (incluyendo foto nueva) y alinear ID si cambió el barcode
+            $payload = $this->buildMasterProductPayload([
+                'name'               => $product->name,
+                'barcode'            => $product->barcode,
+                'active_ingredient'  => $product->active_ingredient,
+                'laboratory_id'      => $product->laboratory_id,
+                'category_id'        => $product->category_id,
+                'origin_id'          => $product->origin_id,
+                'description'        => $product->description,
+                'presentation'       => $product->presentation,
+                'unit_of_measure'    => $product->unit_of_measure,
+                'photo_url'          => $publicPhoto,
+                'force_photo_update' => $photoWasUpdated,
+            ]);
+
+            $masterRes = app(\App\Services\Catalog\MasterCatalogService::class)->registerMasterProduct($payload);
+            $masterId = (int) ($masterRes['product']['id'] ?? 0);
+
+            if ($masterId > 0 && $masterId !== (int) $product->id && !empty($product->barcode)) {
+                $conn = DB::getDefaultConnection();
+                $targetOccupied = DB::connection($conn)->table('products')->where('id', $masterId)->exists();
+                if (!$targetOccupied) {
+                    $homologation = app(\App\Services\Catalog\ProductIdHomologationService::class);
+                    if ($homologation->relocateProductId($conn, (int) $product->id, $masterId)) {
+                        $reloaded = Product::find($masterId);
+                        if ($reloaded) {
+                            return $reloaded;
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Error sincronizando actualización de producto con Master Catalog: ' . $e->getMessage());
+        }
 
         return $product;
     }
@@ -540,6 +681,7 @@ class ProductActionService
 
             if (!empty($updateData)) {
                 $product->update($updateData);
+                $this->syncUpdatedProductWithMaster($product, false);
             }
             return true;
         } catch (\Exception $e) {

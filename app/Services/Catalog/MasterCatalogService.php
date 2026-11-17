@@ -234,7 +234,7 @@ class MasterCatalogService
                 if (empty($existing->description) && !empty($data['description'])) {
                     $updates['description'] = $data['description'];
                 }
-                if (empty($existing->photo_url) && !empty($data['photo_url'])) {
+                if ((empty($existing->photo_url) || !empty($data['force_photo_update'])) && !empty($data['photo_url'])) {
                     $updates['photo_url'] = $data['photo_url'];
                 }
                 if (empty($existing->presentation) && !empty($data['presentation'])) {
@@ -262,6 +262,7 @@ class MasterCatalogService
                         'category_name'     => $catName,
                         'origin_id'         => $updates['origin_id'] ?? $existing->origin_id,
                         'origin_name'       => $origName,
+                        'photo_url'         => $updates['photo_url'] ?? $existing->photo_url,
                     ],
                 ];
             }
@@ -835,5 +836,99 @@ class MasterCatalogService
         }
 
         return $result;
+    }
+
+    /**
+     * Propaga atributos maestros de un producto (incluida photo_url) desde tovaerp_master hacia los tenants activos.
+     */
+    public function propagateProductToTenants(int $productId, array $attributes): void
+    {
+        $centralConn = config('tenancy.database.central_connection', 'mysql');
+        if (!Schema::connection($centralConn)->hasTable('tenants')) {
+            return;
+        }
+
+        $allowed = [
+            'name',
+            'barcode',
+            'active_ingredient',
+            'laboratory_id',
+            'category_id',
+            'origin_id',
+            'presentation',
+            'unit_of_measure',
+            'photo_url',
+        ];
+        $payload = array_intersect_key($attributes, array_flip($allowed));
+        $payload = array_filter($payload, fn ($v) => $v !== null && $v !== '');
+        if (empty($payload)) {
+            return;
+        }
+
+        $masterConn = $this->getMasterConnection();
+        $labRow = !empty($payload['laboratory_id'])
+            ? DB::connection($masterConn)->table('laboratories')->select(['id', 'name'])->where('id', $payload['laboratory_id'])->first()
+            : null;
+        $catRow = !empty($payload['category_id'])
+            ? DB::connection($masterConn)->table('categories')->select(['id', 'name'])->where('id', $payload['category_id'])->first()
+            : null;
+        $origRow = !empty($payload['origin_id'])
+            ? DB::connection($masterConn)->table('origins')->select(['id', 'name'])->where('id', $payload['origin_id'])->first()
+            : null;
+
+        $previousDefault = DB::getDefaultConnection();
+
+        try {
+            $tenants = \App\Models\Tenant::all();
+            foreach ($tenants as $tenant) {
+                try {
+                    $tenant->run(function () use ($productId, $payload, $labRow, $catRow, $origRow) {
+                        $tenantConn = DB::getDefaultConnection();
+                        if (!Schema::connection($tenantConn)->hasTable('products')) {
+                            return;
+                        }
+
+                        $existsById = DB::connection($tenantConn)->table('products')->where('id', $productId)->exists();
+                        $barcode = trim((string) ($payload['barcode'] ?? ''));
+
+                        if (!$existsById && ($barcode === '' || !DB::connection($tenantConn)->table('products')->where('barcode', $barcode)->exists())) {
+                            return;
+                        }
+
+                        if ($labRow && Schema::connection($tenantConn)->hasTable('laboratories')) {
+                            DB::connection($tenantConn)->table('laboratories')->updateOrInsert(
+                                ['id' => $labRow->id],
+                                ['name' => $labRow->name, 'updated_at' => now()]
+                            );
+                        }
+                        if ($catRow && Schema::connection($tenantConn)->hasTable('categories')) {
+                            DB::connection($tenantConn)->table('categories')->updateOrInsert(
+                                ['id' => $catRow->id],
+                                ['name' => $catRow->name, 'updated_at' => now()]
+                            );
+                        }
+                        if ($origRow && Schema::connection($tenantConn)->hasTable('origins')) {
+                            DB::connection($tenantConn)->table('origins')->updateOrInsert(
+                                ['id' => $origRow->id],
+                                ['name' => $origRow->name, 'updated_at' => now()]
+                            );
+                        }
+
+                        $updatePayload = $payload;
+                        $updatePayload['updated_at'] = now();
+
+                        if ($existsById) {
+                            DB::connection($tenantConn)->table('products')->where('id', $productId)->update($updatePayload);
+                        } elseif ($barcode !== '') {
+                            DB::connection($tenantConn)->table('products')->where('barcode', $barcode)->update($updatePayload);
+                        }
+                    });
+                } catch (\Throwable) {
+                    // Continuar con el siguiente tenant si uno falla
+                }
+            }
+        } finally {
+            DB::setDefaultConnection($previousDefault);
+        }
     }
 }

@@ -183,22 +183,24 @@ class InitMasterCatalogCommand extends Command
         DB::connection($masterConn)->statement('SET FOREIGN_KEY_CHECKS=0;');
 
         // Ejecutar ingesta en orden: primero fuentes externas (ej. farmaciabs_erp2), luego central, luego cada tenant
+        $defaultBaseUrl = rtrim((string) config('app.url'), '/');
         foreach ($externalSources as $dbLabel => $extConn) {
             $this->line("\n→ Extrayendo catálogos de <fg=cyan>{$dbLabel}</>...");
-            $this->ingestConnectionIntoMaster($extConn, $masterConn);
+            $sourceBaseUrl = str_contains((string) $dbLabel, 'farmaciabs') ? 'https://farmaciabs.com' : $defaultBaseUrl;
+            $this->ingestConnectionIntoMaster($extConn, $masterConn, $sourceBaseUrl);
         }
 
         $centralDbName = DB::connection($centralConn)->getDatabaseName();
         if (!isset($externalSources[$centralDbName])) {
             $this->line("\n→ Extrayendo catálogos de Base Central (<fg=cyan>{$centralDbName}</>)...");
-            $this->ingestConnectionIntoMaster($centralConn, $masterConn);
+            $this->ingestConnectionIntoMaster($centralConn, $masterConn, $defaultBaseUrl);
         }
 
         foreach ($tenants as $tenant) {
             $this->line("\n→ Extrayendo catálogos del Tenant <fg=yellow>{$tenant->id}</>...");
             try {
-                $tenant->run(function () use ($masterConn) {
-                    $this->ingestConnectionIntoMaster(DB::getDefaultConnection(), $masterConn);
+                $tenant->run(function () use ($masterConn, $defaultBaseUrl) {
+                    $this->ingestConnectionIntoMaster(DB::getDefaultConnection(), $masterConn, $defaultBaseUrl);
                 });
             } catch (\Throwable $e) {
                 $this->warn("  ! Error leyendo tenant {$tenant->id}: " . $e->getMessage());
@@ -251,7 +253,7 @@ class InitMasterCatalogCommand extends Command
      * Lee una base de datos (central o tenant) e incorpora en tovaerp_master cualquier
      * grupo, laboratorio, categoría, origen, proveedor, conexión o producto que falte.
      */
-    protected function ingestConnectionIntoMaster(string $srcConn, string $masterConn): void
+    protected function ingestConnectionIntoMaster(string $srcConn, string $masterConn, ?string $sourceBaseUrl = null): void
     {
         // 1. Catálogos simples por nombre normalizado
         $simpleTables = ['groups_laboratories', 'categories', 'origins', 'groups_products'];
@@ -495,7 +497,7 @@ class InitMasterCatalogCommand extends Command
             $masterByBarcode = [];
             $masterByName = [];
             DB::connection($masterConn)->table('products')
-                ->select(['id', 'barcode', 'name', 'laboratory_id', 'category_id', 'origin_id', 'active_ingredient'])
+                ->select(['id', 'barcode', 'name', 'laboratory_id', 'category_id', 'origin_id', 'active_ingredient', 'photo_url'])
                 ->orderBy('id')
                 ->chunk(2000, function ($prods) use (&$masterByBarcode, &$masterByName) {
                     foreach ($prods as $mp) {
@@ -529,6 +531,7 @@ class InitMasterCatalogCommand extends Command
                     $srcOrigsById,
                     $srcGroupsById,
                     $generalesMasterId,
+                    $sourceBaseUrl,
                     &$masterByBarcode,
                     &$masterByName,
                     &$insertedProds,
@@ -543,6 +546,7 @@ class InitMasterCatalogCommand extends Command
                         }
                         $bc = trim((string) ($sp->barcode ?? ''));
                         $normName = mb_strtoupper($name);
+                        $resolvedPhotoUrl = $this->normalizeSourcePhotoUrl($sp->photo_url ?? null, $sourceBaseUrl);
 
                         // Resolver IDs maestros de llaves foráneas por nombre
                         $labName = isset($sp->laboratory_id, $srcLabsById[$sp->laboratory_id])
@@ -579,6 +583,9 @@ class InitMasterCatalogCommand extends Command
                             $item['laboratory_id'] = $masterLabId;
                             $item['category_id'] = $masterCatId;
                             $item['origin_id'] = $masterOrigId;
+                            if (isset($masterProdCols['photo_url'])) {
+                                $item['photo_url'] = $resolvedPhotoUrl;
+                            }
                             if (isset($masterProdCols['group_id'])) {
                                 $item['group_id'] = $masterGrpId;
                             }
@@ -602,6 +609,7 @@ class InitMasterCatalogCommand extends Command
                                     'category_id' => $masterCatId,
                                     'origin_id' => $masterOrigId,
                                     'active_ingredient' => $item['active_ingredient'] ?? null,
+                                    'photo_url' => $resolvedPhotoUrl,
                                 ];
                                 if ($bc !== '') {
                                     $masterByBarcode[$bc] = $stub;
@@ -617,6 +625,7 @@ class InitMasterCatalogCommand extends Command
                                     'category_id' => $masterCatId,
                                     'origin_id' => $masterOrigId,
                                     'active_ingredient' => $item['active_ingredient'] ?? null,
+                                    'photo_url' => $resolvedPhotoUrl,
                                 ];
                                 if ($bc !== '') {
                                     $masterByBarcode[$bc] = $stub;
@@ -625,7 +634,7 @@ class InitMasterCatalogCommand extends Command
                             }
                             $insertedProds++;
                         } else {
-                            // Enriquecer en el Master si le falta laboratorio real, categoría, origen o principio activo
+                            // Enriquecer en el Master si le falta laboratorio real, categoría, origen, principio activo o imagen
                             $updates = [];
                             if (
                                 $masterLabId
@@ -646,6 +655,10 @@ class InitMasterCatalogCommand extends Command
                             if (empty($existingMp->active_ingredient) && !empty($sp->active_ingredient)) {
                                 $updates['active_ingredient'] = $sp->active_ingredient;
                                 $existingMp->active_ingredient = $sp->active_ingredient;
+                            }
+                            if (empty($existingMp->photo_url) && !empty($resolvedPhotoUrl)) {
+                                $updates['photo_url'] = $resolvedPhotoUrl;
+                                $existingMp->photo_url = $resolvedPhotoUrl;
                             }
 
                             if (!empty($updates) && !empty($existingMp->id)) {
@@ -751,38 +764,15 @@ class InitMasterCatalogCommand extends Command
                 $this->line("  ✓ Proveedores remapeados: " . count($supMap));
             }
 
-            // 7. Mapear products y sus 26 tablas relacionales
+            // 7. Mapear products y TODAS sus tablas relacionales (descubrimiento dinámico + protección contra colisiones)
             $prodMap = $this->buildProductIdMap($targetConn, $masterConn);
             if (!empty($prodMap)) {
-                $this->applyMapping($targetConn, 'products', 'id', $prodMap, [
-                    'product_lots'                 => 'product_id',
-                    'order_details'                => 'product_id',
-                    'invoice_details'              => 'product_id',
-                    'inventory_movements'          => 'product_id',
-                    'quotation_products'           => 'product_id',
-                    'product_suppliers'            => 'product_id',
-                    'product_profitability'        => 'product_id',
-                    'product_variants'             => 'product_id',
-                    'product_pack_items'           => 'product_id',
-                    'product_counts'               => 'product_id',
-                    'product_failures'             => 'product_id',
-                    'product_stockouts'            => 'product_id',
-                    'returns'                      => 'product_id',
-                    'invoice_returns'              => 'product_id',
-                    'dish_ingredients'             => 'product_id',
-                    'ecommerce_order_items'        => 'product_id',
-                    'employee_product'             => 'product_id',
-                    'expirations'                  => 'product_id',
-                    'expired_logs'                 => 'product_id',
-                    'fiscal_history_details'       => 'product_id',
-                    'individual_offers'            => 'product_id',
-                    'invoices_counts'              => 'product_id',
-                    'price_adjustment_logs'        => 'product_id',
-                    'psychotropic_controls'        => 'product_id',
-                    'sales_counts'                 => 'product_id',
-                    'supplier_ai_match_rejections' => 'product_id',
-                ]);
-                $this->line("  ✓ Productos remapeados en cascada: " . count($prodMap));
+                $homologationService = app(\App\Services\Catalog\ProductIdHomologationService::class);
+                $stats = $homologationService->applyBulkProductMapping($targetConn, $prodMap);
+                $this->line(
+                    "  ✓ Productos remapeados en cascada: {$stats['remapped']} "
+                    . "(reubicados: {$stats['displaced']}, duplicados fusionados: {$stats['merged_duplicates']})"
+                );
             }
 
             // 8. Sincronizar catálogos globales y estructuras de supplier_connections desde tovaerp_master hacia targetConn
@@ -1125,24 +1115,39 @@ class InitMasterCatalogCommand extends Command
             }
         }
 
-        // 4. Actualizar laboratory_id, category_id y origin_id en los productos locales según el Master
+        // 4. Actualizar laboratory_id, category_id, origin_id y photo_url faltante en los productos locales según el Master
         if (Schema::connection($targetConn)->hasTable('products') && Schema::connection($masterConn)->hasTable('products')) {
             DB::connection($masterConn)->table('products')
-                ->select(['id', 'laboratory_id', 'category_id', 'origin_id'])
-                ->whereNotNull('laboratory_id')
+                ->select(['id', 'laboratory_id', 'category_id', 'origin_id', 'photo_url'])
                 ->orderBy('id')
                 ->chunk(1000, function ($masterProds) use ($targetConn) {
+                    $ids = $masterProds->pluck('id')->all();
+                    $localProds = DB::connection($targetConn)->table('products')
+                        ->select(['id', 'laboratory_id', 'category_id', 'origin_id', 'photo_url'])
+                        ->whereIn('id', $ids)
+                        ->get()
+                        ->keyBy('id');
+
                     foreach ($masterProds as $mp) {
+                        $lp = $localProds->get($mp->id);
+                        if (!$lp) {
+                            continue;
+                        }
+
                         $upd = [];
-                        if ($mp->laboratory_id) {
+                        if ($mp->laboratory_id && (int) $lp->laboratory_id !== (int) $mp->laboratory_id) {
                             $upd['laboratory_id'] = $mp->laboratory_id;
                         }
-                        if ($mp->category_id) {
+                        if ($mp->category_id && (int) $lp->category_id !== (int) $mp->category_id) {
                             $upd['category_id'] = $mp->category_id;
                         }
-                        if ($mp->origin_id) {
+                        if ($mp->origin_id && (int) $lp->origin_id !== (int) $mp->origin_id) {
                             $upd['origin_id'] = $mp->origin_id;
                         }
+                        if (empty($lp->photo_url) && !empty($mp->photo_url)) {
+                            $upd['photo_url'] = $mp->photo_url;
+                        }
+
                         if (!empty($upd)) {
                             DB::connection($targetConn)->table('products')
                                 ->where('id', $mp->id)
@@ -1151,6 +1156,32 @@ class InitMasterCatalogCommand extends Command
                     }
                 });
         }
+    }
+
+    /**
+     * Normaliza una ruta de imagen relativa hacia URL pública completa del sistema origen.
+     */
+    protected function normalizeSourcePhotoUrl(?string $photoUrl, ?string $baseUrl): ?string
+    {
+        $url = trim((string) ($photoUrl ?? ''));
+        if ($url === '') {
+            return null;
+        }
+
+        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+            return $url;
+        }
+
+        if (empty($baseUrl)) {
+            return $url;
+        }
+
+        $cleanPath = ltrim($url, '/');
+        if (str_starts_with($cleanPath, 'storage/')) {
+            $cleanPath = substr($cleanPath, 8);
+        }
+
+        return rtrim($baseUrl, '/') . '/storage/' . $cleanPath;
     }
 
     /**
