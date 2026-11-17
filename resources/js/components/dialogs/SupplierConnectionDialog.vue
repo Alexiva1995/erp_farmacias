@@ -361,8 +361,8 @@ watch(
       <!-- Encabezado -->
       <VCardTitle class="pa-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
-          <VAvatar color="white" variant="flat" size="38" class="me-3 elevation-1 text-primary">
-            <VImg v-if="props.supplier?.logo_url" :src="props.supplier.logo_url" :alt="props.supplier?.name" cover />
+          <VAvatar color="white" variant="flat" size="44" rounded="lg" class="me-3 elevation-1 text-primary pa-1">
+            <VImg v-if="props.supplier?.logo_url" :src="props.supplier.logo_url" :alt="props.supplier?.name" :cover="false" />
             <VIcon v-else icon="tabler-plug" color="primary" size="22" />
           </VAvatar>
           <div class="d-flex flex-column leading-none text-white">
