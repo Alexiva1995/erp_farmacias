@@ -324,13 +324,19 @@ class ProductIdHomologationService
 
             // Fase C: Tabla products -> 2 fases libre de colisiones
             DB::connection($conn)->update("
-                UPDATE `products` p
+                UPDATE IGNORE `products` p
                 INNER JOIN temp_product_id_map m ON p.`id` = m.old_id
                 SET p.`id` = m.new_id + {$offset}
             ");
 
+            // Si algún old_id no pudo moverse por colisión previa con offset, eliminarlo tras haber migrado sus relaciones
+            DB::connection($conn)->delete("
+                DELETE p FROM `products` p
+                INNER JOIN temp_product_id_map m ON p.`id` = m.old_id
+            ");
+
             DB::connection($conn)->update("
-                UPDATE `products` p
+                UPDATE IGNORE `products` p
                 SET p.`id` = p.`id` - {$offset}
                 WHERE p.`id` >= {$offset}
             ");
