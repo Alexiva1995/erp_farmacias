@@ -1090,61 +1090,66 @@ class InitMasterCatalogCommand extends Command
             }
         }
 
-        // 3. Proveedores (respetando días de crédito locales) y estructuras de supplier_connections (respetando credenciales locales)
+        // 3. Proveedores: actualizar solo datos fiscales de los proveedores que YA existen en este tenant/central (nunca insertar proveedores ajenos)
         if (Schema::connection($targetConn)->hasTable('suppliers') && Schema::connection($masterConn)->hasTable('suppliers')) {
-            $targetCols = Schema::connection($targetConn)->getColumnListing('suppliers');
-            $targetColsSet = array_flip($targetCols);
-            $fiscalUpdateCols = array_values(array_intersect(['name', 'social_reason', 'rif', 'updated_at'], $targetCols));
+            $localSupplierIds = DB::connection($targetConn)->table('suppliers')->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-            $masterSups = DB::connection($masterConn)->table('suppliers')->get()->map(function ($s) use ($targetColsSet) {
-                return array_intersect_key((array) $s, $targetColsSet);
-            })->toArray();
+            if (!empty($localSupplierIds)) {
+                $targetCols = Schema::connection($targetConn)->getColumnListing('suppliers');
+                $fiscalUpdateCols = array_values(array_intersect(['name', 'social_reason', 'rif'], $targetCols));
 
-            foreach (array_chunk($masterSups, 200) as $chunk) {
-                DB::connection($targetConn)->table('suppliers')->upsert($chunk, ['id'], $fiscalUpdateCols);
-            }
+                if (!empty($fiscalUpdateCols)) {
+                    $masterSups = DB::connection($masterConn)->table('suppliers')
+                        ->select(array_merge(['id'], $fiscalUpdateCols))
+                        ->whereIn('id', $localSupplierIds)
+                        ->get();
 
-            if (Schema::connection($targetConn)->hasTable('supplier_connections') && Schema::connection($masterConn)->hasTable('supplier_connections')) {
-                $connCols = Schema::connection($targetConn)->getColumnListing('supplier_connections');
-                $structuralCols = array_values(array_intersect([
-                    'type', 'host', 'port', 'pasv', 'has_header',
-                    'structure', 'secondary_structure', 'tertiary_structure', 'invoice_structure',
-                    'credit_days_cod_col', 'credit_days_col', 'updated_at',
-                ], $connCols));
-
-                $masterConns = DB::connection($masterConn)->table('supplier_connections')->get();
-                foreach ($masterConns as $mc) {
-                    $mcArr = (array) $mc;
-                    $supId = (int) ($mcArr['supplier_id'] ?? 0);
-                    if ($supId <= 0) {
-                        continue;
-                    }
-                    $type = $mcArr['type'] ?? 'file';
-                    $existing = DB::connection($targetConn)->table('supplier_connections')
-                        ->where('supplier_id', $supId)
-                        ->where('type', $type)
-                        ->first();
-
-                    if ($existing) {
+                    foreach ($masterSups as $ms) {
                         $upd = [];
-                        foreach ($structuralCols as $c) {
-                            if (array_key_exists($c, $mcArr)) {
-                                $upd[$c] = $mcArr[$c];
+                        foreach ($fiscalUpdateCols as $col) {
+                            if (!empty($ms->$col)) {
+                                $upd[$col] = $ms->$col;
                             }
                         }
                         if (!empty($upd)) {
-                            DB::connection($targetConn)->table('supplier_connections')->where('id', $existing->id)->update($upd);
+                            $upd['updated_at'] = now();
+                            DB::connection($targetConn)->table('suppliers')->where('id', $ms->id)->update($upd);
                         }
-                    } else {
-                        $ins = array_intersect_key($mcArr, array_flip($connCols));
-                        unset($ins['id']);
-                        $ins['username'] = null;
-                        $ins['password'] = null;
-                        $ins['path'] = null;
-                        $ins['invoice_path'] = null;
-                        $ins['created_at'] = now();
-                        $ins['updated_at'] = now();
-                        DB::connection($targetConn)->table('supplier_connections')->insert($ins);
+                    }
+                }
+
+                if (Schema::connection($targetConn)->hasTable('supplier_connections') && Schema::connection($masterConn)->hasTable('supplier_connections')) {
+                    $connCols = Schema::connection($targetConn)->getColumnListing('supplier_connections');
+                    $structuralCols = array_values(array_intersect([
+                        'type', 'host', 'port', 'pasv', 'has_header',
+                        'structure', 'secondary_structure', 'tertiary_structure', 'invoice_structure',
+                        'credit_days_cod_col', 'credit_days_col', 'updated_at',
+                    ], $connCols));
+
+                    $masterConns = DB::connection($masterConn)->table('supplier_connections')
+                        ->whereIn('supplier_id', $localSupplierIds)
+                        ->get();
+
+                    foreach ($masterConns as $mc) {
+                        $mcArr = (array) $mc;
+                        $supId = (int) ($mcArr['supplier_id'] ?? 0);
+                        $type = $mcArr['type'] ?? 'file';
+                        $existing = DB::connection($targetConn)->table('supplier_connections')
+                            ->where('supplier_id', $supId)
+                            ->where('type', $type)
+                            ->first();
+
+                        if ($existing) {
+                            $upd = [];
+                            foreach ($structuralCols as $c) {
+                                if (array_key_exists($c, $mcArr)) {
+                                    $upd[$c] = $mcArr[$c];
+                                }
+                            }
+                            if (!empty($upd)) {
+                                DB::connection($targetConn)->table('supplier_connections')->where('id', $existing->id)->update($upd);
+                            }
+                        }
                     }
                 }
             }
