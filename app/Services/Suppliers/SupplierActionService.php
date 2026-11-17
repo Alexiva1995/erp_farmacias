@@ -639,4 +639,106 @@ class SupplierActionService
 
         return null;
     }
+
+    /**
+     * Prueba la conectividad en tiempo real (FTP/SFTP/API) antes o después de guardar credenciales.
+     */
+    public function testConnectionConfig(Supplier $supplier, array $data): array
+    {
+        $type = strtolower(trim((string) ($data['type'] ?? 'ftp')));
+        $existing = $supplier->connections()->where('type', $type)->first();
+
+        $host = trim((string) ($data['host'] ?? $existing->host ?? ''));
+        $port = (int) ($data['port'] ?? $existing->port ?? ($type === 'sftp' ? 22 : 21));
+        $username = trim((string) ($data['username'] ?? $existing->username ?? ''));
+        $password = (string) (!empty($data['password']) ? $data['password'] : ($existing->password ?? ''));
+        $pasv = array_key_exists('pasv', $data) ? (bool) $data['pasv'] : (bool) ($existing->pasv ?? true);
+
+        if ($type === 'file' || $type === 'email') {
+            return [
+                'ok' => true,
+                'message' => 'Canal de correo configurado correctamente.',
+            ];
+        }
+
+        if ($host === '') {
+            return [
+                'ok' => false,
+                'message' => 'No hay servidor (Host/Endpoint) configurado para probar la conexión.',
+            ];
+        }
+
+        if ($type === 'ftp') {
+            if (!function_exists('ftp_connect')) {
+                return [
+                    'ok' => false,
+                    'message' => 'La extensión FTP de PHP no está habilitada en el servidor.',
+                ];
+            }
+
+            $conn = @ftp_connect($host, $port ?: 21, 8);
+            if (!$conn) {
+                return [
+                    'ok' => false,
+                    'message' => "No se pudo conectar al servidor FTP {$host}:{$port}.",
+                ];
+            }
+
+            try {
+                if (!@ftp_login($conn, $username, $password)) {
+                    return [
+                        'ok' => false,
+                        'message' => 'Usuario o contraseña FTP incorrectos.',
+                    ];
+                }
+                @ftp_pasv($conn, $pasv);
+
+                return [
+                    'ok' => true,
+                    'message' => 'Conexión FTP exitosa. Credenciales verificadas correctamente.',
+                ];
+            } finally {
+                @ftp_close($conn);
+            }
+        }
+
+        if ($type === 'sftp') {
+            $socket = @fsockopen($host, $port ?: 22, $errno, $errstr, 6);
+            if (!$socket) {
+                return [
+                    'ok' => false,
+                    'message' => "No se pudo alcanzar el servidor SFTP {$host}:{$port} ({$errstr}).",
+                ];
+            }
+            fclose($socket);
+
+            return [
+                'ok' => true,
+                'message' => "Puerto SFTP {$host}:{$port} accesible correctamente.",
+            ];
+        }
+
+        if ($type === 'api' || $type === 'http') {
+            try {
+                $response = \Illuminate\Support\Facades\Http::timeout(8)->get($host);
+
+                return [
+                    'ok' => $response->status() < 500,
+                    'message' => $response->status() < 500
+                        ? "Endpoint API accesible (HTTP {$response->status()})."
+                        : "El servidor API respondió con error HTTP {$response->status()}.",
+                ];
+            } catch (\Throwable $e) {
+                return [
+                    'ok' => false,
+                    'message' => 'No se pudo conectar al endpoint API: ' . $e->getMessage(),
+                ];
+            }
+        }
+
+        return [
+            'ok' => false,
+            'message' => "Protocolo {$type} no soportado para prueba directa.",
+        ];
+    }
 }

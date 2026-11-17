@@ -98,41 +98,21 @@ const getStatusBadge = (status) => {
   }
 };
 
-const getMethodBadge = (method) => {
-  let normalized = String(method || "").toLowerCase();
+const supplierChannelLabel = computed(() => {
+  const types = Array.isArray(props.supplier?.connection_types) ? props.supplier.connection_types : [];
+  const raw = String(types[0] || props.supplier?.connection_type || "ftp").toLowerCase();
+  if (raw === "sftp") return "SFTP";
+  if (raw === "api" || raw === "http") return "API";
+  if (raw === "file" || raw === "email") return "Correo";
+  return raw.toUpperCase();
+});
 
-  // Si la ejecución fue vía consola o cron, mostrar el protocolo real configurado en el proveedor
-  if (normalized === "cli" || normalized === "cron_job") {
-    const supplierTypes = Array.isArray(props.supplier?.connection_types)
-      ? props.supplier.connection_types
-      : [];
-    const fallbackType = supplierTypes[0] || props.supplier?.connection_type || "";
-    if (fallbackType) {
-      normalized = String(fallbackType).toLowerCase();
-    }
+const getTriggerBadge = (method) => {
+  const normalized = String(method || "").toLowerCase();
+  if (normalized === "cron_job" || normalized === "cli") {
+    return { label: "Automática", color: "secondary", icon: "tabler-clock" };
   }
-
-  switch (normalized) {
-    case "ftp":
-      return { label: "FTP", color: "primary", icon: "tabler-server-2" };
-    case "sftp":
-      return { label: "SFTP", color: "primary", icon: "tabler-lock-access" };
-    case "api":
-    case "http":
-      return { label: "API", color: "primary", icon: "tabler-api" };
-    case "bot_scraper":
-    case "dronena_bot":
-    case "drosymca_bot":
-      return { label: "Bot Scraper", color: "info", icon: "tabler-robot" };
-    case "email":
-    case "file":
-      return { label: "Correo", color: "warning", icon: "tabler-mail" };
-    case "cli":
-    case "cron_job":
-      return { label: "Automática", color: "secondary", icon: "tabler-refresh" };
-    default:
-      return { label: normalized ? normalized.toUpperCase() : "API", color: "primary", icon: "tabler-plug" };
-  }
+  return { label: "Manual", color: "primary", icon: "tabler-hand-click" };
 };
 
 const closeDialog = () => {
@@ -174,20 +154,33 @@ const closeDialog = () => {
       <div v-if="selectedStatus" class="px-4 py-2 border-b bg-surface flex-shrink-0 d-flex flex-wrap align-center justify-space-between gap-2">
         <div class="d-flex align-center gap-2 flex-wrap">
           <span class="text-caption font-weight-bold text-high-emphasis">
-            Conexión: #{{ selectedStatus.id }} ({{ selectedStatus.created_at_formatted }})
+            {{ selectedStatus.created_at_formatted }}
           </span>
           <span class="text-disabled font-weight-light">|</span>
           <div class="d-flex align-center gap-1">
-            <span class="text-caption text-medium-emphasis">Método:</span>
+            <span class="text-caption text-medium-emphasis">Canal:</span>
             <VChip
-              :color="getMethodBadge(selectedStatus.method).color"
+              color="primary"
               size="x-small"
               variant="tonal"
               class="font-weight-black text-uppercase px-2"
               style="font-size: 10px; height: 20px;"
             >
-              <VIcon start size="12">{{ getMethodBadge(selectedStatus.method).icon }}</VIcon>
-              {{ getMethodBadge(selectedStatus.method).label }}
+              {{ supplierChannelLabel }}
+            </VChip>
+          </div>
+          <span class="text-disabled font-weight-light">|</span>
+          <div class="d-flex align-center gap-1">
+            <span class="text-caption text-medium-emphasis">Origen:</span>
+            <VChip
+              :color="getTriggerBadge(selectedStatus.method).color"
+              size="x-small"
+              variant="tonal"
+              class="font-weight-black text-uppercase px-2"
+              style="font-size: 10px; height: 20px;"
+            >
+              <VIcon start size="12">{{ getTriggerBadge(selectedStatus.method).icon }}</VIcon>
+              {{ getTriggerBadge(selectedStatus.method).label }}
             </VChip>
           </div>
           <span class="text-disabled font-weight-light">|</span>
@@ -212,14 +205,11 @@ const closeDialog = () => {
 
         <!-- Métricas compactas -->
         <div class="d-flex align-center gap-1.5 flex-wrap">
-          <VChip size="x-small" variant="outlined" color="primary" class="font-weight-bold" style="font-size: 10px; height: 22px;">
-            {{ selectedStatus.count_invoice }} Facturas Servidor
-          </VChip>
-          <VChip size="x-small" variant="outlined" color="success" class="font-weight-bold" style="font-size: 10px; height: 22px;">
-            {{ selectedStatus.details?.invoices?.length || selectedStatus.count_invoice || 0 }} Facturas Analizadas
-          </VChip>
           <VChip size="x-small" variant="outlined" color="info" class="font-weight-bold" style="font-size: 10px; height: 22px;">
             {{ selectedStatus.count_product }} Productos
+          </VChip>
+          <VChip size="x-small" variant="outlined" color="primary" class="font-weight-bold" style="font-size: 10px; height: 22px;">
+            {{ selectedStatus.count_invoice }} Facturas
           </VChip>
         </div>
       </div>
@@ -276,22 +266,19 @@ const closeDialog = () => {
                         {{ item.created_at_formatted }}
                       </span>
                     </div>
-                    <span class="text-caption font-weight-black text-medium-emphasis" style="font-size: 11px;">
-                      ({{ item.count_invoice }})
-                    </span>
                   </div>
                   <div class="d-flex align-center justify-space-between ps-3" style="font-size: 10px;">
                     <span class="text-caption text-medium-emphasis" style="font-size: 10px;">
-                      #{{ item.id }} · {{ item.count_product }} productos
+                      {{ item.count_product }} productos<template v-if="Number(item.count_invoice || 0) > 0"> · {{ item.count_invoice }} fact.</template>
                     </span>
                     <VChip
                       size="x-small"
                       variant="tonal"
-                      :color="getMethodBadge(item.method).color"
-                      class="font-weight-black px-1"
+                      :color="getTriggerBadge(item.method).color"
+                      class="font-weight-black px-1.5"
                       style="height: 16px; font-size: 9px;"
                     >
-                      {{ getMethodBadge(item.method).label }}
+                      {{ getTriggerBadge(item.method).label }}
                     </VChip>
                   </div>
                 </div>
@@ -299,14 +286,14 @@ const closeDialog = () => {
             </VCard>
           </div>
 
-          <!-- Columna 2: Facturas Obtenidas -->
+          <!-- Columna 2: Detalle de Sincronización / Facturas Obtenidas -->
           <div style="width: 68%; flex: 1 1 0;" class="d-flex flex-column h-100 overflow-hidden">
             <VCard variant="flat" class="rounded-lg border bg-white d-flex flex-column h-100 overflow-hidden shadow-sm">
-              <!-- Barra de Búsqueda y Título -->
-              <div class="px-3 py-1.5 border-b bg-light d-flex align-center justify-space-between gap-2 flex-shrink-0">
+              <!-- Barra de Búsqueda y Título (solo si hay facturas o filtro activo) -->
+              <div v-if="currentInvoices.length > 0 || searchInvoiceQuery" class="px-3 py-1.5 border-b bg-light d-flex align-center justify-space-between gap-2 flex-shrink-0">
                 <div class="d-flex align-center gap-1.5">
                   <span class="text-xs font-weight-black text-uppercase text-high-emphasis tracking-wider">
-                    Facturas Obtenidas (#{{ selectedStatus?.id }})
+                    Facturas Obtenidas
                   </span>
                   <VChip size="x-small" variant="flat" color="primary" class="font-weight-black px-1.5" style="height: 18px; font-size: 10px;">
                     {{ currentInvoices.length }}
@@ -325,8 +312,42 @@ const closeDialog = () => {
                 </div>
               </div>
 
-              <!-- Tabla con scroll interno visible y garantizado -->
-              <div class="flex-grow-1 overflow-y-auto custom-scroll" style="min-height: 0;">
+              <!-- Bitácora / Resumen cuando no hay facturas -->
+              <div v-if="!currentInvoices.length" class="flex-grow-1 d-flex flex-column justify-center align-center pa-6 text-center overflow-y-auto">
+                <VAlert
+                  v-if="selectedStatus?.status === 'failed' || selectedStatus?.message"
+                  :color="selectedStatus.status === 'failed' ? 'error' : selectedStatus.status === 'completed' ? 'info' : 'warning'"
+                  variant="tonal"
+                  density="compact"
+                  :icon="selectedStatus.status === 'failed' ? 'tabler-alert-triangle' : 'tabler-info-circle'"
+                  class="text-xs rounded-lg mb-4 w-100 text-left"
+                  style="max-width: 520px;"
+                >
+                  <div class="font-weight-bold">
+                    {{ selectedStatus.status === 'failed' ? 'Error de ejecución' : 'Bitácora de sincronización' }}
+                  </div>
+                  <div>{{ selectedStatus.message || 'Sin mensaje detallado registrado.' }}</div>
+                </VAlert>
+
+                <template v-if="Number(selectedStatus?.count_product || 0) > 0">
+                  <VIcon icon="tabler-package-import" size="42" color="info" class="mb-2" />
+                  <div class="text-body-2 font-weight-bold text-high-emphasis">
+                    Sincronización de Catálogo Completa
+                  </div>
+                  <div class="text-caption text-medium-emphasis mt-1">
+                    Se actualizaron <strong>{{ selectedStatus.count_product }} productos</strong> en este lote sin facturas adjuntas.
+                  </div>
+                </template>
+                <template v-else-if="selectedStatus?.status !== 'failed'">
+                  <VIcon icon="tabler-file-off" size="36" color="secondary" class="mb-2 opacity-60" />
+                  <span class="text-caption text-medium-emphasis">
+                    No se registraron facturas ni cambios en este lote.
+                  </span>
+                </template>
+              </div>
+
+              <!-- Tabla de facturas cuando sí existen registros -->
+              <div v-else class="flex-grow-1 overflow-y-auto custom-scroll" style="min-height: 0;">
                 <table class="invoices-audit-table w-100">
                   <thead class="sticky-thead">
                     <tr>
@@ -352,24 +373,6 @@ const closeDialog = () => {
                           </div>
                           <div>{{ selectedStatus.message || 'Sin mensaje detallado registrado.' }}</div>
                         </VAlert>
-                      </td>
-                    </tr>
-                    <tr v-if="!currentInvoices.length">
-                      <td colspan="5" class="text-center py-8 px-4">
-                        <template v-if="Number(selectedStatus?.count_product || 0) > 0">
-                          <VIcon icon="tabler-package-import" size="36" color="info" class="mb-2" />
-                          <div class="text-body-2 font-weight-bold text-high-emphasis">
-                            Sincronización de Catálogo Completa
-                          </div>
-                          <div class="text-caption text-medium-emphasis mt-1">
-                            Se actualizaron <strong>{{ selectedStatus.count_product }} productos</strong> en este lote sin facturas adjuntas.
-                          </div>
-                        </template>
-                        <template v-else>
-                          <span class="text-caption text-disabled">
-                            No hay facturas registradas en este lote de sincronización.
-                          </span>
-                        </template>
                       </td>
                     </tr>
                     <tr

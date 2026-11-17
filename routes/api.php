@@ -906,6 +906,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         // Rutas de configuración e historial de conexión FTP/API autoadministrable
         Route::get('/{supplier}/connection-config', [SupplierController::class, 'getConnectionConfig']);
         Route::post('/{supplier}/connection-config', [SupplierController::class, 'saveConnectionConfig']);
+        Route::post('/{supplier}/test-connection', [SupplierController::class, 'testConnection']);
         Route::delete('/{supplier}/connection-config/{type}', [SupplierController::class, 'deleteConnectionConfig']);
         Route::post('/{supplier}/mafarta-token', [SupplierController::class, 'testMafartaSessionToken']);
         Route::get('/{supplier}/connection-history', [SupplierController::class, 'getConnectionHistory']);

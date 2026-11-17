@@ -1096,6 +1096,19 @@ class SupplierController extends Controller
     }
 
     /**
+     * Prueba la conectividad en tiempo real de una configuración de conexión.
+     */
+    public function testConnection(SaveConnectionConfigRequest $request, Supplier $supplier)
+    {
+        $result = $this->supplierActionService->testConnectionConfig($supplier, $request->validated());
+
+        return response()->json([
+            'ok'      => $result['ok'],
+            'message' => $result['message'],
+        ], $result['ok'] ? 200 : 422);
+    }
+
+    /**
      * Elimina una configuración de conexión específica (por tipo) de un proveedor.
      */
     public function deleteConnectionConfig(Supplier $supplier, string $type)

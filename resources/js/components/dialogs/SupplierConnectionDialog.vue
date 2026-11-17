@@ -71,9 +71,23 @@ const getDefaultFormForType = (type) => {
 
 const form = ref(getDefaultFormForType("file"));
 const hasExistingPassword = ref(false);
+const isEditingPassword = ref(false);
 const hasExistingFtpOrdersPassword = ref(false);
 const lastConnection = ref(null);
 const errors = ref({});
+const testingConnection = ref(false);
+const testResult = ref(null);
+const masterCreditCols = ref({ credit_days_cod_col: "", credit_days_col: "" });
+
+const hasCreditColumnsInMaster = computed(() =>
+  Boolean(activeMasterTemplate.value?.credit_days_cod_col || activeMasterTemplate.value?.credit_days_col),
+);
+
+const enablePasswordEdit = () => {
+  isEditingPassword.value = true;
+  form.value.password = "";
+  showPassword.value = false;
+};
 
 const isFtp = computed(() => ["ftp", "sftp"].includes(form.value.type));
 const isHttp = computed(() => ["http", "api"].includes(form.value.type));
@@ -127,12 +141,15 @@ const loadFormForType = (type) => {
       credit_days_col: existing.credit_days_col || tpl.credit_days_col || "",
     };
     hasExistingPassword.value = existing.has_password ?? false;
+    isEditingPassword.value = !hasExistingPassword.value;
     lastConnection.value = existing.last_connection ?? null;
   } else {
     form.value = getDefaultFormForType(type);
     hasExistingPassword.value = false;
+    isEditingPassword.value = true;
     lastConnection.value = null;
   }
+  testResult.value = null;
 };
 
 const switchType = (newType) => {
@@ -169,6 +186,11 @@ const fetchConfig = async () => {
     connectionsMap.value = filteredConnections;
     masterTemplatesMap.value = data?.master_templates || {};
     masterEnabledTypes.value = Object.keys(filteredConnections);
+    const firstConn = Object.values(filteredConnections)[0] || {};
+    masterCreditCols.value = {
+      credit_days_cod_col: firstConn.credit_days_cod_col || "",
+      credit_days_col: firstConn.credit_days_col || "",
+    };
 
     if (Array.isArray(data?.allowed_types)) {
       allowedTypesFromMaster.value = data.allowed_types.filter(
@@ -198,13 +220,20 @@ const saveMasterChannels = async () => {
   const previousTypes = Object.keys(connectionsMap.value);
   const selectedTypes = [...masterEnabledTypes.value];
 
-  const toEnable = selectedTypes.filter((t) => !previousTypes.includes(t));
   const toDisable = previousTypes.filter((t) => !selectedTypes.includes(t));
 
-  for (const type of toEnable) {
+  for (const type of selectedTypes) {
+    const existing = connectionsMap.value[type] || {};
     const payload = {
       type,
-      host: type === "file" ? `${props.supplier?.name || "Proveedor"} (Excel)` : null,
+      host: existing.host || (type === "file" ? `${props.supplier?.name || "Proveedor"} (Excel)` : null),
+      port: existing.port ?? null,
+      path: existing.path ?? null,
+      invoice_path: existing.invoice_path ?? null,
+      pasv: existing.pasv ?? true,
+      has_header: existing.has_header ?? false,
+      credit_days_cod_col: masterCreditCols.value.credit_days_cod_col || null,
+      credit_days_col: masterCreditCols.value.credit_days_col || null,
     };
     await axios.post(`/suppliers/${props.supplier.id}/connection-config`, payload, getRequestConfig());
   }
@@ -216,6 +245,30 @@ const saveMasterChannels = async () => {
   toast.success("Canales habilitados actualizados en el Catálogo Maestro.");
   emit("saved");
   close();
+};
+
+const testCurrentConnection = async () => {
+  testingConnection.value = true;
+  testResult.value = null;
+  try {
+    const payload = {
+      ...form.value,
+      password: isEditingPassword.value ? form.value.password : "",
+    };
+    const { data } = await axios.post(
+      `/suppliers/${props.supplier.id}/test-connection`,
+      payload,
+      getRequestConfig(),
+    );
+    testResult.value = { ok: Boolean(data?.ok), message: data?.message || "Conexión verificada." };
+    toast.success(testResult.value.message);
+  } catch (err) {
+    const msg = err.response?.data?.message || "No se pudo establecer conexión con el servidor.";
+    testResult.value = { ok: false, message: msg };
+    toast.error(msg);
+  } finally {
+    testingConnection.value = false;
+  }
 };
 
 const saveConfig = async () => {
@@ -480,6 +533,33 @@ watch(
               />
             </VCol>
           </VRow>
+
+          <div class="mt-4 pt-3 border-t">
+            <div class="d-flex align-center gap-2 mb-2">
+              <VIcon icon="tabler-clock-dollar" color="primary" size="18" />
+              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">
+                Columnas de Días de Crédito vía Correo (Global)
+              </span>
+            </div>
+            <VRow dense>
+              <VCol cols="12" sm="6">
+                <AppTextField
+                  v-model="masterCreditCols.credit_days_cod_col"
+                  label="Columna Código de Barra"
+                  placeholder="Ej: A"
+                  prepend-inner-icon="tabler-barcode"
+                />
+              </VCol>
+              <VCol cols="12" sm="6">
+                <AppTextField
+                  v-model="masterCreditCols.credit_days_col"
+                  label="Columna Días Crédito"
+                  placeholder="Ej: F"
+                  prepend-inner-icon="tabler-calendar-dollar"
+                />
+              </VCol>
+            </VRow>
+          </div>
         </VCard>
 
         <VForm v-else @submit.prevent="saveConfig">
@@ -546,7 +626,32 @@ watch(
                     {{ isFtp ? 'Servidor ' + form.type.toUpperCase() : 'Endpoint y Credenciales API' }}
                   </span>
                 </div>
+                <VBtn
+                  v-if="!isMasterContext"
+                  color="info"
+                  variant="tonal"
+                  size="small"
+                  prepend-icon="tabler-plug-connected"
+                  class="font-weight-bold text-xs rounded-lg"
+                  :loading="testingConnection"
+                  @click="testCurrentConnection"
+                >
+                  Probar
+                </VBtn>
               </div>
+
+              <VAlert
+                v-if="testResult"
+                :color="testResult.ok ? 'success' : 'error'"
+                variant="tonal"
+                density="compact"
+                :icon="testResult.ok ? 'tabler-circle-check' : 'tabler-alert-triangle'"
+                class="mb-3 text-xs rounded-lg"
+                closable
+                @click:close="testResult = null"
+              >
+                {{ testResult.message }}
+              </VAlert>
 
               <VRow dense>
                 <!-- Servidor y Puerto (oculto para tenant si ya viene preconfigurado) -->
@@ -585,15 +690,33 @@ watch(
                   </VCol>
                   <VCol cols="12" md="6">
                     <AppTextField
-                      v-model="form.password"
-                      :type="showPassword ? 'text' : 'password'"
-                      :label="hasExistingPassword ? 'Contraseña / Token (dejar vacío para mantener)' : 'Contraseña / Token *'"
-                      :placeholder="hasExistingPassword ? '••••••••' : 'Contraseña o token de acceso'"
+                      :model-value="isEditingPassword ? form.password : '••••••••'"
+                      :type="isEditingPassword && showPassword ? 'text' : 'password'"
+                      :label="hasExistingPassword ? 'Contraseña / Token' : 'Contraseña / Token *'"
+                      placeholder="Contraseña o token de acceso"
                       prepend-inner-icon="tabler-lock"
-                      :append-inner-icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                      :disabled="!isEditingPassword"
                       :error-messages="errors.password"
-                      @click:append-inner="showPassword = !showPassword"
-                    />
+                      @update:model-value="(val) => { if (isEditingPassword) form.password = val; }"
+                    >
+                      <template #append-inner>
+                        <VBtn
+                          v-if="!isEditingPassword"
+                          icon="tabler-pencil"
+                          size="x-small"
+                          variant="text"
+                          color="primary"
+                          title="Cambiar contraseña"
+                          @click.stop="enablePasswordEdit"
+                        />
+                        <VIcon
+                          v-else
+                          :icon="showPassword ? 'tabler-eye-off' : 'tabler-eye'"
+                          class="cursor-pointer"
+                          @click="showPassword = !showPassword"
+                        />
+                      </template>
+                    </AppTextField>
                   </VCol>
                 </template>
 
@@ -644,11 +767,11 @@ watch(
                 </span>
               </div>
               <p class="text-xs text-medium-emphasis mb-3">
-                Si el canal {{ form.type.toUpperCase() }} no incluye los días de crédito por producto, configura el correo y columnas del Excel adjunto para enlazarlos por <strong>Código de Barra</strong>.
+                Si el canal {{ form.type.toUpperCase() }} no incluye los días de crédito por producto, indica el correo remitente del Excel adjunto.
               </p>
 
               <VRow dense>
-                <VCol cols="12" md="6">
+                <VCol cols="12" :md="hasCreditColumnsInMaster ? 12 : 6">
                   <AppTextField
                     v-model="form.credit_days_email"
                     label="Correo del Proveedor"
@@ -657,24 +780,26 @@ watch(
                     :error-messages="errors.credit_days_email"
                   />
                 </VCol>
-                <VCol cols="12" sm="6" md="3">
-                  <AppTextField
-                    v-model="form.credit_days_cod_col"
-                    label="Columna Código de Barra"
-                    placeholder="Ej: A"
-                    prepend-inner-icon="tabler-barcode"
-                    :error-messages="errors.credit_days_cod_col"
-                  />
-                </VCol>
-                <VCol cols="12" sm="6" md="3">
-                  <AppTextField
-                    v-model="form.credit_days_col"
-                    label="Columna Días Crédito"
-                    placeholder="Ej: F"
-                    prepend-inner-icon="tabler-clock-dollar"
-                    :error-messages="errors.credit_days_col"
-                  />
-                </VCol>
+                <template v-if="!hasCreditColumnsInMaster">
+                  <VCol cols="12" sm="6" md="3">
+                    <AppTextField
+                      v-model="form.credit_days_cod_col"
+                      label="Columna Código de Barra"
+                      placeholder="Ej: A"
+                      prepend-inner-icon="tabler-barcode"
+                      :error-messages="errors.credit_days_cod_col"
+                    />
+                  </VCol>
+                  <VCol cols="12" sm="6" md="3">
+                    <AppTextField
+                      v-model="form.credit_days_col"
+                      label="Columna Días Crédito"
+                      placeholder="Ej: F"
+                      prepend-inner-icon="tabler-clock-dollar"
+                      :error-messages="errors.credit_days_col"
+                    />
+                  </VCol>
+                </template>
               </VRow>
             </VCard>
           </div>
