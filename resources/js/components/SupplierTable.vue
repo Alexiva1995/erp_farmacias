@@ -445,16 +445,21 @@ const headers = computed(() => {
             >
               <template v-if="(item.debt ?? 0) > 0">
                 ${{ Number(item.debt).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                <span v-if="(item.overdue_debt ?? 0) > 0" class="text-error ms-1">
-                  (${{ Number(item.overdue_debt).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }})
-                </span>
               </template>
               <template v-else>
-                Al día ($0,00)
+                Al día
               </template>
             </VChip>
             <span v-if="(item.unpaid_invoices_count ?? 0) > 0" class="text-xs text-medium-emphasis mt-0.5 font-weight-medium">
-              {{ item.unpaid_invoices_count }} fact.<span v-if="(item.overdue_invoices_count ?? 0) > 0" class="text-error font-weight-bold"> ({{ item.overdue_invoices_count }} venc.)</span>
+              <template v-if="(item.overdue_debt ?? 0) > 0 && Math.abs(Number(item.debt || 0) - Number(item.overdue_debt || 0)) < 0.01">
+                <span class="text-error font-weight-bold">{{ item.unpaid_invoices_count }} fact. vencidas</span>
+              </template>
+              <template v-else-if="(item.overdue_debt ?? 0) > 0">
+                {{ item.unpaid_invoices_count }} fact. · <span class="text-error font-weight-bold">${{ Number(item.overdue_debt).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} venc.</span>
+              </template>
+              <template v-else>
+                {{ item.unpaid_invoices_count }} fact. por vencer
+              </template>
             </span>
           </div>
         </template>
