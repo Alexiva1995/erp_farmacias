@@ -314,10 +314,10 @@ const headers = computed(() => {
             </VAvatar>
             <div class="d-flex flex-column">
               <div class="d-flex align-center gap-1.5 flex-wrap">
+                <span class="text-sm font-weight-bold text-primary">{{ item.id }}</span>
                 <span class="text-sm font-weight-bold text-high-emphasis">
                   {{ item.name }}
                 </span>
-                <span class="text-sm font-weight-bold text-primary">- {{ item.id }}</span>
                 <VChip
                   v-if="item.type === 'externo'"
                   size="x-small"
