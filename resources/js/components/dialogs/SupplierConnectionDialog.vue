@@ -378,12 +378,13 @@ watch(
         </div>
       </VCardTitle>
 
-      <!-- Selector Compacto de Protocolos -->
+      <!-- Barra de Estado / Protocolos -->
       <div class="px-4 py-2 bg-surface border-b flex-shrink-0">
-        <div class="d-flex align-center justify-space-between mb-1 flex-wrap gap-2">
-          <span class="text-xxs font-weight-black text-disabled text-uppercase letter-spacing-1">
-            {{ isMasterContext ? 'Habilitar Canales para Farmacias:' : 'Canales Autorizados por Master:' }}
+        <div class="d-flex align-center justify-space-between flex-wrap gap-2" :class="{ 'mb-1': !isMasterContext && hasAvailableProtocols && typeOptions.length > 1 }">
+          <span v-if="isMasterContext" class="text-xxs font-weight-black text-disabled text-uppercase letter-spacing-1">
+            Habilitar Canales para Farmacias:
           </span>
+          <VSpacer v-else />
           <div class="d-flex align-center gap-2">
             <template v-if="!isMasterContext">
               <span v-if="lastConnection" class="text-xxs text-success font-weight-bold d-flex align-center gap-1">
@@ -412,7 +413,7 @@ watch(
         </div>
 
         <VTabs
-          v-if="!isMasterContext && hasAvailableProtocols"
+          v-if="!isMasterContext && hasAvailableProtocols && typeOptions.length > 1"
           :model-value="form.type"
           color="primary"
           density="compact"
