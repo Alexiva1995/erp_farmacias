@@ -664,7 +664,9 @@ class SupplierActionService
         $host = trim((string) ($data['host'] ?? $existing->host ?? ''));
         $port = (int) ($data['port'] ?? $existing->port ?? ($type === 'sftp' ? 22 : 21));
         $username = trim((string) ($data['username'] ?? $existing->username ?? ''));
-        $password = (string) (!empty($data['password']) ? $data['password'] : ($existing->password ?? ''));
+        $password = !empty($data['password'])
+            ? (string) $data['password']
+            : (string) \App\Helpers\FtpCrypt::decrypt($existing->password ?? '');
         $pasv = array_key_exists('pasv', $data) ? (bool) $data['pasv'] : (bool) ($existing->pasv ?? true);
 
         if ($type === 'file' || $type === 'email') {
