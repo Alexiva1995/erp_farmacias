@@ -673,12 +673,11 @@ class SupplierController extends Controller
             ->first();
 
         $allowedTypes = $governance['allowed_types'] ?? [];
-        if (!$governance['is_master'] && empty($allowedTypes)) {
-            // Solo si Master no ha definido canales, preservar los protocolos locales existentes
-            foreach (array_keys($connectionsMap) as $localType) {
-                if (!in_array($localType, $allowedTypes, true)) {
-                    $allowedTypes[] = $localType;
-                }
+        if (!$governance['is_master'] && empty($governance['master_templates'])) {
+            // Si Master no tiene plantillas explícitas, preservar los protocolos locales configurados (ej. FTP)
+            $localTypes = array_keys($connectionsMap);
+            if (!empty($localTypes)) {
+                $allowedTypes = $localTypes;
             }
         }
 

@@ -315,17 +315,15 @@ const closeDialog = () => {
               <!-- Bitácora / Resumen cuando no hay facturas -->
               <div v-if="!currentInvoices.length" class="flex-grow-1 d-flex flex-column justify-center align-center pa-6 text-center overflow-y-auto">
                 <VAlert
-                  v-if="selectedStatus?.status === 'failed' || selectedStatus?.message"
-                  :color="selectedStatus.status === 'failed' ? 'error' : selectedStatus.status === 'completed' ? 'info' : 'warning'"
+                  v-if="selectedStatus?.status === 'failed'"
+                  color="error"
                   variant="tonal"
                   density="compact"
-                  :icon="selectedStatus.status === 'failed' ? 'tabler-alert-triangle' : 'tabler-info-circle'"
-                  class="text-xs rounded-lg mb-4 w-100 text-left"
+                  icon="tabler-alert-triangle"
+                  class="text-xs rounded-lg mb-4 w-100 text-left flex-grow-0"
                   style="max-width: 520px;"
                 >
-                  <div class="font-weight-bold">
-                    {{ selectedStatus.status === 'failed' ? 'Error de ejecución' : 'Bitácora de sincronización' }}
-                  </div>
+                  <div class="font-weight-bold">Error de ejecución</div>
                   <div>{{ selectedStatus.message || 'Sin mensaje detallado registrado.' }}</div>
                 </VAlert>
 
