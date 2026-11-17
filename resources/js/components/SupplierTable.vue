@@ -601,15 +601,6 @@ const headers = computed(() => {
                 </VListItem>
 
                 <VListItem
-                  v-if="!isRestaurant && isCommercialSupplier(item)"
-                  :disabled="checkingApiId === item.id"
-                  @click="emit('check-supplier-api', item)"
-                  prepend-icon="tabler-api"
-                >
-                  <VListItemTitle>Sincronizar</VListItemTitle>
-                </VListItem>
-
-                <VListItem
                   v-if="canManageSuppliers && !isRestaurant && !props.isMaster && isCommercialSupplier(item)"
                   @click="emit('commercial-panel', item)"
                   prepend-icon="tabler-settings-dollar"
