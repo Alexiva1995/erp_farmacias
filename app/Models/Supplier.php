@@ -56,6 +56,8 @@ class Supplier extends Model
         'is_active',
         'is_fiscal',
         'min_order_amount',
+        'comparator_discount_mode',
+        'comparator_discount_percentage',
     ];
 
     protected $casts = [
@@ -66,6 +68,7 @@ class Supplier extends Model
         'is_active' => 'boolean',
         'is_fiscal' => 'boolean',
         'min_order_amount' => 'decimal:2',
+        'comparator_discount_percentage' => 'decimal:2',
     ];
 
     /**

@@ -916,7 +916,11 @@ class SupplierConnectionService
             ->get()
             ->keyBy("barcode");
 
-        $result = collect($lines)->map(function (string $line, $key) use ($normalizedStructure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap, $getIdx, $splitLine) {
+        $supplierModel = $connection->supplier;
+        $comparatorMode = $supplierModel->comparator_discount_mode ?? 'original';
+        $comparatorPct = (float) ($supplierModel->comparator_discount_percentage ?? 0);
+
+        $result = collect($lines)->map(function (string $line, $key) use ($normalizedStructure, $now, $usdCurrency, $supplierId, $products, $structure_for_parsing, $headerMap, $getIdx, $splitLine, $comparatorMode, $comparatorPct) {
             if (!empty($structure_for_parsing)) {
                 $line = $this->parseFixedWidth($line, $structure_for_parsing);
             }
@@ -1097,6 +1101,12 @@ class SupplierConnectionService
                 $cost2 = $cost1;
             } elseif (($cost1 === null || $cost1 <= 0) && ($cost2 !== null && $cost2 > 0)) {
                 $cost1 = $cost2;
+            }
+
+            if ($comparatorMode === 'apply_discount' && $comparatorPct > 0 && $cost1 !== null && $cost1 > 0) {
+                $cost2 = round($cost1 * max(0, 1 - ($comparatorPct / 100)), 2);
+            } elseif ($comparatorMode === 'none' && $cost1 !== null && $cost1 > 0) {
+                $cost2 = $cost1;
             }
 
             $entry["unit_cost"] = $cost1;

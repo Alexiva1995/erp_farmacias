@@ -610,14 +610,6 @@ const headers = computed(() => {
                 </VListItem>
 
                 <VListItem
-                  v-if="canManageSuppliers && !props.isMaster"
-                  @click="emit('supplier-pending-invoices', item)"
-                  prepend-icon="tabler-credit-card-pay"
-                >
-                  <VListItemTitle>Facturas Pendientes</VListItemTitle>
-                </VListItem>
-
-                <VListItem
                   v-if="canManageSuppliers && props.isMaster"
                   @click="emit('merge-supplier', item)"
                   prepend-icon="tabler-arrows-join-2"

@@ -148,6 +148,19 @@ class SupplierActionService
 
         $updated = $this->supplierRepository->update($supplier, $validatedData);
 
+        if (
+            array_key_exists('comparator_discount_mode', $validatedData)
+            || array_key_exists('comparator_discount_percentage', $validatedData)
+        ) {
+            $mode = $updated->comparator_discount_mode ?? 'original';
+            $pct = (float) ($updated->comparator_discount_percentage ?? 0);
+            if ($mode === 'apply_discount' && $pct > 0) {
+                $this->applyGlobalDiscount($updated, $pct);
+            } elseif ($mode === 'none') {
+                $this->applyGlobalDiscount($updated, 0);
+            }
+        }
+
         $isTenant = function_exists('tenancy') && tenancy()->initialized;
         $typeValue = $updated->type instanceof \App\Enums\SupplierType
             ? $updated->type->value

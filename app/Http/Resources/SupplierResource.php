@@ -42,6 +42,8 @@ class SupplierResource extends JsonResource
             'is_fiscal' => (bool) ($this->is_fiscal ?? true),
             'credit_days' => $this->credit_days,
             'min_order_amount' => (float) ($this->min_order_amount ?? 0),
+            'comparator_discount_mode' => $this->comparator_discount_mode ?? 'original',
+            'comparator_discount_percentage' => (float) ($this->comparator_discount_percentage ?? 0),
             'order_days' => $this->order_days,
             'payment_method' => $this->payment_method,
             'is_indexed' => (bool) ($this->is_indexed ?? false),
