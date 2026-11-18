@@ -94,6 +94,7 @@ class SupplierResource extends JsonResource
             // Relaciones
             'latest_score' => $this->whenLoaded('latestScore'),
             'payment_rules' => $this->whenLoaded('paymentRules'),
+            'discounts' => $this->whenLoaded('discounts'),
             'payment_date' => $this->whenLoaded('paymentDate'),
         ];
     }

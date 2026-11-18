@@ -356,17 +356,20 @@ const headers = computed(() => {
               <span v-if="(item.max_early_payment_discount ?? 0) > 0" class="text-success font-weight-medium">
                 Pronto pago: {{ item.max_early_payment_discount }}%
               </span>
-              <span
-                v-if="item.comparator_discount_mode === 'apply_discount' && (item.comparator_discount_percentage ?? 0) > 0"
-                class="text-info font-weight-medium"
-              >
-                Lineal: {{ item.comparator_discount_percentage }}%
-              </span>
+              <template v-if="Array.isArray(item.discounts) && item.discounts.length > 0">
+                <span
+                  v-for="(disc, idx) in item.discounts.filter(d => Number(d.discount_percentage || 0) > 0)"
+                  :key="disc.id || idx"
+                  class="text-info font-weight-medium"
+                >
+                  {{ disc.name || 'Descuento' }}: {{ Number(disc.discount_percentage) }}%
+                </span>
+              </template>
               <span v-if="(item.min_order_amount ?? 0) > 0">
                 Mín: ${{ Number(item.min_order_amount).toFixed(0) }}
               </span>
               <span
-                v-if="!(item.max_early_payment_discount > 0) && !(item.comparator_discount_mode === 'apply_discount' && (item.comparator_discount_percentage ?? 0) > 0) && !(item.min_order_amount > 0)"
+                v-if="!(item.max_early_payment_discount > 0) && !(Array.isArray(item.discounts) && item.discounts.some(d => Number(d.discount_percentage || 0) > 0)) && !(item.min_order_amount > 0)"
                 class="text-disabled"
               >
                 Sin acuerdos extra

@@ -58,7 +58,7 @@ class SupplierQueryService
         $currentYearStart = \Carbon\Carbon::now()->startOfYear();
 
         return $this->supplierRepository->getQuery()
-            ->with(['connections', 'latestScore', 'latestConnectionStatus', 'paymentRules'])
+            ->with(['connections', 'latestScore', 'latestConnectionStatus', 'paymentRules', 'discounts'])
             ->withCount('productSuppliers')
             ->withSum(['invoices as invoices_sum_total_usd' => function ($q) use ($currentYearStart) {
                 $q->where(function ($sq) {
