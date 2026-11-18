@@ -140,6 +140,9 @@ const syncSettingsData = () => {
   editableSettings.min_order_amount = s.min_order_amount ?? null
   editableSettings.comparator_discount_mode = s.comparator_discount_mode || 'original'
   editableSettings.comparator_discount_percentage = Number(s.comparator_discount_percentage ?? 0)
+  comparatorCascadeSteps.value = editableSettings.comparator_discount_percentage > 0
+    ? [{ pct: editableSettings.comparator_discount_percentage }]
+    : [{ pct: 0 }]
   editableSettings.payment_method = s.payment_method || 'Bs'
   editableSettings.is_indexed = Boolean(s.is_indexed)
   editableSettings.dispatch_days = dispatchDays
@@ -319,6 +322,46 @@ const availableComparatorDiscounts = computed(() => {
     }
   })
   return list
+})
+
+const comparatorCascadeSteps = ref([{ pct: 0 }])
+
+const addCascadeStep = () => {
+  comparatorCascadeSteps.value.push({ pct: 0 })
+}
+
+const removeCascadeStep = (idx) => {
+  if (comparatorCascadeSteps.value.length > 1) {
+    comparatorCascadeSteps.value.splice(idx, 1)
+  } else {
+    comparatorCascadeSteps.value = [{ pct: 0 }]
+  }
+}
+
+watch(comparatorCascadeSteps, (steps) => {
+  if (isHydrating) return
+  let factor = 1
+  for (const step of steps) {
+    const p = Math.min(100, Math.max(0, Number(step.pct || 0)))
+    factor *= (1 - p / 100)
+  }
+  editableSettings.comparator_discount_percentage = Number(((1 - factor) * 100).toFixed(2))
+}, { deep: true })
+
+const comparatorPreviewBreakdown = computed(() => {
+  if (editableSettings.comparator_discount_mode !== 'apply_discount') {
+    return []
+  }
+  let current = 10
+  const steps = []
+  for (const step of comparatorCascadeSteps.value) {
+    const p = Math.min(100, Math.max(0, Number(step.pct || 0)))
+    if (p > 0) {
+      current = current * (1 - p / 100)
+      steps.push({ pct: p, price: current.toFixed(2) })
+    }
+  }
+  return steps
 })
 
 const comparatorPreviewPrice = computed(() => {
@@ -789,35 +832,58 @@ const comparatorPreviewPrice = computed(() => {
                   </VRadio>
 
                   <div v-if="editableSettings.comparator_discount_mode === 'apply_discount'" class="mt-3 ps-8" @click.stop>
-                    <VRow dense>
-                      <VCol v-if="availableComparatorDiscounts.length > 0" cols="12" sm="7">
-                        <VSelect
-                          v-model="editableSettings.comparator_discount_percentage"
-                          :items="availableComparatorDiscounts"
-                          item-title="title"
-                          item-value="value"
-                          label="Seleccionar regla configurada"
-                          density="compact"
-                          variant="outlined"
-                          hide-details
-                        />
-                      </VCol>
-                      <VCol cols="12" :sm="availableComparatorDiscounts.length > 0 ? 5 : 6">
-                        <VTextField
-                          v-model.number="editableSettings.comparator_discount_percentage"
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          label="% Descuento para Comparador"
-                          suffix="%"
-                          density="compact"
-                          variant="outlined"
-                          hide-details
-                          @focus="$event.target?.select()"
-                        />
-                      </VCol>
-                    </VRow>
+                    <div
+                      v-for="(step, idx) in comparatorCascadeSteps"
+                      :key="idx"
+                      class="d-flex align-center gap-2 mb-2"
+                    >
+                      <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold flex-shrink-0">
+                        Paso {{ idx + 1 }}
+                      </VChip>
+                      <VSelect
+                        v-if="availableComparatorDiscounts.length > 0"
+                        v-model="step.pct"
+                        :items="availableComparatorDiscounts"
+                        item-title="title"
+                        item-value="value"
+                        label="Regla"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="max-width: 240px;"
+                      />
+                      <VTextField
+                        v-model.number="step.pct"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        label="%"
+                        suffix="%"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="max-width: 110px;"
+                        @focus="$event.target?.select()"
+                      />
+                      <VBtn
+                        icon="tabler-trash"
+                        size="x-small"
+                        variant="tonal"
+                        color="error"
+                        @click="removeCascadeStep(idx)"
+                      />
+                    </div>
+                    <VBtn
+                      size="x-small"
+                      variant="tonal"
+                      color="primary"
+                      prepend-icon="tabler-plus"
+                      class="font-weight-bold mt-1"
+                      @click="addCascadeStep"
+                    >
+                      Agregar descuento en cascada
+                    </VBtn>
                   </div>
                 </VCard>
 
@@ -845,10 +911,20 @@ const comparatorPreviewPrice = computed(() => {
                 icon="tabler-calculator"
                 class="mt-4 rounded-lg text-xs"
               >
-                <strong>Vista previa:</strong> Un producto con Costo Base de <strong>$10.00</strong> se evaluará en el Comparador a <strong>${{ comparatorPreviewPrice }}</strong>
-                <span v-if="editableSettings.comparator_discount_mode === 'apply_discount' && Number(editableSettings.comparator_discount_percentage) > 0">
-                  (-{{ editableSettings.comparator_discount_percentage }}%)
-                </span>.
+                <strong>Vista previa:</strong>
+                <template v-if="comparatorPreviewBreakdown.length > 1">
+                  $10.00
+                  <span v-for="(b, i) in comparatorPreviewBreakdown" :key="i">
+                    → -{{ b.pct }}% (<strong>${{ b.price }}</strong>)
+                  </span>
+                  · Efectivo: <strong>-{{ editableSettings.comparator_discount_percentage }}%</strong>
+                </template>
+                <template v-else>
+                  Un producto con Costo Base de <strong>$10.00</strong> se evaluará en el Comparador a <strong>${{ comparatorPreviewPrice }}</strong>
+                  <span v-if="editableSettings.comparator_discount_mode === 'apply_discount' && Number(editableSettings.comparator_discount_percentage) > 0">
+                    (-{{ editableSettings.comparator_discount_percentage }}%)
+                  </span>.
+                </template>
               </VAlert>
             </VCard>
           </VWindowItem>
