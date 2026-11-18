@@ -47,6 +47,7 @@ class SupplierResource extends JsonResource
             'order_days' => $this->order_days,
             'payment_method' => $this->payment_method,
             'is_indexed' => (bool) ($this->is_indexed ?? false),
+            'indexing_start_day' => (int) ($this->indexing_start_day ?? 0),
             'max_early_payment_discount' => $this->relationLoaded('paymentRules')
                 ? (float) ($this->paymentRules->max('discount_percentage') ?? 0)
                 : 0.0,

@@ -51,6 +51,7 @@ class Supplier extends Model
         'address',
         'public_token',
         'is_indexed',
+        'indexing_start_day',
         'type',
         'business_types',
         'is_active',

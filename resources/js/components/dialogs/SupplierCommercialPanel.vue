@@ -49,6 +49,7 @@ const editableSettings = reactive({
   comparator_discount_percentage: 0,
   payment_method: 'Bs',
   is_indexed: false,
+  indexing_start_day: 0,
   dispatch_days: [],
   order_days: {},
 })
@@ -145,6 +146,7 @@ const syncSettingsData = () => {
     : [{ pct: 0 }]
   editableSettings.payment_method = s.payment_method || 'Bs'
   editableSettings.is_indexed = Boolean(s.is_indexed)
+  editableSettings.indexing_start_day = Number(s.indexing_start_day ?? 0)
   editableSettings.dispatch_days = dispatchDays
   editableSettings.order_days = normalizedOrderDays
 
@@ -252,6 +254,7 @@ const buildSettingsPayload = () => {
       : 0,
     payment_method: editableSettings.payment_method,
     is_indexed: Boolean(editableSettings.is_indexed),
+    indexing_start_day: editableSettings.is_indexed ? Number(editableSettings.indexing_start_day || 0) : 0,
     dispatch_days: [...editableSettings.dispatch_days],
     order_days: { ...editableSettings.order_days },
   }
@@ -537,6 +540,19 @@ const comparatorPreviewPrice = computed(() => {
                     hide-details
                     density="compact"
                     class="font-weight-bold text-xs"
+                  />
+                  <VTextField
+                    v-if="editableSettings.payment_method !== 'Divisas' && editableSettings.is_indexed"
+                    v-model.number="editableSettings.indexing_start_day"
+                    type="number"
+                    min="0"
+                    label="Indexar desde el día"
+                    placeholder="0 = Emisión"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    style="max-width: 170px;"
+                    @focus="$event.target?.select()"
                   />
                 </VCol>
               </VRow>
