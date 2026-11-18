@@ -434,8 +434,12 @@ const submitForm = () => {
     if (isRestaurant.value && !cleanData.master_supplier_id) {
       cleanData.type = "externo";
     }
-    if (props.isMaster && logoFile.value) {
-      cleanData.logo = logoFile.value;
+    if (props.isMaster) {
+      delete cleanData.dispatch_days;
+      delete cleanData.order_days;
+      if (logoFile.value) {
+        cleanData.logo = logoFile.value;
+      }
     }
     emit("save", cleanData);
   } else {
@@ -443,8 +447,12 @@ const submitForm = () => {
     if (current.social_reason && payload.social_reason === undefined) {
       payload.social_reason = current.social_reason;
     }
-    if (props.isMaster && logoFile.value) {
-      payload.logo = logoFile.value;
+    if (props.isMaster) {
+      delete payload.dispatch_days;
+      delete payload.order_days;
+      if (logoFile.value) {
+        payload.logo = logoFile.value;
+      }
     }
     emit("save", payload);
   }
