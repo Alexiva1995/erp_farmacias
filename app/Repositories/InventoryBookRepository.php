@@ -159,6 +159,7 @@ class InventoryBookRepository implements InventoryBookContract
             ->whereBetween('invoices.created_invoice_date', [$startDateOnly, $endDateOnly])
             ->where('invoices.status', '!=', 'cancelled')
             ->where('invoices.is_expense', false)
+            ->whereNotNull('invoice_details.product_id')
             ->select(
                 'invoice_details.product_id',
                 'invoice_details.quantity',
@@ -173,30 +174,34 @@ class InventoryBookRepository implements InventoryBookContract
             ->get();
 
         $purchaseTotals = [];
+        $purchaseCostTotalsBs = [];
         $lastPurchaseCostBs = [];
         foreach ($purchaseDetails as $pd) {
             $pid = (int) $pd->product_id;
-            $purchaseTotals[$pid] = ($purchaseTotals[$pid] ?? 0) + (float) $pd->quantity;
+            $qty = (float) $pd->quantity;
+            $purchaseTotals[$pid] = ($purchaseTotals[$pid] ?? 0) + $qty;
 
-            // Determinar costo en Bs al momento de la compra con la tasa de esa factura
+            // Determinar costo en Bs solo multiplicando por tasa cuando la factura está en USD
             $invRate = (float) $pd->exchange_rate;
             if ($invRate <= 0) {
                 $invRate = $bcvRate;
             }
 
-            $costBs = (strtoupper((string) $pd->currency) === 'USD' || $invRate > 1)
+            $costBs = strtoupper((string) $pd->currency) === 'USD'
                 ? ((float) $pd->unit_cost * $invRate)
                 : (float) $pd->unit_cost;
 
+            $purchaseCostTotalsBs[$pid] = ($purchaseCostTotalsBs[$pid] ?? 0) + ($qty * $costBs);
             $lastPurchaseCostBs[$pid] = $costBs;
         }
 
-        // Últimas compras históricas registradas en facturas para productos sin compras en este período
-        $historicalPurchases = DB::table('invoice_details')
+        // Últimas compras históricas registradas en facturas anteriores al inicio del período
+        $historicalPurchasesBeforeStart = DB::table('invoice_details')
             ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
             ->where('invoices.status', '!=', 'cancelled')
             ->where('invoices.is_expense', false)
-            ->where('invoices.created_invoice_date', '<=', $endDateOnly)
+            ->whereNotNull('invoice_details.product_id')
+            ->where('invoices.created_invoice_date', '<', $startDateOnly)
             ->select(
                 'invoice_details.product_id',
                 'invoice_details.unit_cost',
@@ -215,10 +220,8 @@ class InventoryBookRepository implements InventoryBookContract
         $orderSales = DB::table('order_details')
             ->join('orders', 'orders.id', '=', 'order_details.order_id')
             ->whereIn('orders.status', ['Completed', 'completed', 'closed', 'Closed'])
-            ->where(function ($q) use ($startDateStr, $endDateStr) {
-                $q->whereBetween('orders.created_at', [$startDateStr, $endDateStr])
-                  ->orWhereBetween('orders.order_date', [$startDateStr, $endDateStr]);
-            })
+            ->whereNotNull('order_details.product_id')
+            ->whereRaw('COALESCE(orders.order_date, orders.created_at) BETWEEN ? AND ?', [$startDateStr, $endDateStr])
             ->groupBy('order_details.product_id')
             ->select('order_details.product_id')
             ->selectRaw('SUM(order_details.quantity) as total_sold')
@@ -294,6 +297,118 @@ class InventoryBookRepository implements InventoryBookContract
             ->pluck('total_consumption', 'product_id')
             ->all();
 
+        // 5.1 Si no existe libro previo cerrado, reconstruir movimientos desde start_date hasta hoy
+        // para retroceder desde el stock actual al inventario inicial real al inicio del período
+        $purchasesSinceStart = [];
+        $salesSinceStart = [];
+        $withdrawalsSinceStart = [];
+        $selfConsumptionsSinceStart = [];
+        $positiveAdjustmentsSinceStart = [];
+
+        if (!$previousBook) {
+            $nowDateStr = now()->endOfDay()->toDateTimeString();
+            $nowDateOnly = now()->toDateString();
+
+            $purchasesSinceStart = DB::table('invoice_details')
+                ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
+                ->whereBetween('invoices.created_invoice_date', [$startDateOnly, $nowDateOnly])
+                ->where('invoices.status', '!=', 'cancelled')
+                ->where('invoices.is_expense', false)
+                ->whereNotNull('invoice_details.product_id')
+                ->groupBy('invoice_details.product_id')
+                ->select('invoice_details.product_id')
+                ->selectRaw('SUM(invoice_details.quantity) as total_qty')
+                ->pluck('total_qty', 'invoice_details.product_id')
+                ->all();
+
+            $orderSalesSinceStart = DB::table('order_details')
+                ->join('orders', 'orders.id', '=', 'order_details.order_id')
+                ->whereIn('orders.status', ['Completed', 'completed', 'closed', 'Closed'])
+                ->whereNotNull('order_details.product_id')
+                ->whereRaw('COALESCE(orders.order_date, orders.created_at) BETWEEN ? AND ?', [$startDateStr, $nowDateStr])
+                ->groupBy('order_details.product_id')
+                ->select('order_details.product_id')
+                ->selectRaw('SUM(order_details.quantity) as total_sold')
+                ->pluck('total_sold', 'order_details.product_id')
+                ->all();
+
+            $movementSalesSinceStart = DB::table('inventory_movements')
+                ->whereBetween('movement_date', [$startDateStr, $nowDateStr])
+                ->whereIn('movement_type', ['sale', 'Venta'])
+                ->groupBy('product_id')
+                ->select('product_id')
+                ->selectRaw('SUM(ABS(quantity)) as total_movement_sales')
+                ->pluck('total_movement_sales', 'product_id')
+                ->all();
+
+            foreach ($orderSalesSinceStart as $pid => $qty) {
+                $salesSinceStart[(int) $pid] = (float) $qty;
+            }
+            foreach ($movementSalesSinceStart as $pid => $qty) {
+                $pidInt = (int) $pid;
+                $salesSinceStart[$pidInt] = max((float) ($salesSinceStart[$pidInt] ?? 0), (float) $qty);
+            }
+
+            $returnSalesSinceStart = DB::table('inventory_movements')
+                ->whereBetween('movement_date', [$startDateStr, $nowDateStr])
+                ->whereIn('movement_type', ['return', 'Devolución'])
+                ->groupBy('product_id')
+                ->select('product_id')
+                ->selectRaw('SUM(ABS(quantity)) as total_returns')
+                ->pluck('total_returns', 'product_id')
+                ->all();
+
+            foreach ($returnSalesSinceStart as $pid => $retQty) {
+                $pidInt = (int) $pid;
+                if (isset($salesSinceStart[$pidInt])) {
+                    $salesSinceStart[$pidInt] = max(0, $salesSinceStart[$pidInt] - (float) $retQty);
+                }
+            }
+
+            $withdrawalsSinceStart = DB::table('inventory_movements')
+                ->whereBetween('movement_date', [$startDateStr, $nowDateStr])
+                ->whereIn('movement_type', ['loss', 'expired', 'adjustment', 'Pérdida', 'Caducado', 'Ajuste'])
+                ->groupBy('product_id')
+                ->select('product_id')
+                ->selectRaw("
+                    SUM(
+                        CASE 
+                            WHEN LOWER(movement_type) IN ('adjustment', 'ajuste') THEN 
+                                CASE WHEN stock_before > stock_after THEN (stock_before - stock_after)
+                                     WHEN quantity < 0 THEN ABS(quantity)
+                                     ELSE 0 END
+                            ELSE ABS(quantity)
+                        END
+                    ) as total_withdrawals
+                ")
+                ->pluck('total_withdrawals', 'product_id')
+                ->all();
+
+            $positiveAdjustmentsSinceStart = DB::table('inventory_movements')
+                ->whereBetween('movement_date', [$startDateStr, $nowDateStr])
+                ->whereIn('movement_type', ['adjustment', 'Ajuste'])
+                ->groupBy('product_id')
+                ->select('product_id')
+                ->selectRaw("
+                    SUM(
+                        CASE WHEN stock_after > stock_before THEN (stock_after - stock_before)
+                             WHEN quantity > 0 THEN quantity
+                             ELSE 0 END
+                    ) as total_pos_adj
+                ")
+                ->pluck('total_pos_adj', 'product_id')
+                ->all();
+
+            $selfConsumptionsSinceStart = DB::table('inventory_movements')
+                ->whereBetween('movement_date', [$startDateStr, $nowDateStr])
+                ->whereIn('movement_type', ['consumption', 'autoconsumo', 'Autoconsumo'])
+                ->groupBy('product_id')
+                ->select('product_id')
+                ->selectRaw('SUM(ABS(quantity)) as total_consumption')
+                ->pluck('total_consumption', 'product_id')
+                ->all();
+        }
+
         // 6. Cargar productos activos sin sobrecarga de hidratación Eloquent (toBase)
         // EXCLUSIÓN ESTRICTA: Servicios, Zoom, fletes o códigos virtuales no inventariables
         $products = DB::table('products')
@@ -335,62 +450,87 @@ class InventoryBookRepository implements InventoryBookContract
                 continue;
             }
 
-            // Determinar existencia inicial
-            $initialStock = isset($previousFinalStocks[$pid])
-                ? (float) $previousFinalStocks[$pid]
-                : (float) $product->stock; // Fallback al stock actual si no hay libro previo
+            // Determinar existencia inicial real al comienzo del período
+            if (isset($previousFinalStocks[$pid])) {
+                $initialStock = (float) $previousFinalStocks[$pid];
+            } else {
+                // Sin libro previo cerrado: retroceder desde stock actual revirtiendo movimientos desde start_date
+                $reconstructedInitial = (float) $product->stock
+                    - (float) ($purchasesSinceStart[$pid] ?? 0)
+                    - (float) ($positiveAdjustmentsSinceStart[$pid] ?? 0)
+                    + (float) ($salesSinceStart[$pid] ?? 0)
+                    + (float) ($withdrawalsSinceStart[$pid] ?? 0)
+                    + (float) ($selfConsumptionsSinceStart[$pid] ?? 0);
+                $initialStock = max(0.0, $reconstructedInitial);
+            }
 
             $purchases = (float) ($purchaseTotals[$pid] ?? 0);
             $sales = max(0, (float) ($salesTotals[$pid] ?? 0));
             $withdrawals = (float) ($withdrawalTotals[$pid] ?? 0);
             $selfConsumptions = (float) ($selfConsumptionTotals[$pid] ?? 0);
 
+            // Costo real acumulado de las compras del período (suma de cantidad x costo Bs de cada factura)
+            $purchasesCostBs = (float) ($purchaseCostTotalsBs[$pid] ?? 0);
+
+            // Costo unitario de referencia del inventario inicial (histórico, sin revalorización retroactiva)
+            if (isset($previousCostsBs[$pid]) && $previousCostsBs[$pid] > 0) {
+                $initialUnitCostBs = (float) $previousCostsBs[$pid];
+            } elseif (isset($historicalPurchasesBeforeStart[$pid])) {
+                $hp = $historicalPurchasesBeforeStart[$pid];
+                $hpRate = (float) $hp->exchange_rate > 0 ? (float) $hp->exchange_rate : $bcvRate;
+                $initialUnitCostBs = strtoupper((string) $hp->currency) === 'USD'
+                    ? ((float) $hp->unit_cost * $hpRate)
+                    : (float) $hp->unit_cost;
+            } elseif (isset($lastPurchaseCostBs[$pid]) && $lastPurchaseCostBs[$pid] > 0) {
+                $initialUnitCostBs = (float) $lastPurchaseCostBs[$pid];
+            } else {
+                $initialUnitCostBs = (float) $product->unit_cost * $bcvRate;
+            }
+
             // Si hay override manual previo, respetar lo que configuró la contadora
             if (isset($existingManualOverrides[$pid])) {
                 $override = $existingManualOverrides[$pid];
+                $initialStock = (float) $override->initial_stock;
                 $withdrawals = (float) $override->withdrawals;
                 $selfConsumptions = (float) $override->self_consumptions;
                 $unitCostBs = (float) $override->unit_cost_bs;
+                $previousValueBs = $initialStock * $unitCostBs;
+                if ($purchasesCostBs <= 0 && $purchases > 0) {
+                    $purchasesCostBs = $purchases * $unitCostBs;
+                }
             } else {
-                // Regla de valoración: siempre en Bolívares al momento de la compra
-                if (isset($lastPurchaseCostBs[$pid]) && $lastPurchaseCostBs[$pid] > 0) {
-                    // 1. Comprado en el período: costo en USD de la factura x tasa de esa factura
-                    $unitCostBs = (float) $lastPurchaseCostBs[$pid];
-                } elseif (isset($previousCostsBs[$pid]) && $previousCostsBs[$pid] > 0) {
-                    // 2. Costo en Bs del libro anterior
-                    $unitCostBs = (float) $previousCostsBs[$pid];
-                } elseif (isset($historicalPurchases[$pid])) {
-                    // 3. Última compra histórica registrada en el ERP
-                    $hp = $historicalPurchases[$pid];
-                    $hpRate = (float) $hp->exchange_rate > 0 ? (float) $hp->exchange_rate : $bcvRate;
-                    $unitCostBs = (strtoupper((string) $hp->currency) === 'USD' || $hpRate > 1)
-                        ? ((float) $hp->unit_cost * $hpRate)
-                        : (float) $hp->unit_cost;
+                // Costo Promedio Ponderado (Art. 177 RLISLR):
+                // Valor Inicial al costo anterior + Costo real de compras / Unidades disponibles
+                $previousValueBs = $initialStock * $initialUnitCostBs;
+                $availableUnits = $initialStock + $purchases;
+
+                if ($availableUnits > 0) {
+                    $unitCostBs = ($previousValueBs + $purchasesCostBs) / $availableUnits;
                 } else {
-                    // 4. Fallback: costo en USD del producto multiplicado por la tasa BCV del momento
-                    $unitCostBs = (float) $product->unit_cost * $bcvRate;
+                    $unitCostBs = $lastPurchaseCostBs[$pid] ?? $initialUnitCostBs;
                 }
             }
 
             $finalStock = $initialStock + $purchases - $sales - $withdrawals - $selfConsumptions;
 
-            // Criterio del usuario: listar productos con existencia > 0 o con movimientos en la quincena
-            $hasActivity = ($initialStock > 0 || $purchases > 0 || $sales > 0 || $withdrawals > 0 || $selfConsumptions > 0 || $finalStock > 0);
+            // Criterio del usuario: listar productos con existencia > 0 o con movimientos en el período
+            $hasActivity = ($initialStock > 0 || $purchases > 0 || $sales > 0 || $withdrawals > 0 || $selfConsumptions > 0 || $finalStock != 0.0);
             if (!$hasActivity) {
                 continue;
             }
 
-            // Cálculo en Bolívares por fila
-            $previousValueBs = $initialStock * $unitCostBs;
-            $purchasesCostBs = $purchases * $unitCostBs;
+            // Cálculo en Bolívares por fila bajo Costo Promedio Ponderado
             $salesCostBs = $sales * $unitCostBs;
             $withdrawalsCostBs = $withdrawals * $unitCostBs;
             $selfConsumptionsCostBs = $selfConsumptions * $unitCostBs;
             $finalInventoryValueBs = $finalStock * $unitCostBs;
 
-            // Tratamiento de IVA para desincorporaciones / retiros
-            $ivaRate = ((float) $product->iva > 0) ? 0.16 : 0.00;
-            $withdrawalVatBs = $withdrawalsCostBs * $ivaRate;
+            // Tratamiento de IVA para desincorporaciones, retiros y autoconsumos (Art. 4 Ley de IVA)
+            $rawIva = (float) ($product->iva ?? 0);
+            $ivaRate = $rawIva > 1
+                ? ($rawIva / 100)
+                : ($rawIva > 0 && $rawIva < 1 ? $rawIva : ($rawIva == 1.0 ? 0.16 : 0.00));
+            $withdrawalVatBs = ($withdrawalsCostBs + $selfConsumptionsCostBs) * $ivaRate;
 
             $description = trim($product->name . ' ' . ($product->presentation ?? ''));
 
@@ -455,7 +595,7 @@ class InventoryBookRepository implements InventoryBookContract
         $withdrawalsCostBs = $withdrawals * $unitCostBs;
         $selfConsumptionsCostBs = $selfConsumptions * $unitCostBs;
         $finalInventoryValueBs = $finalStock * $unitCostBs;
-        $withdrawalVatBs = $withdrawalsCostBs * $ivaRate;
+        $withdrawalVatBs = ($withdrawalsCostBs + $selfConsumptionsCostBs) * $ivaRate;
 
         $entry->update([
             'unit_cost_bs' => round($unitCostBs, 4),
@@ -528,8 +668,8 @@ class InventoryBookRepository implements InventoryBookContract
                 COALESCE(SUM(withdrawals_cost_bs), 0) as total_withdrawal_cost_bs,
                 COALESCE(SUM(self_consumptions_cost_bs), 0) as total_self_consumption_cost_bs,
                 COALESCE(SUM(final_inventory_value_bs), 0) as total_final_inventory_value_bs,
-                COALESCE(SUM(CASE WHEN iva_rate = 0 THEN withdrawals_cost_bs ELSE 0 END), 0) as total_withdrawal_exempt_bs,
-                COALESCE(SUM(CASE WHEN iva_rate > 0 THEN withdrawals_cost_bs ELSE 0 END), 0) as total_withdrawal_taxable_bs,
+                COALESCE(SUM(CASE WHEN iva_rate = 0 THEN (withdrawals_cost_bs + self_consumptions_cost_bs) ELSE 0 END), 0) as total_withdrawal_exempt_bs,
+                COALESCE(SUM(CASE WHEN iva_rate > 0 THEN (withdrawals_cost_bs + self_consumptions_cost_bs) ELSE 0 END), 0) as total_withdrawal_taxable_bs,
                 COALESCE(SUM(withdrawal_vat_bs), 0) as total_withdrawal_vat_bs
             ')
             ->first();
