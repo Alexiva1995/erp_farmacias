@@ -161,21 +161,15 @@ class DronenaEdiService implements DronenaEdiServiceInterface
 
         $host = $connection->host ?: 'ftp.dronena.com';
         $port = (int) ($connection->port ?? 21);
-        $user = (string) ($connection->username ?? '');
+        $user = trim((string) ($connection->username ?? ''));
         $pass = (string) FtpCrypt::decrypt($connection->password ?? '');
 
-        if (trim($user) === '' || trim($pass) === '') {
+        if ($user === '' || trim($pass) === '') {
             throw new Exception("Faltan las credenciales FTP de Droguería Nena (usuario o contraseña vacíos).");
         }
 
-        // Determinar carpeta de destino
-        $remoteDir = 'Clientes/' . strtolower(explode('-', $user)[0]);
-        if (!empty($connection->path)) {
-            $dirName = dirname($connection->path);
-            if ($dirName !== '.' && !empty($dirName)) {
-                $remoteDir = $dirName;
-            }
-        }
+        // Construir candidatos de carpeta remota priorizando el usuario autenticado
+        $candidateDirs = $this->resolveCandidateDirectories($user, $connection->path);
 
         // Conectar al FTP
         $ftp = @ftp_connect($host, $port, 15);
@@ -200,7 +194,25 @@ class DronenaEdiService implements DronenaEdiServiceInterface
             }
         }
 
-        ftp_pasv($ftp, (bool) ($connection->pasv ?? true));
+        // Priorizar modo pasivo para evitar bloqueos por NAT/firewall en ftp.dronena.com
+        ftp_pasv($ftp, true);
+
+        // Verificar qué directorio candidato existe realmente en el servidor FTP
+        $remoteDir = null;
+        foreach ($candidateDirs as $candidate) {
+            $normalizedCandidate = '/' . ltrim($candidate, '/');
+            if (@ftp_chdir($ftp, $normalizedCandidate)) {
+                $remoteDir = ltrim($candidate, '/');
+                break;
+            }
+        }
+
+        if ($remoteDir === null) {
+            @ftp_close($ftp);
+            $tried = implode(', ', $candidateDirs);
+            Log::error("[DRONENA EDI] No se encontró carpeta remota válida en FTP para el usuario '{$user}'. Intentadas: {$tried}");
+            throw new Exception("No se encontró el directorio del cliente en el FTP de Droguería Nena para el usuario '{$user}' (rutas verificadas: {$tried}).");
+        }
 
         // En Droguería Nena el archivo se nombra con el prefijo Factu seguido del ID del pedido (ej. Factu85.txt)
         $orderNumber = (string) $autoOrder->id;
@@ -214,15 +226,28 @@ class DronenaEdiService implements DronenaEdiServiceInterface
         $tempPath = tempnam(sys_get_temp_dir(), 'edi_dronena_');
         file_put_contents($tempPath, $content);
 
-        // Subir vía FTP en modo BINARY
-        $uploadSuccess = @ftp_put($ftp, $remoteFilePath, $tempPath, FTP_BINARY);
+        // Subir vía FTP en modo BINARY dentro del directorio ya seleccionado con ftp_chdir
+        $uploadSuccess = @ftp_put($ftp, $fileName, $tempPath, FTP_BINARY);
+        $lastError = $uploadSuccess ? null : error_get_last();
+
+        // Fallback con ruta completa si el servidor rechaza el nombre relativo
+        if (!$uploadSuccess) {
+            $uploadSuccess = @ftp_put($ftp, '/' . ltrim($remoteFilePath, '/'), $tempPath, FTP_BINARY);
+            if (!$uploadSuccess) {
+                $lastError = error_get_last();
+            }
+        }
+
         @unlink($tempPath);
         @ftp_close($ftp);
 
         if (!$uploadSuccess) {
-            $lastError = error_get_last();
-            Log::error("[DRONENA EDI] Error subiendo {$remoteFilePath}", ['error' => $lastError['message'] ?? 'Desconocido']);
-            throw new Exception("No se pudo transferir el archivo de pedido {$fileName} al FTP de Droguería Nena.");
+            $errorDetail = $lastError['message'] ?? 'Desconocido';
+            Log::error("[DRONENA EDI] Error subiendo {$remoteFilePath}", [
+                'user' => $user,
+                'error' => $errorDetail,
+            ]);
+            throw new Exception("No se pudo transferir el archivo de pedido {$fileName} al FTP de Droguería Nena ({$remoteFilePath}): {$errorDetail}");
         }
 
         Log::info("[DRONENA EDI] Pedido #{$autoOrder->id} enviado exitosamente a {$remoteFilePath}");
@@ -233,5 +258,54 @@ class DronenaEdiService implements DronenaEdiServiceInterface
             'remote_path' => $remoteFilePath,
             'message' => "Pedido transmitido con éxito a Droguería Nena ({$fileName}).",
         ];
+    }
+
+    /**
+     * Construye la lista ordenada de posibles directorios del cliente en el FTP de Droguería Nena.
+     * Evita usar rutas heredadas de otros clientes (ej. Clientes/d719) cuando el usuario autenticado es distinto.
+     *
+     * @return array<int, string>
+     */
+    private function resolveCandidateDirectories(string $user, ?string $configuredPath): array
+    {
+        $candidates = [];
+        $userLower = strtolower($user);
+        $userBase = strtolower(explode('-', $user)[0]);
+
+        if (!empty($configuredPath)) {
+            $normalized = trim(str_replace('\\', '/', $configuredPath), '/');
+            if ($normalized !== '') {
+                $hasExtension = pathinfo($normalized, PATHINFO_EXTENSION) !== '';
+                $configuredDir = $hasExtension ? dirname($normalized) : $normalized;
+
+                if ($configuredDir !== '.' && $configuredDir !== '') {
+                    $configuredFolder = strtolower(basename($configuredDir));
+                    // Solo priorizar la ruta configurada si corresponde al mismo cliente que el usuario FTP
+                    if (
+                        $configuredFolder === $userLower
+                        || $configuredFolder === $userBase
+                        || str_starts_with($configuredFolder, $userBase . '-')
+                    ) {
+                        $candidates[] = $configuredDir;
+                    }
+                }
+            }
+        }
+
+        // Priorizar carpeta con el nombre completo del usuario (ej. Clientes/d429-foraneo o Clientes/d719)
+        $candidates[] = 'Clientes/' . $user;
+        $candidates[] = 'Clientes/' . $userLower;
+        $candidates[] = 'Clientes/' . strtoupper($user);
+
+        // Fallback para clientes cuya carpeta omite el sufijo tras el guion (ej. Clientes/d719)
+        if ($userBase !== $userLower) {
+            $candidates[] = 'Clientes/' . $userBase;
+            $candidates[] = 'Clientes/' . strtoupper($userBase);
+        } else {
+            // Fallback por si el usuario solo tiene el código pero la carpeta en FTP incluye -foraneo
+            $candidates[] = 'Clientes/' . $userLower . '-foraneo';
+        }
+
+        return array_values(array_unique($candidates));
     }
 }
