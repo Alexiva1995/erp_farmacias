@@ -23,9 +23,6 @@ class StoreDishRequest extends FormRequest
     public function rules(): array
     {
         $categoryExistsRule = Rule::exists('categories', 'id');
-        if (Category::ensureTypeColumn()) {
-            $categoryExistsRule = $categoryExistsRule->whereIn('type', CategoryTypeEnum::dishValues());
-        }
 
         return [
             'name' => 'required|string|min:2|max:255|unique:dishes,name',

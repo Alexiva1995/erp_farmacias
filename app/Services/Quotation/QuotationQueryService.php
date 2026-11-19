@@ -234,7 +234,7 @@ class QuotationQueryService
                     DB::raw('NULL as location'),
                     DB::raw('NULL as discount_percentage'),
                     DB::raw('NULL as discount_type'),
-                ])->where('dishes.status', '1');
+                ])->whereIn('dishes.status', ['1', '2']);
         }
 
         // ── 5. Aplicar filtro de búsqueda ──
