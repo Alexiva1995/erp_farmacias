@@ -85,6 +85,7 @@ class SupplierResource extends JsonResource
             ] : null,
             'is_indexed' => (bool) $this->is_indexed,
             'is_active' => $isMaster ? true : (bool) ($this->is_active ?? true),
+            'master_locked_fields' => $isMaster ? [] : (is_array($this->master_locked_fields ?? null) ? $this->master_locked_fields : []),
             'type' => $this->type instanceof \App\Enums\SupplierType ? $this->type->value : ($this->type ?? 'drogueria'),
             'business_types' => is_string($this->business_types) ? (json_decode($this->business_types, true) ?: []) : ($this->business_types ?? []),
             'score_breakdown' => $this->score_breakdown,

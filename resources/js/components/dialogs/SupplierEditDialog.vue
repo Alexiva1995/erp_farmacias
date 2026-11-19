@@ -147,21 +147,21 @@ const showMasterSearch = computed(() => {
   return isNewSupplier.value && !props.isMaster && (isRestaurant.value || !isExpenseSupplier.value);
 });
 
-const isRifLocked = computed(() => {
+// Determina si un campo oficial ya está definido en el Catálogo Master y no debe modificarse desde el tenant
+const isFieldLockedByMaster = (fieldKey) => {
   if (props.isMaster) return false;
   if (isNewSupplier.value) {
-    return Boolean(linkedMasterSupplier.value?.rif && String(linkedMasterSupplier.value.rif).trim() !== "");
+    const val = linkedMasterSupplier.value?.[fieldKey];
+    return Boolean(val && String(val).trim() !== "");
   }
-  return isReadOnly.value || Boolean(props.supplier?.rif && String(props.supplier.rif).trim() !== "");
-});
+  const lockedFields = props.supplier?.master_locked_fields;
+  return Array.isArray(lockedFields) && lockedFields.includes(fieldKey);
+};
 
-const isSocialReasonLocked = computed(() => {
-  if (props.isMaster) return false;
-  if (isNewSupplier.value) {
-    return Boolean(linkedMasterSupplier.value?.social_reason && String(linkedMasterSupplier.value.social_reason).trim() !== "");
-  }
-  return isReadOnly.value || Boolean(props.supplier?.social_reason && String(props.supplier.social_reason).trim() !== "");
-});
+const isNameLocked = computed(() => isReadOnly.value || isFieldLockedByMaster("name"));
+const isRifLocked = computed(() => isReadOnly.value || isFieldLockedByMaster("rif"));
+const isSocialReasonLocked = computed(() => isReadOnly.value || isFieldLockedByMaster("social_reason"));
+const isAddressLocked = computed(() => isReadOnly.value || isFieldLockedByMaster("address"));
 
 const showSenderEmailInput = computed(() => {
   if (!linkedMasterSupplier.value) return false;
@@ -337,7 +337,8 @@ const handleRifInput = () => {
   }, 450);
 };
 
-const isReadOnly = computed(() => !isNewSupplier.value && !authStore.isAdmin);
+// En contexto tenant cualquier usuario puede editar campos no gestionados por el Master
+const isReadOnly = computed(() => props.isMaster && !isNewSupplier.value && !authStore.isAdmin);
 
 // ─── Métodos ───────────────────────────────────────────────────────────────
 const closeDialog = () => {
@@ -443,9 +444,14 @@ const submitForm = () => {
     }
     emit("save", cleanData);
   } else {
-    // Si la razón social tiene valor y no está en el payload, incluirla para consistencia
-    if (current.social_reason && payload.social_reason === undefined) {
+    // Si la razón social tiene valor y no está bloqueada ni en el payload, incluirla para consistencia
+    if (current.social_reason && payload.social_reason === undefined && !isFieldLockedByMaster("social_reason")) {
       payload.social_reason = current.social_reason;
+    }
+    if (!props.isMaster && Array.isArray(props.supplier?.master_locked_fields)) {
+      props.supplier.master_locked_fields.forEach((field) => {
+        delete payload[field];
+      });
     }
     if (props.isMaster) {
       delete payload.dispatch_days;
@@ -814,7 +820,8 @@ onUnmounted(() => {
                   variant="outlined"
                   hide-details="auto"
                   :error-messages="formErrors.name"
-                  :readonly="isReadOnly"
+                  :readonly="isNameLocked"
+                  :hint="isNameLocked && !isReadOnly ? 'No editable (definido en Catálogo Master)' : undefined"
                 />
               </VCol>
 
@@ -829,7 +836,7 @@ onUnmounted(() => {
                   :loading="isLookingUpMaster"
                   :error-messages="formErrors.rif"
                   :readonly="isRifLocked"
-                  :hint="isRifLocked && !isReadOnly ? 'No editable (definido oficialmente)' : undefined"
+                  :hint="isRifLocked && !isReadOnly ? 'No editable (definido en Catálogo Master)' : undefined"
                   @update:model-value="handleRifInput"
                 />
               </VCol>
@@ -844,7 +851,7 @@ onUnmounted(() => {
                   hide-details="auto"
                   :error-messages="formErrors.social_reason"
                   :readonly="isSocialReasonLocked"
-                  :hint="isSocialReasonLocked && !isReadOnly ? 'No editable (definido oficialmente)' : undefined"
+                  :hint="isSocialReasonLocked && !isReadOnly ? 'No editable (definido en Catálogo Master)' : undefined"
                 />
               </VCol>
 
@@ -899,7 +906,8 @@ onUnmounted(() => {
                   variant="outlined"
                   hide-details="auto"
                   :error-messages="formErrors.address"
-                  :readonly="isReadOnly"
+                  :readonly="isAddressLocked"
+                  :hint="isAddressLocked && !isReadOnly ? 'No editable (definido en Catálogo Master)' : undefined"
                 />
               </VCol>
 

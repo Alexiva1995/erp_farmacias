@@ -1934,8 +1934,18 @@ class SupplierQueryService
                 return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($sup->rif ?? ''))));
             })->filter()->unique()->values()->all();
 
-            $hasLogoCol = \Illuminate\Support\Facades\Schema::connection($masterConn)->hasColumn('suppliers', 'logo_url');
-            $selectCols = $hasLogoCol ? ['id', 'rif', 'logo_url'] : ['id', 'rif'];
+            $masterCols = array_flip(\Illuminate\Support\Facades\Schema::connection($masterConn)->getColumnListing('suppliers'));
+            $hasLogoCol = isset($masterCols['logo_url']);
+            $masterFieldCandidates = ['name', 'rif', 'social_reason', 'address'];
+            $selectCols = ['id', 'rif'];
+            if ($hasLogoCol) {
+                $selectCols[] = 'logo_url';
+            }
+            foreach ($masterFieldCandidates as $col) {
+                if (isset($masterCols[$col]) && !in_array($col, $selectCols, true)) {
+                    $selectCols[] = $col;
+                }
+            }
 
             $masterSups = DB::connection($masterConn)->table('suppliers')
                 ->select($selectCols)
@@ -1974,11 +1984,30 @@ class SupplierQueryService
             }
 
             foreach ($items as $sup) {
+                $supType = $sup->type instanceof \App\Enums\SupplierType
+                    ? $sup->type->value
+                    : (string) ($sup->type ?? 'drogueria');
+
+                if ($supType === 'externo') {
+                    $sup->setAttribute('master_locked_fields', []);
+                    continue;
+                }
+
                 $k = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($sup->rif ?? ''))));
                 $m = ($k !== '' && isset($byCleanRif[$k])) ? $byCleanRif[$k] : $byId->get($sup->id);
                 if (!$m) {
+                    $sup->setAttribute('master_locked_fields', []);
                     continue;
                 }
+
+                // Determinar qué campos oficiales ya están definidos en el Master
+                $lockedFields = [];
+                foreach ($masterFieldCandidates as $field) {
+                    if (isset($masterCols[$field]) && trim((string) ($m->$field ?? '')) !== '') {
+                        $lockedFields[] = $field;
+                    }
+                }
+                $sup->setAttribute('master_locked_fields', $lockedFields);
 
                 if ($hasLogoCol && !empty($m->logo_url)) {
                     $sup->setAttribute('master_logo_url', $m->logo_url);

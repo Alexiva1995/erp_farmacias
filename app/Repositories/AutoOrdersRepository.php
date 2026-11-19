@@ -322,8 +322,8 @@ class AutoOrdersRepository
 
         if ($supplier && !empty($supplier->dispatch_days)) {
             $dispatchDays = is_string($supplier->dispatch_days) ? json_decode($supplier->dispatch_days, true) : $supplier->dispatch_days;
-            
-            if (!empty($dispatchDays)) {
+
+            if (is_array($dispatchDays) && !empty($dispatchDays)) {
                 $dayOfWeekMap = [
                     'sunday'    => 0,
                     'monday'    => 1,
@@ -332,30 +332,58 @@ class AutoOrdersRepository
                     'thursday'  => 4,
                     'friday'    => 5,
                     'saturday'  => 6,
+                    'domingo'   => 0,
+                    'lunes'     => 1,
+                    'martes'    => 2,
+                    'miercoles' => 3,
+                    'miércoles' => 3,
+                    'jueves'    => 4,
+                    'viernes'   => 5,
+                    'sabado'    => 6,
+                    'sábado'    => 6,
                 ];
 
-                $dispatchIndices = array_map(fn($d) => $dayOfWeekMap[strtolower($d)], $dispatchDays);
-                sort($dispatchIndices);
-
-                $currentDayIndex = (int) $sentAt->format('w');
-
-                // Buscar el siguiente día de despacho
-                $nextDayIndex = null;
-                foreach ($dispatchIndices as $index) {
-                    if ($index >= $currentDayIndex) {
-                        $nextDayIndex = $index;
-                        break;
+                // Normalizar días de despacho soportando índices numéricos (0-7) y nombres en texto
+                $dispatchIndices = [];
+                foreach ($dispatchDays as $d) {
+                    if (is_int($d) || (is_string($d) && is_numeric(trim($d)))) {
+                        $dayNum = (int) $d;
+                        if ($dayNum >= 0 && $dayNum <= 7) {
+                            $dispatchIndices[] = $dayNum % 7;
+                        }
+                    } elseif (is_string($d)) {
+                        $normalized = strtolower(trim($d));
+                        if (isset($dayOfWeekMap[$normalized])) {
+                            $dispatchIndices[] = $dayOfWeekMap[$normalized];
+                        }
                     }
                 }
 
-                if ($nextDayIndex === null) {
-                    $nextDayIndex = $dispatchIndices[0];
-                    $daysToAdd = 7 - $currentDayIndex + $nextDayIndex;
-                } else {
-                    $daysToAdd = $nextDayIndex - $currentDayIndex;
-                }
+                $dispatchIndices = array_values(array_unique($dispatchIndices));
 
-                $tentativeDate = $sentAt->copy()->addDays($daysToAdd);
+                if (!empty($dispatchIndices)) {
+                    sort($dispatchIndices);
+
+                    $currentDayIndex = (int) $sentAt->format('w');
+
+                    // Buscar el siguiente día de despacho
+                    $nextDayIndex = null;
+                    foreach ($dispatchIndices as $index) {
+                        if ($index >= $currentDayIndex) {
+                            $nextDayIndex = $index;
+                            break;
+                        }
+                    }
+
+                    if ($nextDayIndex === null) {
+                        $nextDayIndex = $dispatchIndices[0];
+                        $daysToAdd = 7 - $currentDayIndex + $nextDayIndex;
+                    } else {
+                        $daysToAdd = $nextDayIndex - $currentDayIndex;
+                    }
+
+                    $tentativeDate = $sentAt->copy()->addDays($daysToAdd);
+                }
             }
         }
 

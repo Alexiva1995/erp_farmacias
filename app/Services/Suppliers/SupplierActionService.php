@@ -137,12 +137,10 @@ class SupplierActionService
             // En tenant no se sobrescribe manualmente el logo del Master
             unset($validatedData['logo_url']);
 
-            // Si el RIF o la razón social ya fueron establecidos, no se pueden modificar desde el tenant
-            if (!empty($supplier->rif)) {
-                unset($validatedData['rif']);
-            }
-            if (!empty($supplier->social_reason)) {
-                unset($validatedData['social_reason']);
+            // Bloquear únicamente los campos oficiales que ya están definidos en el Catálogo Master
+            $lockedFields = $this->resolveMasterLockedFields($supplier);
+            foreach ($lockedFields as $field) {
+                unset($validatedData[$field]);
             }
         }
 
@@ -755,5 +753,76 @@ class SupplierActionService
             'ok' => false,
             'message' => "Protocolo {$type} no soportado para prueba directa.",
         ];
+    }
+
+    /**
+     * Obtiene los campos oficiales del proveedor que ya poseen valor en el Catálogo Master
+     * y que por tanto no deben sobrescribirse desde un tenant.
+     *
+     * @param Supplier $supplier
+     * @return array<int, string>
+     */
+    private function resolveMasterLockedFields(Supplier $supplier): array
+    {
+        $typeValue = $supplier->type instanceof \App\Enums\SupplierType
+            ? $supplier->type->value
+            : (string) ($supplier->type ?? 'drogueria');
+
+        if ($typeValue === 'externo') {
+            return [];
+        }
+
+        $masterFields = ['name', 'rif', 'social_reason', 'address'];
+
+        try {
+            $masterConn = 'master_catalog';
+            if (!Schema::connection($masterConn)->hasTable('suppliers')) {
+                return [];
+            }
+
+            $masterCols = array_flip(Schema::connection($masterConn)->getColumnListing('suppliers'));
+            $selectCols = ['id'];
+            foreach ($masterFields as $col) {
+                if (isset($masterCols[$col])) {
+                    $selectCols[] = $col;
+                }
+            }
+
+            $cleanRif = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($supplier->rif ?? ''))));
+
+            $masterRow = null;
+            if ($cleanRif !== '') {
+                $masterRow = DB::connection($masterConn)->table('suppliers')
+                    ->select($selectCols)
+                    ->whereRaw(
+                        "UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) = ?",
+                        [$cleanRif]
+                    )
+                    ->first();
+            }
+
+            if (!$masterRow && $supplier->id) {
+                $masterRow = DB::connection($masterConn)->table('suppliers')
+                    ->select($selectCols)
+                    ->where('id', $supplier->id)
+                    ->first();
+            }
+
+            if (!$masterRow) {
+                return [];
+            }
+
+            $locked = [];
+            foreach ($masterFields as $field) {
+                if (isset($masterCols[$field]) && trim((string) ($masterRow->$field ?? '')) !== '') {
+                    $locked[] = $field;
+                }
+            }
+
+            return $locked;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::debug("No se pudo verificar campos Master para proveedor #{$supplier->id}: " . $e->getMessage());
+            return [];
+        }
     }
 }
