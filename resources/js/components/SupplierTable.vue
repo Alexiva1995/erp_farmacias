@@ -596,7 +596,7 @@ const headers = computed(() => {
                 </VListItem>
 
                 <VListItem
-                  v-if="canManageSuppliers && !isRestaurant && isCommercialSupplier(item)"
+                  v-if="(props.isMaster || canManageSuppliers) && !isRestaurant && isCommercialSupplier(item)"
                   @click="emit('config-connection', item)"
                   prepend-icon="tabler-plug-connected"
                   base-color="warning"
