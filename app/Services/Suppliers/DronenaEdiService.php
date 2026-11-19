@@ -227,22 +227,27 @@ class DronenaEdiService implements DronenaEdiServiceInterface
         file_put_contents($tempPath, $content);
 
         // Subir vía FTP en modo BINARY dentro del directorio ya seleccionado con ftp_chdir
-        $uploadSuccess = @ftp_put($ftp, $fileName, $tempPath, FTP_BINARY);
-        $lastError = $uploadSuccess ? null : error_get_last();
+        $ftpError = null;
+        set_error_handler(static function (int $errno, string $errstr) use (&$ftpError): bool {
+            $ftpError = trim($errstr);
+            return true;
+        });
 
-        // Fallback con ruta completa si el servidor rechaza el nombre relativo
-        if (!$uploadSuccess) {
-            $uploadSuccess = @ftp_put($ftp, '/' . ltrim($remoteFilePath, '/'), $tempPath, FTP_BINARY);
+        try {
+            $uploadSuccess = ftp_put($ftp, $fileName, $tempPath, FTP_BINARY);
+
+            // Fallback con ruta completa si el servidor rechaza el nombre relativo
             if (!$uploadSuccess) {
-                $lastError = error_get_last();
+                $uploadSuccess = ftp_put($ftp, '/' . ltrim($remoteFilePath, '/'), $tempPath, FTP_BINARY);
             }
+        } finally {
+            restore_error_handler();
+            @unlink($tempPath);
+            @ftp_close($ftp);
         }
 
-        @unlink($tempPath);
-        @ftp_close($ftp);
-
         if (!$uploadSuccess) {
-            $errorDetail = $lastError['message'] ?? 'Desconocido';
+            $errorDetail = $ftpError ?: (error_get_last()['message'] ?? 'Desconocido');
             Log::error("[DRONENA EDI] Error subiendo {$remoteFilePath}", [
                 'user' => $user,
                 'error' => $errorDetail,
