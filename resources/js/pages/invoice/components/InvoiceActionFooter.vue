@@ -57,67 +57,82 @@ const emit = defineEmits([
       </div>
 
       <!-- Modo Aprobación -->
-      <div v-else-if="isApprovalMode" class="d-flex ga-3 w-100">
-        <VBtn
-          :loading="isSaving"
-          size="large"
-          color="error"
-          variant="outlined"
-          class="flex-1-1 font-weight-bold"
-          @click="emit('reject')"
-        >
-          <VIcon icon="tabler-arrow-back-up" class="me-2" />
-          Rechazar y Devolver
-        </VBtn>
-        <VBtn
-          :loading="isSaving"
-          size="large"
-          color="success"
-          variant="flat"
-          class="flex-1-1 font-weight-bold"
-          @click="emit('confirmApproval')"
-        >
-          <VIcon icon="tabler-check" class="me-2" />
-          Confirmar Aprobación
-        </VBtn>
-      </div>
-
-      <!-- Modo Editable -->
-      <div v-else-if="isEditableMode" class="d-flex ga-3 w-100 justify-space-between align-center">
-        <template v-if="isEditMode">
+      <VRow v-else-if="isApprovalMode" dense class="w-100 ma-0">
+        <VCol cols="12" sm="6" order="2" order-sm="1" class="pa-1">
           <VBtn
-            color="secondary"
+            :loading="isSaving"
+            size="large"
+            color="error"
             variant="outlined"
-            size="large"
-            class="flex-1-1 font-weight-bold"
-            @click="emit('cancelEdit')"
+            block
+            class="font-weight-bold rounded-lg"
+            @click="emit('reject')"
           >
-            <VIcon icon="tabler-x" class="me-1" />
-            Cancelar
+            <VIcon icon="tabler-arrow-back-up" class="me-2" />
+            Rechazar y Devolver
           </VBtn>
+        </VCol>
+        <VCol cols="12" sm="6" order="1" order-sm="2" class="pa-1">
           <VBtn
-            :loading="loading"
-            size="large"
-            color="info"
-            variant="tonal"
-            class="flex-1-1 font-weight-bold"
-            @click="emit('saveProgress')"
-          >
-            <VIcon icon="tabler-device-floppy" class="me-1" />
-            Guardar Progreso
-          </VBtn>
-          <VBtn
-            :loading="loading"
+            :loading="isSaving"
             size="large"
             color="success"
             variant="flat"
-            class="flex-1-1 font-weight-bold"
-            @click="emit('finalize')"
+            block
+            class="font-weight-bold rounded-lg"
+            @click="emit('confirmApproval')"
           >
-            <VIcon icon="tabler-circle-check" class="me-1" />
-            Finalizar Factura
+            <VIcon icon="tabler-check" class="me-2" />
+            Confirmar Aprobación
           </VBtn>
-        </template>
+        </VCol>
+      </VRow>
+
+      <!-- Modo Editable -->
+      <div v-else-if="isEditableMode" class="w-100">
+        <VRow v-if="isEditMode" dense class="ma-0">
+          <VCol cols="6" sm="4" order="2" order-sm="1" class="pa-1">
+            <VBtn
+              color="secondary"
+              variant="outlined"
+              size="large"
+              block
+              class="font-weight-bold rounded-lg"
+              @click="emit('cancelEdit')"
+            >
+              <VIcon icon="tabler-x" class="me-1" />
+              Cancelar
+            </VBtn>
+          </VCol>
+          <VCol cols="6" sm="4" order="3" order-sm="2" class="pa-1">
+            <VBtn
+              :loading="loading"
+              size="large"
+              color="info"
+              variant="tonal"
+              block
+              class="font-weight-bold rounded-lg"
+              @click="emit('saveProgress')"
+            >
+              <VIcon icon="tabler-device-floppy" class="me-1" />
+              Guardar
+            </VBtn>
+          </VCol>
+          <VCol cols="12" sm="4" order="1" order-sm="3" class="pa-1">
+            <VBtn
+              :loading="loading"
+              size="large"
+              color="success"
+              variant="flat"
+              block
+              class="font-weight-bold rounded-lg"
+              @click="emit('finalize')"
+            >
+              <VIcon icon="tabler-circle-check" class="me-1" />
+              Finalizar Factura
+            </VBtn>
+          </VCol>
+        </VRow>
         <template v-else>
           <VBtn
             :loading="loading"

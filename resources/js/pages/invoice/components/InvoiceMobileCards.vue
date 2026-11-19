@@ -122,12 +122,10 @@ const emit = defineEmits([
 
           <VDivider class="my-2 border-dashed" />
 
-          <!-- Grid de Información Financiera -->
-          <div class="grid-financial-info mb-4">
-            <div class="detail-item">
-              <span class="label">Cantidad</span>
+          <!-- Grid / Formulario Financiero -->
+          <VRow v-if="isEditableMode && item.id === editingDetailId" dense class="mb-3">
+            <VCol cols="12" sm="4">
               <VTextField
-                v-if="isEditableMode && item.id === editingDetailId"
                 v-model.number="editedDetailData.quantity"
                 type="number"
                 step="any"
@@ -135,38 +133,44 @@ const emit = defineEmits([
                 density="compact"
                 hide-details
                 variant="outlined"
-                class="mt-1"
+                label="Cantidad"
               />
-              <span v-else class="value font-weight-bold">{{ Number(Number(item.quantity || 0).toFixed(3)) }}</span>
+            </VCol>
+            <VCol cols="6" sm="4">
+              <VTextField
+                v-model.number="editedDetailData.unit_cost"
+                @input="emit('recalculateTotalFromUnit')"
+                type="number"
+                step="0.01"
+                density="compact"
+                hide-details
+                variant="outlined"
+                :label="`Unitario (${invoice.currency})`"
+              />
+            </VCol>
+            <VCol cols="6" sm="4">
+              <VTextField
+                v-model.number="editedDetailData.total_cost_input"
+                @input="emit('recalculateUnitFromTotal')"
+                type="number"
+                step="0.01"
+                density="compact"
+                hide-details
+                variant="outlined"
+                :label="`Total (${invoice.currency})`"
+              />
+            </VCol>
+          </VRow>
+
+          <div v-else class="grid-financial-info mb-3">
+            <div class="detail-item">
+              <span class="label">Cantidad</span>
+              <span class="value font-weight-bold">{{ Number(Number(item.quantity || 0).toFixed(3)) }}</span>
             </div>
             <div class="detail-item">
               <span class="label">Costo ({{ invoice.currency }})</span>
-              <div v-if="isEditableMode && item.id === editingDetailId" class="d-flex flex-column gap-1 mt-1">
-                <VTextField
-                  v-model.number="editedDetailData.unit_cost"
-                  @input="emit('recalculateTotalFromUnit')"
-                  type="number"
-                  step="0.01"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  placeholder="Costo Unitario"
-                  label="Unitario"
-                />
-                <VTextField
-                  v-model.number="editedDetailData.total_cost_input"
-                  @input="emit('recalculateUnitFromTotal')"
-                  type="number"
-                  step="0.01"
-                  density="compact"
-                  hide-details
-                  variant="outlined"
-                  placeholder="Costo Total"
-                  label="Total"
-                />
-              </div>
-              <div v-else class="d-flex flex-column align-start">
-                <div class="d-flex align-center gap-1">
+              <div class="d-flex flex-column align-start">
+                <div class="d-flex align-center flex-wrap ga-1">
                   <span class="value font-weight-bold">{{ formatCurrency(item.unit_cost, invoice.currency) }}</span>
                   <!-- Indicador precio vs auto-orden -->
                   <VTooltip
@@ -190,7 +194,7 @@ const emit = defineEmits([
                 </div>
                 <div
                   v-if="invoice.currency !== 'USD' && item.unit_cost_usd != null"
-                  class="d-flex align-center gap-1 mt-0.5"
+                  class="d-flex align-center flex-wrap ga-1 mt-0.5"
                 >
                   <span class="value font-weight-bold">
                     {{ Number(item.unit_cost_usd).toFixed(2) }} USD
@@ -231,31 +235,35 @@ const emit = defineEmits([
 
           <!-- Información Logística -->
           <div class="bg-light pa-2 rounded-lg border-dashed mb-2">
-            <div class="grid-logistics-info">
-              <div class="detail-item">
-                <span class="label">Lote</span>
+            <VRow v-if="isEditableMode && item.id === editingDetailId" dense>
+              <VCol cols="6">
                 <VTextField
-                  v-if="isEditableMode && item.id === editingDetailId"
                   v-model="editedDetailData.lot_number"
                   density="compact"
                   hide-details
                   variant="outlined"
-                  class="mt-1"
+                  label="Lote"
                 />
-                <span v-else class="value text-xs">{{ item.lot_number || 'S/L' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="label">Vencimiento</span>
+              </VCol>
+              <VCol cols="6">
                 <VTextField
-                  v-if="isEditableMode && item.id === editingDetailId"
                   v-model="editedDetailData.expiration_date"
                   type="date"
                   density="compact"
                   hide-details
                   variant="outlined"
-                  class="mt-1"
+                  label="Vencimiento"
                 />
-                <span v-else class="value text-xs" :class="{'text-warning font-weight-bold': isNearExpiration(item)}">
+              </VCol>
+            </VRow>
+            <div v-else class="grid-logistics-info">
+              <div class="detail-item">
+                <span class="label">Lote</span>
+                <span class="value text-xs">{{ item.lot_number || 'S/L' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Vencimiento</span>
+                <span class="value text-xs" :class="{'text-warning font-weight-bold': isNearExpiration(item)}">
                   {{ item.expiration_date || 'S/V' }}
                 </span>
               </div>
@@ -282,52 +290,70 @@ const emit = defineEmits([
           </div>
 
           <!-- Botones de Acción Móvil -->
-          <div v-if="isEditableMode && isEditMode" class="mt-3 pt-2 border-t d-flex align-center justify-space-between ga-2">
-            <template v-if="item.id === editingDetailId">
-              <VBtn color="success" size="small" variant="flat" block class="rounded-lg" @click="emit('saveEditingDetail')">
-                <VIcon icon="tabler-check" />
-              </VBtn>
-              <VBtn color="error" size="small" variant="tonal" class="rounded-lg" @click="emit('cancelEditingDetail')">
-                <VIcon icon="tabler-x" />
-              </VBtn>
-            </template>
-            <template v-else>
-              <div class="d-flex ga-1">
+          <div v-if="isEditableMode && isEditMode" class="mt-3 pt-2 border-t">
+            <VRow v-if="item.id === editingDetailId" dense class="ma-0">
+              <VCol cols="6" class="pa-1">
+                <VBtn color="secondary" size="small" variant="outlined" block class="rounded-lg font-weight-bold" @click="emit('cancelEditingDetail')">
+                  <VIcon start icon="tabler-x" size="16" />
+                  Cancelar
+                </VBtn>
+              </VCol>
+              <VCol cols="6" class="pa-1">
+                <VBtn color="success" size="small" variant="flat" block class="rounded-lg font-weight-bold" @click="emit('saveEditingDetail')">
+                  <VIcon start icon="tabler-check" size="16" />
+                  Guardar
+                </VBtn>
+              </VCol>
+            </VRow>
+
+            <div v-else class="d-flex align-center justify-space-between flex-wrap ga-2">
+              <div class="d-flex align-center ga-1">
                 <VBtn color="secondary" variant="tonal" size="x-small" icon="tabler-arrow-up" :disabled="index === 0" @click="emit('moveItemUp', item)" />
                 <VBtn color="secondary" variant="tonal" size="x-small" icon="tabler-arrow-down" :disabled="index === processedInvoiceDetails.length - 1" @click="emit('moveItemDown', item)" />
+                <VBtn
+                  v-if="invoiceHasIva"
+                  :color="item.tax_enabled ? 'success' : 'secondary'"
+                  :variant="item.tax_enabled ? 'flat' : 'tonal'"
+                  size="x-small"
+                  class="rounded-lg font-weight-bold px-2 ms-1"
+                  style="height: 28px;"
+                  @click="emit('toggleTax', item)"
+                >
+                  <VIcon start icon="tabler-receipt-tax" size="14" />
+                  {{ item.tax_enabled ? 'IVA' : 'Exento' }}
+                </VBtn>
               </div>
 
-              <div class="d-flex ga-2">
+              <div class="d-flex align-center ga-1.5">
                 <VBtn
                   :color="isItemReturned(item) ? 'warning' : 'secondary'"
                   variant="tonal"
                   size="small"
+                  icon="tabler-arrow-back-up"
                   class="rounded-lg"
+                  title="Devolver / Marcar devolución"
                   @click="emit('toggleReturnItem', item)"
-                >
-                  <VIcon icon="tabler-arrow-back-up" />
-                </VBtn>
-
+                />
                 <VBtn
-                  v-if="invoiceHasIva"
-                  :color="item.tax_enabled ? 'success' : 'secondary'"
+                  color="warning"
                   variant="tonal"
                   size="small"
+                  icon="tabler-edit"
                   class="rounded-lg"
-                  @click="emit('toggleTax', item)"
-                >
-                  <VIcon icon="tabler-receipt-tax" />
-                </VBtn>
-
-                <VBtn color="warning" variant="tonal" size="small" class="rounded-lg" @click="emit('startEditingDetail', item)">
-                  <VIcon icon="tabler-edit" />
-                </VBtn>
-
-                <VBtn color="error" variant="tonal" size="small" class="rounded-lg" @click="emit('removeProductFromInvoice', item.id)">
-                  <VIcon icon="tabler-trash" />
-                </VBtn>
+                  title="Editar producto"
+                  @click="emit('startEditingDetail', item)"
+                />
+                <VBtn
+                  color="error"
+                  variant="tonal"
+                  size="small"
+                  icon="tabler-trash"
+                  class="rounded-lg"
+                  title="Eliminar producto"
+                  @click="emit('removeProductFromInvoice', item.id)"
+                />
               </div>
-            </template>
+            </div>
           </div>
         </VCardText>
       </VCard>

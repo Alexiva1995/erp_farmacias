@@ -58,8 +58,8 @@ const emit = defineEmits([
           @click="emit('backToList')"
         />
 
-        <div class="d-flex align-center ga-1">
-          <span class="text-subtitle-1 font-weight-black text-primary text-uppercase px-1 header-supplier-name">
+        <div class="d-flex align-center ga-1 flex-grow-1" style="min-width: 0;">
+          <span class="text-subtitle-2 text-sm-subtitle-1 font-weight-black text-primary text-uppercase px-1 header-supplier-name text-truncate">
             {{ invoice.supplier?.name }}
           </span>
           <VTooltip text="Ver historial de auditoría">
@@ -99,7 +99,7 @@ const emit = defineEmits([
       </div>
 
       <!-- Bloque Derecho: Fechas Operativas + Estado Actual + Botón Editar -->
-      <div class="d-flex flex-wrap align-center ga-2 justify-end">
+      <div class="d-flex flex-wrap align-center ga-1.5 ga-sm-2 justify-start justify-md-end w-100 w-md-auto">
         <VChip size="small" variant="outlined" color="secondary" class="font-weight-medium header-chip">
           <VIcon start icon="tabler-calendar" size="14" />
           Emisión: {{ formatDate(invoice.created_invoice_date) || "N/A" }}
