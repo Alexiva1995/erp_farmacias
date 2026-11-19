@@ -123,14 +123,20 @@ watch(editableSettings, () => {
   if (!isHydrating && !props.loading && props.modelValue) dirtySections.settings = true
 }, { deep: true })
 
+const validDayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
 const syncSettingsData = () => {
   isHydrating = true
   const s = props.supplier || {}
-  const dispatchDays = Array.isArray(s.dispatch_days) ? [...s.dispatch_days] : []
+  const dispatchDays = Array.isArray(s.dispatch_days)
+    ? [...new Set(s.dispatch_days.filter(d => validDayKeys.includes(d)))]
+    : []
   const normalizedOrderDays = {}
   dispatchDays.forEach((day) => {
     const old = s.order_days
-    normalizedOrderDays[day] = old && !Array.isArray(old) && Array.isArray(old[day]) ? [...old[day]] : []
+    normalizedOrderDays[day] = old && !Array.isArray(old) && Array.isArray(old[day])
+      ? [...new Set(old[day].filter(d => validDayKeys.includes(d)))]
+      : []
   })
 
   editableSettings.payment_due_type = s.payment_due_type || 'invoice_date'
