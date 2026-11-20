@@ -240,15 +240,19 @@ const fetchDishesCatalog = async () => {
       const ingredients = Array.isArray(dish.ingredients) ? dish.ingredients : []
       let unifiedRecipeCost = 0
       const mappedIngredients = ingredients.map(ing => {
-        const unifiedIngCost = Number(ing.unit_cost ?? ing.cost_price ?? 0)
+        const rawIngCost = Number(ing.unit_cost ?? ing.cost_price ?? 0)
+        const presentation = Number(ing.presentation) > 0 ? Number(ing.presentation) : 1
+        const yieldPct = Number(ing.yield_percentage) > 0 ? Number(ing.yield_percentage) : 100
+        const costPerRecipeUnit = rawIngCost / presentation
         const portion = Number(ing.pivot?.portion ?? ing.portion ?? 0)
-        unifiedRecipeCost += unifiedIngCost * portion
+        const grossPortion = portion / (yieldPct / 100)
+        unifiedRecipeCost += costPerRecipeUnit * grossPortion
         return {
           id: ing.id,
           name: ing.name,
           unit_of_measure: ing.unit_of_measure || 'und',
           portion,
-          unified_unit_cost: unifiedIngCost,
+          unified_unit_cost: parseFloat(costPerRecipeUnit.toFixed(4)),
           stock: Number(ing.stock ?? 0),
         }
       })

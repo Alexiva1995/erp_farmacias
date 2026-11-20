@@ -56,7 +56,7 @@ class KitchenWasteService implements KitchenWasteServiceInterface
 
         if ($itemType === 'dish' && $dishId) {
             $dish = Dish::with([
-                'ingredients:id,name,unit_cost',
+                'ingredients:id,name,unit_cost,presentation,yield_percentage',
                 'outputProduct:id,name,unit_cost',
             ])->findOrFail($dishId);
 
@@ -65,13 +65,17 @@ class KitchenWasteService implements KitchenWasteServiceInterface
                 return round((float) $dish->outputProduct->unit_cost, 4);
             }
 
-            // Calcular sumando el costo unificado de cada ingrediente desde la tabla products
+            // Calcular sumando el costo unificado de cada ingrediente desde la tabla products (prorrateado por presentación y rendimiento)
             if ($dish->ingredients && $dish->ingredients->isNotEmpty()) {
                 $recipeCost = 0.0;
                 foreach ($dish->ingredients as $ingredient) {
                     $unifiedIngCost = (float) ($ingredient->unit_cost ?: 0.0);
                     $portion = (float) ($ingredient->pivot->portion ?? 0.0);
-                    $recipeCost += ($unifiedIngCost * $portion);
+                    $presentation = (float) ($ingredient->presentation ?? 1.0);
+                    $safePresentation = $presentation > 0 ? $presentation : 1.0;
+                    $yieldPct = (float) ($ingredient->yield_percentage > 0 ? $ingredient->yield_percentage : 100.0);
+                    $packsUsed = ($portion / ($yieldPct / 100.0)) / $safePresentation;
+                    $recipeCost += ($unifiedIngCost * $packsUsed);
                 }
 
                 // Si es sub-receta (status = 3) con rendimiento mayor a 1, dividir entre el rendimiento esperado
@@ -264,9 +268,14 @@ class KitchenWasteService implements KitchenWasteServiceInterface
                 return;
             }
 
-            // En platillos terminados (o sub-recetas sin stock pre-elaborado), descontar cada insumo del escandallo
+            // En platillos terminados (o sub-recetas sin stock pre-elaborado), descontar cada insumo del escandallo en unidades de inventario
             foreach ($dish->ingredients as $ingredient) {
-                $ingQty = round((float) ($ingredient->pivot->portion ?? 0) * $qty, 4);
+                $portion = (float) ($ingredient->pivot->portion ?? 0);
+                $yieldPct = (float) ($ingredient->yield_percentage > 0 ? $ingredient->yield_percentage : 100.0);
+                $grossQty = ($portion * $qty) / ($yieldPct / 100.0);
+                $presentation = (float) ($ingredient->presentation ?? 1.0);
+                $safePresentation = $presentation > 0 ? $presentation : 1.0;
+                $ingQty = round($grossQty / $safePresentation, 4);
                 if ($ingQty > 0) {
                     $this->deductProductStockAndRecordLoss(
                         product: $ingredient,
@@ -373,17 +382,20 @@ class KitchenWasteService implements KitchenWasteServiceInterface
             $product->updateQuietly(['stock' => $stockAfter]);
             StockoutService::syncStockout($product, $stockAfter);
 
-            InventoryMovement::create([
-                'product_id' => $product->id,
-                'product_lot_id' => $affectedLotId,
-                'movement_type' => 'loss',
-                'quantity' => -abs($quantityToDeduct),
-                'dish_id' => $dishId,
-                'user_id' => $approverId,
-                'stock_before' => $stockBefore,
-                'stock_after' => $stockAfter,
-                'movement_date' => Carbon::now(),
-            ]);
+            $actualDeducted = round($stockBefore - $stockAfter, 4);
+            if ($actualDeducted > 0) {
+                InventoryMovement::create([
+                    'product_id' => $product->id,
+                    'product_lot_id' => $affectedLotId,
+                    'movement_type' => 'loss',
+                    'quantity' => -abs($actualDeducted),
+                    'dish_id' => $dishId,
+                    'user_id' => $approverId,
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
+                    'movement_date' => Carbon::now(),
+                ]);
+            }
         } finally {
             ProductLotObserver::$skipMovementCreation = false;
         }
