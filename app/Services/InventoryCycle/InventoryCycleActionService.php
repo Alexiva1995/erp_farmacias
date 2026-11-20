@@ -843,7 +843,7 @@ class InventoryCycleActionService
                     }
                 }
             } else {
-                $variantDistributions = $productCount->distributions()->whereNotNull('product_variant_id')->get();
+                $variantDistributions = $invoiceCount->distributions()->whereNotNull('product_variant_id')->get();
                 foreach ($variantDistributions as $dist) {
                     ProductVariant::where('id', $dist->product_variant_id)
                         ->where('product_id', $product->id)
@@ -1214,7 +1214,7 @@ class InventoryCycleActionService
                     }
                 }
             } else {
-                $variantDistributions = $productCount->distributions()->whereNotNull('product_variant_id')->get();
+                $variantDistributions = $saleCount->distributions()->whereNotNull('product_variant_id')->get();
                 foreach ($variantDistributions as $dist) {
                     ProductVariant::where('id', $dist->product_variant_id)
                         ->where('product_id', $product->id)
