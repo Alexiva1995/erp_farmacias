@@ -84,28 +84,7 @@ class DishResource extends JsonResource
                 'icon' => $this->kitchenStation->icon,
             ] : null,
             'ingredients' => $ingredientsData,
-            'modifier_groups' => $this->whenLoaded('modifierGroups', function () {
-                return $this->modifierGroups->map(function ($group) {
-                    return [
-                        'id' => $group->id,
-                        'name' => $group->name,
-                        'base_product_id' => $group->base_product_id,
-                        'min_selections' => (int) $group->min_selections,
-                        'max_selections' => (int) $group->max_selections,
-                        'options' => $group->options ? $group->options->map(function ($opt) {
-                            return [
-                                'id' => $opt->id,
-                                'name' => $opt->name,
-                                'modifier_type' => $opt->modifier_type instanceof \App\Enums\ModifierTypeEnum ? $opt->modifier_type->value : $opt->modifier_type,
-                                'extra_price_usd' => (float) $opt->extra_price_usd,
-                                'product_id' => $opt->product_id,
-                                'portion' => (float) $opt->portion,
-                                'is_active' => (bool) $opt->is_active,
-                            ];
-                        }) : [],
-                    ];
-                });
-            }),
+            'modifier_groups' => $this->resolveModifierGroups(),
             'expected_yield_quantity' => (float) ($this->expected_yield_quantity ?? 1.0),
             'unit_cost' => (float) ($this->expected_yield_quantity ?? 1.0) > 0
                 ? round($costPrice / (float) ($this->expected_yield_quantity ?? 1.0), 4)
@@ -125,5 +104,75 @@ class DishResource extends JsonResource
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
+    }
+
+    /**
+     * Combina los grupos de modificadores asignados al plato y los que sustituyen automáticamente alguno de sus ingredientes base.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveModifierGroups(): array
+    {
+        $groupsById = [];
+
+        if ($this->relationLoaded('modifierGroups') && $this->modifierGroups) {
+            foreach ($this->modifierGroups as $group) {
+                $groupsById[$group->id] = $group;
+            }
+        }
+
+        // Vincular automáticamente grupos activos cuyo insumo base (base_product_id) forme parte de la receta
+        if ($this->relationLoaded('ingredients') && $this->ingredients && $this->ingredients->isNotEmpty()) {
+            $ingredientIds = $this->ingredients->pluck('id')->all();
+            foreach ($this->getAutoModifierGroupsByBaseProduct() as $autoGroup) {
+                if (in_array($autoGroup->base_product_id, $ingredientIds, true) && !isset($groupsById[$autoGroup->id])) {
+                    $groupsById[$autoGroup->id] = $autoGroup;
+                }
+            }
+        }
+
+        return collect(array_values($groupsById))->map(function ($group) {
+            return [
+                'id' => $group->id,
+                'name' => $group->name,
+                'base_product_id' => $group->base_product_id,
+                'min_selections' => (int) $group->min_selections,
+                'max_selections' => (int) $group->max_selections,
+                'options' => $group->options ? $group->options->where('is_active', true)->values()->map(function ($opt) {
+                    return [
+                        'id' => $opt->id,
+                        'name' => $opt->name,
+                        'modifier_type' => $opt->modifier_type instanceof \App\Enums\ModifierTypeEnum ? $opt->modifier_type->value : $opt->modifier_type,
+                        'extra_price_usd' => (float) $opt->extra_price_usd,
+                        'product_id' => $opt->product_id,
+                        'portion' => (float) $opt->portion,
+                        'is_active' => (bool) $opt->is_active,
+                    ];
+                }) : [],
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * Obtiene en memoria por request los grupos activos que sustituyen un insumo base.
+     */
+    private function getAutoModifierGroupsByBaseProduct(): \Illuminate\Support\Collection
+    {
+        static $cachedByConnection = [];
+        $connName = \Illuminate\Support\Facades\DB::getDefaultConnection();
+
+        if (!isset($cachedByConnection[$connName])) {
+            $schema = \Illuminate\Support\Facades\Schema::connection($connName);
+            if (!$schema->hasTable('modifier_groups')) {
+                $cachedByConnection[$connName] = collect();
+            } else {
+                $cachedByConnection[$connName] = \App\Models\ModifierGroup::with('options')
+                    ->where('is_active', true)
+                    ->whereNotNull('base_product_id')
+                    ->get();
+            }
+        }
+
+        return $cachedByConnection[$connName];
     }
 }

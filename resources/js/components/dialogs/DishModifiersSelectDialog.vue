@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   modelValue: {
@@ -9,6 +9,10 @@ const props = defineProps({
   dish: {
     type: Object,
     default: null,
+  },
+  initialQuantity: {
+    type: Number,
+    default: 1,
   },
 })
 
@@ -24,10 +28,23 @@ watch(
     if (val) {
       selectedModifiers.value = []
       notes.value = ''
-      quantity.value = 1
+      quantity.value = Math.max(1, Number(props.initialQuantity) || 1)
     }
   }
 )
+
+const isSelectionValid = computed(() => {
+  const groups = props.dish?.modifier_groups || []
+  return groups.every((group) => {
+    const min = Number(group.min_selections) || 0
+    if (min <= 0) return true
+    const groupOptionIds = (group.options || []).map((o) => o.id)
+    const count = selectedModifiers.value.filter((m) =>
+      groupOptionIds.includes(m.modifier_option_id)
+    ).length
+    return count >= min
+  })
+})
 
 const isOptionSelected = (optionId) => {
   return selectedModifiers.value.some((m) => m.modifier_option_id === optionId)
@@ -201,7 +218,9 @@ const handleConfirm = () => {
         </VBtn>
         <VBtn
           color="primary"
+          variant="flat"
           prepend-icon="tabler-check"
+          :disabled="!isSelectionValid"
           @click="handleConfirm"
         >
           Agregar al Pedido

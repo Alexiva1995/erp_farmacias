@@ -4,6 +4,7 @@ import TpvOrderMainSection from "@/components/tpv/TpvOrderMainSection.vue";
 import TpvCatalogSection from "@/components/tpv/TpvCatalogSection.vue";
 import TpvZoomSection from "@/components/tpv/TpvZoomSection.vue";
 import TpvDialogsContainer from "@/components/tpv/TpvDialogsContainer.vue";
+import DishModifiersSelectDialog from "@/components/dialogs/DishModifiersSelectDialog.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
@@ -30,6 +31,27 @@ import { computed, ref } from "vue";
 const brandingStore = useBrandingStore();
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
+
+// ─── Modificadores de platos en TPV ──────────────────────────────────────────
+const showDishModifiersModal = ref(false);
+const selectedDishForModifiers = ref(null);
+const selectedDishQtyForModifiers = ref(1);
+
+const onAddDishRequested = ({ dish, quantity = 1, modifiers = [], notes = null, orderDetailId = null }) => {
+  if (
+    modifiers.length === 0 &&
+    !orderDetailId &&
+    Array.isArray(dish?.modifier_groups) &&
+    dish.modifier_groups.length > 0
+  ) {
+    selectedDishForModifiers.value = dish;
+    selectedDishQtyForModifiers.value = Math.max(1, Number(quantity) || 1);
+    showDishModifiersModal.value = true;
+    return;
+  }
+
+  handleAddDishToOrder({ dish, quantity, modifiers, notes, orderDetailId });
+};
 
 // ─── Configuración del TPV (platos, restaurante, deportes) ───────────────────
 const {
@@ -600,7 +622,7 @@ useTpvInit({
       :selected-display-currency="selectedDisplayCurrency"
       @update-table-options="updateTableOptions"
       @add-product-to-order="addProductToOrder"
-      @handle-add-dish-to-order="handleAddDishToOrder"
+      @handle-add-dish-to-order="onAddDishRequested"
       @fetch-group-products="fetchGroupProducts"
       @fetch-failures-products="fetchFailuresProducts"
       @handle-view-pack-details="handleViewPackDetails"
@@ -662,6 +684,13 @@ useTpvInit({
       :pedidosList="pedidosList"
       :loadingPedidos="loadingPedidos"
       @selectPedido="selectPedido"
+    />
+
+    <DishModifiersSelectDialog
+      v-model="showDishModifiersModal"
+      :dish="selectedDishForModifiers"
+      :initial-quantity="selectedDishQtyForModifiers"
+      @confirm="handleAddDishToOrder"
     />
   </div>
 </template>
