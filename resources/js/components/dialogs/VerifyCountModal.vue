@@ -359,13 +359,14 @@ const handleClose = () => {
     v-model="isVisible"
     max-width="500"
     persistent
+    scrollable
     :fullscreen="$vuetify.display.xs"
     transition="dialog-bottom-transition"
     class="premium-dialog"
   >
-    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface">
+    <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface d-flex flex-column" style="max-block-size: 92vh;">
       <!-- Cabecera Premium -->
-      <VCardTitle class="pa-0">
+      <VCardTitle class="pa-0 flex-shrink-0">
         <div class="header-gradient pa-4 d-flex align-center shadow-sm">
           <VAvatar
             color="white"
@@ -405,7 +406,7 @@ const handleClose = () => {
         </div>
       </VCardTitle>
       
-      <VCardText class="pa-3 pa-sm-4 bg-light d-flex flex-column gap-3">
+      <VCardText class="pa-3 pa-sm-4 bg-light d-flex flex-column gap-3 overflow-y-auto flex-grow-1">
         <!-- Loader Cargando -->
         <div
           v-if="!countRecord || isLoading"
@@ -735,7 +736,7 @@ const handleClose = () => {
       <VDivider />
 
       <!-- Acciones de Modal -->
-      <VCardActions class="pa-3 bg-white border-t px-4">
+      <VCardActions class="pa-3 bg-white border-t px-4 flex-shrink-0">
         <VRow
           dense
           class="w-100 ma-0"
