@@ -80,6 +80,9 @@ class CycleDetailProductResource extends JsonResource
                 'psychotropic' => (bool) ($item->product['psychotropic'] ?? $item->product->psychotropic ?? false),
                 'is_colombian_origin' => (int) ($item->product['is_colombian_origin'] ?? $item->product->is_colombian_origin ?? 0),
                 'active_ingredient' => $item->product['active_ingredient'] ?? $item->product->active_ingredient ?? null,
+                'presentation' => (float) ($item->product['presentation'] ?? $item->product->presentation ?? 0),
+                'unit_of_measure' => $item->product['unit_of_measure'] ?? $item->product->unit_of_measure ?? 'und',
+                'is_sub_recipe' => (bool) ($item->product['is_sub_recipe'] ?? $item->product->is_sub_recipe ?? false),
                 'location' => $item->product['location'] ?? $item->product->location ?? null,
                 'lot_locations' => is_array($item->product)
                     ? ($item->product['lot_locations'] ?? [])
