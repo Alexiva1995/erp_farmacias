@@ -14,6 +14,7 @@ const emit = defineEmits(["refresh", "close-modal", "productUpdated"]);
 
 const percentage = ref(0);
 const targetPrice = ref("0.00");
+const includeIvaInTargetPrice = ref(false);
 const shippingCost = ref(0);
 const packagingCost = ref(0);
 const expenseMargin = ref(0);
@@ -26,6 +27,8 @@ const isRestaurant = computed(() => brandingStore.isRestaurant);
 const priceDecimals = computed(() => (isRestaurant.value ? 4 : 2));
 const priceStep = computed(() => (isRestaurant.value ? "0.0001" : "0.01"));
 const hasValidBaseCost = computed(() => Number(props.product.unit_cost || 0) > 0);
+const isTaxable = computed(() => props.product.iva == 1 || props.product.iva === true);
+const IVA_MULTIPLIER = 1.16;
 const isMinimarket = computed(() => {
   return brandingStore.settings?.business_type === 'minimarket' || props.settings?.profitability_calculation_type === 'compound';
 });
@@ -47,6 +50,17 @@ const previewSalePrice = computed(() => {
   return roundUp ? Math.ceil(price).toFixed(decimals) : price.toFixed(decimals);
 });
 
+const previewSalePriceWithIva = computed(() => {
+  const base = Number(previewSalePrice.value || 0);
+  return (base * IVA_MULTIPLIER).toFixed(priceDecimals.value);
+});
+
+const displayedProjectedPrice = computed(() => {
+  return isTaxable.value && includeIvaInTargetPrice.value
+    ? previewSalePriceWithIva.value
+    : previewSalePrice.value;
+});
+
 const quickPercentages = [15, 20, 25, 30, 35];
 
 const adjustPercentage = (delta) => {
@@ -62,7 +76,7 @@ const setQuickPercentage = (val) => {
 
 // Sincroniza el campo de PVP proyectado cuando cambia el margen manualmente
 const syncTargetPriceFromMargin = () => {
-  targetPrice.value = previewSalePrice.value;
+  targetPrice.value = displayedProjectedPrice.value;
 };
 
 // Calcula el margen equivalente cuando el usuario escribe un PVP proyectado deseado
@@ -71,20 +85,31 @@ const handleTargetPriceChange = (val) => {
   const numericPrice = Number(val);
   if (!Number.isFinite(numericPrice) || numericPrice < 0) return;
 
+  // Si el producto tiene IVA y la casilla está marcada, descontamos el 16% para obtener la base de venta
+  const baseSalePrice =
+    isTaxable.value && includeIvaInTargetPrice.value
+      ? numericPrice / IVA_MULTIPLIER
+      : numericPrice;
+
   const cost = Number(props.product.unit_cost || 0);
   if (isMinimarket.value) {
-    if (numericPrice <= 0) return;
+    if (baseSalePrice <= 0) return;
     const costWithTax = cost * (1 + Number(taxUsa.value) / 100);
     const fixedExpenseAmount = costWithTax * (Number(expenseMargin.value) / 100);
     const totalBase = costWithTax + Number(shippingCost.value) + Number(packagingCost.value) + fixedExpenseAmount;
-    const calculatedMargin = (1 - (totalBase / numericPrice)) * 100;
+    const calculatedMargin = (1 - (totalBase / baseSalePrice)) * 100;
     profitMargin.value = Math.max(0, Math.min(99.99, Number(calculatedMargin.toFixed(2))));
     return;
   }
 
   if (cost <= 0) return;
-  const calculatedPercentage = ((numericPrice / cost) - 1) * 100;
+  const calculatedPercentage = ((baseSalePrice / cost) - 1) * 100;
   percentage.value = Math.max(0, Math.min(999.99, Number(calculatedPercentage.toFixed(2))));
+};
+
+const onIncludeIvaToggle = (checked) => {
+  includeIvaInTargetPrice.value = !!checked;
+  handleTargetPriceChange(targetPrice.value);
 };
 
 watch(
@@ -97,6 +122,7 @@ watch(
       expenseMargin.value = val.expense_margin || 0;
       profitMargin.value = val.profit_margin || 0;
       taxUsa.value = val.tax_usa || 0;
+      includeIvaInTargetPrice.value = false;
       syncTargetPriceFromMargin();
     }
   },
@@ -260,7 +286,13 @@ const checkExistenceAndSave = async () => {
             <div class="d-flex flex-column align-end">
               <span class="text-super-xs font-weight-bold text-primary uppercase">PVP Proyectado</span>
               <span class="text-base font-weight-black text-success">
-                ${{ previewSalePrice }} USD
+                ${{ displayedProjectedPrice }} USD
+              </span>
+              <span
+                v-if="isTaxable && includeIvaInTargetPrice"
+                class="text-super-xs text-medium-emphasis font-weight-medium"
+              >
+                Base s/IVA: ${{ previewSalePrice }}
               </span>
             </div>
           </div>
@@ -272,6 +304,15 @@ const checkExistenceAndSave = async () => {
             <span class="text-xs font-weight-bold text-disabled uppercase letter-spacing-1">
               PVP Proyectado (Precio Deseado)
             </span>
+            <VChip
+              v-if="isTaxable"
+              size="x-small"
+              color="success"
+              variant="tonal"
+              class="font-weight-bold"
+            >
+              IVA 16%
+            </VChip>
           </div>
           <VTextField
             :model-value="targetPrice"
@@ -288,6 +329,16 @@ const checkExistenceAndSave = async () => {
             persistent-hint
             @update:model-value="handleTargetPriceChange"
             @keyup.enter="checkExistenceAndSave"
+          />
+          <VCheckbox
+            v-if="isTaxable"
+            :model-value="includeIvaInTargetPrice"
+            label="El precio de venta ingresado incluye IVA (16%)"
+            color="primary"
+            density="compact"
+            hide-details
+            class="mt-2"
+            @update:model-value="onIncludeIvaToggle"
           />
         </VCard>
 
