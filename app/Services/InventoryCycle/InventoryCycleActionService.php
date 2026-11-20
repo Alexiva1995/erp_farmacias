@@ -506,12 +506,7 @@ class InventoryCycleActionService
                     }
                 }
             } else {
-                $variantDistributions = $productCount->distributions()->whereNotNull('product_variant_id')->get();
-                foreach ($variantDistributions as $dist) {
-                    ProductVariant::where('id', $dist->product_variant_id)
-                        ->where('product_id', $product->id)
-                        ->update(['stock' => max(0, (int) $dist->quantity)]);
-                }
+                $this->syncVariantDistributionsIfSupported($productCount, $product);
             }
 
             // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
@@ -843,12 +838,7 @@ class InventoryCycleActionService
                     }
                 }
             } else {
-                $variantDistributions = $invoiceCount->distributions()->whereNotNull('product_variant_id')->get();
-                foreach ($variantDistributions as $dist) {
-                    ProductVariant::where('id', $dist->product_variant_id)
-                        ->where('product_id', $product->id)
-                        ->update(['stock' => max(0, (int) $dist->quantity)]);
-                }
+                $this->syncVariantDistributionsIfSupported($invoiceCount, $product);
             }
 
             // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
@@ -1214,12 +1204,7 @@ class InventoryCycleActionService
                     }
                 }
             } else {
-                $variantDistributions = $saleCount->distributions()->whereNotNull('product_variant_id')->get();
-                foreach ($variantDistributions as $dist) {
-                    ProductVariant::where('id', $dist->product_variant_id)
-                        ->where('product_id', $product->id)
-                        ->update(['stock' => max(0, (int) $dist->quantity)]);
-                }
+                $this->syncVariantDistributionsIfSupported($saleCount, $product);
             }
 
             // Si se crearon distribuciones manuales (por lotes actualizados o nuevos):
@@ -1492,5 +1477,25 @@ class InventoryCycleActionService
                 throw $e;
             }
         });
+    }
+
+    /**
+     * Sincroniza el stock por variante si la tabla de distribuciones del conteo soporta product_variant_id.
+     */
+    private function syncVariantDistributionsIfSupported(\Illuminate\Database\Eloquent\Model $countRecord, Product $product): void
+    {
+        $distributionTable = $countRecord->distributions()->getRelated()->getTable();
+        $connectionName = $countRecord->getConnectionName();
+
+        if (!\Illuminate\Support\Facades\Schema::connection($connectionName)->hasColumn($distributionTable, 'product_variant_id')) {
+            return;
+        }
+
+        $variantDistributions = $countRecord->distributions()->whereNotNull('product_variant_id')->get();
+        foreach ($variantDistributions as $dist) {
+            ProductVariant::where('id', $dist->product_variant_id)
+                ->where('product_id', $product->id)
+                ->update(['stock' => max(0, (int) $dist->quantity)]);
+        }
     }
 }
