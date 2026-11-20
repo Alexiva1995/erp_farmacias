@@ -141,4 +141,51 @@ class Phase4ProductionAndWasteTest extends TestCase
         $this->ingredient->refresh();
         $this->assertEquals(17.50, (float) $this->ingredient->stock);
     }
+
+    public function test_production_order_succeeds_when_lot_has_three_decimals_and_product_stock_is_rounded()
+    {
+        // Simular el desfase de 2 decimales en products.stock (14.13) vs lote real (14.128)
+        \App\Models\ProductLot::where('product_id', $this->ingredient->id)->update(['quantity' => 14.128]);
+        $this->ingredient->updateQuietly(['stock' => 14.13, 'yield_percentage' => 100.0, 'presentation' => 1.0]);
+        $this->subRecipeDish->ingredients()->updateExistingPivot($this->ingredient->id, ['portion' => 0.05]);
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->postJson('/api/restaurant/production/orders', [
+                'dish_id' => $this->subRecipeDish->id,
+                'batch_multiplier' => 1.0,
+                'actual_quantity' => 1.0,
+                'notes' => 'Producción con lote en 3 decimales',
+            ]);
+
+        $response->assertStatus(201);
+
+        $lotTotal = (float) \App\Models\ProductLot::where('product_id', $this->ingredient->id)->sum('quantity');
+        $this->assertEquals(14.078, round($lotTotal, 4));
+    }
+
+    public function test_production_order_adds_produced_quantity_to_negative_stock()
+    {
+        // Simular producto elaborado con saldo negativo -24 (ej. ventas previas sin lote)
+        $this->subRecipeProduct->updateQuietly(['stock' => -24.0]);
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->postJson('/api/restaurant/production/orders', [
+                'dish_id' => $this->subRecipeDish->id,
+                'batch_multiplier' => 2.0,
+                'actual_quantity' => 30.0,
+                'notes' => 'Producción que compensa saldo negativo -24',
+            ]);
+
+        $response->assertStatus(201);
+
+        $this->subRecipeProduct->refresh();
+        $this->assertEquals(6.0, (float) $this->subRecipeProduct->stock);
+
+        $this->assertDatabaseHas('inventory_movements', [
+            'product_id' => $this->subRecipeProduct->id,
+            'stock_before' => -24.0,
+            'quantity' => 30.0,
+            'stock_after' => 6.0,
+        ]);
+    }
 }

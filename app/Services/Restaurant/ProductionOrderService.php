@@ -133,7 +133,8 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                     $unifiedIngCost = (float) ($ingredient->unit_cost ?: 0.0);
                     $totalProductionCost += ($packsToDeduct * $unifiedIngCost);
 
-                    $stockBefore = round((float) $ingredient->stock, 4);
+                    $stockBefore = $this->resolveCurrentStock($ingredient);
+                    $hasLots = ProductLot::where('product_id', $ingredient->id)->exists();
                     $affectedLotId = null;
 
                     // Descuento FEFO sobre los lotes del ingrediente
@@ -160,18 +161,23 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                         }
                     }
 
+                    // Si el ingrediente tiene lotes, el movimiento en Kardex debe reflejar el descuento real sobre lotes
+                    $actualDeducted = $hasLots
+                        ? round($packsToDeduct - max(0.0, $remainingToDeduct), 4)
+                        : $packsToDeduct;
+
                     // Descontar stock general del producto ingrediente
-                    $stockAfter = max(0.0, round($stockBefore - $packsToDeduct, 4));
+                    $stockAfter = max(0.0, round($stockBefore - $actualDeducted, 4));
                     $ingredient->updateQuietly(['stock' => $stockAfter]);
                     StockoutService::syncStockout($ingredient, $stockAfter);
 
                     // Registrar salida de materia prima en Kardex (InventoryMovement)
-                    if ($packsToDeduct > 0) {
+                    if ($actualDeducted > 0) {
                         InventoryMovement::create([
                             'product_id' => $ingredient->id,
                             'product_lot_id' => $affectedLotId,
                             'movement_type' => 'adjustment',
-                            'quantity' => -abs($packsToDeduct),
+                            'quantity' => -abs($actualDeducted),
                             'dish_id' => $dish->id,
                             'user_id' => $userId,
                             'stock_before' => $stockBefore,
@@ -197,24 +203,35 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 $shelfLife = (int) ($dish->shelf_life_days ?: 7);
                 $lotCode = 'SUB-' . date('Ymd') . '-' . strtoupper(Str::random(4));
 
-                // Sanear saldo negativo previo en lotes de la sub-receta
+                // Obtener el saldo actual real (respetando saldos negativos previos para sumarlos a la producción)
+                $existingLotSum = ProductLot::where('product_id', $outputProduct->id)->exists()
+                    ? round((float) ProductLot::where('product_id', $outputProduct->id)->sum('quantity'), 4)
+                    : 0.0;
+                $rawProductStock = round((float) $outputProduct->stock, 4);
+                $outputStockBefore = ($existingLotSum == 0.0 && $rawProductStock < 0)
+                    ? $rawProductStock
+                    : (ProductLot::where('product_id', $outputProduct->id)->exists() ? $existingLotSum : $rawProductStock);
+
+                $outputStockAfter = round($outputStockBefore + $actualQty, 4);
+
+                // Sanear saldo negativo previo en lotes de la sub-receta porque el déficit se absorbe en el nuevo saldo
                 ProductLot::where('product_id', $outputProduct->id)
                     ->where('quantity', '<', 0)
                     ->update(['quantity' => 0]);
 
-                $outputStockBefore = max(0.0, round((float) $outputProduct->stock, 4));
+                $remainingPositiveLots = round((float) ProductLot::where('product_id', $outputProduct->id)->sum('quantity'), 4);
+                $newLotQuantity = round($outputStockAfter - $remainingPositiveLots, 4);
 
                 $newLot = new ProductLot([
                     'product_id' => $outputProduct->id,
                     'lot_number' => $lotCode,
-                    'quantity' => $actualQty,
+                    'quantity' => $newLotQuantity,
                     'expiration_date' => Carbon::now()->addDays($shelfLife)->toDateString(),
                     'unit_cost' => $unitCostCalculated,
                 ]);
                 $newLot->saveQuietly();
 
-                // Aumentar stock del producto elaborado y actualizar su costo en la tabla products
-                $outputStockAfter = round($outputStockBefore + $actualQty, 4);
+                // Actualizar stock del producto elaborado y su costo en la tabla products
                 $outputProduct->updateQuietly([
                     'stock' => $outputStockAfter,
                     'unit_cost' => $unitCostCalculated,
@@ -285,10 +302,14 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                 $qtyToRemove = (float) ($lot?->quantity ?? $productionOrder->actual_quantity ?? 0);
 
                 if ($product && $qtyToRemove > 0) {
-                    $stockBefore = round((float) $product->stock, 4);
+                    $stockBefore = $this->resolveCurrentStock($product);
                     $stockAfter = max(0.0, round($stockBefore - $qtyToRemove, 4));
                     $product->updateQuietly(['stock' => $stockAfter]);
                     StockoutService::syncStockout($product, $stockAfter);
+
+                    if ($lot) {
+                        $lot->deleteQuietly();
+                    }
 
                     InventoryMovement::create([
                         'product_id' => $product->id,
@@ -301,9 +322,7 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                         'stock_after' => $stockAfter,
                         'movement_date' => Carbon::now(),
                     ]);
-                }
-
-                if ($lot) {
+                } elseif ($lot) {
                     $lot->deleteQuietly();
                 }
 
@@ -322,7 +341,7 @@ class ProductionOrderService implements ProductionOrderServiceInterface
                             continue;
                         }
 
-                        $ingStockBefore = round((float) $ingredient->stock, 4);
+                        $ingStockBefore = $this->resolveCurrentStock($ingredient);
                         $targetLot = ProductLot::where('product_id', $ingredient->id)
                             ->orderBy('expiration_date', 'desc')
                             ->orderBy('id', 'desc')
@@ -610,5 +629,17 @@ class ProductionOrderService implements ProductionOrderServiceInterface
 
             return $subRecipe->fresh(['ingredients', 'category', 'outputProduct']);
         });
+    }
+
+    /**
+     * Obtiene el stock real actual con 4 decimales desde los lotes si existen, evitando desfases por redondeo a 2 decimales de products.stock.
+     */
+    private function resolveCurrentStock(Product $product): float
+    {
+        if (ProductLot::where('product_id', $product->id)->exists()) {
+            return round((float) ProductLot::where('product_id', $product->id)->sum('quantity'), 4);
+        }
+
+        return round((float) $product->stock, 4);
     }
 }
