@@ -357,9 +357,8 @@ const handleClose = () => {
 <template>
   <VDialog
     v-model="isVisible"
-    max-width="500"
+    max-width="560"
     persistent
-    scrollable
     :fullscreen="$vuetify.display.xs"
     transition="dialog-bottom-transition"
     class="premium-dialog"
@@ -367,7 +366,7 @@ const handleClose = () => {
     <VCard class="detail-dialog-card rounded-xl border-0 shadow-xl overflow-hidden bg-surface d-flex flex-column" style="max-block-size: 92vh;">
       <!-- Cabecera Premium -->
       <VCardTitle class="pa-0 flex-shrink-0">
-        <div class="header-gradient pa-4 d-flex align-center shadow-sm">
+        <div class="header-gradient pa-3 pa-sm-4 d-flex align-center shadow-sm">
           <VAvatar
             color="white"
             variant="flat"
@@ -406,7 +405,8 @@ const handleClose = () => {
         </div>
       </VCardTitle>
       
-      <VCardText class="pa-3 pa-sm-4 bg-light d-flex flex-column gap-3 overflow-y-auto flex-grow-1">
+      <VCardText class="pa-3 bg-light overflow-y-auto flex-grow-1" style="min-block-size: 0;">
+        <div class="d-flex flex-column gap-2">
         <!-- Loader Cargando -->
         <div
           v-if="!countRecord || isLoading"
@@ -427,7 +427,7 @@ const handleClose = () => {
           <!-- 1. Perfil del Producto Estructurado (Jerarquía Limpia y Neutra) -->
           <VCard
             variant="flat"
-            class="pa-4 bg-white rounded-xl border shadow-sm d-flex flex-column gap-2"
+            class="pa-3 bg-white rounded-xl border shadow-sm d-flex flex-column gap-1"
           >
             <!-- Pastillas ID (Discreto/Gris) + Laboratorio/Marca -->
             <div class="d-flex align-center justify-space-between gap-2">
@@ -533,9 +533,9 @@ const handleClose = () => {
           <!-- 3. Auditoría de Existencias (Etiquetas y Tarjetas Integradas) -->
           <VCard
             variant="flat"
-            class="pa-4 bg-white rounded-xl border shadow-sm"
+            class="pa-3 bg-white rounded-xl border shadow-sm"
           >
-            <div class="d-flex align-center gap-2 mb-3">
+            <div class="d-flex align-center gap-2 mb-2">
               <div class="header-indicator primary shadow-sm" />
               <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Auditoría de Existencias</span>
             </div>
@@ -543,8 +543,8 @@ const handleClose = () => {
             <div class="d-flex justify-space-around align-center gap-2">
               <!-- Tarjeta Sistema -->
               <div class="d-flex flex-column align-center flex-1">
-                <div class="stock-box border bg-grey-50 rounded-xl pa-3 w-100 text-center">
-                  <span class="text-super-xs font-weight-black text-disabled text-uppercase d-block mb-1">
+                <div class="stock-box border bg-grey-50 rounded-xl pa-2 w-100 text-center">
+                  <span class="text-super-xs font-weight-black text-disabled text-uppercase d-block">
                     Sistema
                   </span>
                   <span class="text-h6 font-weight-black text-high-emphasis leading-tight">
@@ -566,11 +566,11 @@ const handleClose = () => {
               <!-- Tarjeta Operador -->
               <div class="d-flex flex-column align-center flex-1">
                 <div
-                  class="stock-box rounded-xl pa-3 w-100 text-center border"
+                  class="stock-box rounded-xl pa-2 w-100 text-center border"
                   :class="countRecord.discrepancy !== 0 ? 'bg-error-light border-error' : 'bg-grey-50'"
                 >
                   <span
-                    class="text-super-xs font-weight-black text-uppercase d-block mb-1"
+                    class="text-super-xs font-weight-black text-uppercase d-block"
                     :class="countRecord.discrepancy !== 0 ? 'text-error' : 'text-disabled'"
                   >
                     Operador
@@ -589,7 +589,7 @@ const handleClose = () => {
           <!-- 4. Conteo Definitivo (Input Evidente y Sólido) -->
           <VCard
             variant="flat"
-            class="pa-4 rounded-xl border bg-white shadow-sm"
+            class="pa-3 rounded-xl border bg-white shadow-sm"
           >
             <div class="d-flex align-center justify-space-between mb-2">
               <div class="d-flex align-center gap-2">
@@ -607,67 +607,71 @@ const handleClose = () => {
 
             <!-- Modo Dual (Restaurante / Consumo): Paquetes Completos + Contenido Abierto -->
             <template v-if="isDualCountMode">
-              <div class="d-flex flex-column gap-2 mt-1">
+              <VRow dense class="mt-0">
                 <!-- Paquetes completos -->
-                <div class="bg-grey-50 rounded-xl border pa-3">
-                  <div class="d-flex align-center gap-1 mb-1">
-                    <VIcon icon="tabler-package" size="16" color="primary" />
-                    <span class="text-xs font-weight-black text-primary uppercase">
-                      Paquetes completos ({{ productPresentation }} {{ productUnit }} c/u)
-                    </span>
+                <VCol cols="12" sm="6">
+                  <div class="bg-grey-50 rounded-xl border pa-2 h-100">
+                    <div class="d-flex align-center gap-1 mb-1">
+                      <VIcon icon="tabler-package" size="15" color="primary" />
+                      <span class="text-super-xs font-weight-black text-primary uppercase text-truncate">
+                        Paquetes ({{ productPresentation }} {{ productUnit }} c/u)
+                      </span>
+                    </div>
+                    <VTextField
+                      id="verify-packages-input"
+                      v-model.number="packagesCount"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                      variant="outlined"
+                      bg-color="white"
+                      class="conteo-definitivo-input font-weight-black"
+                      density="compact"
+                      hide-details
+                      :disabled="!isBarcodeValid"
+                      @keyup.enter="handleBarcodeEnter"
+                    />
                   </div>
-                  <VTextField
-                    id="verify-packages-input"
-                    v-model.number="packagesCount"
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="0"
-                    variant="outlined"
-                    bg-color="white"
-                    class="conteo-definitivo-input font-weight-black"
-                    density="comfortable"
-                    hide-details
-                    :disabled="!isBarcodeValid"
-                    @keyup.enter="handleBarcodeEnter"
-                  />
-                </div>
+                </VCol>
 
                 <!-- Contenido destapado / parcial -->
-                <div class="bg-grey-50 rounded-xl border pa-3">
-                  <div class="d-flex align-center gap-1 mb-1">
-                    <VIcon icon="tabler-box-seam" size="16" color="warning" />
-                    <span class="text-xs font-weight-black text-warning uppercase">
-                      Contenido destapado / parcial ({{ productUnit }})
-                    </span>
+                <VCol cols="12" sm="6">
+                  <div class="bg-grey-50 rounded-xl border pa-2 h-100">
+                    <div class="d-flex align-center gap-1 mb-1">
+                      <VIcon icon="tabler-box-seam" size="15" color="warning" />
+                      <span class="text-super-xs font-weight-black text-warning uppercase text-truncate">
+                        Abierto / parcial ({{ productUnit }})
+                      </span>
+                    </div>
+                    <VTextField
+                      id="verify-opened-input"
+                      v-model.number="openedQuantity"
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      variant="outlined"
+                      bg-color="white"
+                      class="conteo-definitivo-input font-weight-black"
+                      density="compact"
+                      hide-details
+                      :disabled="!isBarcodeValid"
+                      @keyup.enter="handleVerify"
+                    />
                   </div>
-                  <VTextField
-                    id="verify-opened-input"
-                    v-model.number="openedQuantity"
-                    type="number"
-                    min="0"
-                    step="any"
-                    placeholder="0"
-                    variant="outlined"
-                    bg-color="white"
-                    class="conteo-definitivo-input font-weight-black"
-                    density="comfortable"
-                    hide-details
-                    :disabled="!isBarcodeValid"
-                    @keyup.enter="handleVerify"
-                  />
-                </div>
+                </VCol>
+              </VRow>
 
-                <!-- Total calculado -->
-                <div
-                  v-if="packagesCount !== '' || openedQuantity !== ''"
-                  class="d-flex align-center justify-space-between rounded-xl pa-3 bg-primary-lighten-5 border mt-1"
-                >
-                  <span class="text-xs font-weight-black text-primary uppercase">Total calculado</span>
-                  <VChip size="small" color="primary" variant="flat" class="font-weight-black">
-                    {{ dualTotalQuantity }} {{ productUnit }} ({{ dualSystemQuantity }} und)
-                  </VChip>
-                </div>
+              <!-- Total calculado -->
+              <div
+                v-if="packagesCount !== '' || openedQuantity !== ''"
+                class="d-flex align-center justify-space-between rounded-xl pa-2 px-3 bg-primary-lighten-5 border mt-2"
+              >
+                <span class="text-xs font-weight-black text-primary uppercase">Total calculado</span>
+                <VChip size="small" color="primary" variant="flat" class="font-weight-black">
+                  {{ dualTotalQuantity }} {{ productUnit }} ({{ dualSystemQuantity }} und)
+                </VChip>
               </div>
             </template>
 
@@ -731,6 +735,7 @@ const handleClose = () => {
             {{ loadError }}
           </VAlert>
         </template>
+        </div>
       </VCardText>
 
       <VDivider />
