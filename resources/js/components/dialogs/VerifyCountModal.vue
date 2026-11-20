@@ -263,6 +263,24 @@ watch([packagesCount, openedQuantity], () => {
   }
 });
 
+const operatorCountedQuantity = computed(() => {
+  const r = props.countRecord;
+  if (!r) return 0;
+  return r.counted_quantity ?? ((Number(r.system_quantity) || 0) + (Number(r.discrepancy) || 0));
+});
+
+const formatAuditQuantity = (val) => {
+  const num = Number(val);
+  if (isNaN(num)) return "0";
+  if (isConsumptionMode.value) {
+    return new Intl.NumberFormat("es-CO", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 4,
+    }).format(num);
+  }
+  return formatNumber(num);
+};
+
 const differenceText = computed(() => {
   if (difference.value === null) return "";
   if (difference.value === 0) return "Stock Correcto";
@@ -548,7 +566,7 @@ const handleClose = () => {
                     Sistema
                   </span>
                   <span class="text-h6 font-weight-black text-high-emphasis leading-tight">
-                    {{ formatNumber(effectiveSystemStock) }}
+                    {{ formatAuditQuantity(effectiveSystemStock) }}
                   </span>
                 </div>
               </div>
@@ -579,7 +597,7 @@ const handleClose = () => {
                     class="text-h6 font-weight-black leading-tight"
                     :class="countRecord.discrepancy !== 0 ? 'text-error' : 'text-high-emphasis'"
                   >
-                    {{ formatNumber(countRecord.counted_quantity ?? ((countRecord.system_quantity || 0) + (countRecord.discrepancy || 0))) }}
+                    {{ formatAuditQuantity(operatorCountedQuantity) }}
                   </span>
                 </div>
               </div>
