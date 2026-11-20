@@ -76,6 +76,7 @@ class ProfitabilityServices implements Profitability
         $generalSettings = \Illuminate\Support\Facades\DB::table('general_settings')->first();
         $useCompound = $generalSettings && isset($generalSettings->profitability_calculation_type) && $generalSettings->profitability_calculation_type === 'compound';
         $roundUsdUp = $generalSettings && !empty($generalSettings->round_usd_up);
+        $precision = $this->getPricePrecision($generalSettings);
 
         $query = Product::query()
             ->whereDoesntHave('profitability')
@@ -89,7 +90,7 @@ class ProfitabilityServices implements Profitability
                 ]);
             } else {
                 $query->update([
-                    'sale_price' => \Illuminate\Support\Facades\DB::raw("ROUND(unit_cost * {$multiplier}, 2)")
+                    'sale_price' => \Illuminate\Support\Facades\DB::raw("ROUND(unit_cost * {$multiplier}, {$precision})")
                 ]);
             }
             return;
@@ -97,7 +98,7 @@ class ProfitabilityServices implements Profitability
 
         $settings = $this->consultOne();
 
-        $query->with('profitability')->chunkById(500, function ($products) use ($settings, $roundUsdUp) {
+        $query->with('profitability')->chunkById(500, function ($products) use ($settings, $generalSettings) {
             foreach ($products as $product) {
                 $productProfitability = $product->profitability;
                 $shippingCost = $productProfitability && $productProfitability->shipping_cost !== null ? (float)$productProfitability->shipping_cost : ($settings ? (float)$settings->shipping_cost : 0.0);
@@ -115,11 +116,7 @@ class ProfitabilityServices implements Profitability
 
                 $newPrice = ($costWithTax + $shippingCost + $packagingCost + $fixedExpenseAmount) / $profitDenominator;
 
-                if ($roundUsdUp) {
-                    $product->sale_price = ceil(round($newPrice, 4));
-                } else {
-                    $product->sale_price = round($newPrice, 2);
-                }
+                $product->sale_price = $this->roundSalePrice($newPrice, $generalSettings);
                 $product->save();
             }
         });
@@ -157,12 +154,30 @@ class ProfitabilityServices implements Profitability
             $newPrice = $product->unit_cost * (1 + ($percentage / 100));
         }
 
+        $product->sale_price = $this->roundSalePrice($newPrice, $generalSettings);
+        $product->save();
+    }
+
+    /**
+     * Determina la cantidad de decimales para precios USD según el tipo de negocio.
+     */
+    private function getPricePrecision(?object $generalSettings): int
+    {
+        $isRestaurant = $generalSettings && in_array($generalSettings->business_type ?? null, ['restaurant', 'fast_food'], true);
+
+        return $isRestaurant ? 4 : 2;
+    }
+
+    /**
+     * Redondea el precio de venta según configuración global y precisión del negocio.
+     */
+    private function roundSalePrice(float $newPrice, ?object $generalSettings): float
+    {
         $roundUsdUp = $generalSettings && !empty($generalSettings->round_usd_up);
         if ($roundUsdUp) {
-            $product->sale_price = ceil(round($newPrice, 4));
-        } else {
-            $product->sale_price = round($newPrice, 2);
+            return ceil(round($newPrice, 4));
         }
-        $product->save();
+
+        return round($newPrice, $this->getPricePrecision($generalSettings));
     }
 }

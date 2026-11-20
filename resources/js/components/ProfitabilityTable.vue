@@ -84,11 +84,12 @@ async function toggleLock(productId, percentage) {
 }
 
 const formatPrice = (price) => {
+  const decimals = brandingStore.isRestaurant ? 4 : 2;
   return new Intl.NumberFormat("es-US", {
     style: "currency",
     currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   }).format(price);
 };
 

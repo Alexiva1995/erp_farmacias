@@ -120,6 +120,7 @@ const editProductProfitability = (item) => {
     is_locked: item.profitability?.is_locked || 0,
     name: item.name,
     unit_cost: item.unit_cost,
+    sale_price: item.sale_price,
     shipping_cost: item.profitability?.shipping_cost,
     packaging_cost: item.profitability?.packaging_cost,
     expense_margin: item.profitability?.expense_margin,

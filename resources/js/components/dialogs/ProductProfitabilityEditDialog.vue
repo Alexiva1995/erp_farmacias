@@ -21,6 +21,8 @@ const taxUsa = ref(0);
 const loading = ref(false);
 
 const brandingStore = useBrandingStore();
+const isRestaurant = computed(() => brandingStore.isRestaurant);
+const priceDecimals = computed(() => (isRestaurant.value ? 4 : 2));
 const isMinimarket = computed(() => {
   return brandingStore.settings?.business_type === 'minimarket' || props.settings?.profitability_calculation_type === 'compound';
 });
@@ -28,17 +30,18 @@ const isMinimarket = computed(() => {
 const previewSalePrice = computed(() => {
   const cost = Number(props.product.unit_cost || 0);
   const roundUp = !!(brandingStore.settings?.round_usd_up || props.settings?.round_usd_up);
+  const decimals = priceDecimals.value;
   let price = 0;
   if (isMinimarket.value) {
     const costWithTax = cost * (1 + Number(taxUsa.value) / 100);
     const fixedExpenseAmount = costWithTax * (Number(expenseMargin.value) / 100);
     const profitDenominator = 1 - (Number(profitMargin.value) / 100);
-    if (profitDenominator <= 0) return "9999.99";
+    if (profitDenominator <= 0) return decimals === 4 ? "9999.9999" : "9999.99";
     price = (costWithTax + Number(shippingCost.value) + Number(packagingCost.value) + fixedExpenseAmount) / profitDenominator;
   } else {
     price = cost * (1 + Number(percentage.value) / 100);
   }
-  return roundUp ? Math.ceil(price).toFixed(2) : price.toFixed(2);
+  return roundUp ? Math.ceil(price).toFixed(decimals) : price.toFixed(decimals);
 });
 
 const quickPercentages = [15, 20, 25, 30, 35];
@@ -210,14 +213,14 @@ const checkExistenceAndSave = async () => {
             <div class="d-flex flex-column">
               <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">Costo Base</span>
               <span class="text-sm font-weight-bold text-high-emphasis">
-                ${{ Number(props.product.unit_cost || 0).toFixed(2) }} USD
+                ${{ Number(props.product.unit_cost || 0).toFixed(priceDecimals) }} USD
               </span>
             </div>
             <VDivider vertical class="mx-2" style="height: 32px;" />
             <div class="d-flex flex-column">
               <span class="text-super-xs font-weight-bold text-medium-emphasis uppercase">PVP Actual</span>
               <span class="text-sm font-weight-bold text-medium-emphasis">
-                ${{ Number(props.product.sale_price || 0).toFixed(2) }} USD
+                ${{ Number(props.product.sale_price || 0).toFixed(priceDecimals) }} USD
               </span>
             </div>
             <VDivider vertical class="mx-2" style="height: 32px;" />

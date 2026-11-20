@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Finance;
 
+use App\Models\GeneralSetting;
 use App\Models\Laboratory;
 use App\Models\Product;
 use App\Models\ProductProfitability;
@@ -160,5 +161,45 @@ class ProductProfitabilityTest extends TestCase
         $consultResponse->assertOk();
 
         $this->assertEquals(25.5, (float) $consultResponse->json('default_profitability_percentage'));
+    }
+
+    public function test_restaurant_profitability_preserves_four_decimal_places(): void
+    {
+        GeneralSetting::updateOrCreate(
+            ['id' => 1],
+            [
+                'business_type' => 'restaurant',
+                'round_usd_up' => false,
+                'profitability_calculation_type' => 'simple',
+            ]
+        );
+
+        $product = Product::create([
+            'name' => 'Agua 355ML',
+            'laboratory_id' => $this->laboratory->id,
+            'unit_cost' => 0.3125,
+            'sale_price' => 0.0000,
+            'stock' => 20,
+        ]);
+
+        // 0.3125 * 1.15 = 0.359375 -> redondeado a 4 decimales: 0.3594
+        $storeResponse = $this->postJson('/api/finances/profitability/product/store', [
+            'product_id' => $product->id,
+            'profitability_percentage' => 15.0,
+            'is_locked' => 1,
+        ]);
+
+        $storeResponse->assertOk();
+        $this->assertEquals(0.3594, (float) $product->fresh()->sale_price);
+
+        // Desbloquear y probar rentabilidad global a 4 decimales: 0.3125 * 1.25 = 0.390625 -> 0.3906
+        $product->profitability()->update(['is_locked' => 0]);
+
+        $globalResponse = $this->postJson('/api/finances/profitability/store', [
+            'default_profitability_percentage' => 25.0,
+        ]);
+
+        $globalResponse->assertOk();
+        $this->assertEquals(0.3906, (float) $product->fresh()->sale_price);
     }
 }
