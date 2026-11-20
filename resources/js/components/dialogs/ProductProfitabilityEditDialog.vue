@@ -13,6 +13,7 @@ const props = defineProps({
 const emit = defineEmits(["refresh", "close-modal", "productUpdated"]);
 
 const percentage = ref(0);
+const targetPrice = ref("0.00");
 const shippingCost = ref(0);
 const packagingCost = ref(0);
 const expenseMargin = ref(0);
@@ -23,6 +24,8 @@ const loading = ref(false);
 const brandingStore = useBrandingStore();
 const isRestaurant = computed(() => brandingStore.isRestaurant);
 const priceDecimals = computed(() => (isRestaurant.value ? 4 : 2));
+const priceStep = computed(() => (isRestaurant.value ? "0.0001" : "0.01"));
+const hasValidBaseCost = computed(() => Number(props.product.unit_cost || 0) > 0);
 const isMinimarket = computed(() => {
   return brandingStore.settings?.business_type === 'minimarket' || props.settings?.profitability_calculation_type === 'compound';
 });
@@ -49,10 +52,39 @@ const quickPercentages = [15, 20, 25, 30, 35];
 const adjustPercentage = (delta) => {
   const current = Number(percentage.value) || 0;
   percentage.value = Math.max(0, current + delta);
+  syncTargetPriceFromMargin();
 };
 
 const setQuickPercentage = (val) => {
   percentage.value = val;
+  syncTargetPriceFromMargin();
+};
+
+// Sincroniza el campo de PVP proyectado cuando cambia el margen manualmente
+const syncTargetPriceFromMargin = () => {
+  targetPrice.value = previewSalePrice.value;
+};
+
+// Calcula el margen equivalente cuando el usuario escribe un PVP proyectado deseado
+const handleTargetPriceChange = (val) => {
+  targetPrice.value = val;
+  const numericPrice = Number(val);
+  if (!Number.isFinite(numericPrice) || numericPrice < 0) return;
+
+  const cost = Number(props.product.unit_cost || 0);
+  if (isMinimarket.value) {
+    if (numericPrice <= 0) return;
+    const costWithTax = cost * (1 + Number(taxUsa.value) / 100);
+    const fixedExpenseAmount = costWithTax * (Number(expenseMargin.value) / 100);
+    const totalBase = costWithTax + Number(shippingCost.value) + Number(packagingCost.value) + fixedExpenseAmount;
+    const calculatedMargin = (1 - (totalBase / numericPrice)) * 100;
+    profitMargin.value = Math.max(0, Math.min(99.99, Number(calculatedMargin.toFixed(2))));
+    return;
+  }
+
+  if (cost <= 0) return;
+  const calculatedPercentage = ((numericPrice / cost) - 1) * 100;
+  percentage.value = Math.max(0, Math.min(999.99, Number(calculatedPercentage.toFixed(2))));
 };
 
 watch(
@@ -65,6 +97,7 @@ watch(
       expenseMargin.value = val.expense_margin || 0;
       profitMargin.value = val.profit_margin || 0;
       taxUsa.value = val.tax_usa || 0;
+      syncTargetPriceFromMargin();
     }
   },
   { immediate: true, deep: true }
@@ -233,6 +266,31 @@ const checkExistenceAndSave = async () => {
           </div>
         </VCard>
 
+        <!-- Precio de Venta Deseado (Cálculo inverso automático de margen) -->
+        <VCard variant="flat" class="pa-4 bg-surface rounded-lg border">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <span class="text-xs font-weight-bold text-disabled uppercase letter-spacing-1">
+              PVP Proyectado (Precio Deseado)
+            </span>
+          </div>
+          <VTextField
+            :model-value="targetPrice"
+            type="number"
+            prefix="$"
+            suffix="USD"
+            :step="priceStep"
+            min="0"
+            variant="outlined"
+            density="comfortable"
+            class="font-weight-bold"
+            :disabled="!isMinimarket && !hasValidBaseCost"
+            :hint="!isMinimarket && !hasValidBaseCost ? 'El costo base debe ser mayor a 0 para calcular el margen desde el precio.' : 'Ingresa el precio al que deseas vender para calcular el porcentaje automáticamente.'"
+            persistent-hint
+            @update:model-value="handleTargetPriceChange"
+            @keyup.enter="checkExistenceAndSave"
+          />
+        </VCard>
+
         <!-- Sección Minimarket (Campos Compuestos) -->
         <VCard
           v-if="isMinimarket"
@@ -253,6 +311,7 @@ const checkExistenceAndSave = async () => {
                 prepend-inner-icon="tabler-receipt-tax"
                 density="compact"
                 hide-details="auto"
+                @update:model-value="syncTargetPriceFromMargin"
               />
             </VCol>
             <VCol cols="12" sm="6">
@@ -264,6 +323,7 @@ const checkExistenceAndSave = async () => {
                 prepend-inner-icon="tabler-truck-delivery"
                 density="compact"
                 hide-details="auto"
+                @update:model-value="syncTargetPriceFromMargin"
               />
             </VCol>
             <VCol cols="12" sm="6">
@@ -275,6 +335,7 @@ const checkExistenceAndSave = async () => {
                 prepend-inner-icon="tabler-box"
                 density="compact"
                 hide-details="auto"
+                @update:model-value="syncTargetPriceFromMargin"
               />
             </VCol>
             <VCol cols="12" sm="6">
@@ -287,6 +348,7 @@ const checkExistenceAndSave = async () => {
                 prepend-inner-icon="tabler-percentage"
                 density="compact"
                 hide-details="auto"
+                @update:model-value="syncTargetPriceFromMargin"
               />
             </VCol>
             <VCol cols="12" sm="6">
@@ -299,6 +361,7 @@ const checkExistenceAndSave = async () => {
                 prepend-inner-icon="tabler-trending-up"
                 density="compact"
                 hide-details="auto"
+                @update:model-value="syncTargetPriceFromMargin"
               />
             </VCol>
           </VRow>
@@ -340,6 +403,7 @@ const checkExistenceAndSave = async () => {
               class="text-center font-weight-bold"
               hide-details
               autofocus
+              @update:model-value="syncTargetPriceFromMargin"
               @keyup.enter="checkExistenceAndSave"
             />
 
