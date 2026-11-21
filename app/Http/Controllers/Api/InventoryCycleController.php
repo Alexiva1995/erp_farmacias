@@ -1142,7 +1142,7 @@ class InventoryCycleController extends Controller
             $record = $modelClass::findOrFail($id);
             $result = $this->inventoryCycleActionService->updateExemption(
                 $record,
-                (int) $request->input('exempt_quantity', 0),
+                (float) $request->input('exempt_quantity', 0),
                 $request->input('exemption_reason')
             );
 

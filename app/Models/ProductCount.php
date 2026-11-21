@@ -30,7 +30,7 @@ class ProductCount extends Model
         'counted_quantity' => 'float',
         'system_quantity' => 'float',
         'discrepancy' => 'float',
-        'exempt_quantity' => 'integer',
+        'exempt_quantity' => 'float',
         'quota_tier' => 'integer',
         'points_earned' => 'float',
         'penalty_points' => 'integer',

@@ -30,7 +30,7 @@ class SaleCount extends Model
         'counted_quantity' => 'float',
         'system_quantity' => 'float',
         'discrepancy' => 'float',
-        'exempt_quantity' => 'integer',
+        'exempt_quantity' => 'float',
         'points_earned' => 'float',
         'penalty_points' => 'integer',
         'created_at' => 'datetime',
