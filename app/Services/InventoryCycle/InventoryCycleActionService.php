@@ -1447,10 +1447,12 @@ class InventoryCycleActionService
         return DB::transaction(function () use ($model, $exemptQuantity, $reason) {
             try {
                 $settings = \App\Models\GeneralSetting::first();
-                $isRestaurant = ($settings?->business_type === 'restaurant') || (bool) ($settings?->enable_dishes ?? false);
-                $exemptQuantity = $isRestaurant ? round((float) $exemptQuantity, 4) : (int) round((float) $exemptQuantity);
-
+                $isRestaurant = in_array($settings?->business_type, ['restaurant', 'fast_food'], true)
+                    || (bool) ($settings?->enable_dishes ?? false);
                 $maxExempt = abs((float) $model->discrepancy);
+                $hasDecimals = $isRestaurant || abs($maxExempt - round($maxExempt)) > 0.00001;
+                $exemptQuantity = $hasDecimals ? round((float) $exemptQuantity, 4) : (int) round((float) $exemptQuantity);
+
                 if ($exemptQuantity > $maxExempt) {
                     $exemptQuantity = $maxExempt;
                 }

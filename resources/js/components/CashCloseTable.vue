@@ -138,6 +138,14 @@ const saveEdit = async (item) => {
   }
 };
 
+const maxExemptionAllowed = computed(() => {
+  return parseFloat(Math.abs(Number(selectedItemForExemption.value?.discrepancy || 0)).toFixed(4));
+});
+
+const setFullExemption = () => {
+  exemptForm.quantity = maxExemptionAllowed.value;
+};
+
 const openExemptDialog = (item) => {
   selectedItemForExemption.value = item;
   const rawExempt = Number(item.exemptQuantity || 0);
@@ -157,12 +165,15 @@ const saveExemption = async () => {
   if (!selectedItemForExemption.value || isSavingExemption.value) return;
 
   const rawQty = Number(exemptForm.quantity || 0);
-  const finalExempt = isRestaurant.value ? parseFloat(rawQty.toFixed(4)) : Math.round(rawQty);
-  const maxExempt = Math.abs(Number(selectedItemForExemption.value.discrepancy || 0));
-  if (finalExempt < 0 || finalExempt > maxExempt) {
+  const maxExempt = maxExemptionAllowed.value;
+  const allowDecimals = isRestaurant.value || !Number.isInteger(maxExempt);
+  let finalExempt = allowDecimals ? parseFloat(rawQty.toFixed(4)) : Math.round(rawQty);
+
+  if (finalExempt < 0 || finalExempt > maxExempt + 0.0001) {
     toast.warning(`La cantidad exonerada debe estar entre 0 y ${formatQuantity(maxExempt)}.`);
     return;
   }
+  finalExempt = Math.min(finalExempt, maxExempt);
 
   isSavingExemption.value = true;
   try {
@@ -633,14 +644,25 @@ const handleDelete = (item) => {
         <!-- Formulario de Unidades y Motivo -->
         <VRow dense>
           <VCol cols="12">
+            <div class="d-flex align-center justify-end mb-1">
+              <VBtn
+                size="x-small"
+                variant="tonal"
+                color="primary"
+                prepend-icon="tabler-checks"
+                @click="setFullExemption"
+              >
+                Exonerar completo ({{ formatQuantity(maxExemptionAllowed) }})
+              </VBtn>
+            </div>
             <AppTextField
               v-model.number="exemptForm.quantity"
               type="number"
-              :step="isRestaurant ? '0.0001' : '1'"
+              :step="isRestaurant || !Number.isInteger(maxExemptionAllowed) ? '0.0001' : '1'"
               label="Unidades a exonerar"
               placeholder="0"
               min="0"
-              :max="Math.abs(selectedItemForExemption.discrepancy)"
+              :max="maxExemptionAllowed"
               density="compact"
               hint="Indica cuántas unidades no se cobrarán ni descontarán en dinero."
               persistent-hint
