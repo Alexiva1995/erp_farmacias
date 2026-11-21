@@ -369,4 +369,156 @@ class Phase1GastronomicCoreTest extends TestCase
         // Tocineta: Tenía 10 - (2 platos * 1 tocineta extra) = 8
         $this->assertEquals(8, (float) ProductLot::where('product_id', $ingredientTocineta->id)->sum('quantity'));
     }
+
+    public function test_order_cancellation_returns_dish_ingredients_and_creates_traceability_return_movements(): void
+    {
+        $ingredientCarne = Product::factory()->create([
+            'name' => 'Carne Retorno',
+            'unit_cost' => 2.0,
+            'presentation' => 1,
+            'unit_of_measure' => 'und',
+        ]);
+
+        $ingredientQueso = Product::factory()->create([
+            'name' => 'Queso Retorno',
+            'unit_cost' => 1.0,
+            'presentation' => 1,
+            'unit_of_measure' => 'und',
+        ]);
+
+        $ingredientTocineta = Product::factory()->create([
+            'name' => 'Tocineta Retorno',
+            'unit_cost' => 1.5,
+            'presentation' => 1,
+            'unit_of_measure' => 'und',
+        ]);
+
+        ProductLot::create([
+            'product_id' => $ingredientCarne->id,
+            'lot_number' => 'LOT-CARNE-RET',
+            'quantity' => 10,
+            'unit_cost' => 2.0,
+            'expiration_date' => now()->addDays(30),
+        ]);
+
+        ProductLot::create([
+            'product_id' => $ingredientQueso->id,
+            'lot_number' => 'LOT-QUESO-RET',
+            'quantity' => 10,
+            'unit_cost' => 1.0,
+            'expiration_date' => now()->addDays(30),
+        ]);
+
+        ProductLot::create([
+            'product_id' => $ingredientTocineta->id,
+            'lot_number' => 'LOT-TOCINETA-RET',
+            'quantity' => 10,
+            'unit_cost' => 1.5,
+            'expiration_date' => now()->addDays(30),
+        ]);
+
+        $dish = Dish::create([
+            'name' => 'Burger Cancelable',
+            'category_id' => $this->category->id,
+            'designated_price' => 10.00,
+            'cost_price' => 3.00,
+            'suggested_price' => 8.00,
+            'percentage_profit' => 1.5,
+            'status' => 1,
+            'iva' => false,
+        ]);
+
+        $dish->ingredients()->attach($ingredientCarne->id, ['portion' => 1.0, 'designated_cost' => 2.0]);
+        $dish->ingredients()->attach($ingredientQueso->id, ['portion' => 1.0, 'designated_cost' => 1.0]);
+
+        $cashClosing = \App\Models\CashClosing::create([
+            'seller_id' => $this->user->id,
+            'status' => \App\Models\CashClosing::OPEN,
+            'opening_date' => now(),
+        ]);
+
+        $order = Order::create([
+            'seller_id' => $this->user->id,
+            'cash_closing_id' => $cashClosing->id,
+            'currency' => 'USD',
+            'status' => Order::PENDING,
+            'total_amount' => 0,
+            'total_amount_usd' => 0,
+            'money_returns' => 0,
+        ]);
+
+        $actionService = app(OrderActionService::class);
+        $actionService->addUpdateOrderItems($order, [
+            'dish_id' => $dish->id,
+            'quantity' => 2,
+            'price_at_product' => 12.00,
+            'price_usd_unit' => 12.00,
+            'currency_at_order' => 'USD',
+            'modifiers' => [
+                [
+                    'name' => 'Sin Queso',
+                    'modifier_type' => 'remove',
+                    'product_id' => $ingredientQueso->id,
+                    'portion' => 0,
+                ],
+                [
+                    'name' => 'Extra Tocineta',
+                    'modifier_type' => 'add',
+                    'product_id' => $ingredientTocineta->id,
+                    'portion' => 1.0,
+                    'extra_price_usd' => 2.00,
+                ],
+            ],
+        ]);
+
+        $order->refresh();
+
+        $request = new \Illuminate\Http\Request();
+        $request->merge([
+            'payments' => [
+                [
+                    'method' => 'cash_usd',
+                    'amount' => $order->total_amount,
+                    'currency' => 'USD',
+                ],
+            ],
+        ]);
+
+        $actionService->complete($order, $request, $this->user->id);
+        $order->refresh();
+
+        $actionService->cancelledOrder($order);
+
+        // El stock debe volver a 10 en todos los ingredientes
+        $this->assertEquals(10, (float) ProductLot::where('product_id', $ingredientCarne->id)->sum('quantity'));
+        $this->assertEquals(10, (float) ProductLot::where('product_id', $ingredientQueso->id)->sum('quantity'));
+        $this->assertEquals(10, (float) ProductLot::where('product_id', $ingredientTocineta->id)->sum('quantity'));
+
+        // Deben existir movimientos de retorno en trazabilidad asociados al plato
+        $carneReturn = \App\Models\InventoryMovement::where('order_id', $order->id)
+            ->where('product_id', $ingredientCarne->id)
+            ->where('movement_type', 'return')
+            ->where('dish_id', $dish->id)
+            ->first();
+        $this->assertNotNull($carneReturn);
+        $this->assertEquals(2.0, (float) $carneReturn->quantity);
+        $this->assertEquals(8.0, (float) $carneReturn->stock_before);
+        $this->assertEquals(10.0, (float) $carneReturn->stock_after);
+
+        $tocinetaReturn = \App\Models\InventoryMovement::where('order_id', $order->id)
+            ->where('product_id', $ingredientTocineta->id)
+            ->where('movement_type', 'return')
+            ->where('dish_id', $dish->id)
+            ->first();
+        $this->assertNotNull($tocinetaReturn);
+        $this->assertEquals(2.0, (float) $tocinetaReturn->quantity);
+
+        // El ingrediente omitido (remove) no debe generar movimiento de retorno
+        $this->assertFalse(
+            \App\Models\InventoryMovement::where('order_id', $order->id)
+                ->where('product_id', $ingredientQueso->id)
+                ->where('movement_type', 'return')
+                ->exists()
+        );
+    }
 }

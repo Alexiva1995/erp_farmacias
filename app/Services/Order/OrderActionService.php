@@ -2334,71 +2334,20 @@ class OrderActionService
 
             if (!$alreadyReturned) {
                 foreach ($order->details as $item) {
-                    if (!$item->product_id) {
+                    if (!$item->product_id || $item->product_type === 'court') {
                         continue;
                     }
 
-                    $productLot = ProductLot::where('product_id', $item->product_id)
-                        ->where(function ($query) {
-                            $query->whereNull('expiration_date')
-                                ->orWhere('expiration_date', '>', Carbon::now());
-                        })
-                        ->orderBy('expiration_date', 'asc')
-                        ->orderBy('id', 'asc')
-                        ->first();
-
-                    // Si no hay un lote activo, buscar cualquier lote previo del producto sin restringir la fecha de vencimiento
-                    if (!$productLot) {
-                        $productLot = ProductLot::where('product_id', $item->product_id)
-                            ->orderBy('id', 'desc')
-                            ->first();
-                    }
-
-                    // Si el producto no posee ningún lote registrado en la base de datos, crear un lote genérico de devolución
-                    if (!$productLot) {
-                        $productLot = ProductLot::create([
-                            'product_id' => $item->product_id,
-                            'lot_number' => 'LOT-RETURN-' . $item->product_id,
-                            'quantity' => 0,
-                            'expiration_date' => Carbon::now()->addYears(2),
-                            'unit_cost' => $item->product?->cost_price ?? 0,
-                        ]);
-                    }
-
-                    $qty = (float) $item->quantity;
-                    $stockBefore = round((float) ProductLot::where('product_id', $item->product_id)->sum('quantity'), 4);
-                    $stockAfter = round($stockBefore + $qty, 4);
-                    
-                    // Activar bandera estática para que ProductLotObserver no cree un movimiento automático de 'AJUSTE'
-                    \App\Observers\ProductLotObserver::$isReturningLot = true;
-                    try {
-                        $productLot->increment('quantity', $qty);
-                    } finally {
-                        \App\Observers\ProductLotObserver::$isReturningLot = false;
-                    }
-                    
-                    // Sincronizar stock estático del producto
-                    $product = $item->product;
-                    if ($product) {
-                        $product->updateQuietly(['stock' => $stockAfter]);
-                        \App\Services\Inventory\StockoutService::syncStockout($product, $stockAfter);
-                    }
-
-                    // Crear el movimiento de inventario de tipo 'return' (devolución por cancelación) asociado a la orden
-                    \App\Models\InventoryMovement::create([
-                        'product_id' => $item->product_id,
-                        'product_lot_id' => $productLot->id,
-                        'movement_type' => 'return',
-                        'quantity' => $qty,
-                        'invoice_id' => null,
-                        'supplier_id' => null,
-                        'order_id' => $order->id,
-                        'user_id' => \Illuminate\Support\Facades\Auth::id() ?? $order->seller_id,
-                        'stock_before' => $stockBefore,
-                        'stock_after' => $stockAfter,
-                        'movement_date' => now(),
-                    ]);
+                    $this->returnProductQuantityToInventory(
+                        $order,
+                        (int) $item->product_id,
+                        (float) $item->quantity,
+                        $item->product
+                    );
                 }
+
+                // Devolver ingredientes consumidos por platos de restaurante y registrar su trazabilidad
+                $this->returnDishIngredientsToInventory($order);
 
                 // Descontar montos de los métodos de pago en el cierre de caja abierto
                 $paymentMethods = is_array($order->payment_methods) ? $order->payment_methods : (json_decode($order->payment_methods ?? '[]', true) ?: []);
@@ -2484,6 +2433,246 @@ class OrderActionService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Devuelve al inventario los ingredientes consumidos por platos de restaurante al cancelar una orden.
+     * Prioriza los movimientos de venta originales para revertir exactamente los mismos lotes y cantidades.
+     */
+    private function returnDishIngredientsToInventory(Order $order): void
+    {
+        $dishSaleMovements = \App\Models\InventoryMovement::where('order_id', $order->id)
+            ->where('movement_type', 'sale')
+            ->whereNotNull('dish_id')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        if ($dishSaleMovements->isNotEmpty()) {
+            $productsById = \App\Models\Product::whereIn(
+                'id',
+                $dishSaleMovements->pluck('product_id')->filter()->unique()->all()
+            )->get()->keyBy('id');
+
+            foreach ($dishSaleMovements as $saleMovement) {
+                $qty = abs((float) $saleMovement->quantity);
+                if ($qty <= 0 || !$saleMovement->product_id) {
+                    continue;
+                }
+
+                $this->returnProductQuantityToInventory(
+                    $order,
+                    (int) $saleMovement->product_id,
+                    $qty,
+                    $productsById->get($saleMovement->product_id),
+                    $saleMovement->product_lot_id ? (int) $saleMovement->product_lot_id : null,
+                    (int) $saleMovement->dish_id
+                );
+            }
+
+            return;
+        }
+
+        // Respaldo: si no existen movimientos de venta previos con dish_id, reconstruir consumo desde receta y modificadores
+        $dishDetails = $order->details->filter(
+            fn ($detail) => ($detail->product_type === 'dish' || !empty($detail->dish_id)) && !empty($detail->dish_id)
+        );
+
+        if ($dishDetails->isEmpty()) {
+            return;
+        }
+
+        $dishIds = $dishDetails->pluck('dish_id')->unique()->all();
+        $dishesById = \App\Models\Dish::with('ingredients')->whereIn('id', $dishIds)->get()->keyBy('id');
+        $dishDetails->loadMissing('modifiers.option.group');
+
+        foreach ($dishDetails as $detail) {
+            $dish = $dishesById->get($detail->dish_id);
+            if (!$dish) {
+                continue;
+            }
+
+            $effectiveIngredients = $this->resolveEffectiveDishIngredients($dish, $detail);
+            foreach ($effectiveIngredients as $ingData) {
+                $ingredient = $ingData['product'];
+                $portionToUse = (float) $ingData['portion'];
+                $presentation = (float) ($ingredient->presentation ?? 1) > 0 ? (float) $ingredient->presentation : 1.0;
+                $qty = round(($portionToUse * (float) $detail->quantity) / $presentation, 4);
+
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $this->returnProductQuantityToInventory(
+                    $order,
+                    (int) $ingredient->id,
+                    $qty,
+                    $ingredient,
+                    null,
+                    (int) $dish->id
+                );
+            }
+        }
+    }
+
+    /**
+     * Calcula los ingredientes efectivos de un detalle de plato considerando modificadores add, remove y substitute.
+     *
+     * @return array<int, array{product: \App\Models\Product, portion: float}>
+     */
+    private function resolveEffectiveDishIngredients(\App\Models\Dish $dish, OrderDetail $detail): array
+    {
+        $effectiveIngredients = [];
+        foreach ($dish->ingredients as $ingredient) {
+            $effectiveIngredients[$ingredient->id] = [
+                'product' => $ingredient,
+                'portion' => (float) ($ingredient->pivot->portion ?? 0),
+            ];
+        }
+
+        foreach ($detail->modifiers as $mod) {
+            if (!$mod->product_id) {
+                continue;
+            }
+
+            $mType = $mod->modifier_type instanceof \App\Enums\ModifierTypeEnum
+                ? $mod->modifier_type->value
+                : (string) $mod->modifier_type;
+            $baseProductId = $mod->base_product_id ?? ($mod->option?->group?->base_product_id ?? null);
+            $modPortion = (float) $mod->portion;
+
+            if ($mType === 'substitute' || (!empty($baseProductId) && isset($effectiveIngredients[$baseProductId]))) {
+                $recipeBasePortion = isset($effectiveIngredients[$baseProductId])
+                    ? $effectiveIngredients[$baseProductId]['portion']
+                    : 0.0;
+                $portionToUse = $modPortion > 0 ? $modPortion : $recipeBasePortion;
+
+                if (isset($effectiveIngredients[$baseProductId])) {
+                    $effectiveIngredients[$baseProductId]['portion'] = max(0.0, $effectiveIngredients[$baseProductId]['portion'] - $portionToUse);
+                    if ($effectiveIngredients[$baseProductId]['portion'] <= 0) {
+                        unset($effectiveIngredients[$baseProductId]);
+                    }
+                }
+
+                if (isset($effectiveIngredients[$mod->product_id])) {
+                    $effectiveIngredients[$mod->product_id]['portion'] += $portionToUse;
+                } else {
+                    $pObj = \App\Models\Product::find($mod->product_id);
+                    if ($pObj) {
+                        $effectiveIngredients[$mod->product_id] = [
+                            'product' => $pObj,
+                            'portion' => $portionToUse,
+                        ];
+                    }
+                }
+            } elseif ($mType === 'remove') {
+                if (isset($effectiveIngredients[$mod->product_id])) {
+                    if ($modPortion <= 0) {
+                        unset($effectiveIngredients[$mod->product_id]);
+                    } else {
+                        $effectiveIngredients[$mod->product_id]['portion'] = max(0.0, $effectiveIngredients[$mod->product_id]['portion'] - $modPortion);
+                        if ($effectiveIngredients[$mod->product_id]['portion'] <= 0) {
+                            unset($effectiveIngredients[$mod->product_id]);
+                        }
+                    }
+                }
+            } elseif ($mType === 'add') {
+                if (isset($effectiveIngredients[$mod->product_id])) {
+                    $effectiveIngredients[$mod->product_id]['portion'] += $modPortion;
+                } else {
+                    $pObj = \App\Models\Product::find($mod->product_id);
+                    if ($pObj) {
+                        $effectiveIngredients[$mod->product_id] = [
+                            'product' => $pObj,
+                            'portion' => $modPortion,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $effectiveIngredients;
+    }
+
+    /**
+     * Incrementa el lote correspondiente del producto y registra el movimiento de retorno en trazabilidad.
+     */
+    private function returnProductQuantityToInventory(
+        Order $order,
+        int $productId,
+        float $qty,
+        ?\App\Models\Product $product = null,
+        ?int $preferredLotId = null,
+        ?int $dishId = null
+    ): void {
+        if ($qty <= 0) {
+            return;
+        }
+
+        $product = $product ?? \App\Models\Product::find($productId);
+
+        $productLot = $preferredLotId ? ProductLot::find($preferredLotId) : null;
+
+        if (!$productLot) {
+            $productLot = ProductLot::where('product_id', $productId)
+                ->where(function ($query) {
+                    $query->whereNull('expiration_date')
+                        ->orWhere('expiration_date', '>', Carbon::now());
+                })
+                ->orderBy('expiration_date', 'asc')
+                ->orderBy('id', 'asc')
+                ->first();
+        }
+
+        // Si no hay un lote activo, buscar cualquier lote previo del producto sin restringir la fecha de vencimiento
+        if (!$productLot) {
+            $productLot = ProductLot::where('product_id', $productId)
+                ->orderBy('id', 'desc')
+                ->first();
+        }
+
+        // Si el producto no posee ningún lote registrado en la base de datos, crear un lote genérico de devolución
+        if (!$productLot) {
+            $productLot = ProductLot::create([
+                'product_id' => $productId,
+                'lot_number' => 'LOT-RETURN-' . $productId,
+                'quantity' => 0,
+                'expiration_date' => Carbon::now()->addYears(2),
+                'unit_cost' => $product?->cost_price ?? 0,
+            ]);
+        }
+
+        $stockBefore = round((float) ProductLot::where('product_id', $productId)->sum('quantity'), 4);
+        $stockAfter = round($stockBefore + $qty, 4);
+
+        // Activar bandera estática para que ProductLotObserver no cree un movimiento automático de 'AJUSTE'
+        \App\Observers\ProductLotObserver::$isReturningLot = true;
+        try {
+            $productLot->increment('quantity', $qty);
+        } finally {
+            \App\Observers\ProductLotObserver::$isReturningLot = false;
+        }
+
+        // Sincronizar stock estático del producto
+        if ($product) {
+            $product->updateQuietly(['stock' => $stockAfter]);
+            \App\Services\Inventory\StockoutService::syncStockout($product, $stockAfter);
+        }
+
+        // Crear el movimiento de inventario de tipo 'return' (devolución por cancelación) asociado a la orden
+        \App\Models\InventoryMovement::create([
+            'product_id' => $productId,
+            'product_lot_id' => $productLot->id,
+            'movement_type' => 'return',
+            'quantity' => $qty,
+            'invoice_id' => null,
+            'supplier_id' => null,
+            'order_id' => $order->id,
+            'dish_id' => $dishId,
+            'user_id' => \Illuminate\Support\Facades\Auth::id() ?? $order->seller_id,
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'movement_date' => now(),
+        ]);
     }
 
     /**
