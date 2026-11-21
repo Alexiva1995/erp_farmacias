@@ -380,13 +380,25 @@ class InventoryCycleQueryService
                     ->orderBy('products.id', $orderBy);
 
             default:
+                $sql = $query->toSql();
+                // Priorizar productos que volvieron a venderse o llegar en factura tras un conteo previo en el ciclo
+                if (str_contains($sql, 'is_priority')) {
+                    $query->orderByDesc('is_priority');
+                }
+
                 // Si existe la columna virtual latest_sale_date, ordenar por ella por defecto
-                if (str_contains($query->toSql(), 'latest_sale_date')) {
+                if (str_contains($sql, 'latest_sale_date')) {
                     return $query->orderBy('latest_sale_date', $orderBy);
                 }
 
+                // Si existe la columna virtual latest_invoice_date, ordenar las llegadas más recientes primero
+                if (str_contains($sql, 'latest_invoice_date')) {
+                    return $query->orderByDesc('latest_invoice_date');
+                }
+
                 $settings = \App\Models\GeneralSetting::first();
-                $isRestaurant = ($settings?->business_type === 'restaurant') || (bool) ($settings?->enable_dishes ?? false);
+                $isRestaurant = in_array($settings?->business_type, ['restaurant', 'fast_food'], true)
+                    || (bool) ($settings?->enable_dishes ?? false);
 
                 // En restaurante, priorizar SIEMPRE la clasificación ABC (mayor valor inmovilizado y mayor rotación primero)
                 if ($isRestaurant) {
@@ -457,12 +469,58 @@ class InventoryCycleQueryService
     {
         $query = $this->getProductsBaseQuery();
 
-        $activeCycleId = InventoryCycle::where('status', 'active')->value('id');
+        $activeCycle = InventoryCycle::where('status', 'active')->first();
 
-        if ($activeCycleId) {
-            $query->whereDoesntHave('productCounts', function (Builder $subQuery) use ($activeCycleId) {
-                $subQuery->where('cycle_id', $activeCycleId);
-            });
+        if ($activeCycle) {
+            $activeCycleId = $activeCycle->id;
+            $afterCycleStart = Carbon::parse($activeCycle->start_date)->addSecond();
+
+            // Evitar conteos pendientes duplicados simultáneos en cualquiera de las 3 colas
+            $this->excludePendingCountsInCycle($query, $activeCycleId);
+
+            $settings = \App\Models\GeneralSetting::first();
+            $isRestaurant = in_array($settings?->business_type, ['restaurant', 'fast_food'], true)
+                || (bool) ($settings?->enable_dishes ?? false);
+
+            if ($isRestaurant) {
+                // En restaurante: si ya fue contado en normal, factura o venta en este ciclo, desaparece del conteo normal
+                $this->excludeAnyCountInCycle($query, $activeCycleId);
+            } else {
+                // En farmacia: desaparece si ya fue contado en cualquiera de las 3 colas,
+                // salvo que se haya vuelto a vender o haya vuelto a llegar en factura después de su último conteo (con prioridad)
+                $query->selectRaw(
+                    '(CASE WHEN (
+                        EXISTS (SELECT 1 FROM product_counts pc_p WHERE pc_p.product_id = products.id AND pc_p.cycle_id = ?)
+                        OR EXISTS (SELECT 1 FROM invoices_counts ic_p WHERE ic_p.product_id = products.id AND ic_p.cycle_id = ?)
+                        OR EXISTS (SELECT 1 FROM sales_counts sc_p WHERE sc_p.product_id = products.id AND sc_p.cycle_id = ?)
+                    ) THEN 1 ELSE 0 END) as is_priority',
+                    [$activeCycleId, $activeCycleId, $activeCycleId]
+                );
+
+                $query->where(function (Builder $outer) use ($activeCycleId, $afterCycleStart) {
+                    $outer->where(function (Builder $neverCounted) use ($activeCycleId) {
+                        $this->excludeAnyCountInCycle($neverCounted, $activeCycleId);
+                    })
+                    ->orWhereExists(function ($saleSub) use ($activeCycleId, $afterCycleStart) {
+                        $saleSub->select(DB::raw(1))
+                            ->from('order_details')
+                            ->join('orders', 'order_details.order_id', '=', 'orders.id')
+                            ->whereColumn('order_details.product_id', 'products.id')
+                            ->where('orders.status', 'completed')
+                            ->where('orders.order_date', '>', $afterCycleStart);
+                        $this->excludeCountsAfterTimestamp($saleSub, $activeCycleId, 'orders.order_date');
+                    })
+                    ->orWhereExists(function ($invSub) use ($activeCycleId, $afterCycleStart) {
+                        $invSub->select(DB::raw(1))
+                            ->from('invoice_details')
+                            ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
+                            ->whereColumn('invoice_details.product_id', 'products.id')
+                            ->where('invoices.status', 'ordered')
+                            ->where('invoices.created_at', '>', $afterCycleStart);
+                        $this->excludeCountsAfterTimestamp($invSub, $activeCycleId, 'invoices.created_at');
+                    });
+                });
+            }
         }
 
         $filters = [
@@ -479,6 +537,81 @@ class InventoryCycleQueryService
         $query = $this->applySortingToProducts($query, $request->input('sortBy'), $request->input('orderBy', 'asc'));
 
         return $query;
+    }
+
+    /**
+     * Excluye productos que ya tienen un conteo en estado pending en el ciclo activo (en cualquiera de las 3 tablas).
+     */
+    private function excludePendingCountsInCycle(Builder $query, int $activeCycleId): void
+    {
+        $query->whereNotExists(function ($sub) use ($activeCycleId) {
+            $sub->select(DB::raw(1))
+                ->from('product_counts')
+                ->whereColumn('product_counts.product_id', 'products.id')
+                ->where('product_counts.cycle_id', $activeCycleId)
+                ->where('product_counts.status', 'pending');
+        })->whereNotExists(function ($sub) use ($activeCycleId) {
+            $sub->select(DB::raw(1))
+                ->from('invoices_counts')
+                ->whereColumn('invoices_counts.product_id', 'products.id')
+                ->where('invoices_counts.cycle_id', $activeCycleId)
+                ->where('invoices_counts.status', 'pending');
+        })->whereNotExists(function ($sub) use ($activeCycleId) {
+            $sub->select(DB::raw(1))
+                ->from('sales_counts')
+                ->whereColumn('sales_counts.product_id', 'products.id')
+                ->where('sales_counts.cycle_id', $activeCycleId)
+                ->where('sales_counts.status', 'pending');
+        });
+    }
+
+    /**
+     * Excluye productos que ya tienen cualquier conteo (normal, factura o venta) en el ciclo activo.
+     */
+    private function excludeAnyCountInCycle(Builder $query, int $activeCycleId): void
+    {
+        $query->whereNotExists(function ($sub) use ($activeCycleId) {
+            $sub->select(DB::raw(1))
+                ->from('product_counts')
+                ->whereColumn('product_counts.product_id', 'products.id')
+                ->where('product_counts.cycle_id', $activeCycleId);
+        })->whereNotExists(function ($sub) use ($activeCycleId) {
+            $sub->select(DB::raw(1))
+                ->from('invoices_counts')
+                ->whereColumn('invoices_counts.product_id', 'products.id')
+                ->where('invoices_counts.cycle_id', $activeCycleId);
+        })->whereNotExists(function ($sub) use ($activeCycleId) {
+            $sub->select(DB::raw(1))
+                ->from('sales_counts')
+                ->whereColumn('sales_counts.product_id', 'products.id')
+                ->where('sales_counts.cycle_id', $activeCycleId);
+        });
+    }
+
+    /**
+     * Verifica que no exista un conteo (normal, factura o venta) posterior a la columna de fecha indicada.
+     */
+    private function excludeCountsAfterTimestamp($subQuery, int $activeCycleId, string $timestampExpr): void
+    {
+        $subQuery->whereNotExists(function ($countSub) use ($activeCycleId, $timestampExpr) {
+            $countSub->select(DB::raw(1))
+                ->from('sales_counts')
+                ->whereColumn('sales_counts.product_id', 'products.id')
+                ->where('sales_counts.cycle_id', $activeCycleId)
+                ->whereRaw("sales_counts.created_at >= {$timestampExpr}");
+        })->whereNotExists(function ($countSub) use ($activeCycleId, $timestampExpr) {
+            $countSub->select(DB::raw(1))
+                ->from('product_counts')
+                ->whereColumn('product_counts.product_id', 'products.id')
+                ->where('product_counts.cycle_id', $activeCycleId)
+                ->whereRaw("product_counts.created_at >= {$timestampExpr}");
+        })->whereNotExists(function ($countSub) use ($activeCycleId, $timestampExpr) {
+            $countSub->select(DB::raw(1))
+                ->from('invoices_counts')
+                ->whereColumn('invoices_counts.product_id', 'products.id')
+                ->where('invoices_counts.cycle_id', $activeCycleId)
+                ->whereRaw("invoices_counts.created_at >= {$timestampExpr}");
+        });
     }
 
     public function getCountStatisticsByUser(int $userId): array
@@ -550,8 +683,12 @@ class InventoryCycleQueryService
         $activeCycleId  = $activeCycle->id;
         $afterCycleStart = Carbon::parse($activeCycle->start_date)->addSecond();
 
+        // Evitar duplicar conteos mientras el producto ya tiene un conteo pending sin aprobar
+        $this->excludePendingCountsInCycle($query, $activeCycleId);
+
         $settings = \App\Models\GeneralSetting::first();
-        $isRestaurant = ($settings?->business_type === 'restaurant') || (bool) ($settings?->enable_dishes ?? false);
+        $isRestaurant = in_array($settings?->business_type, ['restaurant', 'fast_food'], true)
+            || (bool) ($settings?->enable_dishes ?? false);
 
         if ($isRestaurant) {
             // En restaurante, auditar insumos y recetas consumidas por platos o ventas directas
@@ -574,16 +711,25 @@ class InventoryCycleQueryService
                     ->where(function ($dateQ) use ($afterCycleStart) {
                         $dateQ->where('inventory_movements.created_at', '>', $afterCycleStart)
                             ->orWhere('inventory_movements.movement_date', '>', $afterCycleStart);
-                    })
-                    ->whereNotExists(function ($countSub) use ($activeCycleId) {
-                        $countSub->select(DB::raw(1))
-                            ->from('sales_counts')
-                            ->whereColumn('sales_counts.product_id', 'products.id')
-                            ->where('sales_counts.cycle_id', $activeCycleId)
-                            ->whereRaw('sales_counts.created_at >= COALESCE(inventory_movements.movement_date, inventory_movements.created_at)');
                     });
+
+                $this->excludeCountsAfterTimestamp(
+                    $sub,
+                    $activeCycleId,
+                    'COALESCE(inventory_movements.movement_date, inventory_movements.created_at)'
+                );
             });
         } else {
+            // En farmacia, marcar con prioridad si el producto ya fue contado en el ciclo y volvió a venderse
+            $query->selectRaw(
+                '(CASE WHEN (
+                    EXISTS (SELECT 1 FROM product_counts pc_p WHERE pc_p.product_id = products.id AND pc_p.cycle_id = ?)
+                    OR EXISTS (SELECT 1 FROM invoices_counts ic_p WHERE ic_p.product_id = products.id AND ic_p.cycle_id = ?)
+                    OR EXISTS (SELECT 1 FROM sales_counts sc_p WHERE sc_p.product_id = products.id AND sc_p.cycle_id = ?)
+                ) THEN 1 ELSE 0 END) as is_priority',
+                [$activeCycleId, $activeCycleId, $activeCycleId]
+            );
+
             $query->addSelect([
                 'latest_sale_date' => DB::table('order_details')
                     ->join('orders', 'order_details.order_id', '=', 'orders.id')
@@ -601,14 +747,8 @@ class InventoryCycleQueryService
                     ->where('orders.status', 'completed')
                     ->where('orders.order_date', '>', $afterCycleStart);
 
-                // Solo mostrar si no hay un conteo posterior a esta venta en el ciclo actual
-                $sub->whereNotExists(function ($countSub) use ($activeCycleId) {
-                    $countSub->select(DB::raw(1))
-                        ->from('sales_counts')
-                        ->whereColumn('sales_counts.product_id', 'products.id')
-                        ->where('sales_counts.cycle_id', $activeCycleId)
-                        ->whereRaw('sales_counts.created_at >= orders.order_date');
-                });
+                // Solo mostrar si no hay ningún conteo (venta, normal o factura) posterior a esta venta en el ciclo actual
+                $this->excludeCountsAfterTimestamp($sub, $activeCycleId, 'orders.order_date');
             });
         }
 
@@ -639,6 +779,25 @@ class InventoryCycleQueryService
         $activeCycleId   = $activeCycle->id;
         $afterCycleStart = Carbon::parse($activeCycle->start_date)->addSecond();
 
+        // Evitar duplicar conteos mientras el producto ya tiene un conteo pending sin aprobar
+        $this->excludePendingCountsInCycle($query, $activeCycleId);
+
+        $settings = \App\Models\GeneralSetting::first();
+        $isRestaurant = in_array($settings?->business_type, ['restaurant', 'fast_food'], true)
+            || (bool) ($settings?->enable_dishes ?? false);
+
+        if (!$isRestaurant) {
+            // En farmacia, marcar con prioridad si el producto ya fue contado en el ciclo y volvió a llegar en factura
+            $query->selectRaw(
+                '(CASE WHEN (
+                    EXISTS (SELECT 1 FROM product_counts pc_p WHERE pc_p.product_id = products.id AND pc_p.cycle_id = ?)
+                    OR EXISTS (SELECT 1 FROM invoices_counts ic_p WHERE ic_p.product_id = products.id AND ic_p.cycle_id = ?)
+                    OR EXISTS (SELECT 1 FROM sales_counts sc_p WHERE sc_p.product_id = products.id AND sc_p.cycle_id = ?)
+                ) THEN 1 ELSE 0 END) as is_priority',
+                [$activeCycleId, $activeCycleId, $activeCycleId]
+            );
+        }
+
         $query->addSelect([
             'latest_invoice_date' => DB::table('invoice_details')
                 ->join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
@@ -656,22 +815,8 @@ class InventoryCycleQueryService
                 ->where('invoices.status', 'ordered')
                 ->where('invoices.created_at', '>', $afterCycleStart);
 
-            // Solo mostrar si no hay un conteo de factura ni conteo cíclico posterior a la fecha de ingreso de la factura en el ciclo actual
-            $sub->whereNotExists(function ($countSub) use ($activeCycleId) {
-                $countSub->select(DB::raw(1))
-                    ->from('invoices_counts')
-                    ->whereColumn('invoices_counts.product_id', 'products.id')
-                    ->where('invoices_counts.cycle_id', $activeCycleId)
-                    ->whereRaw('invoices_counts.created_at >= invoices.created_at');
-            });
-
-            $sub->whereNotExists(function ($prodCountSub) use ($activeCycleId) {
-                $prodCountSub->select(DB::raw(1))
-                    ->from('product_counts')
-                    ->whereColumn('product_counts.product_id', 'products.id')
-                    ->where('product_counts.cycle_id', $activeCycleId)
-                    ->whereRaw('product_counts.created_at >= invoices.created_at');
-            });
+            // Solo mostrar si no hay ningún conteo (factura, normal o venta) posterior a la fecha de ingreso de la factura
+            $this->excludeCountsAfterTimestamp($sub, $activeCycleId, 'invoices.created_at');
         });
 
         $filters = [

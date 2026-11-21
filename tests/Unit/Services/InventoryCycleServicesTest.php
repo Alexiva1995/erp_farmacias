@@ -312,4 +312,77 @@ class InventoryCycleServicesTest extends TestCase
         $this->assertTrue($forcedClose['success']);
         $this->assertFalse($this->actionService->hasActiveCycle());
     }
+
+    public function test_cross_queue_deduplication_and_pharmacy_priority_on_resale(): void
+    {
+        $env = $this->seedCycleEnvironment();
+        $productA = $env['product'];
+        $productB = Product::create([
+            'name' => 'A - Producto Normal Sin Conteo',
+            'laboratory_id' => $productA->laboratory_id,
+            'origin_id' => $productA->origin_id,
+            'barcode' => '7590000000999',
+            'unit_cost' => 3.00,
+            'sale_price' => 5.00,
+            'stock' => 10,
+        ]);
+
+        $this->actingAs($env['supervisorUser']);
+        $cycle = InventoryCycle::create([
+            'status' => 'active',
+            'start_date' => now()->subHour(),
+            'user_id' => $env['supervisorUser']->id,
+        ]);
+
+        // 1. Contar productA por Venta (aprobado) -> debe desaparecer del Conteo Normal
+        $saleCount = SaleCount::create([
+            'cycle_id' => $cycle->id,
+            'product_id' => $productA->id,
+            'user_id' => $env['counterUser']->id,
+            'supervisor_id' => $env['supervisorUser']->id,
+            'system_quantity' => 20,
+            'counted_quantity' => 20,
+            'discrepancy' => 0,
+            'status' => 'approved',
+            'type' => 'sale',
+        ]);
+        \Illuminate\Support\Facades\DB::table('sales_counts')
+            ->where('id', $saleCount->id)
+            ->update(['created_at' => now()->subMinutes(10)]);
+
+        // En restaurante: desaparece del conteo normal
+        GeneralSetting::query()->update(['business_type' => 'restaurant']);
+        $restIds = $this->queryService->getProductsFilteredQuery(new Request())->pluck('products.id')->all();
+        $this->assertNotContains($productA->id, $restIds);
+        $this->assertContains($productB->id, $restIds);
+
+        // En farmacia: sin nueva venta ni factura posterior, también desaparece del conteo normal
+        GeneralSetting::query()->update(['business_type' => 'pharmacy', 'enable_dishes' => false]);
+        $pharmIdsBefore = $this->queryService->getProductsFilteredQuery(new Request())->pluck('products.id')->all();
+        $this->assertNotContains($productA->id, $pharmIdsBefore);
+        $this->assertContains($productB->id, $pharmIdsBefore);
+
+        // 2. Si en farmacia productA se vuelve a vender después del conteo, vuelve a aparecer y CON PRIORIDAD (primero)
+        $order = \App\Models\Order::create([
+            'user_id' => $env['counterUser']->id,
+            'status' => 'completed',
+            'order_date' => now()->subMinute(),
+            'total_amount' => 10.00,
+            'money_returns' => 0.00,
+            'currency' => 'USD',
+        ]);
+        \App\Models\OrderDetail::create([
+            'order_id' => $order->id,
+            'product_id' => $productA->id,
+            'product_type' => 'product',
+            'quantity' => 1,
+            'price' => 10.00,
+            'unit_cost' => 5.00,
+            'unit_price_usd' => 10.00,
+        ]);
+
+        $pharmListAfter = $this->queryService->getProductsFilteredQuery(new Request())->get();
+        $this->assertEquals($productA->id, $pharmListAfter->first()->id);
+        $this->assertEquals(1, (int) $pharmListAfter->first()->is_priority);
+    }
 }
