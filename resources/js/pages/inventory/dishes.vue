@@ -142,6 +142,24 @@ const formErrors = ref({});
 const isSaving = ref(false);
 const isRecalculating = ref(false);
 const isDuplicatedDish = ref(false);
+const dishPhotoFile = ref(null);
+const dishPhotoPreview = ref(null);
+const removeDishPhoto = ref(false);
+
+const onDishPhotoSelected = (files) => {
+  const file = Array.isArray(files) ? files[0] : files;
+  dishPhotoFile.value = file || null;
+  if (file instanceof File) {
+    removeDishPhoto.value = false;
+    dishPhotoPreview.value = URL.createObjectURL(file);
+  }
+};
+
+const clearDishPhoto = () => {
+  dishPhotoFile.value = null;
+  dishPhotoPreview.value = null;
+  removeDishPhoto.value = true;
+};
 
 // Valor editable de Precio Menú (Venta) formateado como el campo adyacente
 const inputDesignatedPrice = ref("0");
@@ -553,6 +571,9 @@ const handleAddDish = () => {
     ingredients: [],
   };
   dishStatus.value = 1;
+  dishPhotoFile.value = null;
+  dishPhotoPreview.value = null;
+  removeDishPhoto.value = false;
   formErrors.value = {};
   syncInputPriceFromModel();
   isEditDialogVisible.value = true;
@@ -603,6 +624,9 @@ const handleEditDish = async (dish) => {
       }),
     };
     dishStatus.value = details.status;
+    dishPhotoFile.value = null;
+    dishPhotoPreview.value = details.photo_url || null;
+    removeDishPhoto.value = false;
     formErrors.value = {};
     recalculateDishTotals();
     syncInputPriceFromModel();
@@ -659,6 +683,9 @@ const handleDuplicateDish = async (dish) => {
       }),
     };
     dishStatus.value = details.status;
+    dishPhotoFile.value = null;
+    dishPhotoPreview.value = details.photo_url || null;
+    removeDishPhoto.value = false;
     formErrors.value = {};
     recalculateDishTotals();
     syncInputPriceFromModel();
@@ -683,10 +710,39 @@ const handleSaveDish = async () => {
 
   const isNew = !currentDish.value.id;
   const url = isNew ? "/dishes" : `/dishes/${currentDish.value.id}`;
-  const method = isNew ? "post" : "put";
+  const hasPhotoChange = Boolean(dishPhotoFile.value) || removeDishPhoto.value;
 
   try {
-    await axios[method](url, currentDish.value);
+    if (hasPhotoChange) {
+      const formData = new FormData();
+      if (!isNew) formData.append("_method", "PUT");
+
+      Object.entries(currentDish.value).forEach(([key, val]) => {
+        if (val === undefined) return;
+        if (key === "ingredients" || key === "modifier_group_ids") {
+          formData.append(key, JSON.stringify(val || []));
+        } else if (typeof val === "boolean") {
+          formData.append(key, val ? "1" : "0");
+        } else if (val !== null) {
+          formData.append(key, String(val));
+        }
+      });
+
+      if (dishPhotoFile.value instanceof File) {
+        formData.append("photo", dishPhotoFile.value);
+      }
+      if (removeDishPhoto.value) {
+        formData.append("remove_photo", "1");
+      }
+
+      await axios.post(url, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    } else {
+      const method = isNew ? "post" : "put";
+      await axios[method](url, currentDish.value);
+    }
+
     toast.success(`Plato ${isNew ? "creado" : "actualizado"} con éxito.`);
     isEditDialogVisible.value = false;
     fetchDishes();
@@ -958,7 +1014,13 @@ onUnmounted(() => {
           </template>
 
           <template #item.name="{ item }">
-            <span class="font-weight-bold text-high-emphasis uppercase text-xs">{{ item.name }}</span>
+            <div class="d-flex align-center gap-2 py-1">
+              <VAvatar size="36" rounded="lg" color="primary" variant="tonal">
+                <VImg v-if="item.photo_url" :src="item.photo_url" cover />
+                <VIcon v-else icon="tabler-tools-kitchen-2" size="18" />
+              </VAvatar>
+              <span class="font-weight-bold text-high-emphasis uppercase text-xs">{{ item.name }}</span>
+            </div>
           </template>
 
           <template #item.category.name="{ item }">
@@ -1139,6 +1201,36 @@ onUnmounted(() => {
                   <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
                     Plato
                   </VChip>
+                </div>
+
+                <div class="d-flex align-center gap-3 mb-1">
+                  <VAvatar size="64" rounded="lg" color="primary" variant="tonal" class="border">
+                    <VImg v-if="dishPhotoPreview" :src="dishPhotoPreview" cover />
+                    <VIcon v-else icon="tabler-tools-kitchen-2" size="28" />
+                  </VAvatar>
+                  <div class="flex-grow-1 d-flex flex-column gap-1">
+                    <VFileInput
+                      :model-value="dishPhotoFile ? [dishPhotoFile] : []"
+                      label="Foto del Plato (Opcional)"
+                      accept="image/*"
+                      prepend-icon="tabler-camera"
+                      density="compact"
+                      variant="outlined"
+                      hide-details
+                      @update:model-value="onDishPhotoSelected"
+                    />
+                    <div v-if="dishPhotoPreview" class="d-flex justify-end">
+                      <VBtn
+                        size="x-small"
+                        variant="text"
+                        color="error"
+                        prepend-icon="tabler-trash"
+                        @click="clearDishPhoto"
+                      >
+                        Quitar foto
+                      </VBtn>
+                    </div>
+                  </div>
                 </div>
 
                 <VTextField

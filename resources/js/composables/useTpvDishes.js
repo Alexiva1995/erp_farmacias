@@ -45,13 +45,25 @@ export function useTpvDishes() {
   }
 
   const dishCategories = computed(() => {
-    const categories = new Set()
+    const categoriesMap = new Map()
     dishes.value.forEach((d) => {
-      if (d.category?.name) {
-        categories.add(d.category.name)
+      const catName = d.category?.name
+      if (!catName) return
+      if (!categoriesMap.has(catName)) {
+        categoriesMap.set(catName, {
+          name: catName,
+          photo_url: d.category?.photo_url || d.photo_url || null,
+          count: 1,
+        })
+      } else {
+        const entry = categoriesMap.get(catName)
+        entry.count += 1
+        if (!entry.photo_url && d.photo_url) {
+          entry.photo_url = d.photo_url
+        }
       }
     })
-    return Array.from(categories)
+    return Array.from(categoriesMap.values())
   })
 
   const filteredDishes = computed(() => {
@@ -71,7 +83,7 @@ export function useTpvDishes() {
     dishesLoading.value = true
     try {
       const { data } = await axios.get('/dishes', {
-        params: { status: 1, q: dishFilterQuery.value || undefined },
+        params: { status: 1, itemsPerPage: -1 },
       })
       dishes.value = Array.isArray(data.data) ? data.data : data
     } catch (error) {

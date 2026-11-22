@@ -4,7 +4,9 @@ import TpvOrderMainSection from "@/components/tpv/TpvOrderMainSection.vue";
 import TpvCatalogSection from "@/components/tpv/TpvCatalogSection.vue";
 import TpvZoomSection from "@/components/tpv/TpvZoomSection.vue";
 import TpvDialogsContainer from "@/components/tpv/TpvDialogsContainer.vue";
+import TpvRestaurantWorkspace from "@/components/tpv/restaurant/TpvRestaurantWorkspace.vue";
 import DishModifiersSelectDialog from "@/components/dialogs/DishModifiersSelectDialog.vue";
+import axios from "@/plugins/axios";
 import { useAuthStore } from "@/stores/auth";
 import { useBrandingStore } from "@/stores/useBrandingStore";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
@@ -25,7 +27,7 @@ import { useTpvQuotations } from "@/composables/useTpvQuotations";
 import { useTpvState } from "@/composables/useTpvState";
 import { useTpvInit } from "@/composables/useTpvInit";
 import { useTpvKeyboardShortcuts } from "@/composables/useTpvKeyboardShortcuts";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 
 // ─── Stores ───────────────────────────────────────────────────────────────────
 const brandingStore = useBrandingStore();
@@ -36,6 +38,9 @@ const currentUser = computed(() => authStore.user);
 const showDishModifiersModal = ref(false);
 const selectedDishForModifiers = ref(null);
 const selectedDishQtyForModifiers = ref(1);
+const selectedDishInitialModifiers = ref([]);
+const selectedDishInitialNotes = ref("");
+const selectedDishOrderDetailId = ref(null);
 
 const onAddDishRequested = ({ dish, quantity = 1, modifiers = [], notes = null, orderDetailId = null }) => {
   if (
@@ -46,11 +51,33 @@ const onAddDishRequested = ({ dish, quantity = 1, modifiers = [], notes = null, 
   ) {
     selectedDishForModifiers.value = dish;
     selectedDishQtyForModifiers.value = Math.max(1, Number(quantity) || 1);
+    selectedDishInitialModifiers.value = [];
+    selectedDishInitialNotes.value = "";
+    selectedDishOrderDetailId.value = null;
     showDishModifiersModal.value = true;
     return;
   }
 
   handleAddDishToOrder({ dish, quantity, modifiers, notes, orderDetailId });
+};
+
+const onEditDishModifiersRequested = async (orderItem) => {
+  if (!orderItem?.dish_id) return;
+  let dish = (dishes.value || []).find((d) => d.id === orderItem.dish_id);
+  if (!dish) {
+    try {
+      const { data } = await axios.get(`/dishes/${orderItem.dish_id}`);
+      dish = data.data || data;
+    } catch {
+      return;
+    }
+  }
+  selectedDishForModifiers.value = dish;
+  selectedDishQtyForModifiers.value = Math.max(1, Number(orderItem.selectedQuantity) || 1);
+  selectedDishInitialModifiers.value = orderItem.modifiers || [];
+  selectedDishInitialNotes.value = orderItem.notes || "";
+  selectedDishOrderDetailId.value = orderItem.order_detail_id || null;
+  showDishModifiersModal.value = true;
 };
 
 // ─── Configuración del TPV (platos, restaurante, deportes) ───────────────────
@@ -75,6 +102,16 @@ const {
 // activeTab controla qué sección está visible para fetchGeneralSettings
 const activeTab = ref(0);
 const fetchGeneralSettings = () => fetchGeneralSettingsComposable(activeTab);
+
+watch(
+  isRestaurant,
+  (active) => {
+    if (active) {
+      fetchDishes();
+    }
+  },
+  { immediate: true }
+);
 
 // ─── Estado centralizado del TPV ──────────────────────────────────────────────
 const {
@@ -511,7 +548,43 @@ useTpvInit({
       @handle-no-show="handleNoShow"
     />
 
-    <TpvOrderMainSection
+    <!-- Workspace Dedicado para Modo Restaurante -->
+    <TpvRestaurantWorkspace
+      v-if="isRestaurant"
+      :dishes="dishes || []"
+      :dishes-loading="dishesLoading"
+      :dish-categories="dishCategories || []"
+      :products="products || []"
+      :products-loading="loading"
+      :is-loading-initial-order="isLoadingInitialOrder"
+      :has-open-order="hasOpenOrder"
+      :open-order-data="openOrderData"
+      :order-items="orderItems || []"
+      :selected-client="selectedClient"
+      :selected-display-currency="selectedDisplayCurrency || 'USD'"
+      :exchange-rates="exchangeRates"
+      :total-products-amount="totalProductsAmount || 0"
+      :total-iva-amount="totalIVAAmount || 0"
+      :total-order-amount="totalOrderAmount || 0"
+      @add-dish="onAddDishRequested"
+      @add-product="addProductToOrder"
+      @search-products="(q) => { filterSearchQuery = q; page = 1; }"
+      @currency-changed="(c) => handleCurrencyChanged(c, isCurrencyChanging)"
+      @update-quantity="updateOrderItemQuantity"
+      @remove-item="(item) => removeOrderItem(item.product_id, item.order_detail_id)"
+      @edit-dish-modifiers="onEditDishModifiersRequested"
+      @open-buys-modal="openBuysModal"
+      @reserver-order="reserverOrder"
+      @cancelar-order="cancelarOrder"
+      @open-pedidos-modal="openPedidosModal"
+      @start-quick-order="() => handleIdentifyAndStart('99999999')"
+      @edit-client="handleEditCliente"
+      @refresh-order="fetchOpenOrder"
+    />
+
+    <!-- Workspace Farmacia / Retail / Deportes (Intacto) -->
+    <template v-else>
+      <TpvOrderMainSection
       :is-loading-initial-order="isLoadingInitialOrder"
       :has-open-order="hasOpenOrder"
       :is-simple-tpv="isSimpleTpv"
@@ -628,6 +701,7 @@ useTpvInit({
       @handle-view-pack-details="handleViewPackDetails"
       @handle-add-pack-to-order="handleAddPackToOrder"
     />
+    </template>
 
     <TpvDialogsContainer
       v-model:showPackDetailsModal="showPackDetailsModal"
@@ -690,6 +764,11 @@ useTpvInit({
       v-model="showDishModifiersModal"
       :dish="selectedDishForModifiers"
       :initial-quantity="selectedDishQtyForModifiers"
+      :initial-modifiers="selectedDishInitialModifiers"
+      :initial-notes="selectedDishInitialNotes"
+      :order-detail-id="selectedDishOrderDetailId"
+      :selected-display-currency="selectedDisplayCurrency || 'USD'"
+      :exchange-rates="exchangeRates"
       @confirm="handleAddDishToOrder"
     />
   </div>

@@ -8,7 +8,9 @@ use App\Enums\CategoryTypeEnum;
 use App\Http\Resources\Inventory\CategoryManagementResource;
 use App\Models\Category;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
 
 class CategoryManagementService
 {
@@ -20,10 +22,17 @@ class CategoryManagementService
     public function paginate(array $filters): LengthAwarePaginator
     {
         $hasTypeCol = Category::ensureTypeColumn();
+        $hasPhotoCol = (new Category())->getConnection()->getSchemaBuilder()->hasColumn('categories', 'photo_url');
         $enabledTypes = config('branding.enabled_product_types', ['ingredients']);
         $hasIngredients = in_array('ingredients', (array) $enabledTypes, true);
 
-        $selectColumns = $hasTypeCol ? ['id', 'name', 'type'] : ['id', 'name'];
+        $selectColumns = ['id', 'name'];
+        if ($hasTypeCol) {
+            $selectColumns[] = 'type';
+        }
+        if ($hasPhotoCol) {
+            $selectColumns[] = 'photo_url';
+        }
 
         $query = Category::query()
             ->select($selectColumns)
@@ -87,6 +96,29 @@ class CategoryManagementService
                 $attributes['type'] = $data['type'];
             } elseif (empty($data['id'])) {
                 $attributes['type'] = CategoryTypeEnum::INVENTORY->value;
+            }
+        }
+
+        $hasPhotoCol = (new Category())->getConnection()->getSchemaBuilder()->hasColumn('categories', 'photo_url');
+        $existingCategory = !empty($data['id']) ? Category::find($data['id']) : null;
+
+        if ($hasPhotoCol) {
+            if (!empty($data['remove_photo']) && $existingCategory) {
+                $rawOld = $existingCategory->getRawOriginal('photo_url');
+                if ($rawOld && Storage::disk('public')->exists($rawOld)) {
+                    Storage::disk('public')->delete($rawOld);
+                }
+                $attributes['photo_url'] = null;
+            }
+
+            if (isset($data['photo']) && $data['photo'] instanceof UploadedFile) {
+                if ($existingCategory) {
+                    $rawOld = $existingCategory->getRawOriginal('photo_url');
+                    if ($rawOld && Storage::disk('public')->exists($rawOld)) {
+                        Storage::disk('public')->delete($rawOld);
+                    }
+                }
+                $attributes['photo_url'] = $data['photo']->store('categories', 'public');
             }
         }
 

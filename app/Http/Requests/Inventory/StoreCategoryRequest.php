@@ -19,6 +19,8 @@ class StoreCategoryRequest extends FormRequest
             'id' => ['nullable', 'integer'],
             'name' => ['required', 'string', 'max:255'],
             'type' => ['nullable', 'string', Rule::in(CategoryTypeEnum::values())],
+            'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:3072'],
+            'remove_photo' => ['nullable', 'boolean'],
         ];
     }
 }

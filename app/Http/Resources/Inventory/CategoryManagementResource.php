@@ -26,6 +26,7 @@ class CategoryManagementResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'photo_url' => $this->photo_url,
             'type' => $enumType->value,
             'type_label' => $enumType->label(),
             'products_count' => (int) ($this->products_count ?? 0),

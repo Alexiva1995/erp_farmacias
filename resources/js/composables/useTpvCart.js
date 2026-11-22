@@ -1,6 +1,19 @@
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
 
+const normalizeDishModifiersPayload = (modifiers) => {
+  if (!Array.isArray(modifiers)) return []
+  return modifiers.map((m) => ({
+    modifier_option_id: m.modifier_option_id || m.option_id || null,
+    name: m.name,
+    modifier_type: m.modifier_type,
+    extra_price_usd: Number(m.extra_price_usd ?? 0),
+    product_id: m.product_id || null,
+    base_product_id: m.base_product_id || null,
+    portion: Number(m.portion ?? 0),
+  }))
+}
+
 export function useTpvCart({
   hasOpenOrder,
   openOrderData,
@@ -18,6 +31,20 @@ export function useTpvCart({
   validateAndApplyDoctorDiscount,
   validateAndApplyPrescriptionDiscount,
 }) {
+  const ensureOpenOrderWithGenericClient = async () => {
+    if (hasOpenOrder.value && openOrderData.value?.id) return true
+
+    try {
+      const checkClientResp = await axios.get('/tpv/order/client/99999999')
+      const genericClientId = checkClientResp.data?.data?.client?.id
+      if (!genericClientId) return false
+      const newOrder = await addOrden(genericClientId)
+      return Boolean(newOrder)
+    } catch {
+      return false
+    }
+  }
+
   const updateOrderItemQuantity = async ({ productId, quantity, orderDetailId }) => {
     if (quantity <= 0) return
 
@@ -54,6 +81,7 @@ export function useTpvCart({
         : (currentItem.basePrice || currentItem.price)
 
       const payload = {
+        order_detail_id: currentItem.is_dish ? currentItem.order_detail_id : undefined,
         product_id: currentItem.is_dish ? null : productId,
         dish_id: currentItem.is_dish ? currentItem.dish_id : null,
         quantity: computedTotalQuantity,
@@ -61,6 +89,12 @@ export function useTpvCart({
         price_at_product: basePriceForPayload,
         currency_at_order: selectedDisplayCurrency.value,
         pack_id: currentItem.pack_id || null,
+        ...(currentItem.is_dish
+          ? {
+              notes: currentItem.notes || null,
+              modifiers: normalizeDishModifiersPayload(currentItem.modifiers),
+            }
+          : {}),
       }
 
       // 1. ACTUALIZACIÓN OPTIMISTA INMEDIATA (Respuesta instantánea a 0ms en pantalla)
@@ -76,7 +110,7 @@ export function useTpvCart({
               (i) =>
                 (orderDetailId && i.order_detail_id === orderDetailId) ||
                 (productId && i.product_id === productId) ||
-                (updatedItem.dish_id && i.dish_id === updatedItem.dish_id)
+                (!orderDetailId && updatedItem.dish_id && i.dish_id === updatedItem.dish_id)
             )
             if (idx !== -1) {
               orderItems.value[idx] = formatOrderItemForFrontend(updatedItem, (from, to) => 1)
@@ -96,7 +130,6 @@ export function useTpvCart({
     }
   }
 
-
   const handleSaveOrderItemNote = async ({ product, notes }) => {
     if (!hasOpenOrder.value || !openOrderData.value?.id) {
       toast.error('Debe haber una orden abierta para agregar notas.')
@@ -108,6 +141,7 @@ export function useTpvCart({
         : (product.basePrice || product.price)
 
       const payload = {
+        order_detail_id: product.is_dish ? product.order_detail_id : undefined,
         product_id: product.is_dish ? null : product.product_id,
         dish_id: product.is_dish ? product.dish_id : null,
         quantity: product.selectedQuantity,
@@ -116,6 +150,9 @@ export function useTpvCart({
         currency_at_order: selectedDisplayCurrency.value,
         pack_id: product.pack_id || null,
         notes: notes,
+        ...(product.is_dish
+          ? { modifiers: normalizeDishModifiersPayload(product.modifiers) }
+          : {}),
       }
 
       await axios.post(`/tpv/orders/${openOrderData.value.id}/items`, payload)
@@ -135,20 +172,10 @@ export function useTpvCart({
 
     if (!hasOpenOrder.value || !openOrderData.value?.id) {
       const isSimpleTpv = brandingStore.settings?.tpv_mode === 'simple'
-      if (isSimpleTpv) {
-        try {
-          const checkClientResp = await axios.get('/tpv/order/client/99999999')
-          const genericClientId = checkClientResp.data?.data?.client?.id
-          if (!genericClientId) {
-            toast.error('El cliente genérico 99999999 no está disponible.')
-            return
-          }
-          const newOrder = await addOrden(genericClientId)
-          if (!newOrder) {
-            toast.error('No se pudo iniciar la orden automática en modo simple.')
-            return
-          }
-        } catch (err) {
+      const isRestaurantTpv = brandingStore.settings?.tpv_style === 'restaurant'
+      if (isSimpleTpv || isRestaurantTpv) {
+        const started = await ensureOpenOrderWithGenericClient()
+        if (!started) {
           toast.error('Debe haber una orden abierta para agregar productos.')
           return
         }
@@ -258,7 +285,7 @@ export function useTpvCart({
           orderItems.value[itemIndex] = formatOrderItemForFrontend(savedItem, (from, to) => 1)
         }
       }
-      
+
       // Sincronizar silenciosamente los datos finales del backend
       fetchOpenOrder().catch((err) => console.error('Error al sincronizar orden:', err))
 
@@ -273,22 +300,26 @@ export function useTpvCart({
     }
   }
 
-
   const addDishToOrder = async (dish, options = {}) => {
     if (!hasOpenOrder.value || !openOrderData.value?.id) {
-      toast.error('Debe haber una orden abierta para agregar platos.')
-      return
+      const started = await ensureOpenOrderWithGenericClient()
+      if (!started) {
+        toast.error('Debe haber una orden abierta para agregar platos.')
+        return
+      }
     }
 
     const orderDetailId = options.order_detail_id || null
-    const modifiers = options.modifiers || []
+    const modifiers = normalizeDishModifiersPayload(options.modifiers || [])
     const notes = options.notes || null
 
     const existing = orderDetailId
       ? orderItems.value.find((item) => item.order_detail_id === orderDetailId)
       : (modifiers.length === 0 && !notes ? orderItems.value.find((item) => item.dish_id === dish.id && (!item.modifiers || item.modifiers.length === 0) && !item.notes) : null)
 
-    const newQty = existing ? existing.selectedQuantity + (options.quantity || 1) : (options.quantity || 1)
+    const newQty = orderDetailId
+      ? (options.quantity || existing?.selectedQuantity || 1)
+      : (existing ? existing.selectedQuantity + (options.quantity || 1) : (options.quantity || 1))
     const unitPrice = parseFloat(dish.designated_price) || parseFloat(dish.sale_price) || parseFloat(dish.price) || 0
     let priceAtProduct = unitPrice
     if (selectedDisplayCurrency.value === 'COP') {
@@ -312,7 +343,11 @@ export function useTpvCart({
 
       await axios.post(`/tpv/orders/${openOrderData.value.id}/items`, payload)
       await fetchOpenOrder()
-      toast.success(`"${dish.name}" agregado al pedido.`)
+      toast.success(
+        orderDetailId
+          ? `"${dish.name}" actualizado en el pedido.`
+          : `"${dish.name}" agregado al pedido.`
+      )
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error al agregar el plato.')
     }

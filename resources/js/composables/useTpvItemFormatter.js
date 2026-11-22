@@ -87,7 +87,6 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
     }
   }
 
-
   // Ítem PLATO
   if (backendItem.product_type === 'dish' && backendItem.dish) {
     const dish = backendItem.dish
@@ -141,6 +140,8 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
       is_dish: true,
       modifiers: backendItem.modifiers || [],
       notes: backendItem.notes || backendItem.observation || null,
+      kitchen_status: backendItem.kitchen_status || null,
+      course_number: backendItem.course_number || 1,
     }
   }
 

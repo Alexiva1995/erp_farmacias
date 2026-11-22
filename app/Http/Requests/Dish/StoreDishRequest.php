@@ -17,6 +17,31 @@ class StoreDishRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $merge = [];
+        if (is_string($this->input('ingredients'))) {
+            $decoded = json_decode($this->input('ingredients'), true);
+            if (is_array($decoded)) {
+                $merge['ingredients'] = $decoded;
+            }
+        }
+        if (is_string($this->input('modifier_group_ids'))) {
+            $decoded = json_decode($this->input('modifier_group_ids'), true);
+            if (is_array($decoded)) {
+                $merge['modifier_group_ids'] = $decoded;
+            }
+        }
+        foreach (['iva', 'remove_photo'] as $boolField) {
+            if ($this->has($boolField) && is_string($this->input($boolField))) {
+                $merge[$boolField] = filter_var($this->input($boolField), FILTER_VALIDATE_BOOLEAN);
+            }
+        }
+        if (!empty($merge)) {
+            $this->merge($merge);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      */
@@ -40,6 +65,8 @@ class StoreDishRequest extends FormRequest
             'expected_yield_quantity' => 'nullable|numeric|min:0.01',
             'shelf_life_days' => 'nullable|integer|min:1',
             'unit_of_measure' => 'nullable|string|max:50',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
+            'remove_photo' => 'nullable|boolean',
             'modifier_group_ids' => 'nullable|array',
             'modifier_group_ids.*' => 'integer|exists:modifier_groups,id',
             'ingredients' => 'required|array|min:1',

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\CategoryTypeEnum;
+use App\Models\Concerns\ResolvesPhotoUrl;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Schema\Blueprint;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 class Category extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, ResolvesPhotoUrl;
 
     /**
      * Atributos asignables masivamente.
@@ -24,6 +25,7 @@ class Category extends Authenticatable
     protected $fillable = [
         'name',
         'type',
+        'photo_url',
     ];
 
     /**

@@ -8,9 +8,11 @@ use App\Contracts\Dish as DishContract;
 use App\Models\Dish;
 use App\Models\Product;
 use Illuminate\Database\Schema\Builder as SchemaBuilder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class DishServices implements DishContract
 {
@@ -479,6 +481,9 @@ class DishServices implements DishContract
             if ($schema->hasColumn('dishes', 'designated_price_cop') && array_key_exists('designated_price_cop', $data)) {
                 $dishAttributes['designated_price_cop'] = $data['designated_price_cop'] !== null ? (float) $data['designated_price_cop'] : null;
             }
+            if ($schema->hasColumn('dishes', 'photo_url') && isset($data['photo']) && $data['photo'] instanceof UploadedFile) {
+                $dishAttributes['photo_url'] = $data['photo']->store('dishes', 'public');
+            }
 
             // Crear plato
             $dish = Dish::create($dishAttributes);
@@ -621,6 +626,22 @@ class DishServices implements DishContract
             }
             if ($schema->hasColumn('dishes', 'designated_price_cop') && array_key_exists('designated_price_cop', $data)) {
                 $dishAttributes['designated_price_cop'] = $data['designated_price_cop'] !== null ? (float) $data['designated_price_cop'] : null;
+            }
+            if ($schema->hasColumn('dishes', 'photo_url')) {
+                if (!empty($data['remove_photo'])) {
+                    $rawOld = $dish->getRawOriginal('photo_url');
+                    if ($rawOld && Storage::disk('public')->exists($rawOld)) {
+                        Storage::disk('public')->delete($rawOld);
+                    }
+                    $dishAttributes['photo_url'] = null;
+                }
+                if (isset($data['photo']) && $data['photo'] instanceof UploadedFile) {
+                    $rawOld = $dish->getRawOriginal('photo_url');
+                    if ($rawOld && Storage::disk('public')->exists($rawOld)) {
+                        Storage::disk('public')->delete($rawOld);
+                    }
+                    $dishAttributes['photo_url'] = $data['photo']->store('dishes', 'public');
+                }
             }
 
             // Actualizar plato

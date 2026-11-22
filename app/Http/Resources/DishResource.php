@@ -67,9 +67,11 @@ class DishResource extends JsonResource
             'designated_price_cop' => $this->designated_price_cop !== null ? (float) $this->designated_price_cop : null,
             'percentage_profit' => (float) $this->percentage_profit,
             'category_id' => $this->category_id,
+            'photo_url' => $this->photo_url,
             'category' => $this->category ? [
                 'id' => $this->category->id,
                 'name' => $this->category->name,
+                'photo_url' => $this->category->photo_url,
             ] : null,
             'status' => (int) $this->status,
             'iva' => (bool) $this->iva,

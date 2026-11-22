@@ -147,12 +147,34 @@ const fetchCategories = async () => {
   }
 }
 
+const categoryPhotoFile = ref(null)
+const categoryPhotoPreview = ref(null)
+const removeCategoryPhoto = ref(false)
+
+const onCategoryPhotoSelected = (files) => {
+  const file = Array.isArray(files) ? files[0] : files
+  categoryPhotoFile.value = file || null
+  if (file instanceof File) {
+    removeCategoryPhoto.value = false
+    categoryPhotoPreview.value = URL.createObjectURL(file)
+  }
+}
+
+const clearCategoryPhoto = () => {
+  categoryPhotoFile.value = null
+  categoryPhotoPreview.value = null
+  removeCategoryPhoto.value = true
+}
+
 // Abrir diálogo de creación/edición
 const openEdit = (category = null) => {
   const defaultType = selectedTypeFilter.value === 'dish' ? 'dish' : 'inventory'
   categoryForm.value = category
     ? { id: category.id, name: category.name, type: category.type || 'inventory' }
     : { id: null, name: '', type: defaultType }
+  categoryPhotoFile.value = null
+  categoryPhotoPreview.value = category?.photo_url || null
+  removeCategoryPhoto.value = false
   isDialogOpen.value = true
 }
 
@@ -172,11 +194,28 @@ const saveCategory = async () => {
   }
   isSaving.value = true
   try {
-    await axios.post('/inventory/categories-manage', {
-      id: categoryForm.value.id,
-      name: categoryForm.value.name.trim(),
-      type: showDishesColumn.value ? categoryForm.value.type : 'inventory',
-    })
+    const hasPhotoChange = Boolean(categoryPhotoFile.value) || removeCategoryPhoto.value
+    if (hasPhotoChange) {
+      const formData = new FormData()
+      if (categoryForm.value.id) formData.append('id', String(categoryForm.value.id))
+      formData.append('name', categoryForm.value.name.trim())
+      formData.append('type', showDishesColumn.value ? categoryForm.value.type : 'inventory')
+      if (categoryPhotoFile.value instanceof File) {
+        formData.append('photo', categoryPhotoFile.value)
+      }
+      if (removeCategoryPhoto.value) {
+        formData.append('remove_photo', '1')
+      }
+      await axios.post('/inventory/categories-manage', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    } else {
+      await axios.post('/inventory/categories-manage', {
+        id: categoryForm.value.id,
+        name: categoryForm.value.name.trim(),
+        type: showDishesColumn.value ? categoryForm.value.type : 'inventory',
+      })
+    }
     toast.success("Categoría guardada correctamente")
     isDialogOpen.value = false
     fetchCategories()
@@ -332,6 +371,10 @@ onUnmounted(() => clearTimeout(debounceTimer))
           <template #item.name="{ item }">
             <div class="d-flex align-center gap-2 py-2">
               <div class="header-indicator success rounded-pill"></div>
+              <VAvatar size="32" rounded="lg" color="primary" variant="tonal">
+                <VImg v-if="item.photo_url" :src="item.photo_url" cover />
+                <VIcon v-else icon="tabler-category" size="16" />
+              </VAvatar>
               <span class="text-sm font-weight-black text-high-emphasis text-uppercase">{{ item.name }}</span>
             </div>
           </template>
@@ -561,6 +604,36 @@ onUnmounted(() => clearTimeout(debounceTimer))
                 class="mb-4"
                 @keyup.enter="saveCategory"
               />
+
+              <div class="d-flex align-center gap-3 mb-2">
+                <VAvatar size="56" rounded="lg" color="primary" variant="tonal" class="border">
+                  <VImg v-if="categoryPhotoPreview" :src="categoryPhotoPreview" cover />
+                  <VIcon v-else icon="tabler-category" size="24" />
+                </VAvatar>
+                <div class="flex-grow-1 d-flex flex-column gap-1">
+                  <VFileInput
+                    :model-value="categoryPhotoFile ? [categoryPhotoFile] : []"
+                    label="Imagen de Portada (Opcional)"
+                    accept="image/*"
+                    prepend-icon="tabler-camera"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    @update:model-value="onCategoryPhotoSelected"
+                  />
+                  <div v-if="categoryPhotoPreview" class="d-flex justify-end">
+                    <VBtn
+                      size="x-small"
+                      variant="text"
+                      color="error"
+                      prepend-icon="tabler-trash"
+                      @click="clearCategoryPhoto"
+                    >
+                      Quitar imagen
+                    </VBtn>
+                  </div>
+                </div>
+              </div>
             </VCol>
 
             <VCol v-if="showDishesColumn" cols="12">
