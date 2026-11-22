@@ -13,7 +13,14 @@ class ReturnsQueryService
     public function getQueryOrder(Request $request): Builder
     {
         $query = ReturnEntry::query()
-            ->with(['order.client', 'order.seller', 'product.laboratory']);
+            ->with([
+                'order.client',
+                'order.seller',
+                'order.fiscalHistory',
+                'product.laboratory',
+                'generatedBy:id,name,username',
+                'approvedBy:id,name,username',
+            ]);
 
         $this->applySearch($query, $request->input('search'));
         $this->applyStatusFilter($query, $request->input('status'));
@@ -44,10 +51,12 @@ class ReturnsQueryService
                 $q->where('returns.id', (int) $term)
                     ->orWhereHas('order', fn ($o) => $o->where('id', (int) $term));
             }
-            $q->orWhereHas('order.client', function ($sub) use ($term) {
-                $sub->where('identification', 'like', "%{$term}%")
-                    ->orWhereRaw('CONCAT(COALESCE(identification_type,""), COALESCE(identification,"")) LIKE ?', ["%{$term}%"]);
-            })
+            $q->orWhere('returns.credit_note_number', 'like', "%{$term}%")
+                ->orWhereHas('order.client', function ($sub) use ($term) {
+                    $sub->where('identification', 'like', "%{$term}%")
+                        ->orWhere('name', 'like', "%{$term}%")
+                        ->orWhereRaw('CONCAT(COALESCE(identification_type,""), COALESCE(identification,"")) LIKE ?', ["%{$term}%"]);
+                })
                 ->orWhereHas('product', fn ($p) => $p->where('name', 'like', "%{$term}%"));
         });
     }

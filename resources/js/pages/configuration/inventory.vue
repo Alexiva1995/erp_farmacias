@@ -20,6 +20,8 @@ const defaultSettings = {
   cyclic_inventory_daily_quota: 50,
   enable_lots: true,
   enable_stock_control: true,
+  return_window_days: 2,
+  require_return_approval: true,
 }
 
 const originalSettings = ref({ ...defaultSettings })
@@ -45,6 +47,8 @@ const fetchSettings = async () => {
       cyclic_inventory_daily_quota: Number(settings.cyclic_inventory_daily_quota) || 50,
       enable_lots: settings.enable_lots ?? true,
       enable_stock_control: settings.enable_stock_control ?? true,
+      return_window_days: Number(settings.return_window_days) || 2,
+      require_return_approval: settings.require_return_approval ?? true,
     }
 
     Object.assign(formState, loadedData)
@@ -92,6 +96,8 @@ const saveSettings = async () => {
       cyclic_inventory_daily_quota: Number(formState.cyclic_inventory_daily_quota) || 50,
       enable_lots: formState.enable_lots,
       enable_stock_control: formState.enable_stock_control,
+      return_window_days: Math.max(1, Number(formState.return_window_days) || 2),
+      require_return_approval: formState.require_return_approval,
     })
 
     originalSettings.value = { ...formState }
@@ -393,6 +399,55 @@ onMounted(() => {
                 hide-details="auto"
                 :disabled="isSaving"
               />
+            </VCard>
+          </VCol>
+
+          <!-- Política de Devoluciones (PYME / Farmacia / Retail) -->
+          <VCol cols="12" md="6">
+            <VCard variant="outlined" class="h-100 pa-5 rounded-xl d-flex flex-column justify-space-between">
+              <div>
+                <div class="d-flex align-center justify-space-between mb-3">
+                  <VAvatar color="info" variant="tonal" rounded size="38">
+                    <VIcon icon="tabler-arrow-back-up" size="20" />
+                  </VAvatar>
+                  <VChip
+                    :color="formState.require_return_approval ? 'warning' : 'success'"
+                    size="small"
+                    variant="tonal"
+                    class="font-weight-medium"
+                  >
+                    {{ formState.require_return_approval ? 'Con Aprobación' : 'Directa (Ágil)' }}
+                  </VChip>
+                </div>
+                <h4 class="text-subtitle-2 font-weight-bold text-high-emphasis mb-1">
+                  Política de Devoluciones
+                </h4>
+                <p class="text-caption text-medium-emphasis mb-4">
+                  Define cuántos días después de la venta se permiten devoluciones y si requieren aprobación de supervisor.
+                </p>
+              </div>
+
+              <div class="d-flex flex-column gap-3">
+                <VTextField
+                  v-model.number="formState.return_window_days"
+                  label="Ventana de devolución (días)"
+                  type="number"
+                  min="1"
+                  max="365"
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  :disabled="isSaving"
+                />
+                <VSwitch
+                  v-model="formState.require_return_approval"
+                  :label="formState.require_return_approval ? 'Requiere aprobación de supervisor' : 'Devolución directa en 1 paso'"
+                  color="primary"
+                  density="comfortable"
+                  hide-details="auto"
+                  :disabled="isSaving"
+                />
+              </div>
             </VCard>
           </VCol>
         </VRow>

@@ -550,8 +550,10 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/returns/product/{productId}/lots', [ReturnsController::class, 'getProductLots']);
         Route::post('/returns/product', [ReturnsController::class, 'returnsProduct']);
         Route::patch('/returns/{returnEntryId}/{status}', [ReturnsController::class, 'updateReturnStatus']);
+        Route::post('/returns/{returnEntryId}/approve', [ReturnsController::class, 'approve']);
         Route::post('/returns/{returnEntryId}/distribute-lots', [ReturnsController::class, 'distributeLots']);
         Route::post('/returns/{returnEntryId}/approve-with-distribution', [ReturnsController::class, 'approveWithDistribution']);
+        Route::post('/returns/{returnEntryId}/retry-credit-note', [ReturnsController::class, 'retryCreditNote']);
         // Rutas de Promociones
         Route::prefix("promotions")->group(function () {
             Route::prefix("individual")->group(function () {

@@ -23,26 +23,7 @@ export default [
       },
       {
         title: 'Devoluciones',
-        children: [
-          {
-            title: 'Usuario',
-            to: { path: '/tpv/returnsUser' },
-            action: 'manage',
-            subject: 'user',
-          },
-          {
-            title: 'Supervisor',
-            to: { path: '/tpv/returnsSupervisor' },
-            action: 'manage',
-            subject: 'supervisor-or-admin',
-          },
-          {
-            title: 'Generales',
-            to: { path: '/tpv/returns' },
-            action: 'manage',
-            subject: 'admin',
-          },
-        ],
+        to: 'tpv-returns',
       },
       {
         title: 'Pedidos',

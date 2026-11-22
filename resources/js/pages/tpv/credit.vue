@@ -12,16 +12,24 @@ import axios from "@/plugins/axios";
 import Swal from "sweetalert2";
 import { toast } from "@/plugins/sweetalert";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { nextTick, onMounted, onUnmounted, ref, watch, computed } from "vue";
 import { useDisplay } from "vuetify";
 
 const { isVendedor } = useAuthStore();
+const brandingStore = useBrandingStore();
 const { mobile } = useDisplay();
 
 const activeTab = ref(0);
 
 const credits = ref([]);
 const totalCredits = ref(0);
+const kpis = ref({
+  total_debtors: 0,
+  total_pending_usd: 0,
+  overdue_debtors: 0,
+  overdue_amount_usd: 0,
+});
 const payments = ref([]);
 const totalPayments = ref(0);
 const loading = ref(false);
@@ -36,6 +44,7 @@ const paymentsSortBy = ref();
 const paymentsOrderBy = ref();
 
 const searchQuery = ref("");
+const statusFilter = ref("pending");
 const page = ref(1);
 const itemsPerPage = ref(25);
 const sortBy = ref();
@@ -56,13 +65,10 @@ const isPrintingCreditOrder = ref(false);
 let debounceTimer = null;
 let paymentsDebouncer = null;
 
-const totalPendingSum = computed(() => {
-  if (!Array.isArray(credits.value)) return 0;
-  return credits.value.reduce(
-    (sum, item) => sum + (parseFloat(item.total_pending_amount) || 0),
-    0
-  );
-});
+const totalPendingSum = computed(() => Number(kpis.value.total_pending_usd || 0));
+const totalDebtorsCount = computed(() => Number(kpis.value.total_debtors || totalCredits.value || 0));
+const overdueDebtorsCount = computed(() => Number(kpis.value.overdue_debtors || 0));
+const overdueAmountSum = computed(() => Number(kpis.value.overdue_amount_usd || 0));
 
 const fetchCredits = async () => {
   loading.value = true;
@@ -72,6 +78,7 @@ const fetchCredits = async () => {
     sortBy: sortBy.value,
     orderBy: orderBy.value,
     search: searchQuery.value,
+    status_filter: statusFilter.value,
   };
   Object.keys(params).forEach(
     (key) => (params[key] === null || params[key] === "") && delete params[key]
@@ -80,6 +87,9 @@ const fetchCredits = async () => {
     const response = await axios.get("/tpv/credits", { params });
     credits.value = response.data.data || [];
     totalCredits.value = response.data.total || 0;
+    if (response.data.kpis) {
+      kpis.value = response.data.kpis;
+    }
   } catch (error) {
     console.error("Hubo un error al obtener los créditos:", error);
     toast.error("Error al obtener los créditos.");
@@ -115,7 +125,7 @@ const fetchCreditPayments = async () => {
 };
 
 watch(
-  [page, itemsPerPage, searchQuery],
+  [page, itemsPerPage, searchQuery, sortBy, orderBy, statusFilter],
   () => {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => fetchCredits(), 300);
@@ -168,17 +178,32 @@ const updatePaymentsTableOptions = (options) => {
 
 const clearFilters = () => {
   searchQuery.value = "";
+  statusFilter.value = "pending";
+  page.value = 1;
 };
 
 const clearPaymentFilters = () => {
-  searchQuery.value = "";
-  page.value = 1;
-  itemsPerPage.value = 25;
-  sortBy.value = null;
-  orderBy.value = null;
+  paymentsPage.value = 1;
   clientFilter.value = null;
   dateFilter.value = null;
   currencyFilter.value = null;
+};
+
+const handleWhatsappReminder = (item) => {
+  const rawPhone = String(item?.client?.phone || "").replace(/\D/g, "");
+  if (!rawPhone) {
+    toast.error("El cliente no tiene teléfono registrado.");
+    return;
+  }
+  const normalizedPhone = rawPhone.startsWith("0") ? `58${rawPhone.slice(1)}` : rawPhone;
+  const businessName =
+    brandingStore.settings?.business_name ||
+    brandingStore.settings?.company_name ||
+    "nuestro comercio";
+  const clientName = `${item.client?.name || ""} ${item.client?.last_name || ""}`.trim();
+  const amount = Number(item.total_pending_amount || 0).toFixed(2);
+  const msg = `Hola ${clientName}, te saludamos de ${businessName}. Te recordamos amablemente tu saldo pendiente de $${amount} USD. ¡Gracias por tu preferencia!`;
+  window.open(`https://wa.me/${normalizedPhone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
 };
 
 const openCreditsModal = (credit) => {
@@ -286,7 +311,12 @@ const handleCreditsCompletion = async (
     const response = await axios.post(`/tpv/credits/complete`, payload);
     if (response.status === 200 || response.status === 201) {
       toast.success("¡Pago finalizado y registrado con éxito!");
+      const previousPending = Number(creditsData.value?.total_pending_amount || 0);
       await fetchCredits();
+      const updatedClientRow = credits.value.find((c) => c.client_id === clientId);
+      creditAmountForPrint.value = updatedClientRow
+        ? Number(updatedClientRow.total_pending_amount || 0)
+        : Math.max(0, previousPending - paymentsData.reduce((s, p) => s + (p.currency === "USD" ? Number(p.amount || 0) : 0), 0));
       paymentsForPrint.value = [...paymentsData];
       changeAmountForPrint.value = changeAmount;
       isPrinting.value = true;
@@ -295,8 +325,12 @@ const handleCreditsCompletion = async (
       if (printContents) {
         const printWindow = window.open("", "", "height=600,width=800");
         if (printWindow) {
+          const printTitle =
+            brandingStore.settings?.business_name ||
+            brandingStore.settings?.company_name ||
+            "Comprobante de Abono";
           printWindow.document.write(
-            "<html><head><title>Farmacia Barrio Sucre</title>"
+            `<html><head><title>${printTitle}</title>`
           );
           const styleSheets = document.styleSheets;
           for (let i = 0; i < styleSheets.length; i++) {
@@ -413,14 +447,17 @@ const printCreditOrders = async (credit) => {
   <div class="credits-module-container">
     <!-- Encabezado KPI Desacoplado -->
     <CreditHeaderKpi
-      :total-credits="totalCredits"
+      :total-debtors="totalDebtorsCount"
       :total-pending-sum="totalPendingSum"
+      :overdue-debtors="overdueDebtorsCount"
+      :overdue-amount-usd="overdueAmountSum"
     />
 
     <!-- Contenedor Premium de Filtros -->
     <CreditFilters
       v-if="activeTab === 0"
       v-model:search-query="searchQuery"
+      v-model:status-filter="statusFilter"
       @clear="clearFilters"
     />
 
@@ -460,6 +497,7 @@ const printCreditOrders = async (credit) => {
           @view-order-modal="viewOrderCreditsModal"
           @print-order="printCreditOrders"
           @delete-credit="handleDeleteCredit"
+          @whatsapp-reminder="handleWhatsappReminder"
         />
       </VWindowItem>
 

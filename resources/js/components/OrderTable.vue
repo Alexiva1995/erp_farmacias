@@ -375,6 +375,21 @@ const renderSellerName = (item) => {
               </IconBtn>
             </template>
           </VTooltip>
+          <VTooltip
+            v-if="item.status === 'Completed' || item.status === 'completed'"
+            text="Procesar Devolución"
+            location="top"
+          >
+            <template #activator="{ props: tooltipProps }">
+              <IconBtn
+                v-bind="tooltipProps"
+                color="secondary"
+                :to="{ path: '/tpv/returns', query: { order_id: item.id } }"
+              >
+                <VIcon icon="tabler-arrow-back-up" />
+              </IconBtn>
+            </template>
+          </VTooltip>
           <template v-if="showPrintActions">
             <IconBtn @click="$emit('print-order', item.id)">
               <VIcon icon="tabler-printer" />

@@ -105,6 +105,8 @@ class UpdateGeneralSettingRequest extends FormRequest
             'cyclic_inventory_scope' => 'nullable|string|in:all,quota',
             'cyclic_inventory_daily_quota' => 'nullable|integer|min:1|max:10000',
             'enable_lots' => 'nullable|boolean',
+            'return_window_days' => 'nullable|integer|min:1|max:365',
+            'require_return_approval' => 'nullable|boolean',
             'tpv_mode' => 'nullable|string|in:simple,complete',
             'enable_product_types' => 'nullable|boolean',
             'show_product_photos' => 'nullable|boolean',

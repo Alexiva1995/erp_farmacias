@@ -1919,12 +1919,58 @@ class OrderActionService
 
                     if ($targetAmountUsd > 0) {
                         $generalSettings = \DB::table('general_settings')->first();
+                        $resourceService = app(ResourceService::class);
+                        $creditClientId = $request->client_id ?? $orderId->client_id;
+                        $creditClient = $creditClientId ? \App\Models\Client::find($creditClientId) : null;
+
+                        if (!$isCasheaCredit) {
+                            if (!$creditClient) {
+                                throw new \InvalidArgumentException('Debe seleccionar un cliente registrado para vender a crédito.');
+                            }
+
+                            $fullNameLower = mb_strtolower(trim("{$creditClient->name} {$creditClient->last_name}"));
+                            if (str_contains($fullNameLower, 'consumidor final') || $creditClient->identification === '00000000') {
+                                throw new \InvalidArgumentException('No se puede otorgar crédito a Consumidor Final. Seleccione o registre el cliente.');
+                            }
+
+                            $isAdminUser = Auth::user()?->role_id === 1;
+                            $overrideApproved = filter_var($request->input('credit_override_approved', false), FILTER_VALIDATE_BOOLEAN);
+
+                            if (!$isAdminUser && !$overrideApproved) {
+                                if ($creditClient->block_on_overdue) {
+                                    $hasOverdue = Credit::where('client_id', $creditClient->id)
+                                        ->where('status', 'Active')
+                                        ->where('pending_amount', '>', 0)
+                                        ->whereNotNull('next_due_date')
+                                        ->where('next_due_date', '<', Carbon::today()->toDateString())
+                                        ->exists();
+
+                                    if ($hasOverdue) {
+                                        throw new \InvalidArgumentException('El cliente tiene facturas vencidas pendientes. Requiere autorización del administrador.');
+                                    }
+                                }
+
+                                $creditLimit = (float) ($creditClient->credit_limit_usd ?? 0);
+                                if ($creditLimit > 0) {
+                                    $currentDebt = (float) Credit::where('client_id', $creditClient->id)
+                                        ->where('status', 'Active')
+                                        ->sum('pending_amount');
+
+                                    if (($currentDebt + $targetAmountUsd) > $creditLimit) {
+                                        $available = max(0, round($creditLimit - $currentDebt, 2));
+                                        throw new \InvalidArgumentException(
+                                            "El crédito supera el límite configurado ($" . number_format($creditLimit, 2) . "). Disponible: $" . number_format($available, 2) . "."
+                                        );
+                                    }
+                                }
+                            }
+                        }
+
                         $installmentsCount = $isCasheaCredit ? (int)($targetPaymentItem['installments_count'] ?? ($generalSettings->cashea_installments_count ?? 3)) : 1;
                         $installmentDays = $isCasheaCredit ? (int)($generalSettings->cashea_installment_days ?? 14) : 0;
                         $initialPaymentUsd = 0;
                     if ($isCasheaCredit) {
                         // Calcular suma en USD de todos los pagos que NO sean cashea
-                        $resourceService = app(ResourceService::class);
                         foreach ($request->payments as $p) {
                             if (strtolower((string)($p['method'] ?? '')) !== 'cashea') {
                                 $pAmt = (float)($p['amount'] ?? 0);
@@ -1941,10 +1987,15 @@ class OrderActionService
                             $initialPaymentUsd = (float)$targetPaymentItem['initial_payment_usd'];
                         }
                     }
-                        $nextDueDate = $isCasheaCredit ? Carbon::now()->addDays($installmentDays) : null;
+                        $standardDays = (int) ($creditClient?->default_credit_days ?? ($generalSettings->default_credit_days ?? 0));
+                        $nextDueDate = $isCasheaCredit
+                            ? Carbon::now()->addDays($installmentDays)
+                            : ($standardDays > 0 ? Carbon::now()->addDays($standardDays) : null);
+
+                        $exchangeRateIssue = (float) ($resourceService->getExchangeRate('BS') ?: 0);
 
                         $newCredit = Credit::create([
-                            'client_id' => $request->client_id ?? $orderId->client_id,
+                            'client_id' => $creditClientId,
                             'order_id' => $orderId->id,
                             'credit_amount' => $targetAmountUsd,
                             'pending_amount' => $targetAmountUsd,
@@ -1955,6 +2006,7 @@ class OrderActionService
                             'initial_payment_usd' => $initialPaymentUsd,
                             'installments_count' => $installmentsCount,
                             'next_due_date' => $nextDueDate,
+                            'exchange_rate_issue' => $exchangeRateIssue > 0 ? $exchangeRateIssue : null,
                         ]);
 
                         if ($isCasheaCredit && $installmentsCount > 0) {

@@ -19,6 +19,7 @@ class IndexCreditRequest extends FormRequest
             'sortBy' => ['nullable', 'string'],
             'orderBy' => ['nullable', 'string', 'in:asc,desc,ASC,DESC'],
             'search' => ['nullable', 'string', 'max:100'],
+            'status_filter' => ['nullable', 'string', 'in:pending,overdue,paid,all'],
         ];
     }
 }

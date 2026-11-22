@@ -202,6 +202,8 @@ class GeneralSettingResource extends JsonResource
             'cyclic_inventory_scope' => $this->cyclic_inventory_scope ?? 'all',
             'cyclic_inventory_daily_quota' => (int) ($this->cyclic_inventory_daily_quota ?? 50),
             'enable_lots' => (bool) ($this->enable_lots ?? true),
+            'return_window_days' => (int) ($this->return_window_days ?? 2),
+            'require_return_approval' => (bool) ($this->require_return_approval ?? true),
             'tpv_mode' => $this->tpv_mode ?? 'complete',
             'enable_product_types' => (bool) ($this->enable_product_types ?? true),
             'show_product_photos' => (bool) ($this->show_product_photos ?? false),

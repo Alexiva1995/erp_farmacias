@@ -64,6 +64,7 @@ declare global {
   const formatNumber: typeof import('./resources/js/utils/formatters.js')['formatNumber']
   const formatOrderItemForFrontend: typeof import('./resources/js/composables/useTpvItemFormatter.js')['formatOrderItemForFrontend']
   const formatPrice: typeof import('./resources/js/utils/formatters.js')['formatPrice']
+  const generateActiveDishesPdf: typeof import('./resources/js/utils/pdfDishesGenerator.js')['generateActiveDishesPdf']
   const generateBiCustomerExecutivePdf: typeof import('./resources/js/utils/pdfBiCustomerAnalyticsGenerator.js')['generateBiCustomerExecutivePdf']
   const generateBiInventoryCyclicPdf: typeof import('./resources/js/utils/pdfBiInventoryCyclicGenerator.js')['generateBiInventoryCyclicPdf']
   const generateBiProductExecutivePdf: typeof import('./resources/js/utils/pdfBiProductReportGenerator.js')['generateBiProductExecutivePdf']
@@ -131,6 +132,7 @@ declare global {
   const pausableWatch: typeof import('@vueuse/core')['pausableWatch']
   const pdfClienstGenerator: typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']
   const pdfCompaniesGenerator: typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']
+  const pdfDishesGenerator: typeof import('./resources/js/utils/pdfDishesGenerator.js')['default']
   const pdfDoctorsGenerator: typeof import('./resources/js/utils/pdfDoctorsGenerator.js')['default']
   const pdfGastos: typeof import('./resources/js/utils/pdfGastos.js')['default']
   const pdfPayslipGenerator: typeof import('./resources/js/utils/pdfPayslipGenerator.js')['default']
@@ -270,6 +272,7 @@ declare global {
   const useFetch: typeof import('@vueuse/core')['useFetch']
   const useFileDialog: typeof import('@vueuse/core')['useFileDialog']
   const useFileSystemAccess: typeof import('@vueuse/core')['useFileSystemAccess']
+  const useFixedExpenses: typeof import('./resources/js/composables/useFixedExpenses.js')['useFixedExpenses']
   const useFloor: typeof import('@vueuse/math')['useFloor']
   const useFocus: typeof import('@vueuse/core')['useFocus']
   const useFocusWithin: typeof import('@vueuse/core')['useFocusWithin']
@@ -497,6 +500,7 @@ declare module 'vue' {
     readonly formatNumber: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatNumber']>
     readonly formatOrderItemForFrontend: UnwrapRef<typeof import('./resources/js/composables/useTpvItemFormatter.js')['formatOrderItemForFrontend']>
     readonly formatPrice: UnwrapRef<typeof import('./resources/js/utils/formatters.js')['formatPrice']>
+    readonly generateActiveDishesPdf: UnwrapRef<typeof import('./resources/js/utils/pdfDishesGenerator.js')['generateActiveDishesPdf']>
     readonly generateBiCustomerExecutivePdf: UnwrapRef<typeof import('./resources/js/utils/pdfBiCustomerAnalyticsGenerator.js')['generateBiCustomerExecutivePdf']>
     readonly generateBiInventoryCyclicPdf: UnwrapRef<typeof import('./resources/js/utils/pdfBiInventoryCyclicGenerator.js')['generateBiInventoryCyclicPdf']>
     readonly generateBiProductExecutivePdf: UnwrapRef<typeof import('./resources/js/utils/pdfBiProductReportGenerator.js')['generateBiProductExecutivePdf']>
@@ -564,6 +568,7 @@ declare module 'vue' {
     readonly pausableWatch: UnwrapRef<typeof import('@vueuse/core')['pausableWatch']>
     readonly pdfClienstGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfClienstGenerator.js')['default']>
     readonly pdfCompaniesGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfCompaniesGenerator.js')['default']>
+    readonly pdfDishesGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfDishesGenerator.js')['default']>
     readonly pdfDoctorsGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfDoctorsGenerator.js')['default']>
     readonly pdfGastos: UnwrapRef<typeof import('./resources/js/utils/pdfGastos.js')['default']>
     readonly pdfPayslipGenerator: UnwrapRef<typeof import('./resources/js/utils/pdfPayslipGenerator.js')['default']>
@@ -703,6 +708,7 @@ declare module 'vue' {
     readonly useFetch: UnwrapRef<typeof import('@vueuse/core')['useFetch']>
     readonly useFileDialog: UnwrapRef<typeof import('@vueuse/core')['useFileDialog']>
     readonly useFileSystemAccess: UnwrapRef<typeof import('@vueuse/core')['useFileSystemAccess']>
+    readonly useFixedExpenses: UnwrapRef<typeof import('./resources/js/composables/useFixedExpenses.js')['useFixedExpenses']>
     readonly useFloor: UnwrapRef<typeof import('@vueuse/math')['useFloor']>
     readonly useFocus: UnwrapRef<typeof import('@vueuse/core')['useFocus']>
     readonly useFocusWithin: UnwrapRef<typeof import('@vueuse/core')['useFocusWithin']>

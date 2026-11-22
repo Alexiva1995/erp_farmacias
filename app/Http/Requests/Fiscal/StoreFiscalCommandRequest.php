@@ -42,6 +42,10 @@ class StoreFiscalCommandRequest extends FormRequest
             'payload.client_name'        => 'nullable|string|max:38',
             'payload.client_rif'         => 'nullable|string|max:12',
             'payload.is_taxable'         => 'nullable|boolean',
+            'payload.exempt_amount'      => 'nullable|numeric|min:0',
+            'payload.taxable_amount'     => 'nullable|numeric|min:0',
+            'payload.order_id'           => 'nullable|integer',
+            'payload.return_entry_ids'   => 'nullable|array',
         ];
     }
 }

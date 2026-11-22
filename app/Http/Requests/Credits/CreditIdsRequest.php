@@ -16,6 +16,7 @@ class CreditIdsRequest extends FormRequest
         return [
             'credit_ids' => 'required|array',
             'credit_ids.*' => 'integer|exists:credits,id',
+            'reason' => 'nullable|string|max:255',
         ];
     }
 }

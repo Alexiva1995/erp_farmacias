@@ -390,22 +390,35 @@ class FactoryFiscalService implements FactoryFiscalServiceInterface
             }
             $commands[] = "iD*" . $dateFormatted;
 
-            // Renglón de devolución:
+            // Renglones de devolución:
             // d0 = Exento (0%)
             // d1 = General (16%)
-            // d2 = Reducida (8%)
-            // d3 = Adicional (31%)
-            $isTaxable = !empty($data['is_taxable']);
-            $devRate = $isTaxable ? 'd1' : 'd0';
-
-            $refundAmount = (float) ($data['refund_amount'] ?? 0);
-            $baseAmount = $isTaxable ? ($refundAmount / 1.16) : $refundAmount;
-
-            $priceFormatted = sprintf('%010d', (int) round($baseAmount * 100));
             $qtyFormatted = '00001000'; // 1 unidad
             $description = $this->sanitizeText($data['description'] ?? 'DEVOLUCION DE MERCANCIA', 38);
 
-            $commands[] = $devRate . $priceFormatted . $qtyFormatted . $description;
+            $exemptAmount = isset($data['exempt_amount']) ? (float) $data['exempt_amount'] : null;
+            $taxableAmount = isset($data['taxable_amount']) ? (float) $data['taxable_amount'] : null;
+
+            if ($exemptAmount !== null && $taxableAmount !== null && ($exemptAmount > 0 || $taxableAmount > 0)) {
+                if ($exemptAmount > 0) {
+                    $priceFormatted = sprintf('%010d', (int) round($exemptAmount * 100));
+                    $commands[] = 'd0' . $priceFormatted . $qtyFormatted . $description;
+                }
+                if ($taxableAmount > 0) {
+                    $baseAmount = $taxableAmount / 1.16;
+                    $priceFormatted = sprintf('%010d', (int) round($baseAmount * 100));
+                    $commands[] = 'd1' . $priceFormatted . $qtyFormatted . $description;
+                }
+            } else {
+                $isTaxable = !empty($data['is_taxable']);
+                $devRate = $isTaxable ? 'd1' : 'd0';
+
+                $refundAmount = (float) ($data['refund_amount'] ?? 0);
+                $baseAmount = $isTaxable ? ($refundAmount / 1.16) : $refundAmount;
+
+                $priceFormatted = sprintf('%010d', (int) round($baseAmount * 100));
+                $commands[] = $devRate . $priceFormatted . $qtyFormatted . $description;
+            }
             $commands[] = "101";
 
             foreach ($commands as $cmd) {

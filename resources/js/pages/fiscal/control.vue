@@ -617,6 +617,15 @@ onUnmounted(() => {
             >
               Emitir Nota de Crédito
             </VBtn>
+
+            <VAlert
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mt-4"
+            >
+              Uso de contingencia: esta acción solo emite el documento fiscal y NO devuelve inventario ni ajusta caja. Para devoluciones operativas use <strong>TPV &gt; Devoluciones</strong>.
+            </VAlert>
           </VCardText>
 
           <VCardText class="bg-light-warning rounded-b-lg py-3 mt-auto">

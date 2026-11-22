@@ -13,6 +13,8 @@ class CreditPayment extends Model
         'seller_id',
         'cash_closing_id',
         'money_returns',
+        'change_amount_usd',
+        'change_amount_cop',
         'payment_date',
         'method_Payment',
         'status',
@@ -28,6 +30,9 @@ class CreditPayment extends Model
         'verified_by',
         'verified_at',
         'rejection_reason',
+        'voided_by',
+        'voided_at',
+        'void_reason',
         'withheld_iva_amount',
         'withheld_islr_amount',
         'retention_voucher_number',
@@ -36,11 +41,14 @@ class CreditPayment extends Model
 
     protected $casts = [
         'method_Payment' => 'array',
+        'change_amount_usd' => 'decimal:2',
+        'change_amount_cop' => 'decimal:2',
         'exchange_rate_applied' => 'decimal:4',
         'amount_usd_equivalent' => 'decimal:2',
         'withheld_iva_amount' => 'decimal:2',
         'withheld_islr_amount' => 'decimal:2',
         'verified_at' => 'datetime',
+        'voided_at' => 'datetime',
         'payment_date' => 'datetime',
     ];
 
@@ -67,5 +75,21 @@ class CreditPayment extends Model
     public function seller()
     {
         return $this->belongsTo(User::class, 'seller_id');
+    }
+
+    public function voidedBy()
+    {
+        return $this->belongsTo(User::class, 'voided_by');
+    }
+
+    /**
+     * Filtra solo abonos activos (no anulados).
+     */
+    public function scopeActive($query)
+    {
+        return $query->whereNull('voided_at')
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            });
     }
 }

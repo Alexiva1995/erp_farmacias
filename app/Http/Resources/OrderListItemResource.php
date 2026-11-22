@@ -19,9 +19,21 @@ class OrderListItemResource extends JsonResource
         return [
             'id' => $this->id,
             'order_date' => $this->order_date ? (is_string($this->order_date) ? $this->order_date : $this->order_date->format('Y-m-d H:i:s')) : null,
-            'total_amount' => $this->total_amount,
+            'total_amount' => (float) $this->total_amount,
+            'total_amount_usd' => $this->total_amount_usd !== null ? (float) $this->total_amount_usd : null,
             'currency' => $this->currency,
             'status' => $this->status,
+            'has_multiple_currencies' => (bool) $this->has_multiple_currencies,
+            'spe_surcharge_rate' => $this->spe_surcharge_rate !== null ? (float) $this->spe_surcharge_rate : 0.0,
+            'spe_surcharge_amount' => $this->spe_surcharge_amount !== null ? (float) $this->spe_surcharge_amount : 0.0,
+            'dining_table_id' => $this->dining_table_id,
+            'parent_order_id' => $this->parent_order_id,
+            'guests_count' => $this->guests_count !== null ? (int) $this->guests_count : null,
+            'service_charge_percentage' => $this->service_charge_percentage !== null ? (float) $this->service_charge_percentage : 0.0,
+            'service_charge_amount' => $this->service_charge_amount !== null ? (float) $this->service_charge_amount : 0.0,
+            'pre_bill_printed_at' => $this->pre_bill_printed_at ? (is_string($this->pre_bill_printed_at) ? $this->pre_bill_printed_at : $this->pre_bill_printed_at->format('Y-m-d H:i:s')) : null,
+            'returns_count' => (int) ($this->returns_count ?? 0),
+            'psychotropic_controls_count' => (int) ($this->psychotropic_controls_count ?? 0),
             'payment_methods' => $this->payment_methods,
             'client' => $this->whenLoaded('client', function () {
                 return [
@@ -36,6 +48,16 @@ class OrderListItemResource extends JsonResource
                 return [
                     'id' => $this->seller->id,
                     'username' => $this->seller->username,
+                ];
+            }),
+            'dining_table' => $this->whenLoaded('diningTable', function () {
+                if (!$this->diningTable) {
+                    return null;
+                }
+
+                return [
+                    'id' => $this->diningTable->id,
+                    'name' => $this->diningTable->name,
                 ];
             }),
             'fiscal_history' => $this->whenLoaded('fiscalHistory', function () {

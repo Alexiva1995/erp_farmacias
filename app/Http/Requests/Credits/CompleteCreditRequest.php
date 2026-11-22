@@ -15,6 +15,8 @@ class CompleteCreditRequest extends FormRequest
     {
         return [
             'clientId' => ['required', 'integer', 'exists:clients,id'],
+            'credit_ids' => ['nullable', 'array'],
+            'credit_ids.*' => ['integer', 'exists:credits,id'],
             'payments' => ['required', 'array', 'min:1'],
             'payments.*.method' => ['required', 'string'],
             'payments.*.amount' => ['required', 'numeric', 'gt:0'],

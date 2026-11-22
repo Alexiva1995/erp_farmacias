@@ -1,10 +1,11 @@
 <script setup>
 import { computed } from "vue";
 import { formatCurrency } from "@/utils/currencyFormatter";
-import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { BASE64_LOGO_DATA } from "@/constants/logo.js";
 import { useAuthStore } from "@/stores/auth";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { formatDateTime } from "@/utils/formatDateTime";
+import { translateMethod } from "@/utils/paymentMethods";
 
 const props = defineProps({
   creditsData: {
@@ -15,10 +16,6 @@ const props = defineProps({
     type: String,
     default: "USD",
   },
-  baseUrl: {
-    type: String,
-    default: "/",
-  },
   payments: {
     type: Array,
     default: () => [],
@@ -27,82 +24,44 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  creditAmount: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const authStore = useAuthStore();
-const currentUser = computed(() => authStore.user);
-
-import { useBrandingStore } from "@/stores/useBrandingStore";
-
 const brandingStore = useBrandingStore();
 const today = new Date();
 
-const userUsername = computed(() => {
-  return currentUser.value?.username || "N/A";
-});
+const userUsername = computed(() => authStore.user?.username || "N/A");
+const businessName = computed(
+  () => brandingStore.settings?.business_name || brandingStore.settings?.company_name || ""
+);
+const logoSrc = computed(() => brandingStore.settings?.app_logo || BASE64_LOGO_DATA);
 
-const logoSrc = computed(() => {
-  return brandingStore.settings?.app_logo || BASE64_LOGO_DATA;
-});
-
-const getPaymentMethodLabel = (methodValue, currency) => {
-  const paymentMethodsByCurrency = {
-    COP: [
-      { label: "Efectivo", value: "cash_cop" },
-      { label: "Transferencia", value: "bank_transfer" },
-    ],
-    BS: [
-      { label: "Efectivo", value: "cash_bs" },
-      { label: "Pago Móvil", value: "mobile_payment" },
-      { label: "Transferencia", value: "bank_transfer_bs" },
-      { label: "Tarjeta", value: "card" },
-    ],
-    USD: [
-      { label: "Efectivo", value: "cash_usd" },
-      { label: "Binance", value: "binance" },
-      { label: "PayPal", value: "paypal" },
-    ],
-  };
-
-  if (!methodValue) return "N/A";
-  const methodsForCurrency = paymentMethodsByCurrency[currency];
-  if (methodsForCurrency) {
-    const foundMethod = methodsForCurrency.find((m) => m.value === methodValue);
-    if (foundMethod) {
-      return foundMethod.label;
-    }
-  }
-  for (const key in paymentMethodsByCurrency) {
-    const methods = paymentMethodsByCurrency[key];
-    const foundMethod = methods.find((m) => m.value === methodValue);
-    if (foundMethod) {
-      return foundMethod.label;
-    }
-  }
-  return methodValue.replace(/_/g, " ").toUpperCase();
-};
-
-const showChangeAmount = computed(() => {
-  return props.changeAmount > 0;
-});
+const previousBalance = computed(() => parseFloat(props.creditsData?.total_pending_amount || 0));
+const showChangeAmount = computed(() => props.changeAmount > 0);
 </script>
+
 <template>
   <div class="col-12 col-md-8 mx-auto ticket-black-text">
     <VCard variant="outlined" class="pa-2 text-start border-0 text-black">
-      <div class="text-center pa-2 mb-2">
-        <a href="#">
-          <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
-        </a>
-      </div>
-      <div class="ticket-header d-flex justify-space-between align-start mt-2">
-        <span class="font-weight-bold text-black"></span>
-        <div class="text-right d-flex flex-column align-end">
-          <p class="text-black font-weight-regular mb-0 textoPrint">
-            Fecha: {{ formatDateTime(today, "date") }}
-            {{ formatDateTime(today, "time") }}
-          </p>
+      <div class="text-center pa-2 mb-1">
+        <img width="130" :src="logoSrc" alt="Logotipo de la marca" />
+        <div v-if="businessName" class="font-weight-bold text-black mt-1">
+          {{ businessName }}
         </div>
+        <div class="text-caption font-weight-bold text-black">COMPROBANTE DE ABONO</div>
       </div>
+
+      <div class="ticket-header d-flex justify-space-between align-start mt-1">
+        <span class="textoPrint text-black">Fecha:</span>
+        <span class="text-black font-weight-regular textoPrint">
+          {{ formatDateTime(today, "date") }} {{ formatDateTime(today, "time") }}
+        </span>
+      </div>
+
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
         <span class="textoPrint text-black">Cajero:</span>
         <span class="text-black">{{ userUsername }}</span>
@@ -110,77 +69,69 @@ const showChangeAmount = computed(() => {
 
       <div class="d-flex justify-space-between align-start textoPrint mb-1">
         <span class="textoPrint text-black">Cliente:</span>
-        <span class="textoPrint text-black"
-          >{{ creditsData?.client?.name }}
-          {{ creditsData?.client?.last_name }}</span
-        >
+        <span class="textoPrint text-black">
+          {{ creditsData?.client?.name }} {{ creditsData?.client?.last_name }}
+        </span>
       </div>
 
-      <div class="d-flex justify-space-between align-start textoPrint mb-1">
+      <div class="d-flex justify-space-between align-start textoPrint mb-2">
         <span class="textoPrint text-black">Documento:</span>
-        <span class="textoPrint text-black"
-          >{{ creditsData?.client?.identification_type }}
-          {{ creditsData?.client?.identification }}</span
-        >
+        <span class="textoPrint text-black">
+          {{ creditsData?.client?.identification_type }}{{ creditsData?.client?.identification }}
+        </span>
       </div>
 
-      <div class="d-flex flex-wrap justify-space-between textoPrint">
-        <p class="font-weight-bold text-h6 text-black">Métodos de Pago</p>
-        <div class="text-end">
-          <p
-            v-for="(payment, pIndex) in payments"
-            :key="`ticket-payment-${pIndex}`"
-            class="font-weight-bold my-1 text-black"
-          >
-            <span
-              >{{ getPaymentMethodLabel(payment.method, payment.currency) }} ({{
-                payment.currency
-              }})</span
-            >
-          </p>
-        </div>
-      </div>
+      <hr />
 
       <div class="ticket-body mt-2">
-        <div class="ticket-item">
-          <span class="ticket-item-qty"></span>
-          <span class="ticket-item-name text-black">Créditos</span>
-          <span class="ticket-item-total text-black">{{formatCurrency(parseFloat(creditsData.total_pending_amount), props.selectedCurrency)}}</span>
-        </div>
-        <hr />
-
-        <div class="ticket-total d-flex justify-space-between align-center">
-          <span class="font-weight-bold text-black">TOTAL:</span>
-          <span class="text-end font-weight-black text-black">
-          {{ creditsData.total_pending_amount }} {{ props.selectedCurrency }}</span>
+        <div class="d-flex justify-space-between align-center mb-1">
+          <span class="font-weight-bold text-black">SALDO ANTERIOR:</span>
+          <span class="text-end font-weight-bold text-black">
+            {{ formatCurrency(previousBalance, props.selectedCurrency) }}
+          </span>
         </div>
 
-        <div class="ticket-total d-flex flex-wrap justify-space-between">
-          <p class="font-weight-bold text-h6 mt-2 text-black">PAGO:</p>
-          <div class="text-end">
-            <p
-              v-for="(payment, pIndex) in payments"
-              :key="`ticket-payment-${pIndex}`"
-              class="font-weight-bold my-1 text-black"
-            >
-              <span>
-                {{ formatCurrency(payment.amount || 0, payment.currency) }}
-              </span>
-            </p>
+        <div class="mt-2">
+          <p class="font-weight-bold text-black mb-1">ABONOS RECIBIDOS:</p>
+          <div
+            v-for="(payment, pIndex) in payments"
+            :key="`ticket-payment-${pIndex}`"
+            class="d-flex justify-space-between align-center my-1 text-black"
+          >
+            <span>
+              {{ translateMethod(payment.method) }} ({{ payment.currency }})
+              <span v-if="payment.reference"> - Ref: {{ payment.reference }}</span>
+            </span>
+            <span class="font-weight-bold">
+              {{ formatCurrency(payment.amount || 0, payment.currency) }}
+            </span>
           </div>
         </div>
 
         <div
           v-if="showChangeAmount"
-          class="ticket-total d-flex justify-space-between align-center"
+          class="d-flex justify-space-between align-center mt-2"
         >
-          <span class="font-weight-bold text-black">DEVOLUCION:</span>
+          <span class="font-weight-bold text-black">VUELTO ENTREGADO:</span>
           <span class="text-end font-weight-black text-black">
             {{ formatCurrency(changeAmount, "COP") }}
           </span>
         </div>
+
+        <hr class="my-2" />
+
+        <div
+          v-if="creditAmount >= 0"
+          class="d-flex justify-space-between align-center"
+        >
+          <span class="font-weight-black text-black">SALDO RESTANTE:</span>
+          <span class="text-end font-weight-black text-black">
+            {{ formatCurrency(creditAmount, props.selectedCurrency) }}
+          </span>
+        </div>
       </div>
-      <p class="font-weight-bold text-center text-black mt-2">
+
+      <p class="font-weight-bold text-center text-black mt-3">
         ¡GRACIAS POR PREFERIRNOS!
       </p>
     </VCard>

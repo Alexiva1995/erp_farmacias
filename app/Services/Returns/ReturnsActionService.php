@@ -4,80 +4,83 @@ declare(strict_types=1);
 
 namespace App\Services\Returns;
 
-use App\Services\Resources\ResourceService;
-use App\Models\Client;
+use App\Enums\ReturnFiscalStatusEnum;
+use App\Enums\ReturnRefundMethodEnum;
+use App\Models\FiscalCommand;
+use App\Models\GeneralSetting;
 use App\Models\InventoryMovement;
 use App\Models\Order;
+use App\Models\OrderDetail;
 use App\Models\Product;
 use App\Models\ProductLot;
 use App\Models\ReturnEntry;
+use App\Models\Transaction;
+use App\TransactionType;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ReturnsActionService
 {
-    public function __construct(private ResourceService $resourceService)
+    /**
+     * Buscar órdenes completadas elegibles para devolución dentro de la ventana configurada.
+     */
+    public function searchOrdersReturns(string $searchTerm, array $options = [], ?int $orderId = null): Builder
     {
-    }
+        $settings = GeneralSetting::first();
+        $windowDays = max(1, (int) ($settings?->return_window_days ?? 2));
+        $cutoffDate = Carbon::now()->subDays($windowDays);
 
+        $query = Order::query()
+            ->where('status', Order::COMPLETED)
+            ->with(['client', 'details.product.laboratory', 'returns', 'fiscalHistory']);
 
-    public function searchOrdersReturns(string $searchTerm, array $options): Builder
-    {
-        try {
-            // Normalizar el término de búsqueda para identificación (quitar guiones y puntos)
-            $normalizedSearch = preg_replace('/[^A-Za-z0-9]/', '', $searchTerm);
+        if ($orderId !== null && $orderId > 0) {
+            return $query->where('id', $orderId);
+        }
 
-            // Órdenes de las últimas 48 horas para devoluciones
-            // Usamos NOW() de MySQL para evitar discrepancias de zona horaria entre PHP y DB
-            $query = Order::where('order_date', '>=', Carbon::now()->subHours(48))
-                ->where('status', Order::COMPLETED)
-                ->with(['client', 'details.product.laboratory', 'returns'])
-                ->where(function ($q) use ($searchTerm, $normalizedSearch) {
-                    // 1. Búsqueda por ID de orden exacto
-                    if (is_numeric($searchTerm) && strlen($searchTerm) < 10) {
-                        $q->where('id', $searchTerm);
-                    }
+        $normalizedSearch = preg_replace('/[^A-Za-z0-9]/', '', $searchTerm);
 
-                    // 2. Búsqueda por identificación del cliente (Normalizada)
-                    $q->orWhereHas('client', function ($sub) use ($searchTerm, $normalizedSearch) {
-                        $sub->where('identification', 'like', "%{$searchTerm}%")
-                            ->orWhere('identification', 'like', "%{$normalizedSearch}%")
-                            // Comparar contra identificación normalizada en BD (quitando guiones/puntos)
-                            ->orWhereRaw("REPLACE(REPLACE(identification, '.', ''), '-', '') LIKE ?", ["%{$normalizedSearch}%"])
-                            // Comparar contra concatenación completa normalizada
-                            ->orWhereRaw("REPLACE(REPLACE(CONCAT(COALESCE(identification_type,''), COALESCE(identification,'')), '-', ''), '.', '') LIKE ?", ["%{$normalizedSearch}%"]);
-                    });
+        $query->where('order_date', '>=', $cutoffDate)
+            ->where(function ($q) use ($searchTerm, $normalizedSearch) {
+                if (is_numeric($searchTerm) && strlen($searchTerm) < 10) {
+                    $q->where('id', (int) $searchTerm);
+                }
 
-                    // 3. Búsqueda por nombre del cliente
-                    $q->orWhereHas('client', function ($sub) use ($searchTerm) {
-                        $sub->where('name', 'like', "%{$searchTerm}%")
-                            ->orWhere('last_name', 'like', "%{$searchTerm}%")
-                            ->orWhereRaw('CONCAT(COALESCE(name,""), " ", COALESCE(last_name,"")) LIKE ?', ["%{$searchTerm}%"]);
-                    });
+                $q->orWhereHas('fiscalHistory', function ($sub) use ($searchTerm) {
+                    $sub->where('invoice_number', 'like', "%{$searchTerm}%");
                 });
 
-            if (isset($options['sortBy']) && !empty($options['sortBy'])) {
-                $sortBy = $options['sortBy'];
-                $orderBy = $options['orderBy'] ?? 'desc';
-                $query->orderBy($sortBy, $orderBy);
-            } else {
-                $query->orderBy('order_date', 'desc');
-            }
+                $q->orWhereHas('client', function ($sub) use ($searchTerm, $normalizedSearch) {
+                    $sub->where('identification', 'like', "%{$searchTerm}%")
+                        ->orWhere('identification', 'like', "%{$normalizedSearch}%")
+                        ->orWhereRaw("REPLACE(REPLACE(identification, '.', ''), '-', '') LIKE ?", ["%{$normalizedSearch}%"])
+                        ->orWhereRaw("REPLACE(REPLACE(CONCAT(COALESCE(identification_type,''), COALESCE(identification,'')), '-', ''), '.', '') LIKE ?", ["%{$normalizedSearch}%"])
+                        ->orWhere('name', 'like', "%{$searchTerm}%")
+                        ->orWhere('last_name', 'like', "%{$searchTerm}%")
+                        ->orWhereRaw('CONCAT(COALESCE(name,""), " ", COALESCE(last_name,"")) LIKE ?', ["%{$searchTerm}%"]);
+                });
+            });
 
-
-            return $query;
-        } catch (\Exception $e) {
-            Log::error('searchOrdersReturns error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            throw $e;
+        if (!empty($options['sortBy'])) {
+            $sortBy = $options['sortBy'];
+            $orderBy = ($options['orderBy'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortBy, $orderBy);
+        } else {
+            $query->orderBy('order_date', 'desc');
         }
+
+        return $query;
     }
 
-    public function getProductLotsForReturn($productId)
+    /**
+     * Obtener lotes disponibles de un producto para distribución en devolución.
+     */
+    public function getProductLotsForReturn(int $productId): array
     {
         $lots = ProductLot::where('product_id', $productId)
             ->orderBy('expiration_date', 'asc')
@@ -100,118 +103,530 @@ class ReturnsActionService
         ];
     }
 
-    public function productReturn(Request $request)
+    /**
+     * Registrar una o varias devoluciones desde el flujo unificado.
+     * Si el negocio no requiere aprobación de supervisor (o se solicita aprobación directa con permiso),
+     * ejecuta de una vez el reingreso a inventario, el reembolso y la Nota de Crédito fiscal.
+     *
+     * @return array<string, mixed>
+     */
+    public function createReturns(array $validated): array
     {
-        DB::beginTransaction();
+        return DB::transaction(function () use ($validated) {
+            $settings = GeneralSetting::first();
+            $requireApproval = (bool) ($settings?->require_return_approval ?? true);
+            $windowDays = max(1, (int) ($settings?->return_window_days ?? 2));
 
-        try {
-            $orderData = $request->order;
-            $productData = $request->product;
-            $orderDetail = collect($orderData['details'])->firstWhere('product_id', $productData['id']);
-            $returnsQuantity = (int) $request->input('returns_quantity');
-            $productLotId = $request->input('product_lot_id');
+            /** @var Order $order */
+            $order = Order::with(['client', 'details.product', 'fiscalHistory', 'returns'])
+                ->lockForUpdate()
+                ->findOrFail((int) $validated['order_id']);
 
-            if ($returnsQuantity <= 0) {
-                throw new Exception('La cantidad a devolver debe ser mayor a cero.');
+            if ($order->status !== Order::COMPLETED) {
+                throw new Exception('Solo se pueden procesar devoluciones de órdenes completadas.');
             }
 
-            if (!$orderDetail) {
-                throw new Exception('No se encontró el detalle del producto en la orden.');
-            }
-            $orderDetail = (object) $orderDetail;
-
-            $priceUsd = (float) ($orderDetail->unit_price_usd ?? 0);
-            if (!$priceUsd) {
-                $price = (float) ($orderDetail->price ?? 0);
-                $currency = strtoupper($orderData['currency'] ?? 'USD');
-                $usdConversion = (float) ($orderData['usd_conversion'] ?? 1) ?: 1;
-                $priceUsd = $currency === 'USD' ? $price : ($price / $usdConversion);
-            }
-            $returnAmount = round(($returnsQuantity * $priceUsd) * (100 - (float) ($orderDetail->discount_percentage ?? 0)) / 100, 2);
-            $clientData = $orderData['client'];
-
-            if (!$clientData) {
+            if (!$order->client) {
                 throw new Exception('No se encontró el cliente asociado a la orden.');
             }
 
-            // La distribución en lotes y el movimiento de inventario se realizan al aprobar en /tpv/returnsSupervisor
-            $return = ReturnEntry::create([
-                'order_id' => $orderData['id'],
-                'generated_by_id' => Auth::id(),
-                'product_id' => $productData['id'],
-                'quantity' => $returnsQuantity,
-                'amount_refunded' => $returnAmount,
-                'return_date' => Carbon::now(),
-                'status' => null
-            ]);
+            if ($order->order_date && $order->order_date->lt(Carbon::now()->subDays($windowDays))) {
+                throw new Exception("La orden supera la ventana máxima de {$windowDays} días permitida para devoluciones.");
+            }
 
-            DB::commit();
+            $refundMethod = $validated['refund_method'] ?? ReturnRefundMethodEnum::BALANCE->value;
+            $restockInventory = array_key_exists('restock_inventory', $validated)
+                ? (bool) $validated['restock_inventory']
+                : true;
+            $reason = $validated['reason'] ?? null;
+
+            $canDirectApprove = in_array((int) (Auth::user()?->role_id ?? 0), [1, 2], true);
+            $shouldApproveNow = !$requireApproval || (!empty($validated['approve_immediately']) && $canDirectApprove);
+
+            $createdReturns = collect();
+
+            foreach ($validated['items'] as $item) {
+                $productId = (int) $item['product_id'];
+                $qty = (int) $item['quantity'];
+
+                if ($qty <= 0) {
+                    throw new Exception('La cantidad a devolver debe ser mayor a cero.');
+                }
+
+                /** @var OrderDetail|null $detail */
+                $detail = $order->details->firstWhere('product_id', $productId);
+                if (!$detail) {
+                    throw new Exception("El producto #{$productId} no pertenece a la orden #{$order->id}.");
+                }
+
+                $alreadyReturned = (int) ReturnEntry::where('order_id', $order->id)
+                    ->where('product_id', $productId)
+                    ->where(function ($q) {
+                        $q->whereNull('status')->orWhere('status', ReturnEntry::APPROVED);
+                    })
+                    ->sum('quantity');
+
+                $soldQty = (int) $detail->quantity;
+                $availableQty = max(0, $soldQty - $alreadyReturned);
+
+                if ($qty > $availableQty) {
+                    $productName = $detail->product?->name ?? "Producto #{$productId}";
+                    throw new Exception(
+                        "No puede devolver {$qty} unidades de {$productName}. Disponible para devolver: {$availableQty}."
+                    );
+                }
+
+                $unitPriceUsd = $this->resolveDetailUnitPriceUsd($order, $detail);
+                $discountPct = (float) ($detail->discount_percentage ?? 0);
+                $refundAmountUsd = round(($qty * $unitPriceUsd) * (100 - $discountPct) / 100, 2);
+
+                $hasFiscalInvoice = !empty($order->fiscalHistory?->invoice_number);
+
+                $returnEntry = ReturnEntry::create([
+                    'order_id' => $order->id,
+                    'generated_by_id' => Auth::id(),
+                    'product_id' => $productId,
+                    'quantity' => $qty,
+                    'amount_refunded' => $refundAmountUsd,
+                    'refund_method' => $refundMethod,
+                    'restock_inventory' => $restockInventory,
+                    'reason' => $reason,
+                    'return_date' => Carbon::now(),
+                    'status' => null,
+                    'fiscal_status' => $hasFiscalInvoice
+                        ? ReturnFiscalStatusEnum::PENDING->value
+                        : ReturnFiscalStatusEnum::NOT_APPLICABLE->value,
+                ]);
+
+                $createdReturns->push($returnEntry);
+            }
+
+            if ($shouldApproveNow) {
+                $updatedLots = count($createdReturns) === 1 ? ($validated['updated_lots'] ?? []) : [];
+                $newLots = count($createdReturns) === 1 ? ($validated['new_lots'] ?? []) : [];
+
+                foreach ($createdReturns as $entry) {
+                    $this->processApprovalEffects($entry, $order, $updatedLots, $newLots, $restockInventory);
+                }
+
+                $this->dispatchFiscalCreditNoteIfApplicable($order, $createdReturns);
+            }
+
+            $createdReturns->each->refresh();
+
             return [
                 'success' => true,
-                'message' => 'Devolución procesada con éxito.',
+                'approved' => $shouldApproveNow,
+                'fiscal_queued' => $shouldApproveNow && !empty($order->fiscalHistory?->invoice_number),
+                'message' => $shouldApproveNow
+                    ? 'Devolución procesada y aprobada exitosamente.'
+                    : 'Devolución registrada. Pendiente de aprobación del supervisor.',
+                'returns' => $createdReturns,
             ];
-        } catch (Exception $e) {
-            DB::rollBack();
-            throw new Exception($e->getMessage());
-        }
-    }
-
-    public function updateStatus(ReturnEntry $ReturnEntry, string $status): ReturnEntry
-    {
-        DB::beginTransaction();
-        try {
-            $ReturnEntry->status = $status === ReturnEntry::APPROVED ? ReturnEntry::APPROVED : ReturnEntry::REJECTED;
-            $ReturnEntry->save();
-
-            if ($status === ReturnEntry::APPROVED) {
-                $ReturnEntry->order->client->increment('balance', $ReturnEntry->amount_refunded);
-
-                $order = $ReturnEntry->order;
-                $paymentMethods = $order->payment_methods ?? [];
-
-                $paymentMethods[] = [
-                    'amount' => (float) $ReturnEntry->amount_refunded,
-                    'method' => 'cash_usd',
-                    'currency' => 'USD',
-                    'reference' => null,
-                    'inputAmount' => null,
-                    'debounceTimeout' => 0,
-                    "isDebt" => true
-                ];
-
-                $order->payment_methods = $paymentMethods;
-                $order->save();
-            }
-            DB::commit();
-            return $ReturnEntry;
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error("Error al $status la devolución: " . $e->getMessage(), [
-                'returnEntry_id' => $ReturnEntry->id,
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
-        }
+        });
     }
 
     /**
-     * Distribuye la cantidad devuelta en lotes (reingreso a inventario).
-     * Solo para devoluciones ya aprobadas (uso posterior al aprobado).
+     * Aprobar una devolución pendiente (con o sin distribución manual de lotes).
+     */
+    public function approveReturn(
+        ReturnEntry $returnEntry,
+        array $updatedLots = [],
+        array $newLots = [],
+        ?bool $restockOverride = null
+    ): ReturnEntry {
+        if ($returnEntry->status !== null) {
+            throw new Exception('Solo se puede aprobar una devolución que se encuentre pendiente.');
+        }
+
+        return DB::transaction(function () use ($returnEntry, $updatedLots, $newLots, $restockOverride) {
+            $order = Order::with(['client', 'details.product', 'fiscalHistory'])
+                ->lockForUpdate()
+                ->findOrFail($returnEntry->order_id);
+
+            $restock = $restockOverride ?? (bool) ($returnEntry->restock_inventory ?? true);
+
+            $this->processApprovalEffects($returnEntry, $order, $updatedLots, $newLots, $restock);
+            $this->dispatchFiscalCreditNoteIfApplicable($order, collect([$returnEntry]));
+
+            return $returnEntry->fresh([
+                'order.client',
+                'order.seller',
+                'order.fiscalHistory',
+                'product.laboratory',
+                'generatedBy',
+                'approvedBy',
+            ]);
+        });
+    }
+
+    /**
+     * Rechazar o actualizar el estado simple de una devolución.
+     */
+    public function updateStatus(ReturnEntry $returnEntry, string $status): ReturnEntry
+    {
+        if ($status === ReturnEntry::APPROVED) {
+            return $this->approveReturn($returnEntry);
+        }
+
+        return DB::transaction(function () use ($returnEntry) {
+            $returnEntry->update([
+                'status' => ReturnEntry::REJECTED,
+                'approved_by_id' => Auth::id(),
+                'fiscal_status' => ReturnFiscalStatusEnum::NOT_APPLICABLE->value,
+            ]);
+
+            return $returnEntry->fresh();
+        });
+    }
+
+    /**
+     * Distribuir cantidad devuelta en lotes para devoluciones ya aprobadas sin lotes previos.
      */
     public function distributeLots(ReturnEntry $returnEntry, array $updatedLots, array $newLots): void
     {
         if ($returnEntry->status !== ReturnEntry::APPROVED) {
             throw new Exception('Solo se puede distribuir lotes en devoluciones aprobadas.');
         }
-        $this->applyLotDistribution($returnEntry, $updatedLots, $newLots);
+
+        DB::transaction(function () use ($returnEntry, $updatedLots, $newLots) {
+            $this->applyLotDistribution($returnEntry, $updatedLots, $newLots);
+        });
     }
 
     /**
-     * Aplica la distribución en lotes: stock actual + unidades devueltas.
-     * Valida que la suma distribuida coincida con la cantidad devuelta.
-     * updated_lots: [{ id, quantity }] cantidad final por lote existente.
-     * new_lots: [{ lot_number, expiration_date, location, quantity }].
-     * Retorna lista de [ product_lot_id, quantity ] para generar movimientos de inventario por lote (como en cyclics).
+     * Compatibilidad con el endpoint legado approve-with-distribution.
+     */
+    public function approveWithDistribution(ReturnEntry $returnEntry, array $updatedLots, array $newLots): ReturnEntry
+    {
+        return $this->approveReturn($returnEntry, $updatedLots, $newLots, true);
+    }
+
+    /**
+     * Reintentar la emisión de Nota de Crédito fiscal sin duplicar inventario ni reembolso.
+     */
+    public function retryCreditNote(ReturnEntry $returnEntry): ReturnEntry
+    {
+        return DB::transaction(function () use ($returnEntry) {
+            if ($returnEntry->status !== ReturnEntry::APPROVED) {
+                throw new Exception('Solo se puede reintentar la Nota de Crédito en devoluciones aprobadas.');
+            }
+
+            $order = Order::with(['client', 'details.product', 'fiscalHistory'])->findOrFail($returnEntry->order_id);
+            if (empty($order->fiscalHistory?->invoice_number)) {
+                throw new Exception('La orden asociada no posee factura fiscal emitida.');
+            }
+
+            $fiscalStatus = $returnEntry->fiscal_status?->value ?? $returnEntry->fiscal_status;
+            if ($fiscalStatus === ReturnFiscalStatusEnum::EMITTED->value) {
+                throw new Exception('La Nota de Crédito de esta devolución ya fue emitida.');
+            }
+
+            $this->dispatchFiscalCreditNoteIfApplicable($order, collect([$returnEntry]));
+
+            return $returnEntry->fresh(['order.fiscalHistory', 'fiscalCommand']);
+        });
+    }
+
+    /**
+     * Ejecutar efectos de aprobación: inventario (lotes, stock directo o merma) y reembolso financiero.
+     */
+    private function processApprovalEffects(
+        ReturnEntry $returnEntry,
+        Order $order,
+        array $updatedLots,
+        array $newLots,
+        bool $restock
+    ): void {
+        $this->applyInventoryEffect($returnEntry, $order, $updatedLots, $newLots, $restock);
+        $this->applyFinancialRefund($returnEntry, $order);
+
+        $returnEntry->update([
+            'status' => ReturnEntry::APPROVED,
+            'approved_by_id' => Auth::id(),
+            'restock_inventory' => $restock,
+        ]);
+    }
+
+    /**
+     * Aplicar efecto en inventario según configuración de lotes y destino (reingreso o merma).
+     */
+    private function applyInventoryEffect(
+        ReturnEntry $returnEntry,
+        Order $order,
+        array $updatedLots,
+        array $newLots,
+        bool $restock
+    ): void {
+        $product = Product::lockForUpdate()->findOrFail($returnEntry->product_id);
+        $stockBefore = (int) ($product->stock ?? 0);
+
+        if (!$restock) {
+            // Producto dañado/merma: no vuelve a stock vendible, queda trazabilidad de movimiento
+            InventoryMovement::create([
+                'product_id' => $product->id,
+                'product_lot_id' => null,
+                'movement_type' => 'return_waste',
+                'quantity' => (int) $returnEntry->quantity,
+                'invoice_id' => null,
+                'supplier_id' => null,
+                'order_id' => $order->id,
+                'user_id' => Auth::id(),
+                'stock_before' => $stockBefore,
+                'stock_after' => $stockBefore,
+                'movement_date' => now(),
+            ]);
+            return;
+        }
+
+        $enableLots = (bool) (GeneralSetting::first()?->enable_lots ?? true);
+        $hasManualDistribution = !empty($updatedLots) || !empty($newLots);
+
+        if ($enableLots && $hasManualDistribution) {
+            $distributionForMovements = $this->applyLotDistribution($returnEntry, $updatedLots, $newLots);
+            $stockAfter = (int) $product->fresh()->lots()->sum('quantity');
+
+            Product::withoutEvents(function () use ($product, $stockAfter) {
+                $product->update(['stock' => $stockAfter]);
+            });
+
+            foreach ($distributionForMovements as $item) {
+                InventoryMovement::create([
+                    'product_id' => $product->id,
+                    'product_lot_id' => $item['product_lot_id'],
+                    'movement_type' => 'return',
+                    'quantity' => (int) $item['quantity'],
+                    'invoice_id' => null,
+                    'supplier_id' => null,
+                    'order_id' => $order->id,
+                    'user_id' => Auth::id(),
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
+                    'movement_date' => now(),
+                ]);
+            }
+            return;
+        }
+
+        if ($enableLots) {
+            // Asignación automática al lote vendido en la orden o al lote más reciente del producto
+            $detail = $order->details->firstWhere('product_id', $product->id);
+            $targetLot = null;
+
+            if ($detail && $detail->product_lot_id) {
+                $targetLot = ProductLot::where('id', $detail->product_lot_id)
+                    ->where('product_id', $product->id)
+                    ->first();
+            }
+
+            if (!$targetLot) {
+                $targetLot = ProductLot::where('product_id', $product->id)
+                    ->orderByDesc('id')
+                    ->first();
+            }
+
+            if ($targetLot) {
+                ProductLot::withoutEvents(function () use ($targetLot, $returnEntry) {
+                    $targetLot->increment('quantity', (int) $returnEntry->quantity);
+                });
+                $stockAfter = (int) $product->fresh()->lots()->sum('quantity');
+                Product::withoutEvents(function () use ($product, $stockAfter) {
+                    $product->update(['stock' => $stockAfter]);
+                });
+
+                InventoryMovement::create([
+                    'product_id' => $product->id,
+                    'product_lot_id' => $targetLot->id,
+                    'movement_type' => 'return',
+                    'quantity' => (int) $returnEntry->quantity,
+                    'invoice_id' => null,
+                    'supplier_id' => null,
+                    'order_id' => $order->id,
+                    'user_id' => Auth::id(),
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
+                    'movement_date' => now(),
+                ]);
+                return;
+            }
+        }
+
+        // Flujo directo sin lotes (Retail/Minimarket o producto sin lotes)
+        $stockAfter = $stockBefore + (int) $returnEntry->quantity;
+        Product::withoutEvents(function () use ($product, $stockAfter) {
+            $product->update(['stock' => $stockAfter]);
+        });
+
+        InventoryMovement::create([
+            'product_id' => $product->id,
+            'product_lot_id' => null,
+            'movement_type' => 'return',
+            'quantity' => (int) $returnEntry->quantity,
+            'invoice_id' => null,
+            'supplier_id' => null,
+            'order_id' => $order->id,
+            'user_id' => Auth::id(),
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'movement_date' => now(),
+        ]);
+    }
+
+    /**
+     * Aplicar reembolso financiero: saldo a favor del cliente o egreso real de caja.
+     */
+    private function applyFinancialRefund(ReturnEntry $returnEntry, Order $order): void
+    {
+        $refundMethod = $returnEntry->refund_method?->value ?? $returnEntry->refund_method ?? ReturnRefundMethodEnum::BALANCE->value;
+        $amountUsd = (float) $returnEntry->amount_refunded;
+
+        if ($amountUsd <= 0) {
+            return;
+        }
+
+        if ($refundMethod === ReturnRefundMethodEnum::BALANCE->value) {
+            $order->client->increment('balance', $amountUsd);
+            return;
+        }
+
+        // Registrar egreso real en transacciones financieras según la moneda de la orden
+        $currency = strtoupper((string) ($order->currency ?? 'USD'));
+        $usdConversion = (float) ($order->usd_conversion ?? 1);
+        if ($usdConversion <= 0) {
+            $usdConversion = 1;
+        }
+
+        $amountInCurrency = $currency === 'USD'
+            ? $amountUsd
+            : round($amountUsd * $usdConversion, 2);
+
+        $txType = match ($refundMethod) {
+            ReturnRefundMethodEnum::MOBILE_PAYMENT->value => TransactionType::MOBILE->value,
+            ReturnRefundMethodEnum::TRANSFER->value => TransactionType::TRANSFER->value,
+            default => TransactionType::CASH->value,
+        };
+
+        Transaction::create([
+            'user_id' => Auth::id(),
+            'category_id' => null,
+            'exchange_rate' => $usdConversion,
+            'description' => "Reembolso por devolución Orden #{$order->id} (Retorno #{$returnEntry->id})",
+            'currency' => $currency,
+            'type' => $txType,
+            'amount' => $amountInCurrency,
+            'movement_type' => 'OUT',
+            'transaction_date' => now()->format('Y-m-d'),
+        ]);
+    }
+
+    /**
+     * Encolar Nota de Crédito fiscal automática cuando la orden tiene Factura Fiscal emitida.
+     *
+     * @param Collection<int, ReturnEntry> $returnEntries
+     */
+    private function dispatchFiscalCreditNoteIfApplicable(Order $order, Collection $returnEntries): void
+    {
+        $fiscalHistory = $order->fiscalHistory;
+        if (!$fiscalHistory || empty($fiscalHistory->invoice_number)) {
+            foreach ($returnEntries as $entry) {
+                $entry->update(['fiscal_status' => ReturnFiscalStatusEnum::NOT_APPLICABLE->value]);
+            }
+            return;
+        }
+
+        $settings = GeneralSetting::first();
+        $machineSerial = strtoupper(trim((string) ($fiscalHistory->fiscal_id ?: ($settings?->fiscal_printer_serial ?? ''))));
+        if ($machineSerial === '') {
+            $machineSerial = 'UNKNOWN';
+        }
+
+        // Calcular desglose exento y gravado en moneda fiscal (Bs)
+        $exchangeRate = (float) ($fiscalHistory->exchange_rate ?: ($order->usd_conversion ?: 1));
+        if ($exchangeRate <= 0) {
+            $exchangeRate = 1;
+        }
+
+        $exemptAmount = 0.0;
+        $taxableAmount = 0.0;
+
+        foreach ($returnEntries as $entry) {
+            $detail = $order->details->firstWhere('product_id', $entry->product_id);
+            $isTaxable = (bool) ($detail?->product?->iva ?? false);
+            $amountFiscal = round((float) $entry->amount_refunded * $exchangeRate, 2);
+
+            if ($isTaxable) {
+                $taxableAmount += $amountFiscal;
+            } else {
+                $exemptAmount += $amountFiscal;
+            }
+        }
+
+        $exemptAmount = round($exemptAmount, 2);
+        $taxableAmount = round($taxableAmount, 2);
+        $totalRefundFiscal = round($exemptAmount + $taxableAmount, 2);
+
+        if ($totalRefundFiscal <= 0) {
+            return;
+        }
+
+        $invoiceDate = $fiscalHistory->invoice_date
+            ? Carbon::parse($fiscalHistory->invoice_date)
+            : ($order->order_date ?? now());
+
+        $rawRif = (string) ($fiscalHistory->identification ?: ($order->client?->identification ?: 'V000000000'));
+        $cleanRif = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $rawRif)) ?: 'V000000000';
+        $clientName = trim((string) ($fiscalHistory->business_name ?: (($order->client?->name ?? '') . ' ' . ($order->client?->last_name ?? '')))) ?: 'CLIENTE CONTADO';
+
+        $command = FiscalCommand::create([
+            'command' => 'CREDIT_NOTE',
+            'status' => 'pending',
+            'payload' => [
+                'order_id' => $order->id,
+                'return_entry_ids' => $returnEntries->pluck('id')->values()->all(),
+                'invoice_number' => (string) $fiscalHistory->invoice_number,
+                'machine_serial' => $machineSerial,
+                'invoice_date' => $invoiceDate->format('Y-m-d'),
+                'invoice_hour' => $invoiceDate->format('H:i:s'),
+                'refund_amount' => $totalRefundFiscal,
+                'exempt_amount' => $exemptAmount,
+                'taxable_amount' => $taxableAmount,
+                'is_taxable' => $taxableAmount > 0,
+                'client_name' => mb_substr($clientName, 0, 38),
+                'client_rif' => mb_substr($cleanRif, 0, 12),
+                'description' => "DEVOLUCION ORDEN #{$order->id}",
+            ],
+        ]);
+
+        foreach ($returnEntries as $entry) {
+            $entry->update([
+                'fiscal_command_id' => $command->id,
+                'fiscal_status' => ReturnFiscalStatusEnum::PENDING->value,
+            ]);
+        }
+    }
+
+    /**
+     * Resolver el precio unitario en USD desde el detalle real de la orden en BD.
+     */
+    private function resolveDetailUnitPriceUsd(Order $order, OrderDetail $detail): float
+    {
+        $priceUsd = (float) ($detail->unit_price_usd ?? 0);
+        if ($priceUsd > 0) {
+            return $priceUsd;
+        }
+
+        $price = (float) ($detail->price ?? 0);
+        $currency = strtoupper((string) ($order->currency ?? 'USD'));
+        $usdConversion = (float) ($order->usd_conversion ?? 1);
+        if ($usdConversion <= 0) {
+            $usdConversion = 1;
+        }
+
+        return $currency === 'USD' ? $price : ($price / $usdConversion);
+    }
+
+    /**
+     * Aplicar distribución manual en lotes existentes o nuevos.
      */
     private function applyLotDistribution(ReturnEntry $returnEntry, array $updatedLots, array $newLots): array
     {
@@ -221,11 +636,11 @@ class ReturnsActionService
         $totalDistributed = 0;
         $distributionForMovements = [];
 
-        ProductLot::withoutEvents(function () use ($returnEntry, $updatedLots, $newLots, $productId, $returnQty, &$totalDistributed, &$distributionForMovements) {
+        ProductLot::withoutEvents(function () use ($updatedLots, $newLots, $productId, &$totalDistributed, &$distributionForMovements) {
             foreach ($updatedLots as $row) {
                 $lot = ProductLot::where('id', $row['id'])->where('product_id', $productId)->first();
                 if (!$lot) {
-                    throw new Exception("Lote no encontrado o no pertenece al producto.");
+                    throw new Exception('Lote no encontrado o no pertenece al producto.');
                 }
                 $newQty = (int) ($row['quantity'] ?? 0);
                 $delta = $newQty - (int) $lot->quantity;
@@ -254,58 +669,9 @@ class ReturnsActionService
         });
 
         if ($totalDistributed !== $returnQty) {
-            throw new Exception("La cantidad distribuida ({$totalDistributed}) debe coincidir con las unidades devueltas ({$returnQty}). Ajuste los lotes para que el total sea stock actual + devolución.");
+            throw new Exception("La cantidad distribuida ({$totalDistributed}) debe coincidir con las unidades devueltas ({$returnQty}).");
         }
 
         return $distributionForMovements;
-    }
-
-    /**
-     * Aprueba la devolución solo después de distribuir las unidades en lotes.
-     * Flujo: 1) Distribuir en lotes (stock actual + devolución), 2) Registrar un movimiento de inventario (tipo devolución) por cada lote, como en cyclics, 3) Aprobar devolución (saldo, etc.).
-     */
-    public function approveWithDistribution(ReturnEntry $returnEntry, array $updatedLots, array $newLots): ReturnEntry
-    {
-        if ($returnEntry->status !== null) {
-            throw new Exception('Solo se puede aprobar con distribución una devolución pendiente.');
-        }
-
-        DB::beginTransaction();
-        try {
-            $product = $returnEntry->product;
-            $stockBefore = (int) ($product->stock ?? 0);
-
-            $distributionForMovements = $this->applyLotDistribution($returnEntry, $updatedLots, $newLots);
-
-            // Stock objetivo = suma real de lotes (actual en lotes + lo devuelto distribuido)
-            $stockAfter = (int) $product->fresh()->lots()->sum('quantity');
-
-            Product::withoutEvents(function () use ($product, $stockAfter) {
-                $product->update(['stock' => $stockAfter]);
-            });
-
-            foreach ($distributionForMovements as $item) {
-                InventoryMovement::create([
-                    'product_id' => $returnEntry->product_id,
-                    'product_lot_id' => $item['product_lot_id'],
-                    'movement_type' => 'return',
-                    'quantity' => (int) $item['quantity'],
-                    'invoice_id' => null,
-                    'supplier_id' => null,
-                    'order_id' => $returnEntry->order_id,
-                    'user_id' => Auth::id(),
-                    'stock_before' => $stockBefore,
-                    'stock_after' => $stockAfter,
-                    'movement_date' => now(),
-                ]);
-            }
-
-            $returnEntry = $this->updateStatus($returnEntry, ReturnEntry::APPROVED);
-            DB::commit();
-            return $returnEntry;
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            throw $e;
-        }
     }
 }

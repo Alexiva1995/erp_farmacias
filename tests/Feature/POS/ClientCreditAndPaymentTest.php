@@ -378,14 +378,14 @@ class ClientCreditAndPaymentTest extends TestCase
         $responseForbidden->assertStatus(403);
         $this->assertDatabaseHas('credits', ['id' => $credit->id]);
 
-        // 2. Eliminar siendo Administrador (role_id = 1) -> debe responder 200 OK
+        // 2. Eliminar siendo Administrador (role_id = 1) -> debe responder 200 OK (soft delete)
         $responseOk = $this->actingAs($this->admin, 'sanctum')
             ->deleteJson('/api/tpv/credits', [
                 'credit_ids' => [$credit->id],
             ]);
 
         $responseOk->assertStatus(200);
-        $this->assertDatabaseMissing('credits', ['id' => $credit->id]);
+        $this->assertSoftDeleted('credits', ['id' => $credit->id]);
     }
 
     /**
@@ -514,5 +514,200 @@ class ClientCreditAndPaymentTest extends TestCase
             'pending_amount' => 5.00,
             'status' => 'Active',
         ]);
+    }
+
+    /**
+     * Valida que debit_card y credit_card sumen al cierre de caja y generen allocations exactas.
+     */
+    public function test_debit_card_payment_updates_cash_closing_and_allocations(): void
+    {
+        $order = Order::create([
+            'client_id' => $this->client->id,
+            'seller_id' => $this->cajero->id,
+            'currency' => 'USD',
+            'status' => 'Completed',
+            'cash_closing_id' => $this->openCash->id,
+            'total_amount' => 10.00,
+            'total_amount_usd' => 10.00,
+            'total_cost' => 0.00,
+            'money_returns' => 0.00,
+            'usd_conversion' => 0.00,
+            'taxable_base' => 0.00,
+            'spe_surcharge_rate' => 0.00,
+            'spe_surcharge_amount' => 0.00,
+        ]);
+
+        $credit = Credit::create([
+            'client_id' => $this->client->id,
+            'order_id' => $order->id,
+            'credit_amount' => 10.00,
+            'pending_amount' => 10.00,
+            'credit_date' => now(),
+            'status' => 'Active',
+        ]);
+
+        // Pagar 180 BS (equivale a 5 USD a tasa 36) con tarjeta de débito
+        $response = $this->actingAs($this->cajero, 'sanctum')
+            ->postJson('/api/tpv/credits/complete', [
+                'clientId' => $this->client->id,
+                'payments' => [
+                    [
+                        'method' => 'debit_card',
+                        'amount' => 180.00,
+                        'currency' => 'BS',
+                        'reference' => '123456',
+                    ],
+                ],
+                'changeAmount' => 0,
+            ]);
+
+        $response->assertStatus(200);
+
+        $credit->refresh();
+        $this->assertEquals(5.00, (float) $credit->pending_amount);
+
+        $this->openCash->refresh();
+        $this->assertEquals(180.00, (float) $this->openCash->bs_card_payment_credit);
+
+        $this->assertDatabaseHas('credit_payment_allocations', [
+            'credit_id' => $credit->id,
+            'amount_allocated_usd' => 5.00,
+        ]);
+    }
+
+    /**
+     * Valida que solo administradores puedan anular abonos y que la anulación
+     * restaure el saldo exacto sin alterar cierres de caja ya cerrados.
+     */
+    public function test_void_payment_requires_admin_and_respects_closed_cash(): void
+    {
+        $order = Order::create([
+            'client_id' => $this->client->id,
+            'seller_id' => $this->cajero->id,
+            'currency' => 'USD',
+            'status' => 'Completed',
+            'cash_closing_id' => $this->openCash->id,
+            'total_amount' => 20.00,
+            'total_amount_usd' => 20.00,
+            'total_cost' => 0.00,
+            'money_returns' => 0.00,
+            'usd_conversion' => 0.00,
+            'taxable_base' => 0.00,
+            'spe_surcharge_rate' => 0.00,
+            'spe_surcharge_amount' => 0.00,
+        ]);
+
+        $credit = Credit::create([
+            'client_id' => $this->client->id,
+            'order_id' => $order->id,
+            'credit_amount' => 20.00,
+            'pending_amount' => 20.00,
+            'credit_date' => now(),
+            'status' => 'Active',
+        ]);
+
+        $this->actingAs($this->cajero, 'sanctum')
+            ->postJson('/api/tpv/credits/complete', [
+                'clientId' => $this->client->id,
+                'payments' => [
+                    [
+                        'method' => 'cash_usd',
+                        'amount' => 10.00,
+                        'currency' => 'USD',
+                    ],
+                ],
+            ])->assertStatus(200);
+
+        $payment = CreditPayment::where('client_id', $this->client->id)->firstOrFail();
+
+        // Un crédito con abonos no puede eliminarse directamente
+        $this->actingAs($this->admin, 'sanctum')
+            ->deleteJson('/api/tpv/credits', ['credit_ids' => [$credit->id]])
+            ->assertStatus(422);
+
+        // Cajero no puede anular abono
+        $this->actingAs($this->cajero, 'sanctum')
+            ->deleteJson("/api/tpv/credits/payments/{$payment->id}")
+            ->assertStatus(403);
+
+        // Cerrar caja antes de que el admin anule el abono
+        $this->openCash->update(['status' => CashClosing::CLOSED]);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->deleteJson("/api/tpv/credits/payments/{$payment->id}", [
+                'reason' => 'Error de digitación',
+            ])
+            ->assertStatus(200);
+
+        $credit->refresh();
+        $this->assertEquals(20.00, (float) $credit->pending_amount);
+        $this->assertEquals('Active', $credit->status);
+
+        $payment->refresh();
+        $this->assertEquals('voided', $payment->status);
+        $this->assertNotNull($payment->voided_at);
+
+        // El cierre histórico cerrado no debe haberse modificado
+        $this->openCash->refresh();
+        $this->assertEquals(10.00, (float) $this->openCash->usd_cash_payment_credit);
+    }
+
+    /**
+     * Valida que el límite de crédito opcional proteja al TPV para cajeros.
+     */
+    public function test_optional_credit_limit_blocks_excess_for_cashier(): void
+    {
+        $this->client->update(['credit_limit_usd' => 3.00]);
+
+        ProductLot::create([
+            'product_id' => $this->product->id,
+            'lot_number' => 'LOT-LIMIT-01',
+            'expiration_date' => now()->addYear(),
+            'quantity' => 10,
+            'unit_cost' => 1.50,
+        ]);
+
+        $order = Order::create([
+            'client_id' => $this->client->id,
+            'seller_id' => $this->cajero->id,
+            'currency' => 'USD',
+            'status' => 'Pending',
+            'cash_closing_id' => $this->openCash->id,
+            'total_amount' => 0.00,
+            'total_amount_usd' => 0.00,
+            'total_cost' => 0.00,
+            'money_returns' => 0.00,
+            'usd_conversion' => 0.00,
+            'taxable_base' => 0.00,
+            'spe_surcharge_rate' => 0.00,
+            'spe_surcharge_amount' => 0.00,
+        ]);
+
+        OrderDetail::create([
+            'order_id' => $order->id,
+            'product_id' => $this->product->id,
+            'quantity' => 2,
+            'price' => 2.50,
+            'unit_cost' => 1.50,
+            'unit_price_usd' => 2.50,
+            'product_type' => 'normal',
+        ]);
+
+        $order->updateTotals();
+
+        $this->actingAs($this->cajero, 'sanctum')
+            ->postJson("/api/tpv/orders/{$order->id}/complete", [
+                'credit' => true,
+                'client_id' => $this->client->id,
+                'payments' => [
+                    [
+                        'method' => 'credit',
+                        'amount' => 5.00,
+                        'currency' => 'USD',
+                    ],
+                ],
+                'changeAmount' => 0.00,
+            ])
+            ->assertStatus(422);
     }
 }

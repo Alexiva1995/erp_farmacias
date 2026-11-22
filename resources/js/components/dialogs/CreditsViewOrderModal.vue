@@ -6,7 +6,11 @@ import { translateMethod } from "@/utils/paymentMethods";
 import { getItemPriceByCurrency } from "@/composables/useTpvItemFormatter";
 import axios from "@/plugins/axios";
 import { toast, Swal } from "@/plugins/sweetalert";
+import { useAuthStore } from "@/stores/auth";
 import { computed, ref, watch } from "vue";
+
+const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.user?.role_id === 1);
 
 const props = defineProps({
   isDialogVisible: {
@@ -323,7 +327,7 @@ watch([filterClient, filterDate, filterCurrency], () => {
           <VCard variant="flat" class="border pa-4 bg-white rounded-lg elevation-1 mb-6">
             <div class="d-flex align-center gap-2 mb-4">
               <div class="header-indicator primary"></div>
-              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Información del Tarjetahabiente</span>
+              <span class="text-xs font-weight-black text-primary uppercase letter-spacing-1">Datos del Cliente</span>
             </div>
 
             <VRow dense>
@@ -413,10 +417,12 @@ watch([filterClient, filterDate, filterCurrency], () => {
                     <td>
                       <div class="d-flex flex-column py-1">
                         <div class="d-flex align-center gap-1">
-                          <span class="text-primary font-weight-black" style="font-size: 0.65rem;">#{{ detail.product?.id || detail.product_id }}</span>
-                          <span class="text-xs font-weight-black text-uppercase truncate" style="max-width: 180px;">{{ detail.product?.name || '—' }}</span>
+                          <span class="text-primary font-weight-black" style="font-size: 0.65rem;">#{{ detail.product?.id || detail.dish?.id || detail.product_id || detail.dish_id }}</span>
+                          <span class="text-xs font-weight-black text-uppercase truncate" style="max-width: 180px;">{{ detail.dish?.name || detail.product?.name || '—' }}</span>
                         </div>
-                        <span class="text-super-xs text-disabled font-weight-medium">{{ detail.product?.laboratory?.name || detail.product?.laboratory || '—' }}</span>
+                        <span v-if="detail.product?.laboratory?.name || detail.product?.laboratory" class="text-super-xs text-disabled font-weight-medium">
+                          {{ detail.product?.laboratory?.name || detail.product?.laboratory }}
+                        </span>
                       </div>
                     </td>
                     <td class="text-end text-xs font-weight-bold">
@@ -490,12 +496,12 @@ watch([filterClient, filterDate, filterCurrency], () => {
                   <td class="text-xs font-weight-bold text-disabled">{{ row.seller || "N/A" }}</td>
                   <td>
                     <VBtn
-                      v-if="row.id"
+                      v-if="row.id && isAdmin"
                       icon
                       variant="text"
                       color="error"
                       size="x-small"
-                      title="Eliminar abono y restaurar saldo"
+                      title="Anular abono y restaurar saldo"
                       @click="deletePaymentItem(row.id)"
                     >
                       <VIcon icon="tabler-trash" size="18" />

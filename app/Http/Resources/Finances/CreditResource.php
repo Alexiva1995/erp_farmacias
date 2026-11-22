@@ -2,14 +2,15 @@
 
 namespace App\Http\Resources\Finances;
 
+use App\Http\Resources\ClientResource;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Http\Resources\ClientResource;
 
 class CreditResource extends JsonResource
 {
     /**
-     * Transform the resource into an array.
+     * Transforma el crédito agrupado por cliente en un arreglo para el frontend.
      *
      * @return array<string, mixed>
      */
@@ -22,12 +23,34 @@ class CreditResource extends JsonResource
             $creditIds = array_map('intval', explode(',', $this->credit_ids));
         }
 
+        $today = Carbon::today();
+        $daysOverdue = 0;
+        if (!empty($this->earliest_due_date)) {
+            $dueDate = Carbon::parse($this->earliest_due_date)->startOfDay();
+            if ($dueDate->lt($today)) {
+                $daysOverdue = (int) $dueDate->diffInDays($today);
+            }
+        }
+
+        $daysSinceOldest = 0;
+        if (!empty($this->oldest_credit_date)) {
+            $oldestDate = Carbon::parse($this->oldest_credit_date)->startOfDay();
+            if ($oldestDate->lte($today)) {
+                $daysSinceOldest = (int) $oldestDate->diffInDays($today);
+            }
+        }
+
         return [
             'client_id' => $this->client_id,
-            'total_pending_amount' => (float) $this->total_pending_amount,
+            'total_pending_amount' => round((float) $this->total_pending_amount, 2),
             'credit_ids' => $creditIds,
             'status' => (int) $this->status,
             'credit_date' => $this->credit_date,
+            'oldest_credit_date' => $this->oldest_credit_date ?? $this->credit_date,
+            'earliest_due_date' => $this->earliest_due_date ?? null,
+            'active_credits_count' => (int) ($this->active_credits_count ?? count($creditIds)),
+            'days_overdue' => $daysOverdue,
+            'days_since_oldest' => $daysSinceOldest,
             'client' => new ClientResource($this->whenLoaded('client')),
         ];
     }

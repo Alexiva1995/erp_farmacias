@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Credit extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'client_id',
@@ -31,6 +33,8 @@ class Credit extends Model
         'withheld_islr_amount_usd',
         'sales_rep_id',
         'collector_user_id',
+        'voided_by',
+        'void_reason',
     ];
 
     protected $casts = [
@@ -81,5 +85,10 @@ class Credit extends Model
     public function allocations()
     {
         return $this->hasMany(CreditPaymentAllocation::class, 'credit_id');
+    }
+
+    public function voidedBy()
+    {
+        return $this->belongsTo(User::class, 'voided_by');
     }
 }

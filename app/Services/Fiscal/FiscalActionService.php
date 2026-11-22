@@ -56,6 +56,10 @@ class FiscalActionService
         ]);
 
         $command = $this->repository->find($id);
+        if ($command && $command->command === 'CREDIT_NOTE') {
+            $this->syncCreditNoteStatusToReturns($command, $status, $response);
+        }
+
         if ($command && $command->command === 'REPORT_Z') {
             $date = $command->payload['target_date'] ?? $command->created_at?->format('Y-m-d') ?? now()->format('Y-m-d');
 
@@ -106,6 +110,30 @@ class FiscalActionService
         }
 
         return $updated;
+    }
+
+    /**
+     * Sincronizar el resultado de una Nota de Crédito fiscal con las devoluciones asociadas.
+     */
+    protected function syncCreditNoteStatusToReturns(FiscalCommand $command, string $status, mixed $response): void
+    {
+        $creditNoteNumber = null;
+        if (is_array($response) && !empty($response['credit_note_number'])) {
+            $creditNoteNumber = (string) $response['credit_note_number'];
+        } elseif (is_string($response) && preg_match('/(?:NC|Nota\s*de\s*Cr[eé]dito|#)[^\d]*(\d+)/i', $response, $m)) {
+            $creditNoteNumber = (string) $m[1];
+        }
+
+        $fiscalStatus = $status === 'success'
+            ? \App\Enums\ReturnFiscalStatusEnum::EMITTED->value
+            : \App\Enums\ReturnFiscalStatusEnum::FAILED->value;
+
+        $updateData = ['fiscal_status' => $fiscalStatus];
+        if ($creditNoteNumber !== null) {
+            $updateData['credit_note_number'] = $creditNoteNumber;
+        }
+
+        \App\Models\ReturnEntry::where('fiscal_command_id', $command->id)->update($updateData);
     }
 
     /**

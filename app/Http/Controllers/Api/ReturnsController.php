@@ -1,88 +1,102 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
-use App\Models\ExchangeRate;
+use App\Http\Requests\Returns\ApproveReturnRequest;
+use App\Http\Requests\Returns\SearchReturnOrdersRequest;
+use App\Http\Requests\Returns\StoreReturnRequest;
+use App\Http\Resources\Returns\ReturnEntryResource;
+use App\Http\Resources\Returns\ReturnOrderResource;
 use App\Models\ReturnEntry;
-use Illuminate\Http\Request;
 use App\Services\Returns\ReturnsActionService;
 use App\Services\Returns\ReturnsQueryService;
-use App\Helpers\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class ReturnsController extends Controller
 {
-
     public function __construct(
         private ReturnsActionService $returnsActionService,
         private ReturnsQueryService $returnsQueryService,
     ) {
     }
 
-    public function index(Request $request)
+    /**
+     * Listar devoluciones paginadas con filtros.
+     */
+    public function index(Request $request): JsonResponse
     {
-
         $query = $this->returnsQueryService->getQueryOrder($request);
-        $perPage = $request->input('itemsPerPage', 10);
+        $perPage = (int) $request->input('itemsPerPage', 10);
 
         if ($perPage < 1) {
             $items = $query->get();
-            return response()->json(['data' => $items, 'total' => $items->count()]);
+            return response()->json([
+                'data' => ReturnEntryResource::collection($items),
+                'total' => $items->count(),
+            ]);
         }
+
         $paginatedResult = $query->paginate($perPage);
-        return response()->json(['data' => $paginatedResult->items(), 'total' => $paginatedResult->total()]);
+
+        return response()->json([
+            'data' => ReturnEntryResource::collection($paginatedResult->getCollection()),
+            'total' => $paginatedResult->total(),
+        ]);
     }
 
-    public function searchOrders(Request $request)
+    /**
+     * Buscar órdenes completadas elegibles para devolución.
+     */
+    public function searchOrders(SearchReturnOrdersRequest $request): JsonResponse
     {
         try {
-            $identification = $request->input('identification');
-            if (empty($identification) || !is_string($identification)) {
+            $identification = trim((string) $request->input('identification', ''));
+            $orderId = $request->filled('order_id') ? (int) $request->input('order_id') : null;
+
+            if ($identification === '' && $orderId === null) {
                 return response()->json(['data' => [], 'total' => 0]);
             }
 
             $ordersQuery = $this->returnsActionService->searchOrdersReturns(
-                trim($identification),
-                $request->all()
+                $identification,
+                $request->validated(),
+                $orderId
             );
 
-            $perPage = $request->input('itemsPerPage', 10);
+            $perPage = (int) $request->input('itemsPerPage', 10);
 
             if ($perPage < 0) {
                 $items = $ordersQuery->get();
-                return response()->json(['data' => $items, 'total' => $items->count()]);
+                return response()->json([
+                    'data' => ReturnOrderResource::collection($items),
+                    'total' => $items->count(),
+                ]);
             }
 
             $paginator = $ordersQuery->paginate($perPage);
 
-            $mappedItems = $paginator->getCollection()->map(function ($order) {
-                $orderArray = $order->toArray();
-                $currency = strtoupper($order->currency ?? 'USD');
-                $details = $orderArray['details'] ?? [];
-                $orderArray['details'] = collect($details)->map(function ($detail) use ($currency) {
-                    $detail['currency'] = $currency;
-                    return $detail;
-                })->all();
-                return $orderArray;
-            });
-
-            $paginator->setCollection($mappedItems);
-
             return response()->json([
-                'data' => $paginator->getCollection()->all(),
-                'total' => $paginator->total()
+                'data' => ReturnOrderResource::collection($paginator->getCollection()),
+                'total' => $paginator->total(),
             ]);
         } catch (\Exception $e) {
             Log::error('Error en searchOrders (returns):', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function getProductLots(Request $request, $productId)
+    /**
+     * Obtener lotes disponibles de un producto para devolución.
+     */
+    public function getProductLots(int $productId): JsonResponse
     {
         try {
             $lots = $this->returnsActionService->getProductLotsForReturn($productId);
@@ -92,64 +106,143 @@ class ReturnsController extends Controller
         }
     }
 
-    public function returnsProduct(Request $request)
+    /**
+     * Registrar devolución (unificada: directa o pendiente según configuración).
+     */
+    public function returnsProduct(StoreReturnRequest $request): JsonResponse
     {
         try {
-            $result = $this->returnsActionService->productReturn($request);
-            return response()->json($result);
+            $result = $this->returnsActionService->createReturns($request->validated());
+            return response()->json([
+                'success' => $result['success'],
+                'approved' => $result['approved'],
+                'fiscal_queued' => $result['fiscal_queued'],
+                'message' => $result['message'],
+                'data' => ReturnEntryResource::collection($result['returns']),
+            ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-    public function updateReturnStatus($returnEntryId, string $status)
-    {
-
-        $ReturnEntry = ReturnEntry::findOrFail($returnEntryId);
-
-        try {
-            $return = $this->returnsActionService->updateStatus($ReturnEntry, $status);
-            return ApiResponse::success('Devolución aprobada exitosamente.', ['return' => $return]);
-        } catch (\Exception $e) {
-            Log::error('Error al aprobar la devolución:', ['error' => $e->getMessage(), 'returnEntry_id' => $ReturnEntry->id]);
-            return ApiResponse::error('No se pudo aprobar la devolución: ' . $e->getMessage(), 500);
+            return response()->json(['error' => $e->getMessage(), 'message' => $e->getMessage()], 422);
         }
     }
 
     /**
-     * Distribuir cantidad devuelta en lotes (reingreso a inventario). Solo para devoluciones ya aprobadas.
+     * Actualizar estado de una devolución (rechazar o aprobar simple).
      */
-    public function distributeLots(Request $request, $returnEntryId)
+    public function updateReturnStatus(int $returnEntryId, string $status): JsonResponse
     {
         $returnEntry = ReturnEntry::findOrFail($returnEntryId);
-        $updatedLots = $request->input('updated_lots', []);
-        $newLots = $request->input('new_lots', []);
 
         try {
-            $this->returnsActionService->distributeLots($returnEntry, $updatedLots, $newLots);
+            $return = $this->returnsActionService->updateStatus($returnEntry, $status);
+            $msg = $status === ReturnEntry::APPROVED
+                ? 'Devolución aprobada exitosamente.'
+                : 'Devolución rechazada exitosamente.';
+            return ApiResponse::success($msg, ['return' => new ReturnEntryResource($return)]);
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar estado de devolución:', [
+                'error' => $e->getMessage(),
+                'returnEntry_id' => $returnEntry->id,
+            ]);
+            return ApiResponse::error('No se pudo actualizar la devolución: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Aprobar una devolución pendiente (con distribución opcional de lotes si aplica).
+     */
+    public function approve(ApproveReturnRequest $request, int $returnEntryId): JsonResponse
+    {
+        $returnEntry = ReturnEntry::findOrFail($returnEntryId);
+
+        try {
+            $restock = $request->has('restock_inventory')
+                ? $request->boolean('restock_inventory')
+                : null;
+
+            $return = $this->returnsActionService->approveReturn(
+                $returnEntry,
+                $request->input('updated_lots', []),
+                $request->input('new_lots', []),
+                $restock
+            );
+
+            return ApiResponse::success(
+                ['return' => new ReturnEntryResource($return)],
+                'Devolución aprobada correctamente.'
+            );
+        } catch (\Exception $e) {
+            Log::error('Error al aprobar devolución:', [
+                'error' => $e->getMessage(),
+                'returnEntry_id' => $returnEntry->id,
+            ]);
+            return ApiResponse::error($e->getMessage(), 422);
+        }
+    }
+
+    /**
+     * Distribuir cantidad devuelta en lotes para devoluciones ya aprobadas.
+     */
+    public function distributeLots(ApproveReturnRequest $request, int $returnEntryId): JsonResponse
+    {
+        $returnEntry = ReturnEntry::findOrFail($returnEntryId);
+
+        try {
+            $this->returnsActionService->distributeLots(
+                $returnEntry,
+                $request->input('updated_lots', []),
+                $request->input('new_lots', [])
+            );
             return ApiResponse::success('Cantidad distribuida en lotes correctamente.');
         } catch (\Exception $e) {
-            Log::error('Error al distribuir lotes (return):', ['error' => $e->getMessage(), 'returnEntry_id' => $returnEntry->id]);
-            return ApiResponse::error($e->getMessage(), 500);
+            Log::error('Error al distribuir lotes (return):', [
+                'error' => $e->getMessage(),
+                'returnEntry_id' => $returnEntry->id,
+            ]);
+            return ApiResponse::error($e->getMessage(), 422);
         }
     }
 
     /**
-     * Aprobar devolución solo después de distribuir las unidades en lotes (obligatorio).
-     * Primero aplica la distribución (stock actual + unidades devueltas), luego aprueba.
+     * Aprobar devolución con distribución obligatoria en lotes (compatibilidad).
      */
-    public function approveWithDistribution(Request $request, $returnEntryId)
+    public function approveWithDistribution(ApproveReturnRequest $request, int $returnEntryId): JsonResponse
     {
         $returnEntry = ReturnEntry::findOrFail($returnEntryId);
-        $updatedLots = $request->input('updated_lots', []);
-        $newLots = $request->input('new_lots', []);
 
         try {
-            $return = $this->returnsActionService->approveWithDistribution($returnEntry, $updatedLots, $newLots);
-            return ApiResponse::success(['return' => $return], 'Devolución aprobada y cantidad distribuida en lotes correctamente.');
+            $return = $this->returnsActionService->approveWithDistribution(
+                $returnEntry,
+                $request->input('updated_lots', []),
+                $request->input('new_lots', [])
+            );
+            return ApiResponse::success(
+                ['return' => new ReturnEntryResource($return)],
+                'Devolución aprobada y cantidad distribuida en lotes correctamente.'
+            );
         } catch (\Exception $e) {
-            Log::error('Error al aprobar con distribución:', ['error' => $e->getMessage(), 'returnEntry_id' => $returnEntry->id]);
-            return ApiResponse::error($e->getMessage(), 500);
+            Log::error('Error al aprobar con distribución:', [
+                'error' => $e->getMessage(),
+                'returnEntry_id' => $returnEntry->id,
+            ]);
+            return ApiResponse::error($e->getMessage(), 422);
+        }
+    }
+
+    /**
+     * Reintentar emisión de Nota de Crédito fiscal de una devolución aprobada.
+     */
+    public function retryCreditNote(int $returnEntryId): JsonResponse
+    {
+        $returnEntry = ReturnEntry::findOrFail($returnEntryId);
+
+        try {
+            $return = $this->returnsActionService->retryCreditNote($returnEntry);
+            return ApiResponse::success(
+                ['return' => new ReturnEntryResource($return)],
+                'Nota de Crédito reencolada para impresión fiscal.'
+            );
+        } catch (\Exception $e) {
+            return ApiResponse::error($e->getMessage(), 422);
         }
     }
 }
-

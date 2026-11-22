@@ -433,6 +433,9 @@
     "getOfflineDB": true,
     "isSyncingGlobalCatalog": true,
     "lastGlobalCatalogSync": true,
-    "syncCatalogInBackground": true
+    "syncCatalogInBackground": true,
+    "generateActiveDishesPdf": true,
+    "pdfDishesGenerator": true,
+    "useFixedExpenses": true
   }
 }
