@@ -326,6 +326,12 @@ const processedNavItems = computed(() => {
           childs = childs.filter((c) => c.to !== 'tpv-quotation');
         }
 
+        // Ocultar Pedidos Eco cuando el ecommerce está desactivado en configuración
+        const enableEcommerceSetting = brandingStore.settings.enable_ecommerce_toggle ?? true;
+        if (!enableEcommerceSetting) {
+          childs = childs.filter((c) => c.to !== 'tpv-ecommerce-orders');
+        }
+
         const enableReservationsSetting = brandingStore.settings.enable_reservations ?? true;
         if (!enableReservationsSetting) {
           childs = childs.filter((c) => c.to !== 'reservations');
