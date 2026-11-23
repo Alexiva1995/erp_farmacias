@@ -3,7 +3,7 @@ import { toast } from "@/plugins/sweetalert";
 import { formatCurrency } from "@/utils/currencyFormatter";
 import { roundUpToNearestHundred } from "@/utils/roundUpToNearesHundred.js";
 import { computed, ref } from "vue";
-import { useBrandingStore } from "@/stores/branding";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 
 export function useCheckout(props) {
   const brandingStore = useBrandingStore();

@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
-import { useBrandingStore } from '@/stores/branding'
+import { useBrandingStore } from '@/stores/useBrandingStore'
 
 const router = useRouter()
 const brandingStore = useBrandingStore()
