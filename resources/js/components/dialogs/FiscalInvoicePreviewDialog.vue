@@ -60,14 +60,16 @@ const formatBs = (val) => {
   >
     <VCard class="rounded-lg overflow-hidden">
       <!-- Encabezado -->
-      <VCardTitle class="pa-4 bg-primary text-white d-flex align-center justify-space-between">
-        <div class="d-flex align-center gap-2">
-          <VIcon icon="tabler-file-invoice" size="24" color="white" />
+      <VCardTitle class="px-5 py-4 border-b d-flex align-center justify-space-between">
+        <div class="d-flex align-center gap-3">
+          <VAvatar color="primary" variant="tonal" size="38" rounded="lg">
+            <VIcon icon="tabler-file-invoice" size="20" />
+          </VAvatar>
           <div>
-            <div class="text-subtitle-1 font-weight-bold text-white line-height-1">
+            <div class="text-subtitle-1 font-weight-bold text-high-emphasis">
               Previa de Comprobante Fiscal
             </div>
-            <div class="text-caption text-white opacity-80 mt-0.5">
+            <div class="text-caption text-medium-emphasis">
               Orden #{{ previewData?.order_id ?? "—" }} · Valores calculados en Bolívares (Bs)
             </div>
           </div>
@@ -75,14 +77,14 @@ const formatBs = (val) => {
         <VBtn
           icon="tabler-x"
           variant="text"
-          color="white"
+          color="default"
           size="small"
           :disabled="props.isConfirming"
           @click="closeDialog"
         />
       </VCardTitle>
 
-      <VCardText class="pa-4">
+      <VCardText class="pa-5">
         <!-- Estado de Carga -->
         <div v-if="props.loading" class="py-6">
           <VSkeletonLoader type="table-heading, list-item-two-line, table-row-divider@3, actions" />
@@ -90,28 +92,28 @@ const formatBs = (val) => {
 
         <div v-else-if="previewData" class="d-flex flex-column gap-4">
           <!-- Datos del Contribuyente / Cliente -->
-          <VCard variant="tonal" color="primary" class="pa-3 rounded-lg">
+          <VCard variant="flat" border class="pa-3 rounded-lg">
             <VRow dense>
               <VCol cols="12" sm="7">
-                <div class="text-caption text-medium-emphasis">Cliente / Razón Social:</div>
+                <div class="text-caption text-medium-emphasis">Cliente / Razón Social</div>
                 <div class="text-body-2 font-weight-bold text-high-emphasis">
                   {{ previewData.client_name }}
                 </div>
               </VCol>
               <VCol cols="12" sm="5">
-                <div class="text-caption text-medium-emphasis">RIF / Cédula:</div>
+                <div class="text-caption text-medium-emphasis">RIF / Cédula</div>
                 <div class="text-body-2 font-weight-bold text-high-emphasis">
                   {{ previewData.client_identification }}
                 </div>
               </VCol>
               <VCol cols="12" sm="7" class="mt-1">
-                <div class="text-caption text-medium-emphasis">Dirección Fiscal:</div>
+                <div class="text-caption text-medium-emphasis">Dirección Fiscal</div>
                 <div class="text-caption text-high-emphasis text-truncate">
                   {{ previewData.client_address || "Sin dirección fiscal registrada" }}
                 </div>
               </VCol>
               <VCol cols="12" sm="5" class="mt-1">
-                <div class="text-caption text-medium-emphasis">Tasa de Cambio Oficial:</div>
+                <div class="text-caption text-medium-emphasis">Tasa de Cambio Oficial</div>
                 <div class="text-body-2 font-weight-bold text-primary">
                   {{ formatBs(previewData.exchange_rate) }} Bs / USD
                 </div>
@@ -126,7 +128,7 @@ const formatBs = (val) => {
             </div>
             <VTable density="compact" class="border rounded-lg overflow-hidden">
               <thead>
-                <tr class="bg-light">
+                <tr>
                   <th class="text-left font-weight-bold text-caption">Producto / Servicio</th>
                   <th class="text-center font-weight-bold text-caption">Cant.</th>
                   <th class="text-end font-weight-bold text-caption">Precio Unit. (Bs)</th>
@@ -156,44 +158,42 @@ const formatBs = (val) => {
                     </VChip>
                   </td>
                   <td class="text-end text-caption font-weight-bold">
-                    {{ formatBs(item.total_amount) }}
+                    {{ formatBs(item.total_amount_bs ?? item.total_amount) }}
                   </td>
                 </tr>
               </tbody>
             </VTable>
           </div>
 
-          <VDivider />
-
           <!-- Resumen Fiscal SENIAT -->
-          <VCard variant="outlined" class="rounded-lg pa-3 bg-light">
-            <div class="text-caption font-weight-black text-uppercase text-primary mb-2">
+          <VCard variant="flat" border class="rounded-lg pa-3">
+            <div class="text-caption font-weight-bold text-uppercase text-medium-emphasis mb-2">
               Desglose Fiscal (SENIAT)
             </div>
             <div class="d-flex justify-space-between align-center py-1">
-              <span class="text-caption text-medium-emphasis">Monto Exento (E):</span>
+              <span class="text-caption text-medium-emphasis">Monto Exento (E)</span>
               <span class="text-body-2 font-weight-medium">{{ formatBs(previewData.exempt_amount_bs) }} Bs</span>
             </div>
             <div class="d-flex justify-space-between align-center py-1">
-              <span class="text-caption text-medium-emphasis">Base Imponible (G 16%):</span>
+              <span class="text-caption text-medium-emphasis">Base Imponible (G 16%)</span>
               <span class="text-body-2 font-weight-medium">{{ formatBs(previewData.taxable_amount_bs) }} Bs</span>
             </div>
             <div class="d-flex justify-space-between align-center py-1">
-              <span class="text-caption text-medium-emphasis">IVA (16%):</span>
-              <span class="text-body-2 font-weight-medium text-primary">{{ formatBs(previewData.iva_amount_bs) }} Bs</span>
+              <span class="text-caption text-medium-emphasis">IVA (16%)</span>
+              <span class="text-body-2 font-weight-medium">{{ formatBs(previewData.iva_amount_bs) }} Bs</span>
             </div>
             <div class="d-flex justify-space-between align-center py-1 border-t">
-              <span class="text-caption font-weight-bold">Subtotal:</span>
+              <span class="text-caption font-weight-bold">Subtotal</span>
               <span class="text-body-2 font-weight-bold">{{ formatBs(previewData.subtotal_bs) }} Bs</span>
             </div>
             <div v-if="previewData.spe || previewData.spe_surcharge_amount_bs > 0" class="d-flex justify-space-between align-center py-1 text-error">
-              <span class="text-caption font-weight-bold">IGTF (3%) Percibido Divisas:</span>
+              <span class="text-caption font-weight-bold">IGTF (3%) Percibido Divisas</span>
               <span class="text-body-2 font-weight-bold">+ {{ formatBs(previewData.spe_surcharge_amount_bs) }} Bs</span>
             </div>
             <VDivider class="my-1.5" />
             <div class="d-flex justify-space-between align-center">
-              <span class="text-subtitle-2 font-weight-black text-primary">TOTAL FACTURA FISCAL:</span>
-              <span class="text-h6 font-weight-black text-primary">{{ formatBs(previewData.total_amount_bs) }} Bs</span>
+              <span class="text-subtitle-2 font-weight-bold text-high-emphasis">Total Factura Fiscal</span>
+              <span class="text-h6 font-weight-bold text-primary">{{ formatBs(previewData.total_amount_bs) }} Bs</span>
             </div>
           </VCard>
         </div>
@@ -204,9 +204,9 @@ const formatBs = (val) => {
       </VCardText>
 
       <!-- Botones de Acción -->
-      <VCardActions class="pa-4 bg-light border-t d-flex justify-end gap-2">
+      <VCardActions class="px-5 py-3 border-t d-flex justify-end gap-2">
         <VBtn
-          variant="outlined"
+          variant="tonal"
           color="secondary"
           :disabled="props.isConfirming"
           @click="closeDialog"
@@ -221,7 +221,7 @@ const formatBs = (val) => {
           :disabled="!previewData || props.loading || props.isConfirming"
           @click="handleConfirm"
         >
-          Emitir e Imprimir Factura Fiscal
+          Emitir Factura Fiscal
         </VBtn>
       </VCardActions>
     </VCard>

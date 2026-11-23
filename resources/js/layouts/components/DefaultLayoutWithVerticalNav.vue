@@ -113,29 +113,10 @@ const processedNavItems = computed(() => {
           }
         }
 
-        // Filtrado dinámico de submenús de Promociones según enabled_offer_types
+        // Mostrar Promociones solo si hay al menos un tipo de oferta habilitado
         if (copy.title === 'Promociones') {
           const enabledOffers = brandingStore.settings.enabled_offer_types || ['general', 'individual', 'category', 'pack', 'company', 'doctor', 'prescription', 'expiration'];
-          const offerPathMap = {
-            'general': '/tpv/generalOffer',
-            'individual': '/tpv/individualOffer',
-            'category': '/tpv/categoryOffer',
-            'pack': '/tpv/packOffer',
-            'company': '/tpv/companyOffer',
-            'doctor': '/tpv/doctorOffer',
-            'prescription': '/tpv/prescriptionOffer',
-            'expiration': '/tpv/expirationOffer',
-          };
-          childs = childs.filter(c => {
-            const path = typeof c.to === 'object' ? c.to.path : c.to;
-            for (const [type, typePath] of Object.entries(offerPathMap)) {
-              if (path === typePath) {
-                return enabledOffers.includes(type);
-              }
-            }
-            return true;
-          });
-          if (childs.length === 0) return null;
+          if (!Array.isArray(enabledOffers) || enabledOffers.length === 0) return null;
         }
 
         // Filtrado dinámico de submenús de CRM según enabled_crm_views

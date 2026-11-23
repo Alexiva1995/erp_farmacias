@@ -1,5 +1,5 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import Swal from "sweetalert2";
 import axios from "@/plugins/axios";
 import { toast } from "@/plugins/sweetalert";
@@ -16,6 +16,7 @@ export function useOrderGeneral({ mode = "pharmacy", defaultTab = "completed" } 
   const { isVendedor } = useAuthStore();
   const brandingStore = useBrandingStore();
   const route = useRoute();
+  const router = useRouter();
 
   // Estado principal de tabla activa
   const activeTab = ref(defaultTab);
@@ -73,11 +74,11 @@ export function useOrderGeneral({ mode = "pharmacy", defaultTab = "completed" } 
   const diningTableFilter = ref(null);
   const isAdvancedFiltersVisible = ref(false);
 
-  // Estado de modal de detalle e impresión
+  // Estado de modal unificado (Detalle + Vista Fiscal) e impresión
   const viewModal = ref(false);
+  const modalActiveTab = ref("detail");
   const isPrinting = ref(false);
   const processingFiscalIds = ref([]);
-  const isFiscalPreviewVisible = ref(false);
   const fiscalPreviewData = ref(null);
   const loadingFiscalPreview = ref(false);
   const isConfirmingFiscal = ref(false);
@@ -482,37 +483,55 @@ export function useOrderGeneral({ mode = "pharmacy", defaultTab = "completed" } 
     }
   };
 
-  const handleViewOrder = async (orderId) => {
-    try {
-      await loadOrderPrintPayload(orderId);
-      viewModal.value = true;
-    } catch (error) {
-      console.error("Error al obtener los detalles de la orden:", error);
-      toast.error("Error al obtener los detalles de la orden.");
-    }
-  };
-
-  const handleCloseViewModal = () => {
-    viewModal.value = false;
-    resetPrintState();
-  };
-
-  const handleOpenFiscalPreview = async (orderId) => {
+  const handleLoadFiscalPreview = async (orderId) => {
     if (!orderId) return;
+    if (fiscalPreviewData.value?.order_id === orderId) return;
+
     loadingFiscalPreview.value = true;
     fiscalPreviewData.value = null;
-    isFiscalPreviewVisible.value = true;
-
     try {
       const response = await axios.get(`/tpv/orders/${orderId}/fiscal-preview`);
       fiscalPreviewData.value = response.data?.data ?? null;
     } catch (error) {
       console.error("Error al obtener previa fiscal:", error);
       toast.error(error.response?.data?.message || "No se pudo obtener la previa de la factura fiscal.");
-      isFiscalPreviewVisible.value = false;
     } finally {
       loadingFiscalPreview.value = false;
     }
+  };
+
+  const handleViewOrder = async (orderId, initialTab = "detail") => {
+    try {
+      fiscalPreviewData.value = null;
+      modalActiveTab.value = initialTab;
+      await loadOrderPrintPayload(orderId);
+      viewModal.value = true;
+      if (initialTab === "fiscal") {
+        await handleLoadFiscalPreview(orderId);
+      }
+    } catch (error) {
+      console.error("Error al obtener los detalles de la orden:", error);
+      toast.error("Error al obtener los detalles de la orden.");
+    }
+  };
+
+  const handleModalTabChange = async (tab) => {
+    modalActiveTab.value = tab;
+    if (tab === "fiscal" && orderData.value?.id) {
+      await handleLoadFiscalPreview(orderData.value.id);
+    }
+  };
+
+  const handleCloseViewModal = () => {
+    viewModal.value = false;
+    modalActiveTab.value = "detail";
+    fiscalPreviewData.value = null;
+    resetPrintState();
+  };
+
+  const handleOpenFiscalPreview = async (orderId) => {
+    if (!orderId) return;
+    await handleViewOrder(orderId, "fiscal");
   };
 
   const handleConfirmFiscalInvoice = async (orderId) => {
@@ -522,10 +541,11 @@ export function useOrderGeneral({ mode = "pharmacy", defaultTab = "completed" } 
     try {
       const response = await axios.post(`/tpv/orders/${orderId}/fiscal-invoice`);
       toast.success(response.data?.message || "Comprobante fiscal generado e impresión iniciada exitosamente.");
-      isFiscalPreviewVisible.value = false;
+      fiscalPreviewData.value = null;
       await Promise.allSettled([fetchOrders(), fetchSummary()]);
       if (viewModal.value && orderData.value?.id === orderId) {
-        await handleViewOrder(orderId);
+        await loadOrderPrintPayload(orderId);
+        modalActiveTab.value = "detail";
       }
     } catch (error) {
       console.error("Error al crear e imprimir factura fiscal:", error);
@@ -534,6 +554,12 @@ export function useOrderGeneral({ mode = "pharmacy", defaultTab = "completed" } 
       isConfirmingFiscal.value = false;
       processingFiscalIds.value = processingFiscalIds.value.filter((id) => id !== orderId);
     }
+  };
+
+  const handleGoToReturn = (orderId) => {
+    if (!orderId) return;
+    if (viewModal.value) handleCloseViewModal();
+    router.push({ path: "/tpv/returns", query: { order_id: String(orderId) } });
   };
 
   const handleCancelOrder = async (orderId) => {
@@ -735,9 +761,9 @@ export function useOrderGeneral({ mode = "pharmacy", defaultTab = "completed" } 
     setDateMes,
     setDateAno,
     viewModal,
+    modalActiveTab,
     isPrinting,
     processingFiscalIds,
-    isFiscalPreviewVisible,
     fiscalPreviewData,
     loadingFiscalPreview,
     isConfirmingFiscal,
@@ -761,10 +787,12 @@ export function useOrderGeneral({ mode = "pharmacy", defaultTab = "completed" } 
     handleUpdateQuotationOptions,
     handleClearFilters,
     handleViewOrder,
+    handleModalTabChange,
     handleCloseViewModal,
     handleOpenFiscalPreview,
     handleConfirmFiscalInvoice,
     handleCancelOrder,
+    handleGoToReturn,
     printOrder,
     printOrderThermal54,
     fetchOrders,

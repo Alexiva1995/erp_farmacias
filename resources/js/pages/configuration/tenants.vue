@@ -297,10 +297,10 @@ const slugify = (text) => {
 const headers = [
   { title: 'Empresa / Dominio', key: 'company_name', sortable: true },
   { title: 'Vertical', key: 'vertical', sortable: true },
-  { title: 'Plan / Tarifa', key: 'plan', sortable: true },
-  { title: 'Llave de Licencia', key: 'license_key', sortable: false },
+  { title: 'Plan', key: 'plan', sortable: true },
+  { title: 'Licencia', key: 'license_key', sortable: false },
   { title: 'Estado', key: 'subscription_status', sortable: true },
-  { title: 'Vencimiento / Corte', key: 'billing_date', sortable: true },
+  { title: 'Vencimiento', key: 'billing_date', sortable: true },
   { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
 ]
 
@@ -1421,9 +1421,6 @@ onMounted(() => {
             <!-- Llave de Licencia -->
             <template #item.license_key="{ item }">
               <div v-if="(item.license_key ?? item.raw?.license_key)" class="d-flex align-center ga-1">
-                <code class="text-caption font-weight-bold bg-surface-light px-2 py-1 rounded border">
-                  {{ item.license_key ?? item.raw?.license_key }}
-                </code>
                 <VBtn
                   icon="tabler-copy"
                   variant="text"

@@ -16,6 +16,21 @@ class OrderListItemResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $hasFiscalInvoice = $this->relationLoaded('fiscalHistory')
+            && !empty($this->fiscalHistory?->invoice_number);
+
+        $isCashOpen = $this->relationLoaded('cashClosing')
+            && $this->cashClosing !== null
+            && $this->cashClosing->status === \App\Models\CashClosing::OPEN
+            && empty($this->cashClosing->daily_closure_id);
+
+        $isOpenOrder = in_array($this->status, [\App\Models\Order::PENDING, \App\Models\Order::RESERVED], true);
+        $isCompleted = $this->status === \App\Models\Order::COMPLETED;
+
+        // Solo se permite cancelar órdenes abiertas o completadas de caja abierta sin factura fiscal
+        $canCancel = $isOpenOrder || ($isCompleted && !$hasFiscalInvoice && $isCashOpen);
+        $canReturn = $isCompleted && !$canCancel;
+
         return [
             'id' => $this->id,
             'order_date' => $this->order_date ? (is_string($this->order_date) ? $this->order_date : $this->order_date->format('Y-m-d H:i:s')) : null,
@@ -23,6 +38,9 @@ class OrderListItemResource extends JsonResource
             'total_amount_usd' => $this->total_amount_usd !== null ? (float) $this->total_amount_usd : null,
             'currency' => $this->currency,
             'status' => $this->status,
+            'has_fiscal_invoice' => $hasFiscalInvoice,
+            'can_cancel' => $canCancel,
+            'can_return' => $canReturn,
             'has_multiple_currencies' => (bool) $this->has_multiple_currencies,
             'spe_surcharge_rate' => $this->spe_surcharge_rate !== null ? (float) $this->spe_surcharge_rate : 0.0,
             'spe_surcharge_amount' => $this->spe_surcharge_amount !== null ? (float) $this->spe_surcharge_amount : 0.0,

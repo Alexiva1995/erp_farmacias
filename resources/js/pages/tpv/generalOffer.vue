@@ -29,16 +29,29 @@ const filterSearchQuery = ref("");
 
 const promoForm = reactive({
   id: null,
+  name: "",
   type: "2x1",
   fixed_price: null,
+  discount_percentage: null,
   is_active: true,
   categories: [],
+  start_date: null,
+  end_date: null,
+  days_of_week: [],
+  start_time: null,
+  end_time: null,
+  min_order_amount: null,
+  coupon_code: "",
+  sales_channel: "all",
+  stackable: false,
 });
 
 const formularioError = reactive({
   id: "",
+  name: "",
   type: "",
   fixed_price: "",
+  discount_percentage: "",
   categories: "",
 });
 
@@ -70,10 +83,21 @@ const handleEditOffer = async (promo) => {
   await fetchCategories();
   Object.assign(promoForm, {
     id: promo.id,
+    name: promo.name || "",
     type: promo.type,
     fixed_price: promo.fixed_price,
+    discount_percentage: promo.discount_percentage ?? null,
     is_active: promo.is_active,
     categories: Array.isArray(promo.categories) ? promo.categories : [],
+    start_date: promo.start_date || null,
+    end_date: promo.end_date || null,
+    days_of_week: Array.isArray(promo.days_of_week) ? promo.days_of_week : [],
+    start_time: promo.start_time || null,
+    end_time: promo.end_time || null,
+    min_order_amount: promo.min_order_amount || null,
+    coupon_code: promo.coupon_code || "",
+    sales_channel: promo.sales_channel || "all",
+    stackable: Boolean(promo.stackable),
   });
   Object.keys(formularioError).forEach(key => (formularioError[key] = ""));
   isOfferDialogVisible.value = true;
@@ -92,10 +116,21 @@ const handleAddPromotionModal = async () => {
   await fetchCategories();
   Object.assign(promoForm, {
     id: null,
+    name: "",
     type: "2x1",
     fixed_price: null,
+    discount_percentage: null,
     is_active: true,
     categories: [],
+    start_date: null,
+    end_date: null,
+    days_of_week: [],
+    start_time: null,
+    end_time: null,
+    min_order_amount: null,
+    coupon_code: "",
+    sales_channel: "all",
+    stackable: false,
   });
   Object.keys(formularioError).forEach(key => (formularioError[key] = ""));
   isEditingMode.value = false;

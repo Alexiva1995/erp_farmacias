@@ -4,7 +4,6 @@ import OrderTable from "@/components/OrderTable.vue";
 import OrderTicket from "@/components/OrderTicket.vue";
 import OrderTicketThermal54 from "@/components/OrderTicketThermal54.vue";
 import OrderViewModal from "@/components/dialogs/OrderViewModal.vue";
-import FiscalInvoicePreviewDialog from "@/components/dialogs/FiscalInvoicePreviewDialog.vue";
 import { useOrderGeneral } from "@/composables/useOrderGeneral";
 import { formatAmountOnly } from "@/utils/currencyFormatter";
 
@@ -40,9 +39,9 @@ const {
   setDateMes,
   setDateAno,
   viewModal,
+  modalActiveTab,
   isPrinting,
   processingFiscalIds,
-  isFiscalPreviewVisible,
   fiscalPreviewData,
   loadingFiscalPreview,
   isConfirmingFiscal,
@@ -64,10 +63,12 @@ const {
   handleUpdateTableOptions,
   handleClearFilters,
   handleViewOrder,
+  handleModalTabChange,
   handleCloseViewModal,
   handleOpenFiscalPreview,
   handleConfirmFiscalInvoice,
   handleCancelOrder,
+  handleGoToReturn,
   printOrder,
   printOrderThermal54,
 } = useOrderGeneral({ mode: "restaurant", defaultTab: "completed" });
@@ -411,6 +412,7 @@ const paymentMethodOptions = [
           @print-order-thermal="printOrderThermal54"
           @view-order="handleViewOrder"
           @cancel-order="handleCancelOrder"
+          @return-order="handleGoToReturn"
           @create-fiscal-invoice="handleOpenFiscalPreview"
         />
       </VWindowItem>
@@ -460,6 +462,12 @@ const paymentMethodOptions = [
     <OrderViewModal
       v-model:isDialogVisible="viewModal"
       mode="restaurant"
+      :show-fiscal-tab="true"
+      :show-order-actions="true"
+      :active-tab="modalActiveTab"
+      :fiscal-preview-data="fiscalPreviewData"
+      :loading-fiscal-preview="loadingFiscalPreview"
+      :is-confirming-fiscal="isConfirmingFiscal"
       :order-data="orderData"
       :order-products="orderItems"
       :total-amount="amountForPrint"
@@ -470,19 +478,14 @@ const paymentMethodOptions = [
       :credit="creditForPrint"
       :is-processing-fiscal="processingFiscalIds.includes(orderData?.id)"
       :is-special-taxpayer="isSpecialTaxpayer"
+      @update:active-tab="handleModalTabChange"
       @close="handleCloseViewModal"
       @cancel-order="handleCancelOrder"
+      @return-order="handleGoToReturn"
       @create-fiscal-invoice="handleOpenFiscalPreview"
+      @confirm-fiscal-invoice="handleConfirmFiscalInvoice"
       @print-order="printOrder"
       @print-order-thermal="printOrderThermal54"
-    />
-
-    <FiscalInvoicePreviewDialog
-      v-model="isFiscalPreviewVisible"
-      :preview-data="fiscalPreviewData"
-      :loading="loadingFiscalPreview"
-      :is-confirming="isConfirmingFiscal"
-      @confirm="handleConfirmFiscalInvoice"
     />
   </div>
 </template>

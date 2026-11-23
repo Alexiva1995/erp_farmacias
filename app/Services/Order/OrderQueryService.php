@@ -26,7 +26,7 @@ class OrderQueryService
 
     private function getBaseQuery($valor, ?string $startDate = null, ?string $endDate = null): Builder
     {
-        $relations = ['client', 'seller', 'fiscalHistory', 'diningTable'];
+        $relations = ['client', 'seller', 'fiscalHistory', 'diningTable', 'cashClosing:id,status,daily_closure_id'];
         $query = Order::query()
             ->with($relations)
             ->withCount(['returns', 'psychotropicControls']);

@@ -27,7 +27,7 @@ const sortByModel = computed(() => {
   return key ? [{ key, order: props.orderBy || "desc" }] : [];
 });
 
-const emit = defineEmits(["update:options", "print-order", "print-order-thermal", "view-order", "cancel-order", "create-fiscal-invoice"]);
+const emit = defineEmits(["update:options", "print-order", "print-order-thermal", "view-order", "cancel-order", "return-order", "create-fiscal-invoice"]);
 
 const hasFiscalInvoice = (item) => {
   return !!(item?.fiscal_history?.id || item?.fiscalHistory?.id);
@@ -35,6 +35,18 @@ const hasFiscalInvoice = (item) => {
 
 const hasFiscalInvoiceNumber = (item) => {
   return !!(item?.fiscal_history?.invoice_number || item?.fiscalHistory?.invoice_number);
+};
+
+const canCancelOrder = (item) => {
+  if (typeof item?.can_cancel === "boolean") return item.can_cancel;
+  const st = String(item?.status || "");
+  if (["Cancelled", "cancelled", "Abandoned", "Abandonada"].includes(st)) return false;
+  return !hasFiscalInvoiceNumber(item);
+};
+
+const canReturnOrder = (item) => {
+  if (typeof item?.can_return === "boolean") return item.can_return;
+  return item?.status === "Completed" && !canCancelOrder(item);
 };
 
 const date = (order) => {
@@ -219,6 +231,15 @@ const statusLabel = (status) => {
                     :disabled="props.processingFiscalIds.includes(item.raw.id)"
                     :title="!hasFiscalInvoice(item.raw) ? 'Crear e Imprimir Factura Fiscal' : 'Reenviar a Impresora Fiscal'"
                     @click="$emit('create-fiscal-invoice', item.raw.id)"
+                  />
+                  <VBtn
+                    v-if="canReturnOrder(item.raw)"
+                    icon="tabler-receipt-refund"
+                    variant="tonal"
+                    color="warning"
+                    size="small"
+                    title="Devolver / Nota de Crédito"
+                    @click="$emit('return-order', item.raw.id)"
                   />
                   <VBtn
                     v-if="showPrintActions"
@@ -422,10 +443,17 @@ const statusLabel = (status) => {
           <IconBtn @click="handleView(item.id)" color="primary" title="Ver Detalle">
             <VIcon icon="tabler-eye" />
           </IconBtn>
-          <VTooltip v-if="item.status !== 'Cancelled' && item.status !== 'cancelled' && item.status !== 'Abandonada' && item.status !== 'Abandoned'" text="Cancelar Orden" location="top">
+          <VTooltip v-if="canCancelOrder(item)" text="Cancelar Orden (Caja Abierta / Sin Factura)" location="top">
             <template #activator="{ props: tooltipProps }">
               <IconBtn v-bind="tooltipProps" color="error" @click="$emit('cancel-order', item.id)">
                 <VIcon icon="tabler-circle-x" />
+              </IconBtn>
+            </template>
+          </VTooltip>
+          <VTooltip v-else-if="canReturnOrder(item)" text="Devolver / Nota de Crédito" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <IconBtn v-bind="tooltipProps" color="warning" @click="$emit('return-order', item.id)">
+                <VIcon icon="tabler-receipt-refund" />
               </IconBtn>
             </template>
           </VTooltip>

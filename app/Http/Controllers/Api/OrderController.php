@@ -365,6 +365,7 @@ class OrderController extends Controller
             'client',
             'seller',
             'fiscalHistory',
+            'cashClosing:id,status,daily_closure_id',
             'diningTable.zone',
             'returns',
             'psychotropicControls',

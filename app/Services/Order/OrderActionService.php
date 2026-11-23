@@ -2360,6 +2360,14 @@ class OrderActionService
             }
         }
 
+        // Regla fiscal SENIAT: una orden con factura fiscal emitida no puede cancelarse; requiere Devolución / Nota de Crédito
+        $order->loadMissing('fiscalHistory');
+        if (!empty($order->fiscalHistory?->invoice_number)) {
+            throw new \Exception(
+                "No se puede cancelar una orden que ya posee Factura Fiscal emitida (N° {$order->fiscalHistory->invoice_number}). Debe procesarse como una Devolución / Nota de Crédito."
+            );
+        }
+
         $cashClosing = $order->cashClosing ?? ($order->cash_closing_id ? \App\Models\CashClosing::find($order->cash_closing_id) : null);
         if (!$cashClosing && $order->seller_id) {
             $cashClosing = \App\Models\CashClosing::where('seller_id', $order->seller_id)
