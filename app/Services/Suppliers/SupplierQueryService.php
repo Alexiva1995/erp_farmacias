@@ -893,6 +893,7 @@ class SupplierQueryService
                 "suppliers.name as name",
                 "suppliers.id",
                 "suppliers.public_token",
+                "suppliers.logo_url",
                 DB::raw("COALESCE(suppliers.is_active, 1) as is_active"),
                 DB::raw(
                     "COALESCE(sc.last_connection, 'No se ha establecido conexión') as last_connection",

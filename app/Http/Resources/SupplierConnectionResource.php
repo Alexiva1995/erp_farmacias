@@ -17,6 +17,8 @@ class SupplierConnectionResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'logo_url' => $this->logo_url ?? $this->master_logo_url ?? null,
+            'photo_url' => $this->logo_url ?? $this->master_logo_url ?? null,
             'public_token' => $this->public_token,
             'last_connection' => $this->last_connection,
             'type' => $this->type,
