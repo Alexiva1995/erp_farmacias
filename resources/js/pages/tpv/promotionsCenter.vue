@@ -2,7 +2,7 @@
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import axios from '@/plugins/axios'
 import { toast } from '@/plugins/sweetalert'
-import { useBrandingStore } from '@/stores/branding'
+import { useBrandingStore } from '@/stores/useBrandingStore'
 
 const GeneralOfferView = defineAsyncComponent(() => import('@/pages/tpv/generalOffer.vue'))
 const CategoryOfferView = defineAsyncComponent(() => import('@/pages/tpv/categoryOffer.vue'))
