@@ -191,7 +191,7 @@
     <div v-else-if="activeTab === 'production'">
       <AppFilterBase
         v-model:search="prodSearch"
-        search-placeholder="Buscar por código, sub-receta o número de lote..."
+        search-placeholder="Buscar por sub-receta o preparación..."
         :show-add="true"
         add-button-text="Nueva Orden de Producción"
         :show-advanced="true"
@@ -254,22 +254,16 @@
             class="premium-table text-no-wrap"
             @update:options="updateProdTableOptions"
             :headers="[
-              { title: 'Código', key: 'code', sortable: true },
               { title: 'Sub-Receta / Insumo', key: 'dish', sortable: false },
               { title: 'Lote Mult.', key: 'batch_multiplier', sortable: true, align: 'center' },
               { title: 'Esperado vs. Real', key: 'actual_quantity', sortable: true, align: 'center' },
               { title: 'Costo Unit.', key: 'unit_cost_calculated', sortable: false, align: 'end' },
               { title: 'Costo Total', key: 'total_production_cost', sortable: true, align: 'end' },
-              { title: 'Lote / Caducidad', key: 'lot_number', sortable: false, align: 'center' },
               { title: 'Estado', key: 'status', sortable: true, align: 'center' },
               { title: 'Fecha', key: 'produced_at', sortable: true },
               { title: 'Acciones', key: 'actions', sortable: false, align: 'end' },
             ]"
           >
-            <template #item.code="{ item }">
-              <span class="font-weight-black text-primary text-xs">{{ item.code }}</span>
-            </template>
-
             <template #item.dish="{ item }">
               <div class="d-flex flex-column py-1">
                 <span class="font-weight-bold text-high-emphasis uppercase text-xs">{{ item.dish?.name }}</span>
@@ -308,17 +302,6 @@
 
             <template #item.total_production_cost="{ item }">
               <span class="font-weight-bold text-primary text-xs">{{ formatCurrency(item.total_production_cost) }}</span>
-            </template>
-
-            <template #item.lot_number="{ item }">
-              <div class="d-flex flex-column align-center py-1">
-                <v-chip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
-                  {{ item.lot_number || 'Sin Lote' }}
-                </v-chip>
-                <span v-if="item.expiration_date" class="text-super-xs text-medium-emphasis mt-1">
-                  Vence: {{ item.expiration_date }}
-                </span>
-              </div>
             </template>
 
             <template #item.status="{ item }">
