@@ -1486,8 +1486,13 @@ class InventoryCycleActionService
      */
     private function syncVariantDistributionsIfSupported(\Illuminate\Database\Eloquent\Model $countRecord, Product $product): void
     {
-        $distributionTable = $countRecord->distributions()->getRelated()->getTable();
-        $connectionName = $countRecord->getConnectionName();
+        $relatedModel = $countRecord->distributions()->getRelated();
+        if (!$relatedModel->isFillable('product_variant_id')) {
+            return;
+        }
+
+        $distributionTable = $relatedModel->getTable();
+        $connectionName = $relatedModel->getConnection()->getName();
 
         if (!\Illuminate\Support\Facades\Schema::connection($connectionName)->hasColumn($distributionTable, 'product_variant_id')) {
             return;
