@@ -27,6 +27,10 @@ export default [
         title: 'Proveedores',
         to: 'master-suppliers',
       },
+      {
+        title: 'Empresas (SaaS)',
+        to: 'configuration-tenants',
+      },
     ],
   },
 ]
