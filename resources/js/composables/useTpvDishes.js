@@ -1,6 +1,5 @@
 import { ref, computed } from 'vue'
 import axios from '@/plugins/axios'
-import { toast } from '@/plugins/sweetalert'
 
 export function useTpvDishes() {
   const enableDishes = ref(false)
@@ -11,6 +10,7 @@ export function useTpvDishes() {
   const allForeignSalesSpe = ref(false)
   const fiscalMode = ref('demo')
   const dishes = ref([])
+  const rawDishCategories = ref([])
   const dishesLoading = ref(false)
   const dishFilterQuery = ref('')
   const selectedDishCategory = ref(null)
@@ -45,25 +45,61 @@ export function useTpvDishes() {
   }
 
   const dishCategories = computed(() => {
-    const categoriesMap = new Map()
+    const apiCats = Array.isArray(rawDishCategories.value) ? rawDishCategories.value : []
+    const exclusiveDishCats = apiCats.filter((c) => c.type === 'dish' || c.type === 'dishes')
+    const baseCats = exclusiveDishCats.length > 0 ? exclusiveDishCats : apiCats
+
+    const allowedIds = new Set(baseCats.map((c) => Number(c.id)))
+    const result = baseCats.map((cat) => {
+      const matchingDishes = dishes.value.filter(
+        (d) => Number(d.category_id) === Number(cat.id) || d.category?.name === cat.name
+      )
+      const fallbackPhoto = matchingDishes.find((d) => Boolean(d.photo_url))?.photo_url || null
+      return {
+        id: cat.id,
+        name: cat.name,
+        photo_url: cat.photo_url || fallbackPhoto,
+        count: matchingDishes.length,
+        isOther: false,
+      }
+    }).filter((cat) => cat.count > 0 || exclusiveDishCats.length > 0)
+
+    // Agrupar platos cuya categoría pertenece a farmacia/inventario para no perderlos ni mostrar nombres de farmacia
+    if (baseCats.length > 0) {
+      const otherDishes = dishes.value.filter((d) => !allowedIds.has(Number(d.category_id)))
+      if (otherDishes.length > 0) {
+        result.push({
+          id: 'other',
+          name: 'Otros Platos',
+          photo_url: otherDishes.find((d) => Boolean(d.photo_url))?.photo_url || null,
+          count: otherDishes.length,
+          isOther: true,
+        })
+      }
+      return result
+    }
+
+    // Respaldo si el endpoint de categorías devolvió vacío
+    const fallbackMap = new Map()
     dishes.value.forEach((d) => {
-      const catName = d.category?.name
-      if (!catName) return
-      if (!categoriesMap.has(catName)) {
-        categoriesMap.set(catName, {
+      const catName = d.category?.name || 'General'
+      if (!fallbackMap.has(catName)) {
+        fallbackMap.set(catName, {
+          id: d.category_id || catName,
           name: catName,
           photo_url: d.category?.photo_url || d.photo_url || null,
           count: 1,
+          isOther: false,
         })
       } else {
-        const entry = categoriesMap.get(catName)
+        const entry = fallbackMap.get(catName)
         entry.count += 1
         if (!entry.photo_url && d.photo_url) {
           entry.photo_url = d.photo_url
         }
       }
     })
-    return Array.from(categoriesMap.values())
+    return Array.from(fallbackMap.values())
   })
 
   const filteredDishes = computed(() => {
@@ -82,10 +118,13 @@ export function useTpvDishes() {
     if (!enableDishes.value) return
     dishesLoading.value = true
     try {
-      const { data } = await axios.get('/dishes', {
-        params: { status: 1, itemsPerPage: -1 },
-      })
-      dishes.value = Array.isArray(data.data) ? data.data : data
+      const [dishesResp, catsResp] = await Promise.all([
+        axios.get('/dishes', { params: { status: 1, itemsPerPage: -1 } }),
+        axios.get('/categories', { params: { type: 'dishes' } }).catch(() => ({ data: [] })),
+      ])
+      dishes.value = Array.isArray(dishesResp.data?.data) ? dishesResp.data.data : (dishesResp.data || [])
+      const catsData = catsResp.data?.data ?? catsResp.data
+      rawDishCategories.value = Array.isArray(catsData) ? catsData : []
     } catch (error) {
       console.error('[TPV] Error al cargar platos:', error)
     } finally {

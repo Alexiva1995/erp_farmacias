@@ -85,7 +85,14 @@ class ResourceService
     public function getCategories(array $filters = []): Collection
     {
         $hasTypeCol = Category::ensureTypeColumn();
-        $columns = $hasTypeCol ? ['id', 'name', 'type'] : ['id', 'name'];
+        $hasPhotoCol = (new Category())->getConnection()->getSchemaBuilder()->hasColumn('categories', 'photo_url');
+        $columns = ['id', 'name'];
+        if ($hasTypeCol) {
+            $columns[] = 'type';
+        }
+        if ($hasPhotoCol) {
+            $columns[] = 'photo_url';
+        }
         $requestedType = $filters['type'] ?? 'inventory';
 
         if (in_array($requestedType, ['dishes', 'dish'], true)) {

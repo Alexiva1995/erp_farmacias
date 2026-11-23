@@ -43,7 +43,15 @@ const showCategoryGrid = computed(() => {
 const filteredDishes = computed(() => {
   let list = props.dishes || []
   if (selectedCategory.value) {
-    list = list.filter((d) => d.category?.name === selectedCategory.value)
+    const selectedObj = normalizedCategories.value.find((c) => c.name === selectedCategory.value)
+    if (selectedObj?.isOther) {
+      const mainCategoryNames = new Set(
+        normalizedCategories.value.filter((c) => !c.isOther).map((c) => c.name)
+      )
+      list = list.filter((d) => !mainCategoryNames.has(d.category?.name))
+    } else {
+      list = list.filter((d) => d.category?.name === selectedCategory.value)
+    }
   }
   const q = dishSearch.value.trim().toLowerCase()
   if (q) {
@@ -321,7 +329,7 @@ const backToCategories = () => {
               <VCardText class="pa-3 pb-2">
                 <div class="d-flex align-center justify-space-between gap-1 mb-1 flex-wrap">
                   <VChip
-                    v-if="dish.category?.name"
+                    v-if="dish.category?.name && dish.category?.type !== 'inventory'"
                     size="x-small"
                     color="secondary"
                     variant="tonal"

@@ -71,6 +71,7 @@ class DishResource extends JsonResource
             'category' => $this->category ? [
                 'id' => $this->category->id,
                 'name' => $this->category->name,
+                'type' => $this->category->type instanceof \App\Enums\CategoryTypeEnum ? $this->category->type->value : $this->category->type,
                 'photo_url' => $this->category->photo_url,
             ] : null,
             'status' => (int) $this->status,
