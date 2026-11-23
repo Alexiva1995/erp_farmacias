@@ -51,6 +51,7 @@ class Order extends Model
         'assigned_checker_id',
         'parent_b2b_order_id',
         'credit_term_days',
+        'applied_coupon_code',
     ];
 
     protected $casts = [

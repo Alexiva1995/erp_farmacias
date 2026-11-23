@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { capitalizeFirstAndLastName } from "@/@core/utils/formatters";
 import { formatAmountOnly } from "@/utils/currencyFormatter";
 import { useDisplay } from "vuetify";
@@ -114,6 +114,22 @@ const renderUsername = (item) => {
 const renderSellerName = (item) => {
   const name = item.seller?.username;
   return name ? capitalizeFirstAndLastName(name) : "N/A";
+};
+
+const statusColor = (status) => {
+  if (status === "Completed") return "success";
+  if (status === "Abandoned") return "warning";
+  if (status === "Pending" || status === "Reserved") return "info";
+  return "error";
+};
+
+const statusLabel = (status) => {
+  if (status === "Completed") return "Completada";
+  if (status === "Abandoned") return "Abandonada";
+  if (status === "Cancelled") return "Cancelada";
+  if (status === "Pending") return "Abierta";
+  if (status === "Reserved") return "En Mesa";
+  return status || "N/A";
 };
 </script>
 <template>
@@ -268,7 +284,73 @@ const renderSellerName = (item) => {
       </template>
 
       <template v-slot:item.id="{ item }">
-        <span class="text-primary font-weight-black">{{ item.id }}</span>
+        <div class="d-flex align-center gap-1">
+          <span class="text-primary font-weight-black">#{{ item.id }}</span>
+          <VTooltip v-if="item.psychotropic_controls_count > 0" text="Contiene Psicotrópicos / Récipe" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <VChip v-bind="tooltipProps" size="x-small" color="warning" variant="tonal" class="font-weight-bold">
+                PSIC
+              </VChip>
+            </template>
+          </VTooltip>
+          <VTooltip v-if="item.returns_count > 0" text="Tiene devoluciones registradas" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <VChip v-bind="tooltipProps" size="x-small" color="secondary" variant="tonal" class="font-weight-bold">
+                DEV
+              </VChip>
+            </template>
+          </VTooltip>
+          <VTooltip v-if="item.parent_order_id" :text="`Cuenta dividida de #${item.parent_order_id}`" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <VChip v-bind="tooltipProps" size="x-small" color="info" variant="tonal" class="font-weight-bold">
+                DIV
+              </VChip>
+            </template>
+          </VTooltip>
+        </div>
+      </template>
+
+      <template v-slot:item.fiscal_invoice="{ item }">
+        <VChip
+          v-if="item.fiscal_history?.invoice_number"
+          size="x-small"
+          color="success"
+          variant="tonal"
+          class="font-weight-bold"
+        >
+          {{ item.fiscal_history.invoice_number }}
+        </VChip>
+        <VChip
+          v-else-if="item.fiscal_history?.is_queued"
+          size="x-small"
+          color="warning"
+          variant="tonal"
+          class="font-weight-bold"
+        >
+          En cola
+        </VChip>
+        <span v-else class="text-caption text-disabled">—</span>
+      </template>
+
+      <template v-slot:item.dining_table="{ item }">
+        <div class="d-flex align-center gap-1">
+          <VIcon
+            size="15"
+            :color="item.dining_table ? 'primary' : 'secondary'"
+            :icon="item.dining_table ? 'tabler-armchair' : 'tabler-shopping-bag'"
+          />
+          <span class="text-body-2 font-weight-medium">
+            {{ item.dining_table?.name || "Para llevar / Barra" }}
+          </span>
+        </div>
+      </template>
+
+      <template v-slot:item.guests_count="{ item }">
+        <VChip v-if="item.guests_count" size="x-small" variant="tonal" color="secondary" class="font-weight-bold">
+          <VIcon icon="tabler-users" size="12" class="me-1" />
+          {{ item.guests_count }}
+        </VChip>
+        <span v-else class="text-caption text-disabled">—</span>
       </template>
 
       <template v-slot:item.identification="{ item }">
@@ -326,19 +408,8 @@ const renderSellerName = (item) => {
       </template>
 
       <template v-slot:item.status="{ item }">
-        <VChip
-          :color="
-            item.status === 'Completed'
-              ? 'success'
-              : item.status === 'Abandoned'
-              ? 'warning'
-              : 'error'
-          "
-        >
-          <span v-if="item.status === 'Completed'">Completada</span>
-          <span v-else-if="item.status === 'Abandoned'">Abandonada</span>
-          <span v-else-if="item.status === 'Cancelled'">Cancelada</span>
-          <span v-else>{{ item.status }}</span>
+        <VChip size="small" variant="tonal" :color="statusColor(item.status)" class="font-weight-bold">
+          {{ statusLabel(item.status) }}
         </VChip>
       </template>
 
@@ -432,7 +503,7 @@ const renderSellerName = (item) => {
 <style scoped>
 :deep(.v-data-table) {
   .v-data-table-header th {
-    background-color: #fff !important;
+    background-color: rgb(var(--v-theme-surface)) !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
     color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)) !important;

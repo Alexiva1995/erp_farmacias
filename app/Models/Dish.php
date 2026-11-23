@@ -31,6 +31,7 @@ class Dish extends Model
         'output_product_id',
         'expected_yield_quantity',
         'shelf_life_days',
+        'exclude_from_promotions',
     ];
 
     protected $casts = [
@@ -47,6 +48,7 @@ class Dish extends Model
         'output_product_id' => 'integer',
         'expected_yield_quantity' => 'decimal:2',
         'shelf_life_days' => 'integer',
+        'exclude_from_promotions' => 'boolean',
     ];
 
     protected static array $hasIsRemovableCache = [];

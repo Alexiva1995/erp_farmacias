@@ -527,6 +527,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::patch('/order/{order}/reserve', [OrderController::class, 'reserveOrder']);
         Route::patch('/order/{order}/reserveAdd', [OrderController::class, 'reserveAddOrder']);
         Route::get("/order/searchReserved", [OrderController::class, "getSearchReserved"]);
+        Route::get('/orders', [OrderController::class, 'getOrders']);
+        Route::get('/orders/summary', [OrderController::class, 'getSummary']);
         Route::get('/orders/cancelled', [OrderController::class, 'getCancelledOrder']);
         Route::get('/orders/completed', [OrderController::class, 'getcompletedOrder']);
         Route::get('/orders/all', [OrderController::class, 'getAllOrder']);
@@ -605,6 +607,8 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
                 Route::put('/{prescriptionOffer}', [PrescriptionOfferController::class, "update"]);
                 Route::delete('/{prescriptionOffer}', [PrescriptionOfferController::class, 'destroy']);
             });
+            Route::get('metrics', [\App\Http\Controllers\Api\GeneralPromotionController::class, 'metrics']);
+            Route::post('orders/{order}/apply-coupon', [\App\Http\Controllers\Api\GeneralPromotionController::class, 'applyCoupon']);
             Route::apiResource("general-promotions", \App\Http\Controllers\Api\GeneralPromotionController::class);
         });
         //ruta para productos con fallas

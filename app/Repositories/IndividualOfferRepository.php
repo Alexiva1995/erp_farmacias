@@ -12,8 +12,12 @@ class IndividualOfferRepository implements IndividualOfferRepositoryInterface
 {
     public function getPaginated(array $filters = []): LengthAwarePaginator
     {
-        $query = IndividualOffer::query()
-            ->with(['product:id,name,active_ingredient,sale_price,laboratory_id', 'product.laboratory:id,name']);
+        $with = ['product:id,name,active_ingredient,sale_price,unit_cost,laboratory_id', 'product.laboratory:id,name'];
+        if (\Illuminate\Support\Facades\Schema::hasTable('dishes')) {
+            $with[] = 'dish:id,name,designated_price,cost_price,category_id';
+        }
+
+        $query = IndividualOffer::query()->with($with);
 
         // Subconsulta optimizada en SQL puro / Eloquent sin N+1 para calcular la suma de cantidad vendida
         $query->addSelect([

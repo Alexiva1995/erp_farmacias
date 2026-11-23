@@ -23,12 +23,39 @@ const promoTypes = [
   { title: "Precio Fijo por Categoría", value: "fixed_price" },
 ];
 
+const weekDays = [
+  { title: "Lun", value: 1 },
+  { title: "Mar", value: 2 },
+  { title: "Mié", value: 3 },
+  { title: "Jue", value: 4 },
+  { title: "Vie", value: 5 },
+  { title: "Sáb", value: 6 },
+  { title: "Dom", value: 7 },
+];
+
+const salesChannels = [
+  { title: "Todos los canales", value: "all" },
+  { title: "Solo Salón (Mesa)", value: "dine_in" },
+  { title: "Para Llevar / Delivery", value: "takeaway_delivery" },
+];
+
 const localFormData = ref({
   id: null,
+  name: "",
   type: "2x1",
   fixed_price: null,
+  discount_percentage: null,
   is_active: true,
   categories: [],
+  start_date: null,
+  end_date: null,
+  days_of_week: [],
+  start_time: null,
+  end_time: null,
+  min_order_amount: null,
+  coupon_code: "",
+  sales_channel: "all",
+  stackable: false,
 });
 
 watch(
@@ -37,10 +64,23 @@ watch(
     if (isVisible) {
       localFormData.value = {
         id: props.formData.id || null,
+        name: props.formData.name || "",
         type: props.formData.type || "2x1",
         fixed_price: props.formData.fixed_price || null,
+        discount_percentage:
+          props.formData.discount_percentage ??
+          (props.formData.type === "general" ? props.formData.fixed_price : null),
         is_active: props.formData.is_active !== undefined ? props.formData.is_active : true,
         categories: Array.isArray(props.formData.categories) ? props.formData.categories : [],
+        start_date: props.formData.start_date || null,
+        end_date: props.formData.end_date || null,
+        days_of_week: Array.isArray(props.formData.days_of_week) ? props.formData.days_of_week : [],
+        start_time: props.formData.start_time || null,
+        end_time: props.formData.end_time || null,
+        min_order_amount: props.formData.min_order_amount || null,
+        coupon_code: props.formData.coupon_code || "",
+        sales_channel: props.formData.sales_channel || "all",
+        stackable: Boolean(props.formData.stackable),
       };
     }
   },
@@ -48,7 +88,11 @@ watch(
 );
 
 function onSave() {
-  emit("save", { ...localFormData.value });
+  const payload = { ...localFormData.value };
+  if (payload.type === "general") {
+    payload.fixed_price = payload.discount_percentage;
+  }
+  emit("save", payload);
 }
 
 const onCancel = () => {
@@ -122,6 +166,19 @@ const onCancel = () => {
 
           <div class="pa-3 rounded border bg-var-theme-background">
             <VRow dense class="align-center">
+              <!-- Nombre amigable -->
+              <VCol cols="12" class="mb-2">
+                <VTextField
+                  v-model="localFormData.name"
+                  label="Nombre de la promoción (Opcional)"
+                  placeholder="Ej. Happy Hour Viernes, Miércoles Saludable..."
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  :disabled="props.loading"
+                />
+              </VCol>
+
               <!-- Tipo de Promoción -->
               <VCol cols="12" :sm="localFormData.type === 'general' || localFormData.type === 'fixed_price' ? 7 : 12">
                 <VSelect
@@ -141,7 +198,7 @@ const onCancel = () => {
               <!-- Porcentaje de Descuento (Si es Oferta General) -->
               <VCol v-if="localFormData.type === 'general'" cols="12" sm="5">
                 <VTextField
-                  v-model.number="localFormData.fixed_price"
+                  v-model.number="localFormData.discount_percentage"
                   type="number"
                   min="0"
                   max="100"
@@ -154,8 +211,8 @@ const onCancel = () => {
                   prepend-inner-icon="tabler-percentage"
                   class="rounded font-weight-black"
                   :disabled="props.loading"
-                  :error="!!props.formErrors.fixed_price"
-                  :error-messages="props.formErrors.fixed_price"
+                  :error="!!props.formErrors.discount_percentage"
+                  :error-messages="props.formErrors.discount_percentage"
                 />
               </VCol>
 
@@ -209,6 +266,127 @@ const onCancel = () => {
             <span v-if="localFormData.type === 'general' && (!localFormData.categories || localFormData.categories.length === 0)" class="text-super-xs text-primary font-weight-medium mt-1-5 d-block">
               ℹ️ Si no seleccionas ninguna categoría, el descuento se aplicará de forma global a todos los productos.
             </span>
+          </div>
+        </div>
+
+        <!-- Bloque 3: Vigencia, Días, Horario y Condiciones -->
+        <div class="mt-4">
+          <div class="d-flex align-center gap-1-5 mb-2">
+            <div class="header-indicator primary" />
+            <span class="text-xs font-weight-black text-high-emphasis uppercase letter-spacing-1">Vigencia, Horario y Condiciones (Opcional)</span>
+          </div>
+
+          <div class="pa-3 rounded border bg-var-theme-background">
+            <VRow dense>
+              <VCol cols="12" sm="6">
+                <VTextField
+                  v-model="localFormData.start_date"
+                  type="date"
+                  label="Fecha inicio"
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  :disabled="props.loading"
+                />
+              </VCol>
+              <VCol cols="12" sm="6">
+                <VTextField
+                  v-model="localFormData.end_date"
+                  type="date"
+                  label="Fecha fin"
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  :disabled="props.loading"
+                />
+              </VCol>
+              <VCol cols="12" sm="6">
+                <VTextField
+                  v-model="localFormData.start_time"
+                  type="time"
+                  label="Hora inicio (Happy Hour)"
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  :disabled="props.loading"
+                />
+              </VCol>
+              <VCol cols="12" sm="6">
+                <VTextField
+                  v-model="localFormData.end_time"
+                  type="time"
+                  label="Hora fin"
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  :disabled="props.loading"
+                />
+              </VCol>
+              <VCol cols="12">
+                <VSelect
+                  v-model="localFormData.days_of_week"
+                  :items="weekDays"
+                  item-title="title"
+                  item-value="value"
+                  label="Días activos (vacío = todos los días)"
+                  multiple
+                  chips
+                  closable-chips
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  :disabled="props.loading"
+                />
+              </VCol>
+              <VCol cols="12" sm="4">
+                <VTextField
+                  v-model.number="localFormData.min_order_amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  prefix="$"
+                  label="Compra mínima ($)"
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  :disabled="props.loading"
+                />
+              </VCol>
+              <VCol cols="12" sm="4">
+                <VTextField
+                  v-model="localFormData.coupon_code"
+                  label="Código cupón"
+                  placeholder="Ej. PROMO10"
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  :disabled="props.loading"
+                />
+              </VCol>
+              <VCol cols="12" sm="4">
+                <VSelect
+                  v-model="localFormData.sales_channel"
+                  :items="salesChannels"
+                  item-title="title"
+                  item-value="value"
+                  label="Canal de venta"
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                  :disabled="props.loading"
+                />
+              </VCol>
+              <VCol cols="12" class="pt-2">
+                <VSwitch
+                  v-model="localFormData.stackable"
+                  label="Permitir acumular con otras promociones generales"
+                  color="primary"
+                  density="compact"
+                  hide-details="auto"
+                  :disabled="props.loading"
+                />
+              </VCol>
+            </VRow>
           </div>
         </div>
       </VCardText>

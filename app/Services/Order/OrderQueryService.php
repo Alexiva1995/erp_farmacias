@@ -26,22 +26,30 @@ class OrderQueryService
 
     private function getBaseQuery($valor, ?string $startDate = null, ?string $endDate = null): Builder
     {
-        if ($valor == 'Completed') {
-            $query = Order::query()->where('orders.status', $valor)->with(['client', 'seller', 'fiscalHistory']);
+        $relations = ['client', 'seller', 'fiscalHistory', 'diningTable'];
+        $query = Order::query()
+            ->with($relations)
+            ->withCount(['returns', 'psychotropicControls']);
+
+        if ($valor === 'Completed') {
+            $query->where('orders.status', $valor);
             // Si no hay rango de fechas, usar solo el día actual (comportamiento por defecto)
             if (empty($startDate) && empty($endDate)) {
-                $start = now()->startOfDay();
-                $end = now()->endOfDay();
-                return $query->whereBetween('order_date', [$start, $end]);
+                return $query->whereBetween('orders.order_date', [now()->startOfDay(), now()->endOfDay()]);
             }
             return $query;
-        } elseif ($valor == 'all') {
-            return Order::query()->with(['client', 'seller', 'fiscalHistory']);
         }
 
-        return Order::query()->where('orders.status', $valor)->with(['client', 'seller', 'fiscalHistory']);
-    }
+        if ($valor === 'open') {
+            return $query->whereIn('orders.status', [Order::PENDING, Order::RESERVED]);
+        }
 
+        if ($valor === 'all') {
+            return $query;
+        }
+
+        return $query->where('orders.status', $valor);
+    }
 
     private function applyFilters(Builder $query, array $filters): Builder
     {
@@ -50,17 +58,35 @@ class OrderQueryService
         }
 
         if (!empty($filters['q'])) {
-            $searchTerm = "%{$filters['q']}%";
+            $rawQ = trim((string) $filters['q']);
+            $searchTerm = "%{$rawQ}%";
 
-            $query->where(function ($subQuery) use ($searchTerm) {
-                // B├║squeda en la relaci├│n 'client' por identificaci├│n
-                $subQuery->whereHas('client', function ($clientQuery) use ($searchTerm) {
-                    $clientQuery->where('identification', 'like', $searchTerm);
+            $query->where(function ($subQuery) use ($searchTerm, $rawQ) {
+                if (ctype_digit($rawQ)) {
+                    $subQuery->orWhere('orders.id', (int) $rawQ);
+                }
+
+                // Búsqueda en cliente (identificación, nombre y apellido)
+                $subQuery->orWhereHas('client', function ($clientQuery) use ($searchTerm) {
+                    $clientQuery->where('identification', 'like', $searchTerm)
+                        ->orWhere('name', 'like', $searchTerm)
+                        ->orWhere('last_name', 'like', $searchTerm)
+                        ->orWhereRaw("CONCAT(COALESCE(name, ''), ' ', COALESCE(last_name, '')) LIKE ?", [$searchTerm]);
                 });
 
-                // B├║squeda en la relaci├│n 'seller' por username
+                // Búsqueda en vendedor / mesero por username
                 $subQuery->orWhereHas('seller', function ($sellerQuery) use ($searchTerm) {
                     $sellerQuery->where('username', 'like', $searchTerm);
+                });
+
+                // Búsqueda por número de factura fiscal
+                $subQuery->orWhereHas('fiscalHistory', function ($fiscalQuery) use ($searchTerm) {
+                    $fiscalQuery->where('invoice_number', 'like', $searchTerm);
+                });
+
+                // Búsqueda por nombre de mesa (restaurante)
+                $subQuery->orWhereHas('diningTable', function ($tableQuery) use ($searchTerm) {
+                    $tableQuery->where('name', 'like', $searchTerm);
                 });
             });
         }
@@ -69,12 +95,51 @@ class OrderQueryService
             $query->where('orders.currency', $filters['currency']);
         }
 
-        if (!empty($filters['state'])) {
-            $query->where('orders.status', $filters['state']);
+        if (!empty($filters['state']) && $filters['state'] !== 'all') {
+            if ($filters['state'] === 'open') {
+                $query->whereIn('orders.status', [Order::PENDING, Order::RESERVED]);
+            } else {
+                $query->where('orders.status', $filters['state']);
+            }
         }
 
         if (!empty($filters['seller_id'])) {
-            $query->where('seller_id', $filters['seller_id']);
+            $query->where('orders.seller_id', $filters['seller_id']);
+        }
+
+        if (!empty($filters['dining_table_id'])) {
+            $query->where('orders.dining_table_id', $filters['dining_table_id']);
+        }
+
+        if (!empty($filters['has_fiscal'])) {
+            if ($filters['has_fiscal'] === 'yes') {
+                $query->whereHas('fiscalHistory', function ($q) {
+                    $q->whereNotNull('invoice_number')->where('invoice_number', '!=', '');
+                });
+            } elseif ($filters['has_fiscal'] === 'pending') {
+                $query->where(function ($q) {
+                    $q->whereDoesntHave('fiscalHistory')
+                        ->orWhereHas('fiscalHistory', function ($fh) {
+                            $fh->whereNull('invoice_number')->orWhere('invoice_number', '');
+                        });
+                });
+            }
+        }
+
+        if (!empty($filters['only_psychotropic'])) {
+            $query->whereHas('psychotropicControls');
+        }
+
+        if (!empty($filters['discount_type'])) {
+            $discountType = $filters['discount_type'];
+            $query->whereHas('details', function ($q) use ($discountType) {
+                $q->where('discount_type', $discountType);
+            });
+        }
+
+        if (!empty($filters['payment_method'])) {
+            $method = $filters['payment_method'];
+            $query->where('orders.payment_methods', 'like', '%"method":"' . $method . '"%');
         }
 
         if (!empty($filters['start_date']) || !empty($filters['end_date'])) {
@@ -82,11 +147,11 @@ class OrderQueryService
             $endDate = !empty($filters['end_date']) ? Carbon::parse($filters['end_date'])->endOfDay() : null;
 
             if ($startDate && $endDate) {
-                $query->whereBetween('order_date', [$startDate, $endDate]);
+                $query->whereBetween('orders.order_date', [$startDate, $endDate]);
             } elseif ($startDate) {
-                $query->where('order_date', '>=', $startDate);
+                $query->where('orders.order_date', '>=', $startDate);
             } elseif ($endDate) {
-                $query->where('order_date', '<=', $endDate);
+                $query->where('orders.order_date', '<=', $endDate);
             }
         }
 
@@ -101,13 +166,18 @@ class OrderQueryService
             $request->input('end_date')
         );
         $filters = [
-            'id' => $request->id,
-            'q' => $request->q,
-            'currency' => $request->currency,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'state' => $request->state,
-            'seller_id' => $request->seller_id,
+            'id' => $request->input('id'),
+            'q' => $request->input('q'),
+            'currency' => $request->input('currency'),
+            'start_date' => $request->input('start_date'),
+            'end_date' => $request->input('end_date'),
+            'state' => $request->input('state'),
+            'seller_id' => $request->input('seller_id'),
+            'has_fiscal' => $request->input('has_fiscal'),
+            'only_psychotropic' => $request->boolean('only_psychotropic'),
+            'discount_type' => $request->input('discount_type'),
+            'dining_table_id' => $request->input('dining_table_id'),
+            'payment_method' => $request->input('payment_method'),
         ];
         $this->applyFilters($query, $filters);
         $this->applyOrderSorting(
@@ -116,6 +186,122 @@ class OrderQueryService
             $request->input('orderBy', 'desc')
         );
         return $query;
+    }
+
+    /**
+     * Obtiene en una sola agregación los contadores de pestañas y KPIs del rango filtrado.
+     *
+     * @return array<string, mixed>
+     */
+    public function getOrdersSummary(Request $request): array
+    {
+        $baseQuery = Order::query();
+
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        if (empty($startDate) && empty($endDate)) {
+            $baseQuery->whereBetween('orders.order_date', [now()->startOfDay(), now()->endOfDay()]);
+        }
+
+        $filters = [
+            'id' => $request->input('id'),
+            'q' => $request->input('q'),
+            'currency' => $request->input('currency'),
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'seller_id' => $request->input('seller_id'),
+            'has_fiscal' => $request->input('has_fiscal'),
+            'only_psychotropic' => $request->boolean('only_psychotropic'),
+            'discount_type' => $request->input('discount_type'),
+            'dining_table_id' => $request->input('dining_table_id'),
+            'payment_method' => $request->input('payment_method'),
+        ];
+
+        $this->applyFilters($baseQuery, $filters);
+
+        $statusRows = (clone $baseQuery)
+            ->select('orders.status', DB::raw('COUNT(*) as total_count'))
+            ->groupBy('orders.status')
+            ->pluck('total_count', 'status');
+
+        $completedCount = (int) ($statusRows[Order::COMPLETED] ?? 0);
+        $cancelledCount = (int) ($statusRows[Order::CANCELLED] ?? 0);
+        $abandonedCount = (int) ($statusRows[Order::ABANDONED] ?? 0);
+        $openCount = (int) ($statusRows[Order::PENDING] ?? 0) + (int) ($statusRows[Order::RESERVED] ?? 0);
+        $allCount = (int) $statusRows->sum();
+
+        $completedQuery = (clone $baseQuery)->where('orders.status', Order::COMPLETED);
+
+        $currencyTotals = (clone $completedQuery)
+            ->select(
+                DB::raw('UPPER(orders.currency) as curr'),
+                DB::raw('SUM(orders.total_amount) as total_amount'),
+                DB::raw('SUM(COALESCE(orders.total_amount_usd, 0)) as total_usd'),
+                DB::raw('SUM(COALESCE(orders.service_charge_amount_usd, 0)) as total_service_usd'),
+                DB::raw('COUNT(*) as orders_count')
+            )
+            ->groupBy(DB::raw('UPPER(orders.currency)'))
+            ->get();
+
+        $salesByCurrency = ['BS' => 0.0, 'USD' => 0.0, 'COP' => 0.0];
+        $totalUsd = 0.0;
+        $totalServiceUsd = 0.0;
+
+        foreach ($currencyTotals as $row) {
+            $curr = strtoupper((string) $row->curr);
+            if (array_key_exists($curr, $salesByCurrency)) {
+                $salesByCurrency[$curr] = round((float) $row->total_amount, 2);
+            }
+            $totalUsd += (float) $row->total_usd;
+            $totalServiceUsd += (float) $row->total_service_usd;
+        }
+
+        $fiscalizedCount = (clone $completedQuery)
+            ->whereHas('fiscalHistory', function ($q) {
+                $q->whereNotNull('invoice_number')->where('invoice_number', '!=', '');
+            })
+            ->count();
+
+        $quotationsQuery = \App\Models\Quotation::query();
+        if (!empty($startDate)) {
+            $quotationsQuery->where('created_at', '>=', Carbon::parse($startDate)->startOfDay());
+        }
+        if (!empty($endDate)) {
+            $quotationsQuery->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
+        }
+        if (empty($startDate) && empty($endDate)) {
+            $quotationsQuery->whereBetween('created_at', [now()->startOfDay(), now()->endOfDay()]);
+        }
+        if (!empty($filters['q'])) {
+            $term = '%' . $filters['q'] . '%';
+            $quotationsQuery->where(function ($q) use ($term) {
+                $q->where('id', 'like', $term)
+                    ->orWhereHas('client', fn ($c) => $c->where('name', 'like', $term)->orWhere('identification', 'like', $term))
+                    ->orWhereHas('creator', fn ($u) => $u->where('username', 'like', $term));
+            });
+        }
+        $quotationsCount = $quotationsQuery->count();
+
+        return [
+            'counts' => [
+                'completed' => $completedCount,
+                'all' => $allCount,
+                'cancelled' => $cancelledCount,
+                'abandoned' => $abandonedCount,
+                'open' => $openCount,
+                'quotations' => $quotationsCount,
+            ],
+            'kpis' => [
+                'completed_count' => $completedCount,
+                'fiscalized_count' => $fiscalizedCount,
+                'pending_fiscal_count' => max(0, $completedCount - $fiscalizedCount),
+                'sales_by_currency' => $salesByCurrency,
+                'total_usd' => round($totalUsd, 2),
+                'avg_ticket_usd' => $completedCount > 0 ? round($totalUsd / $completedCount, 2) : 0.0,
+                'total_service_usd' => round($totalServiceUsd, 2),
+            ],
+        ];
     }
 
     private function applyOrderSorting(Builder $query, ?string $sortBy, string $orderBy): Builder

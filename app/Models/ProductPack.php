@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPromotionSchedule;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ProductPack extends Model
 {
-    use SoftDeletes;
+    use HasPromotionSchedule, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -16,12 +17,17 @@ class ProductPack extends Model
         'total_price',
         'max_quantity',
         'max_sale_date',
+        'days_of_week',
+        'start_time',
+        'end_time',
+        'sales_channel',
         'is_active',
     ];
 
     protected $casts = [
         'pack_config' => 'array',
         'max_sale_date' => 'datetime',
+        'days_of_week' => 'array',
         'total_price' => 'decimal:2',
         'is_active' => 'boolean',
     ];
@@ -39,32 +45,61 @@ class ProductPack extends Model
         static::saved(function (ProductPack $productPack) {
             if ($productPack->pack_config && is_array($productPack->pack_config)) {
                 $syncData = [];
-                foreach ($productPack->pack_config as $productId => $config) {
-                    $quantity = 1;
-                    $discountPercentage = 0.00;
-                    $salePrice = 0.00;
+                $dishRows = [];
+                foreach ($productPack->pack_config as $key => $config) {
+                    $isDish = (is_string($key) && str_starts_with($key, 'dish_'))
+                        || (is_array($config) && (($config['item_type'] ?? null) === 'dish' || !empty($config['dish_id'])));
 
-                    if (is_array($config)) {
-                        $quantity = (int)($config['quantity'] ?? 1);
-                        $discountPercentage = (float)($config['discount_percentage'] ?? 0.00);
-                        $salePrice = (float)($config['sale_price'] ?? 0.00);
-                    } else {
-                        $quantity = (int)$config;
-                        $product = Product::find($productId);
-                        if ($product) {
-                            $salePrice = (float)$product->sale_price;
+                    $quantity = is_array($config) ? (int) ($config['quantity'] ?? 1) : (int) $config;
+                    $discountPercentage = is_array($config) ? (float) ($config['discount_percentage'] ?? 0.00) : 0.00;
+                    $salePrice = is_array($config) ? (float) ($config['sale_price'] ?? 0.00) : 0.00;
+
+                    if ($isDish) {
+                        $dishId = is_array($config) && !empty($config['dish_id'])
+                            ? (int) $config['dish_id']
+                            : (int) str_replace('dish_', '', (string) $key);
+                        if ($salePrice <= 0 && class_exists(Dish::class)) {
+                            $dish = Dish::find($dishId);
+                            $salePrice = $dish ? (float) $dish->designated_price : 0.00;
                         }
+                        $dishRows[] = [
+                            'pack_id' => $productPack->id,
+                            'product_id' => null,
+                            'dish_id' => $dishId,
+                            'quantity' => $quantity,
+                            'discount_percentage' => $discountPercentage,
+                            'sale_price' => $salePrice,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    } else {
+                        $productId = (int) $key;
+                        if (!is_array($config)) {
+                            $product = Product::find($productId);
+                            if ($product) {
+                                $salePrice = (float) $product->sale_price;
+                            }
+                        }
+                        $syncData[$productId] = [
+                            'quantity' => $quantity,
+                            'discount_percentage' => $discountPercentage,
+                            'sale_price' => $salePrice,
+                        ];
                     }
-
-                    $syncData[$productId] = [
-                        'quantity' => $quantity,
-                        'discount_percentage' => $discountPercentage,
-                        'sale_price' => $salePrice,
-                    ];
                 }
                 $productPack->products()->sync($syncData);
+                \Illuminate\Support\Facades\DB::table('product_pack_items')
+                    ->where('pack_id', $productPack->id)
+                    ->whereNotNull('dish_id')
+                    ->delete();
+                if (!empty($dishRows)) {
+                    \Illuminate\Support\Facades\DB::table('product_pack_items')->insert($dishRows);
+                }
             } else {
                 $productPack->products()->detach();
+                \Illuminate\Support\Facades\DB::table('product_pack_items')
+                    ->where('pack_id', $productPack->id)
+                    ->delete();
             }
         });
     }
@@ -121,7 +156,7 @@ class ProductPack extends Model
      */
     public function getIsAvailableAttribute()
     {
-        if (!$this->is_active) {
+        if (!$this->isCurrentlyValid()) {
             return false;
         }
 
@@ -145,9 +180,23 @@ class ProductPack extends Model
             return false;
         }
 
-        foreach ($this->pack_config as $productId => $config) {
+        foreach ($this->pack_config as $key => $config) {
+            $isDish = (is_string($key) && str_starts_with($key, 'dish_'))
+                || (is_array($config) && (($config['item_type'] ?? null) === 'dish' || !empty($config['dish_id'])));
+
+            if ($isDish) {
+                $dishId = is_array($config) && !empty($config['dish_id'])
+                    ? (int) $config['dish_id']
+                    : (int) str_replace('dish_', '', (string) $key);
+                $dish = Dish::find($dishId);
+                if (!$dish || $dish->status === 'inactive') {
+                    return false;
+                }
+                continue;
+            }
+
             $quantity = is_array($config) ? ($config['quantity'] ?? 0) : $config;
-            $product = Product::find($productId);
+            $product = Product::find($key);
 
             if (!$product || $product->stock < $quantity) {
                 return false;

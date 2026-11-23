@@ -62,9 +62,13 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  mode: {
+    type: String,
+    default: "pharmacy",
+  },
 });
 
-const emit = defineEmits(["update:isDialogVisible", "modal-closed", "cancel-order", "create-fiscal-invoice"]);
+const emit = defineEmits(["update:isDialogVisible", "modal-closed", "cancel-order", "create-fiscal-invoice", "print-order", "print-order-thermal"]);
 
 const dialogVisible = computed({
   get() {
@@ -366,6 +370,10 @@ const displayProducts = computed(() => {
       discount_percentage: discountPct,
       discount_type: discountType,
       product: productObj,
+      lot: item.lot ?? detailMatch?.lot ?? null,
+      modifiers: Array.isArray(item.modifiers) ? item.modifiers : (Array.isArray(detailMatch?.modifiers) ? detailMatch.modifiers : []),
+      notes: item.notes ?? detailMatch?.notes ?? null,
+      kitchen_status_label: item.kitchen_status_label ?? detailMatch?.kitchen_status_label ?? null,
       iva: isIva,
     };
   });
@@ -492,11 +500,32 @@ const documentTitle = computed(() => {
                   </div>
                 </VCol>
 
-                <!-- Columna Derecha: Cajero y Método de Pago -->
+                <!-- Columna Derecha: Cajero/Mesero, Mesa y Método de Pago -->
                 <VCol cols="12" sm="6" class="py-0.5">
                   <div class="d-flex flex-column align-sm-end">
+                    <div v-if="mode === 'restaurant'" class="d-flex flex-wrap gap-1 justify-sm-end mb-1">
+                      <VChip size="x-small" color="primary" variant="tonal" class="font-weight-bold">
+                        <VIcon icon="tabler-armchair" size="12" class="me-1" />
+                        {{ orderData.dining_table?.name || 'Para llevar / Barra' }}
+                      </VChip>
+                      <VChip v-if="orderData.guests_count" size="x-small" color="secondary" variant="tonal" class="font-weight-bold">
+                        <VIcon icon="tabler-users" size="12" class="me-1" />
+                        {{ orderData.guests_count }} comensales
+                      </VChip>
+                      <VChip v-if="orderData.parent_order_id" size="x-small" color="info" variant="tonal" class="font-weight-bold">
+                        Dividida de #{{ orderData.parent_order_id }}
+                      </VChip>
+                    </div>
+                    <div v-else class="d-flex flex-wrap gap-1 justify-sm-end mb-1">
+                      <VChip v-if="orderData.psychotropic_controls_count > 0" size="x-small" color="warning" variant="tonal" class="font-weight-bold">
+                        Psicotrópico / Récipe
+                      </VChip>
+                      <VChip v-if="orderData.returns_count > 0" size="x-small" color="secondary" variant="tonal" class="font-weight-bold">
+                        {{ orderData.returns_count }} Devolución(es)
+                      </VChip>
+                    </div>
                     <div class="d-flex flex-column align-sm-end mb-1">
-                      <span class="text-uppercase mb-0.5" style="color: #666; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">CAJERO / VENDEDOR</span>
+                      <span class="text-uppercase mb-0.5" style="color: #666; font-weight: 700; font-size: 10px; letter-spacing: 0.5px;">{{ mode === 'restaurant' ? 'MESERO / CAJERO' : 'CAJERO / VENDEDOR' }}</span>
                       <span class="text-body-2 font-weight-bold text-high-emphasis">
                         {{ orderData.seller?.username ? capitalizeFirstAndLastName(orderData.seller.username) : "—" }}
                       </span>
@@ -554,6 +583,21 @@ const documentTitle = computed(() => {
                           </div>
                           <span v-if="product.product?.laboratory?.name || product.laboratory" class="text-tiny text-disabled text-uppercase" style="font-size: 9px;">
                             {{ product.product?.laboratory?.name || product.laboratory }}
+                          </span>
+                          <div v-if="product.lot?.lot_number" class="d-flex flex-wrap gap-2 text-tiny text-medium-emphasis" style="font-size: 10px;">
+                            <span>Lote: <strong>{{ product.lot.lot_number }}</strong></span>
+                            <span v-if="product.lot.expiration_date">Vence: <strong>{{ product.lot.expiration_date }}</strong></span>
+                          </div>
+                          <div v-if="product.modifiers?.length" class="d-flex flex-wrap gap-1 mt-0.5">
+                            <VChip v-for="mod in product.modifiers" :key="mod.id" size="x-small" variant="outlined" color="secondary" density="compact" style="height: 18px; font-size: 9px;">
+                              + {{ mod.name }}
+                            </VChip>
+                          </div>
+                          <span v-if="product.notes" class="text-tiny text-info fst-italic" style="font-size: 10px;">
+                            Nota: {{ product.notes }}
+                          </span>
+                          <span v-if="mode === 'restaurant' && product.kitchen_status_label" class="text-tiny text-medium-emphasis" style="font-size: 9px;">
+                            Cocina: {{ product.kitchen_status_label }}
                           </span>
 
                           <!-- Badge sutil de Descuento -->
@@ -653,6 +697,10 @@ const documentTitle = computed(() => {
                         {{ formatAmountOnly(fiscalSummary.speAmount, selectedCurrency) }}
                       </span>
                     </div>
+                    <div v-if="Number(orderData?.service_charge_amount) > 0" class="summary-row">
+                      <span class="summary-label">Servicio ({{ orderData.service_charge_percentage || 0 }}%)</span>
+                      <span class="summary-value font-weight-bold text-high-emphasis">{{ formatAmountOnly(Number(orderData.service_charge_amount), selectedCurrency) }}</span>
+                    </div>
                     <div v-if="orderDiscounts.total > 0" class="summary-row">
                       <span class="summary-label">{{ orderDiscounts.label }}</span>
                       <span class="summary-value text-error font-weight-bold">- {{ formatAmountOnly(orderDiscounts.total, selectedCurrency) }}</span>
@@ -688,8 +736,28 @@ const documentTitle = computed(() => {
         </div>
       </VCardText>
 
-      <!-- Botón de Salida Accesible -->
-      <VCardActions class="pa-2.5 bg-white border-t flex-shrink-0 d-flex justify-end gap-2">
+      <!-- Acciones del Modal -->
+      <VCardActions class="pa-2.5 bg-white border-t flex-shrink-0 d-flex flex-wrap justify-end gap-2">
+        <VBtn
+          color="secondary"
+          variant="tonal"
+          class="rounded-lg font-weight-bold text-caption"
+          height="36"
+          prepend-icon="tabler-receipt"
+          @click="emit('print-order-thermal', props.orderData?.id)"
+        >
+          TICKET 54MM
+        </VBtn>
+        <VBtn
+          color="secondary"
+          variant="outlined"
+          class="rounded-lg font-weight-bold text-caption"
+          height="36"
+          prepend-icon="tabler-printer"
+          @click="emit('print-order', props.orderData?.id)"
+        >
+          IMPRIMIR
+        </VBtn>
         <VBtn
           v-if="!fiscalSummary.hasFiscalRecord && orderData?.status !== 'Cancelled' && orderData?.status !== 'cancelled' && orderData?.status !== 'Abandonada' && orderData?.status !== 'Abandoned'"
           color="info"
@@ -706,11 +774,11 @@ const documentTitle = computed(() => {
         <VBtn
           color="primary"
           variant="flat"
-          class="rounded-lg font-weight-black text-caption w-100"
+          class="rounded-lg font-weight-black text-caption"
           height="36"
           @click="closeModal"
         >
-          CERRAR DETALLES
+          CERRAR
         </VBtn>
       </VCardActions>
     </VCard>

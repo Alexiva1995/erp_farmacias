@@ -43,6 +43,10 @@ export default [
         subject: 'admin',
         children: [
           {
+            title: 'Centro de Promociones',
+            to: { path: '/tpv/promotionsCenter' },
+          },
+          {
             title: 'Oferta General',
             to: { path: '/tpv/generalOffer' },
           },

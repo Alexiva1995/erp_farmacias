@@ -104,6 +104,7 @@ class Product extends Model
         'cost_price',
         'is_sub_recipe',
         'yield_percentage',
+        'exclude_from_promotions',
     ];
 
     /**
@@ -123,6 +124,7 @@ class Product extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'exclude_from_promotions' => 'boolean',
         'is_colombian_origin' => 'boolean',
         'is_novaventa' => 'boolean',
         'psychotropic' => 'boolean',

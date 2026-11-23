@@ -277,6 +277,20 @@ class OrderActionService
                     $unitPriceAtOrder = $price_usd;
                 }
 
+                // Evaluar ofertas Individual / Categoría para el plato
+                $promoResolver = app(\App\Services\Promotions\PromotionResolverService::class);
+                $channel = $promoResolver->resolveOrderChannel($order);
+                $dishDiscount = $promoResolver->resolveItemBaseDiscount(null, $dish, Carbon::now(), $channel);
+                $dishDiscountPct = (float) ($dishDiscount['pct'] ?? 0);
+                $dishDiscountType = $dishDiscount['type'] ?? null;
+                $dishDiscountSource = $dishDiscount['source'] ?? null;
+                $discountedPriceAtOrder = $dishDiscountPct > 0
+                    ? round($unitPriceAtOrder * (1 - ($dishDiscountPct / 100)), 2)
+                    : $unitPriceAtOrder;
+                $discountedPriceUsd = $dishDiscountPct > 0
+                    ? round($price_usd * (1 - ($dishDiscountPct / 100)), 4)
+                    : $price_usd;
+
                 // Determinar si editamos una línea específica o agregamos
                 $existingItem = null;
                 if ($orderDetailId) {
@@ -313,9 +327,12 @@ class OrderActionService
                 if ($existingItem) {
                     $updateData = [
                         'quantity' => $requestedQuantity,
-                        'price' => $unitPriceAtOrder,
+                        'price' => $discountedPriceAtOrder,
                         'unit_cost' => $unitCost,
-                        'unit_price_usd' => $price_usd,
+                        'unit_price_usd' => $discountedPriceUsd,
+                        'discount_percentage' => $dishDiscountPct > 0 ? $dishDiscountPct : null,
+                        'discount_type' => $dishDiscountType,
+                        'discount_source_id' => $dishDiscountSource,
                         'notes' => $notes,
                     ];
                     if (empty($existingItem->kitchen_status) || $existingItem->kitchen_status === \App\Enums\KitchenStatusEnum::DRAFT->value) {
@@ -332,9 +349,12 @@ class OrderActionService
                     $orderItem = $order->details()->create([
                         'dish_id' => $dishId,
                         'quantity' => $requestedQuantity,
-                        'price' => $unitPriceAtOrder,
+                        'price' => $discountedPriceAtOrder,
                         'unit_cost' => $unitCost,
-                        'unit_price_usd' => $price_usd,
+                        'unit_price_usd' => $discountedPriceUsd,
+                        'discount_percentage' => $dishDiscountPct > 0 ? $dishDiscountPct : null,
+                        'discount_type' => $dishDiscountType,
+                        'discount_source_id' => $dishDiscountSource,
                         'product_type' => 'dish',
                         'notes' => $notes,
                         'kitchen_status' => \App\Enums\KitchenStatusEnum::QUEUED->value,
@@ -474,43 +494,27 @@ class OrderActionService
 
             // --- FETCH OFFERS (Individual & Category) ---
             $now = Carbon::now();
+            $promoResolver = app(\App\Services\Promotions\PromotionResolverService::class);
+            $channel = $promoResolver->resolveOrderChannel($order);
+            $resolvedBase = $promoResolver->resolveItemBaseDiscount($product, null, $now, $channel);
 
-            // Individual Offer
-            $individualOffer = null;
-            if (\Illuminate\Support\Facades\Schema::hasTable('individual_offers')) {
-                $individualOffer = IndividualOffer::where('product_id', $product->id)
-                    ->where('start_date', '<=', $now)
-                    ->where('end_date', '>=', $now)
-                    ->orderBy('discount_percent', 'desc')
-                    ->first();
-            }
-
-            // Category Offer
-            $categoryOffer = null;
-            if ($product->category_id && \Illuminate\Support\Facades\Schema::hasTable('category_offers')) {
-                $categoryOffer = CategoryOffer::where('category_id', $product->category_id)
-                    ->where('is_active', true)
-                    ->where('start_date', '<=', $now)
-                    ->where('end_date', '>=', $now)
-                    ->orderBy('discount_percentage', 'desc')
-                    ->first();
-            }
+            $individualOffer = $resolvedBase['individual_offer'];
 
             // Determine Best Base Discount configuration
             $baseDiscountPromo = ['pct' => 0, 'type' => null, 'source' => null];
             $baseDiscountRegular = ['pct' => 0, 'type' => null, 'source' => null];
 
-            if ($categoryOffer) {
+            if ($resolvedBase['type'] === 'category') {
                 $baseDiscountRegular = [
-                    'pct' => $categoryOffer->discount_percentage,
+                    'pct' => $resolvedBase['pct'],
                     'type' => 'category',
-                    'source' => $categoryOffer->id
+                    'source' => $resolvedBase['source'],
                 ];
                 $baseDiscountPromo = $baseDiscountRegular;
             }
 
             $promoUnitsRemaining = null; // null means unlimited
-            
+
             if ($individualOffer) {
                 if (!empty($individualOffer->one_per_customer)) {
                     $hasBought = false;
@@ -519,39 +523,34 @@ class OrderActionService
                             ->where('id', '!=', $order->id)
                             ->where('created_at', '>=', \Carbon\Carbon::now()->subDays(7))
                             ->whereNotIn('status', ['Abandoned', 'Cancelled'])
-                            ->whereHas('details', function($q) use ($product, $individualOffer) {
+                            ->whereHas('details', function ($q) use ($product, $individualOffer) {
                                 $q->where('product_id', $product->id)
-                                  ->where('discount_type', 'individual')
-                                  ->where('discount_source_id', $individualOffer->id);
+                                    ->where('discount_type', 'individual')
+                                    ->where('discount_source_id', $individualOffer->id);
                             })->exists();
                     }
                     $promoUnitsRemaining = $hasBought ? 0 : 1;
                 }
 
-                if ($individualOffer->discount_percent > $baseDiscountPromo['pct']) {
+                if ((float) $individualOffer->discount_percent > $baseDiscountPromo['pct']) {
                     $baseDiscountPromo = [
-                        'pct' => $individualOffer->discount_percent,
+                        'pct' => (float) $individualOffer->discount_percent,
                         'type' => 'individual',
-                        'source' => $individualOffer->id
+                        'source' => $individualOffer->id,
                     ];
                 }
-                
-                if ($promoUnitsRemaining === null && $individualOffer->discount_percent > $baseDiscountRegular['pct']) {
+
+                if ($promoUnitsRemaining === null && (float) $individualOffer->discount_percent > $baseDiscountRegular['pct']) {
                     $baseDiscountRegular = [
-                        'pct' => $individualOffer->discount_percent,
+                        'pct' => (float) $individualOffer->discount_percent,
                         'type' => 'individual',
-                        'source' => $individualOffer->id
+                        'source' => $individualOffer->id,
                     ];
                 }
             }
 
-            // 2. Fetch Rules and Lots
-            $expirationOffers = collect();
-            if (\Illuminate\Support\Facades\Schema::hasTable('expiration_offers')) {
-                $expirationOffers = \App\Models\ExpirationOffer::where('is_active', true)
-                    ->orderBy('months_to_expiration', 'asc')
-                    ->get();
-            }
+            // 2. Fetch Rules and Lots (respetando productos excluidos de ofertas por vencimiento)
+            $expirationOffers = $promoResolver->getActiveExpirationOffersForProduct((int) $product->id);
 
             $lots = $product->lots()->where('quantity', '>', 0)->orderBy('expiration_date', 'asc')->get();
 
@@ -2743,46 +2742,43 @@ class OrderActionService
             $detailRelations[] = 'dish';
         }
 
-        $promotions = \App\Models\GeneralPromotion::where('is_active', true)->get();
-        if ($promotions->isEmpty()) {
-            // Si no hay promociones activas, restaurar precios normales si tenían descuento general anterior
-            $details = $order->details()->with($detailRelations)->get();
-            foreach ($details as $detail) {
-                if ($detail->discount_type === 'general') {
-                    $detail->discount_percentage = null;
-                    $detail->discount_type = null;
-                    // Restaurar precio base según la moneda actual
-                    $this->restoreBasePrice($order, $detail);
-                    $detail->save();
-                }
-            }
-            return;
-        }
-
         // Cargar los detalles de la orden
         $details = $order->details()->with($detailRelations)->get();
 
-        // 2. Primero restaurar los detalles que tengan descuento general viejo, para tener base limpia
+        // Restaurar primero los detalles que tenían descuento general viejo, para calcular sobre base limpia
         foreach ($details as $detail) {
             if ($detail->discount_type === 'general') {
                 $detail->discount_percentage = null;
                 $detail->discount_type = null;
+                $detail->discount_source_id = null;
                 $this->restoreBasePrice($order, $detail);
             }
         }
 
-        // 3. Procesar Oferta General (% de descuento a todos los productos / por categoría)
+        $orderSubtotalUsd = $details->sum(fn ($d) => (float) $d->quantity * (float) $d->unit_price_usd);
+        $promoResolver = app(\App\Services\Promotions\PromotionResolverService::class);
+        $promotions = $promoResolver->getApplicableGeneralPromotions($order, (float) $orderSubtotalUsd);
+
+        if ($promotions->isEmpty()) {
+            foreach ($details as $detail) {
+                $detail->save();
+            }
+            return;
+        }
+
+        // 3. Procesar Oferta General (% de descuento, sin acumular múltiples generales salvo stackable=true)
         $generalPromos = $promotions->where('type', 'general');
         if ($generalPromos->isNotEmpty()) {
-            foreach ($generalPromos as $promo) {
-                $discountPct = (float) ($promo->fixed_price ?? 0);
-                if ($discountPct <= 0) continue;
+            foreach ($details as $detail) {
+                if ($promoResolver->isDetailExcludedFromGeneralPromotions($detail)) {
+                    continue;
+                }
+                $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
 
-                foreach ($details as $detail) {
-                    if ($detail->product && (str_starts_with($detail->product->barcode ?? '', 'ZOOM-SERVICE') || str_starts_with($detail->product->name ?? '', 'SERVICIO ZOOM'))) {
-                        continue;
-                    }
-                    $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
+                foreach ($generalPromos as $promo) {
+                    $discountPct = $promo->getEffectiveDiscountPercentage();
+                    if ($discountPct <= 0) continue;
+
                     if (!empty($promo->categories) && is_array($promo->categories) && count($promo->categories) > 0) {
                         if (!$categoryId || !in_array($categoryId, $promo->categories)) {
                             continue;
@@ -2795,18 +2791,21 @@ class OrderActionService
                     $detail->discount_percentage = $discountPct;
                     $detail->discount_type = 'general';
                     $detail->discount_source_id = $promo->id;
+
+                    if (empty($promo->stackable)) {
+                        break;
+                    }
                 }
             }
         }
 
-        // 4. Procesar Precio Fijo (fixed_price) primero, ya que altera el precio base del ítem
+        // 4. Procesar Precio Fijo (fixed_price)
         $fixedPricePromos = $promotions->where('type', 'fixed_price');
         if ($fixedPricePromos->isNotEmpty()) {
             foreach ($details as $detail) {
-                if ($detail->product && (str_starts_with($detail->product->barcode ?? '', 'ZOOM-SERVICE') || str_starts_with($detail->product->name ?? '', 'SERVICIO ZOOM'))) {
+                if ($promoResolver->isDetailExcludedFromGeneralPromotions($detail) || $detail->discount_type === 'general') {
                     continue;
                 }
-                // Obtener ID de categoría del producto o plato
                 $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
                 if (!$categoryId) continue;
 
@@ -2843,7 +2842,7 @@ class OrderActionService
         // 4. Agrupar los detalles por categoría
         $detailsByCategory = [];
         foreach ($details as $detail) {
-            if ($detail->product && (str_starts_with($detail->product->barcode ?? '', 'ZOOM-SERVICE') || str_starts_with($detail->product->name ?? '', 'SERVICIO ZOOM'))) {
+            if ($promoResolver->isDetailExcludedFromGeneralPromotions($detail)) {
                 continue;
             }
             $categoryId = $detail->product_type === 'dish' ? ($detail->dish->category_id ?? null) : ($detail->product->category_id ?? null);
@@ -3008,7 +3007,9 @@ class OrderActionService
         if (!\Illuminate\Support\Facades\Schema::hasTable('general_promotions')) {
             return $products;
         }
-        $promotions = \App\Models\GeneralPromotion::where('is_active', true)->get();
+        $now = Carbon::now();
+        $promotions = \App\Models\GeneralPromotion::where('is_active', true)->get()
+            ->filter(fn ($p) => $p->isCurrentlyValid($now) && empty($p->coupon_code) && empty($p->min_order_amount));
         if ($promotions->isEmpty()) {
             return $products;
         }
@@ -3017,16 +3018,16 @@ class OrderActionService
         $fixedPricePromos = $promotions->where('type', 'fixed_price');
 
         foreach ($products as $product) {
-            // Ignorar packs en promociones generales
-            if (isset($product->item_type) && $product->item_type === 'pack') {
+            // Ignorar packs o productos excluidos en promociones generales
+            if ((isset($product->item_type) && $product->item_type === 'pack') || !empty($product->exclude_from_promotions)) {
                 continue;
             }
             $categoryId = $product->category_id ?? null;
-            
-            // 1. Aplicar descuento general (porcentaje)
+
+            // 1. Aplicar descuento general (porcentaje) sin acumular múltiples generales
             if ($generalPromos->isNotEmpty()) {
                 foreach ($generalPromos as $promo) {
-                    $discountPct = (float) ($promo->fixed_price ?? 0);
+                    $discountPct = $promo->getEffectiveDiscountPercentage();
                     if ($discountPct <= 0) continue;
 
                     if (!empty($promo->categories) && is_array($promo->categories) && count($promo->categories) > 0) {

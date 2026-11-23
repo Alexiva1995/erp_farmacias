@@ -20,14 +20,16 @@ class IndividualOfferService
 
     public function createOffer(array $data): IndividualOffer
     {
-        $conflicting = $this->repository->findConflictingOffer(
-            (int) $data['product_id'],
-            $data['start_date'],
-            $data['end_date']
-        );
+        if (!empty($data['product_id'])) {
+            $conflicting = $this->repository->findConflictingOffer(
+                (int) $data['product_id'],
+                $data['start_date'],
+                $data['end_date']
+            );
 
-        if ($conflicting) {
-            throw new \Exception('Ya existe una oferta activa para este producto en las fechas seleccionadas', 409);
+            if ($conflicting) {
+                throw new \Exception('Ya existe una oferta activa para este producto en las fechas seleccionadas', 409);
+            }
         }
 
         return $this->repository->create($data);
@@ -39,15 +41,17 @@ class IndividualOfferService
         $startDate = $data['start_date'] ?? $offer->start_date;
         $endDate = $data['end_date'] ?? $offer->end_date;
 
-        $conflicting = $this->repository->findConflictingOffer(
-            (int) $productId,
-            $startDate,
-            $endDate,
-            $offer->id
-        );
+        if (!empty($productId)) {
+            $conflicting = $this->repository->findConflictingOffer(
+                (int) $productId,
+                $startDate,
+                $endDate,
+                $offer->id
+            );
 
-        if ($conflicting) {
-            throw new \Exception('Ya existe otra oferta activa para este producto en las fechas seleccionadas', 409);
+            if ($conflicting) {
+                throw new \Exception('Ya existe otra oferta activa para este producto en las fechas seleccionadas', 409);
+            }
         }
 
         return $this->repository->update($offer, $data);
