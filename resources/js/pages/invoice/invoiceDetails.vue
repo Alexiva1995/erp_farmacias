@@ -36,7 +36,10 @@ const openPdfInModal = () => {
 
 const brandingStore = useBrandingStore();
 const authStore = useAuthStore();
-const isRestaurant = computed(() => false);
+const isRestaurant = computed(() => {
+  const stored = (localStorage.getItem("business_type") || "").toLowerCase();
+  return brandingStore.isRestaurant || stored === "restaurant" || stored === "fast_food";
+});
 
 const props = defineProps({
   invoiceId: { type: [Number, String], required: true },
@@ -596,7 +599,7 @@ const handleSaveProgress = async () => {
         quantity: d.quantity,
         unit_cost: d.unit_cost,
         lot_number: d.lot_number,
-        expiration_date: d.expiration_date,
+        expiration_date: d.expiration_date ? String(d.expiration_date).slice(0, 10) : null,
         location: d.location,
         tax_enabled: d.tax_enabled,
         is_return: !!d.is_return,
