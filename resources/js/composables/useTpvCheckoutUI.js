@@ -77,7 +77,16 @@ export function useTpvCheckoutUI({
 
   const paymentMethodsByCurrency = computed(() => {
     const configured = brandingStore.settings?.tpv_payment_methods
-    if (!configured) return fallbackPaymentMethods
+    if (!configured) {
+      if (!props.isCreditPayment) return fallbackPaymentMethods
+      const filteredFallback = {}
+      Object.keys(fallbackPaymentMethods).forEach((cur) => {
+        filteredFallback[cur] = fallbackPaymentMethods[cur].filter(
+          (m) => !['credit', 'cashea', 'balance'].includes(m.value)
+        )
+      })
+      return filteredFallback
+    }
 
     const result = {}
     ;['COP', 'BS', 'USD'].forEach((currencyKey) => {
@@ -106,6 +115,9 @@ export function useTpvCheckoutUI({
       const enabledMethods = rawMethods
         .filter((m) => {
           if (m.enabled === false) return false
+          if (props.isCreditPayment && ['credit', 'cashea', 'balance'].includes(m.value)) {
+            return false
+          }
           if (m.value === 'cashea') {
             return currencyKey === 'BS' && Boolean(brandingStore.settings?.enable_cashea)
           }
@@ -120,15 +132,15 @@ export function useTpvCheckoutUI({
           }
         })
 
-      if (currencyKey === 'BS' && !rawMethods.some((m) => m.value === 'credit')) {
+      if (!props.isCreditPayment && currencyKey === 'BS' && !rawMethods.some((m) => m.value === 'credit')) {
         enabledMethods.push({ label: 'Crédito', value: 'credit', enabled: true })
       }
 
-      if (currencyKey === 'BS' && Boolean(brandingStore.settings?.enable_cashea) && !enabledMethods.some((m) => m.value === 'cashea')) {
+      if (!props.isCreditPayment && currencyKey === 'BS' && Boolean(brandingStore.settings?.enable_cashea) && !enabledMethods.some((m) => m.value === 'cashea')) {
         enabledMethods.push({ label: 'Cashea (BNPL)', value: 'cashea', enabled: true })
       }
 
-      if (currencyKey === 'USD' && props.orderData?.client?.balance > 0) {
+      if (!props.isCreditPayment && currencyKey === 'USD' && props.orderData?.client?.balance > 0) {
         if (!enabledMethods.some((m) => m.value === 'balance')) {
           enabledMethods.push({ label: 'Saldo', value: 'balance', enabled: true })
         }

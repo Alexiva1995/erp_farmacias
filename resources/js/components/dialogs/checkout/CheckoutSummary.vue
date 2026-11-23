@@ -65,6 +65,11 @@ const props = defineProps({
   isExternalLoading: Boolean,
   hasMissingReferences: Function,
   orderData: Object,
+  allowPartialPayment: { type: Boolean, default: false },
+});
+
+const hasAnyValidPayment = computed(() => {
+  return (props.payments || []).some((p) => p.method && Number(p.amount) > 0);
 });
 
 const emit = defineEmits([
@@ -528,9 +533,9 @@ const emit = defineEmits([
               block
               size="large"
               class="rounded-lg font-weight-bold py-3 checkout-btn text-none elevation-2 cta-continue-btn"
-              :color="remainingAmount <= 0.01 && !hasMissingReferences() ? 'success' : 'primary'"
-              :style="remainingAmount <= 0.01 && !hasMissingReferences() ? 'background: linear-gradient(135deg, #28C76F, #129e51); color: white;' : ''"
-              :disabled="issubmitting || isExternalLoading || (remainingAmount > 0.01 || hasMissingReferences())"
+              :color="(!allowPartialPayment ? remainingAmount <= 0.01 : hasAnyValidPayment) && !hasMissingReferences() ? 'success' : 'primary'"
+              :style="(!allowPartialPayment ? remainingAmount <= 0.01 : hasAnyValidPayment) && !hasMissingReferences() ? 'background: linear-gradient(135deg, #28C76F, #129e51); color: white;' : ''"
+              :disabled="issubmitting || isExternalLoading || hasMissingReferences() || (allowPartialPayment ? !hasAnyValidPayment : remainingAmount > 0.01)"
               @click="emit('complete-purchase')"
             >
               <VIcon icon="tabler-circle-check" class="me-2" size="20" />

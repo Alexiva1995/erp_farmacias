@@ -337,6 +337,15 @@ export function useTpvCheckoutManager({
         return
       }
 
+      if (props.isCreditPayment) {
+        const isCustomChange = !!brandingStore?.settings?.enable_custom_change_currency
+        const changeCop = isCustomChange ? (effectiveChangeDeliveredCop?.value || 0) : (changeAmountInCop?.value || 0)
+        const changeUsd = isCustomChange ? (effectiveChangeDeliveredUsd?.value || 0) : (changeAmountInUsd?.value || 0)
+        emit('purchase-completed', validPayments, changeCop, changeUsd)
+        issubmitting.value = false
+        return
+      }
+
       if (props.isOffline) {
         toast.success('Venta offline completada exitosamente.')
         receiptOrderData.value = props.orderData

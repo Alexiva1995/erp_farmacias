@@ -22,7 +22,6 @@ const emit = defineEmits([
 ]);
 
 const headers = [
-  { title: "Fecha", key: "credit_date", sortable: true },
   { title: "Documento", key: "client_identification", sortable: false },
   { title: "Nombre", key: "client_full_name", sortable: true },
   { title: "Monto", key: "total_pending_amount", sortable: true },
@@ -211,7 +210,6 @@ const getAgingBadge = (item) => {
     >
       <template #loading>
         <tr v-for="n in 5" :key="n" class="border-b">
-          <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 80px;" /></td>
           <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 100px;" /></td>
           <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 140px;" /></td>
           <td><VSkeletonLoader type="text" class="mx-auto" style="max-inline-size: 70px;" /></td>
@@ -230,10 +228,6 @@ const getAgingBadge = (item) => {
         <div class="pa-8 text-center text-medium-emphasis">
           No hay clientes con créditos para el filtro seleccionado.
         </div>
-      </template>
-
-      <template #item.credit_date="{ item }">
-        <span>{{ item.credit_date ? item.credit_date.split(" ")[0] : "N/A" }}</span>
       </template>
 
       <template #item.client_identification="{ item }">
