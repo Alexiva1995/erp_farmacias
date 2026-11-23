@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Product;
+use App\Models\Supplier;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
@@ -38,6 +39,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
         private readonly ?string $laboratoryCol = null,
         private readonly ?string $creditDaysCol = null,
         private readonly ?int $defaultCreditDays = null,
+        private readonly ?string $cost2Col = null,
     ) {
         $this->cleanedRows = collect();
     }
@@ -69,6 +71,10 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
 
         $now = now();
         $currency = $this->currencyCol ?? 1;
+        $supplier = Supplier::select(['id', 'comparator_discount_mode', 'comparator_discount_percentage'])
+            ->find($this->supplierId);
+        $comparatorMode = $supplier?->comparator_discount_mode ?? 'original';
+        $comparatorPct = (float) ($supplier?->comparator_discount_percentage ?? 0);
 
         $toNumber = function (string|null $value): ?float {
             if ($value === null || $value === '') {
@@ -138,7 +144,7 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                     && $cod !== 'LISTADO GENERAL'
                     && $cod !== 'CODIGO';
             })
-            ->map(function ($row) use ($now, $currency, $toNumber, $products) {
+            ->map(function ($row) use ($now, $currency, $toNumber, $products, $comparatorMode, $comparatorPct) {
                 $cod = trim((string) ($row[$this->colIndex($this->codSupplierCol)] ?? ""));
                 $name = trim((string) ($row[$this->colIndex($this->nameCol)] ?? ""));
                 $active_ingredient = trim((string) ($row[$this->colIndex($this->activeIngredientCol)] ?? ""));
@@ -149,8 +155,18 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                     : null;
                 $cost1 = $cost1Raw !== null ? $toNumber((string) $cost1Raw) : null;
 
-                $cost2Raw = $this->costBsCol !== null
-                    ? $row[$this->colIndex($this->costBsCol)] ?? null
+                // Si no viene Costo 1 en USD, usar Costo en Bs dividido por la tasa (solo si no existe columna USD)
+                if (($cost1 === null || $cost1 <= 0) && $this->costUsdCol === null && $this->costBsCol !== null) {
+                    $costBsRaw = $row[$this->colIndex($this->costBsCol)] ?? null;
+                    $costBs = $costBsRaw !== null ? $toNumber((string) $costBsRaw) : null;
+                    if ($costBs !== null && $costBs > 0) {
+                        $cost1 = $currency > 1 ? round($costBs / $currency, 2) : $costBs;
+                    }
+                }
+
+                // Costo 2 es exclusivo para precio con descuento o columna explícita de Costo 2 en Excel
+                $cost2Raw = $this->cost2Col !== null
+                    ? $row[$this->colIndex($this->cost2Col)] ?? null
                     : null;
                 $cost2 = $cost2Raw !== null ? $toNumber((string) $cost2Raw) : null;
 
@@ -159,6 +175,13 @@ class SupplierImport implements ToCollection, WithStartRow, WithCalculatedFormul
                     $cost2 = $cost1;
                 } elseif (($cost1 === null || $cost1 <= 0) && ($cost2 !== null && $cost2 > 0)) {
                     $cost1 = $cost2;
+                }
+
+                // Aplicar modo de descuento configurado en el proveedor
+                if ($comparatorMode === 'apply_discount' && $comparatorPct > 0 && $cost1 !== null && $cost1 > 0) {
+                    $cost2 = round($cost1 * max(0, 1 - ($comparatorPct / 100)), 2);
+                } elseif ($comparatorMode === 'none' && $cost1 !== null && $cost1 > 0) {
+                    $cost2 = $cost1;
                 }
 
                 $cod = $cod === "" ? null : $cod;

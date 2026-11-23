@@ -26,6 +26,7 @@ const formats = reactive({
     barcode_match: null,
     unit_cost: "",
     unit_cost_usd: "",
+    unit_cost_usd_with_discount: "",
     active_ingredient: "",
     expiration: null,
     quantity: null,
@@ -41,6 +42,7 @@ const formats = reactive({
     barcode_match: null,
     unit_cost: "",
     unit_cost_usd: "",
+    unit_cost_usd_with_discount: "",
     active_ingredient: "",
     expiration: null,
     quantity: null,
@@ -56,6 +58,7 @@ const formats = reactive({
     barcode_match: null,
     unit_cost: "",
     unit_cost_usd: "",
+    unit_cost_usd_with_discount: "",
     active_ingredient: "",
     expiration: null,
     quantity: null,
@@ -95,6 +98,7 @@ const submitForm = async () => {
   form.append("quantity", current.quantity || "");
   form.append("unit_cost", current.unit_cost || "");
   form.append("unit_cost_usd", current.unit_cost_usd || "");
+  form.append("unit_cost_usd_with_discount", current.unit_cost_usd_with_discount || "");
   form.append("active_ingredient", current.active_ingredient || "");
   form.append("laboratory", current.laboratory || "");
   form.append("expiration", current.expiration || "");
@@ -167,6 +171,7 @@ const saveOnlyStructure = async () => {
     quantity: current.quantity || "",
     unit_cost: current.unit_cost || "",
     unit_cost_usd: current.unit_cost_usd || "",
+    unit_cost_usd_with_discount: current.unit_cost_usd_with_discount || "",
     active_ingredient: current.active_ingredient || "",
     laboratory: current.laboratory || "",
     expiration: current.expiration || "",
@@ -210,6 +215,7 @@ const fetchSupplierConnection = async (id) => {
       barcode_match: structure.barcode_match ?? null,
       unit_cost: structure.unit_cost ?? "",
       unit_cost_usd: structure.unit_cost_usd ?? "",
+      unit_cost_usd_with_discount: structure.unit_cost_usd_with_discount ?? "",
       active_ingredient: structure.active_ingredient ?? "",
       laboratory: structure.laboratory ?? "",
       expiration: structure.expiration != "null" ? structure.expiration : null,
@@ -226,6 +232,7 @@ const fetchSupplierConnection = async (id) => {
       barcode_match: secondaryStructure.barcode_match ?? null,
       unit_cost: secondaryStructure.unit_cost ?? "",
       unit_cost_usd: secondaryStructure.unit_cost_usd ?? "",
+      unit_cost_usd_with_discount: secondaryStructure.unit_cost_usd_with_discount ?? "",
       active_ingredient: secondaryStructure.active_ingredient ?? "",
       laboratory: secondaryStructure.laboratory ?? structure.laboratory ?? "",
       expiration: secondaryStructure.expiration != "null" ? secondaryStructure.expiration : null,
@@ -242,6 +249,7 @@ const fetchSupplierConnection = async (id) => {
       barcode_match: tertiaryStructure.barcode_match ?? null,
       unit_cost: tertiaryStructure.unit_cost ?? "",
       unit_cost_usd: tertiaryStructure.unit_cost_usd ?? "",
+      unit_cost_usd_with_discount: tertiaryStructure.unit_cost_usd_with_discount ?? "",
       active_ingredient: tertiaryStructure.active_ingredient ?? "",
       laboratory: tertiaryStructure.laboratory ?? structure.laboratory ?? "",
       expiration: tertiaryStructure.expiration != "null" ? tertiaryStructure.expiration : null,
@@ -458,7 +466,7 @@ watch(
             <VCol cols="6">
               <span class="text-super-xs font-weight-black text-disabled uppercase mb-1 d-block">Costo 2 (USD) (Opcional)</span>
               <VTextField
-                v-model="formats[activeFormat].unit_cost"
+                v-model="formats[activeFormat].unit_cost_usd_with_discount"
                 type="text"
                 placeholder="Ej. F (Vacío = igual a Costo 1)"
                 variant="outlined"
@@ -466,7 +474,7 @@ watch(
                 hide-details="auto"
                 prepend-inner-icon="tabler-coin"
                 class="rounded-lg font-weight-black"
-                :error-messages="errors.unit_cost"
+                :error-messages="errors.unit_cost_usd_with_discount"
               />
             </VCol>
             <VCol cols="6">

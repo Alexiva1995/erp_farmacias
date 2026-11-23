@@ -198,6 +198,7 @@ class ProcessSupplierConnectionJob implements ShouldQueue
                         defaultCreditDays: isset($map["fixed_credit_days"]) && $map["fixed_credit_days"] !== ''
                             ? (int) $map["fixed_credit_days"]
                             : ($this->supplier->credit_days !== null ? (int) $this->supplier->credit_days : null),
+                        cost2Col: !empty($map["unit_cost_usd_with_discount"]) ? $map["unit_cost_usd_with_discount"] : null,
                     );
 
                     $logMessage = "[" . date('Y-m-d H:i:s') . "] 🚨 [JOB] ANTES Excel::import - Path: {$absolutePath}, Mapeo: " . json_encode($map) . "\n";

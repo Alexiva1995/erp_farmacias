@@ -30,6 +30,7 @@ class GetDataFromSupplierFileRequest extends FormRequest
             "currency" => ["nullable"],
             "unit_cost" => ["nullable", "string"],
             "unit_cost_usd" => ["nullable", "string"],
+            "unit_cost_usd_with_discount" => ["nullable", "string"],
             "expiration" => ["nullable", "string"],
             "credit_days" => ["nullable", "string"],
             "fixed_credit_days" => ["nullable", "integer", "min:0"],

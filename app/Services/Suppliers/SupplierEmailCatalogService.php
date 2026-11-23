@@ -362,6 +362,7 @@ class SupplierEmailCatalogService
                                 laboratoryCol: !empty($map["laboratory"]) ? $map["laboratory"] : null,
                                 creditDaysCol: !empty($map["credit_days"]) ? $map["credit_days"] : null,
                                 currencyCol: $emailRate ?? (!empty($map["currency"]) ? (float)$map["currency"] : null),
+                                cost2Col: !empty($map["unit_cost_usd_with_discount"]) ? $map["unit_cost_usd_with_discount"] : null,
                             );
 
                             Excel::import($import, $absolutePath);
