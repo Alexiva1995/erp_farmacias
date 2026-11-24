@@ -86,6 +86,25 @@ export function useTpvClientManager({
     clearFormErrors()
   }
 
+  const assignClientToCurrentOrder = async (clientData) => {
+    if (!hasOpenOrder?.value || !openOrderData?.value?.id || !clientData?.id) return false
+    try {
+      const response = await axios.patch(`/tpv/orders/${openOrderData.value.id}/client`, {
+        client_id: clientData.id,
+      })
+      const updatedClient = response.data?.data?.client || clientData
+      if (selectedClient) selectedClient.value = updatedClient
+      if (openOrderData.value) {
+        openOrderData.value.client_id = updatedClient.id
+        openOrderData.value.client = updatedClient
+      }
+      return true
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'No se pudo asignar el cliente a la orden.')
+      return false
+    }
+  }
+
   const handleSaveNewClient = async (formData) => {
     try {
       const clientId = newClientFormData.value.id
@@ -93,9 +112,12 @@ export function useTpvClientManager({
       const respuesApi = await axios.post(url, formData)
       if (respuesApi.status === 200) {
         toast.success(clientId ? 'Cliente actualizado' : 'Cliente creado')
+        const savedClient = respuesApi.data?.data
         handleCloseRegisterModal()
-        if (typeof addOrden === 'function') {
-          addOrden(respuesApi.data.data.id)
+        if (hasOpenOrder?.value && openOrderData?.value?.id && savedClient?.id) {
+          await assignClientToCurrentOrder(savedClient)
+        } else if (typeof addOrden === 'function' && savedClient?.id) {
+          addOrden(savedClient.id)
         }
       }
     } catch (error) {
@@ -177,22 +199,29 @@ export function useTpvClientManager({
           return false
         }
 
-        if (selectedClient) selectedClient.value = clientData
-        toast.success(`Cliente ${clientData.name} ${clientData.last_name} encontrado.`)
-
-        if (responseData.found_open_order) {
-          if (hasOpenOrder) hasOpenOrder.value = true
-          if (openOrderData) openOrderData.value = responseData.order
-          if (openOrderData?.value?.currency && selectedDisplayCurrency) {
-            selectedDisplayCurrency.value = openOrderData.value.currency.toUpperCase()
+        if (hasOpenOrder?.value && openOrderData?.value?.id) {
+          const assigned = await assignClientToCurrentOrder(clientData)
+          if (assigned) {
+            toast.success(`Cliente ${clientData.name} ${clientData.last_name} asignado a la orden.`)
           }
         } else {
-          if (hasOpenOrder) hasOpenOrder.value = false
-          if (openOrderData) openOrderData.value = null
-          const order = typeof addOrden === 'function' ? await addOrden(clientData.id) : null
-          if (order && pendingQuotationProducts?.value?.length > 0) {
-            await handleAddQuotationProducts(pendingQuotationProducts.value)
-            pendingQuotationProducts.value = []
+          if (selectedClient) selectedClient.value = clientData
+          toast.success(`Cliente ${clientData.name} ${clientData.last_name} encontrado.`)
+
+          if (responseData.found_open_order) {
+            if (hasOpenOrder) hasOpenOrder.value = true
+            if (openOrderData) openOrderData.value = responseData.order
+            if (openOrderData?.value?.currency && selectedDisplayCurrency) {
+              selectedDisplayCurrency.value = openOrderData.value.currency.toUpperCase()
+            }
+          } else {
+            if (hasOpenOrder) hasOpenOrder.value = false
+            if (openOrderData) openOrderData.value = null
+            const order = typeof addOrden === 'function' ? await addOrden(clientData.id) : null
+            if (order && pendingQuotationProducts?.value?.length > 0) {
+              await handleAddQuotationProducts(pendingQuotationProducts.value)
+              pendingQuotationProducts.value = []
+            }
           }
         }
         return true

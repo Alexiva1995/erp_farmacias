@@ -134,9 +134,23 @@ const emit = defineEmits([
   "company-discount-selected",
   "add-pack",
   "edit-cliente",
+  "assign-client",
   "add-note",
   "flash-checkout",
 ]);
+
+const quickClientIdentification = ref("");
+const isChangingClient = ref(false);
+const isGenericClient = computed(() => {
+  return !props.cliente || props.cliente.identification === "99999999";
+});
+const handleAssignClient = () => {
+  const id = quickClientIdentification.value.trim();
+  if (!id) return;
+  emit("assign-client", id);
+  quickClientIdentification.value = "";
+  isChangingClient.value = false;
+};
 
 // Métodos de pago dinámicos leídos de la configuración del sistema
 const paymentMethodsByCurrency = computed(() => {
@@ -802,7 +816,7 @@ const getIva = (product, currency) => {
             <h2 class="text-subtitle-1 font-weight-950 text-high-emphasis leading-none mb-1 text-uppercase truncate">
               Orden
             </h2>
-            <div class="d-flex align-center gap-2">
+            <div v-if="!isGenericClient && !isChangingClient" class="d-flex align-center gap-2">
               <span class="text-caption font-weight-bold text-primary truncate">{{ clientName }}</span>
               <VBtn
                 v-if="props.cliente"
@@ -817,7 +831,46 @@ const getIva = (product, currency) => {
                 <VIcon size="14">tabler-edit</VIcon>
                 <VTooltip activator="parent" location="top">Editar datos de cliente</VTooltip>
               </VBtn>
+              <VBtn
+                icon="tabler-refresh"
+                variant="text"
+                color="secondary"
+                size="x-small"
+                density="compact"
+                @click="isChangingClient = true"
+              >
+                <VIcon size="14">tabler-refresh</VIcon>
+                <VTooltip activator="parent" location="top">Cambiar cliente</VTooltip>
+              </VBtn>
               <span class="text-super-xs font-weight-black text-disabled uppercase letter-spacing-1">{{ Identidad }}</span>
+            </div>
+            <div v-else class="d-flex align-center gap-1 mt-1" style="max-width: 340px;">
+              <VTextField
+                v-model="quickClientIdentification"
+                placeholder="Cédula / RIF (opcional — Consumidor Final al cerrar)"
+                density="compact"
+                variant="outlined"
+                hide-details
+                prepend-inner-icon="tabler-user-search"
+                @keyup.enter="handleAssignClient"
+              />
+              <VBtn
+                icon="tabler-check"
+                size="x-small"
+                color="primary"
+                variant="tonal"
+                title="Asignar cliente"
+                @click="handleAssignClient"
+              />
+              <VBtn
+                v-if="isChangingClient && !isGenericClient"
+                icon="tabler-x"
+                size="x-small"
+                color="secondary"
+                variant="text"
+                title="Cancelar cambio"
+                @click="isChangingClient = false"
+              />
             </div>
           </div>
         </div>

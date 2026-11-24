@@ -35,6 +35,7 @@ const emit = defineEmits([
   'open-floor-modal',
   'start-quick-order',
   'edit-client',
+  'assign-client',
   'send-to-kds',
   'generate-pre-bill',
   'split-check',
@@ -42,6 +43,20 @@ const emit = defineEmits([
 
 const showSplitDialog = ref(false)
 const splitParts = ref(2)
+const quickClientIdentification = ref('')
+const isChangingClient = ref(false)
+
+const isGenericClient = computed(() => {
+  return !props.selectedClient || props.selectedClient.identification === '99999999'
+})
+
+const handleAssignClient = () => {
+  const id = quickClientIdentification.value.trim()
+  if (!id) return
+  emit('assign-client', id)
+  quickClientIdentification.value = ''
+  isChangingClient.value = false
+}
 
 const availableCurrencies = ['USD', 'BS', 'COP']
 
@@ -168,27 +183,67 @@ const handleConfirmSplit = () => {
         </VBtn>
       </div>
 
-      <div
-        v-if="hasOpenOrder && selectedClient"
-        class="d-flex align-center justify-space-between pa-2 rounded border"
-      >
-        <div class="d-flex align-center gap-2 text-truncate">
-          <VIcon icon="tabler-user" size="16" color="primary" />
-          <span class="text-caption font-weight-bold text-truncate">
-            {{ selectedClient.name }} {{ selectedClient.last_name || '' }}
-          </span>
-          <span class="text-caption text-disabled">
-            ({{ selectedClient.identification }})
-          </span>
+      <div v-if="hasOpenOrder" class="mt-1">
+        <div
+          v-if="!isGenericClient && !isChangingClient"
+          class="d-flex align-center justify-space-between pa-2 rounded border"
+        >
+          <div class="d-flex align-center gap-2 text-truncate">
+            <VIcon icon="tabler-user" size="16" color="primary" />
+            <span class="text-caption font-weight-bold text-truncate">
+              {{ selectedClient.name }} {{ selectedClient.last_name || '' }}
+            </span>
+            <span class="text-caption text-disabled">
+              ({{ selectedClient.identification }})
+            </span>
+          </div>
+          <div class="d-flex align-center gap-1">
+            <VBtn
+              icon="tabler-pencil"
+              size="x-small"
+              variant="text"
+              color="primary"
+              title="Editar datos del cliente"
+              @click="emit('edit-client', selectedClient)"
+            />
+            <VBtn
+              icon="tabler-refresh"
+              size="x-small"
+              variant="text"
+              color="secondary"
+              title="Cambiar cliente"
+              @click="isChangingClient = true"
+            />
+          </div>
         </div>
-        <VBtn
-          icon="tabler-pencil"
-          size="x-small"
-          variant="text"
-          color="primary"
-          title="Cambiar o editar cliente"
-          @click="emit('edit-client')"
-        />
+        <div v-else class="d-flex align-center gap-1">
+          <VTextField
+            v-model="quickClientIdentification"
+            placeholder="Cédula / RIF (opcional — Consumidor Final al cerrar)"
+            density="compact"
+            variant="outlined"
+            hide-details
+            prepend-inner-icon="tabler-user-search"
+            @keyup.enter="handleAssignClient"
+          />
+          <VBtn
+            icon="tabler-check"
+            size="small"
+            color="primary"
+            variant="tonal"
+            title="Asignar cliente"
+            @click="handleAssignClient"
+          />
+          <VBtn
+            v-if="isChangingClient && !isGenericClient"
+            icon="tabler-x"
+            size="small"
+            color="secondary"
+            variant="text"
+            title="Cancelar cambio"
+            @click="isChangingClient = false"
+          />
+        </div>
       </div>
     </VCardText>
 

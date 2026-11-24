@@ -49,6 +49,7 @@ defineEmits([
   "handleCompanyDiscountSelected",
   "handleAddPackToOrder",
   "handleEditCliente",
+  "assignClient",
   "handleSaveOrderItemNote",
   "handleFlashCheckout",
   "verifyClient",
@@ -100,6 +101,7 @@ defineEmits([
         :global-discount="currentGlobalDiscountDetails || null"
         @add-pack="$emit('handleAddPackToOrder', $event)"
         @edit-cliente="$emit('handleEditCliente', $event)"
+        @assign-client="$emit('assignClient', $event)"
         @add-note="$emit('handleSaveOrderItemNote', $event)"
         :is-special-taxpayer="isSpecialTaxpayer || false"
         :is-restaurant="isRestaurant"

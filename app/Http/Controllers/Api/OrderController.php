@@ -13,6 +13,7 @@ use App\Http\Requests\Order\OrderIndexRequest;
 use App\Http\Requests\Order\UpdateOrderTotalsRequest;
 use App\Http\Requests\Order\AddOrderItemRequest;
 use App\Http\Requests\Order\CompleteOrderRequest;
+use App\Http\Requests\Order\AssignOrderClientRequest;
 use App\Http\Requests\Order\SyncContingencyOrderRequest;
 use App\Http\Requests\Order\GetFiscalReportRequest;
 use App\Http\Requests\Order\GetFiscalHistoryRequest;
@@ -772,6 +773,32 @@ class OrderController extends Controller
         $user = Auth::user();
         if ($user && (int) $user->role_id === 3) {
             $request->merge(['seller_id' => $user->id]);
+        }
+    }
+
+    /**
+     * Asigna o reemplaza el cliente de una orden abierta o reservada.
+     */
+    public function assignClient(AssignOrderClientRequest $request, Order $order): JsonResponse
+    {
+        try {
+            $updatedOrder = $this->orderActionService->assignClient(
+                $order,
+                (int) $request->validated()['client_id']
+            );
+
+            return ApiResponse::success([
+                'order' => $updatedOrder,
+                'client' => $updatedOrder->client,
+            ], 'Cliente asignado a la orden exitosamente.');
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422);
+        } catch (\Throwable $e) {
+            Log::error('Error asignando cliente a la orden:', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+            return ApiResponse::error('No se pudo asignar el cliente a la orden.', 500);
         }
     }
 

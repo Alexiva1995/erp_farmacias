@@ -3211,4 +3211,19 @@ class OrderActionService
             return $order->load(['seller', 'client', 'details.product']);
         });
     }
+
+    /**
+     * Asigna o cambia el cliente de una orden abierta o reservada sin alterar sus ítems.
+     */
+    public function assignClient(Order $order, int $clientId): Order
+    {
+        if (!in_array($order->status, ['Pending', 'Reserved'], true)) {
+            throw new \InvalidArgumentException('Solo se puede cambiar el cliente de una orden abierta o reservada.');
+        }
+
+        $order->client_id = $clientId;
+        $order->save();
+
+        return $order->fresh(['client', 'details.product', 'details.dish']);
+    }
 }

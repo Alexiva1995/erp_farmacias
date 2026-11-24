@@ -40,6 +40,7 @@ const emit = defineEmits([
   'open-pedidos-modal',
   'start-quick-order',
   'edit-client',
+  'assign-client',
   'refresh-order',
 ])
 
@@ -138,7 +139,8 @@ const handleSplitCheck = async (parts) => {
           @open-pedidos-modal="emit('open-pedidos-modal')"
           @open-floor-modal="showFloorModal = true"
           @start-quick-order="emit('start-quick-order')"
-          @edit-client="emit('edit-client')"
+          @edit-client="(c) => emit('edit-client', c)"
+          @assign-client="(id) => emit('assign-client', id)"
           @send-to-kds="handleSendToKds"
           @generate-pre-bill="handleGeneratePreBill"
           @split-check="handleSplitCheck"

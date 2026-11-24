@@ -519,6 +519,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::get('/zoom/product', [\App\Http\Controllers\Api\TpvZoomController::class, 'getProduct']);
         Route::post('/zoom/add-to-order', [\App\Http\Controllers\Api\TpvZoomController::class, 'addItem']);
         Route::patch('/orders/{order}', [OrderController::class, 'updateOrderTotals']);
+        Route::patch('/orders/{order}/client', [OrderController::class, 'assignClient']);
         Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'deleteOrderDetail']);
         Route::patch('/orders/{order}/abandon', [OrderController::class, 'abandonOrder']);
         Route::post('/orders/{orderId}/complete', [OrderController::class, 'completeOrder']);

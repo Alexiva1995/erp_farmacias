@@ -700,6 +700,7 @@ useTpvInit({
       @open-pedidos-modal="openPedidosModal"
       @start-quick-order="() => handleIdentifyAndStart('99999999')"
       @edit-client="handleEditCliente"
+      @assign-client="verifyClient"
       @refresh-order="fetchOpenOrder"
     />
 
@@ -746,6 +747,7 @@ useTpvInit({
       @handle-company-discount-selected="handleCompanyDiscountSelected"
       @handle-add-pack-to-order="handleAddPackToOrder"
       @handle-edit-cliente="handleEditCliente"
+      @assign-client="verifyClient"
       @handle-save-order-item-note="handleSaveOrderItemNote"
       @handle-flash-checkout="handleFlashCheckout"
       @verify-client="verifyClient"
