@@ -1,6 +1,10 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { formatCurrency } from '@/utils/currencyFormatter'
+import { useBrandingStore } from '@/stores/useBrandingStore'
+
+const brandingStore = useBrandingStore()
+const enableFlashCheckout = computed(() => Boolean(brandingStore.settings?.enable_flash_checkout))
 
 const props = defineProps({
   isLoadingInitialOrder: { type: Boolean, default: false },
@@ -15,6 +19,7 @@ const props = defineProps({
   kdsLoading: { type: Boolean, default: false },
   preBillLoading: { type: Boolean, default: false },
   splitLoading: { type: Boolean, default: false },
+  isFlashSubmitting: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -23,6 +28,7 @@ const emit = defineEmits([
   'remove-item',
   'edit-dish-modifiers',
   'open-buys-modal',
+  'flash-checkout',
   'reserver-order',
   'cancelar-order',
   'open-pedidos-modal',
@@ -391,12 +397,28 @@ const handleConfirmSplit = () => {
           variant="flat"
           color="success"
           prepend-icon="tabler-cash"
-          :disabled="!hasOpenOrder || !hasItems"
+          :disabled="!hasOpenOrder || !hasItems || isFlashSubmitting"
           class="flex-grow-1 font-weight-bold"
           @click="emit('open-buys-modal')"
         >
           Cobrar
         </VBtn>
+        <VTooltip v-if="enableFlashCheckout" text="Cobro Rápido Flash (Efectivo COP)" location="top">
+          <template #activator="{ props: tooltipProps }">
+            <VBtn
+              v-bind="tooltipProps"
+              variant="flat"
+              color="warning"
+              :loading="isFlashSubmitting"
+              :disabled="!hasOpenOrder || !hasItems || isFlashSubmitting"
+              class="font-weight-black px-3"
+              @click="emit('flash-checkout', { method: 'cash', currency: 'COP' })"
+            >
+              <VIcon icon="tabler-bolt" size="18" class="me-1" />
+              <span>COP</span>
+            </VBtn>
+          </template>
+        </VTooltip>
       </div>
     </VCardText>
 

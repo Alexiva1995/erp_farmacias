@@ -28,6 +28,7 @@ defineProps({
   isSpecialTaxpayer: Boolean,
   isRestaurant: Boolean,
   isSportsRental: Boolean,
+  isFlashSubmitting: Boolean,
   clientIdentification: String,
 });
 
@@ -103,6 +104,7 @@ defineEmits([
         :is-special-taxpayer="isSpecialTaxpayer || false"
         :is-restaurant="isRestaurant"
         :is-sports-rental="isSportsRental"
+        :is-flash-submitting="isFlashSubmitting"
         @flash-checkout="$emit('handleFlashCheckout', $event)"
       />
     </div>

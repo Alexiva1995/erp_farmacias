@@ -453,9 +453,128 @@ const closeBuysModal = () => {
   showBuysModal.value = false;
   skipFiscalForCheckout.value = false;
 };
-const handleFlashCheckout = () => {
-  skipFiscalForCheckout.value = false;
-  showBuysModal.value = true;
+const isFlashSubmitting = ref(false);
+const handleFlashCheckout = async ({ method = 'cash', currency = 'COP' } = {}) => {
+  if (isFlashSubmitting.value || isFinishingOrder.value) return;
+  if (!openOrderData.value?.id || !orderItems.value?.length) {
+    toast.error('Agrega al menos un producto o plato antes de cobrar.');
+    return;
+  }
+
+  isFlashSubmitting.value = true;
+  isFinishingOrder.value = true;
+  try {
+    const targetCurrency = String(currency || 'COP').toUpperCase();
+    // Si el comercio NO es Contribuyente Especial, IGTF es false y 0.
+    const foreignTaxApplies = Boolean(
+      (isSpecialTaxpayer.value || allForeignSalesSpe.value) &&
+      fiscalMode.value === 'activa'
+    );
+    const appliesSpe = foreignTaxApplies && (targetCurrency === 'USD' || targetCurrency === 'COP');
+
+    let flashTotal = 0;
+    if (targetCurrency === 'COP') {
+      flashTotal = Number(totalAmountCop.value || 0);
+      if (flashTotal <= 0) {
+        const rateCop = getEffectiveRate('USD', 'COP') || 4000;
+        flashTotal = roundUpToNearestHundred(Number(totalAmountUsd.value || 0) * rateCop);
+      }
+    } else if (targetCurrency === 'BS') {
+      flashTotal = Number(totalAmountBs.value || 0);
+    } else {
+      flashTotal = Number(totalAmountUsd.value || 0);
+    }
+
+    if (flashTotal <= 0 || isNaN(flashTotal)) {
+      toast.error('El monto total calculado para cobro Flash es inválido.');
+      return;
+    }
+
+    let speAmount = 0;
+    if (appliesSpe) {
+      if (selectedDisplayCurrency.value === targetCurrency && Number(specialTaxAmount.value) > 0) {
+        speAmount = Number(specialTaxAmount.value);
+      } else {
+        const baseWithoutIgtf = flashTotal / 1.03;
+        speAmount = targetCurrency === 'COP'
+          ? roundUpToNearestHundred(baseWithoutIgtf * 0.03)
+          : parseFloat((baseWithoutIgtf * 0.03).toFixed(2));
+      }
+    }
+
+    const mappedItems = (orderItems.value || []).map((item) => {
+      const isCop = targetCurrency === 'COP';
+      const isBs = targetCurrency === 'BS';
+      const itemPriceInCurrency = isCop
+        ? (item.price_cop ?? item.price)
+        : isBs
+          ? (item.price_bs ?? item.price)
+          : item.price;
+      const itemBeforeDiscountInCurrency = isCop
+        ? (item.original_price_cop ?? item.base_price_cop ?? item.price_cop ?? item.price_before_discount ?? item.price)
+        : isBs
+          ? (item.original_price_bs ?? item.base_price_bs ?? item.price_bs ?? item.price_before_discount ?? item.price)
+          : (item.price_before_discount || item.basePrice || item.price);
+
+      return {
+        order_detail_id: item.order_detail_id || item.id,
+        product_id: item.product_id || null,
+        dish_id: item.dish_id || null,
+        quantity: item.selectedQuantity || item.quantity,
+        price: itemPriceInCurrency,
+        price_before_discount: itemBeforeDiscountInCurrency,
+        price_bs: item.price_bs,
+        price_before_discount_bs: item.price_before_discount_bs || item.base_price_bs,
+        discount_percentage: item.discount_percentage,
+        discount_type: item.discount_type,
+        discount_source_id: item.discount_source_id,
+      };
+    });
+
+    const validPayments = [
+      {
+        method: method || 'cash',
+        amount: flashTotal,
+        reference: null,
+        currency: targetCurrency,
+      },
+    ];
+
+    const payload = {
+      order_id: openOrderData.value.id,
+      payments: validPayments,
+      items: mappedItems,
+      total_amount: flashTotal,
+      changeAmount: 0,
+      changeAmountInCop: 0,
+      changeAmountUSD: 0,
+      change_currency_mode: 'COP',
+      change_delivered_usd: 0,
+      change_delivered_cop: 0,
+      currency: targetCurrency,
+      applies_spe_tax: appliesSpe,
+      spe_tax_amount: speAmount,
+      skip_fiscal: false,
+    };
+
+    const response = await axios.post(`/tpv/orders/${openOrderData.value.id}/complete`, payload);
+    const isSuccess = response.data?.status === 'success' || response.data?.success === true || response.status === 200;
+
+    if (isSuccess) {
+      toast.success(`Cobro Flash (${targetCurrency}) completado exitosamente.`);
+      const resData = response.data?.data || response.data;
+      const completedOrder = resData.orderCompletada || resData.order || openOrderData.value;
+      await printTickeCompletion(completedOrder);
+    } else {
+      toast.error(response.data?.message || 'Error al procesar el cobro Flash.');
+    }
+  } catch (error) {
+    console.error('[TPV] Error en cobro Flash:', error);
+    toast.error(error.response?.data?.message || error.response?.data?.error || 'Error al procesar el cobro Flash.');
+  } finally {
+    isFlashSubmitting.value = false;
+    isFinishingOrder.value = false;
+  }
 };
 
 // ─── Control de Pestaña Principal (Catálogo vs Zoom) ─────────────────────────
@@ -566,6 +685,7 @@ useTpvInit({
       :total-products-amount="totalProductsAmount || 0"
       :total-iva-amount="totalIVAAmount || 0"
       :total-order-amount="totalOrderAmount || 0"
+      :is-flash-submitting="isFlashSubmitting"
       @add-dish="onAddDishRequested"
       @add-product="addProductToOrder"
       @search-products="(q) => { filterSearchQuery = q; page = 1; }"
@@ -574,6 +694,7 @@ useTpvInit({
       @remove-item="(item) => removeOrderItem(item.product_id, item.order_detail_id)"
       @edit-dish-modifiers="onEditDishModifiersRequested"
       @open-buys-modal="openBuysModal"
+      @flash-checkout="handleFlashCheckout"
       @reserver-order="reserverOrder"
       @cancelar-order="cancelarOrder"
       @open-pedidos-modal="openPedidosModal"
@@ -610,6 +731,7 @@ useTpvInit({
       :is-special-taxpayer="isSpecialTaxpayer || false"
       :is-restaurant="isRestaurant"
       :is-sports-rental="isSportsRental"
+      :is-flash-submitting="isFlashSubmitting"
       v-model:client-identification="clientIdentification"
       @handle-currency-changed="handleCurrencyChanged"
       @update-order-item-quantity="updateOrderItemQuantity"

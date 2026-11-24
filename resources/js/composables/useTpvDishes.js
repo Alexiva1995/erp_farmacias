@@ -46,13 +46,11 @@ export function useTpvDishes() {
 
   const dishCategories = computed(() => {
     const apiCats = Array.isArray(rawDishCategories.value) ? rawDishCategories.value : []
-    const exclusiveDishCats = apiCats.filter((c) => c.type === 'dish' || c.type === 'dishes')
-    const baseCats = exclusiveDishCats.length > 0 ? exclusiveDishCats : apiCats
 
-    const allowedIds = new Set(baseCats.map((c) => Number(c.id)))
-    const result = baseCats.map((cat) => {
+    const allowedIds = new Set(apiCats.map((c) => Number(c.id)))
+    const result = apiCats.map((cat) => {
       const matchingDishes = dishes.value.filter(
-        (d) => Number(d.category_id) === Number(cat.id) || d.category?.name === cat.name
+        (d) => Number(d.category_id) === Number(cat.id) || (cat.name && d.category?.name === cat.name)
       )
       const fallbackPhoto = matchingDishes.find((d) => Boolean(d.photo_url))?.photo_url || null
       return {
@@ -62,11 +60,13 @@ export function useTpvDishes() {
         count: matchingDishes.length,
         isOther: false,
       }
-    }).filter((cat) => cat.count > 0 || exclusiveDishCats.length > 0)
+    }).filter((cat) => cat.count > 0)
 
-    // Agrupar platos cuya categoría pertenece a farmacia/inventario para no perderlos ni mostrar nombres de farmacia
-    if (baseCats.length > 0) {
-      const otherDishes = dishes.value.filter((d) => !allowedIds.has(Number(d.category_id)))
+    // Agrupar solo platos sin categoría válida en el menú
+    if (apiCats.length > 0) {
+      const otherDishes = dishes.value.filter(
+        (d) => !d.category_id || !allowedIds.has(Number(d.category_id))
+      )
       if (otherDishes.length > 0) {
         result.push({
           id: 'other',

@@ -28,6 +28,10 @@ const props = defineProps({
     type: String,
     default: "COP",
   },
+  isFlashSubmitting: {
+    type: Boolean,
+    default: false,
+  },
   totalIvaAmount: {
     type: Number,
     default: 0,
@@ -178,8 +182,8 @@ watch(paymentMethodsByCurrency, (newVal) => {
 
 const handleFlashCheckout = () => {
   emit('flash-checkout', {
-    method: selectedPaymentMethod.value,
-    currency: props.selectedDisplayCurrency
+    method: 'cash',
+    currency: 'COP'
   });
 };
 
@@ -1218,7 +1222,7 @@ const getIva = (product, currency) => {
                            <VIcon icon="tabler-circle-check" size="20" class="me-1" />
                            <span>Cobrar / Cerrar</span>
                          </VBtn>
-                         <VTooltip v-if="enableFlashCheckout" text="Cobro Rápido Flash" location="top">
+                         <VTooltip v-if="enableFlashCheckout" text="Cobro Rápido Flash (Efectivo COP)" location="top">
                            <template #activator="{ props: tooltipProps }">
                              <VBtn
                                v-bind="tooltipProps"
@@ -1226,9 +1230,12 @@ const getIva = (product, currency) => {
                                variant="flat"
                                height="44"
                                class="rounded-lg px-3 elevation-2 font-weight-black"
+                               :loading="isFlashSubmitting"
+                               :disabled="isFlashSubmitting || !orderProducts?.length"
                                @click="handleFlashCheckout"
                              >
-                               <VIcon icon="tabler-bolt" size="20" />
+                               <VIcon icon="tabler-bolt" size="18" class="me-1" />
+                               <span>COP</span>
                              </VBtn>
                            </template>
                          </VTooltip>
@@ -1279,7 +1286,7 @@ const getIva = (product, currency) => {
                            <span>COBRAR AHORA</span>
                          </VBtn>
                          
-                         <VTooltip v-if="enableFlashCheckout" text="Cobro Rápido Flash" location="top">
+                         <VTooltip v-if="enableFlashCheckout" text="Cobro Rápido Flash (Efectivo COP)" location="top">
                            <template #activator="{ props: tooltipProps }">
                              <VBtn
                                v-bind="tooltipProps"
@@ -1287,9 +1294,12 @@ const getIva = (product, currency) => {
                                variant="flat"
                                height="44"
                                class="rounded-lg px-3 elevation-2 font-weight-black"
+                               :loading="isFlashSubmitting"
+                               :disabled="isFlashSubmitting || !orderProducts?.length"
                                @click="handleFlashCheckout"
                              >
-                               <VIcon icon="tabler-bolt" size="20" />
+                               <VIcon icon="tabler-bolt" size="18" class="me-1" />
+                               <span>COP</span>
                              </VBtn>
                            </template>
                          </VTooltip>

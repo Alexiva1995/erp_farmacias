@@ -22,6 +22,7 @@ const props = defineProps({
   totalProductsAmount: { type: Number, default: 0 },
   totalIvaAmount: { type: Number, default: 0 },
   totalOrderAmount: { type: Number, default: 0 },
+  isFlashSubmitting: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -33,6 +34,7 @@ const emit = defineEmits([
   'remove-item',
   'edit-dish-modifiers',
   'open-buys-modal',
+  'flash-checkout',
   'reserver-order',
   'cancelar-order',
   'open-pedidos-modal',
@@ -124,11 +126,13 @@ const handleSplitCheck = async (parts) => {
           :kds-loading="kdsLoading"
           :pre-bill-loading="preBillLoading"
           :split-loading="splitLoading"
+          :is-flash-submitting="isFlashSubmitting"
           @currency-changed="(c) => emit('currency-changed', c)"
           @update-quantity="(p) => emit('update-quantity', p)"
           @remove-item="(item) => emit('remove-item', item)"
           @edit-dish-modifiers="(item) => emit('edit-dish-modifiers', item)"
           @open-buys-modal="emit('open-buys-modal')"
+          @flash-checkout="(payload) => emit('flash-checkout', payload)"
           @reserver-order="emit('reserver-order')"
           @cancelar-order="emit('cancelar-order')"
           @open-pedidos-modal="emit('open-pedidos-modal')"

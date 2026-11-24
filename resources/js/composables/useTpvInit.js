@@ -77,7 +77,8 @@ export function useTpvInit({
     try {
       await fetchOpenOrder()
       const isSimpleTpv = brandingStore.settings?.tpv_mode === 'simple'
-      if (isSimpleTpv && !hasOpenOrder.value) {
+      const isFlashTpv = Boolean(brandingStore.settings?.enable_flash_checkout)
+      if ((isSimpleTpv || isFlashTpv) && !hasOpenOrder.value) {
         try {
           const checkClientResp = await axios.get('/tpv/order/client/99999999')
           if (checkClientResp.data?.data?.client?.id) {

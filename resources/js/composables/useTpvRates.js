@@ -44,6 +44,12 @@ export function useTpvRates(brandingStore, isRestaurant, isSportsRental) {
 
       const tpvRateType = brandingStore.settings?.tpv_rate_type
       if (formattedRates['USD']) {
+        const fallbackBsRate =
+          formattedRates['USD']['BCV'] ||
+          formattedRates['USD']['EUR'] ||
+          formattedRates['USD']['BINANCE'] ||
+          formattedRates['USD']['BS']
+
         if (tpvRateType === 'binance' && formattedRates['USD']['BINANCE']) {
           formattedRates['USD']['BS'] = formattedRates['USD']['BINANCE']
         } else if (tpvRateType === 'eur' && formattedRates['USD']['EUR']) {
@@ -55,7 +61,11 @@ export function useTpvRates(brandingStore, isRestaurant, isSportsRental) {
             formattedRates['USD']['BS'] = formattedRates['USD']['BINANCE']
           } else if (!(isRestaurant.value || isSportsRental.value) && formattedRates['USD']['EUR']) {
             formattedRates['USD']['BS'] = formattedRates['USD']['EUR']
+          } else if (fallbackBsRate) {
+            formattedRates['USD']['BS'] = fallbackBsRate
           }
+        } else if (!formattedRates['USD']['BS'] && fallbackBsRate) {
+          formattedRates['USD']['BS'] = fallbackBsRate
         }
 
         if (formattedRates['BS']) {

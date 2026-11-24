@@ -45,10 +45,19 @@ const filteredDishes = computed(() => {
   if (selectedCategory.value) {
     const selectedObj = normalizedCategories.value.find((c) => c.name === selectedCategory.value)
     if (selectedObj?.isOther) {
+      const mainCategoryIds = new Set(
+        normalizedCategories.value.filter((c) => !c.isOther && c.id).map((c) => Number(c.id))
+      )
       const mainCategoryNames = new Set(
         normalizedCategories.value.filter((c) => !c.isOther).map((c) => c.name)
       )
-      list = list.filter((d) => !mainCategoryNames.has(d.category?.name))
+      list = list.filter(
+        (d) => !mainCategoryIds.has(Number(d.category_id)) && !mainCategoryNames.has(d.category?.name)
+      )
+    } else if (selectedObj?.id) {
+      list = list.filter(
+        (d) => Number(d.category_id) === Number(selectedObj.id) || d.category?.name === selectedCategory.value
+      )
     } else {
       list = list.filter((d) => d.category?.name === selectedCategory.value)
     }
@@ -72,11 +81,11 @@ const getDishDisplayPrice = (dish) => {
   const usd = Number(dish?.designated_price || 0)
   if (curr === 'COP') {
     if (Number(dish?.designated_price_cop) > 0) return Number(dish.designated_price_cop)
-    const rate = Number(props.exchangeRates?.USD_COP || props.exchangeRates?.cop || 4000)
+    const rate = Number(props.exchangeRates?.USD?.COP || props.exchangeRates?.USD_COP || props.exchangeRates?.cop || 4000)
     return Math.ceil((usd * (rate > 0 ? rate : 4000)) / 100) * 100
   }
   if (curr === 'BS') {
-    const rate = Number(props.exchangeRates?.USD_BS || props.exchangeRates?.bs || 1)
+    const rate = Number(props.exchangeRates?.USD?.BS || props.exchangeRates?.USD_BS || props.exchangeRates?.bs || 1)
     return usd * (rate > 0 ? rate : 1)
   }
   return usd
@@ -84,8 +93,18 @@ const getDishDisplayPrice = (dish) => {
 
 const getProductDisplayPrice = (product) => {
   const curr = String(props.selectedDisplayCurrency || 'USD').toUpperCase()
-  if (curr === 'COP') return Number(product?.price_cop ?? 0)
-  if (curr === 'BS') return Number(product?.price_bs ?? 0)
+  if (curr === 'COP') {
+    if (Number(product?.price_cop) > 0) return Number(product.price_cop)
+    const usd = Number(product?.sale_price ?? product?.price ?? 0)
+    const rate = Number(props.exchangeRates?.USD?.COP || 4000)
+    return Math.ceil((usd * (rate > 0 ? rate : 4000)) / 100) * 100
+  }
+  if (curr === 'BS') {
+    if (Number(product?.price_bs) > 0) return Number(product.price_bs)
+    const usd = Number(product?.sale_price ?? product?.price ?? 0)
+    const rate = Number(props.exchangeRates?.USD?.BS || 1)
+    return usd * (rate > 0 ? rate : 1)
+  }
   return Number(product?.sale_price ?? product?.price ?? 0)
 }
 

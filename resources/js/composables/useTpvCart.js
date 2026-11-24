@@ -173,7 +173,8 @@ export function useTpvCart({
     if (!hasOpenOrder.value || !openOrderData.value?.id) {
       const isSimpleTpv = brandingStore.settings?.tpv_mode === 'simple'
       const isRestaurantTpv = brandingStore.settings?.tpv_style === 'restaurant'
-      if (isSimpleTpv || isRestaurantTpv) {
+      const isFlashTpv = Boolean(brandingStore.settings?.enable_flash_checkout)
+      if (isSimpleTpv || isRestaurantTpv || isFlashTpv) {
         const started = await ensureOpenOrderWithGenericClient()
         if (!started) {
           toast.error('Debe haber una orden abierta para agregar productos.')
