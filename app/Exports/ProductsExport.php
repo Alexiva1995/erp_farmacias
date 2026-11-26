@@ -37,6 +37,7 @@ class ProductsExport implements FromQuery, WithHeadings, WithMapping, WithStyles
         return [
             'Producto (ID - Nombre - Lab)',
             'Stock',
+            'Costo',
             'PVP',
         ];
     }
@@ -52,6 +53,7 @@ class ProductsExport implements FromQuery, WithHeadings, WithMapping, WithStyles
         return [
             $product->id . ' - ' . $product->name . ' (' . $lab . ')',
             $product->stock_calculado ?? 0,
+            $product->unit_cost ?? 0,
             $product->sale_price,
         ];
     }

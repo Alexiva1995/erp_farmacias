@@ -44,8 +44,9 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 70%;">Producto (ID - Nombre - Laboratorio)</th>
+                <th style="width: 55%;">Producto (ID - Nombre - Laboratorio)</th>
                 <th style="width: 15%;" class="text-right">Stock</th>
+                <th style="width: 15%;" class="text-right">Costo</th>
                 <th style="width: 15%;" class="text-right">PVP</th>
             </tr>
         </thead>
@@ -58,6 +59,7 @@
                         <span>({{ $product->laboratory->name ?? 'N/A' }})</span>
                     </td>
                     <td class="text-right">{{ number_format($product->stock_calculado ?? 0, 0) }}</td>
+                    <td class="text-right">${{ number_format($product->unit_cost ?? 0, 2) }}</td>
                     <td class="text-right text-bold">${{ number_format($product->sale_price, 2) }}</td>
                 </tr>
             @endforeach

@@ -256,7 +256,7 @@ class ProductController extends Controller
         $format = $request->input('format', 'xlsx');
 
         // Optimizar consulta al máximo: solo las columnas necesarias
-        $query->select(['products.id', 'products.name', 'products.laboratory_id', 'products.sale_price'])
+        $query->select(['products.id', 'products.name', 'products.laboratory_id', 'products.unit_cost', 'products.sale_price'])
               ->withSum('lots as stock_calculado', 'quantity')
               ->with('laboratory:id,name')
               ->without(['lots', 'origin', 'category', 'group', 'profitability']);
