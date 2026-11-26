@@ -52,8 +52,8 @@ class SupplierConnectionService
                 ];
             case "file":
             case "email":
-                if (config('mail_sync.email') && config('mail_sync.password')) {
-                    $emailService = app(\App\Services\Suppliers\SupplierEmailCatalogService::class);
+                $emailService = app(\App\Services\Suppliers\SupplierEmailCatalogService::class);
+                if ($emailService->hasConfiguredCredentials()) {
                     $syncResult = $emailService->syncEmailCatalogs(false, $connection->supplier);
                     if (!empty($syncResult['processed'])) {
                         return [
@@ -73,6 +73,8 @@ class SupplierConnectionService
 
     public function fetchFromFtp(SupplierConnection $connection)
     {
+        $this->hydrateTechnicalFieldsFromMaster($connection);
+
         $host = trim((string) ($connection->host ?? ''));
         // Limpiar protocolos (https://, http://, ftp://, ftps://) y barras finales si fueron ingresados en la URL
         $host = preg_replace('#^(https?|ftps?)://#i', '', $host);
@@ -2004,6 +2006,80 @@ class SupplierConnectionService
             $index = $index * 26 + ($ord - 64);
         }
         return $index - 1;
+    }
+
+    /**
+     * Completa en memoria los campos técnicos (host, port, path, invoice_path, estructuras)
+     * desde la plantilla oficial del proveedor en tovaerp_master cuando faltan en el tenant.
+     */
+    private function hydrateTechnicalFieldsFromMaster(SupplierConnection $connection): void
+    {
+        if (!function_exists('tenancy') || !tenancy()->initialized) {
+            return;
+        }
+
+        try {
+            $masterConn = 'master_catalog';
+            if (!\Illuminate\Support\Facades\Schema::connection($masterConn)->hasTable('supplier_connections')) {
+                return;
+            }
+
+            $supplier = $connection->relationLoaded('supplier')
+                ? $connection->supplier
+                : $connection->supplier()->first();
+
+            $masterSupplierId = $connection->supplier_id;
+            if ($supplier && !empty($supplier->rif) && \Illuminate\Support\Facades\Schema::connection($masterConn)->hasTable('suppliers')) {
+                $cleanRif = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) $supplier->rif)));
+                if ($cleanRif !== '') {
+                    $matchedId = \Illuminate\Support\Facades\DB::connection($masterConn)
+                        ->table('suppliers')
+                        ->whereRaw("UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) = ?", [$cleanRif])
+                        ->value('id');
+                    if ($matchedId) {
+                        $masterSupplierId = (int) $matchedId;
+                    }
+                }
+            }
+
+            $masterTemplate = \Illuminate\Support\Facades\DB::connection($masterConn)
+                ->table('supplier_connections')
+                ->where('supplier_id', $masterSupplierId)
+                ->where('type', $connection->type)
+                ->first();
+
+            if (!$masterTemplate) {
+                return;
+            }
+
+            foreach (['host', 'port', 'path', 'invoice_path'] as $field) {
+                $current = $connection->getAttribute($field);
+                $masterVal = $masterTemplate->$field ?? null;
+                if (($current === null || trim((string) $current) === '') && $masterVal !== null && trim((string) $masterVal) !== '') {
+                    $connection->setAttribute($field, $masterVal);
+                }
+            }
+
+            foreach (['structure', 'secondary_structure', 'tertiary_structure', 'invoice_structure'] as $jsonField) {
+                $current = $connection->getAttribute($jsonField);
+                $masterVal = $masterTemplate->$jsonField ?? null;
+                if (empty($current) && !empty($masterVal)) {
+                    $decoded = is_string($masterVal) ? json_decode($masterVal, true) : $masterVal;
+                    if (!empty($decoded)) {
+                        $connection->setAttribute($jsonField, $decoded);
+                    }
+                }
+            }
+
+            if ($connection->getAttribute('pasv') === null && isset($masterTemplate->pasv)) {
+                $connection->setAttribute('pasv', (bool) $masterTemplate->pasv);
+            }
+            if ($connection->getAttribute('has_header') === null && isset($masterTemplate->has_header)) {
+                $connection->setAttribute('has_header', (bool) $masterTemplate->has_header);
+            }
+        } catch (\Throwable $e) {
+            Log::debug('No se pudo hidratar plantilla técnica desde Master para conexión #' . $connection->id . ': ' . $e->getMessage());
+        }
     }
 }
 

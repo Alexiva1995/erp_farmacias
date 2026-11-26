@@ -91,11 +91,23 @@ const formatChannelLabel = (type) => {
   return "Excel";
 };
 
+const parseDateValue = (dateString) => {
+  if (!dateString) return null;
+  const raw = String(dateString).trim();
+  // Si viene solo fecha YYYY-MM-DD (sin hora), construir en hora local para evitar desfase UTC
+  const dateOnlyMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    return new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+  }
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 const formatDate = (dateString) => {
   if (!dateString) return null;
   try {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return dateString;
+    const d = parseDateValue(dateString);
+    if (!d) return dateString;
     return d.toLocaleDateString("es-VE", {
       day: "2-digit",
       month: "2-digit",
@@ -108,9 +120,13 @@ const formatDate = (dateString) => {
 
 const formatTime = (dateString) => {
   if (!dateString) return "";
+  // Si viene solo fecha sin hora, no mostrar una hora ficticia
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(dateString).trim())) {
+    return "";
+  }
   try {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return "";
+    const d = parseDateValue(dateString);
+    if (!d) return "";
     return d.toLocaleTimeString("es-VE", {
       hour: "2-digit",
       minute: "2-digit",

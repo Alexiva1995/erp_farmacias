@@ -25,6 +25,15 @@ class SupplierResource extends JsonResource
             ?? $syncConnections->first(fn ($c) => in_array($c->type, ['email', 'file']))
             ?? $syncConnections->first();
 
+        $latestStatusAt = $this->relationLoaded('latestConnectionStatus') && $this->latestConnectionStatus?->created_at
+            ? $this->latestConnectionStatus->created_at
+            : null;
+        $maxConnDate = $syncConnections->max('last_connection');
+        $lastSyncAt = $latestStatusAt ? $latestStatusAt->toIso8601String() : $maxConnDate;
+        if ($latestStatusAt && $maxConnDate && $maxConnDate > $latestStatusAt->toDateString()) {
+            $lastSyncAt = $maxConnDate;
+        }
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -89,7 +98,7 @@ class SupplierResource extends JsonResource
             'type' => $this->type instanceof \App\Enums\SupplierType ? $this->type->value : ($this->type ?? 'drogueria'),
             'business_types' => is_string($this->business_types) ? (json_decode($this->business_types, true) ?: []) : ($this->business_types ?? []),
             'score_breakdown' => $this->score_breakdown,
-            'last_sync_at' => $syncConnections->max('last_connection'),
+            'last_sync_at' => $lastSyncAt,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
 

@@ -125,8 +125,8 @@ class UpdateAllSuppliersJob implements ShouldQueue
 
         // Sincronizar también catálogos pendientes recibidos por correo Gmail
         try {
-            if (config('mail_sync.email') && config('mail_sync.password')) {
-                $emailService = app(\App\Services\Suppliers\SupplierEmailCatalogService::class);
+            $emailService = app(\App\Services\Suppliers\SupplierEmailCatalogService::class);
+            if ($emailService->hasConfiguredCredentials()) {
                 $emailService->syncEmailCatalogs();
             }
         } catch (\Throwable $e) {

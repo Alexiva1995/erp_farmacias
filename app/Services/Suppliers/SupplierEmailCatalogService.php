@@ -29,6 +29,18 @@ class SupplierEmailCatalogService
     }
 
     /**
+     * Indica si existen credenciales IMAP configuradas en GeneralSetting del tenant.
+     */
+    public function hasConfiguredCredentials(): bool
+    {
+        $settings = \App\Models\GeneralSetting::first();
+        $email = trim((string) ($settings?->gmail_sync_email ?? ''));
+        $password = trim((string) ($settings?->gmail_sync_password ?? ''));
+
+        return $email !== '' && $password !== '';
+    }
+
+    /**
      * Sincroniza el catálogo por correo para un proveedor específico o para todos los proveedores configurados.
      * Busca el último correo con Excel del proveedor, esté leído o no.
      */
