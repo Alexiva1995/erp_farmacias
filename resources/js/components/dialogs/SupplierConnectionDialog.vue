@@ -671,9 +671,9 @@ watch(
                       :model-value="isEditingPassword ? form.password : '••••••••'"
                       :type="isEditingPassword && showPassword ? 'text' : 'password'"
                       :label="hasExistingPassword ? 'Contraseña / Token' : 'Contraseña / Token *'"
-                      placeholder="Contraseña o token de acceso"
+                      :placeholder="isEditingPassword ? 'Ingresa la nueva contraseña o token' : 'Contraseña o token de acceso'"
                       prepend-inner-icon="tabler-lock"
-                      :disabled="!isEditingPassword"
+                      :readonly="!isEditingPassword"
                       :error-messages="errors.password"
                       @update:model-value="(val) => { if (isEditingPassword) form.password = val; }"
                     >

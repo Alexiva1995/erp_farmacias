@@ -32,7 +32,18 @@ const fetchStatuses = async () => {
     const { data } = await axios.get("/suppliers/supplier-connection-statuses");
     const newStatuses = data.statuses;
 
+    const minTimestamp = store.connectionStartedAt ? store.connectionStartedAt - 15000 : 0;
+    const targetIds = store.pendingSupplierIds || [];
+
     newStatuses.forEach((status) => {
+      const statusTime = new Date(status.created_at).getTime();
+      if (minTimestamp && statusTime < minTimestamp) {
+        return;
+      }
+      if (targetIds.length > 0 && !targetIds.includes(Number(status.supplier_id))) {
+        return;
+      }
+
       if (!isRecentlyNotified(status) && ["completed", "failed"].includes(status.status)) {
         const msg =
           status.status === "completed"

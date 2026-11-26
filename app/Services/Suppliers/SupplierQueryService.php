@@ -1547,6 +1547,7 @@ class SupplierQueryService
             ]);
 
         return SupplierConnectionStatus::with('supplier')
+            ->where('user_id', $userId)
             ->where('created_at', '>=', now()->subMinutes($minutes))
             ->latest('id')
             ->get();
