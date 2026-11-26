@@ -312,31 +312,21 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
     {
         $supplier = null;
         if ($supplierId) {
-            $supplier = Supplier::with('connections')->find($supplierId);
+            $supplier = Supplier::find($supplierId);
         } else {
-            $supplier = Supplier::with('connections')
-                ->where('name', 'LIKE', '%CRISTALMEDICALS%')
+            $supplier = Supplier::where('name', 'LIKE', '%CRISTALMEDICALS%')
                 ->orWhere('name', 'LIKE', '%CRIST%')
                 ->orWhere('id', 1002)
                 ->first();
             $supplierId = $supplier?->id ?? 1002;
         }
 
-        $conn = $supplier?->connections?->first();
+        $scraperConfig = \App\Models\SupplierScraper::where('supplier_id', $supplierId)
+            ->where('scraper_key', 'cristmedicals')
+            ->first();
 
-        $user = $username;
-        $pass = $password;
-
-        if (!$user && $conn && !empty($conn->username)) {
-            $user = $conn->username;
-        }
-        if (!$pass && $conn && !empty($conn->password)) {
-            try {
-                $pass = FtpCrypt::decrypt($conn->password);
-            } catch (\Throwable) {
-                $pass = null;
-            }
-        }
+        $user = $username ?: $scraperConfig?->username;
+        $pass = $password ?: $scraperConfig?->getDecryptedPassword();
 
         $user = $user ?: null;
         $pass = $pass ?: null;
@@ -563,20 +553,15 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
     ): array {
         Log::info('[CRISTMEDICALS PAYMENT] Iniciando reporte de pago para facturas: ' . implode(', ', $invoiceNumbers));
 
-        $supplier = Supplier::with('connections')
-            ->where('name', 'LIKE', '%CRIST%')
+        $supplier = Supplier::where('name', 'LIKE', '%CRIST%')
             ->orWhere('id', 1002)
             ->first();
 
-        $pass = null;
-        if ($conn && !empty($conn->password)) {
-            try {
-                $pass = FtpCrypt::decrypt($conn->password);
-            } catch (\Throwable) {
-                $pass = null;
-            }
-        }
-        $pass = $pass ?: ($conn?->password ?? null);
+        $scraperConfig = $supplier
+            ? \App\Models\SupplierScraper::where('supplier_id', $supplier->id)->where('scraper_key', 'cristmedicals')->first()
+            : null;
+        $user = $scraperConfig?->username;
+        $pass = $scraperConfig?->getDecryptedPassword();
 
         $session = $this->createAuthenticatedSession($user, $pass);
         $cookieFile = $session['cookie_file'];

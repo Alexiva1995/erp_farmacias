@@ -97,12 +97,12 @@ const fetchSupplierData = async () => {
       supplierDetails.value = supplier
       form.value.supplier_id = supplier.id
 
-      // Cargar conexión configurada del proveedor
-      const connRes = await axios.get(`/suppliers/${supplier.id}/connection-config`)
-      const connData = connRes.data?.connections?.mafarta_bot || connRes.data
+      // Cargar scraper financiero del proveedor
+      const connRes = await axios.get(`/supplier-scrapers/${supplier.id}/mafarta`)
+      const connData = connRes.data?.data || connRes.data
       if (connData) {
-        form.value.type = connData.type || 'mafarta_bot'
-        form.value.host = connData.host || 'https://sic.drogueriascobeca.com'
+        form.value.type = 'mafarta_bot'
+        form.value.host = connData.portal_url || 'https://sic.drogueriascobeca.com'
         form.value.username = connData.username || ''
         form.value.has_password = Boolean(connData.has_password)
         form.value.session_token = connData.session_token || ''
@@ -138,19 +138,16 @@ const saveConfig = async () => {
   isSaving.value = true
   try {
     const payload = {
-      type: 'mafarta_bot',
-      host: form.value.host || 'https://sic.drogueriascobeca.com',
+      portal_url: form.value.host || 'https://sic.drogueriascobeca.com',
       username: form.value.username,
       session_token: form.value.session_token || '',
-      pasv: true,
-      has_header: true,
     }
 
     if (form.value.password) {
       payload.password = form.value.password
     }
 
-    await axios.post(`/suppliers/${supplierId.value}/connection-config`, payload)
+    await axios.post(`/supplier-scrapers/${supplierId.value}/mafarta`, payload)
     toast.success('Configuración del Bot Mafarta / Cobeca guardada correctamente.')
     form.value.password = ''
     await fetchSupplierData()
@@ -176,8 +173,8 @@ const testAndSaveToken = async () => {
 
   isTestingToken.value = true
   try {
-    const { data } = await axios.post(`/suppliers/${supplierId.value}/mafarta-token`, {
-      session_token: form.value.session_token.trim(),
+    const { data } = await axios.post(`/supplier-scrapers/${supplierId.value}/mafarta/test-token`, {
+      token: form.value.session_token.trim(),
       username: form.value.username,
       save: true,
     })

@@ -11,9 +11,10 @@ use App\Contracts\Suppliers\DronenaScraperServiceInterface;
 use App\Contracts\Suppliers\DrosymcaScraperServiceInterface;
 use App\Contracts\Suppliers\MafartaScraperServiceInterface;
 use App\Contracts\Suppliers\SupplierFinancialSyncServiceInterface;
-use App\Helpers\FtpCrypt;
+use App\Enums\ScraperKey;
 use App\Jobs\SyncSupplierFinancialScraperJob;
 use App\Models\Supplier;
+use App\Models\SupplierScraper;
 use Illuminate\Support\Facades\Log;
 
 class SupplierFinancialSyncService implements SupplierFinancialSyncServiceInterface
@@ -24,10 +25,10 @@ class SupplierFinancialSyncService implements SupplierFinancialSyncServiceInterf
     protected function resolveSupplier(Supplier|int $supplier): ?Supplier
     {
         if ($supplier instanceof Supplier) {
-            return $supplier->relationLoaded('connections') ? $supplier : $supplier->load('connections');
+            return $supplier->relationLoaded('scrapers') ? $supplier : $supplier->load('scrapers');
         }
 
-        return Supplier::with('connections')->find($supplier);
+        return Supplier::with('scrapers')->find($supplier);
     }
 
     /**
@@ -41,47 +42,27 @@ class SupplierFinancialSyncService implements SupplierFinancialSyncServiceInterf
         }
 
         $name = strtoupper((string) $sup->name);
-        $connTypes = $sup->connections->pluck('type')->map(fn($t) => strtolower((string)$t))->toArray();
-        $connHosts = $sup->connections->pluck('host')->map(fn($h) => strtolower((string)$h))->toArray();
+        $scraperKeys = $sup->scrapers->map(
+            fn ($s) => $s->scraper_key instanceof ScraperKey ? $s->scraper_key->value : strtolower((string) $s->scraper_key)
+        )->toArray();
 
-        // 1. Dronena / Droguería Nena
-        if (str_contains($name, 'DRONENA') || str_contains($name, 'NENA') || in_array('dronena_bot', $connTypes) || in_array('dronena', $connTypes)) {
+        if (str_contains($name, 'DRONENA') || str_contains($name, 'NENA') || in_array('dronena', $scraperKeys, true)) {
             return 'dronena';
         }
-
-        // 2. Drocerca
-        if (str_contains($name, 'DROCERCA') || in_array('drocerca_bot', $connTypes) || in_array('drocerca', $connTypes)) {
+        if (str_contains($name, 'DROCERCA') || in_array('drocerca', $scraperKeys, true)) {
             return 'drocerca';
         }
-
-        // 3. Cobeca / Mafarta
-        if (str_contains($name, 'MAFARTA') || str_contains($name, 'COBECA') || in_array('mafarta_bot', $connTypes) || in_array('mafarta', $connTypes)) {
+        if (str_contains($name, 'MAFARTA') || str_contains($name, 'COBECA') || in_array('mafarta', $scraperKeys, true)) {
             return 'mafarta';
         }
-
-        // 4. Cristmedicals
-        if (str_contains($name, 'CRISTMEDICALS') || str_contains($name, 'CRIST') || in_array('cristmedicals_bot', $connTypes) || in_array('cristmedicals', $connTypes) || in_array($sup->id, [3, 21, 1002])) {
+        if (str_contains($name, 'CRISTMEDICALS') || str_contains($name, 'CRIST') || in_array('cristmedicals', $scraperKeys, true) || in_array($sup->id, [3, 21, 1002])) {
             return 'cristmedicals';
         }
-
-        // 5. Droguería Mega / Dromega
-        if (str_contains($name, 'DROMEGA') || str_contains($name, 'MEGA') || in_array('dromega_bot', $connTypes) || in_array('dromega', $connTypes) || in_array($sup->id, [9, 15, 38, 1005])) {
+        if (str_contains($name, 'DROMEGA') || str_contains($name, 'MEGA') || in_array('dromega', $scraperKeys, true) || in_array($sup->id, [9, 15, 38, 1005])) {
             return 'dromega';
         }
-
-        // 6. Drosymca
-        if (str_contains($name, 'DROSYMCA') || in_array('drosymca_bot', $connTypes) || in_array('drosymca', $connTypes) || (int)$sup->id === 1006) {
+        if (str_contains($name, 'DROSYMCA') || in_array('drosymca', $scraperKeys, true) || (int) $sup->id === 1006) {
             return 'drosymca';
-        }
-
-        // Verificar por host en conexiones
-        foreach ($connHosts as $host) {
-            if (str_contains($host, 'dronena')) return 'dronena';
-            if (str_contains($host, 'drocerca')) return 'drocerca';
-            if (str_contains($host, 'cobeca') || str_contains($host, 'mafarta')) return 'mafarta';
-            if (str_contains($host, 'cristmedicals')) return 'cristmedicals';
-            if (str_contains($host, 'dromega')) return 'dromega';
-            if (str_contains($host, 'drosymca')) return 'drosymca';
         }
 
         return null;
@@ -132,19 +113,13 @@ class SupplierFinancialSyncService implements SupplierFinancialSyncServiceInterf
             ];
         }
 
-        // Obtener conexión configurada para extraer credenciales
-        $conn = $sup->connections->first(fn($c) => in_array($c->type, ["{$type}_bot", $type, 'bot', 'api', 'http']))
-            ?? $sup->connections->first();
+        // Obtener credenciales exclusivamente desde supplier_scrapers (nunca desde supplier_connections)
+        $scraperRecord = SupplierScraper::where('supplier_id', $sup->id)
+            ->where('scraper_key', $type)
+            ->first();
 
-        $user = $conn?->username;
-        $pass = null;
-        if (!empty($conn?->password)) {
-            try {
-                $pass = FtpCrypt::decrypt($conn->password);
-            } catch (\Throwable $e) {
-                $pass = (string)$conn->password;
-            }
-        }
+        $user = $scraperRecord?->username;
+        $pass = $scraperRecord?->getDecryptedPassword();
 
         Log::info("[FinancialSync] Iniciando sincronización de finanzas ({$type}) para {$sup->name} (ID: {$sup->id})");
 
@@ -172,7 +147,7 @@ class SupplierFinancialSyncService implements SupplierFinancialSyncServiceInterf
 
                 case 'dromega':
                     $scraper = app(DromegaScraperServiceInterface::class);
-                    $cookie = $conn?->auth_token ?? null;
+                    $cookie = $scraperRecord?->auth_payload['cookie'] ?? null;
                     $res = $scraper->syncInvoices($cookie, $user, $pass, $sup->id);
                     break;
 

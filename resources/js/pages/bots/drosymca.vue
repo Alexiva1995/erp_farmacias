@@ -81,14 +81,12 @@ const fetchSupplierData = async () => {
       supplierDetails.value = supplier
       form.supplier_id = supplier.id
 
-      const connRes = await axios.get(`/suppliers/${supplier.id}/connection-config`).catch(async () => {
-        return await axios.get(`/suppliers/${supplier.id}/connection`)
-      })
+      const connRes = await axios.get(`/supplier-scrapers/${supplier.id}/drosymca`)
 
-      const connData = connRes.data?.connections?.drosymca_bot || connRes.data
+      const connData = connRes.data?.data || connRes.data
       if (connData) {
-        form.type = connData.type || 'drosymca_bot'
-        form.host = connData.host || 'https://app.drosymca.com'
+        form.type = 'drosymca_bot'
+        form.host = connData.portal_url || 'https://app.drosymca.com'
         form.username = connData.username || ''
         form.has_password = Boolean(connData.has_password)
         form.is_active = connData.is_active !== undefined ? Boolean(connData.is_active) : true
@@ -122,22 +120,16 @@ const saveConfig = async () => {
   isSaving.value = true
   try {
     const payload = {
-      type: 'drosymca_bot',
-      host: form.host || 'https://app.drosymca.com',
+      portal_url: form.host || 'https://app.drosymca.com',
       username: form.username,
       is_active: form.is_active,
-      sync_frequency: form.sync_frequency,
-      pasv: true,
-      has_header: true,
     }
 
     if (form.password) {
       payload.password = form.password
     }
 
-    await axios.post(`/suppliers/${supplierId.value}/connection-config`, payload).catch(async () => {
-      return await axios.post(`/suppliers/${supplierId.value}/connection`, payload)
-    })
+    await axios.post(`/supplier-scrapers/${supplierId.value}/drosymca`, payload)
     
     toast.success('Configuración del Bot Drosymca guardada correctamente.')
     form.password = ''

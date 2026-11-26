@@ -407,29 +407,22 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
     {
         $supplier = null;
         if ($supplierId) {
-            $supplier = Supplier::with('connections')->find($supplierId);
+            $supplier = Supplier::find($supplierId);
         } else {
-            $supplier = Supplier::with('connections')
-                ->where('name', 'LIKE', '%DROSYM%')
+            $supplier = Supplier::where('name', 'LIKE', '%DROSYM%')
                 ->orWhere('name', 'LIKE', '%DROSI%')
                 ->orWhere('id', 1006)
                 ->first();
             $supplierId = $supplier?->id ?? 1006;
         }
 
-        // Obtener conexión configurada en la BD si existe
-        $conn = $supplier?->connections?->where('type', 'drosymca_bot')->first()
-            ?? $supplier?->connections?->first();
+        // Obtener credenciales exclusivamente desde supplier_scrapers
+        $scraperConfig = \App\Models\SupplierScraper::where('supplier_id', $supplierId)
+            ->where('scraper_key', 'drosymca')
+            ->first();
 
-        $user = $username;
-        $pass = $password;
-
-        if (!$user && $conn && !empty($conn->username)) {
-            $user = $conn->username;
-        }
-        if (!$pass && $conn && !empty($conn->password)) {
-            $pass = FtpCrypt::decrypt($conn->password);
-        }
+        $user = $username ?: $scraperConfig?->username;
+        $pass = $password ?: $scraperConfig?->getDecryptedPassword();
 
         $user = $user ?: null;
         $pass = $pass ?: null;

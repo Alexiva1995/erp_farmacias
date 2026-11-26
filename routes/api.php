@@ -148,7 +148,7 @@ Route::prefix('v1/master-catalog')->middleware('master_catalog')->group(function
 Route::post("/public/orders/{hash}/respond", [SupplierOrderResponseController::class, "respond"]);
 
 Route::post("/public/reservations/webhook", [\App\Http\Controllers\Api\ReservationController::class, "webhook"]);
-Route::post("/public/mafarta/receive-token", [\App\Http\Controllers\Api\SupplierController::class, "receivePublicMafartaToken"]);
+Route::post("/public/mafarta/receive-token", [\App\Http\Controllers\Api\SupplierScraperController::class, "receivePublicMafartaToken"]);
 Route::get("/public/reservations/confirm-direct/{id}", [\App\Http\Controllers\Api\ReservationController::class, "confirmDirect"]);
 Route::get("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "index"]);
 Route::post("/public/reservations", [\App\Http\Controllers\Api\ReservationController::class, "store"]);
@@ -916,10 +916,17 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::post('/{supplier}/connection-config', [SupplierController::class, 'saveConnectionConfig']);
         Route::post('/{supplier}/test-connection', [SupplierController::class, 'testConnection']);
         Route::delete('/{supplier}/connection-config/{type}', [SupplierController::class, 'deleteConnectionConfig']);
-        Route::post('/{supplier}/mafarta-token', [SupplierController::class, 'testMafartaSessionToken']);
+        Route::post('/{supplier}/mafarta-token', [\App\Http\Controllers\Api\SupplierScraperController::class, 'testMafartaToken']);
         Route::get('/{supplier}/connection-history', [SupplierController::class, 'getConnectionHistory']);
         Route::post('/merge', [SupplierController::class, 'merge']);
         Route::post('/propagate-merge', [SupplierController::class, 'propagateMergeToTenants']);
+    });
+
+    // Scrapers financieros de proveedores (completamente separados de conexiones de catálogo)
+    Route::prefix('supplier-scrapers')->group(function () {
+        Route::get('/{supplier}/{scraperKey}', [\App\Http\Controllers\Api\SupplierScraperController::class, 'show']);
+        Route::post('/{supplier}/{scraperKey}', [\App\Http\Controllers\Api\SupplierScraperController::class, 'upsert']);
+        Route::post('/{supplier}/mafarta/test-token', [\App\Http\Controllers\Api\SupplierScraperController::class, 'testMafartaToken']);
     });
 
     Route::prefix("suppliers/purchase-orders")->group(function () {

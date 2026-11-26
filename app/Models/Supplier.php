@@ -215,6 +215,11 @@ class Supplier extends Model
         return $this->hasMany(SupplierConnection::class);
     }
 
+    public function scrapers(): HasMany
+    {
+        return $this->hasMany(SupplierScraper::class);
+    }
+
     /**
      * Obtiene la conexión prioritaria de sincronización según el orden:
      * 1. API / HTTP

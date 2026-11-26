@@ -68,12 +68,12 @@ const fetchSupplierData = async () => {
       supplierDetails.value = supplier
       form.value.supplier_id = supplier.id
 
-      // Cargar conexión configurada del proveedor
-      const connRes = await axios.get(`/suppliers/${supplier.id}/connection-config`)
-      const connData = connRes.data?.connections?.dronena_bot || connRes.data
+      // Cargar scraper financiero del proveedor
+      const connRes = await axios.get(`/supplier-scrapers/${supplier.id}/dronena`)
+      const connData = connRes.data?.data || connRes.data
       if (connData) {
-        form.value.type = connData.type || 'dronena_bot'
-        form.value.host = connData.host || 'https://www.dronena.com/NuevaExperiencia/'
+        form.value.type = 'dronena_bot'
+        form.value.host = connData.portal_url || 'https://www.dronena.com/NuevaExperiencia/'
         form.value.username = connData.username || ''
         form.value.has_password = Boolean(connData.has_password)
       }
@@ -102,18 +102,15 @@ const saveConfig = async () => {
   isSaving.value = true
   try {
     const payload = {
-      type: 'dronena_bot',
-      host: form.value.host || 'https://www.dronena.com/NuevaExperiencia/',
+      portal_url: form.value.host || 'https://www.dronena.com/NuevaExperiencia/',
       username: form.value.username,
-      pasv: true,
-      has_header: true,
     }
 
     if (form.value.password) {
       payload.password = form.value.password
     }
 
-    await axios.post(`/suppliers/${supplierId.value}/connection-config`, payload)
+    await axios.post(`/supplier-scrapers/${supplierId.value}/dronena`, payload)
     toast.success('Configuración del Bot Dronena guardada correctamente.')
     form.value.password = ''
     await fetchSupplierData()

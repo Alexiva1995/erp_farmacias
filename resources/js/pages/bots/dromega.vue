@@ -85,13 +85,11 @@ const fetchSupplierData = async () => {
       supplierDetails.value = supplier
       form.supplier_id = supplier.id
 
-      const connRes = await axios.get(`/suppliers/${supplier.id}/connection-config`).catch(() => 
-        axios.get(`/suppliers/${supplier.id}/connection`)
-      )
-      const connData = connRes.data?.connections?.dromega_bot || connRes.data
+      const connRes = await axios.get(`/supplier-scrapers/${supplier.id}/dromega`)
+      const connData = connRes.data?.data || connRes.data
       if (connData) {
-        form.type = connData.type || 'dromega_bot'
-        form.host = connData.host || 'https://www.drogueriamega.com/mydas'
+        form.type = 'dromega_bot'
+        form.host = connData.portal_url || 'https://www.drogueriamega.com/mydas'
         form.username = connData.username || ''
         form.has_password = Boolean(connData.has_password)
         form.is_active = connData.is_active !== undefined ? Boolean(connData.is_active) : true
@@ -124,22 +122,16 @@ const saveConfig = async () => {
   isSaving.value = true
   try {
     const payload = {
-      type: 'dromega_bot',
-      host: form.host || 'https://www.drogueriamega.com/mydas',
+      portal_url: form.host || 'https://www.drogueriamega.com/mydas',
       username: form.username,
       is_active: form.is_active,
-      sync_frequency: form.sync_frequency,
-      pasv: true,
-      has_header: true,
     }
 
     if (form.password) {
       payload.password = form.password
     }
 
-    await axios.post(`/suppliers/${supplierId.value}/connection-config`, payload).catch(() =>
-      axios.post(`/suppliers/${supplierId.value}/connection`, payload)
-    )
+    await axios.post(`/supplier-scrapers/${supplierId.value}/dromega`, payload)
 
     toast.success('Configuración del Bot Droguería Mega guardada correctamente.')
     form.password = ''

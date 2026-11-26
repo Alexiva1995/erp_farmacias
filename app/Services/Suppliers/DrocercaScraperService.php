@@ -28,10 +28,9 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
         @ini_set('memory_limit', '512M');
         $supplier = null;
         if ($supplierId) {
-            $supplier = Supplier::with('connections')->find($supplierId);
+            $supplier = Supplier::find($supplierId);
         } else {
-            $supplier = Supplier::with('connections')
-                ->where('name', 'LIKE', '%DROCERCA%')
+            $supplier = Supplier::where('name', 'LIKE', '%DROCERCA%')
                 ->orWhere('name', 'LIKE', '%CERCA%')
                 ->first();
             if (!$supplier) {
@@ -50,18 +49,13 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
             $supplierId = $supplier?->id;
         }
 
-        // Obtener conexión configurada en la BD específicamente para el bot de Drocerca
-        $conn = $supplier?->connections?->where('type', 'drocerca_bot')->first();
+        // Obtener credenciales exclusivamente desde supplier_scrapers
+        $scraperConfig = $supplierId
+            ? \App\Models\SupplierScraper::where('supplier_id', $supplierId)->where('scraper_key', 'drocerca')->first()
+            : null;
 
-        $user = $username;
-        $pass = $password;
-
-        if (!$user && $conn && !empty($conn->username)) {
-            $user = $conn->username;
-        }
-        if (!$pass && $conn && !empty($conn->password)) {
-            $pass = \App\Helpers\FtpCrypt::decrypt($conn->password);
-        }
+        $user = $username ?: $scraperConfig?->username;
+        $pass = $password ?: $scraperConfig?->getDecryptedPassword();
 
         // Credenciales exclusivamente desde la BD del sistema
         $user = $user ?: null;

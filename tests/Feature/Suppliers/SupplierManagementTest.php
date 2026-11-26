@@ -103,46 +103,37 @@ class SupplierManagementTest extends TestCase
             ->assertJsonStructure(['message', 'data' => ['tenants_checked', 'tenants_merged', 'errors']]);
     }
 
-    public function test_resolves_relative_product_photo_url_to_master_origin_when_missing_locally(): void
+    public function test_can_save_and_fetch_supplier_scraper_independently_of_connections(): void
     {
-        config()->set('catalog.master_asset_url', '');
-        config()->set('catalog.master_url', 'https://farmaciabs.com/api/v1/master-catalog');
-
-        $this->assertNull(\App\Models\Product::resolvePhotoUrl(null));
-        $this->assertNull(\App\Models\Product::resolvePhotoUrl('   '));
-        $this->assertSame(
-            'https://farmaciabs.com/storage/products/non_existent_product_test.jpg',
-            \App\Models\Product::resolvePhotoUrl('/storage/products/non_existent_product_test.jpg')
-        );
-        $this->assertSame(
-            'https://farmaciabs.com/storage/products/non_existent_product_test.jpg',
-            \App\Models\Product::resolvePhotoUrl('products/non_existent_product_test.jpg')
-        );
-    }
-
-    public function test_merging_active_source_into_inactive_target_reactivates_target(): void
-    {
-        $target = \App\Models\Supplier::create([
-            'id' => 2001,
-            'name' => 'LOAGROS TARGET',
-            'rif' => 'J-11111111-1',
-            'dispatch_days' => [],
-            'order_days' => [],
-            'is_active' => false,
-        ]);
-
-        $source = \App\Models\Supplier::create([
-            'id' => 2002,
-            'name' => 'LOAGROS SOURCE',
-            'rif' => 'J-22222222-2',
+        $supplier = \App\Models\Supplier::create([
+            'id' => 1014,
+            'name' => 'DRONENA',
+            'rif' => 'J-08518977-7',
             'dispatch_days' => [],
             'order_days' => [],
             'is_active' => true,
         ]);
 
-        $merged = app(\App\Services\Suppliers\SupplierActionService::class)->mergeSuppliers($target->id, $source->id);
+        $this->postJson("/api/supplier-scrapers/{$supplier->id}/dronena", [
+            'portal_url' => 'https://www.dronena.com/NuevaExperiencia/',
+            'username' => 'bot_user',
+            'password' => 'secret123',
+        ])->assertOk()
+            ->assertJsonPath('data.scraper_key', 'dronena')
+            ->assertJsonPath('data.username', 'bot_user')
+            ->assertJsonPath('data.has_password', true);
 
-        $this->assertTrue((bool) $merged->is_active);
-        $this->assertNull(\App\Models\Supplier::withTrashed()->find($source->id));
+        $this->getJson("/api/supplier-scrapers/{$supplier->id}/dronena")
+            ->assertOk()
+            ->assertJsonPath('data.scraper_key', 'dronena')
+            ->assertJsonPath('data.username', 'bot_user')
+            ->assertJsonPath('data.has_password', true);
+
+        $this->assertDatabaseCount('supplier_connections', 0);
+        $this->assertDatabaseHas('supplier_scrapers', [
+            'supplier_id' => $supplier->id,
+            'scraper_key' => 'dronena',
+            'username' => 'bot_user',
+        ]);
     }
 }

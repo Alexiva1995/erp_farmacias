@@ -28,11 +28,10 @@ class MafartaScraperService implements MafartaScraperServiceInterface
     {
         $supplier = null;
         if ($supplierId) {
-            $supplier = Supplier::with('connections')->find($supplierId);
+            $supplier = Supplier::find($supplierId);
             // Si el proveedor recibido por parámetro no corresponde a Mafarta o Cobeca, resolver el proveedor real
             if ($supplier && !str_contains(strtoupper($supplier->name), 'MAFARTA') && !str_contains(strtoupper($supplier->name), 'COBECA')) {
-                $realSupplier = Supplier::with('connections')
-                    ->where('name', 'LIKE', '%MAFARTA%')
+                $realSupplier = Supplier::where('name', 'LIKE', '%MAFARTA%')
                     ->orWhere('name', 'LIKE', '%COBECA%')
                     ->first();
                 if ($realSupplier) {
@@ -41,27 +40,20 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                 }
             }
         } else {
-            $supplier = Supplier::with('connections')
-                ->where('name', 'LIKE', '%MAFARTA%')
+            $supplier = Supplier::where('name', 'LIKE', '%MAFARTA%')
                 ->orWhere('name', 'LIKE', '%COBECA%')
                 ->orWhere('id', 23)
                 ->first();
             $supplierId = $supplier?->id ?? 23;
         }
 
-        // Obtener conexión configurada en la BD para el bot de Mafarta
-        $conn = $supplier?->connections?->where('type', 'mafarta_bot')->first() 
-            ?? $supplier?->connections?->first();
+        // Obtener credenciales exclusivamente desde supplier_scrapers
+        $scraperConfig = \App\Models\SupplierScraper::where('supplier_id', $supplierId)
+            ->where('scraper_key', 'mafarta')
+            ->first();
 
-        $user = $username;
-        $pass = $password;
-
-        if (!$user && $conn && !empty($conn->username)) {
-            $user = $conn->username;
-        }
-        if (!$pass && $conn && !empty($conn->password)) {
-            $pass = \App\Helpers\FtpCrypt::decrypt($conn->password);
-        }
+        $user = $username ?: $scraperConfig?->username;
+        $pass = $password ?: $scraperConfig?->getDecryptedPassword();
 
         $user = $user ?: null;
         $pass = $pass ?: null;
@@ -77,7 +69,7 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             ];
         }
 
-        $activeToken = $sessionToken ?: ($conn?->structure['session_token'] ?? null);
+        $activeToken = $sessionToken ?: $scraperConfig?->getSessionToken();
 
         $result = $this->fetchDocumentsWithToken((string) $user, (string) $pass, $activeToken);
         $documents = $result['documents'] ?? [];
@@ -541,13 +533,13 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                 return ['documents' => [], 'token' => null];
             }
 
-            // Guardar automáticamente el token obtenido en la conexión
-            $conn = \App\Models\SupplierConnection::where('type', 'mafarta_bot')->first();
-            if ($conn) {
-                $struct = $conn->structure ?: [];
-                $struct['session_token'] = $token;
-                $conn->structure = $struct;
-                $conn->save();
+            // Guardar automáticamente el token obtenido en supplier_scrapers
+            $scraperRecord = \App\Models\SupplierScraper::where('scraper_key', 'mafarta')->first();
+            if ($scraperRecord) {
+                $payload = is_array($scraperRecord->auth_payload) ? $scraperRecord->auth_payload : [];
+                $payload['session_token'] = $token;
+                $scraperRecord->auth_payload = $payload;
+                $scraperRecord->save();
             }
 
             // Consultar Estado de Cuenta
@@ -659,26 +651,19 @@ class MafartaScraperService implements MafartaScraperServiceInterface
         try {
             Log::info("[COBECA PAYMENT] Iniciando reporte de pago para facturas: " . implode(', ', $invoiceNumbers));
 
-            // 1. Obtener credenciales
+            // 1. Obtener credenciales exclusivamente desde supplier_scrapers
             $supplier = Supplier::where('name', 'LIKE', '%MAFARTA%')
                 ->orWhere('name', 'LIKE', '%COBECA%')
                 ->first();
 
-            $conn = $supplier?->connections?->where('type', 'mafarta_bot')->first() 
-                ?? $supplier?->connections?->first();
+            $scraperConfig = $supplier
+                ? \App\Models\SupplierScraper::where('supplier_id', $supplier->id)->where('scraper_key', 'mafarta')->first()
+                : null;
 
-            $username = $conn?->username ?: 'F31373';
-            $password = null;
-            if ($conn && !empty($conn->password)) {
-                try {
-                    $password = \App\Helpers\FtpCrypt::decrypt($conn->password);
-                } catch (\Throwable $e) {
-                    $password = $conn->password;
-                }
-            }
-            $password = $password ?: null;
+            $username = $scraperConfig?->username ?: 'F31373';
+            $password = $scraperConfig?->getDecryptedPassword();
 
-            $sessionToken = $conn?->structure['session_token'] ?? null;
+            $sessionToken = $scraperConfig?->getSessionToken();
             $token = null;
             $clientCode = (int) (preg_replace('/\D/', '', (string) ($username ?: '31373')) ?: 31373);
             $drugstore = 3;

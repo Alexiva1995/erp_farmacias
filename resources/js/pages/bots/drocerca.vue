@@ -73,14 +73,12 @@ const fetchSupplierData = async () => {
       supplierDetails.value = supplier
       form.value.supplier_id = supplier.id
 
-      // Cargar conexión configurada del proveedor
-      const connRes = await axios.get(`/suppliers/${supplier.id}/connection-config`).catch(() => 
-        axios.get(`/suppliers/${supplier.id}/connection`)
-      )
-      const connData = connRes.data?.connections?.drocerca_bot || connRes.data
+      // Cargar scraper financiero del proveedor
+      const connRes = await axios.get(`/supplier-scrapers/${supplier.id}/drocerca`)
+      const connData = connRes.data?.data || connRes.data
       if (connData) {
-        form.value.type = connData.type || 'drocerca_bot'
-        form.value.host = connData.host || 'http://drocerca.proteoerp.org:8082/proteoerp/portalcli'
+        form.value.type = 'drocerca_bot'
+        form.value.host = connData.portal_url || 'http://drocerca.proteoerp.org:8082/proteoerp/portalcli'
         form.value.username = connData.username || ''
         form.value.has_password = Boolean(connData.has_password)
       }
@@ -109,20 +107,15 @@ const saveConfig = async () => {
   isSaving.value = true
   try {
     const payload = {
-      type: 'drocerca_bot',
-      host: form.value.host || 'http://drocerca.proteoerp.org:8082/proteoerp/portalcli',
+      portal_url: form.value.host || 'http://drocerca.proteoerp.org:8082/proteoerp/portalcli',
       username: form.value.username,
-      pasv: true,
-      has_header: true,
     }
 
     if (form.value.password) {
       payload.password = form.value.password
     }
 
-    await axios.post(`/suppliers/${supplierId.value}/connection-config`, payload).catch(() =>
-      axios.post(`/suppliers/${supplierId.value}/connection`, payload)
-    )
+    await axios.post(`/supplier-scrapers/${supplierId.value}/drocerca`, payload)
     toast.success('Configuración del Bot Drocerca guardada correctamente.')
     form.value.password = ''
     await fetchSupplierData()

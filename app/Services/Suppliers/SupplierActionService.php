@@ -599,6 +599,23 @@ class SupplierActionService
                 }
             }
 
+            // 10b. Scrapers financieros
+            if (\Illuminate\Support\Facades\Schema::hasTable('supplier_scrapers') && \Illuminate\Support\Facades\Schema::hasColumn('supplier_scrapers', 'supplier_id')) {
+                $existingKeys = DB::table('supplier_scrapers')
+                    ->where('supplier_id', $target->id)
+                    ->pluck('scraper_key')
+                    ->toArray();
+                if (!empty($existingKeys)) {
+                    DB::table('supplier_scrapers')
+                        ->where('supplier_id', $source->id)
+                        ->whereIn('scraper_key', $existingKeys)
+                        ->delete();
+                }
+                DB::table('supplier_scrapers')
+                    ->where('supplier_id', $source->id)
+                    ->update(['supplier_id' => $target->id]);
+            }
+
             // 11. Eliminar puntuaciones del source
             if (\Illuminate\Support\Facades\Schema::hasTable('supplier_scores') && \Illuminate\Support\Facades\Schema::hasColumn('supplier_scores', 'supplier_id')) {
                 DB::table('supplier_scores')->where('supplier_id', $source->id)->delete();

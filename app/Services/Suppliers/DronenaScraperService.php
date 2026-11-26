@@ -25,30 +25,21 @@ class DronenaScraperService implements DronenaScraperServiceInterface
         @ini_set('memory_limit', '512M');
         $supplier = null;
         if ($supplierId) {
-            $supplier = Supplier::with('connections')->find($supplierId);
+            $supplier = Supplier::find($supplierId);
         } else {
-            $supplier = Supplier::with('connections')
-                ->where('name', 'LIKE', '%NENA%')
+            $supplier = Supplier::where('name', 'LIKE', '%NENA%')
                 ->orWhere('name', 'LIKE', '%DRONENA%')
                 ->first();
             $supplierId = $supplier?->id;
         }
 
-        // Obtener conexión configurada en la BD para el bot de Dronena
-        $conn = $supplier?->connections?->where('type', 'dronena_bot')->first()
-            ?? $supplier?->connections?->first(fn($c) => str_contains(strtolower($c->host ?? ''), 'http') || str_contains(strtolower($c->host ?? ''), 'dronena.com/nuevaexperiencia'))
-            ?? $supplier?->connections?->where('type', '!=', 'ftp')->first()
-            ?? $supplier?->connections?->first();
+        // Obtener credenciales exclusivamente desde supplier_scrapers
+        $scraperConfig = $supplierId
+            ? \App\Models\SupplierScraper::where('supplier_id', $supplierId)->where('scraper_key', 'dronena')->first()
+            : null;
 
-        $user = $username;
-        $pass = $password;
-
-        if (!$user && $conn && !empty($conn->username)) {
-            $user = $conn->username;
-        }
-        if (!$pass && $conn && !empty($conn->password)) {
-            $pass = \App\Helpers\FtpCrypt::decrypt($conn->password);
-        }
+        $user = $username ?: $scraperConfig?->username;
+        $pass = $password ?: $scraperConfig?->getDecryptedPassword();
 
         // Credenciales exclusivamente desde la BD del sistema
         $user = $user ?: null;

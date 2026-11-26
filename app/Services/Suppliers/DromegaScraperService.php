@@ -187,27 +187,19 @@ class DromegaScraperService implements DromegaScraperServiceInterface
     {
         $supplier = null;
         if ($supplierId) {
-            $supplier = Supplier::with('connections')->find($supplierId);
+            $supplier = Supplier::find($supplierId);
         } else {
-            $supplier = Supplier::with('connections')
-                ->where('name', 'LIKE', '%DROMEGA%')
+            $supplier = Supplier::where('name', 'LIKE', '%DROMEGA%')
                 ->orWhere('name', 'LIKE', '%MEGA%')
                 ->orWhere('id', 1005)
                 ->first();
         }
 
-        $conn = $supplier?->connections?->first();
-        $username = $conn?->username;
-        $password = null;
-
-        if ($conn && !empty($conn->password)) {
-            try {
-                $password = FtpCrypt::decrypt($conn->password);
-            } catch (\Throwable) {
-                $password = null;
-            }
-        }
-        $password = $password ?: ($conn?->password ?? null);
+        $scraperConfig = $supplier
+            ? \App\Models\SupplierScraper::where('supplier_id', $supplier->id)->where('scraper_key', 'dromega')->first()
+            : null;
+        $username = $scraperConfig?->username;
+        $password = $scraperConfig?->getDecryptedPassword();
 
         if (empty($username) || empty($password)) {
             throw new \RuntimeException("No se encontraron credenciales configuradas en la BD para Droguería Mega.");
@@ -537,23 +529,21 @@ class DromegaScraperService implements DromegaScraperServiceInterface
     {
         $supplier = null;
         if ($supplierId) {
-            $supplier = Supplier::with('connections')->find($supplierId);
+            $supplier = Supplier::find($supplierId);
         } else {
-            $supplier = Supplier::with('connections')
-                ->where('name', 'LIKE', '%DROMEGA%')
+            $supplier = Supplier::where('name', 'LIKE', '%DROMEGA%')
                 ->orWhere('name', 'LIKE', '%MEGA%')
                 ->orWhere('id', 1005)
                 ->first();
             $supplierId = $supplier?->id ?? 1005;
         }
 
-        $conn = $supplier?->connections?->first();
+        $scraperConfig = \App\Models\SupplierScraper::where('supplier_id', $supplierId)
+            ->where('scraper_key', 'dromega')
+            ->first();
 
         // Obtener cookie de sesión
-        $activeCookie = $cookie;
-        if (!$activeCookie && $conn && !empty($conn->path) && str_contains($conn->path, 'wordpress_logged_in_')) {
-            $activeCookie = $conn->path;
-        }
+        $activeCookie = $cookie ?: ($scraperConfig?->auth_payload['cookie'] ?? null);
 
         $extractedInvoices = $this->fetchInvoices($activeCookie, $username, $password, $supplierId);
 
