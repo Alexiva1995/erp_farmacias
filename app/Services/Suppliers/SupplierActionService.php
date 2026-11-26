@@ -585,6 +585,107 @@ class SupplierActionService
     }
 
     /**
+     * Propaga una fusión de proveedores (target <- source) a todas las bases de datos de tenants.
+     * Permite tanto propagar fusiones nuevas del Master como reparar IDs huérfanos ya eliminados en Master.
+     *
+     * @param int $targetSupplierId
+     * @param int $sourceSupplierId
+     * @param array<string, mixed>|null $targetMasterAttributes
+     * @return array{tenants_checked: int, tenants_merged: int, errors: array<int, string>}
+     */
+    public function propagateMergeToTenants(
+        int $targetSupplierId,
+        int $sourceSupplierId,
+        ?array $targetMasterAttributes = null
+    ): array {
+        $centralConnection = config('tenancy.database.central_connection', 'mysql');
+        if (!Schema::connection($centralConnection)->hasTable('tenants')) {
+            return ['tenants_checked' => 0, 'tenants_merged' => 0, 'errors' => []];
+        }
+
+        $tenants = \App\Models\Tenant::all();
+        $tenantsChecked = 0;
+        $tenantsMerged = 0;
+        $errors = [];
+
+        foreach ($tenants as $tenant) {
+            $tenantsChecked++;
+            try {
+                $mergedInTenant = false;
+
+                $tenant->run(function () use ($targetSupplierId, $sourceSupplierId, $targetMasterAttributes, &$mergedInTenant) {
+                    if (!Schema::hasTable('suppliers')) {
+                        return;
+                    }
+
+                    $source = Supplier::withTrashed()->find($sourceSupplierId);
+                    if (!$source) {
+                        return;
+                    }
+
+                    if ($source->trashed()) {
+                        $source->restore();
+                    }
+
+                    $target = Supplier::withTrashed()->find($targetSupplierId);
+                    if ($target && $target->trashed()) {
+                        $target->restore();
+                    }
+
+                    // Si el tenant solo tenía el proveedor origen (ej. 1043) y aún no tenía el destino (ej. 1032),
+                    // creamos primero el registro destino con la ficha del Master para poder ejecutar la fusión.
+                    if (!$target) {
+                        $tenantCols = array_flip(Schema::getColumnListing('suppliers'));
+                        $baseData = $targetMasterAttributes ?: [
+                            'name' => $source->name,
+                            'social_reason' => $source->social_reason,
+                            'rif' => $source->rif,
+                            'type' => $source->type instanceof \App\Enums\SupplierType ? $source->type->value : ($source->type ?? 'drogueria'),
+                        ];
+
+                        $insertData = array_intersect_key($baseData, $tenantCols);
+                        $insertData['id'] = $targetSupplierId;
+                        $insertData['is_active'] = true;
+                        $insertData['dispatch_days'] = $insertData['dispatch_days'] ?? json_encode([]);
+                        $insertData['order_days'] = $insertData['order_days'] ?? json_encode([]);
+                        if (is_array($insertData['dispatch_days'])) {
+                            $insertData['dispatch_days'] = json_encode($insertData['dispatch_days']);
+                        }
+                        if (is_array($insertData['order_days'])) {
+                            $insertData['order_days'] = json_encode($insertData['order_days']);
+                        }
+                        if (isset($insertData['business_types']) && is_array($insertData['business_types'])) {
+                            $insertData['business_types'] = json_encode($insertData['business_types']);
+                        }
+                        $insertData['created_at'] = now();
+                        $insertData['updated_at'] = now();
+                        unset($insertData['deleted_at']);
+
+                        DB::table('suppliers')->insert($insertData);
+                    }
+
+                    $this->mergeSuppliers($targetSupplierId, $sourceSupplierId);
+                    $mergedInTenant = true;
+                });
+
+                if ($mergedInTenant) {
+                    $tenantsMerged++;
+                }
+            } catch (\Throwable $e) {
+                $msg = "Tenant {$tenant->id}: " . $e->getMessage();
+                $errors[] = $msg;
+                \Illuminate\Support\Facades\Log::warning("Error propagando fusión de proveedor ({$sourceSupplierId} -> {$targetSupplierId}) en {$msg}");
+            }
+        }
+
+        return [
+            'tenants_checked' => $tenantsChecked,
+            'tenants_merged' => $tenantsMerged,
+            'errors' => $errors,
+        ];
+    }
+
+    /**
      * Versión extendida con recálculo automático tras fusionar proveedores.
      */
     private function recalculateMergedScore(Supplier $target): void

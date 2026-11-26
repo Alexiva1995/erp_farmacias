@@ -4,6 +4,7 @@ import SupplierConnectionDialog from "@/components/dialogs/SupplierConnectionDia
 import SupplierConnectionHistoryDialog from "@/components/dialogs/SupplierConnectionHistoryDialog.vue";
 import SupplierEditDialog from "@/components/dialogs/SupplierEditDialog.vue";
 import SupplierMergeDialog from "@/components/dialogs/SupplierMergeDialog.vue";
+import SupplierPropagateMergeDialog from "@/components/dialogs/SupplierPropagateMergeDialog.vue";
 import MasterSupplierDirectoryDialog from "@/components/dialogs/MasterSupplierDirectoryDialog.vue";
 import ShowSupplierProductsDialog from "@/components/dialogs/ShowSupplierProductsDialog.vue";
 import SupplierFilters from "@/components/SupplierFilters.vue";
@@ -67,6 +68,7 @@ const productsDialogSupplier = ref({});
 
 // Estado para fusión y directorio maestro
 const isMergeDialogVisible = ref(false);
+const isPropagateMergeDialogVisible = ref(false);
 const isMasterDirectoryDialogVisible = ref(false);
 const mergeSupplierTarget = ref({});
 
@@ -627,6 +629,7 @@ defineExpose({ fetchSuppliers, fetchStats });
         :is-syncing-master="isSyncingAll"
         @open-master-catalog="isMasterDirectoryDialogVisible = true"
         @sync-tenants-to-master="handleSyncFromAllTenants"
+        @open-propagate-merge="isPropagateMergeDialogVisible = true"
       />
 
       <SupplierStatsCards
@@ -717,6 +720,13 @@ defineExpose({ fetchSuppliers, fetchStats });
         v-if="isMasterMode"
         v-model="isMergeDialogVisible"
         :supplier="mergeSupplierTarget"
+        @merged="handleSupplierMerged"
+      />
+
+      <!-- Diálogo para Reparar Fusión de ID Huérfano en Tenants (Exclusivo Master) -->
+      <SupplierPropagateMergeDialog
+        v-if="isMasterMode"
+        v-model="isPropagateMergeDialogVisible"
         @merged="handleSupplierMerged"
       />
     </div>

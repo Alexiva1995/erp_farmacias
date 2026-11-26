@@ -79,4 +79,27 @@ class SupplierManagementTest extends TestCase
             $resource['logo_url']
         );
     }
+
+    public function test_propagate_merge_requires_master_context_and_validates_target(): void
+    {
+        $target = \App\Models\Supplier::create([
+            'id' => 1032,
+            'name' => 'INTERCONTINENTAL',
+            'rif' => 'J-50159019-2',
+            'dispatch_days' => [],
+            'order_days' => [],
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/api/suppliers/propagate-merge', [
+            'target_supplier_id' => $target->id,
+            'source_supplier_id' => 1043,
+        ])->assertStatus(403);
+
+        $this->postJson('/api/suppliers/propagate-merge?is_master=1', [
+            'target_supplier_id' => $target->id,
+            'source_supplier_id' => 1043,
+        ])->assertOk()
+            ->assertJsonStructure(['message', 'data' => ['tenants_checked', 'tenants_merged', 'errors']]);
+    }
 }

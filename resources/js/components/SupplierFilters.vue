@@ -28,6 +28,7 @@ const emit = defineEmits([
   "add-supplier",
   "open-master-catalog",
   "sync-tenants-to-master",
+  "open-propagate-merge",
 ]);
 
 const sortOptions = [
@@ -131,6 +132,19 @@ const hasAdvancedFilters = computed(
       >
         <VIcon icon="tabler-refresh" />
         <VTooltip activator="parent" location="top">Sincronizar Todos los Tenants al Master</VTooltip>
+      </VBtn>
+
+      <!-- Botón para reparar fusiones pendientes en tenants (visible en modo Master) -->
+      <VBtn
+        icon
+        color="warning"
+        variant="tonal"
+        size="38"
+        class="rounded-circle shadow-sm"
+        @click="emit('open-propagate-merge')"
+      >
+        <VIcon icon="tabler-arrows-join-2" />
+        <VTooltip activator="parent" location="top">Reparar Fusión de ID en Tenants</VTooltip>
       </VBtn>
     </template>
 

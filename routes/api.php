@@ -919,6 +919,7 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
         Route::post('/{supplier}/mafarta-token', [SupplierController::class, 'testMafartaSessionToken']);
         Route::get('/{supplier}/connection-history', [SupplierController::class, 'getConnectionHistory']);
         Route::post('/merge', [SupplierController::class, 'merge']);
+        Route::post('/propagate-merge', [SupplierController::class, 'propagateMergeToTenants']);
     });
 
     Route::prefix("suppliers/purchase-orders")->group(function () {

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
 use App\Http\Requests\Suppliers\MergeSuppliersRequest;
+use App\Http\Requests\Suppliers\PropagateSupplierMergeRequest;
 use App\Jobs\UpdateAllSuppliersJob;
 use App\Models\ProductSupplier;
 use App\Services\Suppliers\SupplierQueryService;
@@ -1308,15 +1309,31 @@ class SupplierController extends Controller
     {
         try {
             $validated = $request->validated();
-            
-            $mergedSupplier = $this->supplierActionService->mergeSuppliers(
-                (int) $validated['target_supplier_id'],
-                (int) $validated['source_supplier_id']
-            );
+            $targetId = (int) $validated['target_supplier_id'];
+            $sourceId = (int) $validated['source_supplier_id'];
+            $isMasterContext = $request->header('X-Master-Catalog-Context') === '1' || $request->boolean('is_master');
+
+            $mergedSupplier = $this->supplierActionService->mergeSuppliers($targetId, $sourceId);
+
+            $propagation = null;
+            $message = 'Proveedores fusionados exitosamente.';
+            if ($isMasterContext) {
+                $propagation = $this->supplierActionService->propagateMergeToTenants(
+                    $targetId,
+                    $sourceId,
+                    $mergedSupplier->getAttributes()
+                );
+                $message = sprintf(
+                    'Proveedores fusionados en Master y propagados en %d de %d tenant(s).',
+                    $propagation['tenants_merged'],
+                    $propagation['tenants_checked']
+                );
+            }
 
             return response()->json([
-                'message' => 'Proveedores fusionados exitosamente.',
+                'message' => $message,
                 'supplier' => new SupplierResource($mergedSupplier),
+                'propagation' => $propagation,
             ]);
         } catch (\Throwable $e) {
             \Log::error('Error al fusionar proveedores: ' . $e->getMessage(), [
@@ -1327,6 +1344,48 @@ class SupplierController extends Controller
             return response()->json([
                 'message' => 'Error al fusionar los proveedores: ' . $e->getMessage(),
                 'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    /**
+     * Propaga retroactivamente a todos los tenants una fusión de proveedor ya realizada en el Master.
+     */
+    public function propagateMergeToTenants(PropagateSupplierMergeRequest $request)
+    {
+        $isMasterContext = $request->header('X-Master-Catalog-Context') === '1' || $request->boolean('is_master');
+        if (!$isMasterContext) {
+            return response()->json([
+                'message' => 'Esta acción solo está disponible en el contexto del Catálogo Master.',
+            ], 403);
+        }
+
+        try {
+            $validated = $request->validated();
+            $target = Supplier::findOrFail((int) $validated['target_supplier_id']);
+
+            $result = $this->supplierActionService->propagateMergeToTenants(
+                (int) $target->id,
+                (int) $validated['source_supplier_id'],
+                $target->getAttributes()
+            );
+
+            return response()->json([
+                'message' => sprintf(
+                    'Fusión reparada en %d de %d tenant(s).',
+                    $result['tenants_merged'],
+                    $result['tenants_checked']
+                ),
+                'data' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Error al propagar fusión de proveedores a tenants: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->all(),
+            ]);
+
+            return response()->json([
+                'message' => 'Error al reparar fusión en tenants: ' . $e->getMessage(),
             ], 500);
         }
     }
