@@ -1991,20 +1991,28 @@ class SupplierQueryService
                     ->groupBy('supplier_id');
             }
 
+            $assignAttr = static function (object $target, string $key, mixed $value): void {
+                if (method_exists($target, 'setAttribute')) {
+                    $target->setAttribute($key, $value);
+                } else {
+                    $target->{$key} = $value;
+                }
+            };
+
             foreach ($items as $sup) {
                 $supType = $sup->type instanceof \App\Enums\SupplierType
                     ? $sup->type->value
                     : (string) ($sup->type ?? 'drogueria');
 
                 if ($supType === 'externo') {
-                    $sup->setAttribute('master_locked_fields', []);
+                    $assignAttr($sup, 'master_locked_fields', []);
                     continue;
                 }
 
                 $k = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($sup->rif ?? ''))));
                 $m = ($k !== '' && isset($byCleanRif[$k])) ? $byCleanRif[$k] : $byId->get($sup->id);
                 if (!$m) {
-                    $sup->setAttribute('master_locked_fields', []);
+                    $assignAttr($sup, 'master_locked_fields', []);
                     continue;
                 }
 
@@ -2015,10 +2023,10 @@ class SupplierQueryService
                         $lockedFields[] = $field;
                     }
                 }
-                $sup->setAttribute('master_locked_fields', $lockedFields);
+                $assignAttr($sup, 'master_locked_fields', $lockedFields);
 
                 if ($hasLogoCol && !empty($m->logo_url)) {
-                    $sup->setAttribute('master_logo_url', $m->logo_url);
+                    $assignAttr($sup, 'master_logo_url', $m->logo_url);
                 }
 
                 $allowed = $connsByMasterId->get($m->id, collect())
@@ -2030,7 +2038,7 @@ class SupplierQueryService
                     ->all();
 
                 if (!empty($allowed)) {
-                    $sup->setAttribute('master_allowed_connection_types', $allowed);
+                    $assignAttr($sup, 'master_allowed_connection_types', $allowed);
                 }
             }
         } catch (\Throwable $e) {
