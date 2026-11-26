@@ -14,11 +14,13 @@ class SupplierConnectionResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $logoUrl = \App\Models\Supplier::resolveLogoUrl($this->logo_url ?? $this->master_logo_url ?? null);
+
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'logo_url' => $this->logo_url ?? $this->master_logo_url ?? null,
-            'photo_url' => $this->logo_url ?? $this->master_logo_url ?? null,
+            'logo_url' => $logoUrl,
+            'photo_url' => $logoUrl,
             'public_token' => $this->public_token,
             'last_connection' => $this->last_connection,
             'type' => $this->type,

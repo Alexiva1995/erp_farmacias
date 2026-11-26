@@ -28,7 +28,7 @@ class SupplierResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'logo_url' => $this->logo_url ?? $this->master_logo_url ?? null,
+            'logo_url' => \App\Models\Supplier::resolveLogoUrl($this->logo_url ?? $this->master_logo_url ?? null),
             'sales_phone' => $this->sales_phone,
             'collections_phone' => $this->collections_phone,
             'payment_email' => $this->payment_email,

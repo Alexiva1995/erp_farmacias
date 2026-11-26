@@ -18,6 +18,7 @@ return [
     |--------------------------------------------------------------------------
     */
     'master_url' => rtrim(env('MASTER_API_URL', 'https://farmaciabs.com/api/v1/master-catalog'), '/'),
+    'master_asset_url' => rtrim((string) env('MASTER_ASSET_URL', ''), '/'),
     'master_key' => env('MASTER_API_KEY', ''),
 
     /*

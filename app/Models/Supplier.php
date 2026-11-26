@@ -254,4 +254,41 @@ class Supplier extends Model
     {
         return $this->hasOne(SupplierPaymentMethod::class);
     }
+
+    /**
+     * Resuelve la URL pública del logotipo del proveedor.
+     * Si el archivo no existe localmente (p. ej. en tenants alojados en otra cuenta cPanel),
+     * antepone el origen del servidor Master para evitar enlaces rotos.
+     */
+    public static function resolveLogoUrl(?string $logoUrl): ?string
+    {
+        $logoUrl = trim((string) $logoUrl);
+        if ($logoUrl === '') {
+            return null;
+        }
+
+        if (
+            str_starts_with($logoUrl, 'http://')
+            || str_starts_with($logoUrl, 'https://')
+            || str_starts_with($logoUrl, 'data:')
+        ) {
+            return $logoUrl;
+        }
+
+        $normalized = '/' . ltrim($logoUrl, '/');
+        if (is_file(public_path(ltrim($normalized, '/')))) {
+            return $normalized;
+        }
+
+        $baseUrl = rtrim((string) config('catalog.master_asset_url', ''), '/');
+        if ($baseUrl === '') {
+            $parsed = parse_url((string) config('catalog.master_url', ''));
+            if (!empty($parsed['scheme']) && !empty($parsed['host'])) {
+                $port = !empty($parsed['port']) ? ':' . $parsed['port'] : '';
+                $baseUrl = $parsed['scheme'] . '://' . $parsed['host'] . $port;
+            }
+        }
+
+        return $baseUrl !== '' ? $baseUrl . $normalized : $normalized;
+    }
 }

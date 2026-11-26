@@ -45,4 +45,38 @@ class SupplierManagementTest extends TestCase
         $this->getJson('/api/suppliers/disabled')
             ->assertOk();
     }
+
+    public function test_resolves_relative_supplier_logo_url_to_master_origin_when_missing_locally(): void
+    {
+        config()->set('catalog.master_asset_url', '');
+        config()->set('catalog.master_url', 'https://farmaciabs.com/api/v1/master-catalog');
+
+        $this->assertNull(\App\Models\Supplier::resolveLogoUrl(null));
+        $this->assertNull(\App\Models\Supplier::resolveLogoUrl('   '));
+        $this->assertSame(
+            'https://cdn.example.com/logo.png',
+            \App\Models\Supplier::resolveLogoUrl('https://cdn.example.com/logo.png')
+        );
+        $this->assertSame(
+            'https://farmaciabs.com/images/suppliers/non_existent_logo_test.png',
+            \App\Models\Supplier::resolveLogoUrl('/images/suppliers/non_existent_logo_test.png')
+        );
+
+        config()->set('catalog.master_asset_url', 'https://master-assets.tovaerp.com');
+        $this->assertSame(
+            'https://master-assets.tovaerp.com/images/suppliers/non_existent_logo_test.png',
+            \App\Models\Supplier::resolveLogoUrl('images/suppliers/non_existent_logo_test.png')
+        );
+
+        $supplier = new \App\Models\Supplier([
+            'id' => 999,
+            'name' => 'Drogueria Test',
+            'logo_url' => '/images/suppliers/non_existent_logo_test.png',
+        ]);
+        $resource = (new \App\Http\Resources\SupplierResource($supplier))->resolve();
+        $this->assertSame(
+            'https://master-assets.tovaerp.com/images/suppliers/non_existent_logo_test.png',
+            $resource['logo_url']
+        );
+    }
 }

@@ -19,7 +19,7 @@ class MasterSupplierCatalogResource extends JsonResource
         return [
             'master_id' => $this['master_id'] ?? null,
             'name' => $this['name'] ?? '',
-            'logo_url' => $this['logo_url'] ?? null,
+            'logo_url' => \App\Models\Supplier::resolveLogoUrl($this['logo_url'] ?? null),
             'social_reason' => $this['social_reason'] ?? '',
             'rif' => $this['rif'] ?? '',
             'address' => $this['address'] ?? null,
