@@ -1,24 +1,18 @@
 <script setup>
 import ActivateSupplierDialog from "@/components/dialogs/ActivateSupplierDialog.vue";
 import { toast } from "@/plugins/sweetalert";
+import { useBrandingStore } from "@/stores/useBrandingStore";
 import { computed, reactive, ref } from "vue";
 import { useDisplay } from "vuetify";
+
+const brandingStore = useBrandingStore();
+const showProductPhotos = computed(() => Boolean(brandingStore.settings?.show_product_photos));
 
 const previewPhoto = ref({
   show: false,
   url: "",
   name: "",
 });
-
-const openPhotoPreview = (item) => {
-  const imageUrl = item?.logo_url || item?.photo_url;
-  if (!imageUrl) return;
-  previewPhoto.value = {
-    show: true,
-    url: imageUrl,
-    name: item.name || "Proveedor",
-  };
-};
 
 const getInitials = (name) => {
   if (!name) return "PR";
@@ -27,6 +21,16 @@ const getInitials = (name) => {
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   }
   return String(name).substring(0, 2).toUpperCase();
+};
+
+const openPhotoPreview = (item) => {
+  const url = item?.logo_url || item?.photo_url;
+  if (!url) return;
+  previewPhoto.value = {
+    show: true,
+    url,
+    name: item.name || "Proveedor",
+  };
 };
 
 const props = defineProps({
@@ -225,25 +229,22 @@ const headers = [
               class="d-flex align-center gap-x-3 py-2"
               :class="{ 'opacity-60': item.is_active === false }"
             >
-              <VAvatar
+              <v-avatar
                 size="48"
-                :color="item.logo_url || item.photo_url ? 'white' : 'secondary'"
-                :variant="item.logo_url || item.photo_url ? 'flat' : 'tonal'"
                 rounded="lg"
-                :class="[
-                  'flex-shrink-0',
-                  item.logo_url || item.photo_url ? 'border bg-white pa-1 cursor-pointer' : '',
-                ]"
+                :color="(item.logo_url || item.photo_url) ? 'white' : 'secondary'"
+                :variant="(item.logo_url || item.photo_url) ? 'flat' : 'tonal'"
+                :class="['flex-shrink-0', (item.logo_url || item.photo_url) ? 'border bg-white pa-1 cursor-pointer' : '']"
                 @click.stop="openPhotoPreview(item)"
               >
-                <VImg
+                <v-img
                   v-if="item.logo_url || item.photo_url"
                   :src="item.logo_url || item.photo_url"
                   :alt="item.name"
                   :cover="false"
                 />
                 <span v-else class="text-xs font-weight-bold">{{ getInitials(item.name) }}</span>
-              </VAvatar>
+              </v-avatar>
               <div class="d-flex flex-column">
                 <div class="d-flex align-center gap-2">
                 <span
@@ -438,40 +439,41 @@ const headers = [
             <VCardText class="pa-4">
               <div class="d-flex justify-space-between align-start mb-3">
                 <div class="d-flex align-center gap-3">
-                  <VAvatar
-                    size="40"
-                    :color="item.logo_url || item.photo_url ? 'white' : 'secondary'"
-                    :variant="item.logo_url || item.photo_url ? 'flat' : 'tonal'"
+                  <v-avatar
+                    size="38"
                     rounded="lg"
-                    :class="['flex-shrink-0', item.logo_url || item.photo_url ? 'border bg-white pa-1' : '']"
+                    :color="(item.logo_url || item.photo_url) ? 'white' : 'primary'"
+                    :variant="(item.logo_url || item.photo_url) ? 'flat' : 'tonal'"
+                    :class="['flex-shrink-0', (item.logo_url || item.photo_url) ? 'border bg-white pa-1 cursor-pointer' : '']"
+                    @click.stop="openPhotoPreview(item)"
                   >
-                    <VImg
+                    <v-img
                       v-if="item.logo_url || item.photo_url"
                       :src="item.logo_url || item.photo_url"
                       :alt="item.name"
                       :cover="false"
                     />
                     <span v-else class="text-xs font-weight-bold">{{ getInitials(item.name) }}</span>
-                  </VAvatar>
+                  </v-avatar>
                   <div class="d-flex flex-column">
                     <span class="text-xs font-weight-bold text-disabled mb-1">#{{ item.id }}</span>
-                    <div class="d-flex align-center gap-2">
-                      <span
-                        class="text-body-1 font-weight-black text-uppercase text-wrap"
-                        :class="item.is_active === false ? 'text-disabled text-decoration-line-through' : 'text-high-emphasis'"
-                      >
-                        {{ item.name }}
-                      </span>
-                      <VChip
-                        v-if="item.is_active === false"
-                        size="x-small"
-                        color="error"
-                        variant="tonal"
-                        density="compact"
-                      >
-                        Desactivado
-                      </VChip>
-                    </div>
+                  <div class="d-flex align-center gap-2">
+                    <span
+                      class="text-body-1 font-weight-black text-uppercase text-wrap"
+                      :class="item.is_active === false ? 'text-disabled text-decoration-line-through' : 'text-high-emphasis'"
+                    >
+                      {{ item.name }}
+                    </span>
+                    <VChip
+                      v-if="item.is_active === false"
+                      size="x-small"
+                      color="error"
+                      variant="tonal"
+                      density="compact"
+                    >
+                      Desactivado
+                    </VChip>
+                  </div>
                   </div>
                 </div>
                 <VChip

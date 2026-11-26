@@ -919,73 +919,9 @@ class SupplierQueryService
             ->orderBy("suppliers.name", "asc")
             ->paginate($perPage, ["*"], "page", $page);
 
-        $this->attachMasterLogosToItems($paginated->getCollection());
+        $this->attachMasterMetadata($paginated->getCollection());
 
         return $paginated;
-    }
-
-    /**
-     * Adjunta `master_logo_url` en lote desde `master_catalog.suppliers` para listados stdClass/Model.
-     *
-     * @param iterable<int, object> $items
-     */
-    private function attachMasterLogosToItems(iterable $items): void
-    {
-        $collection = collect($items);
-        if ($collection->isEmpty()) {
-            return;
-        }
-
-        try {
-            $masterConn = 'master_catalog';
-            if (
-                !\Illuminate\Support\Facades\Schema::connection($masterConn)->hasTable('suppliers')
-                || !\Illuminate\Support\Facades\Schema::connection($masterConn)->hasColumn('suppliers', 'logo_url')
-            ) {
-                return;
-            }
-
-            $ids = $collection->pluck('id')->filter()->unique()->values()->all();
-            $cleanRifs = $collection->map(function ($sup) {
-                return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($sup->rif ?? ''))));
-            })->filter()->unique()->values()->all();
-
-            $masterSups = DB::connection($masterConn)->table('suppliers')
-                ->select(['id', 'rif', 'logo_url'])
-                ->whereNotNull('logo_url')
-                ->where(function ($q) use ($ids, $cleanRifs) {
-                    if (!empty($ids)) {
-                        $q->whereIn('id', $ids);
-                    }
-                    if (!empty($cleanRifs)) {
-                        $placeholders = implode(',', array_fill(0, count($cleanRifs), '?'));
-                        $q->orWhereRaw(
-                            "UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) IN ({$placeholders})",
-                            $cleanRifs
-                        );
-                    }
-                })
-                ->get();
-
-            $byId = $masterSups->keyBy('id');
-            $byCleanRif = [];
-            foreach ($masterSups as $m) {
-                $k = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($m->rif ?? ''))));
-                if ($k !== '') {
-                    $byCleanRif[$k] = $m;
-                }
-            }
-
-            foreach ($collection as $sup) {
-                $k = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($sup->rif ?? ''))));
-                $m = ($k !== '' && isset($byCleanRif[$k])) ? $byCleanRif[$k] : $byId->get($sup->id);
-                if ($m && !empty($m->logo_url)) {
-                    $sup->master_logo_url = $m->logo_url;
-                }
-            }
-        } catch (\Throwable $e) {
-            Log::debug('No se pudo adjuntar logos del Master en conexiones de proveedores: ' . $e->getMessage());
-        }
     }
 
     public function getSupplierProducts(Supplier $supplier, Request $request)
@@ -1179,7 +1115,7 @@ class SupplierQueryService
             "product_suppliers.product_id as product_id",
             "product_suppliers.cod_supplier as cod_supplier",
             "product_suppliers.barcode_match as barcode_match",
-            DB::raw("COALESCE(NULLIF(product_suppliers.barcode_match, ''), products.barcode) as barcode"),
+            DB::raw("COALESCE(NULLIF(products.barcode, ''), product_suppliers.barcode_match) as barcode"),
             "product_suppliers.name as name",
             DB::raw("COALESCE(NULLIF(product_suppliers.laboratory, ''), laboratories.name, 'N/A') as laboratory_name"),
             "suppliers.name as supplier_name",
@@ -1350,6 +1286,8 @@ class SupplierQueryService
         if (!empty($missingBarcodes)) {
             try {
                 if (\Illuminate\Support\Facades\Schema::connection('master_catalog')->hasTable('products')) {
+                    $masterBaseUrl = Supplier::resolveMasterAssetBaseUrl() ?: rtrim((string) config('app.url'), '/');
+
                     $masterPhotos = \Illuminate\Support\Facades\DB::connection('master_catalog')
                         ->table('products')
                         ->select(['barcode', 'photo_url'])
@@ -1357,8 +1295,17 @@ class SupplierQueryService
                         ->whereNotNull('photo_url')
                         ->where('photo_url', '!=', '')
                         ->get()
-                        ->map(function ($p) {
-                            $p->photo_url = Product::resolvePhotoUrl((string) $p->photo_url);
+                        ->map(function ($p) use ($masterBaseUrl) {
+                            $url = trim((string) $p->photo_url);
+                            // Evitar tenant_asset() para fotos del catálogo master: resolver contra storage central
+                            if (!str_starts_with($url, 'http://') && !str_starts_with($url, 'https://')) {
+                                $cleanPath = ltrim($url, '/');
+                                if (str_starts_with($cleanPath, 'storage/')) {
+                                    $cleanPath = substr($cleanPath, 8);
+                                }
+                                $url = $masterBaseUrl . '/storage/' . $cleanPath;
+                            }
+                            $p->photo_url = $url;
 
                             return $p;
                         })

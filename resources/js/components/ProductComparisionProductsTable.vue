@@ -473,7 +473,6 @@ const headers = computed(() => [
               style="min-inline-size: 175px; white-space: normal !important;"
             >
               <v-avatar
-                v-if="showProductPhotos"
                 size="52"
                 rounded="sm"
                 color="white"

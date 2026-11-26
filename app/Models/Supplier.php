@@ -280,15 +280,27 @@ class Supplier extends Model
             return $normalized;
         }
 
-        $baseUrl = rtrim((string) config('catalog.master_asset_url', ''), '/');
-        if ($baseUrl === '') {
-            $parsed = parse_url((string) config('catalog.master_url', ''));
-            if (!empty($parsed['scheme']) && !empty($parsed['host'])) {
-                $port = !empty($parsed['port']) ? ':' . $parsed['port'] : '';
-                $baseUrl = $parsed['scheme'] . '://' . $parsed['host'] . $port;
-            }
-        }
+        $baseUrl = self::resolveMasterAssetBaseUrl();
 
         return $baseUrl !== '' ? $baseUrl . $normalized : $normalized;
+    }
+
+    /**
+     * Obtiene el origen (esquema + host + puerto) del servidor Master para resolver assets compartidos.
+     */
+    public static function resolveMasterAssetBaseUrl(): string
+    {
+        $baseUrl = rtrim((string) config('catalog.master_asset_url', ''), '/');
+        if ($baseUrl !== '') {
+            return $baseUrl;
+        }
+
+        $parsed = parse_url((string) config('catalog.master_url', ''));
+        if (!empty($parsed['scheme']) && !empty($parsed['host'])) {
+            $port = !empty($parsed['port']) ? ':' . $parsed['port'] : '';
+            return $parsed['scheme'] . '://' . $parsed['host'] . $port;
+        }
+
+        return '';
     }
 }

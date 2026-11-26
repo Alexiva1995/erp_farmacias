@@ -573,9 +573,12 @@ class SupplierActionService
                 DB::table('supplier_ratings')->where('supplier_id', $source->id)->delete();
             }
 
-            // 12. Si el proveedor origen estaba activo y el destino desactivado, conservar el destino activo
-            if (($source->is_active ?? true) !== false && ($target->is_active ?? true) === false) {
-                $target->update(['is_active' => true]);
+            // 12. Asegurar que el proveedor destino quede activo tras la fusión
+            if (!$target->is_active) {
+                DB::table('suppliers')->where('id', $target->id)->update([
+                    'is_active' => true,
+                    'updated_at' => now(),
+                ]);
             }
 
             // 13. Eliminar proveedor de origen de forma definitiva
