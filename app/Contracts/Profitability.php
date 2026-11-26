@@ -20,4 +20,10 @@ interface Profitability
     public function editProduct(array $data): Model;
 
     public function edit(array $data): Model;
+
+    public function getCategoriesWithProfitability(): Collection;
+
+    public function upsertCategoryProfitability(array $data): Model;
+
+    public function deleteCategoryProfitability(int $categoryId): void;
 }

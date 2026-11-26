@@ -178,9 +178,9 @@ class ProductObserver
             $newUnitCost = $incomingUnitCost; // Safe fallback
         }
 
-        // Calcular precio de venta usando rentabilidad
-        $profitabilityPercentage = self::getProfitabilityPercentage($product);
-        $newSalePrice = $newUnitCost * (1 + ($profitabilityPercentage / 100));
+        // Calcular precio de venta usando el motor unificado de rentabilidad (simple/compuesto + categoría + bloqueo)
+        $newSalePrice = app(\App\Services\ProfitabilityServices::class)
+            ->calculateSalePriceForProduct($product, $newUnitCost);
 
         Product::withoutEvents(function () use ($product, $stockAfter, $newUnitCost, $newSalePrice) {
             $product->update([

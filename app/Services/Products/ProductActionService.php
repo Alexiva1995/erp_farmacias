@@ -1038,40 +1038,8 @@ class ProductActionService
             return round($unitCost * 1.30, 2);
         }
 
-        $generalSettings = DB::table('general_settings')->first();
-        $useCompound = $generalSettings && isset($generalSettings->profitability_calculation_type) && $generalSettings->profitability_calculation_type === 'compound';
-
-        $roundUsdUp = $generalSettings && !empty($generalSettings->round_usd_up);
-        if ($useCompound) {
-            $settings = ProfitabilitySetting::orderBy('id', 'desc')->first();
-            $productProfitability = $product ? \App\Models\ProductProfitability::where('product_id', $product->id)->first() : null;
-
-            $shippingCost = $productProfitability && $productProfitability->shipping_cost !== null ? (float)$productProfitability->shipping_cost : ($settings ? (float)$settings->shipping_cost : 0.0);
-            $packagingCost = $productProfitability && $productProfitability->packaging_cost !== null ? (float)$productProfitability->packaging_cost : ($settings ? (float)$settings->packaging_cost : 0.0);
-            $expenseMargin = $productProfitability && $productProfitability->expense_margin !== null ? (float)$productProfitability->expense_margin : ($settings ? (float)$settings->expense_margin : 0.0);
-            $profitMargin = $productProfitability && $productProfitability->profit_margin !== null ? (float)$productProfitability->profit_margin : ($settings ? (float)$settings->profit_margin : 0.0);
-            $taxUsa = $productProfitability && $productProfitability->tax_usa !== null ? (float)$productProfitability->tax_usa : ($settings ? (float)$settings->tax_usa : 0.0);
-
-            $costWithTax = $unitCost * (1.0 + ($taxUsa / 100.0));
-            $fixedExpenseAmount = $costWithTax * ($expenseMargin / 100.0);
-            $profitDenominator = 1.0 - ($profitMargin / 100.0);
-            if ($profitDenominator <= 0.0) {
-                $profitDenominator = 0.01;
-            }
-
-            $calculatedPrice = ($costWithTax + $shippingCost + $packagingCost + $fixedExpenseAmount) / $profitDenominator;
-            return $roundUsdUp ? (float) ceil(round($calculatedPrice, 4)) : round($calculatedPrice, 2);
-        } else {
-            if ($product && $product->profitability && $product->profitability->is_locked) {
-                $percentage = (float) $product->profitability->profitability_percentage;
-            } else {
-                $setting = ProfitabilitySetting::orderBy('id', 'desc')->first();
-                $percentage = $setting ? (float) $setting->default_profitability_percentage : 30.0;
-            }
-
-            $calculatedPrice = $unitCost * (1 + ($percentage / 100));
-            return $roundUsdUp ? (float) ceil(round($calculatedPrice, 4)) : round($calculatedPrice, 2);
-        }
+        return app(\App\Services\ProfitabilityServices::class)
+            ->calculateSalePriceForProduct($product ?? new Product(), $unitCost);
     }
 }
 

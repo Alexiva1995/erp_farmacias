@@ -94,9 +94,29 @@ const formatPrice = (price) => {
 };
 
 const getProfitabilityPercentage = (item) => {
+  if (item.effective_profitability?.profitability_percentage !== undefined) {
+    return Number(item.effective_profitability.profitability_percentage);
+  }
   return item.profitability?.is_locked == "1"
     ? parseInt(item.profitability.profitability_percentage)
     : parseInt(props.profitability);
+};
+
+const getEffectiveField = (item, field, fallback = 0) => {
+  if (item.effective_profitability?.[field] !== undefined) {
+    return Number(item.effective_profitability[field]);
+  }
+  if (item.profitability?.is_locked == "1" && item.profitability?.[field] !== null && item.profitability?.[field] !== undefined) {
+    return Number(item.profitability[field]);
+  }
+  return Number(props.settings?.[field] ?? fallback);
+};
+
+const getSourceChip = (item) => {
+  const source = item.effective_profitability?.source || (item.profitability?.is_locked == "1" ? "locked" : "global");
+  if (source === "locked") return { label: "Bloqueado", color: "error" };
+  if (source === "category") return { label: "Categoría", color: "info" };
+  return { label: "Global", color: "primary" };
 };
 </script>
 
@@ -209,38 +229,49 @@ const getProfitabilityPercentage = (item) => {
 
         <template #item.tax_usa="{ item }">
           <span class="text-sm font-weight-medium">
-            {{ item.profitability?.is_locked == '1' && item.profitability?.tax_usa !== null ? item.profitability.tax_usa : props.settings?.tax_usa || 0 }}%
+            {{ getEffectiveField(item, "tax_usa") }}%
           </span>
         </template>
 
         <template #item.shipping_cost="{ item }">
-          <span class="text-sm font-weight-medium">
-            {{ formatPrice(item.profitability?.is_locked == '1' && item.profitability?.shipping_cost !== null ? item.profitability.shipping_cost : props.settings?.shipping_cost || 0) }}
-          </span>
+          <div class="d-flex flex-column align-end">
+            <span class="text-sm font-weight-medium">
+              {{ formatPrice(getEffectiveField(item, "shipping_cost")) }}
+            </span>
+            <VChip
+              v-if="getSourceChip(item).label !== 'Global'"
+              :color="getSourceChip(item).color"
+              size="x-small"
+              variant="tonal"
+              class="font-weight-bold"
+            >
+              {{ getSourceChip(item).label }}
+            </VChip>
+          </div>
         </template>
 
         <template #item.packaging_cost="{ item }">
           <span class="text-sm font-weight-medium">
-            {{ formatPrice(item.profitability?.is_locked == '1' && item.profitability?.packaging_cost !== null ? item.profitability.packaging_cost : props.settings?.packaging_cost || 0) }}
+            {{ formatPrice(getEffectiveField(item, "packaging_cost")) }}
           </span>
         </template>
 
         <template #item.expense_margin="{ item }">
           <span class="text-sm font-weight-bold">
-            {{ item.profitability?.is_locked == '1' && item.profitability?.expense_margin !== null ? item.profitability.expense_margin : props.settings?.expense_margin || 0 }}%
+            {{ getEffectiveField(item, "expense_margin") }}%
           </span>
         </template>
 
         <template #item.profit_margin="{ item }">
           <span class="text-sm font-weight-bold text-primary">
-            {{ item.profitability?.is_locked == '1' && item.profitability?.profit_margin !== null ? item.profitability.profit_margin : props.settings?.profit_margin || 0 }}%
+            {{ getEffectiveField(item, "profit_margin") }}%
           </span>
         </template>
 
         <template #item.profitability="{ item }">
           <div class="d-flex align-center justify-center gap-2">
             <VChip
-              :color="item.profitability?.is_locked == '1' ? 'error' : 'primary'"
+              :color="getSourceChip(item).color"
               label
               size="small"
               variant="tonal"

@@ -173,10 +173,12 @@ class ProductQueryService
                     break;
 
                 case 1:
-                    $query->whereDoesntHave('profitability')
-                        ->orWhereHas('profitability', function ($q) {
-                            $q->where('is_locked', '!=', 1);
-                        });
+                    $query->where(function ($q) {
+                        $q->whereDoesntHave('profitability')
+                            ->orWhereHas('profitability', function ($sub) {
+                                $sub->where('is_locked', '!=', 1);
+                            });
+                    });
                     break;
             }
         }
@@ -524,7 +526,7 @@ class ProductQueryService
     {
         $query = Product::query()
             ->select('products.*')
-            ->with(['laboratory', 'profitability']);
+            ->with(['laboratory:id,name', 'category:id,name', 'category.profitability', 'profitability']);
 
         $hasStockVal = $request->hasStock;
         if ($hasStockVal === 'true' || $hasStockVal === '1') {
@@ -538,6 +540,7 @@ class ProductQueryService
         $filters = [
             'q' => $request->q,
             'productId' => $request->productId ?? $request->product_id ?? $request->id,
+            'categoryId' => $request->categoryId,
             'laboratoryId' => $request->laboratoryId,
             'originId' => $request->originId,
             'hasStock' => $hasStock,

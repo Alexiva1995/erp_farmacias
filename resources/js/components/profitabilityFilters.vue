@@ -6,11 +6,13 @@ import { computed, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
   searchQuery:        String,
+  selectedCategory:   [Number, String, null],
   selectedLaboratory: [Number, String, null],
   selectedOrigin:     [Number, String, null],
   stockStatusFilter:  [Boolean, null],
   startDate:          [String, null],
   endDate:            [String, null],
+  categories:         { type: Array,   default: () => [] },
   laboratories:       { type: Array,   default: () => [] },
   loading:            { type: Boolean, default: false },
   lockedValue:        { type: Number,  default: null },
@@ -18,6 +20,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   "update:searchQuery",
+  "update:selectedCategory",
   "update:selectedLaboratory",
   "update:selectedOrigin",
   "update:stockStatusFilter",
@@ -25,6 +28,7 @@ const emit = defineEmits([
   "update:endDate",
   "update:lockedValue",
   "add-profitability",
+  "manage-categories",
   "clear",
   "export",
   "sort",
@@ -91,6 +95,7 @@ watch(() => currentUser.value?.id, (newVal) => { if(newVal) loadSavedSort(); }, 
 
 const hasAdvancedFilters = computed(() => {
   return !!(
+    props.selectedCategory ||
     props.selectedLaboratory ||
     props.stockStatusFilter !== null ||
     props.lockedValue !== null ||
@@ -113,20 +118,52 @@ const hasAdvancedFilters = computed(() => {
     @sort="handleSortClick"
   >
     <template #actions-extra>
-      <VBtn
-        icon
-        color="primary"
-        variant="tonal"
-        size="38"
-        class="rounded-circle shadow-sm"
-        @click="emit('add-profitability')"
-      >
-        <VIcon icon="tabler-percentage" />
-        <VTooltip activator="parent" location="top">Asignar Rentabilidad</VTooltip>
-      </VBtn>
+      <div class="d-flex align-center gap-2">
+        <VBtn
+          icon
+          color="secondary"
+          variant="tonal"
+          size="38"
+          class="rounded-circle shadow-sm"
+          @click="emit('manage-categories')"
+        >
+          <VIcon icon="tabler-category-2" />
+          <VTooltip activator="parent" location="top">Rentabilidad por Categoría</VTooltip>
+        </VBtn>
+
+        <VBtn
+          icon
+          color="primary"
+          variant="tonal"
+          size="38"
+          class="rounded-circle shadow-sm"
+          @click="emit('add-profitability')"
+        >
+          <VIcon icon="tabler-percentage" />
+          <VTooltip activator="parent" location="top">Asignar Rentabilidad Global</VTooltip>
+        </VBtn>
+      </div>
     </template>
 
     <template #advanced-filters>
+      <!-- Categoría -->
+      <VCol cols="12" sm="6" md="3">
+        <VAutocomplete
+          :model-value="props.selectedCategory"
+          :items="props.categories"
+          :loading="props.loading"
+          placeholder="Categoría"
+          item-title="name"
+          item-value="id"
+          density="compact"
+          hide-details
+          variant="outlined"
+          clearable
+          prepend-inner-icon="tabler-category"
+          @update:model-value="emit('update:selectedCategory', $event)"
+        />
+      </VCol>
+
       <!-- Laboratorio -->
       <VCol cols="12" sm="6" md="3">
         <VAutocomplete

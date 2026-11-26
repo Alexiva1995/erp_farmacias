@@ -3,16 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Contracts\Profitability;
-use App\Models\ProfitabilitySettings;
-use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Finances\StoreGlobalProfitabilityRequest;
+use App\Http\Requests\Finances\ToggleProfitabilityLockRequest;
+use App\Http\Requests\Finances\UpsertCategoryProfitabilityRequest;
 use App\Http\Requests\ProfitabilityProductCreateRequest;
 use App\Http\Requests\ProfitabilityProductEditRequest;
-use App\Http\Requests\Finances\ToggleProfitabilityLockRequest;
+use App\Http\Resources\Finances\CategoryProfitabilityResource;
+use App\Http\Resources\Finances\ProductProfitabilityResource;
 use App\Models\Product;
 use App\Models\ProductProfitability;
 use App\Services\Products\ProductQueryService;
-use App\Http\Resources\Finances\ProductProfitabilityResource;
+use App\Services\ProfitabilityServices;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -20,7 +22,8 @@ class ProfitabilityController extends Controller
 {
     public function __construct(
         protected Profitability $profitability,
-        protected ProductQueryService $productQueryService
+        protected ProductQueryService $productQueryService,
+        protected ProfitabilityServices $profitabilityServices
     ) {}
 
     public function getProductsForProfitability(Request $request)
@@ -30,16 +33,18 @@ class ProfitabilityController extends Controller
 
         if ($perPage < 1) {
             $items = $query->get();
+
             return response()->json([
                 'data' => ProductProfitabilityResource::collection($items),
-                'total' => $items->count()
+                'total' => $items->count(),
             ]);
         }
 
         $paginatedResult = $query->paginate($perPage);
+
         return response()->json([
             'data' => ProductProfitabilityResource::collection($paginatedResult->items()),
-            'total' => $paginatedResult->total()
+            'total' => $paginatedResult->total(),
         ]);
     }
 
@@ -56,6 +61,7 @@ class ProfitabilityController extends Controller
                 'is_locked' => $newLock,
             ]);
         } else {
+            $newLock = 1;
             ProductProfitability::create([
                 'product_id' => $productId,
                 'profitability_percentage' => $percentage,
@@ -63,12 +69,18 @@ class ProfitabilityController extends Controller
             ]);
         }
 
-        $product = Product::with(['laboratory', 'profitability'])->find($productId);
+        $product = Product::with(['laboratory:id,name', 'category:id,name', 'category.profitability', 'profitability'])->find($productId);
+
+        // Si se desbloquea el producto, recalcular su precio según la cascada (Categoría -> Global)
+        if ($product && $newLock === 0) {
+            $product->sale_price = $this->profitabilityServices->calculateSalePriceForProduct($product);
+            $product->save();
+        }
 
         return response()->json([
             'status' => 'success',
             'message' => 'Bloqueo de margen actualizado con éxito',
-            'data' => new ProductProfitabilityResource($product)
+            'data' => new ProductProfitabilityResource($product),
         ]);
     }
 
@@ -76,11 +88,11 @@ class ProfitabilityController extends Controller
     {
         $this->profitability->storeProduct($request->profitability->all());
         $productId = $request->profitability->product_id;
-        $product = Product::with(['laboratory', 'profitability'])->find($productId);
+        $product = Product::with(['laboratory:id,name', 'category:id,name', 'category.profitability', 'profitability'])->find($productId);
 
         return response()->json([
-            'message' => "Se ha guardado la rentabilidad del producto",
-            'data' => new ProductProfitabilityResource($product)
+            'message' => 'Se ha guardado la rentabilidad del producto',
+            'data' => new ProductProfitabilityResource($product),
         ]);
     }
 
@@ -88,26 +100,47 @@ class ProfitabilityController extends Controller
     {
         $this->profitability->editProduct($request->profitability->all());
         $productId = $request->profitability->product_id;
-        $product = Product::with(['laboratory', 'profitability'])->find($productId);
+        $product = Product::with(['laboratory:id,name', 'category:id,name', 'category.profitability', 'profitability'])->find($productId);
 
         return response()->json([
-            'message' => "Se ha actualizado el porcentaje",
-            'data' => new ProductProfitabilityResource($product)
+            'message' => 'Se ha actualizado el porcentaje',
+            'data' => new ProductProfitabilityResource($product),
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreGlobalProfitabilityRequest $request)
     {
-        $crear = [
-            'default_profitability_percentage' => $request->default_profitability_percentage,
-            'shipping_cost' => $request->shipping_cost,
-            'packaging_cost' => $request->packaging_cost,
-            'expense_margin' => $request->expense_margin,
-            'profit_margin' => $request->profit_margin,
-            'tax_usa' => $request->tax_usa,
-        ];
-        $this->profitability->store($crear);
-        return response()->json("Se ha actualizado el porcentaje");
+        $this->profitability->store($request->validated());
+
+        return response()->json('Se ha actualizado el porcentaje');
+    }
+
+    public function getCategoriesProfitability(): JsonResponse
+    {
+        $categories = $this->profitability->getCategoriesWithProfitability();
+
+        return response()->json([
+            'data' => CategoryProfitabilityResource::collection($categories),
+        ]);
+    }
+
+    public function upsertCategoryProfitability(UpsertCategoryProfitabilityRequest $request): JsonResponse
+    {
+        $categoryProfitability = $this->profitability->upsertCategoryProfitability($request->validated());
+
+        return response()->json([
+            'message' => 'Regla de rentabilidad por categoría guardada y aplicada.',
+            'data' => new CategoryProfitabilityResource($categoryProfitability->category->load('profitability')),
+        ]);
+    }
+
+    public function deleteCategoryProfitability(int $categoryId): JsonResponse
+    {
+        $this->profitability->deleteCategoryProfitability($categoryId);
+
+        return response()->json([
+            'message' => 'Regla de categoría eliminada. Los productos no bloqueados volvieron a la configuración global.',
+        ]);
     }
 
     public function consultOne(Request $request)
@@ -118,15 +151,9 @@ class ProfitabilityController extends Controller
     public function getProduct($id)
     {
         if ($this->profitability->consultById($id)) {
-            $data = [
-                "message" => "Todo bien"
-            ];
-            return new JsonResponse($data, 200);
-        } else {
-            $data = [
-                "message" => "Todo bien"
-            ];
-            return new JsonResponse($data, 404);
+            return new JsonResponse(['message' => 'Todo bien'], 200);
         }
+
+        return new JsonResponse(['message' => 'Todo bien'], 404);
     }
 }

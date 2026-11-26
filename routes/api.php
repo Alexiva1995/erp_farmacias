@@ -1068,6 +1068,9 @@ Route::middleware(["auth:sanctum", "throttle:api"])->group(function () {
             Route::get("/", [ProfitabilityController::class, "consultOne"]);
             Route::get("/products", [ProfitabilityController::class, "getProductsForProfitability"]);
             Route::post("/store", [ProfitabilityController::class, "store"]);
+            Route::get("/categories", [ProfitabilityController::class, "getCategoriesProfitability"]);
+            Route::post("/categories", [ProfitabilityController::class, "upsertCategoryProfitability"]);
+            Route::delete("/categories/{categoryId}", [ProfitabilityController::class, "deleteCategoryProfitability"]);
             Route::post("/{id}", [ProfitabilityController::class, "edit"]);
             Route::prefix("product")->group(function () {
                 Route::post("/toggle-lock", [ProfitabilityController::class, "toggleLock"]);

@@ -1,5 +1,6 @@
 <script setup>
 import ProfitabilityTable from "@/components/ProfitabilityTable.vue";
+import CategoryProfitabilityDialog from "@/components/dialogs/CategoryProfitabilityDialog.vue";
 import ProductProfitabilityEditDialog from "@/components/dialogs/ProductProfitabilityEditDialog.vue";
 import addProfitabilityDialog from "@/components/dialogs/addProfitabilityDialog.vue";
 import profitabilityFilters from "@/components/profitabilityFilters.vue";
@@ -19,14 +20,17 @@ const orderBy = ref();
 const loading = ref(false);
 
 const dialog = ref(false);
+const categoryDialog = ref(false);
 const percentage = ref(25); // Valor por defecto común
 
 const searchQuery = ref("");
+const selectedCategory = ref(null);
 const selectedLaboratory = ref(null);
 const selectedOrigin = ref(null);
 const stockStatusFilter = ref(null);
 const startDate = ref(null);
 const endDate = ref(null);
+const categories = ref([]);
 const laboratories = ref([]);
 const origins = ref([]);
 const isLoadingFilters = ref(false);
@@ -39,10 +43,12 @@ const productProfitability = ref({});
 const fetchFiltersOptions = async () => {
   isLoadingFilters.value = true;
   try {
-    const [labResponse, originResponse] = await Promise.all([
+    const [catResponse, labResponse, originResponse] = await Promise.all([
+      axios.get("/categories"),
       axios.get("/laboratories"),
       axios.get("/origins"),
     ]);
+    categories.value = catResponse.data;
     laboratories.value = labResponse.data;
     origins.value = originResponse.data;
   } catch (error) {
@@ -56,6 +62,7 @@ const fetchProducts = async () => {
   loading.value = true;
   const params = {
     q: searchQuery.value,
+    categoryId: selectedCategory.value,
     laboratoryId: selectedLaboratory.value,
     originId: selectedOrigin.value,
     ...(stockStatusFilter.value !== null && {
@@ -111,22 +118,40 @@ const addProfitability = () => {
   dialog.value = true;
 };
 
+const openCategoryProfitability = () => {
+  categoryDialog.value = true;
+};
+
 const editProductProfitability = (item) => {
   editDialog.value = true;
+  const isLocked = item.profitability?.is_locked == 1;
+  const effective = item.effective_profitability || {};
   productProfitability.value = {
     id: item.profitability?.id,
-    percentage: item.profitability?.profitability_percentage || 0,
+    percentage: isLocked
+      ? (item.profitability?.profitability_percentage ?? effective.profitability_percentage ?? 0)
+      : (effective.profitability_percentage ?? 0),
     product_id: item.id,
     is_locked: item.profitability?.is_locked || 0,
     name: item.name,
     unit_cost: item.unit_cost,
     sale_price: item.sale_price,
     iva: item.iva,
-    shipping_cost: item.profitability?.shipping_cost,
-    packaging_cost: item.profitability?.packaging_cost,
-    expense_margin: item.profitability?.expense_margin,
-    profit_margin: item.profitability?.profit_margin,
-    tax_usa: item.profitability?.tax_usa,
+    shipping_cost: isLocked
+      ? (item.profitability?.shipping_cost ?? effective.shipping_cost ?? 0)
+      : (effective.shipping_cost ?? 0),
+    packaging_cost: isLocked
+      ? (item.profitability?.packaging_cost ?? effective.packaging_cost ?? 0)
+      : (effective.packaging_cost ?? 0),
+    expense_margin: isLocked
+      ? (item.profitability?.expense_margin ?? effective.expense_margin ?? 0)
+      : (effective.expense_margin ?? 0),
+    profit_margin: isLocked
+      ? (item.profitability?.profit_margin ?? effective.profit_margin ?? 0)
+      : (effective.profit_margin ?? 0),
+    tax_usa: isLocked
+      ? (item.profitability?.tax_usa ?? effective.tax_usa ?? 0)
+      : (effective.tax_usa ?? 0),
   };
 };
 
@@ -137,6 +162,7 @@ const handleSort = (sortOptions) => {
 
 const handleClearFilters = () => {
   searchQuery.value = "";
+  selectedCategory.value = null;
   selectedLaboratory.value = null;
   selectedOrigin.value = null;
   stockStatusFilter.value = null;
@@ -173,6 +199,7 @@ let debounceTimer;
 watch(
   [
     searchQuery,
+    selectedCategory,
     selectedLaboratory,
     selectedOrigin,
     stockStatusFilter,
@@ -353,16 +380,19 @@ onMounted(() => {
       <!-- Filtros Colapsables -->
       <profitabilityFilters
         v-model:searchQuery="searchQuery"
+        v-model:selectedCategory="selectedCategory"
         v-model:selectedLaboratory="selectedLaboratory"
         v-model:selectedOrigin="selectedOrigin"
         v-model:stockStatusFilter="stockStatusFilter"
         v-model:startDate="startDate"
         v-model:endDate="endDate"
         v-model:lockedValue="lockedValue"
+        :categories="categories"
         :laboratories="laboratories"
         :origins="origins"
         :loading="isLoadingFilters"
         @add-profitability="addProfitability"
+        @manage-categories="openCategoryProfitability"
         @sort="handleSort"
         @clear="handleClearFilters"
       />
@@ -392,6 +422,13 @@ onMounted(() => {
       :settings="globalSettings"
       :dialog="dialog"
       @close-modal="dialog = false"
+      @refresh="reloadTable"
+    />
+
+    <CategoryProfitabilityDialog
+      :dialog="categoryDialog"
+      :settings="globalSettings"
+      @close-modal="categoryDialog = false"
       @refresh="reloadTable"
     />
 
