@@ -119,4 +119,30 @@ class SupplierManagementTest extends TestCase
             \App\Models\Product::resolvePhotoUrl('products/non_existent_product_test.jpg')
         );
     }
+
+    public function test_merging_active_source_into_inactive_target_reactivates_target(): void
+    {
+        $target = \App\Models\Supplier::create([
+            'id' => 2001,
+            'name' => 'LOAGROS TARGET',
+            'rif' => 'J-11111111-1',
+            'dispatch_days' => [],
+            'order_days' => [],
+            'is_active' => false,
+        ]);
+
+        $source = \App\Models\Supplier::create([
+            'id' => 2002,
+            'name' => 'LOAGROS SOURCE',
+            'rif' => 'J-22222222-2',
+            'dispatch_days' => [],
+            'order_days' => [],
+            'is_active' => true,
+        ]);
+
+        $merged = app(\App\Services\Suppliers\SupplierActionService::class)->mergeSuppliers($target->id, $source->id);
+
+        $this->assertTrue((bool) $merged->is_active);
+        $this->assertNull(\App\Models\Supplier::withTrashed()->find($source->id));
+    }
 }
