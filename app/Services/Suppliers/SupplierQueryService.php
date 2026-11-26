@@ -892,6 +892,7 @@ class SupplierQueryService
             ->select(
                 "suppliers.name as name",
                 "suppliers.id",
+                "suppliers.rif",
                 "suppliers.public_token",
                 "suppliers.logo_url",
                 DB::raw("COALESCE(suppliers.is_active, 1) as is_active"),
@@ -918,7 +919,73 @@ class SupplierQueryService
             ->orderBy("suppliers.name", "asc")
             ->paginate($perPage, ["*"], "page", $page);
 
+        $this->attachMasterLogosToItems($paginated->getCollection());
+
         return $paginated;
+    }
+
+    /**
+     * Adjunta `master_logo_url` en lote desde `master_catalog.suppliers` para listados stdClass/Model.
+     *
+     * @param iterable<int, object> $items
+     */
+    private function attachMasterLogosToItems(iterable $items): void
+    {
+        $collection = collect($items);
+        if ($collection->isEmpty()) {
+            return;
+        }
+
+        try {
+            $masterConn = 'master_catalog';
+            if (
+                !\Illuminate\Support\Facades\Schema::connection($masterConn)->hasTable('suppliers')
+                || !\Illuminate\Support\Facades\Schema::connection($masterConn)->hasColumn('suppliers', 'logo_url')
+            ) {
+                return;
+            }
+
+            $ids = $collection->pluck('id')->filter()->unique()->values()->all();
+            $cleanRifs = $collection->map(function ($sup) {
+                return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($sup->rif ?? ''))));
+            })->filter()->unique()->values()->all();
+
+            $masterSups = DB::connection($masterConn)->table('suppliers')
+                ->select(['id', 'rif', 'logo_url'])
+                ->whereNotNull('logo_url')
+                ->where(function ($q) use ($ids, $cleanRifs) {
+                    if (!empty($ids)) {
+                        $q->whereIn('id', $ids);
+                    }
+                    if (!empty($cleanRifs)) {
+                        $placeholders = implode(',', array_fill(0, count($cleanRifs), '?'));
+                        $q->orWhereRaw(
+                            "UPPER(REPLACE(REPLACE(REPLACE(rif, '-', ''), ' ', ''), '.', '')) IN ({$placeholders})",
+                            $cleanRifs
+                        );
+                    }
+                })
+                ->get();
+
+            $byId = $masterSups->keyBy('id');
+            $byCleanRif = [];
+            foreach ($masterSups as $m) {
+                $k = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($m->rif ?? ''))));
+                if ($k !== '') {
+                    $byCleanRif[$k] = $m;
+                }
+            }
+
+            foreach ($collection as $sup) {
+                $k = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim((string) ($sup->rif ?? ''))));
+                $m = ($k !== '' && isset($byCleanRif[$k])) ? $byCleanRif[$k] : $byId->get($sup->id);
+                if ($m && !empty($m->logo_url)) {
+                    $sup->master_logo_url = $m->logo_url;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::debug('No se pudo adjuntar logos del Master en conexiones de proveedores: ' . $e->getMessage());
+        }
     }
 
     public function getSupplierProducts(Supplier $supplier, Request $request)
