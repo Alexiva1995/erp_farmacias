@@ -163,30 +163,36 @@ class SupplierConnectionService
         // Productos
         $tempFile = tempnam(sys_get_temp_dir(), "ftp_");
 
-        if ($connection->path === '/') {
+        $remotePath = trim((string) ($connection->path ?? ''));
+
+        if ($remotePath === '' || $remotePath === '/') {
             // Listar todos los archivos en la raíz
-            $files = @ftp_nlist($ftp, $connection->path);
+            $files = @ftp_nlist($ftp, '/');
 
             if ($files === false) {
                 Log::warning("Initial ftp_nlist failed for supplier {$connection->supplier_id}. Toggling PASV mode and retrying...");
                 ftp_pasv($ftp, !$connection->pasv);
-                $files = @ftp_nlist($ftp, $connection->path);
+                $files = @ftp_nlist($ftp, '/');
+            }
+
+            if (!is_array($files)) {
+                throw new Exception("No se pudo listar el directorio raíz del servidor FTP (verifique la ruta configurada en la conexión).");
             }
 
             $inventoryFiles = array_filter($files, function ($file) {
-                $name = basename($file);
+                $name = strtolower(basename((string) $file));
                 return str_starts_with($name, 'inventario') && str_ends_with($name, '.txt');
             });
 
             // Ordenar por nombre (asumiendo que el nombre incluye fecha/hora)
             usort($inventoryFiles, function ($a, $b) {
-                return strcmp($b, $a); // orden descendente
+                return strcmp((string) $b, (string) $a); // orden descendente
             });
 
             $latestFile = $inventoryFiles[0] ?? null;
 
-            if (!$latestFile) {
-                throw new Exception("No se encontró archivo de inventario en la raíz");
+            if (!is_string($latestFile) || trim($latestFile) === '') {
+                throw new Exception("No se encontró archivo de inventario en la raíz del FTP.");
             }
 
             if (@ftp_get($ftp, $tempFile, $latestFile, FTP_BINARY)) {
@@ -199,13 +205,13 @@ class SupplierConnectionService
                 throw new Exception("No se pudo guardar los productos");
             }
         } else {
-            if (@ftp_get($ftp, $tempFile, $connection->path, FTP_BINARY)) {
+            if (@ftp_get($ftp, $tempFile, $remotePath, FTP_BINARY)) {
                 $content = file_get_contents($tempFile);
                 $content_encoded = mb_convert_encoding($content, "UTF-8", "ISO-8859-1"); // Convierte a UTF-8 para devolver los resultados como JSON correctamente
                 $productData = $this->parseDynamicContent($content_encoded, $connection);
             } else {
                 $lastError = error_get_last();
-                Log::error("Fallo ftp_get para ruta: {$connection->path}", ['error' => $lastError['message'] ?? 'Unknown error']);
+                Log::error("Fallo ftp_get para ruta: {$remotePath}", ['error' => $lastError['message'] ?? 'Unknown error']);
                 throw new Exception("No se pudo guardar los productos");
             }
         }

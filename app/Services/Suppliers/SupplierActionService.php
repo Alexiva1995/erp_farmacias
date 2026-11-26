@@ -555,13 +555,47 @@ class SupplierActionService
                 DB::table('supplier_connection_statuses')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
             }
 
-            // 10. Conexiones FTP/API
+            // 10. Conexiones FTP/API: conservar credenciales y rutas no vacías del origen si faltan en el destino
             if (\Illuminate\Support\Facades\Schema::hasTable('supplier_connections') && \Illuminate\Support\Facades\Schema::hasColumn('supplier_connections', 'supplier_id')) {
-                $targetHasConn = DB::table('supplier_connections')->where('supplier_id', $target->id)->exists();
-                if (!$targetHasConn) {
-                    DB::table('supplier_connections')->where('supplier_id', $source->id)->update(['supplier_id' => $target->id]);
-                } else {
-                    DB::table('supplier_connections')->where('supplier_id', $source->id)->delete();
+                $sourceConns = DB::table('supplier_connections')->where('supplier_id', $source->id)->get();
+                $targetConnsByType = DB::table('supplier_connections')
+                    ->where('supplier_id', $target->id)
+                    ->get()
+                    ->keyBy('type');
+
+                $mergeableConnFields = [
+                    'host', 'port', 'username', 'password', 'path', 'invoice_path',
+                    'structure', 'secondary_structure', 'tertiary_structure',
+                    'invoice_structure', 'parse_using', 'last_connection',
+                    'credit_days_email', 'credit_days_cod_col', 'credit_days_col',
+                ];
+
+                foreach ($sourceConns as $srcConn) {
+                    $tgtConn = $targetConnsByType->get($srcConn->type);
+                    if (!$tgtConn) {
+                        DB::table('supplier_connections')
+                            ->where('id', $srcConn->id)
+                            ->update(['supplier_id' => $target->id, 'updated_at' => now()]);
+                        continue;
+                    }
+
+                    $fillData = [];
+                    foreach ($mergeableConnFields as $field) {
+                        if (property_exists($tgtConn, $field) && property_exists($srcConn, $field)) {
+                            $tgtEmpty = $tgtConn->$field === null || $tgtConn->$field === '' || $tgtConn->$field === '[]';
+                            $srcHasValue = $srcConn->$field !== null && $srcConn->$field !== '' && $srcConn->$field !== '[]';
+                            if ($tgtEmpty && $srcHasValue) {
+                                $fillData[$field] = $srcConn->$field;
+                            }
+                        }
+                    }
+
+                    if (!empty($fillData)) {
+                        $fillData['updated_at'] = now();
+                        DB::table('supplier_connections')->where('id', $tgtConn->id)->update($fillData);
+                    }
+
+                    DB::table('supplier_connections')->where('id', $srcConn->id)->delete();
                 }
             }
 
