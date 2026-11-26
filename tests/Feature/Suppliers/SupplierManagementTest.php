@@ -102,4 +102,21 @@ class SupplierManagementTest extends TestCase
         ])->assertOk()
             ->assertJsonStructure(['message', 'data' => ['tenants_checked', 'tenants_merged', 'errors']]);
     }
+
+    public function test_resolves_relative_product_photo_url_to_master_origin_when_missing_locally(): void
+    {
+        config()->set('catalog.master_asset_url', '');
+        config()->set('catalog.master_url', 'https://farmaciabs.com/api/v1/master-catalog');
+
+        $this->assertNull(\App\Models\Product::resolvePhotoUrl(null));
+        $this->assertNull(\App\Models\Product::resolvePhotoUrl('   '));
+        $this->assertSame(
+            'https://farmaciabs.com/storage/products/non_existent_product_test.jpg',
+            \App\Models\Product::resolvePhotoUrl('/storage/products/non_existent_product_test.jpg')
+        );
+        $this->assertSame(
+            'https://farmaciabs.com/storage/products/non_existent_product_test.jpg',
+            \App\Models\Product::resolvePhotoUrl('products/non_existent_product_test.jpg')
+        );
+    }
 }

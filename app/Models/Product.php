@@ -186,26 +186,61 @@ class Product extends Model
     protected function photoUrl(): Attribute
     {
         return Attribute::make(
-            get: function () {
-                $url = $this->attributes['photo_url'] ?? null;
-                if (!$url) return null;
-                if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
-                    return $url;
-                }
-                // Limpiar prefijo de storage si ya existe para evitar duplicación
-                if (str_starts_with($url, '/storage/')) {
-                    $url = substr($url, 9);
-                } elseif (str_starts_with($url, 'storage/')) {
-                    $url = substr($url, 8);
-                }
-
-                if (function_exists('tenancy') && tenancy()->initialized && function_exists('tenant_asset')) {
-                    return tenant_asset($url);
-                }
-
-                return \Illuminate\Support\Facades\Storage::url($url);
-            }
+            get: fn () => static::resolvePhotoUrl($this->attributes['photo_url'] ?? null)
         );
+    }
+
+    /**
+     * Resuelve la URL pública de una foto de producto.
+     * Si el archivo no existe localmente en el disco del tenant/central,
+     * apunta al almacenamiento del servidor Master configurado.
+     */
+    public static function resolvePhotoUrl(?string $url): ?string
+    {
+        $url = trim((string) $url);
+        if ($url === '') {
+            return null;
+        }
+
+        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://') || str_starts_with($url, 'data:')) {
+            return $url;
+        }
+
+        $cleanPath = ltrim($url, '/');
+        if (str_starts_with($cleanPath, 'storage/')) {
+            $cleanPath = substr($cleanPath, 8);
+        }
+
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($cleanPath)) {
+            if (function_exists('tenancy') && tenancy()->initialized && function_exists('tenant_asset')) {
+                return tenant_asset($cleanPath);
+            }
+
+            return \Illuminate\Support\Facades\Storage::url($cleanPath);
+        }
+
+        if (is_file(public_path('storage/' . $cleanPath))) {
+            return '/storage/' . $cleanPath;
+        }
+
+        $baseUrl = rtrim((string) config('catalog.master_asset_url', ''), '/');
+        if ($baseUrl === '') {
+            $parsed = parse_url((string) config('catalog.master_url', ''));
+            if (!empty($parsed['scheme']) && !empty($parsed['host'])) {
+                $port = !empty($parsed['port']) ? ':' . $parsed['port'] : '';
+                $baseUrl = $parsed['scheme'] . '://' . $parsed['host'] . $port;
+            }
+        }
+
+        if ($baseUrl !== '') {
+            return $baseUrl . '/storage/' . $cleanPath;
+        }
+
+        if (function_exists('tenancy') && tenancy()->initialized && function_exists('tenant_asset')) {
+            return tenant_asset($cleanPath);
+        }
+
+        return \Illuminate\Support\Facades\Storage::url($cleanPath);
     }
 
     /**

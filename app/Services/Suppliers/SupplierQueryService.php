@@ -1178,6 +1178,8 @@ class SupplierQueryService
             "product_suppliers.id as id",
             "product_suppliers.product_id as product_id",
             "product_suppliers.cod_supplier as cod_supplier",
+            "product_suppliers.barcode_match as barcode_match",
+            DB::raw("COALESCE(NULLIF(product_suppliers.barcode_match, ''), products.barcode) as barcode"),
             "product_suppliers.name as name",
             DB::raw("COALESCE(NULLIF(product_suppliers.laboratory, ''), laboratories.name, 'N/A') as laboratory_name"),
             "suppliers.name as supplier_name",
@@ -1199,6 +1201,8 @@ class SupplierQueryService
             'product_suppliers.id',
             'product_suppliers.product_id',
             'product_suppliers.cod_supplier',
+            'product_suppliers.barcode_match',
+            'products.barcode',
             'product_suppliers.name',
             'suppliers.name',
             'product_suppliers.unit_cost',
@@ -1346,8 +1350,6 @@ class SupplierQueryService
         if (!empty($missingBarcodes)) {
             try {
                 if (\Illuminate\Support\Facades\Schema::connection('master_catalog')->hasTable('products')) {
-                    $masterBaseUrl = rtrim((string) config('app.url'), '/');
-
                     $masterPhotos = \Illuminate\Support\Facades\DB::connection('master_catalog')
                         ->table('products')
                         ->select(['barcode', 'photo_url'])
@@ -1355,17 +1357,8 @@ class SupplierQueryService
                         ->whereNotNull('photo_url')
                         ->where('photo_url', '!=', '')
                         ->get()
-                        ->map(function ($p) use ($masterBaseUrl) {
-                            $url = trim((string) $p->photo_url);
-                            // Evitar tenant_asset() para fotos del catálogo master: resolver contra storage central
-                            if (!str_starts_with($url, 'http://') && !str_starts_with($url, 'https://')) {
-                                $cleanPath = ltrim($url, '/');
-                                if (str_starts_with($cleanPath, 'storage/')) {
-                                    $cleanPath = substr($cleanPath, 8);
-                                }
-                                $url = $masterBaseUrl . '/storage/' . $cleanPath;
-                            }
-                            $p->photo_url = $url;
+                        ->map(function ($p) {
+                            $p->photo_url = Product::resolvePhotoUrl((string) $p->photo_url);
 
                             return $p;
                         })
