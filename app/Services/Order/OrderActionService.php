@@ -240,7 +240,7 @@ class OrderActionService
                     }
                 }
 
-                // Calcular costo dinámico actual de los ingredientes de la receta (+ 5% de imprevisto)
+                // Calcular costo dinámico actual de los ingredientes de la receta ajustado por modificadores (+ 5% de imprevisto)
                 $dishLiveRawCost = 0.0;
                 foreach ($dish->ingredients as $dishIng) {
                     $ingPortion = (float)($dishIng->pivot?->portion ?? 0);
@@ -248,11 +248,15 @@ class OrderActionService
                     $ingPres = (float)($dishIng->presentation ?? 1) > 0 ? (float)$dishIng->presentation : 1.0;
                     $dishLiveRawCost += ($ingPortion * $ingCost) / $ingPres;
                 }
-                $dishBaseCost = $dishLiveRawCost > 0 ? round($dishLiveRawCost * 1.05, 4) : (float)($dish->cost_price ?? 0);
+                if ($dishLiveRawCost > 0) {
+                    $netRawCost = max(0.0, $dishLiveRawCost + $extraCostUsd);
+                    $unitCost = round($netRawCost * 1.05, 4);
+                } else {
+                    $unitCost = max(0, round((float)($dish->cost_price ?? 0) + $extraCostUsd, 4));
+                }
 
-                // Derivar precio total en USD (base + modificadores) y costo unitario neto descontando ingredientes quitados
+                // Derivar precio total en USD (base + modificadores) manteniendo el precio de venta si extra_price_usd es 0
                 $price_usd = (float)($dish->designated_price ?? 0) + $extraPriceUsd;
-                $unitCost = max(0, round($dishBaseCost + $extraCostUsd, 4));
 
                 $targetCurrency = $order->currency;
                 if ($targetCurrency === 'USD') {

@@ -524,8 +524,8 @@ class Phase1GastronomicCoreTest extends TestCase
 
     public function test_add_order_item_endpoint_accepts_substitute_modifier_type(): void
     {
-        $baseFlavor = Product::factory()->create(['name' => 'Base Helado', 'presentation' => 1]);
-        $chocolateFlavor = Product::factory()->create(['name' => 'Helado Chocolate', 'presentation' => 1]);
+        $baseFlavor = Product::factory()->create(['name' => 'Base Helado', 'presentation' => 1, 'unit_cost' => 1.00]);
+        $chocolateFlavor = Product::factory()->create(['name' => 'Helado Chocolate', 'presentation' => 1, 'unit_cost' => 2.50]);
 
         $group = ModifierGroup::create([
             'name' => 'Sabores',
@@ -591,6 +591,13 @@ class Phase1GastronomicCoreTest extends TestCase
             'modifier_type' => 'substitute',
             'base_product_id' => $baseFlavor->id,
         ]);
+
+        // El costo unitario debe reflejar el nuevo insumo (2.50 * 1.05 = 2.625) manteniendo el precio de venta (5.00)
+        $order->refresh();
+        $detail = $order->details()->first();
+        $this->assertEquals(5.00, (float) $detail->price);
+        $this->assertEquals(2.625, (float) $detail->unit_cost);
+        $this->assertEquals(2.625, (float) $order->total_cost);
     }
 
     public function test_modifier_group_with_auto_apply_disabled_only_applies_to_assigned_dishes(): void
