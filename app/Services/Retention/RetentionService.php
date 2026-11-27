@@ -88,6 +88,14 @@ class RetentionService implements RetentionContract
 
         $generalSetting = \App\Models\GeneralSetting::first();
 
+        if ($supplier) {
+            try {
+                app(\App\Services\Suppliers\SupplierQueryService::class)->attachMasterMetadata([$supplier]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('No se pudo sincronizar datos del proveedor desde Master para retención: ' . $e->getMessage());
+            }
+        }
+
         return [
             'date_now' => $dateNow,
             'comprobante' => [

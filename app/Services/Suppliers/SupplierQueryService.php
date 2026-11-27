@@ -2017,17 +2017,37 @@ class SupplierQueryService
                     continue;
                 }
 
-                // Determinar qué campos oficiales ya están definidos en el Master
+                // Determinar qué campos oficiales ya están definidos en el Master y sincronizar diferencias locales
                 $lockedFields = [];
+                $localUpdates = [];
                 foreach ($masterFieldCandidates as $field) {
                     if (isset($masterCols[$field]) && trim((string) ($m->$field ?? '')) !== '') {
                         $lockedFields[] = $field;
+                        $masterVal = (string) $m->$field;
+                        $localVal = (string) ($sup->$field ?? '');
+                        if ($masterVal !== $localVal) {
+                            $assignAttr($sup, $field, $masterVal);
+                            $localUpdates[$field] = $masterVal;
+                        }
                     }
                 }
                 $assignAttr($sup, 'master_locked_fields', $lockedFields);
 
                 if ($hasLogoCol && !empty($m->logo_url)) {
                     $assignAttr($sup, 'master_logo_url', $m->logo_url);
+                    if ((string) ($sup->logo_url ?? '') !== (string) $m->logo_url) {
+                        $assignAttr($sup, 'logo_url', $m->logo_url);
+                        $localUpdates['logo_url'] = $m->logo_url;
+                    }
+                }
+
+                if (!empty($localUpdates) && !empty($sup->id)) {
+                    try {
+                        $localUpdates['updated_at'] = now();
+                        DB::table('suppliers')->where('id', $sup->id)->update($localUpdates);
+                    } catch (\Throwable $e) {
+                        Log::warning("No se pudo sincronizar campos Master en proveedor local #{$sup->id}: " . $e->getMessage());
+                    }
                 }
 
                 $allowed = $connsByMasterId->get($m->id, collect())
