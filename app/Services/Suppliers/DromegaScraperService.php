@@ -195,9 +195,7 @@ class DromegaScraperService implements DromegaScraperServiceInterface
                 ->first();
         }
 
-        $scraperConfig = $supplier
-            ? \App\Models\SupplierScraper::where('supplier_id', $supplier->id)->where('scraper_key', 'dromega')->first()
-            : null;
+        $scraperConfig = \App\Models\SupplierScraper::resolveForScraper('dromega', $supplier?->id);
         $username = $scraperConfig?->username;
         $password = $scraperConfig?->getDecryptedPassword();
 
@@ -538,9 +536,7 @@ class DromegaScraperService implements DromegaScraperServiceInterface
             $supplierId = $supplier?->id ?? 1005;
         }
 
-        $scraperConfig = \App\Models\SupplierScraper::where('supplier_id', $supplierId)
-            ->where('scraper_key', 'dromega')
-            ->first();
+        $scraperConfig = \App\Models\SupplierScraper::resolveForScraper('dromega', $supplierId);
 
         // Obtener cookie de sesión
         $activeCookie = $cookie ?: ($scraperConfig?->auth_payload['cookie'] ?? null);

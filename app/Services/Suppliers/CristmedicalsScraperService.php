@@ -321,9 +321,7 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
             $supplierId = $supplier?->id ?? 1002;
         }
 
-        $scraperConfig = \App\Models\SupplierScraper::where('supplier_id', $supplierId)
-            ->where('scraper_key', 'cristmedicals')
-            ->first();
+        $scraperConfig = \App\Models\SupplierScraper::resolveForScraper('cristmedicals', $supplierId);
 
         $user = $username ?: $scraperConfig?->username;
         $pass = $password ?: $scraperConfig?->getDecryptedPassword();
@@ -557,9 +555,7 @@ class CristmedicalsScraperService implements CristmedicalsScraperServiceInterfac
             ->orWhere('id', 1002)
             ->first();
 
-        $scraperConfig = $supplier
-            ? \App\Models\SupplierScraper::where('supplier_id', $supplier->id)->where('scraper_key', 'cristmedicals')->first()
-            : null;
+        $scraperConfig = \App\Models\SupplierScraper::resolveForScraper('cristmedicals', $supplier?->id);
         $user = $scraperConfig?->username;
         $pass = $scraperConfig?->getDecryptedPassword();
 

@@ -24,6 +24,8 @@ class SupplierFinancialSyncService implements SupplierFinancialSyncServiceInterf
      */
     protected function resolveSupplier(Supplier|int $supplier): ?Supplier
     {
+        SupplierScraper::ensureSchema();
+
         if ($supplier instanceof Supplier) {
             return $supplier->relationLoaded('scrapers') ? $supplier : $supplier->load('scrapers');
         }
@@ -113,10 +115,8 @@ class SupplierFinancialSyncService implements SupplierFinancialSyncServiceInterf
             ];
         }
 
-        // Obtener credenciales exclusivamente desde supplier_scrapers (nunca desde supplier_connections)
-        $scraperRecord = SupplierScraper::where('supplier_id', $sup->id)
-            ->where('scraper_key', $type)
-            ->first();
+        // Obtener credenciales desde supplier_scrapers (asegurando esquema y respaldo heredado)
+        $scraperRecord = SupplierScraper::resolveForScraper($type, $sup->id);
 
         $user = $scraperRecord?->username;
         $pass = $scraperRecord?->getDecryptedPassword();

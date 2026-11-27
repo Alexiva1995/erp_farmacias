@@ -101,7 +101,7 @@ class SupplierSyncService
                 // 1. Sincronizar Proveedores
                 // Para no pisar configuraciones comerciales del tenant (credit_days, etc.),
                 // solo actualizamos datos de identidad fiscal y logotipo si ya existe.
-                $fiscalUpdateColumns = ['name', 'logo_url', 'social_reason', 'rif', 'updated_at'];
+                $fiscalUpdateColumns = ['name', 'logo_url', 'social_reason', 'rif', 'address', 'updated_at'];
                 $availableFiscalUpdates = array_values(array_intersect($fiscalUpdateColumns, $tenantColumns));
 
                 $filteredSuppliers = array_map(function ($sup) use ($tenantColsSet) {
@@ -222,6 +222,64 @@ class SupplierSyncService
                     'exception' => $e,
                 ]);
                 $results[(string) $tenant->id] = -1;
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Propaga los datos fiscales básicos de un proveedor del Master hacia todos los tenants.
+     *
+     * @param \App\Models\Supplier $supplier
+     * @return array<string, bool>
+     */
+    public function propagateSupplierFiscalDataToTenants(\App\Models\Supplier $supplier): array
+    {
+        $centralConnection = config('tenancy.database.central_connection', 'mysql');
+        if (!Schema::connection($centralConnection)->hasTable('tenants')) {
+            return [];
+        }
+
+        $results = [];
+        $cleanRif = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string) $supplier->rif));
+
+        foreach (Tenant::all() as $tenant) {
+            try {
+                $tenant->run(function () use ($supplier, $cleanRif) {
+                    if (!Schema::hasTable('suppliers')) {
+                        return;
+                    }
+
+                    $tenantColumns = Schema::getColumnListing('suppliers');
+                    $payload = array_intersect_key([
+                        'name' => $supplier->name,
+                        'logo_url' => $supplier->logo_url,
+                        'social_reason' => $supplier->social_reason,
+                        'rif' => $supplier->rif,
+                        'address' => $supplier->address,
+                        'updated_at' => now(),
+                    ], array_flip($tenantColumns));
+
+                    if (empty($payload)) {
+                        return;
+                    }
+
+                    $updated = DB::table('suppliers')
+                        ->where('id', $supplier->id)
+                        ->update($payload);
+
+                    if ($updated === 0 && $cleanRif !== '') {
+                        DB::table('suppliers')
+                            ->whereRaw("UPPER(REPLACE(REPLACE(REPLACE(COALESCE(rif, ''), '-', ''), ' ', ''), '.', '')) = ?", [$cleanRif])
+                            ->update($payload);
+                    }
+                });
+
+                $results[(string) $tenant->id] = true;
+            } catch (\Throwable $e) {
+                Log::warning("Error propagando datos fiscales del proveedor #{$supplier->id} al tenant {$tenant->id}: " . $e->getMessage());
+                $results[(string) $tenant->id] = false;
             }
         }
 

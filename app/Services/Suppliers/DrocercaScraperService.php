@@ -49,10 +49,8 @@ class DrocercaScraperService implements DrocercaScraperServiceInterface
             $supplierId = $supplier?->id;
         }
 
-        // Obtener credenciales exclusivamente desde supplier_scrapers
-        $scraperConfig = $supplierId
-            ? \App\Models\SupplierScraper::where('supplier_id', $supplierId)->where('scraper_key', 'drocerca')->first()
-            : null;
+        // Obtener credenciales desde supplier_scrapers (asegurando esquema y respaldo heredado)
+        $scraperConfig = \App\Models\SupplierScraper::resolveForScraper('drocerca', $supplierId);
 
         $user = $username ?: $scraperConfig?->username;
         $pass = $password ?: $scraperConfig?->getDecryptedPassword();

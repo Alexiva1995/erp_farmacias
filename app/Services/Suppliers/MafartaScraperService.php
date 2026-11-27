@@ -47,10 +47,8 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             $supplierId = $supplier?->id ?? 23;
         }
 
-        // Obtener credenciales exclusivamente desde supplier_scrapers
-        $scraperConfig = \App\Models\SupplierScraper::where('supplier_id', $supplierId)
-            ->where('scraper_key', 'mafarta')
-            ->first();
+        // Obtener credenciales desde supplier_scrapers (asegurando esquema y respaldo heredado)
+        $scraperConfig = \App\Models\SupplierScraper::resolveForScraper('mafarta', $supplierId);
 
         $user = $username ?: $scraperConfig?->username;
         $pass = $password ?: $scraperConfig?->getDecryptedPassword();
@@ -534,6 +532,7 @@ class MafartaScraperService implements MafartaScraperServiceInterface
             }
 
             // Guardar automáticamente el token obtenido en supplier_scrapers
+            \App\Models\SupplierScraper::ensureSchema();
             $scraperRecord = \App\Models\SupplierScraper::where('scraper_key', 'mafarta')->first();
             if ($scraperRecord) {
                 $payload = is_array($scraperRecord->auth_payload) ? $scraperRecord->auth_payload : [];
@@ -656,9 +655,7 @@ class MafartaScraperService implements MafartaScraperServiceInterface
                 ->orWhere('name', 'LIKE', '%COBECA%')
                 ->first();
 
-            $scraperConfig = $supplier
-                ? \App\Models\SupplierScraper::where('supplier_id', $supplier->id)->where('scraper_key', 'mafarta')->first()
-                : null;
+            $scraperConfig = \App\Models\SupplierScraper::resolveForScraper('mafarta', $supplier?->id);
 
             $username = $scraperConfig?->username ?: 'F31373';
             $password = $scraperConfig?->getDecryptedPassword();

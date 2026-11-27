@@ -416,10 +416,8 @@ class DrosymcaScraperService implements DrosymcaScraperServiceInterface
             $supplierId = $supplier?->id ?? 1006;
         }
 
-        // Obtener credenciales exclusivamente desde supplier_scrapers
-        $scraperConfig = \App\Models\SupplierScraper::where('supplier_id', $supplierId)
-            ->where('scraper_key', 'drosymca')
-            ->first();
+        // Obtener credenciales desde supplier_scrapers (asegurando esquema y respaldo heredado)
+        $scraperConfig = \App\Models\SupplierScraper::resolveForScraper('drosymca', $supplierId);
 
         $user = $username ?: $scraperConfig?->username;
         $pass = $password ?: $scraperConfig?->getDecryptedPassword();

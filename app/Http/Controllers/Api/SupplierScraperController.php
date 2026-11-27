@@ -23,6 +23,8 @@ class SupplierScraperController extends Controller
      */
     public function show(Supplier $supplier, string $scraperKey): JsonResponse
     {
+        SupplierScraper::ensureSchema();
+
         $key = ScraperKey::normalize($scraperKey);
         if (!$key) {
             return response()->json(['message' => 'Tipo de scraper no soportado.'], 422);
@@ -61,6 +63,8 @@ class SupplierScraperController extends Controller
      */
     public function upsert(SaveSupplierScraperRequest $request, Supplier $supplier, string $scraperKey): JsonResponse
     {
+        SupplierScraper::ensureSchema();
+
         $key = ScraperKey::normalize($scraperKey);
         if (!$key) {
             return response()->json(['message' => 'Tipo de scraper no soportado.'], 422);
@@ -113,6 +117,8 @@ class SupplierScraperController extends Controller
      */
     public function testMafartaToken(Request $request, Supplier $supplier): JsonResponse
     {
+        SupplierScraper::ensureSchema();
+
         $token = (string) $request->input('token', '');
         if (trim($token) === '') {
             return response()->json([
@@ -164,6 +170,8 @@ class SupplierScraperController extends Controller
      */
     public function receivePublicMafartaToken(ReceiveMafartaTokenRequest $request): JsonResponse
     {
+        SupplierScraper::ensureSchema();
+
         $validated = $request->validated();
         $token = trim($validated['token']);
 

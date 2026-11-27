@@ -189,6 +189,14 @@ class SupplierActionService
             }
         }
 
+        if ($isMasterContext) {
+            try {
+                app(\App\Services\Tenancy\SupplierSyncService::class)->propagateSupplierFiscalDataToTenants($updated);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("No se pudo propagar datos fiscales del proveedor #{$updated->id} a los tenants: " . $e->getMessage());
+            }
+        }
+
         if (!$isMasterContext && Schema::hasTable('supplier_scores')) {
             try {
                 app(SupplierEvaluationService::class)->evaluate($updated);
