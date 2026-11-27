@@ -137,6 +137,8 @@ const defaultForm = () => ({
   id: null,
   name: '',
   base_product_id: null,
+  auto_apply_by_base_product: true,
+  dish_ids: [],
   min_selections: 1,
   max_selections: 1,
   is_active: true,
@@ -144,6 +146,49 @@ const defaultForm = () => ({
 })
 
 const form = ref(defaultForm())
+
+// ─── Platos disponibles para asignación selectiva por plato o categoría ─────
+const allDishes = ref([])
+const loadingDishes = ref(false)
+
+const fetchAllDishes = async () => {
+  loadingDishes.value = true
+  try {
+    const { data } = await axios.get('/dishes', { params: { status: 1, itemsPerPage: -1 } })
+    allDishes.value = Array.isArray(data?.data) ? data.data : (data || [])
+  } catch {
+    allDishes.value = []
+  } finally {
+    loadingDishes.value = false
+  }
+}
+
+const dishCategoryShortcuts = computed(() => {
+  const map = new Map()
+  allDishes.value.forEach((d) => {
+    const catName = d.category?.name
+    if (!catName) return
+    if (!map.has(catName)) map.set(catName, [])
+    map.get(catName).push(d.id)
+  })
+  return Array.from(map.entries()).map(([name, ids]) => ({ name, ids }))
+})
+
+const isCategoryFullySelected = (ids) => {
+  if (!ids.length) return false
+  const selected = new Set(form.value.dish_ids || [])
+  return ids.every((id) => selected.has(id))
+}
+
+const toggleCategoryDishes = (ids) => {
+  const selected = new Set(form.value.dish_ids || [])
+  if (isCategoryFullySelected(ids)) {
+    ids.forEach((id) => selected.delete(id))
+  } else {
+    ids.forEach((id) => selected.add(id))
+  }
+  form.value.dish_ids = Array.from(selected)
+}
 
 // ─── Formulario de nueva opción ─────────────────────────────────────────────
 const newOption = ref({
@@ -212,6 +257,8 @@ const openDialog = (group = null) => {
       id: group.id,
       name: group.name,
       base_product_id: group.base_product_id || null,
+      auto_apply_by_base_product: group.auto_apply_by_base_product !== undefined ? Boolean(group.auto_apply_by_base_product) : true,
+      dish_ids: Array.isArray(group.dish_ids) ? [...group.dish_ids] : [],
       min_selections: group.min_selections,
       max_selections: group.max_selections,
       is_active: group.is_active,
@@ -302,6 +349,8 @@ const saveGroup = async () => {
       name: form.value.name,
       description: null,
       base_product_id: form.value.base_product_id || null,
+      auto_apply_by_base_product: Boolean(form.value.auto_apply_by_base_product),
+      dish_ids: Array.isArray(form.value.dish_ids) ? form.value.dish_ids : [],
       min_selections: Number(form.value.min_selections),
       max_selections: Number(form.value.max_selections),
       is_active: Boolean(form.value.is_active),
@@ -361,6 +410,7 @@ const modifierTypes = [
 
 onMounted(() => {
   fetchGroups()
+  fetchAllDishes()
 })
 </script>
 
@@ -693,6 +743,55 @@ onMounted(() => {
                     hint="Al seleccionar un insumo base, los sabores elegidos heredarán automáticamente los gramos de la receta de cada plato sin tener que indicar porción por sabor."
                     persistent-hint
                     no-data-text="Escribe el nombre del insumo para buscar..."
+                  />
+                </VCol>
+
+                <!-- Alcance de aplicación -->
+                <VCol v-if="form.base_product_id" cols="12" class="mt-2">
+                  <VSwitch
+                    v-model="form.auto_apply_by_base_product"
+                    label="Aplicar automáticamente a todos los platos que lleven este insumo"
+                    color="primary"
+                    density="compact"
+                    hide-details
+                  />
+                  <div class="text-caption text-medium-emphasis mt-1">
+                    Desactívalo si este ingrediente es fijo en otros platos (ej. Arequipe en Waffles) y solo debe cambiar en platos específicos (ej. Toppings en Helados).
+                  </div>
+                </VCol>
+
+                <VCol v-if="!form.base_product_id || !form.auto_apply_by_base_product" cols="12" class="mt-2">
+                  <div class="text-caption font-weight-bold text-high-emphasis mb-1">
+                    Platos donde aplica este grupo
+                  </div>
+                  <div v-if="dishCategoryShortcuts.length" class="d-flex align-center flex-wrap gap-1 mb-2">
+                    <span class="text-caption text-medium-emphasis me-1">Por categoría:</span>
+                    <VChip
+                      v-for="cat in dishCategoryShortcuts"
+                      :key="cat.name"
+                      size="x-small"
+                      :color="isCategoryFullySelected(cat.ids) ? 'primary' : 'default'"
+                      :variant="isCategoryFullySelected(cat.ids) ? 'flat' : 'tonal'"
+                      class="cursor-pointer font-weight-bold"
+                      @click="toggleCategoryDishes(cat.ids)"
+                    >
+                      {{ cat.name }} ({{ cat.ids.length }})
+                    </VChip>
+                  </div>
+                  <VAutocomplete
+                    v-model="form.dish_ids"
+                    :items="allDishes"
+                    item-title="name"
+                    item-value="id"
+                    :loading="loadingDishes"
+                    label="Seleccionar platos específicos"
+                    placeholder="Elige uno o varios platos..."
+                    variant="outlined"
+                    density="comfortable"
+                    multiple
+                    chips
+                    closable-chips
+                    hide-details="auto"
                   />
                 </VCol>
 

@@ -592,4 +592,60 @@ class Phase1GastronomicCoreTest extends TestCase
             'base_product_id' => $baseFlavor->id,
         ]);
     }
+
+    public function test_modifier_group_with_auto_apply_disabled_only_applies_to_assigned_dishes(): void
+    {
+        $arequipe = Product::factory()->create(['name' => 'Arequipe', 'presentation' => 1]);
+        $chocolate = Product::factory()->create(['name' => 'Salsa Chocolate', 'presentation' => 1]);
+
+        $group = ModifierGroup::create([
+            'name' => 'Toppings Helado',
+            'base_product_id' => $arequipe->id,
+            'auto_apply_by_base_product' => false,
+            'min_selections' => 1,
+            'max_selections' => 1,
+            'is_active' => true,
+        ]);
+
+        $group->options()->create([
+            'name' => 'Chocolate',
+            'modifier_type' => \App\Enums\ModifierTypeEnum::SUBSTITUTE->value,
+            'product_id' => $chocolate->id,
+            'portion' => 1.0,
+            'extra_price_usd' => 0,
+            'is_active' => true,
+        ]);
+
+        $helado = Dish::create([
+            'name' => 'Copa de Helado Topping',
+            'category_id' => $this->category->id,
+            'designated_price' => 5.00,
+            'cost_price' => 1.50,
+            'suggested_price' => 4.00,
+            'percentage_profit' => 1.5,
+            'status' => 1,
+            'iva' => false,
+        ]);
+        $helado->ingredients()->attach($arequipe->id, ['portion' => 1.0, 'designated_cost' => 1.0]);
+        $helado->modifierGroups()->attach($group->id);
+
+        $waffle = Dish::create([
+            'name' => 'Waffle Fijo con Arequipe',
+            'category_id' => $this->category->id,
+            'designated_price' => 6.00,
+            'cost_price' => 2.00,
+            'suggested_price' => 5.00,
+            'percentage_profit' => 1.5,
+            'status' => 1,
+            'iva' => false,
+        ]);
+        $waffle->ingredients()->attach($arequipe->id, ['portion' => 1.0, 'designated_cost' => 1.0]);
+
+        $heladoData = (new \App\Http\Resources\DishResource($helado->load(['ingredients', 'modifierGroups.options'])))->resolve();
+        $waffleData = (new \App\Http\Resources\DishResource($waffle->load(['ingredients', 'modifierGroups.options'])))->resolve();
+
+        $this->assertCount(1, $heladoData['modifier_groups']);
+        $this->assertEquals('Toppings Helado', $heladoData['modifier_groups'][0]['name']);
+        $this->assertCount(0, $waffleData['modifier_groups']);
+    }
 }

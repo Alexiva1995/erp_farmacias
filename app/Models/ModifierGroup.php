@@ -18,6 +18,7 @@ class ModifierGroup extends Model
         'name',
         'description',
         'base_product_id',
+        'auto_apply_by_base_product',
         'min_selections',
         'max_selections',
         'is_active',
@@ -25,6 +26,7 @@ class ModifierGroup extends Model
 
     protected $casts = [
         'base_product_id' => 'integer',
+        'auto_apply_by_base_product' => 'boolean',
         'min_selections' => 'integer',
         'max_selections' => 'integer',
         'is_active' => 'boolean',

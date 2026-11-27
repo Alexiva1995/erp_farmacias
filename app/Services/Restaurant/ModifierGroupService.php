@@ -19,6 +19,7 @@ class ModifierGroupService implements ModifierGroupServiceInterface
         return ModifierGroup::with([
             'baseProduct:id,name,unit_cost,presentation,unit_of_measure',
             'options.product:id,name,unit_cost,presentation,unit_of_measure',
+            'dishes:id,name,category_id',
         ])
             ->orderBy('id', 'desc')
             ->get();
@@ -32,6 +33,7 @@ class ModifierGroupService implements ModifierGroupServiceInterface
         return ModifierGroup::with([
             'baseProduct:id,name,unit_cost,presentation,unit_of_measure',
             'options.product:id,name,unit_cost,presentation,unit_of_measure',
+            'dishes:id,name,category_id',
         ])->find($id);
     }
 
@@ -45,10 +47,17 @@ class ModifierGroupService implements ModifierGroupServiceInterface
                 'name' => $data['name'],
                 'description' => $data['description'] ?? null,
                 'base_product_id' => $data['base_product_id'] ?? null,
+                'auto_apply_by_base_product' => array_key_exists('auto_apply_by_base_product', $data)
+                    ? (bool) $data['auto_apply_by_base_product']
+                    : true,
                 'min_selections' => $data['min_selections'] ?? 0,
                 'max_selections' => $data['max_selections'] ?? 1,
                 'is_active' => $data['is_active'] ?? true,
             ]);
+
+            if (isset($data['dish_ids']) && is_array($data['dish_ids'])) {
+                $group->dishes()->sync($data['dish_ids']);
+            }
 
             if (!empty($data['options']) && is_array($data['options'])) {
                 foreach ($data['options'] as $idx => $opt) {
@@ -67,6 +76,7 @@ class ModifierGroupService implements ModifierGroupServiceInterface
             return $group->load([
                 'baseProduct:id,name,unit_cost,presentation,unit_of_measure',
                 'options.product:id,name,unit_cost,presentation,unit_of_measure',
+                'dishes:id,name,category_id',
             ]);
         });
     }
@@ -81,10 +91,17 @@ class ModifierGroupService implements ModifierGroupServiceInterface
                 'name' => $data['name'] ?? $group->name,
                 'description' => $data['description'] ?? $group->description,
                 'base_product_id' => array_key_exists('base_product_id', $data) ? $data['base_product_id'] : $group->base_product_id,
+                'auto_apply_by_base_product' => array_key_exists('auto_apply_by_base_product', $data)
+                    ? (bool) $data['auto_apply_by_base_product']
+                    : $group->auto_apply_by_base_product,
                 'min_selections' => $data['min_selections'] ?? $group->min_selections,
                 'max_selections' => $data['max_selections'] ?? $group->max_selections,
                 'is_active' => $data['is_active'] ?? $group->is_active,
             ]);
+
+            if (isset($data['dish_ids']) && is_array($data['dish_ids'])) {
+                $group->dishes()->sync($data['dish_ids']);
+            }
 
             if (isset($data['options']) && is_array($data['options'])) {
                 $group->options()->delete();
@@ -104,6 +121,7 @@ class ModifierGroupService implements ModifierGroupServiceInterface
             return $group->load([
                 'baseProduct:id,name,unit_cost,presentation,unit_of_measure',
                 'options.product:id,name,unit_cost,presentation,unit_of_measure',
+                'dishes:id,name,category_id',
             ]);
         });
     }

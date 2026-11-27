@@ -169,10 +169,15 @@ class DishResource extends JsonResource
             if (!$schema->hasTable('modifier_groups')) {
                 $cachedByConnection[$connName] = collect();
             } else {
-                $cachedByConnection[$connName] = \App\Models\ModifierGroup::with('options')
+                $query = \App\Models\ModifierGroup::with('options')
                     ->where('is_active', true)
-                    ->whereNotNull('base_product_id')
-                    ->get();
+                    ->whereNotNull('base_product_id');
+
+                if ($schema->hasColumn('modifier_groups', 'auto_apply_by_base_product')) {
+                    $query->where('auto_apply_by_base_product', true);
+                }
+
+                $cachedByConnection[$connName] = $query->get();
             }
         }
 

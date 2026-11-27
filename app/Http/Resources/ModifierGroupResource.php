@@ -21,6 +21,7 @@ class ModifierGroupResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'base_product_id' => $this->base_product_id,
+            'auto_apply_by_base_product' => (bool) ($this->auto_apply_by_base_product ?? true),
             'base_product' => $this->baseProduct ? [
                 'id' => $this->baseProduct->id,
                 'name' => $this->baseProduct->name,
@@ -53,6 +54,7 @@ class ModifierGroupResource extends JsonResource
                 });
             }),
             'dishes_count' => $this->whenCounted('dishes'),
+            'dish_ids' => $this->whenLoaded('dishes', fn () => $this->dishes->pluck('id')->values()->all()),
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
