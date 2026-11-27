@@ -49,6 +49,8 @@ class ProfitabilityRepository implements \App\Contracts\Profitability
 
     public function getCategoriesWithProfitability(): Collection
     {
+        CategoryProfitability::ensureSchema();
+
         return Category::forInventory()
             ->select(['id', 'name'])
             ->with('profitability')
@@ -58,6 +60,8 @@ class ProfitabilityRepository implements \App\Contracts\Profitability
 
     public function upsertCategoryProfitability(array $data): Model
     {
+        CategoryProfitability::ensureSchema();
+
         return CategoryProfitability::updateOrCreate(
             ['category_id' => $data['category_id']],
             [
@@ -74,6 +78,7 @@ class ProfitabilityRepository implements \App\Contracts\Profitability
 
     public function deleteCategoryProfitability(int $categoryId): void
     {
+        CategoryProfitability::ensureSchema();
         CategoryProfitability::where('category_id', $categoryId)->delete();
     }
 }

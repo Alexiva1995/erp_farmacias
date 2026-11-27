@@ -127,10 +127,12 @@ class ProfitabilityController extends Controller
     public function upsertCategoryProfitability(UpsertCategoryProfitabilityRequest $request): JsonResponse
     {
         $categoryProfitability = $this->profitability->upsertCategoryProfitability($request->validated());
+        $category = $categoryProfitability->category;
+        $category->setRelation('profitability', $categoryProfitability);
 
         return response()->json([
             'message' => 'Regla de rentabilidad por categoría guardada y aplicada.',
-            'data' => new CategoryProfitabilityResource($categoryProfitability->category->load('profitability')),
+            'data' => new CategoryProfitabilityResource($category),
         ]);
     }
 
