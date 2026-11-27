@@ -1,4 +1,5 @@
 import axios from '@/plugins/axios'
+import { roundUpToNearestHundred } from '@/utils/roundUpToNearesHundred.js'
 
 export const getItemPriceByCurrency = (item, currency, useBase = false) => {
   if (!item) return 0
@@ -100,10 +101,10 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
     if (designatedCop > 0) {
       const baseUsd = parseFloat(dish.designated_price ?? dish.sale_price ?? dish.price ?? 0)
       const extraUsd = Math.max(0, priceUsd - baseUsd)
-      const extraCop = extraUsd > 0 ? Math.ceil((extraUsd * rateCop) / 100) * 100 : 0
+      const extraCop = extraUsd > 0 ? roundUpToNearestHundred(extraUsd * rateCop) : 0
       priceCop = designatedCop + extraCop
     } else {
-      priceCop = Math.ceil((priceUsd * rateCop) / 100) * 100
+      priceCop = roundUpToNearestHundred(priceUsd * rateCop)
     }
     const priceBs = parseFloat((priceUsd * rateBs).toFixed(2))
     const dishTax = dish.iva ? (parseFloat(dish.tax_rate || 16) / 100) : 0
@@ -138,6 +139,7 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
       original_pack_config: null,
       has_pack_discount: false,
       is_dish: true,
+      has_designated_cop: designatedCop > 0,
       modifiers: backendItem.modifiers || [],
       notes: backendItem.notes || backendItem.observation || null,
       kitchen_status: backendItem.kitchen_status || null,
@@ -187,7 +189,16 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
       product.price ?? product.sale_price ?? backendItem.price_usd_unit ?? backendItem.price_at_product ?? 0
     )
     originalPriceBs = parseFloat(product.price_bs ?? backendItem.price_bs ?? 0)
-    originalPriceCop = parseFloat(product.price_cop ?? backendItem.price_cop ?? 0)
+    const rawCop = parseFloat(product.price_cop ?? backendItem.price_cop ?? 0)
+    if (rawCop > 0) {
+      // Producto individual en COP siempre redondeado hacia arriba a la centena (100)
+      originalPriceCop = roundUpToNearestHundred(rawCop)
+    } else if (originalPrice > 0) {
+      const rateCop = (typeof getEffectiveRate === 'function' ? getEffectiveRate('USD', 'COP') : 0) || 4000
+      originalPriceCop = roundUpToNearestHundred(originalPrice * rateCop)
+    } else {
+      originalPriceCop = 0
+    }
   }
 
   const backendDiscount = parseFloat(backendItem.discount_percentage) || 0
@@ -196,7 +207,9 @@ export function formatOrderItemForFrontend(backendItem, getEffectiveRate) {
 
   const discountedPrice = originalPrice * discountFactor
   const discountedPriceBs = originalPriceBs * discountFactor
-  const discountedPriceCop = Math.round(originalPriceCop * discountFactor)
+  const discountedPriceCop = discountFactor < 1
+    ? roundUpToNearestHundred(originalPriceCop * discountFactor)
+    : originalPriceCop
 
   // Leer la tasa de impuesto: primero tax_rate numérico, luego el flag booleano `iva`, fallback 0
   const rawTaxRate = parseFloat(product.tax_rate)

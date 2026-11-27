@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { formatCurrency } from '@/utils/currencyFormatter'
+import { roundUpToNearestHundred } from '@/utils/roundUpToNearesHundred.js'
 
 const props = defineProps({
   dishes: { type: Array, default: () => [] },
@@ -80,9 +81,10 @@ const getDishDisplayPrice = (dish) => {
   const curr = String(props.selectedDisplayCurrency || 'USD').toUpperCase()
   const usd = Number(dish?.designated_price || 0)
   if (curr === 'COP') {
+    // Respetar el precio COP asignado directamente al plato sin redondear
     if (Number(dish?.designated_price_cop) > 0) return Number(dish.designated_price_cop)
     const rate = Number(props.exchangeRates?.USD?.COP || props.exchangeRates?.USD_COP || props.exchangeRates?.cop || 4000)
-    return Math.ceil((usd * (rate > 0 ? rate : 4000)) / 100) * 100
+    return roundUpToNearestHundred(usd * (rate > 0 ? rate : 4000))
   }
   if (curr === 'BS') {
     const rate = Number(props.exchangeRates?.USD?.BS || props.exchangeRates?.USD_BS || props.exchangeRates?.bs || 1)
@@ -94,15 +96,16 @@ const getDishDisplayPrice = (dish) => {
 const getProductDisplayPrice = (product) => {
   const curr = String(props.selectedDisplayCurrency || 'USD').toUpperCase()
   if (curr === 'COP') {
-    if (Number(product?.price_cop) > 0) return Number(product.price_cop)
+    // Productos individuales en COP siempre redondeados hacia arriba a la centena (100)
+    if (Number(product?.price_cop) > 0) return roundUpToNearestHundred(Number(product.price_cop))
     const usd = Number(product?.sale_price ?? product?.price ?? 0)
-    const rate = Number(props.exchangeRates?.USD?.COP || 4000)
-    return Math.ceil((usd * (rate > 0 ? rate : 4000)) / 100) * 100
+    const rate = Number(props.exchangeRates?.USD?.COP || props.exchangeRates?.USD_COP || props.exchangeRates?.cop || 4000)
+    return roundUpToNearestHundred(usd * (rate > 0 ? rate : 4000))
   }
   if (curr === 'BS') {
     if (Number(product?.price_bs) > 0) return Number(product.price_bs)
     const usd = Number(product?.sale_price ?? product?.price ?? 0)
-    const rate = Number(props.exchangeRates?.USD?.BS || 1)
+    const rate = Number(props.exchangeRates?.USD?.BS || props.exchangeRates?.USD_BS || props.exchangeRates?.bs || 1)
     return usd * (rate > 0 ? rate : 1)
   }
   return Number(product?.sale_price ?? product?.price ?? 0)

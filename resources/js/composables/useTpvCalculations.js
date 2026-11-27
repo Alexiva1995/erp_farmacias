@@ -109,8 +109,16 @@ export function useTpvCalculations({
     const globalDiscount = companyDiscount + doctorDiscount + recipeDiscount
     let finalOrderTotal = baseAmount - globalDiscount
 
+    const onlyDishesWithDesignatedCop =
+      items.length > 0 &&
+      items.every((item) => item.is_dish && item.has_designated_cop) &&
+      globalDiscount === 0 &&
+      ivaAmt === 0
+
     if (currency === 'COP') {
-      finalOrderTotal = roundUpToNearestHundred(finalOrderTotal)
+      finalOrderTotal = onlyDishesWithDesignatedCop
+        ? Math.round(finalOrderTotal)
+        : roundUpToNearestHundred(finalOrderTotal)
     } else {
       finalOrderTotal = Math.round((finalOrderTotal + Number.EPSILON) * 100) / 100
     }

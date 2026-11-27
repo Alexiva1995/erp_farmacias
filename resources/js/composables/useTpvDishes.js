@@ -46,9 +46,13 @@ export function useTpvDishes() {
 
   const dishCategories = computed(() => {
     const apiCats = Array.isArray(rawDishCategories.value) ? rawDishCategories.value : []
+    // Filtrar estrictamente categorías válidas de menú (dish/dishes/both) para no mezclar categorías de farmacia
+    const menuCats = apiCats.filter(
+      (c) => !c.type || ['dish', 'dishes', 'both'].includes(String(c.type).toLowerCase())
+    )
 
-    const allowedIds = new Set(apiCats.map((c) => Number(c.id)))
-    const result = apiCats.map((cat) => {
+    const allowedIds = new Set(menuCats.map((c) => Number(c.id)))
+    const result = menuCats.map((cat) => {
       const matchingDishes = dishes.value.filter(
         (d) => Number(d.category_id) === Number(cat.id) || (cat.name && d.category?.name === cat.name)
       )
@@ -62,8 +66,8 @@ export function useTpvDishes() {
       }
     }).filter((cat) => cat.count > 0)
 
-    // Agrupar solo platos sin categoría válida en el menú
-    if (apiCats.length > 0) {
+    // Agrupar platos sin categoría de menú válida (incluidos los ligados a categorías de farmacia)
+    if (menuCats.length > 0) {
       const otherDishes = dishes.value.filter(
         (d) => !d.category_id || !allowedIds.has(Number(d.category_id))
       )
@@ -79,17 +83,18 @@ export function useTpvDishes() {
       return result
     }
 
-    // Respaldo si el endpoint de categorías devolvió vacío
+    // Respaldo si el endpoint de categorías devolvió vacío, evitando exponer categorías de farmacia
     const fallbackMap = new Map()
     dishes.value.forEach((d) => {
-      const catName = d.category?.name || 'General'
+      const isInventoryCat = String(d.category?.type || '').toLowerCase() === 'inventory'
+      const catName = isInventoryCat ? 'Otros Platos' : (d.category?.name || 'General')
       if (!fallbackMap.has(catName)) {
         fallbackMap.set(catName, {
-          id: d.category_id || catName,
+          id: isInventoryCat ? 'other' : (d.category_id || catName),
           name: catName,
-          photo_url: d.category?.photo_url || d.photo_url || null,
+          photo_url: isInventoryCat ? (d.photo_url || null) : (d.category?.photo_url || d.photo_url || null),
           count: 1,
-          isOther: false,
+          isOther: isInventoryCat,
         })
       } else {
         const entry = fallbackMap.get(catName)

@@ -159,12 +159,7 @@ class Category extends Authenticatable
     public function scopeForDishes(Builder $query): Builder
     {
         if (static::ensureTypeColumn($query->getConnection())) {
-            return $query->where(function (Builder $q) {
-                $q->whereIn('categories.type', CategoryTypeEnum::dishValues())
-                    ->orWhereHas('dishes', function (Builder $dishQuery) {
-                        $dishQuery->where('status', 1);
-                    });
-            });
+            return $query->whereIn('categories.type', CategoryTypeEnum::dishValues());
         }
 
         return $query;
