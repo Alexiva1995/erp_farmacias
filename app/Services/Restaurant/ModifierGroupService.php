@@ -7,10 +7,41 @@ namespace App\Services\Restaurant;
 use App\Contracts\ModifierGroupServiceInterface;
 use App\Models\ModifierGroup;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ModifierGroupService implements ModifierGroupServiceInterface
 {
+    /**
+     * Asegura que la columna auto_apply_by_base_product exista en la conexión activa del tenant.
+     */
+    private function hasAutoApplyColumn(): bool
+    {
+        $conn = (new ModifierGroup())->getConnection();
+        $schema = $conn->getSchemaBuilder();
+
+        if (!$schema->hasTable('modifier_groups')) {
+            return false;
+        }
+
+        if ($schema->hasColumn('modifier_groups', 'auto_apply_by_base_product')) {
+            return true;
+        }
+
+        if ($conn->transactionLevel() === 0) {
+            try {
+                $schema->table('modifier_groups', function (Blueprint $table) {
+                    $table->boolean('auto_apply_by_base_product')->default(true)->after('base_product_id');
+                });
+                return true;
+            } catch (\Throwable $e) {
+                return $schema->hasColumn('modifier_groups', 'auto_apply_by_base_product');
+            }
+        }
+
+        return false;
+    }
     /**
      * @inheritDoc
      */
@@ -42,18 +73,25 @@ class ModifierGroupService implements ModifierGroupServiceInterface
      */
     public function create(array $data): ModifierGroup
     {
-        return DB::transaction(function () use ($data) {
-            $group = ModifierGroup::create([
+        $hasAutoApply = $this->hasAutoApplyColumn();
+
+        return DB::transaction(function () use ($data, $hasAutoApply) {
+            $attributes = [
                 'name' => $data['name'],
                 'description' => $data['description'] ?? null,
                 'base_product_id' => $data['base_product_id'] ?? null,
-                'auto_apply_by_base_product' => array_key_exists('auto_apply_by_base_product', $data)
-                    ? (bool) $data['auto_apply_by_base_product']
-                    : true,
                 'min_selections' => $data['min_selections'] ?? 0,
                 'max_selections' => $data['max_selections'] ?? 1,
                 'is_active' => $data['is_active'] ?? true,
-            ]);
+            ];
+
+            if ($hasAutoApply) {
+                $attributes['auto_apply_by_base_product'] = array_key_exists('auto_apply_by_base_product', $data)
+                    ? (bool) $data['auto_apply_by_base_product']
+                    : true;
+            }
+
+            $group = ModifierGroup::create($attributes);
 
             if (isset($data['dish_ids']) && is_array($data['dish_ids'])) {
                 $group->dishes()->sync($data['dish_ids']);
@@ -86,18 +124,25 @@ class ModifierGroupService implements ModifierGroupServiceInterface
      */
     public function update(ModifierGroup $group, array $data): ModifierGroup
     {
-        return DB::transaction(function () use ($group, $data) {
-            $group->update([
+        $hasAutoApply = $this->hasAutoApplyColumn();
+
+        return DB::transaction(function () use ($group, $data, $hasAutoApply) {
+            $attributes = [
                 'name' => $data['name'] ?? $group->name,
                 'description' => $data['description'] ?? $group->description,
                 'base_product_id' => array_key_exists('base_product_id', $data) ? $data['base_product_id'] : $group->base_product_id,
-                'auto_apply_by_base_product' => array_key_exists('auto_apply_by_base_product', $data)
-                    ? (bool) $data['auto_apply_by_base_product']
-                    : $group->auto_apply_by_base_product,
                 'min_selections' => $data['min_selections'] ?? $group->min_selections,
                 'max_selections' => $data['max_selections'] ?? $group->max_selections,
                 'is_active' => $data['is_active'] ?? $group->is_active,
-            ]);
+            ];
+
+            if ($hasAutoApply) {
+                $attributes['auto_apply_by_base_product'] = array_key_exists('auto_apply_by_base_product', $data)
+                    ? (bool) $data['auto_apply_by_base_product']
+                    : $group->auto_apply_by_base_product;
+            }
+
+            $group->update($attributes);
 
             if (isset($data['dish_ids']) && is_array($data['dish_ids'])) {
                 $group->dishes()->sync($data['dish_ids']);
