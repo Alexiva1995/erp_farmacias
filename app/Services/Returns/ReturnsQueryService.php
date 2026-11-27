@@ -18,8 +18,8 @@ class ReturnsQueryService
                 'order.seller',
                 'order.fiscalHistory',
                 'product.laboratory',
-                'generatedBy:id,name,username',
-                'approvedBy:id,name,username',
+                'generatedBy:id,username,email',
+                'approvedBy:id,username,email',
             ]);
 
         $this->applySearch($query, $request->input('search'));
