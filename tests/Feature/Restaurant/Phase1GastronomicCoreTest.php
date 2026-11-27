@@ -521,4 +521,75 @@ class Phase1GastronomicCoreTest extends TestCase
                 ->exists()
         );
     }
+
+    public function test_add_order_item_endpoint_accepts_substitute_modifier_type(): void
+    {
+        $baseFlavor = Product::factory()->create(['name' => 'Base Helado', 'presentation' => 1]);
+        $chocolateFlavor = Product::factory()->create(['name' => 'Helado Chocolate', 'presentation' => 1]);
+
+        $group = ModifierGroup::create([
+            'name' => 'Sabores',
+            'base_product_id' => $baseFlavor->id,
+            'min_selections' => 1,
+            'max_selections' => 1,
+            'is_active' => true,
+        ]);
+
+        $option = $group->options()->create([
+            'name' => 'Chocolate',
+            'modifier_type' => \App\Enums\ModifierTypeEnum::SUBSTITUTE->value,
+            'product_id' => $chocolateFlavor->id,
+            'portion' => 1.0,
+            'extra_price_usd' => 0,
+            'is_active' => true,
+        ]);
+
+        $dish = Dish::create([
+            'name' => 'Copa de Helado',
+            'category_id' => $this->category->id,
+            'designated_price' => 5.00,
+            'cost_price' => 1.50,
+            'suggested_price' => 4.00,
+            'percentage_profit' => 1.5,
+            'status' => 1,
+            'iva' => false,
+        ]);
+        $dish->ingredients()->attach($baseFlavor->id, ['portion' => 1.0, 'designated_cost' => 1.0]);
+        $dish->modifierGroups()->attach($group->id);
+
+        $order = Order::create([
+            'seller_id' => $this->user->id,
+            'currency' => 'USD',
+            'status' => Order::PENDING,
+            'total_amount' => 0,
+            'total_amount_usd' => 0,
+            'money_returns' => 0,
+        ]);
+
+        $response = $this->actingAs($this->user)->postJson("/api/tpv/orders/{$order->id}/items", [
+            'dish_id' => $dish->id,
+            'quantity' => 1,
+            'price_at_product' => 5.00,
+            'price_usd_unit' => 5.00,
+            'currency_at_order' => 'USD',
+            'modifiers' => [
+                [
+                    'modifier_option_id' => $option->id,
+                    'name' => 'Chocolate',
+                    'modifier_type' => 'substitute',
+                    'extra_price_usd' => 0,
+                    'product_id' => $chocolateFlavor->id,
+                    'base_product_id' => $baseFlavor->id,
+                    'portion' => 1.0,
+                ],
+            ],
+        ]);
+
+        $response->assertSuccessful();
+        $this->assertDatabaseHas('order_detail_modifiers', [
+            'modifier_option_id' => $option->id,
+            'modifier_type' => 'substitute',
+            'base_product_id' => $baseFlavor->id,
+        ]);
+    }
 }

@@ -146,6 +146,7 @@ export function useTpvDishes() {
     allForeignSalesSpe,
     fiscalMode,
     dishes,
+    rawDishCategories,
     dishesLoading,
     dishFilterQuery,
     selectedDishCategory,

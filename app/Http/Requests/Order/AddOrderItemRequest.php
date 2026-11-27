@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Order;
 
+use App\Enums\ModifierTypeEnum;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class AddOrderItemRequest extends FormRequest
 {
@@ -35,9 +37,10 @@ class AddOrderItemRequest extends FormRequest
             'modifiers' => ['nullable', 'array'],
             'modifiers.*.modifier_option_id' => ['nullable', 'integer', 'exists:modifier_options,id'],
             'modifiers.*.name' => ['nullable', 'string'],
-            'modifiers.*.modifier_type' => ['nullable', 'string', 'in:add,remove,info'],
+            'modifiers.*.modifier_type' => ['nullable', 'string', Rule::enum(ModifierTypeEnum::class)],
             'modifiers.*.extra_price_usd' => ['nullable', 'numeric'],
             'modifiers.*.product_id' => ['nullable', 'integer', 'exists:products,id'],
+            'modifiers.*.base_product_id' => ['nullable', 'integer', 'exists:products,id'],
             'modifiers.*.portion' => ['nullable', 'numeric'],
         ];
     }
